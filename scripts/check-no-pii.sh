@@ -102,7 +102,7 @@ get_files() {
 SELF_SKIP_PATHS=(
     'scripts/check-no-pii.sh'
     '.gitleaks.toml'
-    'skills/pii-scrubber/pii-scrubber.md'
+    'skills/pii-scrubber/SKILL.md'
     'templates/hooks/pre-push'
     'CONTRIBUTING.md'
 )

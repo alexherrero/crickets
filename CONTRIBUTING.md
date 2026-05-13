@@ -18,7 +18,7 @@ This is a public repo. The customizations and configuration kept here are person
 | Layer | What | When it fires |
 |---|---|---|
 | **Pre-push git hook** | `templates/hooks/pre-push` installed into `.git/hooks/pre-push` by `agent-toolkit/install.sh` | On every `git push`. Runs `check-no-pii.sh --diff <range>`; non-zero exit blocks the push. **Mandatory enforcer.** |
-| **`pii-scrubber` skill** | `skills/pii-scrubber/pii-scrubber.md` — interactive agent-facing layer | Invoked by an agent before commit / push. Presents findings, offers redactions, loops until clean. |
+| **`pii-scrubber` skill** | `skills/pii-scrubber/SKILL.md` — interactive agent-facing layer | Invoked by an agent before commit / push. Presents findings, offers redactions, loops until clean. |
 | **CI gate** | GitHub Actions workflow (lands in task 4 of v0.1.0 plan) | On every push to GitHub. Runs the same script + gitleaks. Final safety net. |
 
 ### How to test locally
@@ -60,11 +60,12 @@ bash scripts/check-lib-parity.sh
 bash scripts/smoke-install-bash.sh
 ```
 
-> Scripts marked "(coming)" land in later tasks of the v0.1.0 plan:
-> - `check-syntax.sh` — task 3
-> - `validate-manifests.py` — task 3
-> - `check-lib-parity.sh` — task 2
-> - `smoke-install-bash.sh` — task 4
+> Scripts available now (v0.1.0 plan progress):
+> - `check-no-pii.sh` — shipped (task 1)
+> - `check-lib-parity.sh` — shipped (task 2)
+> - `check-syntax.sh` — shipped (task 3)
+> - `validate-manifests.py` — shipped (task 3)
+> - `smoke-install-bash.sh` — still coming (task 4)
 
 ## Commit messages
 

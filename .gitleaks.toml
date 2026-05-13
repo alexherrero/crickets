@@ -26,7 +26,7 @@ paths = [
     # The gitleaks config itself includes example patterns
     '''\.gitleaks\.toml''',
     # The scrubber skill includes example PII patterns in its workflow doc
-    '''skills/pii-scrubber/pii-scrubber\.md''',
+    '''skills/pii-scrubber/SKILL\.md''',
     # CONTRIBUTING includes example patterns in its NOT-to-commit list
     '''CONTRIBUTING\.md''',
 ]

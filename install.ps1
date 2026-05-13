@@ -1,23 +1,218 @@
-# install.ps1 — agent-toolkit installer (STUB — fleshed out in task 3 of v0.1.0 plan).
+# install.ps1 — agent-toolkit installer.
 #
-# When complete, this installs `agent-toolkit` customizations into a target project.
-# Planned usage:
-#   pwsh -NoProfile -File install.ps1 [-Bundle <name>] [-Skill <name>] [-All] [-Update] [-NoPrePushHook] <target-project-path>
+# Installs personal agent customizations (skills, sub-agents, hooks, MCP
+# servers, slash commands, etc.) into a target project under host-specific
+# paths (.claude/, .agent/, .gemini/). Also installs a pre-push git hook
+# that runs check-no-pii.sh against every push.
 #
-# Today: stub. Print explanation and exit non-zero so accidental use surfaces.
+# Usage:
+#   pwsh -NoProfile -File install.ps1 [OPTIONS] <target-project-path>
+#
+# Options:
+#   -Bundle <name>           install one bundle (instead of all)
+#   -Skill <name>            install one standalone skill (instead of all)
+#   -All                     install everything (default)
+#   -Update                  true-sync; wipe and recreate managed dirs
+#   -NoPrePushHook           skip pre-push hook installation
+#   -Help                    print this help and exit
 
-Write-Error @"
-agent-toolkit install.ps1 — not yet implemented (stub from task 1 scaffold).
+[CmdletBinding()]
+param(
+    [string]$Bundle,
+    [string]$Skill,
+    [switch]$All,
+    [switch]$Update,
+    [switch]$NoPrePushHook,
+    [switch]$Help,
+    [Parameter(Position=0)]
+    [string]$Target
+)
 
-The full installer body lands in task 3 of the v0.1.0 plan. Until then, customizations
-in this repo are not auto-deliverable. Inspect them by hand or wait for v0.1.0.
+$ErrorActionPreference = 'Stop'
 
-Planned parameters:
-  -Bundle <name>           install one bundle
-  -Skill <name>            install one standalone skill
-  -All                     install everything (default)
-  -Update                  true-sync; wipe and recreate managed dirs
-  -NoPrePushHook           skip pre-push hook installation
-  <target-project-path>    target project (positional)
-"@
-exit 2
+if ($Help) {
+    Get-Content $PSCommandPath | Where-Object { $_ -match '^#' -or $_ -eq '' } | ForEach-Object { $_ -replace '^# ?', '' }
+    exit 0
+}
+
+# ── argument validation ───────────────────────────────────────────────────
+if (-not $Target) {
+    Write-Error "<target-project-path> is required. Run with -Help for usage."
+    exit 2
+}
+if (-not (Test-Path -LiteralPath $Target -PathType Container)) {
+    Write-Error "target directory does not exist: $Target"
+    exit 1
+}
+$Target = (Resolve-Path -LiteralPath $Target).ProviderPath
+
+# Selection mode: default to All unless -Bundle or -Skill given
+$ModeAll = $true
+if ($Bundle -or $Skill) { $ModeAll = $false }
+if ($All) { $ModeAll = $true; $Bundle = ''; $Skill = '' }
+
+# ── locate toolkit root ───────────────────────────────────────────────────
+$ToolkitRoot = Split-Path -Parent $PSCommandPath
+$ToolkitRoot = (Resolve-Path -LiteralPath $ToolkitRoot).ProviderPath
+
+# ── source shared install plumbing ────────────────────────────────────────
+$BoundaryRoots = @(
+    (Join-Path $ToolkitRoot 'skills'),
+    (Join-Path $ToolkitRoot 'commands'),
+    (Join-Path $ToolkitRoot 'agents'),
+    (Join-Path $ToolkitRoot 'hooks'),
+    (Join-Path $ToolkitRoot 'mcp-servers'),
+    (Join-Path $ToolkitRoot 'bundles'),
+    (Join-Path $ToolkitRoot 'status-line'),
+    (Join-Path $ToolkitRoot 'output-styles'),
+    (Join-Path $ToolkitRoot 'workflows'),
+    (Join-Path $ToolkitRoot 'rules'),
+    (Join-Path $ToolkitRoot 'snippets'),
+    (Join-Path $ToolkitRoot 'settings-fragments'),
+    (Join-Path $ToolkitRoot 'templates')
+)
+
+. (Join-Path $ToolkitRoot 'lib/install/pwsh/primitives.ps1')
+
+# ── operate from inside target dir ────────────────────────────────────────
+Set-Location $Target
+Write-Host "==> agent-toolkit install: $Target"
+
+# ── -Update sync ──────────────────────────────────────────────────────────
+$ManagedParents = @(
+    '.claude/skills',
+    '.agent/skills',
+    '.agents/skills'
+)
+$EmptyParentCandidates = @('.agents')
+
+if ($Update) {
+    Write-Host '==> sync mode: wiping toolkit-managed dirs before recreate from source'
+    Sync-ManagedParents $ManagedParents $EmptyParentCandidates
+}
+
+# ── helpers ───────────────────────────────────────────────────────────────
+function Get-Field([string]$file, [string]$field) {
+    $result = python3 (Join-Path $ToolkitRoot 'scripts/manifest-info.py') $file $field 2>$null
+    return ($result -join '').Trim()
+}
+
+function Install-Skill([string]$srcDir, [string]$name, [string]$hosts) {
+    foreach ($host in ($hosts -split ',')) {
+        $host = $host.Trim()
+        if (-not $host) { continue }
+        switch ($host) {
+            'claude-code' {
+                New-Item -ItemType Directory -Path '.claude/skills' -Force | Out-Null
+                Copy-ManagedDir $srcDir (Join-Path '.claude/skills' $name)
+            }
+            'antigravity' {
+                New-Item -ItemType Directory -Path '.agent/skills' -Force | Out-Null
+                Copy-ManagedDir $srcDir (Join-Path '.agent/skills' $name)
+            }
+            'gemini-cli' {
+                New-Item -ItemType Directory -Path '.agents/skills' -Force | Out-Null
+                Copy-ManagedDir $srcDir (Join-Path '.agents/skills' $name)
+            }
+            default {
+                Write-Warning "unknown host '$host' for skill '$name' - skipped"
+            }
+        }
+    }
+}
+
+function Install-PrePushHook {
+    if ($NoPrePushHook) {
+        Write-Host '  skipping pre-push hook (-NoPrePushHook)'
+        return
+    }
+    if (-not (Test-Path -LiteralPath '.git' -PathType Container)) {
+        Write-Warning 'skipping pre-push hook (target is not a git repo)'
+        return
+    }
+    $hookSrc = Join-Path $ToolkitRoot 'templates/hooks/pre-push'
+    $hookDst = '.git/hooks/pre-push'
+    if (-not (Test-Path -LiteralPath $hookSrc)) {
+        Write-Warning "hook template not found at $hookSrc - pre-push hook not installed"
+        return
+    }
+    if (Test-Path -LiteralPath $hookDst) {
+        $a = Get-FileHash -LiteralPath $hookSrc -Algorithm SHA256
+        $b = Get-FileHash -LiteralPath $hookDst -Algorithm SHA256
+        if ($a.Hash -eq $b.Hash) {
+            Write-Host "    kept    $hookDst (already managed by agent-toolkit)"
+            return
+        }
+        $bak = "$hookDst.agent-toolkit-bak.$([int][double]::Parse((Get-Date -UFormat %s)))"
+        Copy-Item -LiteralPath $hookDst -Destination $bak
+        Write-Host "    backed up existing $hookDst -> $bak"
+    }
+    Copy-Item -LiteralPath $hookSrc -Destination $hookDst
+    Write-Host "    installed $hookDst"
+}
+
+function Install-Bundles {
+    Get-ChildItem -LiteralPath (Join-Path $ToolkitRoot 'bundles') -Directory -ErrorAction SilentlyContinue |
+        ForEach-Object {
+            $bundleDir = $_.FullName
+            $bundleName = $_.Name
+            $bundleMd = Join-Path $bundleDir 'bundle.md'
+            if (-not (Test-Path -LiteralPath $bundleMd)) { return }
+            if (-not $ModeAll -and $Bundle -and $Bundle -ne $bundleName) { return }
+            Write-Host "==> installing bundle: $bundleName"
+            $hosts = Get-Field $bundleMd 'supported_hosts'
+            if (-not $hosts) {
+                Write-Warning "bundle '$bundleName' has no supported_hosts - skipped"
+                return
+            }
+            $skillsDir = Join-Path $bundleDir 'skills'
+            if (Test-Path -LiteralPath $skillsDir -PathType Container) {
+                Get-ChildItem -LiteralPath $skillsDir -Directory | ForEach-Object {
+                    Install-Skill $_.FullName $_.Name $hosts
+                }
+            }
+            foreach ($other in 'commands','agents','hooks','mcp-servers','status-line','output-styles','workflows','rules','snippets','settings-fragments') {
+                $od = Join-Path $bundleDir $other
+                if ((Test-Path -LiteralPath $od -PathType Container) -and (Get-ChildItem -LiteralPath $od -Force -ErrorAction SilentlyContinue)) {
+                    Write-Warning "kind '$other' is not yet supported in agent-toolkit v0.1.0 - skipped"
+                }
+            }
+        }
+}
+
+function Install-StandaloneSkills {
+    Get-ChildItem -LiteralPath (Join-Path $ToolkitRoot 'skills') -Directory -ErrorAction SilentlyContinue |
+        ForEach-Object {
+            $skillDir = $_.FullName
+            $skillName = $_.Name
+            $skillMd = Join-Path $skillDir 'SKILL.md'
+            if (-not (Test-Path -LiteralPath $skillMd)) { return }
+            if (-not $ModeAll -and $Skill -and $Skill -ne $skillName) { return }
+            $kind = Get-Field $skillMd 'kind'
+            if ($kind -ne 'skill') {
+                Write-Warning "$skillMd has kind '$kind' (expected 'skill') - skipped"
+                return
+            }
+            $hosts = Get-Field $skillMd 'supported_hosts'
+            if (-not $hosts) {
+                Write-Warning "skill '$skillName' has no supported_hosts - skipped"
+                return
+            }
+            Write-Host "==> installing skill: $skillName"
+            Install-Skill $skillDir $skillName $hosts
+        }
+}
+
+# ── run ───────────────────────────────────────────────────────────────────
+if ($ModeAll -or $Bundle) {
+    Install-Bundles
+}
+if ($ModeAll -or $Skill) {
+    Install-StandaloneSkills
+}
+
+Write-Host '==> pre-push hook'
+Install-PrePushHook
+
+Write-Host ''
+Write-Host 'agent-toolkit install: complete.'
