@@ -98,10 +98,12 @@ function Get-Field([string]$file, [string]$field) {
 }
 
 function Install-Skill([string]$srcDir, [string]$name, [string]$hosts) {
-    foreach ($host in ($hosts -split ',')) {
-        $host = $host.Trim()
-        if (-not $host) { continue }
-        switch ($host) {
+    # Note: NOT named $host — that's a read-only PowerShell built-in (the host
+    # environment). Use $hostName instead for the loop variable.
+    foreach ($hostName in ($hosts -split ',')) {
+        $hostName = $hostName.Trim()
+        if (-not $hostName) { continue }
+        switch ($hostName) {
             'claude-code' {
                 New-Item -ItemType Directory -Path '.claude/skills' -Force | Out-Null
                 Copy-ManagedDir $srcDir (Join-Path '.claude/skills' $name)
@@ -115,7 +117,7 @@ function Install-Skill([string]$srcDir, [string]$name, [string]$hosts) {
                 Copy-ManagedDir $srcDir (Join-Path '.agents/skills' $name)
             }
             default {
-                Write-Warning "unknown host '$host' for skill '$name' - skipped"
+                Write-Warning "unknown host '$hostName' for skill '$name' - skipped"
             }
         }
     }
