@@ -1,37 +1,106 @@
 # agent-toolkit
 
-> Scaffolded 2026-05-12. v0.1.0 in progress. Full README arrives with the v0.1.0 release.
+[![Linux Tests](https://github.com/alexherrero/agent-toolkit/actions/workflows/tests-linux.yml/badge.svg?branch=main)](https://github.com/alexherrero/agent-toolkit/actions/workflows/tests-linux.yml)
+[![Mac Tests](https://github.com/alexherrero/agent-toolkit/actions/workflows/tests-mac.yml/badge.svg?branch=main)](https://github.com/alexherrero/agent-toolkit/actions/workflows/tests-mac.yml)
+[![Windows Tests](https://github.com/alexherrero/agent-toolkit/actions/workflows/tests-windows.yml/badge.svg?branch=main)](https://github.com/alexherrero/agent-toolkit/actions/workflows/tests-windows.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-Personal collection of agent customizations — skills, sub-agents, hooks, MCP servers, slash commands, status lines, output styles, workflows, rules, snippets, and settings fragments — across Claude Code, Antigravity, and Gemini CLI.
+Personal collection of agent customizations — skills, sub-agents, hooks, MCP servers, slash commands, bundles, and more — across Claude Code, Antigravity, and Gemini CLI. Sibling repo to [`agentic-harness`](https://github.com/alexherrero/agentic-harness): the harness owns phase-gated workflow, this toolkit owns the customizations that ride on top.
 
-Sibling repo to [`agentic-harness`](https://github.com/alexherrero/agentic-harness). The harness owns phase-gated workflow; the toolkit owns the customizations that ride on top.
+[![Works with Claude Code](https://img.shields.io/badge/works%20with-Claude%20Code-D97706?style=flat)](#)
+[![Works with Antigravity](https://img.shields.io/badge/works%20with-Antigravity-7C3AED?style=flat)](#)
+[![Works with Gemini CLI](https://img.shields.io/badge/works%20with-Gemini%20CLI-4285F4?style=flat)](#)
 
-## Status
+## What's inside (v0.1.0)
 
-Scaffold complete. Currently shipping:
+Three skills + one reference bundle:
 
-- Directory structure for 12 customization-type subdirs
-- PII guardrails — `scripts/check-no-pii.sh` (regex detector), `.gitleaks.toml` (gitleaks config), `skills/pii-scrubber/` (agent-facing interactive remediation skill), `templates/hooks/pre-push` (git hook that blocks PII at push time)
-- An `example-bundle/` reference skeleton for new contributors
+| Customization | Kind | What it does |
+|---|---|---|
+| [`pii-scrubber`](skills/pii-scrubber/SKILL.md) | skill | Agent-facing PII guardrail — scans the current git diff before commit/push, presents findings, offers redactions. Companion to the pre-push hook. |
+| [`dependabot-fixer`](skills/dependabot-fixer/SKILL.md) | skill | Fix breakage on a Dependabot PR. Reads failing CI logs, applies a bounded fix loop, pushes commits to the Dependabot branch, comments residual risks. Never merges. (Migrated from agentic-harness v1.x.) |
+| [`ship-release`](skills/ship-release/SKILL.md) | skill | Cut a tagged GitHub release with semver-driven version bumps from conventional commits. Writes CHANGELOG, tags, pushes, creates the release. (Migrated from agentic-harness v1.x.) |
+| [`example-bundle`](bundles/example-bundle/bundle.md) | bundle | Reference skeleton showing how to package a multi-primitive customization. Safe to delete in your fork. |
 
-Still to come in v0.1.0:
+## How it works
 
-- Shared install plumbing extracted from `agentic-harness` (task 2)
-- Working `install.sh` / `install.ps1` (task 3) — currently stubs
-- Manifest validator + CI (tasks 3-4)
-- `dependabot-fixer` + `ship-release` skills migrated from agentic-harness (task 5)
-- Full README + Diátaxis wiki + cross-repo ADRs (task 6)
-- v0.1.0 tag + GitHub release (task 7)
+```mermaid
+flowchart LR
+    M[Your manifest<br/>YAML frontmatter:<br/>name · kind · supported_hosts]
+    I[install.sh<br/>per-host dispatch]
+    C[.claude/skills/&lt;name&gt;/]
+    A[.agent/skills/&lt;name&gt;/]
+    G[.agents/skills/&lt;name&gt;/]
+    H[.git/hooks/pre-push<br/>PII guardrail]
+
+    M --> I
+    I --> C
+    I --> A
+    I --> G
+    I --> H
+```
+
+One manifest, three host destinations. The installer reads each customization's `supported_hosts` and dispatches to the right paths per kind (see [wiki/reference/Per-Host-Paths](wiki/reference/Per-Host-Paths.md)).
 
 ## Install
 
-Coming in task 3. Today the installer is a stub.
+```bash
+# Clone as a sibling of agentic-harness (recommended layout)
+cd ~/Antigravity
+git clone https://github.com/alexherrero/agent-toolkit.git
 
-When complete:
+# Drop all customizations into a target project (default — installs everything + pre-push hook)
+bash ~/Antigravity/agent-toolkit/install.sh /path/to/your-project
+
+# Or install only one bundle / skill:
+bash ~/Antigravity/agent-toolkit/install.sh --bundle example-bundle /path/to/your-project
+bash ~/Antigravity/agent-toolkit/install.sh --skill pii-scrubber /path/to/your-project
+
+# Refresh (true-sync — wipe + recreate managed dirs):
+bash ~/Antigravity/agent-toolkit/install.sh --update /path/to/your-project
+```
+
+On Windows / PowerShell 7+:
+
+```powershell
+pwsh -NoProfile -File C:\path\to\agent-toolkit\install.ps1 C:\path\to\your-project
+```
+
+Full details: [wiki/how-to/Install-Into-Project.md](wiki/how-to/Install-Into-Project.md). Flag reference: [wiki/reference/Installer-CLI.md](wiki/reference/Installer-CLI.md).
+
+## PII guardrails (foundational)
+
+This repo is **public** and holds personal customizations. Three enforcement layers protect against personal information leaking into commits:
+
+1. **Pre-push git hook** (`templates/hooks/pre-push`) — installed by the toolkit's installer into target projects' `.git/hooks/pre-push`. Runs `check-no-pii.sh` against every push; blocks non-zero. **Mandatory enforcer.**
+2. **`pii-scrubber` skill** — agent-facing interactive layer. Scans the current diff, presents findings, offers redactions interactively.
+3. **CI gate** — `check-no-pii.sh --all` + the official `gitleaks-action` run on every push to GitHub.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the override protocol.
+
+## Adding your own customizations
+
+- [Tutorial 1 — Your first customization](wiki/tutorials/01-First-Customization.md) (10-minute walkthrough)
+- [How to add a skill](wiki/how-to/Add-A-Skill.md)
+- [How to add a bundle](wiki/how-to/Add-A-Bundle.md)
+
+## Status
+
+Actively evolving. Releases and release notes are the source of truth — see [CHANGELOG.md](CHANGELOG.md) and the [latest release](https://github.com/alexherrero/agent-toolkit/releases/latest).
+
+## Contributing
+
+Self-tested on every push by three per-OS workflows (Linux, Mac, Windows). Run the same gates locally:
 
 ```bash
-bash /path/to/agent-toolkit/install.sh /path/to/your-project
+bash scripts/smoke-install-bash.sh
+python3 scripts/validate-manifests.py
+bash scripts/check-syntax.sh
+bash scripts/check-lib-parity.sh
+bash scripts/check-no-pii.sh --all
 ```
+
+Full guidance in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

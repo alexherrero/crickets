@@ -1,14 +1,35 @@
 # agent-toolkit Wiki
 
-> Scaffolded 2026-05-12. Full content lands in task 6 of the v0.1.0 plan.
+Dogfood documentation for `agent-toolkit` — a personal collection of agent customizations across Claude Code, Antigravity, and Gemini CLI. Sibling repo to [`agentic-harness`](https://github.com/alexherrero/agentic-harness). Every page is written for a single reader intent (learn / do / look up / understand) per the Diátaxis convention.
 
-This wiki will follow [Diátaxis](https://diataxis.fr) — four sections by user intent:
+> [!NOTE]
+> Repo: [github.com/alexherrero/agent-toolkit](https://github.com/alexherrero/agent-toolkit). Public, MIT-licensed. PII guardrails (script + skill + pre-push hook) are foundational — see [Purpose and scope](Purpose-And-Scope) for why.
 
-- **📚 Tutorials** — learn by doing (`tutorials/`)
-- **🔧 How-to** — accomplish a specific task (`how-to/`)
-- **📖 Reference** — look up a detail (`reference/`)
-- **💡 Explanation** — understand why (`explanation/`)
+## 📚 New here? Learn by doing.
 
-Architecture decisions live in `explanation/decisions/`.
+- [Tutorial 1 — Your first customization](01-First-Customization) — add a hello-world skill, install it into a scratch project, see it land at three host paths. ~10 minutes.
 
-Today: scaffold only — empty mode directories + ADR slot. Real content arrives with v0.1.0.
+## 🔧 Trying to do something specific?
+
+- [Install agent-toolkit into a project](Install-Into-Project) — drop the shipped customizations into a target project.
+- [Add a skill](Add-A-Skill) — add a new standalone skill.
+- [Add a bundle](Add-A-Bundle) — package multiple primitives that ship together.
+
+## 📖 Looking up a detail?
+
+- [Customization Types](Customization-Types) — what each of the 11 kinds means and where to put them.
+- [Manifest Schema](Manifest-Schema) — YAML frontmatter contract.
+- [Per-Host Paths](Per-Host-Paths) — destination paths per kind per host.
+- [Installer CLI](Installer-CLI) — flags, prereqs, exit codes.
+
+## 💡 Want to know why?
+
+- [Purpose and scope](Purpose-And-Scope) — what this repo is for, what it's not.
+
+### Architecture decisions
+
+- [ADR 0001 — agent-toolkit purpose, scope, public-with-PII-guardrails](0001-agent-toolkit-purpose)
+
+## Conventions
+
+Page templates, filename rules, and the Diátaxis four-mode split mirror the sibling repo's documentation convention — see [agentic-harness/harness/documentation.md](https://github.com/alexherrero/agentic-harness/blob/main/harness/documentation.md). The mode-purity lint (`scripts/check-wiki.py --strict`) is the same.

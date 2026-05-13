@@ -74,5 +74,5 @@ Required fields: `name`, `description`, `kind`, `supported_hosts`, `version`. Bu
 
 ## Cross-references
 
-- [`agentic-harness`](https://github.com/alexherrero/agentic-harness) — sibling repo; phase-gated workflow + canonical phase specs.
-- This repo's wiki (Diátaxis-shaped, populated in task 6 of v0.1.0).
+- [`agentic-harness`](https://github.com/alexherrero/agentic-harness) — sibling repo; phase-gated workflow + canonical phase specs. See [agentic-harness ADR 0006](https://github.com/alexherrero/agentic-harness/blob/main/wiki/explanation/decisions/0006-agent-toolkit-split.md) for the split decision.
+- This repo's [Diátaxis-shaped wiki](wiki/Home.md) — start at `wiki/Home.md` for navigation; key entry points include [Purpose and scope](wiki/explanation/Purpose-And-Scope.md), [Manifest Schema](wiki/reference/Manifest-Schema.md), and [Tutorial 1](wiki/tutorials/01-First-Customization.md).
