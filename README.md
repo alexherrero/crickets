@@ -11,9 +11,9 @@ Personal collection of agent customizations — skills, sub-agents, hooks, MCP s
 [![Works with Antigravity](https://img.shields.io/badge/works%20with-Antigravity-7C3AED?style=flat)](#)
 [![Works with Gemini CLI](https://img.shields.io/badge/works%20with-Gemini%20CLI-4285F4?style=flat)](#)
 
-## What's inside (v0.6.0)
+## What's inside (v0.7.0)
 
-Three skills + one agent + one reference bundle:
+Three skills + one agent + three hooks + one reference bundle:
 
 | Customization | Kind | What it does |
 |---|---|---|
@@ -21,6 +21,9 @@ Three skills + one agent + one reference bundle:
 | [`dependabot-fixer`](skills/dependabot-fixer/SKILL.md) | skill | Fix breakage on a Dependabot PR. Reads failing CI logs, applies a bounded fix loop, pushes commits to the Dependabot branch, comments residual risks. Never merges. (Migrated from agentic-harness v1.x.) |
 | [`ship-release`](skills/ship-release/SKILL.md) | skill | Cut a tagged GitHub release with semver-driven version bumps from conventional commits. Writes CHANGELOG, tags, pushes, creates the release. (Migrated from agentic-harness v1.x.) |
 | [`evaluator`](agents/evaluator.md) | agent | Read-only fresh-context grader. Caller supplies ARTIFACT + RUBRIC; evaluator returns PASS / NEEDS_WORK + per-rubric-item reasoning. Augments the harness's `adversarial-reviewer` at `/review`; consumed by the future design skill + quality-gates bundle. (New in v0.6.0.) |
+| [`kill-switch`](hooks/kill-switch/hook.md) | hook | Operator emergency halt for long-running Claude Code sessions. `touch .harness/STOP` → next `PreToolUse` halts the tool call with a stderr message; `rm` to resume. (New in v0.7.0.) |
+| [`steer`](hooks/steer/hook.md) | hook | Mid-run redirect without restart. Write `.harness/STEER.md` with a "do it this way instead" instruction → next `PreToolUse` injects the contents into agent context + renames to `STEER.consumed-<iso-ts>.md` for audit trail. (New in v0.7.0.) |
+| [`commit-on-stop`](hooks/commit-on-stop/hook.md) | hook | Safety-branch commit at session end. Fires on `Stop` event; dirty tree → `auto-save/<iso-ts>` branch with commit. Recovery via `git checkout auto-save/<ts>`. Never modifies the current branch; never pushes. (New in v0.7.0.) |
 | [`example-bundle`](bundles/example-bundle/bundle.md) | bundle | Reference skeleton showing how to package a multi-primitive customization. Safe to delete in your fork. |
 
 ## How it works
@@ -85,6 +88,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the override protocol.
 - [How to add a skill](wiki/how-to/Add-A-Skill.md)
 - [How to add a bundle](wiki/how-to/Add-A-Bundle.md)
 - [How to use the evaluator](wiki/how-to/Use-The-Evaluator.md) — dispatch the `evaluator` sub-agent for PASS / NEEDS_WORK grading.
+- [How to use the base hooks](wiki/how-to/Use-The-Base-Hooks.md) — kill-switch / steer / commit-on-stop for long-running Claude Code sessions.
 
 ## Status
 
