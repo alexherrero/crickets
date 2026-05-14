@@ -12,6 +12,7 @@
 #   -Bundle <name>           install one bundle (instead of all)
 #   -Skill <name>            install one standalone skill (instead of all)
 #   -Agent <name>            install one standalone agent (instead of all)
+#   -Hook <name>             install one standalone hook (instead of all)
 #   -All                     install everything (default)
 #   -Update                  true-sync; wipe and recreate managed dirs
 #   -NoPrePushHook           skip pre-push hook installation
@@ -22,6 +23,7 @@ param(
     [string]$Bundle,
     [string]$Skill,
     [string]$Agent,
+    [string]$Hook,
     [switch]$All,
     [switch]$Update,
     [switch]$NoPrePushHook,
@@ -48,10 +50,10 @@ if (-not (Test-Path -LiteralPath $Target -PathType Container)) {
 }
 $Target = (Resolve-Path -LiteralPath $Target).ProviderPath
 
-# Selection mode: default to All unless -Bundle, -Skill, or -Agent given
+# Selection mode: default to All unless -Bundle, -Skill, -Agent, or -Hook given
 $ModeAll = $true
-if ($Bundle -or $Skill -or $Agent) { $ModeAll = $false }
-if ($All) { $ModeAll = $true; $Bundle = ''; $Skill = ''; $Agent = '' }
+if ($Bundle -or $Skill -or $Agent -or $Hook) { $ModeAll = $false }
+if ($All) { $ModeAll = $true; $Bundle = ''; $Skill = ''; $Agent = ''; $Hook = '' }
 
 # ── locate toolkit root ───────────────────────────────────────────────────
 $ToolkitRoot = Split-Path -Parent $PSCommandPath
@@ -81,15 +83,19 @@ Set-Location $Target
 Write-Host "==> agent-toolkit install: $Target"
 
 # ── -Update sync ──────────────────────────────────────────────────────────
-# See install.sh note on .claude/agents + .gemini/agents — these parents are
-# also written to by the sibling agentic-harness installer; the LATER-run
-# installer's -Update wipes the parent before recreating from its own source.
+# See install.sh note on .claude/agents + .gemini/agents + .claude/hooks —
+# these parents are also written to by the sibling agentic-harness installer;
+# the LATER-run installer's -Update wipes the parent before recreating from
+# its own source. .claude/settings.json is NOT wiped — it's user-state-merged
+# and the toolkit re-merges its hook fragments idempotently via
+# scripts/merge-settings-fragment.py.
 $ManagedParents = @(
     '.claude/skills',
     '.agent/skills',
     '.agents/skills',
     '.claude/agents',
-    '.gemini/agents'
+    '.gemini/agents',
+    '.claude/hooks'
 )
 $EmptyParentCandidates = @('.agents')
 
@@ -125,6 +131,39 @@ function Install-Skill([string]$srcDir, [string]$name, [string]$hosts) {
             }
             default {
                 Write-Warning "unknown host '$hostName' for skill '$name' - skipped"
+            }
+        }
+    }
+}
+
+function Install-Hook([string]$hookDir, [string]$name, [string]$hosts) {
+    # v0.7.0: claude-code only. Other hosts have no first-class hook surface.
+    foreach ($hostName in ($hosts -split ',')) {
+        $hostName = $hostName.Trim()
+        if (-not $hostName) { continue }
+        switch ($hostName) {
+            'claude-code' {
+                $scriptSrc = Join-Path $hookDir "$name.ps1"
+                $fragmentSrc = Join-Path $hookDir 'settings-fragment-pwsh.json'
+                if (-not (Test-Path -LiteralPath $scriptSrc)) {
+                    Write-Warning "hook '$name' missing $name.ps1 - skipped"
+                    continue
+                }
+                if (-not (Test-Path -LiteralPath $fragmentSrc)) {
+                    Write-Warning "hook '$name' missing settings-fragment-pwsh.json - skipped"
+                    continue
+                }
+                New-Item -ItemType Directory -Path '.claude/hooks' -Force | Out-Null
+                Copy-ManagedFile $scriptSrc (Join-Path '.claude/hooks' "$name.ps1")
+                New-Item -ItemType Directory -Path '.claude' -Force | Out-Null
+                python3 (Join-Path $ToolkitRoot 'scripts/merge-settings-fragment.py') `
+                    '.claude/settings.json' $fragmentSrc
+            }
+            { @('antigravity','gemini-cli') -contains $_ } {
+                Write-Warning "host '$hostName' has no first-class hook surface (v0.7.0); skipped for hook '$name'"
+            }
+            default {
+                Write-Warning "unknown host '$hostName' for hook '$name' - skipped"
             }
         }
     }
@@ -214,7 +253,16 @@ function Install-Bundles {
                     Install-Agent $_.FullName $_.BaseName $hosts
                 }
             }
-            foreach ($other in 'commands','hooks','mcp-servers','status-line','output-styles','workflows','rules','snippets','settings-fragments') {
+            $hooksDir = Join-Path $bundleDir 'hooks'
+            if (Test-Path -LiteralPath $hooksDir -PathType Container) {
+                Get-ChildItem -LiteralPath $hooksDir -Directory | ForEach-Object {
+                    $innerHookMd = Join-Path $_.FullName 'hook.md'
+                    if (Test-Path -LiteralPath $innerHookMd) {
+                        Install-Hook $_.FullName $_.Name $hosts
+                    }
+                }
+            }
+            foreach ($other in 'commands','mcp-servers','status-line','output-styles','workflows','rules','snippets','settings-fragments') {
                 $od = Join-Path $bundleDir $other
                 if ((Test-Path -LiteralPath $od -PathType Container) -and (Get-ChildItem -LiteralPath $od -Force -ErrorAction SilentlyContinue)) {
                     Write-Warning "kind '$other' is not yet supported by this installer - skipped"
@@ -269,6 +317,31 @@ function Install-StandaloneAgents {
         }
 }
 
+function Install-StandaloneHooks {
+    $hooksRoot = Join-Path $ToolkitRoot 'hooks'
+    if (-not (Test-Path -LiteralPath $hooksRoot -PathType Container)) { return }
+    Get-ChildItem -LiteralPath $hooksRoot -Directory -ErrorAction SilentlyContinue |
+        ForEach-Object {
+            $hookDir = $_.FullName
+            $hookName = $_.Name
+            $hookMd = Join-Path $hookDir 'hook.md'
+            if (-not (Test-Path -LiteralPath $hookMd)) { return }
+            if (-not $ModeAll -and $Hook -and $Hook -ne $hookName) { return }
+            $kind = Get-Field $hookMd 'kind'
+            if ($kind -ne 'hook') {
+                Write-Warning "$hookMd has kind '$kind' (expected 'hook') - skipped"
+                return
+            }
+            $hosts = Get-Field $hookMd 'supported_hosts'
+            if (-not $hosts) {
+                Write-Warning "hook '$hookName' has no supported_hosts - skipped"
+                return
+            }
+            Write-Host "==> installing hook: $hookName"
+            Install-Hook $hookDir $hookName $hosts
+        }
+}
+
 # ── run ───────────────────────────────────────────────────────────────────
 if ($ModeAll -or $Bundle) {
     Install-Bundles
@@ -278,6 +351,9 @@ if ($ModeAll -or $Skill) {
 }
 if ($ModeAll -or $Agent) {
     Install-StandaloneAgents
+}
+if ($ModeAll -or $Hook) {
+    Install-StandaloneHooks
 }
 
 Write-Host '==> pre-push hook'

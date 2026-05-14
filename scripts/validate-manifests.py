@@ -178,6 +178,8 @@ def check_contents(path: Path, fm: dict, bundle_dir: Path) -> None:
             primitive_path = bundle_dir / "skills" / str(name) / "SKILL.md"
         elif kind == "agent":
             primitive_path = bundle_dir / "agents" / f"{name}.md"
+        elif kind == "hook":
+            primitive_path = bundle_dir / "hooks" / str(name) / "hook.md"
         else:
             # other kinds: not yet exercised; check the dir exists
             primitive_path = bundle_dir / f"{kind}s" / str(name)
@@ -256,7 +258,44 @@ def validate_standalone_agent(agent_md: Path) -> None:
     check_optional_scope(agent_md, fm)
 
 
-# Future: add validate_standalone_<kind> for command / hook / mcp-server / etc.
+def validate_standalone_hook(hook_md: Path) -> None:
+    """Hook customizations live at hooks/<name>/hook.md with sibling files:
+    <name>.sh + <name>.ps1 + settings-fragment-bash.json + settings-fragment-pwsh.json.
+    """
+    fm = parse_frontmatter(hook_md)
+    if fm is None:
+        return
+    hook_dir = hook_md.parent
+    expected_name = hook_dir.name
+    require_non_empty_string(hook_md, fm, "description")
+    check_name_matches_dir(hook_md, fm, expected_name)
+    kind = require_kind(hook_md, fm)
+    if kind is not None and kind != "hook":
+        err(hook_md, f"file under hooks/ has kind {kind!r}; must be 'hook'")
+    require_supported_hosts(hook_md, fm)
+    require_version(hook_md, fm)
+    check_optional_scope(hook_md, fm)
+
+    # v0.7.0: claude-code is the only host with first-class hook support.
+    # If supported_hosts contains claude-code, require the bash + pwsh script
+    # + bash + pwsh settings-fragment companions to exist.
+    hosts = fm.get("supported_hosts", [])
+    if isinstance(hosts, list) and "claude-code" in hosts:
+        for required in (
+            f"{expected_name}.sh",
+            f"{expected_name}.ps1",
+            "settings-fragment-bash.json",
+            "settings-fragment-pwsh.json",
+        ):
+            sibling = hook_dir / required
+            if not sibling.is_file():
+                err(
+                    hook_md,
+                    f"hook '{expected_name}' missing required companion file: {sibling.relative_to(ROOT)}",
+                )
+
+
+# Future: add validate_standalone_<kind> for command / mcp-server / etc.
 
 
 # ── main ──────────────────────────────────────────────────────────────────
@@ -273,8 +312,12 @@ def main() -> int:
     for agent_md in sorted((ROOT / "agents").glob("*.md")):
         validate_standalone_agent(agent_md)
 
+    # Standalone hooks
+    for hook_md in sorted((ROOT / "hooks").glob("*/hook.md")):
+        validate_standalone_hook(hook_md)
+
     # Other standalone kinds: future-proofing — none ship yet.
-    # for kind in ("command", "hook", ...):
+    # for kind in ("command", "mcp-server", ...):
     #     for path in ...
 
     if errors:
@@ -283,10 +326,11 @@ def main() -> int:
     bundle_count = len(list((ROOT / "bundles").glob("*/bundle.md")))
     skill_count = len(list((ROOT / "skills").glob("*/SKILL.md")))
     agent_count = len(list((ROOT / "agents").glob("*.md")))
+    hook_count = len(list((ROOT / "hooks").glob("*/hook.md")))
     print(
         f"validate-manifests: clean "
         f"({bundle_count} bundle(s), {skill_count} standalone skill(s), "
-        f"{agent_count} standalone agent(s))"
+        f"{agent_count} standalone agent(s), {hook_count} standalone hook(s))"
     )
     return 0
 

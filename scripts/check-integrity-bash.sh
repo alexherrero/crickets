@@ -111,6 +111,49 @@ for parent in .claude/agents .gemini/agents; do
   done < <(find "$full" -mindepth 1 -maxdepth 1)
 done
 
+# ── 5. Hook managed parent: .claude/hooks/<name>.sh executable ─────────────
+echo "  [integrity] .claude/hooks/ scripts are executable + script-extensioned"
+full="$SCRATCH/.claude/hooks"
+if [[ -d "$full" ]]; then
+  while IFS= read -r entry; do
+    name="$(basename "$entry")"
+    if [[ -d "$entry" ]]; then
+      echo "FAIL: .claude/hooks/$name/ is a stray subdir (hook parent contains only <name>.sh / <name>.ps1 files)" >&2
+      fail=1
+    elif [[ -f "$entry" ]]; then
+      if [[ "$entry" != *.sh && "$entry" != *.ps1 ]]; then
+        echo "FAIL: .claude/hooks/$name is a stray non-.sh/.ps1 file" >&2
+        fail=1
+      fi
+      # POSIX scripts (.sh) must be executable.
+      if [[ "$entry" == *.sh && ! -x "$entry" ]]; then
+        echo "FAIL: .claude/hooks/$name is not executable" >&2
+        fail=1
+      fi
+    fi
+  done < <(find "$full" -mindepth 1 -maxdepth 1)
+fi
+
+# ── 6. .claude/settings.json (if present) parses as JSON with valid hook shape ─
+settings="$SCRATCH/.claude/settings.json"
+if [[ -f "$settings" ]]; then
+  echo "  [integrity] .claude/settings.json parses + hooks shape valid"
+  if ! python3 - "$settings" <<'PYEOF'
+import json, sys
+with open(sys.argv[1]) as f:
+    d = json.load(f)
+assert isinstance(d, dict), "top-level not object"
+h = d.get("hooks", {})
+assert isinstance(h, dict), "hooks key not object"
+for evt, entries in h.items():
+    assert isinstance(entries, list), f"hooks.{evt} not array"
+PYEOF
+  then
+    echo "FAIL: .claude/settings.json is not valid JSON or hooks shape is wrong" >&2
+    fail=1
+  fi
+fi
+
 if [[ $fail -ne 0 ]]; then
   echo "check-integrity-bash: one or more integrity assertions failed" >&2
   exit 1

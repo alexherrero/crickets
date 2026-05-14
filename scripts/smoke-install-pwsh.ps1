@@ -32,6 +32,11 @@ try {
         '.claude/agents/evaluator.md',
         '.agent/skills/evaluator/SKILL.md',
         '.gemini/agents/evaluator.md',
+        # Standalone hook: _fixture-test-hook (claude-code only, v0.7.0).
+        # Temporary fixture for plan #4 task 1; replaced by the three real
+        # base hooks in task 2.
+        '.claude/hooks/_fixture-test-hook.ps1',
+        '.claude/settings.json',
         '.git/hooks/pre-push'
     )
     $fail = $false
@@ -78,6 +83,12 @@ try {
     }
     if ($rerun -match 'created .claude/agents/evaluator') {
         throw 're-run recreated the evaluator agent (should be kept)'
+    }
+    if ($rerun -match 'merged  .claude/settings.json') {
+        throw 're-run re-merged settings.json (should report kept)'
+    }
+    if ($rerun -notmatch 'kept    .claude/settings.json \(fragment entries already present\)') {
+        throw 're-run did not emit kept message for .claude/settings.json'
     }
 
     # ── --update ───────────────────────────────────────────────────────────

@@ -13,6 +13,7 @@
 #   --bundle <name>          install one bundle (instead of all)
 #   --skill <name>           install one standalone skill (instead of all)
 #   --agent <name>           install one standalone agent (instead of all)
+#   --hook <name>            install one standalone hook (instead of all)
 #   --all                    install everything (default)
 #   --update                 true-sync; wipe and recreate managed dirs
 #   --no-pre-push-hook       skip pre-push hook installation
@@ -26,6 +27,7 @@ MODE_ALL=1
 SELECT_BUNDLE=""
 SELECT_SKILL=""
 SELECT_AGENT=""
+SELECT_HOOK=""
 UPDATE_MODE=0
 NO_PRE_PUSH_HOOK=0
 
@@ -35,7 +37,7 @@ print_help() {
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --all) MODE_ALL=1; SELECT_BUNDLE=""; SELECT_SKILL=""; SELECT_AGENT=""; shift ;;
+        --all) MODE_ALL=1; SELECT_BUNDLE=""; SELECT_SKILL=""; SELECT_AGENT=""; SELECT_HOOK=""; shift ;;
         --bundle)
             MODE_ALL=0; SELECT_BUNDLE="${2:-}"
             [[ -z "$SELECT_BUNDLE" ]] && { echo "--bundle requires a name" >&2; exit 2; }
@@ -49,6 +51,11 @@ while [[ $# -gt 0 ]]; do
         --agent)
             MODE_ALL=0; SELECT_AGENT="${2:-}"
             [[ -z "$SELECT_AGENT" ]] && { echo "--agent requires a name" >&2; exit 2; }
+            shift 2
+            ;;
+        --hook)
+            MODE_ALL=0; SELECT_HOOK="${2:-}"
+            [[ -z "$SELECT_HOOK" ]] && { echo "--hook requires a name" >&2; exit 2; }
             shift 2
             ;;
         --update) UPDATE_MODE=1; shift ;;
@@ -115,18 +122,25 @@ echo "==> agent-toolkit install: $TARGET"
 # customization lands under one of these; wiping them on --update gives
 # true-sync semantics.
 #
-# Note on .claude/agents and .gemini/agents: these parents are also written
-# to by the sibling agentic-harness installer (for explorer / adversarial-
-# reviewer / documenter). When both repos are installed into the same target,
-# users must run BOTH installers (in either order) to land the full set; the
-# LATER-run installer's --update wipes the parent before recreating from its
-# own source. Documented in agent-toolkit/wiki/reference/Installer-CLI.md.
+# Note on .claude/agents, .gemini/agents, .claude/hooks: these parents are
+# also written to by the sibling agentic-harness installer (for explorer /
+# adversarial-reviewer / documenter; and harness-shipped hooks under --hooks
+# mode). When both repos are installed into the same target, users must run
+# BOTH installers (in either order) to land the full set; the LATER-run
+# installer's --update wipes the parent before recreating from its own
+# source. Documented in agent-toolkit/wiki/reference/Installer-CLI.md.
+#
+# Note: .claude/settings.json is NOT wiped on --update — it's user-state-merged
+# (settings.json carries user-edits + hook event registrations from multiple
+# tools). The toolkit re-merges its hook fragments idempotently via the
+# Python helper scripts/merge-settings-fragment.py.
 MANAGED_PARENTS=(
     .claude/skills
     .agent/skills
     .agents/skills
     .claude/agents
     .gemini/agents
+    .claude/hooks
 )
 EMPTY_PARENT_CANDIDATES=(
     .agents
@@ -174,6 +188,48 @@ install_skill() {
                 ;;
             *)
                 echo "    warning: unknown host '$host' for skill '$name' — skipped" >&2
+                ;;
+        esac
+    done
+}
+
+# install_hook <hook-dir> <hook-name> <comma-separated-hosts>
+# Dispatches a hook to per-host destinations. v0.7.0: claude-code only —
+# other hosts (antigravity, gemini-cli) have no first-class hook surface.
+# For claude-code: copy the .sh script to .claude/hooks/<name>.sh (chmod +x)
+# AND merge settings-fragment-bash.json into .claude/settings.json via the
+# Python helper scripts/merge-settings-fragment.py.
+install_hook() {
+    local hook_dir="$1" name="$2" hosts="$3"
+    IFS=',' read -ra host_array <<< "$hosts"
+    local host
+    for host in "${host_array[@]}"; do
+        host="${host// /}"
+        [[ -z "$host" ]] && continue
+        case "$host" in
+            claude-code)
+                local script_src="$hook_dir/$name.sh"
+                local fragment_src="$hook_dir/settings-fragment-bash.json"
+                if [[ ! -f "$script_src" ]]; then
+                    echo "    warning: hook '$name' missing $name.sh — skipped" >&2
+                    continue
+                fi
+                if [[ ! -f "$fragment_src" ]]; then
+                    echo "    warning: hook '$name' missing settings-fragment-bash.json — skipped" >&2
+                    continue
+                fi
+                mkdir -p .claude/hooks
+                cp_managed "$script_src" ".claude/hooks/$name.sh"
+                chmod +x ".claude/hooks/$name.sh"
+                mkdir -p .claude
+                python3 "$TOOLKIT_ROOT/scripts/merge-settings-fragment.py" \
+                    .claude/settings.json "$fragment_src"
+                ;;
+            antigravity|gemini-cli)
+                echo "    warning: host '$host' has no first-class hook surface (v0.7.0); skipped for hook '$name'" >&2
+                ;;
+            *)
+                echo "    warning: unknown host '$host' for hook '$name' — skipped" >&2
                 ;;
         esac
     done
@@ -283,8 +339,17 @@ install_bundles() {
                 install_agent "$agent_md" "$inner_agent_name" "$hosts"
             done
         fi
-        # Future: iterate other kind subdirs (commands/, hooks/, etc.)
-        for other in commands hooks mcp-servers status-line output-styles workflows rules snippets settings-fragments; do
+        if [[ -d "$bundle_dir/hooks" ]]; then
+            local inner_hook_md inner_hook_dir inner_hook_name
+            for inner_hook_md in "$bundle_dir"/hooks/*/hook.md; do
+                [[ -f "$inner_hook_md" ]] || continue
+                inner_hook_dir="$(dirname "$inner_hook_md")"
+                inner_hook_name="$(basename "$inner_hook_dir")"
+                install_hook "$inner_hook_dir" "$inner_hook_name" "$hosts"
+            done
+        fi
+        # Future: iterate other kind subdirs (commands/, mcp-servers/, etc.)
+        for other in commands mcp-servers status-line output-styles workflows rules snippets settings-fragments; do
             if [[ -d "$bundle_dir/$other" ]] && [[ -n "$(ls -A "$bundle_dir/$other" 2>/dev/null)" ]]; then
                 warn_unsupported_kind "$other"
             fi
@@ -317,6 +382,31 @@ install_standalone_skills() {
     done
 }
 
+# ── install standalone hooks ──────────────────────────────────────────────
+install_standalone_hooks() {
+    local hook_md hook_dir hook_name hosts kind
+    for hook_md in "$TOOLKIT_ROOT"/hooks/*/hook.md; do
+        [[ -f "$hook_md" ]] || continue
+        hook_dir="$(dirname "$hook_md")"
+        hook_name="$(basename "$hook_dir")"
+        if [[ $MODE_ALL -eq 0 && -n "$SELECT_HOOK" && "$SELECT_HOOK" != "$hook_name" ]]; then
+            continue
+        fi
+        kind="$(get_field "$hook_md" kind)"
+        if [[ "$kind" != "hook" ]]; then
+            echo "    warning: $hook_md has kind '$kind' (expected 'hook') — skipped" >&2
+            continue
+        fi
+        hosts="$(get_field "$hook_md" supported_hosts)"
+        if [[ -z "$hosts" ]]; then
+            echo "    warning: hook '$hook_name' has no supported_hosts — skipped" >&2
+            continue
+        fi
+        echo "==> installing hook: $hook_name"
+        install_hook "$hook_dir" "$hook_name" "$hosts"
+    done
+}
+
 # ── install standalone agents ─────────────────────────────────────────────
 install_standalone_agents() {
     local agent_md agent_name hosts kind
@@ -344,7 +434,7 @@ install_standalone_agents() {
 # ── warn about other unsupported kinds at top level ───────────────────────
 warn_unsupported_top_level() {
     local kind
-    for kind in commands hooks mcp-servers status-line output-styles workflows rules snippets settings-fragments; do
+    for kind in commands mcp-servers status-line output-styles workflows rules snippets settings-fragments; do
         if [[ -d "$TOOLKIT_ROOT/$kind" ]] && find "$TOOLKIT_ROOT/$kind" -mindepth 1 -not -name '.gitkeep' -print -quit 2>/dev/null | grep -q .; then
             warn_unsupported_kind "$kind"
         fi
@@ -362,6 +452,10 @@ fi
 
 if [[ $MODE_ALL -eq 1 || -n "$SELECT_AGENT" ]]; then
     install_standalone_agents
+fi
+
+if [[ $MODE_ALL -eq 1 || -n "$SELECT_HOOK" ]]; then
+    install_standalone_hooks
 fi
 
 if [[ $MODE_ALL -eq 1 ]]; then

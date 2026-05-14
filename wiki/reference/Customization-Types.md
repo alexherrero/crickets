@@ -23,9 +23,10 @@ The 12 primitive types `agent-toolkit` recognizes via its `kind` field. Each map
 
 | Kind | Installer support | Notes |
 |---|---|---|
-| `bundle` | ✅ (dispatches to inner primitives) | `skill` and `agent` kinds inside bundles are wired as of v0.6.0 |
+| `bundle` | ✅ (dispatches to inner primitives) | `skill`, `agent`, and `hook` kinds inside bundles are wired as of v0.7.0 |
 | `skill` | ✅ (v0.5.0) | Full dispatch to `.claude/skills/<name>/`, `.agent/skills/<name>/`, `.agents/skills/<name>/` |
 | `agent` | ✅ (v0.6.0) | Full dispatch to `.claude/agents/<name>.md`, `.agent/skills/<name>/SKILL.md` (sub-agent-as-skill wrap for Antigravity), `.gemini/agents/<name>.md` |
+| `hook` | ✅ (v0.7.0, claude-code only) | Full dispatch to `.claude/hooks/<name>.{sh,ps1}` **plus** idempotent deep-merge of the hook's `settings-fragment-{bash,pwsh}.json` into `.claude/settings.json` via `scripts/merge-settings-fragment.py`. Other hosts have no first-class hook surface today. |
 | All others | ⚠️ Warning "not yet supported — skipped" | Future toolkit versions add them as the catalog grows |
 
 When a customization with an unsupported kind is encountered, the installer logs a warning and continues. The manifest still passes validation — the `kind` enum recognizes the value, the dispatch logic just doesn't have a handler yet.

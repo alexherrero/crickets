@@ -108,6 +108,41 @@ foreach ($parent in '.claude/agents', '.gemini/agents') {
     }
 }
 
+# ── 5. Hook managed parent: .claude/hooks/<name>.sh or <name>.ps1 ──────────
+Write-Host '  [integrity] .claude/hooks/ scripts are script-extensioned'
+$hookFull = Join-Path $Scratch '.claude/hooks'
+if (Test-Path -LiteralPath $hookFull -PathType Container) {
+    Get-ChildItem -LiteralPath $hookFull -Force | ForEach-Object {
+        if ($_.PSIsContainer) {
+            Write-Error "FAIL: .claude/hooks/$($_.Name)/ is a stray subdir (hook parent contains only <name>.sh / <name>.ps1 files)"
+            $fail = $true
+        } elseif ($_.Extension -notin '.sh', '.ps1') {
+            Write-Error "FAIL: .claude/hooks/$($_.Name) is a stray non-.sh/.ps1 file"
+            $fail = $true
+        }
+    }
+}
+
+# ── 6. .claude/settings.json (if present) parses as JSON with valid hook shape ─
+$settings = Join-Path $Scratch '.claude/settings.json'
+if (Test-Path -LiteralPath $settings) {
+    Write-Host '  [integrity] .claude/settings.json parses + hooks shape valid'
+    try {
+        $obj = Get-Content -LiteralPath $settings -Raw | ConvertFrom-Json
+        if ($obj.hooks) {
+            $obj.hooks.PSObject.Properties | ForEach-Object {
+                if ($_.Value -isnot [System.Collections.IList]) {
+                    Write-Error "FAIL: hooks.$($_.Name) is not an array"
+                    $fail = $true
+                }
+            }
+        }
+    } catch {
+        Write-Error "FAIL: .claude/settings.json invalid JSON: $_"
+        $fail = $true
+    }
+}
+
 if ($fail) {
     Write-Error 'check-integrity-pwsh: one or more integrity assertions failed'
     exit 1

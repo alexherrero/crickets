@@ -34,6 +34,11 @@ expected=(
   .claude/agents/evaluator.md
   .agent/skills/evaluator/SKILL.md
   .gemini/agents/evaluator.md
+  # Standalone hook: _fixture-test-hook — claude-code only (v0.7.0).
+  # NOTE: temporary fixture for plan #4 task 1; replaced by the three real
+  # base hooks (kill-switch/steer/commit-on-stop) in task 2.
+  .claude/hooks/_fixture-test-hook.sh
+  .claude/settings.json
   # Pre-push hook
   .git/hooks/pre-push
 )
@@ -109,6 +114,15 @@ if ! grep -qE "kept    .claude/skills/(example-skill|pii-scrubber)" "$SCRATCH/.r
 fi
 if ! grep -qE "kept    .claude/agents/evaluator" "$SCRATCH/.rerun.log"; then
   echo "FAIL: re-run did not emit 'kept' message for the evaluator agent" >&2
+  exit 1
+fi
+# Hook idempotence: re-running the merge helper should report "kept" not "merged".
+if grep -qE "merged  .claude/settings.json" "$SCRATCH/.rerun.log"; then
+  echo "FAIL: re-run re-merged settings.json (should report 'kept' — entries already present)" >&2
+  exit 1
+fi
+if ! grep -qE "kept    .claude/settings.json \(fragment entries already present\)" "$SCRATCH/.rerun.log"; then
+  echo "FAIL: re-run did not emit 'kept' message for .claude/settings.json" >&2
   exit 1
 fi
 
