@@ -133,10 +133,14 @@ def main(argv: list[str]) -> int:
         encoding="utf-8",
     )
 
+    # Use POSIX-style forward slashes in the output message regardless of OS,
+    # so the smoke test regex matches identically on Windows. Path.__str__()
+    # uses native separators (backslash on Windows); as_posix() forces /.
+    display_path = settings_path.as_posix()
     if added_count == 0:
-        print(f"    kept    {settings_path} (fragment entries already present)")
+        print(f"    kept    {display_path} (fragment entries already present)")
     else:
-        print(f"    merged  {settings_path} (+{added_count} hook entry)")
+        print(f"    merged  {display_path} (+{added_count} hook entry)")
     return 0
 
 
