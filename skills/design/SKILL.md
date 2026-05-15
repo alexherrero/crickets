@@ -455,9 +455,205 @@ Each part file has the inherited frontmatter + part-specific frontmatter fields 
 - **Clobber existing part files silently.** Always diff + prompt on re-run.
 - **Lose the parent → parts link.** Every part file carries `parent_design:` frontmatter; recovery on lost link should be possible by re-running translate against the parent.
 
-### `/design sequence` *(stub — full body lands in task 4 of plan #6)*
+### `/design sequence`
 
-Topologically sorts the parts by their declared dependencies and generates one `PLAN.md` per part using the harness's existing `templates/PLAN.md` shape. First part's plan activates at `.harness/PLAN.md`; subsequent parts queue in `.harness/designs/<doc-slug>/queued-plans/`. Harness `/release` auto-promotes the next queued plan when the active plan completes.
+Consumes a populated `<doc-dir>/parts/` directory (output of `/design translate`) and generates one `PLAN.md` per part using the harness's existing `templates/PLAN.md` shape. The first part (in topological order) activates at `<project>/.harness/PLAN.md`; subsequent parts queue at `<project>/.harness/designs/<doc-slug>/queued-plans/<part-slug>.PLAN.md`. The skill produces **draft** plans — the human typically runs the harness's `/plan` against each PLAN.md to refine task decomposition before `/work` starts on a part.
+
+`/design sequence` is the bridge between the design phase (this skill, stages 1–4) and the execution phase (harness `/work` + `/review`, stage 5). After `/design sequence` runs, the design hand-off is complete; the rest is the harness's normal flow.
+
+#### Inputs
+
+- **`<slug-or-path>`** — design doc slug or full path. Same resolution as `/design translate`: either `.harness/designs/<slug>.md` or `wiki/explanation/designs/<slug>.md`.
+- **`--force-replace`** *(optional)* — replaces an existing `.harness/PLAN.md` even when its `Status` is `in-progress`. Rarely needed; only use when the existing active plan is known-orphaned (e.g. abandoned hand-authored plan from a different effort). Default behavior refuses with a clear error.
+
+#### Step 1 — Preconditions check
+
+The skill refuses to run on:
+
+- **Non-`final` parent Status** — same gate as `/design translate`. Refuse with `"<path>: Status is <current>, not 'final'. Run /design author <slug> to finalize, then re-run /design sequence."` (Each non-final state has its own state-specific error message, mirroring translate's.)
+- **Missing `parts/` directory** — refuse with `"<doc-dir>/parts/ does not exist. Run /design translate <slug> first to generate structural parts."`
+- **Empty `parts/` directory** — refuse with `"<doc-dir>/parts/ contains zero part files. /design translate either failed or was Cancelled. Re-run /design translate."`
+- **Invalid part file frontmatter** — any part file with malformed YAML or missing required fields (`part_slug`, `dependencies`, `estimated_scope`) refuses with the path + missing field. Don't auto-repair.
+- **Existing in-progress active plan** — if `<project>/.harness/PLAN.md` exists and parses with `Status: in-progress`, refuse with `"<project>/.harness/PLAN.md is in-progress; sequencing would clobber it. Close the active plan (Status: done) first, or pass --force-replace if the plan is known-orphaned."`
+
+Reading `.harness/PLAN.md` requires the project root to be discoverable. The skill resolves project root by walking up from cwd looking for `.harness/`; if not found, refuses with `"No .harness/ directory found in cwd or ancestors. Sequence must run from inside a harness-installed project."`
+
+#### Step 2 — Topological sort
+
+Read all part files in `<doc-dir>/parts/*.md`. For each, parse `dependencies:` from frontmatter. Build a directed acyclic graph where an edge `A → B` means "B depends on A".
+
+**Sort algorithm**: Kahn's algorithm (BFS-based topological sort) with **deterministic tie-breaking by alphabetical part slug** within the same dependency level. Determinism matters: re-running sequence on the same parts/ dir must produce identical ordering — otherwise queued-plans/ order changes across re-runs and that's confusing for operators.
+
+**Cycle detection**: if any cycle exists in the graph, the topological sort halts with `"Dependency cycle detected: <cycle path joined by ' → '>. Edit parts/ files to break the cycle and re-run."` Common cycle case: human accidentally added a `dependencies:` entry that points back to a downstream part. The skill prints the smallest cycle it finds (the first one Kahn's algorithm fails on).
+
+**Missing-dependency detection**: if a part's `dependencies:` references a slug that doesn't exist in parts/, refuse with `"Part '<part-slug>' depends on '<missing-slug>' which does not exist in parts/. Either remove the dependency or create the missing part."`
+
+The output of Step 2 is an **ordered list** of part slugs: first → last, with the first being topologically first (no dependencies, or alphabetically-earliest among unblocked parts).
+
+#### Step 3 — Generate PLAN.md per part
+
+For each part in topological order, generate a `PLAN.md` derived from the part file + parent design. Mapping from part fields to harness PLAN.md template shape:
+
+| Harness PLAN.md section | Source in design/part |
+|---|---|
+| Title (`# Plan: <title>`) | `<part title> (from design <doc-slug>)` |
+| `Status:` | `draft` (harness PLAN.md Status; means human refinement pending — distinct from design doc's `final` Status) |
+| `Created:` | today UTC |
+| `Roadmap item:` | Cross-ref to parent design doc path + parent's `project:` field if set |
+| `Brief:` | Part's `## Scope` content (1-2 paragraphs) |
+| `## Goal` | Derived from part's `## Verification criteria` rephrased as user-visible outcomes |
+| `## Constraints` | Parent design's Quality Attribute concerns that apply to this part (extracted from QA sub-sections whose content references the part's scope) |
+| `## Out of scope` | Explicit non-goals: other part slugs ("see `<other-slug>.PLAN.md` for that part") + items parent design's Out of scope mentions |
+| `## Tasks` | DRAFT decomposition from part's Detailed Design source content. Each task is one `### N. <title>` with placeholder What + Verification (single-sentence). **Note in the body**: human typically runs `/plan` against this generated PLAN.md to refine the task list before `/work` starts. |
+| `## Risks / open questions` | Parent's Technical Debt & Risks + part-specific concerns (extracted from part's Scope if it mentions risks) |
+| `## Verification strategy` | Part's `## Verification criteria` verbatim |
+| `## How to resume` | Standard harness boilerplate (read this file's task list, find next `[ ]`, then read most recent progress.md entries) |
+| `## Locked design calls` | Pointer back to parent design doc + the key locked decisions extracted from parent's Alternatives Considered (one-liners) |
+
+Additional frontmatter fields (beyond the harness PLAN.md defaults) for traceability:
+
+```yaml
+parent_design_doc: <relative path from .harness/ to design doc>
+parent_part_slug: <part_slug from the part file>
+```
+
+These fields let the harness `/release` extension (task 5) match a completed PLAN.md back to its source part for plan promotion + design Status transition.
+
+#### Step 4 — Write to harness `.harness/`
+
+The skill writes to the **target project's** `.harness/` directory (cwd-rooted; same convention as the harness's own `/plan` skill).
+
+- **First part** (topologically first): write to `<project>/.harness/PLAN.md`. If a non-in-progress PLAN.md already exists (Status: `done` or `draft`), overwrite. If `Status: in-progress` exists, the preconditions check in Step 1 already caught it — no clobber path here.
+- **Subsequent parts** (topologically 2nd through Nth): write to `<project>/.harness/designs/<doc-slug>/queued-plans/<part-slug>.PLAN.md`. Create the `designs/<doc-slug>/queued-plans/` subdirs if absent.
+- **Existing queued plans on re-run**: if `<project>/.harness/designs/<doc-slug>/queued-plans/` already has files (re-running sequence after edits), present a diff per file and ask `"<part-slug>.PLAN.md exists. Overwrite / Keep existing / Cancel?"` — never silent clobber.
+
+**Manual-promotion fallback (until task 5 ships):** v0.8.0 of this skill ships the WRITE side only. The promotion logic — where harness `/release` moves the next queued plan to `.harness/PLAN.md` when the active plan hits `Status: done` — lands in task 5 of plan #6 (agentic-harness v2.3.0). **Until v2.3.0 is installed alongside, operators promote manually:**
+
+```bash
+# After the active plan completes (Status: done):
+# 1. Archive the completed plan per the dev-flow convention
+mv .harness/PLAN.md .harness/PLAN.archive.YYYYMMDD-<part-slug>.md
+
+# 2. Promote the next queued plan to active
+mv .harness/designs/<doc-slug>/queued-plans/<next-part-slug>.PLAN.md .harness/PLAN.md
+
+# 3. Verify Status field is 'draft' or 'in-progress' in the new active plan
+```
+
+The skill body documents this fallback explicitly + flags it as temporary. Once v2.3.0 ships, `/release` will auto-promote (task 5 of this plan); the manual `mv` becomes legacy and can be deleted from operator runbooks.
+
+#### Step 5 — Update parent doc Document History
+
+Append a row to the parent design's Document History table:
+
+```
+| <today UTC> | Sequenced into <N> plans via /design sequence; first plan active at .harness/PLAN.md (<first-part-slug>), <N-1> queued at .harness/designs/<doc-slug>/queued-plans/. | final |
+```
+
+Parent Status stays `final` — sequence doesn't transition Status. Only `/design author` (draft → review → final) and the harness `/release` extension (final → launched, task 5) do.
+
+Also bump parent's `updated` frontmatter field to today.
+
+#### Tool allowlist
+
+**`Read, Write, Edit, Glob, Grep`** — no `Bash`. Same allowlist as `/design author` and `/design translate`. Operations:
+
+- `Read` — all part files; parent design (for Document History context + Quality Attributes / Technical Debt extraction); existing `<project>/.harness/PLAN.md` for in-progress check; harness's `templates/PLAN.md` for shape reference.
+- `Glob` — discover `parts/` files + existing `queued-plans/` state on re-run.
+- `Write` — new `.harness/PLAN.md` + queued plan files.
+- `Edit` — append parent design Document History; bump parent's `updated` field.
+
+The `mv` commands documented in the manual-promotion fallback are operator-side shell commands, NOT skill operations — the skill never invokes Bash.
+
+#### Hard gates
+
+`/design sequence` REFUSES to run on:
+
+1. Non-`final` parent Status (same as `/design translate`).
+2. Missing or empty `parts/` directory (must run translate first).
+3. Invalid frontmatter in any part file (malformed YAML or missing required fields).
+4. Dependency cycle in parts (refuse with cycle path).
+5. Missing dependency target (part references a slug that doesn't exist).
+6. Existing `.harness/PLAN.md` with `Status: in-progress` (unless `--force-replace` flag).
+
+#### Worked example
+
+Three-part design with dependencies showing topological sort + queueing.
+
+**Input:** parts/ directory from `/design translate` on `foo-system`:
+
+```
+wiki/explanation/designs/foo-system/parts/
+├── foundations.md         (dependencies: [],                       estimated_scope: M)
+├── command-surface.md     (dependencies: [foundations],            estimated_scope: S)
+└── rollout.md             (dependencies: [foundations, command-surface], estimated_scope: S)
+```
+
+Parent design at `wiki/explanation/designs/foo-system.md`, `Status: final`.
+
+**Invocation:** `/design sequence foo-system`
+
+**Step 1 (preconditions):**
+
+> Agent: *(Reads parent frontmatter → Status: final ✓; parts/ exists with 3 files ✓; frontmatter on each part parses ✓; `.harness/PLAN.md` exists with Status: done from a prior plan — overwrite allowed)*
+> Agent: "Preconditions met. Proceeding."
+
+**Step 2 (topological sort):**
+
+> Agent: *(Builds graph. foundations has 0 in-edges; sort selects it first. After removing foundations, command-surface has 0 in-edges, rollout has 1 (command-surface). Alphabetical tie-break between {command-surface} → command-surface second. After removing it, rollout has 0 in-edges → third.)*
+> Agent: "Topological order: foundations → command-surface → rollout."
+
+**Step 3 (generate PLAN.md per part):**
+
+> Agent: *(For each part, builds a PLAN.md from harness's templates/PLAN.md shape:)*
+> - **foundations.PLAN.md**: Brief from foundations.md's Scope; Goal from its Verification criteria; Constraints from parent's Security + Reliability + Data Integrity QA sub-sections (extracted as part-relevant); Tasks draft 3 placeholder tasks ("schema migration", "repository pattern impl", "query layer tests"); Verification strategy verbatim from part's Verification criteria; Locked design calls cross-ref parent + extract 2 Alternative Considered rejection rationales as one-liners.
+> - **command-surface.PLAN.md**: similar shape, Brief from command-surface.md, depends-on-foundations noted in Out of scope.
+> - **rollout.PLAN.md**: similar, Brief from rollout.md, depends-on-both noted.
+
+**Step 4 (write to harness `.harness/`):**
+
+> Agent: *(Writes:)*
+> ```
+> <project>/.harness/PLAN.md                                          (foundations — active)
+> <project>/.harness/designs/foo-system/queued-plans/command-surface.PLAN.md  (queued)
+> <project>/.harness/designs/foo-system/queued-plans/rollout.PLAN.md           (queued)
+> ```
+
+**Step 5 (update parent Document History):**
+
+> Agent: *(Edits parent design's Document History table:)*
+> ```
+> | 2026-05-15 | Sequenced into 3 plans via /design sequence; first plan active at .harness/PLAN.md (foundations), 2 queued at .harness/designs/foo-system/queued-plans/. | final |
+> ```
+> Agent: "Sequence complete. 3 plans generated. foundations.PLAN.md is active. Run `/plan` to refine task decomposition, then `/work` to start on the first task. When foundations completes (Status: done), promote the next plan: `mv .harness/designs/foo-system/queued-plans/command-surface.PLAN.md .harness/PLAN.md` (until v2.3.0 of agentic-harness ships and auto-promotion lands)."
+
+**Alternate case (tie-breaking demo):** suppose two parts (`alpha` and `bravo`) both have `dependencies: []`. After Step 2:
+
+> Agent: *(Both alpha + bravo have 0 in-edges. Alphabetical tie-break: alpha first → active; bravo queued.)*
+> Result: `.harness/PLAN.md` = alpha; `queued-plans/bravo.PLAN.md` queued.
+
+Deterministic — re-running sequence produces identical ordering.
+
+#### Failure modes
+
+- **Parent doc unreadable** — halt with explicit path + error.
+- **Part file unreadable** — halt with the path; don't proceed with partial sequence.
+- **Cycle in part dependencies** — refuse with the smallest cycle path; operator edits parts/ files to break the cycle.
+- **Missing dependency target** — refuse with the part + missing-slug; operator either removes the dependency or creates the missing part.
+- **`.harness/PLAN.md` in-progress without `--force-replace`** — refuse with clear remediation (close the active plan or use the flag).
+- **No `.harness/` in cwd or ancestors** — refuse with "must run from inside a harness-installed project" + hint to install harness via `agentic-harness/install.sh`.
+- **Re-run after parts/ edits** — the skill diffs proposed plans against existing queued plans; presents per-file overwrite/keep/cancel. Existing active PLAN.md is preserved unless `--force-replace`.
+
+#### Anti-patterns
+
+`/design sequence` must not:
+
+- **Silently transition parent Status.** Only Document History append; Status stays `final`.
+- **Skip topological sort.** Even for a single-part design, the sort runs (trivially) — never short-circuit.
+- **Use non-deterministic ordering.** Alphabetical tie-break is documented and must be preserved across runs.
+- **Clobber an in-progress `.harness/PLAN.md`.** The `--force-replace` flag is the explicit operator override; default behavior refuses.
+- **Auto-promote queued plans.** That's task 5's harness `/release` extension. Sequence only writes; promotion lands elsewhere.
+- **Generate non-draft PLAN.md Status.** All generated plans start `Status: draft` so the human runs `/plan` to refine before `/work`. The skill produces a starting point, not the final task list.
 
 ## Tool allowlist
 
