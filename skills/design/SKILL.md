@@ -216,9 +216,244 @@ Walking a 3-section synthetic design end-to-end ("add a `/foo` command").
 - **Edit Status backwards.** The skill never moves `final → review` or `review → draft`. The escape hatch is manual: human edits the Status field directly.
 - **Lose work on session crash.** Saves are per-section, not batched. `commit-on-stop` (from agent-toolkit's base hooks, plan #4) provides additional safety net if the session crashes mid-Edit.
 
-### `/design translate` *(stub — full body lands in task 3 of plan #6)*
+### `/design translate`
 
-Reads a `Status: final` design doc and proposes a split of the Detailed Design into N structural parts (one per top-level subsection by default; human can merge / split / reshape). Writes `<doc-dir>/parts/<part-slug>.md` files with: inherited frontmatter, part-specific Title / Scope / Dependencies on other parts / Verification criteria. Appends to Document History.
+Consumes a `Status: final` design doc and produces N structural-part files at `<doc-dir>/parts/<part-slug>.md`. Each part is a focused implementation slice — one chunk small enough to ship as a single PLAN.md cycle in the next stage (`/design sequence`). The skill never changes the parent design's Status; translate is read-mostly with respect to the parent (only appends to Document History).
+
+#### Inputs
+
+- **`<slug-or-path>`** — design doc slug or full path. The skill resolves either `.harness/designs/<slug>.md` (confidential) or `wiki/explanation/designs/<slug>.md` (published); if both exist, asks the human which.
+- **`--allow-large-design`** *(optional)* — bypasses the cap-of-6 soft warning when a design legitimately splits into more than six parts. Rarely needed; if you reach for it twice in a row, that's signal to split the design itself into multiple docs upstream.
+
+#### Step 1 — Preconditions check
+
+The skill **refuses to run** on non-`final` docs. Read the parent doc's frontmatter; check `status`:
+
+- `status: final` → continue.
+- `status: draft` → halt with `"<path>: Status is 'draft', not 'final'. Run /design author <slug> to complete authoring + review pass first, then re-run /design translate."`
+- `status: review` → halt with `"<path>: Status is 'review', not 'final'. The review pass is incomplete. Run /design author <slug> to walk approve/revise/skip and finalize."`
+- `status: launched` → halt with `"<path>: Status is 'launched'. The design's parts have already been generated + executed; translating again would orphan the existing parts/. If you need to revise, edit the parent design + manually revert status to 'final' + re-run translate; document the change in Document History."`
+- any other / missing value → halt with `"<path>: Status field invalid or missing; expected 'final'."`
+
+The refusal contract is non-negotiable per the locked design call #3 from PLAN.md. `/design translate` is the first hard gate downstream of `/design author`; bypassing it loses the human-approval signal that makes the rest of the workflow trustworthy.
+
+Additionally check: the parent doc's `## Design / ### Detailed Design` section must have substantive content (not just the italic prompt + HTML comments from the template). If Detailed Design is empty, halt with `"<path>: Detailed Design has no content; design too sparse to translate. Author at least one Detailed Design subsection before re-running."`
+
+#### Step 2 — Read the design
+
+Read the full parent design file via `Read`. Parse the 10 sections; identify:
+
+- The `## Design / ### Detailed Design` subsections (these drive the part-split heuristic in Step 3).
+- The `## Dependencies` content (each part may inherit a subset).
+- The `## Quality Attributes` sub-attrs (extract part-specific concerns for each part's Verification).
+- The `## Operations` sub-sections (extract part-specific ops concerns).
+- The `## Project management / ### Work estimates` content (informs the per-part `estimated_scope` field).
+
+Hold this in memory for Step 3.
+
+#### Step 3 — Propose part split
+
+The skill proposes a split using these heuristics:
+
+- **Default rule**: one part per top-level subsection of Detailed Design.
+- **Grouping rule**: tightly-coupled subsections may be grouped into one part when:
+  - The downstream subsection only makes sense given the upstream one (e.g. an Infrastructure choice that the Security model is conditional on).
+  - The subsections share a single deployable unit (one schema migration + one API surface + one runbook = one part, not three).
+- **Splitting rule**: a single subsection may be split into multiple parts if its scope is genuinely larger than one PLAN.md cycle can absorb.
+- **Cap**: ~6 parts max. More than 6 triggers a soft warning: `"This design proposes <N> parts (>6). Consider splitting the design itself into multiple documents — that's usually a clearer story than a megadesign with too many parts. Re-run with --allow-large-design to override."` Soft warning; operator can override with the flag.
+
+For each proposed part, populate these fields:
+
+- **Slug** — short kebab-case identifier (e.g. `foundations`, `command-surface`, `rollout`). Used as filename.
+- **Title** — h1 for the part file (e.g. "Foundations: data model + access layer").
+- **Scope** — 1-2 paragraphs lifted from the source Detailed Design subsections this part covers.
+- **Dependencies** — list of other part slugs this part depends on (empty list for foundational parts).
+- **Verification criteria** — extracted from the parent's Quality Attributes / Operations / Documentation Plan rows that apply to this part's scope. Each criterion is one falsifiable claim.
+- **Estimated scope** — `S` (one short `/work` session), `M` (multiple sessions, single PLAN.md), `L` (large; consider further-splitting).
+
+#### Step 4 — Human review of split
+
+Present the proposed split as a table:
+
+```
+Proposed split for <parent-slug> (Status: final):
+
+| # | Slug | Title | Dependencies | Est. | Source sections |
+|---|------|-------|--------------|------|-----------------|
+| 1 | foundations | Foundations: data model + access layer | (none) | M | Detailed Design §1, §2 |
+| 2 | command-surface | Command surface + status display | depends on #1 | S | Detailed Design §3 |
+| 3 | rollout | Rollout: feature flag + telemetry | depends on #1, #2 | S | Detailed Design §4 + Operations §Monitoring |
+
+Total: 3 parts. Approve / Reshape / Cancel?
+```
+
+Accept human responses:
+
+- **`Approve`** / **`Approved split`** → continue to Step 5.
+- **`Reshape`** → enter reshape sub-loop:
+  - `merge <slug-a> <slug-b>` — combine two parts into one; agent proposes merged Title / Scope / Verification; human re-confirms.
+  - `split <slug>` — split one part into two; agent proposes the split lines; human re-confirms.
+  - `rename <old-slug> <new-slug>` — rename without changing structure.
+  - `reorder <slug-list>` — change ordering (used by Step 5 for filename numbering hints; doesn't affect dependencies).
+  - After each reshape op, re-present the table; loop until `Approve`.
+- **`Cancel`** → halt without writing any files. Parent doc unmodified.
+
+The reshape loop is the human's primary lever — the agent's proposed split is a starting point, not the answer. Re-audit at retrospective (#12) if override rate exceeds 50% across real designs.
+
+#### Step 5 — Write part files
+
+For each approved part, write `<doc-dir>/parts/<part-slug>.md` (creating the `parts/` subdir if absent). File shape:
+
+```yaml
+---
+# Inherited from parent design
+title: <part-specific title>
+status: draft
+visibility: <inherited>
+author: <inherited>
+contributors: <inherited>
+created: <today UTC>
+updated: <today UTC>
+last_major_revision: <today UTC>
+prd: <inherited from parent>
+project: <inherited from parent>
+
+# New part-specific fields
+parent_design: ../<parent-slug>.md
+part_slug: <slug>
+dependencies: [<other-part-slugs>]
+estimated_scope: S|M|L
+---
+
+# <Title>
+
+## Scope
+
+<1-2 paragraphs lifted from parent's Detailed Design subsection(s)>
+
+## Dependencies
+
+<List with rationale; e.g. "depends on foundations: needs the data model + access layer to exist before the command surface can wire up.">
+
+## Verification criteria
+
+<Bulleted falsifiable claims extracted from parent's Quality Attributes / Operations / Documentation Plan rows that apply to this part.>
+
+## Parent design
+
+This part implements one slice of [<parent-title>](../<parent-slug>.md) (`Status: final`). See the parent for Context, Alternatives Considered, Quality Attributes overview, and Operations strategy. Mid-execution changes to this part's scope must be appended to the parent's Document History.
+```
+
+If a part file already exists at the target path (re-running translate on a previously-translated design), present the human with a diff + ask `"<path> already exists. Overwrite / Keep existing / Cancel?"` — never silently clobber.
+
+#### Step 6 — Update parent doc Document History
+
+After all part files are written, append one row to the parent's Document History table:
+
+```
+| <today UTC> | Translated to N parts via /design translate: <comma-separated part slugs>. | final |
+```
+
+Note: the parent's `Status` stays `final` — translate doesn't change Status. Only `/design author` (draft → review → final) and the harness `/release` (final → launched) do.
+
+Also bump the parent's `updated` frontmatter field to today.
+
+#### Tool allowlist
+
+**`Read, Write, Edit, Glob, Grep`** — no `Bash`. Same allowlist as `/design author`. Operations:
+
+- `Read` — parent design + frontmatter parse + check existing part files for the overwrite-prompt case.
+- `Glob` — discover the `parts/` subdir state (existing files for re-run safety).
+- `Write` — create new part files.
+- `Edit` — append to parent's Document History table; bump `updated` field.
+
+#### Hard gates
+
+`/design translate` REFUSES to run on:
+
+1. Non-`final` Status (draft, review, launched, or invalid).
+2. Empty `## Design / ### Detailed Design` section (design too sparse).
+3. Existing `<doc-dir>/parts/` with conflicting files when re-running, unless the human approves overwrite per file.
+
+These refusals are the contract layer between `/design author` (which produces the parent doc) and `/design sequence` (which consumes parts/). Bypassing them loses traceability between the human-approved design and the executed plans.
+
+#### Worked example
+
+Synthetic 3-part design walked end-to-end.
+
+**Input:** a `Status: final` design at `wiki/explanation/designs/foo-system.md` with three Detailed Design subsections:
+
+1. **Data model + access layer** — schema, repository pattern, queries
+2. **Command surface** — `/foo` slash command + status display widget
+3. **Rollout** — feature flag wiring + telemetry events
+
+**Invocation:** `/design translate foo-system`
+
+**Step 1 (preconditions):**
+
+> Agent: *(Reads frontmatter; status=final ✓; Detailed Design has 3 subsections ✓)*
+> Agent: "Preconditions met. Proceeding."
+
+**Step 2 (read design):** *(internal — reads full file, indexes sections)*
+
+**Step 3 (propose split):** Agent proposes 3 parts using the default one-per-subsection rule.
+
+**Step 4 (human review):**
+
+> Agent: ```
+> Proposed split for foo-system (Status: final):
+>
+> | # | Slug | Title | Dependencies | Est. | Source sections |
+> |---|------|-------|--------------|------|-----------------|
+> | 1 | foundations | Foundations: data model + access layer | (none) | M | Detailed Design §1 |
+> | 2 | ui | UI: command + status display | depends on #1 | S | Detailed Design §2 |
+> | 3 | rollout | Rollout: feature flag + telemetry | depends on #1, #2 | S | Detailed Design §3 + Operations §Monitoring |
+>
+> Total: 3 parts. Approve / Reshape / Cancel?
+> ```
+> Human: "Reshape: rename ui command-surface"
+> Agent: *(re-presents table with `ui` → `command-surface`)*
+> Human: "Approve"
+
+**Step 5 (write part files):** Agent writes 3 files:
+
+```
+wiki/explanation/designs/foo-system/
+├── foo-system.md                       (the parent — unchanged except Document History)
+└── parts/
+    ├── foundations.md                  (Status: draft, dependencies: [], estimated_scope: M)
+    ├── command-surface.md              (Status: draft, dependencies: [foundations], estimated_scope: S)
+    └── rollout.md                      (Status: draft, dependencies: [foundations, command-surface], estimated_scope: S)
+```
+
+Each part file has the inherited frontmatter + part-specific frontmatter fields + h1 Title + Scope + Dependencies + Verification criteria + pointer back to parent.
+
+**Step 6 (update parent):**
+
+> Agent: *(Edits parent's Document History table to append):*
+> ```
+> | 2026-05-15 | Translated to 3 parts via /design translate: foundations, command-surface, rollout. | final |
+> ```
+> Agent: "Translate complete. 3 part files at wiki/explanation/designs/foo-system/parts/. Run `/design sequence foo-system` next to generate PLAN.md per part."
+
+#### Failure modes
+
+- **Parent doc unreadable** — halt with explicit path + error; don't fall back to partial state.
+- **Parent doc has malformed YAML frontmatter** — halt with `"<path>: frontmatter invalid; manual fix needed before translate."` Don't auto-repair.
+- **Detailed Design has subsections but they're all empty** — halt with `"<path>: Detailed Design subsections exist but contain no content. Design needs more substance before parts can be derived."`
+- **Human types Cancel during reshape loop** — halt cleanly; parent doc untouched; no partial part files written.
+- **Re-run after manual deletion of some part files** — translate detects the gap (parts/ has some files, missing others); presents the gap; asks whether to regenerate the missing ones or treat them as intentionally-deleted (skip in the new split).
+- **Re-run after parent design revision** — operator-driven flow: human edits parent + appends to Document History; re-runs `/design translate`. The skill diffs proposed split against existing parts/, presents the delta, and asks per-file: overwrite / keep / delete.
+
+#### Anti-patterns
+
+`/design translate` must not:
+
+- **Silently transition parent Status.** Translate appends to Document History but never changes Status.
+- **Skip the human-review step.** Even if the proposed split is "obviously correct" by the heuristic, the human gets the table + approval prompt every time. The split is a hand-off; agents don't unilaterally decide what counts as a part.
+- **Generate >6 parts without the override flag.** The soft cap is the design-too-big signal; respect it.
+- **Clobber existing part files silently.** Always diff + prompt on re-run.
+- **Lose the parent → parts link.** Every part file carries `parent_design:` frontmatter; recovery on lost link should be possible by re-running translate against the parent.
 
 ### `/design sequence` *(stub — full body lands in task 4 of plan #6)*
 
