@@ -5,6 +5,46 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.8.0] — 2026-05-15 — `/design` skill: human-facing design pipeline → agent execution handoff
+
+The first toolkit skill that ships its own custom multi-stage workflow. The `/design` skill walks a human through a precise 10-section design-doc template, gates on review approval, splits the approved design into structural parts, and generates one `PLAN.md` per part for the harness's `/work` + `/review` flow to execute. Published designs surface in `wiki/Home.md` as the canonical "Why we built X" entry point.
+
+Three sub-commands:
+
+- **`/design author <slug> [--visibility]`** — interactive section-by-section authoring of the 10-section template (Frontmatter + Context + Design + Alternatives Considered + Dependencies + Migrations + Tech Debt & Risks + Quality Attributes [11 sub-attrs] + Project management + Operations + Document History). Forces explicit N/A-with-rationale on each Quality Attribute sub-attr. Drives Status `draft → review → final`.
+- **`/design translate <slug>`** — consumes a `Status: final` design doc and proposes a structural-part split (one part per Detailed Design subsection by default; grouping rule for tightly-coupled subsections; ~6-part soft cap with `--allow-large-design` override). Human approves via table with Reshape (merge/split/rename/reorder) sub-loop. Writes `<doc-dir>/parts/<part-slug>.md` per part with inherited frontmatter + part-specific fields (`parent_design`, `part_slug`, `dependencies`, `estimated_scope`).
+- **`/design sequence <slug>`** — topologically sorts parts (Kahn's BFS with deterministic alphabetical tie-breaking; cycle detection) and generates one `PLAN.md` per part using the harness's existing `templates/PLAN.md` shape. First part activates at `<project>/.harness/PLAN.md`; subsequent parts queue at `<project>/.harness/designs/<doc-slug>/queued-plans/<part-slug>.PLAN.md`. Until v2.3.0 of the harness installs alongside, operators manually promote next queued plan via `mv`; v2.3.0's `/release` §1b auto-promotes.
+
+Stage 5 (per-part execution) reuses the harness's existing `/work` + `/review` flow — no new execution primitives. The harness's deterministic gates + adversarial-reviewer + evaluator (v0.6.0) + kill-switch/steer/commit-on-stop (v0.7.0) all participate in the per-part execution loop.
+
+Paired with [`agentic-harness v2.3.0`](https://github.com/alexherrero/agentic-harness/releases/tag/v2.3.0), which lands the harness-side `/release` §1b lifecycle hook (plan promotion + design `final → launched` Status transition + `wiki/Home.md` + `_Sidebar.md` surfacing for launched published designs) and `/setup` §7 scaffolding for the `wiki/explanation/designs/` landing dir.
+
+Decision rationale captured in the new [ADR 0004 — Design skill design](https://github.com/alexherrero/agent-toolkit/blob/main/wiki/explanation/decisions/0004-design-skill.md): 7 locked design calls with rationale + "why not the alternative" + 5 positive / 5 negative consequences + 4 load-bearing assumptions with explicit re-audit triggers.
+
+### Added
+
+- **`skills/design/SKILL.md`** — full skill spec (692 lines) covering all three sub-commands with input contracts / step-by-step flows / tool allowlists / hard gates / worked examples / failure modes / anti-patterns. Manifest: `name: design`, `kind: skill`, `supported_hosts: [claude-code, antigravity, gemini-cli]`, `version: 0.1.0`, `install_scope: project`.
+- **`skills/design/templates/design-doc.md`** — locked 10-section template (299 lines). User-provided structure codified verbatim 2026-05-14, with Alternatives Considered added same day. Each section has an italic prompt + HTML-comment guidance covering "what goes here" + "what N/A looks like" per the locked design call that Quality Attributes force explicit N/A.
+- **`wiki/how-to/Use-The-Design-Skill.md`** — practical recipe (1741 words). At-a-glance table; when-to-reach-for-`/design`-vs-`/plan` decision table; three worked scenarios end-to-end (blank-slate feature design with Reshape demo; mid-execution revision with `--force-replace`; confidential design routing to `.harness/designs/`); Status lifecycle table; wiki integration explanation; manual-equivalents for Antigravity + Gemini CLI; 5 troubleshooting scenarios.
+- **[ADR 0004 — Design skill design](https://github.com/alexherrero/agent-toolkit/blob/main/wiki/explanation/decisions/0004-design-skill.md)** — captures Context (4 forces driving the new primitive + 7 open design questions resolved 2026-05-14), Decision (7 locked design calls: hybrid decomposition; 10-section template locked verbatim; design doc as canonical wiki entry; Status lifecycle 4-state machine; Visibility routing; one-PLAN.md-per-part; skill ships in toolkit not harness; tool allowlist; mid-execution audit-trail via Document History), Consequences (5+/5-/4 load-bearing assumptions with re-audit triggers tied to plans #7 + #8 first-dogfood-surfacing-gaps + retrospective #12).
+- **First real consumer of multi-stage skill workflow** in the toolkit. Earlier skills (`pii-scrubber`, `dependabot-fixer`, `ship-release`) ship a single workflow; the `evaluator` agent ships a single grading contract; the base hooks ship single-event triggers. `/design` is the first toolkit customization with multiple sub-commands that hand off between each other to drive a multi-stage workflow.
+
+### Changed
+
+- **README.md** — `What's inside (v0.7.0)` → `(v0.8.0)`; new row in the inventory table for the `design` skill with input → output one-liner noting the three sub-commands + the wiki surfacing trigger; new bullet in "Adding your own customizations" for Use-The-Design-Skill.
+- **`wiki/Home.md`** — `🔧 Trying to do something specific?` section gains a Use-The-Design-Skill row; `💡 Architecture decisions` gains ADR 0004 row.
+- **`wiki/_Sidebar.md`** — `🔧 How-to` + Decisions lists both extended with new entries.
+- **`wiki/reference/Customization-Types.md`** — "When to use a skill vs. command vs. agent" table's skill row gains `design` + `pii-scrubber` as concrete example links.
+- **`scripts/smoke-install-{bash,pwsh}.{sh,ps1}`** — expected-files list +6 entries (design/SKILL.md + design/templates/design-doc.md × 3 host destinations); idempotent re-run assertions extended.
+
+### Internal
+
+- **6-task implementation in `agentic-harness/.harness/PLAN.md` plan #6** (agent-toolkit-side): task 1 (lock template + scaffold skill home); task 2 (`/design author` 192-line body); task 3 (`/design translate` 240-line body); task 4 (`/design sequence` 201-line body); task 6 (docs pass — how-to + ADR + cross-refs). Task 5 landed in the harness (`/release` §1b lifecycle hook). Task 7 is this release pair.
+- **First real consumer of `kind: skill` with templates/ subdir.** Earlier skills don't ship templates because they don't author files at runtime. The design skill's `/design author` consumes `templates/design-doc.md` to seed new design docs. The skill dir's `cp_managed_dir` install handles the templates/ subdir transparently — no installer changes needed.
+- **All five toolkit gates green on every commit** in the v0.7.0..v0.8.0 range. Soft length warnings on the new how-to (1741w) and ADR (2266w) explicitly accepted per the codified dev-flow convention from `~/.claude/CLAUDE.md`: comprehensive content (three worked scenarios + Quality Attributes guidance + Operations guidance + troubleshooting) is load-bearing for design-skill discoverability; splitting would fragment the reader experience.
+
+[v0.8.0]: https://github.com/alexherrero/agent-toolkit/releases/tag/v0.8.0
+
 ## [v0.7.0] — 2026-05-14 — Three base operator-control hooks + first-class `kind: hook` installer support
 
 Three new hook customizations for long-running Claude Code sessions, lifted from the cwc-long-running-agents pattern:
