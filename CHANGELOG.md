@@ -5,6 +5,52 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.9.0] — 2026-05-17 — Gemini-CLI host removal (host-scope reduction)
+
+Minor — host-scope reduction. **Drops standalone Gemini CLI from supported hosts.** Keeps Claude Code + Antigravity (Gemini-in-Antigravity is a different surface — IDE-level integration, not standalone CLI). Triggered by [ROADMAP item #15](https://github.com/alexherrero/agentic-harness/blob/main/.harness/ROADMAP.md). Implemented as plan #15 (7 tasks across 5 toolkit commits + 1 harness commit). Paired with [`agentic-harness v2.4.0`](https://github.com/alexherrero/agentic-harness/releases/tag/v2.4.0) (doc-only on the harness side).
+
+**Why this shape**: in practice the operator (one person) runs Claude Code + Antigravity. Standalone Gemini CLI was added defensively in v0.1.0 but never grew into the workflow; the Gemini usage that does happen lives inside Antigravity's IDE-level integration. Maintaining a third host destination, dispatch arms in `install.{sh,ps1}`, a third column in `Per-Host-Paths.md`, and three case-arms in every dispatch function was carrying maintenance cost without observed payoff. Plan #7a part 1 (memory skill scaffold, shipped 2026-05-16) was the first new skill that opted out of the three-host scope from day 1; v0.9.0 sweeps the rest of the toolkit to match.
+
+Decision rationale + 4 load-bearing assumptions with re-audit triggers in the new [ADR 0006 — Gemini CLI host removal](https://github.com/alexherrero/agent-toolkit/blob/main/wiki/explanation/decisions/0006-gemini-cli-host-removal.md). ADRs 0001 + 0002 also get amendments (preserve original text + audit trail per the convention established by ADR 0004's 2026-05-16 external-review-handoff amendment).
+
+### Added
+
+- **[ADR 0006 — Gemini CLI host removal](https://github.com/alexherrero/agent-toolkit/blob/main/wiki/explanation/decisions/0006-gemini-cli-host-removal.md)** (1652 words) — full host-scope-reduction rationale with Context (4 forces), Decision (concrete sub-decisions with why-not-the-alternative for each), 5+/4- consequences, 4 load-bearing assumptions with re-audit triggers (Antigravity covers Gemini use cases; operators distinguish toolkit-managed vs unmanaged content; backup-not-hard-delete pattern; Gemini-CLI successor doesn't ship within ~6 months).
+- **Legacy `.agents/skills/` + `.gemini/agents/` auto-cleanup primitive** in `install.sh` + `install.ps1`. Detects pre-existing toolkit-managed legacy entries from prior installs (matched against current manifest names); prompts operator with N default (`"Move to backup .agents/skills.agent-toolkit-bak.<ts>/ and remove from active install path? [y/N]"`); on opt-in moves (not hard-deletes) to timestamped backups per the pre-push hook backup convention. Non-interactive stdin auto-defaults to N with explanatory notice. New `--no-legacy-cleanup` / `-NoLegacyCleanup` flag suppresses for CI / scripted installs.
+- **Validator `REMOVED_HOSTS` dict** in `scripts/validate-manifests.py` — keyed by removed host name → actionable error message that points operator at the v0.9.0 CHANGELOG and clarifies Antigravity (Gemini-in-IDE) stays supported. `require_supported_hosts()` surfaces removed-host errors before unknown-host errors for better next-step text.
+- **Smoke install negative-existence assertions** (`scripts/smoke-install-{bash.sh,pwsh.ps1}`) — `.agents/` + `.gemini/` MUST NOT exist after install. Catches regressions if the gemini-cli dispatch arms ever come back. Two new automated tests: `--no-legacy-cleanup` flag suppression + validator-rejects-gemini-cli with v0.9.0 message (bypasses normal walk via importlib inline driver for in-isolation testing).
+- **ADR amendments** preserving original ADR text + audit trail: [0001-agent-toolkit-purpose](https://github.com/alexherrero/agent-toolkit/blob/main/wiki/explanation/decisions/0001-agent-toolkit-purpose.md) (Amendment 2026-05-17) + [0002-evaluator-design](https://github.com/alexherrero/agent-toolkit/blob/main/wiki/explanation/decisions/0002-evaluator-design.md) (Amendment 2026-05-17). Same shape as ADR 0004's 2026-05-16 amendment for external-review-handoff.
+- **MemoryVault parent design Document History row 8** noting the fleet-wide sweep is done — closes the row-7 thread opened 2026-05-16 ("until #15 sweeps them in one coordinated patch" → "v0.9.0 swept them"). Memory skill's architecture is unchanged; host-scope correction is operator-driven implementation detail, not a parent-design pivot.
+
+### Changed
+
+- **Every customization manifest** now ships with `supported_hosts: [claude-code, antigravity]`: 4 skills (`pii-scrubber`, `dependabot-fixer`, `ship-release`, `design`) + 1 agent (`evaluator`) + 1 bundle (`example-bundle`) + `AGENTS.md` schema example. Memory skill was already correct (shipped post-#15-decision in plan #7a part 1 task 1). Hooks (`kill-switch`, `steer`, `commit-on-stop`) were already `[claude-code]`-only — no change.
+- **Validator `HOST_ENUM`** tightened: `{claude-code, antigravity, gemini-cli}` → `{claude-code, antigravity}`. Any manifest still listing `gemini-cli` errors with the v0.9.0 CHANGELOG-pointer message.
+- **Installer dispatch arms** in `install_skill` / `install_hook` / `install_agent` (both `install.sh` + `install.ps1`) dropped the `gemini-cli` case-arms; collapsed `antigravity|gemini-cli` no-hook-surface arms to `antigravity` only.
+- **Managed parents** (`MANAGED_PARENTS` / `$ManagedParents`) dropped `.agents/skills` + `.gemini/agents` — `--update` true-sync no longer touches those paths.
+- **`Per-Host-Paths.md`** Quick Reference table dropped the 3rd column; revisit-triggers updated.
+- **`Manifest-Schema.md`** allowed-values description tightened to `[claude-code, antigravity]`; 2 example manifests updated.
+- **`Customization-Types.md`** Hosts column dropped gemini-cli across all rows; implementation-status table notes the v0.9.0 removal per row.
+- **`Installer-CLI.md`** `--update` wipe-set updated; new `--no-legacy-cleanup` flag documented; sibling-tool collision note narrowed; legacy-cleanup [!NOTE] block added.
+- **How-tos swept**: `Add-A-Skill.md` + `Add-A-Bundle.md` (manifest examples) + `Install-Into-Project.md` (`ls` verifications + `--update` narrative) + `Use-The-Design-Skill.md` ("three hosts" → "both supported hosts") + `Use-The-Evaluator.md` (rubric example).
+- **Tutorial** `01-First-Customization.md` swept: manifest example + installer output + `ls` verifications + `--update` output + "what you learned" summary all aligned with 2-host scope.
+- **MemoryVault parent design + 3 part files** (`memoryvault.md` + `write-primitives.md` + `recall-loop.md` + `reflection-and-recovery.md`) updated: manifest examples + "3 host destinations" → "2 host destinations" + cross-links to ROADMAP #15 + ADR 0006.
+- **`README.md`** mermaid diagram dropped `.agents/skills/` box; "What's inside" version bumped `v0.8.1 → v0.9.0`; ROADMAP #15 + ADR 0006 cross-link added.
+- **`skills/memory/SKILL.md` body** host-scope-rationale paragraph updated to past-tense post-#15 framing.
+- **Wiki Sidebar + Home** gained ADR 0006 link in the Decisions section.
+
+### Removed
+
+- **Standalone Gemini CLI host support** entirely. The toolkit no longer dispatches to `.agents/skills/<name>/` (skills) or `.gemini/agents/<name>.md` (agents). Antigravity (Gemini-in-IDE) stays as a supported host — different surface than standalone CLI.
+- **`.agents/skills/` + `.gemini/agents/` install destinations**. Pre-existing user installs with these dirs trigger the interactive legacy-cleanup-with-confirmation flow at next install time.
+
+### Internal
+
+- First **dogfood-driven host-scope reduction** in toolkit history. Pattern: surface the gap during real work (memory skill plan #7a part 1 task 1 chose 2-host scope; #15 added to ROADMAP same session); plan + execute the cross-cutting sweep across installer + manifests + tests + wiki + ADRs; ship as coordinated cross-repo MINOR release pair. 7-task plan, 5 toolkit commits (e1b477e + 5af1a59 + b216043 + 13109fa + 7a4162f) + 1 harness commit (the paired v2.4.0 doc-only update).
+- **Defense-in-depth against regressions** active across multiple layers: validator's `REMOVED_HOSTS` dict catches manifest re-additions; smoke-install negative-existence assertions catch installer dispatch re-additions; `--no-legacy-cleanup` flag test catches flag-plumbing regressions; HOST_ENUM tightening catches enum re-admissions.
+- **5 ADR amendments total** since toolkit shipped — pattern: append amendment at the bottom of the existing ADR rather than rewriting (per ADR 0004's 2026-05-16 amendment shape). This commit's amendments (0001 + 0002) bring the total to ADR 0001 amended × 1, ADR 0002 amended × 1, ADR 0004 amended × 1.
+- **Operators with pre-v0.9.0 installs** see the interactive cleanup prompt at next install. Backup directories accumulate at `.agents/skills.agent-toolkit-bak.<ts>/` if operator opts in repeatedly across multiple install runs; GC recipe (`find .agents/ -name 'skills.agent-toolkit-bak.*' -mtime +30 -exec rm -rf {} \;`) documented in ADR 0006 + the Installer CLI reference. Auto-deletion of user filesystem is deliberately deferred — operators validate the backup before manually `rm -rf`ing.
+
 ## [v0.8.1] — 2026-05-16 — `/design` external-review-handoff option (dogfood-driven amendment)
 
 Patch — additive only, no breaking changes. Adds an **external-review-handoff option** as an alternative to the block-by-block inline review in the `/design` skill. Dogfood-driven amendment from plan #6's first real design exercise (MemoryVault, design doc at `wiki/explanation/designs/memoryvault.md`): the 6-chunk inline walk of a ~7200-word design surfaced a real UX gap. Antigravity IDE's native inline-comment UI + Gemini-applies-comments pattern is dramatically better for review-style work on long content; the new option lets operators hand off to that workflow.
