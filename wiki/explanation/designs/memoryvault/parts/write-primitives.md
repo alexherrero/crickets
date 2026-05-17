@@ -29,7 +29,7 @@ This part ships the two foundational write primitives that every other part of M
 
 Tri-modal confidence routing (HIGH → auto-save / MEDIUM → interactive review / LOW → `_inbox/`) applies only when the reflection sidecar invokes these primitives — direct user invocation always writes immediately to the requested location.
 
-The skill home is `agent-toolkit/skills/memory/SKILL.md` with full YAML frontmatter (`name: memory`, `kind: skill`, `supported_hosts: [claude-code, antigravity, gemini-cli]`, `version: 0.1.0`, `install_scope: project`) and tool allowlist `[Read, Write, Edit, Glob, Grep]` — no Bash. This part ships the skill scaffold + the `save` and `evolve` sub-command bodies only; recall/reflection/idea-ledger sub-commands stub for future parts.
+The skill home is `agent-toolkit/skills/memory/SKILL.md` with full YAML frontmatter (`name: memory`, `kind: skill`, `supported_hosts: [claude-code, antigravity]`, `version: 0.1.0`, `install_scope: project`) and tool allowlist `[Read, Write, Edit, Glob, Grep]` — no Bash. This part ships the skill scaffold + the `save` and `evolve` sub-command bodies only; recall/reflection/idea-ledger sub-commands stub for future parts. (Standalone Gemini CLI host removed from supported_hosts in v0.9.0 per [ROADMAP item #15](https://github.com/alexherrero/agentic-harness/blob/main/.harness/ROADMAP.md) / [ADR 0006](../../decisions/0006-gemini-cli-host-removal).)
 
 ## Dependencies
 
@@ -40,7 +40,7 @@ None — foundational. All other parts depend on this one. The only pre-existing
 
 ## Verification criteria
 
-1. **Smoke install green** — `bash agent-toolkit/scripts/smoke-install-bash.sh` (+ `.ps1`) verifies the `memory` skill installs at the 3 host destinations (`.claude/skills/`, `.agent/skills/`, `.agents/skills/`).
+1. **Smoke install green** — `bash agent-toolkit/scripts/smoke-install-bash.sh` (+ `.ps1`) verifies the `memory` skill installs at the 2 host destinations (`.claude/skills/`, `.agent/skills/`); negative-existence assertions verify `.agents/skills/` is NOT created (gemini-cli removed in v0.9.0).
 2. **`validate-manifests.py` clean** — skill manifest parses with no errors; skill count increments.
 3. **`/memory save` end-to-end** — invoke against a scratch vault; file lands at the expected path with correct frontmatter (`kind`, `status: active`, `created`, `updated`, `tags`, `group`); content matches the input.
 4. **`--always-load` flag** — files written with the flag land in `_always-load/` subdir with `always_load: true` frontmatter.

@@ -56,7 +56,7 @@ All markers live in `.harness/` (gitignored, runtime-only).
 
 ## Verification criteria
 
-1. **Stop hook fires on session end** — install at the 3 host destinations; run a Claude Code session; verify Stop hook fires + reflection runs against the just-ended session's transcript.
+1. **Stop hook fires on session end** — install at the 2 host destinations; run a Claude Code session; verify Stop hook fires + reflection runs against the just-ended session's transcript.
 2. **Idle hook fires after N min idle** — same; let session sit idle past the threshold; verify the hook fires.
 3. **Reflection mines 3 categories** — fixture transcript with seeded "user said 'always X'" / "user corrected the agent" / "hit error Z resolved by W" patterns; verify each pattern surfaces as a candidate in the correct category.
 4. **Reflection mines idea candidates** — fixture transcript with "we should also do X later" / "this could be its own project" patterns; verify each surfaces as an idea candidate (raw — idea-ledger part handles the write).
@@ -66,7 +66,7 @@ All markers live in `.harness/` (gitignored, runtime-only).
 8. **Crashed-session marker recovery** — start a session, kill Claude Code mid-session (so Stop never fires); verify `.start` marker stays in place; trigger idle hook (or wait for it); verify reflection runs retroactively against the orphan session's transcript + marker gets renamed to `.reflected`.
 9. **Marker GC at 30 days** — seed old `.reflected` markers; verify idle hook deletes them on next pass.
 10. **Manual `/memory reflect`** — invoke directly against a specified transcript path; verify reflection runs + produces candidates routed per tri-modal logic.
-11. **Smoke install verifies hooks land** — `smoke-install-bash.sh` + `.ps1` extended for both Stop + idle hook scripts at the 3 host destinations.
+11. **Smoke install verifies hooks land** — `smoke-install-bash.sh` + `.ps1` extended for both Stop + idle hook scripts at the 2 host destinations.
 12. **All 3 OS CI workflows green** on the commit that lands this part.
 
 ## Notes for the implementing /work session

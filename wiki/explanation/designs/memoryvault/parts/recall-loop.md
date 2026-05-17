@@ -46,14 +46,14 @@ Filtering invariants: recall never surfaces `status: superseded` entries by defa
 
 ## Verification criteria
 
-1. **SessionStart hook fires on session start** — install the hook at the 3 host destinations; start a Claude Code session against a scratch vault with seeded `_always-load/`; verify the hook runs + injects entries + outputs the transparency line.
+1. **SessionStart hook fires on session start** — install the hook at the 2 host destinations; start a Claude Code session against a scratch vault with seeded `_always-load/`; verify the hook runs + injects entries + outputs the transparency line.
 2. **UserPromptSubmit hook fires on every user message** — same scratch session; submit multiple prompts; verify the hook fires per prompt + recall returns relevant matches + dedups against already-loaded entries.
 3. **Recall returns top-K relevant entries** — seed a fixture vault with ~20 entries on varied topics; submit queries with both keyword-match and paraphrase semantics; verify top-K returns the expected matches per the rubric (semantic queries should pull paraphrase matches that grep alone would miss).
 4. **Time budgets respected** — SessionStart completes in <500ms; UserPromptSubmit completes in <300ms; on overrun, hook logs warning + proceeds with partial results rather than blocking.
 5. **`status: superseded` filtered by default** — create an entry, evolve it; verify recall returns only the new entry (not the superseded one).
 6. **Embedding fallback path works** — set `memory.use_api_embeddings: false`; verify recall uses local sentence-transformers; verify offline-capability (disconnect network, recall still works).
 7. **Both API + local paths fail → grep fallback** — simulate both failures; verify recall degrades to grep+frontmatter-only rather than failing entirely.
-8. **Smoke install verifies hooks land** — `smoke-install-bash.sh` + `.ps1` extended to verify both hook scripts install at the 3 host destinations.
+8. **Smoke install verifies hooks land** — `smoke-install-bash.sh` + `.ps1` extended to verify both hook scripts install at the 2 host destinations.
 9. **All 3 OS CI workflows green** on the commit that lands this part.
 
 ## Notes for the implementing /work session
