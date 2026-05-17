@@ -2,7 +2,7 @@
 name: design
 description: Human-facing design pipeline that walks the user through a locked 10-section design-doc template, gates on human approval (Status draft → review → final), then translates the approved design into structural parts and generates a PLAN.md per part for the harness's `/work` + `/review` flow to execute. Published designs surface in `wiki/Home.md` as the canonical "Why we built X" entry point.
 kind: skill
-supported_hosts: [claude-code, antigravity, gemini-cli]
+supported_hosts: [claude-code, antigravity]
 version: 0.1.0
 install_scope: project
 ---

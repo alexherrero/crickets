@@ -2,7 +2,7 @@
 name: pii-scrubber
 description: Scan the current git diff (or working tree) for personal information — emails, personal paths, API keys, phone numbers — before commit or push. Surfaces findings as file:line with redaction suggestions; loops until clean. Invoke before any git push.
 kind: skill
-supported_hosts: [claude-code, antigravity, gemini-cli]
+supported_hosts: [claude-code, antigravity]
 version: 0.1.0
 install_scope: project
 ---

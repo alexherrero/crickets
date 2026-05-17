@@ -2,7 +2,7 @@
 name: ship-release
 description: Cut a tagged GitHub release from the default branch. Trigger when the user says "ship a release", "cut a release", "tag a release", or invokes the skill explicitly. Auto-sizes the semver bump from conventional-commit prefixes in the commit range since the last tag — patch / minor / major — and respects an explicit size hint (`patch|minor|major`) or exact version (`vX.Y.Z`). Writes CHANGELOG.md, tags, pushes, creates the GitHub release. Aborts if the tree is dirty, the default branch isn't pushed, or the tag already exists.
 kind: skill
-supported_hosts: [claude-code, antigravity, gemini-cli]
+supported_hosts: [claude-code, antigravity]
 version: 1.0.0
 install_scope: project
 ---

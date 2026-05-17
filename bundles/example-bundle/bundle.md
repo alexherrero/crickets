@@ -2,7 +2,7 @@
 name: example-bundle
 description: Reference skeleton showing how to package a multi-primitive customization. Safe to delete in your fork; kept here as documentation.
 kind: bundle
-supported_hosts: [claude-code, antigravity, gemini-cli]
+supported_hosts: [claude-code, antigravity]
 contents:
   - skill: example-skill
 version: 0.1.0

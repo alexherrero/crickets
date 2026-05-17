@@ -60,7 +60,7 @@ Every customization (bundle or standalone primitive) has YAML frontmatter at the
 name: <matches dirname/filename>
 description: <one-sentence>
 kind: bundle | skill | command | agent | hook | mcp-server | status-line | output-style | workflow | rule | snippet | settings-fragment
-supported_hosts: [claude-code, antigravity, gemini-cli]   # subset
+supported_hosts: [claude-code, antigravity]                # subset
 version: 0.1.0
 install_scope: user | project | either                     # optional, default: either
 deprecated: <reason>                                       # optional, lifecycle marker
