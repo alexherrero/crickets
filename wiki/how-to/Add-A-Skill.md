@@ -26,7 +26,7 @@
    name: my-new-skill
    description: One or two sentences describing when this skill triggers and what it does.
    kind: skill
-   supported_hosts: [claude-code, antigravity, gemini-cli]
+   supported_hosts: [claude-code, antigravity]
    version: 0.1.0
    install_scope: project
    ---
@@ -54,7 +54,7 @@
    bash ~/Antigravity/agent-toolkit/install.sh $TARGET
    ls $TARGET/.claude/skills/$SKILL_NAME/    # should contain SKILL.md
    ls $TARGET/.agent/skills/$SKILL_NAME/     # same
-   ls $TARGET/.agents/skills/$SKILL_NAME/    # same
+   # Note: .agents/skills/ removed in v0.9.0 (Gemini CLI host dropped per ROADMAP #15).
    rm -rf $TARGET
    ```
 

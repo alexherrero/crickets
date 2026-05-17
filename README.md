@@ -11,7 +11,7 @@ Personal collection of agent customizations — skills, sub-agents, hooks, MCP s
 [![Works with Antigravity](https://img.shields.io/badge/works%20with-Antigravity-7C3AED?style=flat)](#)
 [![Works with Gemini CLI](https://img.shields.io/badge/works%20with-Gemini%20CLI-4285F4?style=flat)](#)
 
-## What's inside (v0.8.1)
+## What's inside (v0.9.0)
 
 Four skills + one agent + three hooks + one reference bundle:
 
@@ -35,17 +35,15 @@ flowchart LR
     I[install.sh<br/>per-host dispatch]
     C[.claude/skills/&lt;name&gt;/]
     A[.agent/skills/&lt;name&gt;/]
-    G[.agents/skills/&lt;name&gt;/]
     H[.git/hooks/pre-push<br/>PII guardrail]
 
     M --> I
     I --> C
     I --> A
-    I --> G
     I --> H
 ```
 
-One manifest, three host destinations. The installer reads each customization's `supported_hosts` and dispatches to the right paths per kind (see [wiki/reference/Per-Host-Paths](wiki/reference/Per-Host-Paths.md)).
+One manifest, two host destinations (`claude-code` + `antigravity`). The installer reads each customization's `supported_hosts` and dispatches to the right paths per kind (see [wiki/reference/Per-Host-Paths](wiki/reference/Per-Host-Paths.md)). (v0.9.0 removed standalone Gemini CLI host per [ROADMAP item #15](https://github.com/alexherrero/agentic-harness/blob/main/.harness/ROADMAP.md); see [ADR 0006](wiki/explanation/decisions/0006-gemini-cli-host-removal.md).)
 
 ## Install
 

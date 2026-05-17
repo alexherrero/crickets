@@ -71,9 +71,23 @@ Option 3 was chosen.
 - `lib/install/` byte-identity is preserved by discipline + CI. If the two repos drift, `check-lib-parity.sh` fails CI; `sync-lib.sh` is the recovery path.
 - The Diátaxis convention (this wiki) and the manifest schema are stable enough to grow on. If a customization kind needs a fundamentally different shape (e.g. binary artifacts, large file storage), this ADR gets superseded by a new ADR.
 
+## Amendment 2026-05-17
+
+**v0.9.0 — Gemini CLI host removed.**
+
+> [!NOTE]
+> **Status:** accepted · **Date:** 2026-05-17 · **Source:** [ROADMAP item #15](https://github.com/alexherrero/agentic-harness/blob/main/.harness/ROADMAP.md). Implemented in plan #15. See [ADR 0006](0006-gemini-cli-host-removal) for the host-scope-reduction rationale.
+
+The original ADR 0001 (2026-05-12) sized the toolkit around three supported hosts: Claude Code, Antigravity, Gemini CLI. The Context section's narrative about the `agentic-harness` v1.0.0 → v2.0.0 split — *"Each skill was duplicated across the three adapter dirs (`adapters/claude-code/skills/`, `adapters/antigravity/skills/`, plus the `.agents/skills/` delivery for Gemini's reuse)"* — and the Decision section's manifest schema citation of `supported_hosts (subset of {claude-code, antigravity, gemini-cli})` both reflect that three-host scope.
+
+In v0.9.0 (2026-05-17), the toolkit dropped standalone Gemini CLI from supported hosts. Antigravity (Gemini-in-IDE) stays as a supported host — different surface. The original ADR text above is preserved as historical record. Forward-looking references to host scope should read as two hosts: `{claude-code, antigravity}`.
+
+This amendment does not supersede ADR 0001's central decision (the toolkit/harness split). It only narrows the host scope. See ADR 0006 for the full host-scope-reduction rationale + load-bearing assumptions for the reduction.
+
 ## Related
 
 - [agentic-harness ADR 0006](https://github.com/alexherrero/agentic-harness/blob/main/wiki/explanation/decisions/0006-agent-toolkit-split.md) — the sibling decision in the harness repo, focused on the harness-side framing.
+- [ADR 0006 (agent-toolkit) — Gemini CLI host removal](0006-gemini-cli-host-removal) — the host-scope-reduction rationale that this amendment cross-references.
 - [Purpose and scope](Purpose-And-Scope) — narrative summary of what this repo is for.
 - [Manifest schema reference](Manifest-Schema) — the YAML frontmatter contract.
 - [Per-host paths reference](Per-Host-Paths) — how each `kind` maps to a host destination at install time.

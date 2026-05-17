@@ -306,11 +306,12 @@ Confidential designs **never** appear in `wiki/Home.md` / `_Sidebar.md` — `.ha
 
 ## Manual equivalents for other hosts
 
-The `/design` skill ships for all three hosts (`claude-code`, `antigravity`, `gemini-cli`) but the **interactive flow** depends on the host's slash-command + file-editing surface:
+The `/design` skill ships for both supported hosts (`claude-code`, `antigravity`) but the **interactive flow** depends on the host's slash-command + file-editing surface:
 
 - **Claude Code**: native — slash commands trigger the skill body; `Read` / `Write` / `Edit` tools handle file ops. The flow described above is the canonical user experience.
 - **Antigravity**: install an always-on rule that says *"between steps, check `wiki/explanation/designs/` and `.harness/designs/` for any Status: review or Status: final docs awaiting next-stage skill invocation. Surface them to the operator as next-action candidates."* The skill body is still readable but invocation is operator-driven not slash-command-triggered.
-- **Gemini CLI**: similar — operator prompt convention citing `wiki/explanation/designs/` + `.harness/designs/` as canonical context dirs. Read the skill's SKILL.md as a workflow reference.
+
+(Standalone Gemini CLI was removed as a supported host in v0.9.0 per [ROADMAP item #15](https://github.com/alexherrero/agentic-harness/blob/main/.harness/ROADMAP.md). Antigravity's IDE-level Gemini integration is a different surface and stays supported.)
 
 Manual-equivalent flows are best-effort (operator drives invocation) and don't have the precision of Claude Code's native slash commands. Use Claude Code for the strongest end-to-end experience.
 

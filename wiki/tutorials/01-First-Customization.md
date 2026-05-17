@@ -38,7 +38,7 @@ Create `skills/hello-world/SKILL.md` with this content:
 name: hello-world
 description: Return a friendly greeting when the user types "hello" or invokes the skill explicitly. A placeholder for learning how the toolkit's customizations work.
 kind: skill
-supported_hosts: [claude-code, antigravity, gemini-cli]
+supported_hosts: [claude-code, antigravity]
 version: 0.1.0
 install_scope: project
 ---
@@ -72,7 +72,7 @@ Expected output:
 validate-manifests: clean (1 bundle(s), 4 standalone skill(s))
 ```
 
-The `4` is your new `hello-world` plus the three skills the toolkit already ships (`pii-scrubber`, `dependabot-fixer`, `ship-release`). If you see `3` instead of `4`, your `hello-world` manifest didn't parse — re-check the frontmatter for typos.
+The count is your new `hello-world` plus the skills the toolkit already ships (`pii-scrubber`, `dependabot-fixer`, `ship-release`, `design`, `memory` as of v0.9.0). If the count doesn't increase by 1, your `hello-world` manifest didn't parse — re-check the frontmatter for typos.
 
 ## Step 4 — Install into a scratch project
 
@@ -96,11 +96,9 @@ You should see lines like:
 ==> installing bundle: example-bundle
     created .claude/skills/example-skill
     created .agent/skills/example-skill
-    created .agents/skills/example-skill
 ==> installing skill: hello-world
     created .claude/skills/hello-world
     created .agent/skills/hello-world
-    created .agents/skills/hello-world
 ==> installing skill: pii-scrubber
     created .claude/skills/pii-scrubber
     ...
@@ -110,14 +108,15 @@ You should see lines like:
 agent-toolkit install: complete.
 ```
 
+(v0.9.0 removed standalone Gemini CLI host support per ROADMAP item #15 — `.agents/skills/*` no longer populated. See [ADR 0006](../explanation/decisions/0006-gemini-cli-host-removal).)
+
 ## Step 5 — Inspect what landed
 
-Confirm your skill installed at all three host paths:
+Confirm your skill installed at both supported host paths:
 
 ```bash
 ls $SCRATCH/.claude/skills/hello-world/
 ls $SCRATCH/.agent/skills/hello-world/
-ls $SCRATCH/.agents/skills/hello-world/
 ```
 
 Each should show `SKILL.md`. Open one of them — it should be byte-identical to what you wrote in step 2.
@@ -147,8 +146,7 @@ You should see:
 ==> sync mode: wiping toolkit-managed dirs before recreate from source
     removed .claude/skills/
     removed .agent/skills/
-    removed .agents/skills/
-    wiped 3 managed dir(s); rebuilding from source
+    wiped N managed dir(s); rebuilding from source
 ==> installing bundle: example-bundle
     created .claude/skills/example-skill
     ...
@@ -176,7 +174,7 @@ rm -rf skills/hello-world
 ## What you learned
 
 - **Skills live at `skills/<name>/SKILL.md`** with YAML frontmatter declaring `name`, `description`, `kind`, `supported_hosts`, and `version`.
-- **The installer dispatches per `supported_hosts`** — one source manifest lands at host-native paths (`.claude/skills/`, `.agent/skills/`, `.agents/skills/`) at install time.
+- **The installer dispatches per `supported_hosts`** — one source manifest lands at host-native paths (`.claude/skills/`, `.agent/skills/`) at install time.
 - **`--update` is a true-sync** — managed parent dirs get wiped and recreated, picking up edits without needing manual cleanup.
 - **`validate-manifests.py` catches schema errors** before the installer runs them — typos in frontmatter surface as `file:line` errors with clear remediation hints.
 - **The pre-push hook is the PII guardrail** — every push to the toolkit gets scanned; you'd fail the push if `hello-world` accidentally contained an email or API key.

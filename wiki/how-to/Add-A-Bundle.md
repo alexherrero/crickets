@@ -28,7 +28,7 @@ Use a bundle when primitives **depend on each other** — the design breaks if y
    name: my-bundle
    description: What this bundle delivers as a coherent unit.
    kind: bundle
-   supported_hosts: [claude-code, antigravity, gemini-cli]
+   supported_hosts: [claude-code, antigravity]
    contents:
      - skill: inner-skill-name
      - hook: inner-hook-name

@@ -9,7 +9,7 @@ YAML frontmatter contract for every customization in `agent-toolkit`. Validated 
 | `name` | string | yes | Matches dirname (or `bundle` for `bundle.md`). |
 | `description` | string | yes | Non-empty; one or two sentences. |
 | `kind` | enum string | yes | `bundle` \| `skill` \| `command` \| `agent` \| `hook` \| `mcp-server` \| `status-line` \| `output-style` \| `workflow` \| `rule` \| `snippet` \| `settings-fragment` |
-| `supported_hosts` | list of strings | yes | Non-empty subset of `[claude-code, antigravity, gemini-cli]` |
+| `supported_hosts` | list of strings | yes | Non-empty subset of `[claude-code, antigravity]`. (Gemini CLI host removed in v0.9.0 per [ROADMAP item #15](https://github.com/alexherrero/agentic-harness/blob/main/.harness/ROADMAP.md); see [ADR 0006](decisions/0006-gemini-cli-host-removal). Validator emits a `removed host` error with v0.9.0 CHANGELOG pointer if `gemini-cli` is still present.) |
 | `version` | string | yes | Semver-shape `MAJOR.MINOR.PATCH` with optional `-prerelease` suffix |
 | `contents` | list of mappings | bundles only | Non-empty list of `{<kind>: <name>}` items; each resolves to a file/dir within the bundle |
 | `install_scope` | enum string | optional | `user` \| `project` \| `either` (default: `either`) |
@@ -24,7 +24,7 @@ File path: `skills/<name>/SKILL.md` (for skills; other kinds use `<kind>/<name>.
 name: pii-scrubber
 description: Scan the current git diff for personal information before commit or push.
 kind: skill
-supported_hosts: [claude-code, antigravity, gemini-cli]
+supported_hosts: [claude-code, antigravity]
 version: 0.1.0
 install_scope: project
 ---
@@ -41,7 +41,7 @@ File path: `bundles/<name>/bundle.md` + primitive subdirs (e.g. `bundles/<name>/
 name: example-bundle
 description: Reference skeleton showing how to package a multi-primitive customization.
 kind: bundle
-supported_hosts: [claude-code, antigravity, gemini-cli]
+supported_hosts: [claude-code, antigravity]
 contents:
   - skill: example-skill
   - hook: pre-push-extra      # (when other-kind support lands; v0.1.0 only handles skill kind in bundles)

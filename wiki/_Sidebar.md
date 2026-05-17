@@ -25,6 +25,7 @@
 - [0002 — evaluator design](0002-evaluator-design)
 - [0003 — base operator hooks](0003-base-operator-hooks)
 - [0004 — design skill](0004-design-skill)
+- [0006 — gemini-cli host removal](0006-gemini-cli-host-removal)
 
 **Designs**
 - [MemoryVault — permanent agent memory](memoryvault)

@@ -31,18 +31,18 @@
 
    ```bash
    cd /path/to/your-project
-   ls .claude/skills/ .agent/skills/ .agents/skills/
+   ls .claude/skills/ .agent/skills/
    ls -la .git/hooks/pre-push
    ```
 
-   You should see `pii-scrubber/`, `dependabot-fixer/`, `ship-release/`, and `example-skill/` under each host's skills dir, plus an executable `pre-push` hook.
+   You should see `pii-scrubber/`, `dependabot-fixer/`, `ship-release/`, `design/`, `memory/`, and `example-skill/` under each host's skills dir, plus an executable `pre-push` hook.
 
 4. Stage and commit the installed scaffold on a branch:
 
    ```bash
    cd /path/to/your-project
    git checkout -b add-agent-toolkit
-   git add .claude .agent .agents
+   git add .claude .agent
    git commit -m "Install agent-toolkit customizations"
    ```
 
@@ -68,7 +68,7 @@ bash ~/Antigravity/agent-toolkit/install.sh --bundle example-bundle /path/to/you
 bash ~/Antigravity/agent-toolkit/install.sh --update /path/to/your-project
 ```
 
-`--update` wipes toolkit-managed dirs (`.claude/skills/`, `.agent/skills/`, `.agents/skills/`) and recreates them from source. Orphan paths from previous toolkit versions get auto-cleaned. User state files (your project's `wiki/`, `AGENTS.md`, etc.) are never touched.
+`--update` wipes toolkit-managed dirs (`.claude/skills/`, `.agent/skills/`) and recreates them from source. Orphan paths from previous toolkit versions get auto-cleaned. User state files (your project's `wiki/`, `AGENTS.md`, etc.) are never touched. (v0.9.0 removed `.agents/skills/` from the managed-dirs set along with Gemini CLI host support — see [ADR 0006](../explanation/decisions/0006-gemini-cli-host-removal).)
 
 ### Skip the pre-push hook
 
@@ -84,9 +84,8 @@ After install, confirm the structural sanity:
 
 ```bash
 cd /path/to/your-project
-ls .claude/skills/      # should list 4 dirs: pii-scrubber, dependabot-fixer, ship-release, example-skill
+ls .claude/skills/      # should list 6 dirs: pii-scrubber, dependabot-fixer, ship-release, design, memory, example-skill
 ls .agent/skills/       # same (Antigravity)
-ls .agents/skills/      # same (Gemini CLI shared-skills path)
 test -x .git/hooks/pre-push && echo "hook installed"
 ```
 

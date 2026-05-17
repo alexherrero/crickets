@@ -102,9 +102,9 @@ Python-side scripts can use whatever they need (network for embedding API, files
 
 ## Host scope
 
-`supported_hosts: [claude-code, antigravity]` — `gemini-cli` deliberately excluded per ROADMAP item #15 (Gemini-CLI host removal, added 2026-05-16). The memory skill is the first new skill that ships post-#15-decision so we don't include + then remove. Existing skills (`pii-scrubber`, `design`, `dependabot-fixer`, `ship-release`, `evaluator`, base hooks) retain `gemini-cli` in their manifests until #15 sweeps them in one coordinated patch.
+`supported_hosts: [claude-code, antigravity]` — `gemini-cli` excluded per [ROADMAP item #15](https://github.com/alexherrero/agentic-harness/blob/main/.harness/ROADMAP.md) (Gemini-CLI host removal, shipped in toolkit v0.9.0). The memory skill was the first new skill to ship post-#15-decision (in v0.8.x scaffold) with the two-host scope from day 1; v0.9.0 then swept all other customizations to match. See [ADR 0006](../../wiki/explanation/decisions/0006-gemini-cli-host-removal.md) for the host-scope-reduction rationale.
 
-See the [parent design's 2026-05-16 Document History row](https://github.com/alexherrero/agent-toolkit/blob/main/wiki/explanation/designs/memoryvault.md#document-history) for the host-scope correction rationale.
+See the [parent design's 2026-05-16 Document History row](https://github.com/alexherrero/agent-toolkit/blob/main/wiki/explanation/designs/memoryvault.md#document-history) for the host-scope correction rationale that triggered this.
 
 ## Cross-references
 

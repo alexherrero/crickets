@@ -7,25 +7,28 @@ The 12 primitive types `agent-toolkit` recognizes via its `kind` field. Each map
 | Kind | Subdir | What it is | Hosts that consume it |
 |---|---|---|---|
 | `bundle` | `bundles/` | Multi-primitive package; manifest enumerates contents | (dispatches per content kind) |
-| `skill` | `skills/` | Agent-invoked helper (`SKILL.md` body + optional scripts dir) | claude-code, antigravity, gemini-cli |
-| `command` | `commands/` | User-invokable slash command | claude-code, gemini-cli |
-| `agent` | `agents/` | Specialized sub-agent for fan-out work | claude-code, antigravity, gemini-cli |
+| `skill` | `skills/` | Agent-invoked helper (`SKILL.md` body + optional scripts dir) | claude-code, antigravity |
+| `command` | `commands/` | User-invokable slash command | claude-code |
+| `agent` | `agents/` | Specialized sub-agent for fan-out work | claude-code, antigravity |
 | `hook` | `hooks/` | Pre/post tool-call shell script (e.g. [`kill-switch`, `steer`, `commit-on-stop`](Use-The-Base-Hooks)) | claude-code (today) |
-| `mcp-server` | `mcp-servers/` | MCP server config + launcher | claude-code, gemini-cli (Antigravity: TBD) |
+| `mcp-server` | `mcp-servers/` | MCP server config + launcher | claude-code (Antigravity: TBD) |
 | `status-line` | `status-line/` | Custom status line display | claude-code |
 | `output-style` | `output-styles/` | Output formatting template | claude-code |
 | `workflow` | `workflows/` | Antigravity multi-step workflow | antigravity |
 | `rule` | `rules/` | Antigravity always-on rule | antigravity |
-| `snippet` | `snippets/` | Fragment appended to `AGENTS.md` / `CLAUDE.md` at install time | all 3 |
-| `settings-fragment` | `settings-fragments/` | JSON fragment merged into host `settings.json` | claude-code, gemini-cli (Antigravity: TBD) |
+| `snippet` | `snippets/` | Fragment appended to `AGENTS.md` / `CLAUDE.md` at install time | claude-code, antigravity |
+| `settings-fragment` | `settings-fragments/` | JSON fragment merged into host `settings.json` | claude-code (Antigravity: TBD) |
+
+> [!NOTE]
+> **Gemini CLI host removed in v0.9.0** per [ROADMAP item #15](https://github.com/alexherrero/agentic-harness/blob/main/.harness/ROADMAP.md). Standalone Gemini CLI is no longer a supported host. Antigravity (Gemini-in-IDE) stays as a supported host — different surface. See [ADR 0006](decisions/0006-gemini-cli-host-removal) for the host-scope-reduction rationale.
 
 ## Implementation status
 
 | Kind | Installer support | Notes |
 |---|---|---|
 | `bundle` | ✅ (dispatches to inner primitives) | `skill`, `agent`, and `hook` kinds inside bundles are wired as of v0.7.0 |
-| `skill` | ✅ (v0.5.0) | Full dispatch to `.claude/skills/<name>/`, `.agent/skills/<name>/`, `.agents/skills/<name>/` |
-| `agent` | ✅ (v0.6.0) | Full dispatch to `.claude/agents/<name>.md`, `.agent/skills/<name>/SKILL.md` (sub-agent-as-skill wrap for Antigravity), `.gemini/agents/<name>.md` |
+| `skill` | ✅ (v0.5.0; gemini-cli destination removed in v0.9.0) | Full dispatch to `.claude/skills/<name>/`, `.agent/skills/<name>/` |
+| `agent` | ✅ (v0.6.0; gemini-cli destination removed in v0.9.0) | Full dispatch to `.claude/agents/<name>.md`, `.agent/skills/<name>/SKILL.md` (sub-agent-as-skill wrap for Antigravity) |
 | `hook` | ✅ (v0.7.0, claude-code only) | Full dispatch to `.claude/hooks/<name>.{sh,ps1}` **plus** idempotent deep-merge of the hook's `settings-fragment-{bash,pwsh}.json` into `.claude/settings.json` via `scripts/merge-settings-fragment.py`. Other hosts have no first-class hook surface today. |
 | All others | ⚠️ Warning "not yet supported — skipped" | Future toolkit versions add them as the catalog grows |
 

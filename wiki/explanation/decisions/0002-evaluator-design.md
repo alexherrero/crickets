@@ -90,6 +90,17 @@ Verdict: <PASS or NEEDS_WORK> — <one-sentence framing>
 - The PASS / NEEDS_WORK binary is the right verdict shape. Some consumers might want PASS / PARTIAL / FAIL or a numeric score. If that need surfaces, a future ADR can extend the output contract without breaking the binary case (PARTIAL would still map to NEEDS_WORK in callers that only check the verdict header).
 - Caller-supplied rubric stays inline-only. If a consumer wants reusable rubrics (e.g. a "release-readiness" rubric stored once and referenced by name), a future ADR can add a rubric-file convention without breaking the inline case.
 
+## Amendment 2026-05-17
+
+**v0.9.0 — Gemini CLI host removed.**
+
+> [!NOTE]
+> **Status:** accepted · **Date:** 2026-05-17 · **Source:** [ROADMAP item #15](https://github.com/alexherrero/agentic-harness/blob/main/.harness/ROADMAP.md). Implemented in plan #15. See [ADR 0006](0006-gemini-cli-host-removal) for the host-scope-reduction rationale.
+
+The original ADR 0002 (2026-05-13) cited `evaluator` shipping with `supported_hosts: [claude-code, antigravity, gemini-cli]` and dispatching to `.gemini/agents/evaluator.md` for Gemini CLI. In v0.9.0 (2026-05-17), the toolkit dropped standalone Gemini CLI from supported hosts; `evaluator` now ships with `supported_hosts: [claude-code, antigravity]` only. The `.gemini/agents/evaluator.md` destination is no longer populated by the installer; pre-existing entries from prior installs trigger the legacy-cleanup-with-confirmation flow (see [ADR 0006](0006-gemini-cli-host-removal) + the [Installer CLI reference](../../reference/Installer-CLI)).
+
+The evaluator's design (read-only fresh-context grader, allowlist `[Read, Glob, Grep]`, PASS / NEEDS_WORK output contract, caller-supplied inline rubric) is unchanged. Antigravity (Gemini-in-IDE) stays as a supported host — the wrap as `.agent/skills/evaluator/SKILL.md` (sub-agent-as-skill) is preserved.
+
 ## Related
 
 - [Use the evaluator](Use-The-Evaluator) — practical how-to with three worked rubrics.

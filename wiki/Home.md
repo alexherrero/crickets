@@ -35,6 +35,7 @@ Dogfood documentation for `agent-toolkit` — a personal collection of agent cus
 - [ADR 0002 — evaluator sub-agent design](0002-evaluator-design)
 - [ADR 0003 — base operator-control hooks](0003-base-operator-hooks)
 - [ADR 0004 — design skill: human-facing design pipeline → agent execution handoff](0004-design-skill)
+- [ADR 0006 — Gemini CLI host removal](0006-gemini-cli-host-removal)
 
 ### Designs
 

@@ -24,7 +24,7 @@ A place to keep agent customizations that:
 ## What this repo is NOT for
 
 - **Workflow primitives** — `/plan`, `/work`, `/review`, `/release`, `/bugfix` and their phase specs live in `agentic-harness`. The toolkit consumes those (via `dependabot-fixer` and `ship-release`, which the harness's phase specs reference as graceful-skip suggestions), but doesn't redefine them.
-- **Project-specific config** — repo-rooted `.claude/`, `.agent/`, `.gemini/` files for a *specific* project belong in that project's repo. The toolkit ships *user-portable* customizations; project-specific ones (e.g. `.harness/verify.sh` for a particular codebase's lint config) stay with the project.
+- **Project-specific config** — repo-rooted `.claude/` and `.agent/` files for a *specific* project belong in that project's repo. The toolkit ships *user-portable* customizations; project-specific ones (e.g. `.harness/verify.sh` for a particular codebase's lint config) stay with the project.
 - **Binary artifacts or large files.** The toolkit is text-only — markdown, YAML, JSON, shell scripts. If a customization needs binaries, it ships pointers (download URLs in its manifest body); not the binaries themselves.
 
 ## How it relates to `agentic-harness`
