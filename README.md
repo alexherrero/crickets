@@ -11,7 +11,7 @@ Personal collection of agent customizations — skills, sub-agents, hooks, MCP s
 [![Works with Antigravity](https://img.shields.io/badge/works%20with-Antigravity-7C3AED?style=flat)](#)
 [![Works with Gemini CLI](https://img.shields.io/badge/works%20with-Gemini%20CLI-4285F4?style=flat)](#)
 
-## What's inside (v0.8.0)
+## What's inside (v0.8.1)
 
 Four skills + one agent + three hooks + one reference bundle:
 

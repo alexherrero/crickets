@@ -5,6 +5,43 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.8.1] — 2026-05-16 — `/design` external-review-handoff option (dogfood-driven amendment)
+
+Patch — additive only, no breaking changes. Adds an **external-review-handoff option** as an alternative to the block-by-block inline review in the `/design` skill. Dogfood-driven amendment from plan #6's first real design exercise (MemoryVault, design doc at `wiki/explanation/designs/memoryvault.md`): the 6-chunk inline walk of a ~7200-word design surfaced a real UX gap. Antigravity IDE's native inline-comment UI + Gemini-applies-comments pattern is dramatically better for review-style work on long content; the new option lets operators hand off to that workflow.
+
+Three skill points get the option:
+
+- `/design author` Step 5 (alternative to "Ready for review" inline transition)
+- `/design author` Step 6 (alternative to per-section Approve/Revise/Skip walk on `Status: review` docs)
+- `/design translate` Step 4 (alternative to inline Reshape commands on proposed part split)
+
+Paired with [`agentic-harness v2.3.1`](https://github.com/alexherrero/agentic-harness/releases/tag/v2.3.1), which adds the same external-review-handoff option to the harness's `/plan` phase. Shared template, shared workflow shape, shared cleanup discipline across both repos.
+
+### Mechanics
+
+1. **Pre-handoff snapshot** at `<target-doc>.pre-handoff-<YYYYMMDDhhmmss>.md` — full copy of the doc as it stands when the operator picks "Hand off". Claude uses this on resume to diff against the externally-revised version.
+2. **Transfer-context file** at `<project>/.harness/transfer/<doc-slug>-<YYYYMMDDhhmmss>.md` from the new template at `skills/design/templates/transfer-context.md`. Inlines: operator intent, recent decisions to honor, dev-flow conventions (since Antigravity-Gemini won't see device-global `~/.claude/CLAUDE.md`), doc-type-specific guardrails (10-section template lock, 11 QA sub-attrs N/A-with-rationale discipline, Status lifecycle, Visibility routing, Document History append-only), and explicit MUST-NOT rules to prevent silent drift.
+3. **Handoff prompt** output to the operator with explicit Antigravity steps: open target doc + transfer-context, add inline comments via Antigravity's native UI, ask Gemini to apply per the transfer-context. Gemini revises + writes a change-summary log at `<target-doc>.diff.md`.
+4. **Resume flow** (`/design author <slug> --resume-external-review` or natural "review complete on <slug>"): Claude reads revised doc + change-summary log, diffs against pre-handoff snapshot, surfaces findings (applied changes / frontmatter modifications / "Recent decisions" overrides / Gemini's adjacent-issue suggestions), asks Accept / Iterate / Discard. Accept archives snapshot + transfer-context to `.harness/transfer/_archive/`; Iterate regenerates transfer-context for another round; Discard restores from snapshot.
+
+Decision rationale captured in the new [ADR 0004 amendment (2026-05-16)](https://github.com/alexherrero/agent-toolkit/blob/main/wiki/explanation/decisions/0004-design-skill.md#amendment--2026-05-16-v081-external-review-handoff-option) covering: rejection of the comment-marker-convention alternative (Antigravity has native inline-comment UI; inventing a marker convention adds friction); pre-handoff snapshot as the silent-drift safety net; multi-round iteration support via transfer-context regeneration. Includes 4 load-bearing assumptions with explicit re-audit triggers.
+
+### Added
+
+- **`skills/design/SKILL.md`** — new `#### External-review handoff (alternative to inline block-by-block review — added in v0.8.1)` section (~80 lines) under `/design author` documenting when the option is offered, what the skill does on handoff, the transfer-context generation, the handoff prompt output, and the resume flow with diff-on-resume + Accept/Iterate/Discard. `/design author` Step 5 + Step 6 + `/design translate` Step 4 each gain the new option as an alternative branch.
+- **`skills/design/templates/transfer-context.md`** — NEW template (~110 lines) defining the handoff artifact's structural shape. Placeholders for `DOC_TITLE` / `DOC_TYPE` / `OPERATOR_INTENT_PARAGRAPH` / `RECENT_DECISIONS_BULLETS` / `INLINED-CONVENTIONS-dev-flow` / `INLINED-GUARDRAILS-FOR-{DOC_TYPE}` get filled at handoff time. Includes explicit MUST-NOT list (don't change frontmatter; don't add new sections; don't remove sections; don't modify pre-handoff Document History rows; don't revert "Recent decisions to honor" without explicit override comment; don't apply silent improvements beyond inline comments).
+- **`wiki/how-to/Use-The-Design-Skill.md`** — new "Scenario 4 — External-review handoff (long-doc Antigravity-Gemini workflow, v0.8.1+)" walked end-to-end. Includes decision rubric (when to pick external vs. inline) + 5-step worked flow + trade-offs (context-switch overhead; silent-drift risk; artifacts to manage).
+- **[ADR 0004 amendment (2026-05-16)](https://github.com/alexherrero/agent-toolkit/blob/main/wiki/explanation/decisions/0004-design-skill.md#amendment--2026-05-16-v081-external-review-handoff-option)** — captures the dogfood-driven framing, the decision + rationale + alternatives-rejected, 5+/5- consequences, 4 load-bearing assumptions with re-audit triggers (Gemini respects MUST-NOT list / regeneration prevents stale-context drift / snapshot+diff catches silent drift / operators tolerate context-switch overhead).
+
+### Changed
+
+- `README.md` "What's inside" — version bump `v0.8.0 → v0.8.1` (no row change; the new option is captured under the existing `/design` skill row).
+
+### Internal
+
+- Implementation lives entirely in skill body documentation + template content + how-to + ADR. No script changes, no manifest changes, no installer changes. The skill body documents what the agent does at handoff time; the agent reads the skill body + executes the flow.
+- First dogfood-driven amendment to a shipped toolkit skill. The pattern: ship v1, dogfood on a real exercise, surface gaps, ship a small patch with the amendment captured in the ADR. Re-audit triggers in the amendment fire after the next 3-5 real external-review handoffs.
+
 ## [v0.8.0] — 2026-05-15 — `/design` skill: human-facing design pipeline → agent execution handoff
 
 The first toolkit skill that ships its own custom multi-stage workflow. The `/design` skill walks a human through a precise 10-section design-doc template, gates on review approval, splits the approved design into structural parts, and generates one `PLAN.md` per part for the harness's `/work` + `/review` flow to execute. Published designs surface in `wiki/Home.md` as the canonical "Why we built X" entry point.

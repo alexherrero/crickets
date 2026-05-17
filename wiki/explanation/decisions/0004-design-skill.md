@@ -176,9 +176,74 @@ The Document History at the doc's bottom is the **audit trail** — every transl
 | `/release` §1b's three-case logic correctly handles all design-sourced plan scenarios | Every Claude Code release that changes phase semantics + after the first 3 real designs ship via the full chain |
 | The Status lifecycle 4-state machine + the wiki-surfacing trigger on `launched` is the right granularity | At retrospective #12 — does the user benefit from the canonical entry point as much as the design predicted, or does it just become clutter? |
 
+## Amendment 2026-05-16
+
+**v0.8.1 — external-review handoff option.**
+
+> [!NOTE]
+> **Status:** accepted · **Date:** 2026-05-16 · **Source:** dogfood-driven amendment from plan #6's first real design exercise (MemoryVault, design doc at `wiki/explanation/designs/memoryvault.md`). The walk-pass uncovered a UX gap.
+
+### Context for the amendment
+
+The first real `/design author` exercise (MemoryVault, 2026-05-15) authored a substantial design doc (~7200 words; 10 sections + 11 QA sub-attrs + 8 Detailed Design subsections). Walking the doc inline via the block-by-block Keep/Edit/Replace pattern took ~30 minutes across 6 chunks. The pattern worked but surfaced a real friction: **Claude Code's inline review tires fast on long docs**, while Antigravity IDE's native inline-comment UI + Gemini-applies-comments pattern is dramatically better for review-style work on long content.
+
+The operator articulated the preference explicitly: *"i much prefer the antigravity style where I comment inline, i'd like to be able to incorporate this flow (if desired) when in the design step as an alternative to the block by block review."*
+
+### Decision
+
+Add an **external-review-handoff** option as an alternative review mode at three skill points:
+
+- `/design author` Step 5 (after walk-sections, before `Ready for review` transition)
+- `/design author` Step 6 (review-pass on `Status: review` docs)
+- `/design translate` Step 4 (human-review of proposed part split)
+
+Mechanics:
+
+1. The skill writes a **pre-handoff snapshot** of the target doc + generates a **transfer-context file** at `<project>/.harness/transfer/<doc-slug>-<ts>.md` from the new template at `skills/design/templates/transfer-context.md`.
+2. The transfer-context file inlines: operator intent, recent decisions to honor, dev-flow conventions (since Antigravity-Gemini won't see device-global `~/.claude/CLAUDE.md`), doc-type-specific guardrails (10-section template lock, 11 QA sub-attrs discipline, Status lifecycle, Visibility routing, Document History append-only), and explicit MUST-NOT rules to prevent silent drift.
+3. The skill outputs a **handoff prompt** for the operator to take to Antigravity: open the target doc + transfer-context, add inline comments using Antigravity's native UI, ask Gemini to apply comments per the transfer-context.
+4. On resume (`/design author <slug> --resume-external-review` or natural "review complete on <slug>"): Claude diffs the revised doc against the pre-handoff snapshot, reads Gemini's change-summary log at `<target-doc>.diff.md`, surfaces findings to operator, asks Accept / Iterate / Discard.
+
+Why this shape over alternatives:
+
+- **vs. inventing a comment marker** (`<!-- @feedback: ... -->` was the initial proposal) — rejected because the operator only uses Antigravity for external review, and Antigravity has native inline-comment UI. Inventing a marker convention adds friction the native UI doesn't have; the agent on the other side (Gemini-in-Antigravity) handles application natively too.
+- **vs. requiring committed state for snapshots** — rejected; the snapshot file at `<path>.pre-handoff-<ts>.md` works even on uncommitted designs (common case for confidential designs at `.harness/designs/`).
+- **vs. multi-round inline review without handoff** — kept the inline mode as default; external-review is an opt-in alternative. Both flows coexist; operator picks per session.
+
+### Consequences
+
+**Positive**:
+
+- Long-doc review pass becomes substantially less tedious for operators who prefer Antigravity's commenting UX.
+- Leans on Antigravity's native primitives (inline comments + Gemini apply) rather than building a parallel comment-marker convention.
+- Transfer-context file is self-contained — Gemini-in-Antigravity doesn't need access to the Claude Code conversation.
+- Multi-round iteration is supported (cycle can repeat with regenerated transfer context).
+- Pre-handoff snapshot + diff-on-resume is the safety net against silent drift (Gemini may revise things the operator didn't comment on; the diff surfaces them).
+
+**Negative**:
+
+- Operator has to context-switch between Claude Code + Antigravity per round (vs. staying in one tool with inline review).
+- New artifacts to manage (`.harness/transfer/`, `<path>.pre-handoff-<ts>.md`, `<path>.diff.md`). Cleanup discipline required (auto-cleanup on resume + 30-day GC post-MemoryVault).
+- Inlining dev-flow conventions in the transfer-context file means the conventions list is maintained in two places (`~/.claude/CLAUDE.md` + the transfer-context template). Re-audit if the conventions list grows substantially.
+- Antigravity-Gemini's revisions may apply silent improvements beyond the inline comments; the MUST-NOT list + diff-on-resume defend against this but don't prevent it entirely.
+
+### Load-bearing assumptions for the amendment
+
+| Assumption | Re-audit when |
+|---|---|
+| Antigravity-Gemini will respect the transfer-context's "Recent decisions to honor" + MUST-NOT lists most of the time | After the first 3 real external-review handoffs — if Gemini routinely violates the lists, the transfer-context format needs revision (or we need to add evaluator-style automated checks on the revised doc) |
+| Transfer-context regeneration per round prevents stale-context drift across multi-round iteration | After the first multi-round handoff cycle — if "Recent decisions to honor" stays stale or grows unboundedly, the regeneration logic needs revision |
+| The pre-handoff snapshot + diff-on-resume catches silent drift adequately | After the first 5 real external-review handoffs — if the operator finds silent drift the diff missed, the diff format needs sharpening |
+| Operators will tolerate the context-switch overhead (Claude → Antigravity → Claude) for the inline-comment UX win | At retrospective #12 — if the option is rarely used in practice, it's not pulling weight and could be deprecated |
+
+### Cross-host scope (v0.8.1)
+
+This amendment ships in toolkit v0.8.1 + paired harness v2.3.1 (the harness adds the same option to its `/plan` phase). Once ROADMAP item #15 (Gemini-CLI host removal) ships, the only supported hosts are Claude Code + Antigravity — both of which have first-class inline-comment UX (Claude Code via this skill's existing inline flow; Antigravity via its native UI). Gemini-CLI removal doesn't affect this amendment.
+
 ## Related
 
-- [`/design` skill spec](../../skills/design/SKILL.md) — full body documentation for all three sub-commands (692 lines)
+- [`/design` skill spec](../../skills/design/SKILL.md) — full body documentation for all three sub-commands (now includes the external-review-handoff flow in `#### External-review handoff` section under `/design author`)
+- [Transfer-context template](../../skills/design/templates/transfer-context.md) — new in v0.8.1; the handoff artifact's structural shape
 - [10-section design-doc template](../../skills/design/templates/design-doc.md) — locked verbatim 2026-05-14
 - [How to use the design skill](../how-to/Use-The-Design-Skill.md) — practical recipe with three worked scenarios
 - [agentic-harness `/release` §1b](https://github.com/alexherrero/agentic-harness/blob/main/harness/phases/05-release.md) — harness-side plan promotion + Status transition hook (v2.3.0)

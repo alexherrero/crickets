@@ -186,6 +186,101 @@ Skill routes the doc to `.harness/designs/internal-ops-tool.md` instead of `wiki
 
 The design lives entirely on the operator's machine; the audit trail (Document History) accumulates in the gitignored file. To "promote" a confidential design to published later: edit the frontmatter `visibility:` to `published`, move the file from `.harness/designs/` to `wiki/explanation/designs/`, append Document History noting the promotion, and re-run `/release` if the design is already `launched` to trigger the wiki surfacing.
 
+## Scenario 4 — External-review handoff (long-doc Antigravity-Gemini workflow, v0.8.1+)
+
+**Goal:** review a long design doc (or PLAN.md, or proposed translate split) using Antigravity's native inline-comment UI + Gemini-applies-comments pattern, instead of Claude Code's block-by-block walk. Useful when the doc is too long for inline review to feel ergonomic (~2000+ words; the 30-min walk threshold).
+
+**When to pick external over inline**:
+
+| You're reviewing… | Reach for |
+|---|---|
+| A short design doc (<1500 words) or focused PLAN.md (<8 tasks) | Inline (current default) — context-switch overhead isn't worth it |
+| A long design doc with many sections needing attention | External — Antigravity-Gemini handles the apply pass in one shot |
+| A proposed `/design translate` split with several reshape ops you want to think through | External — comment all reshape requests at once, Gemini applies in one pass |
+| Anything you'd want to read carefully in your editor of choice before commenting | External — leverage editor scrollback + search |
+| Anything you want Claude to walk you through one section at a time | Inline — the per-section pacing helps you think |
+
+**Step 1 — Pick external review at one of three offer points.**
+
+Three skill points offer the option:
+
+- `/design author` Step 5 (after walk-sections, alternative to "Ready for review" transition)
+- `/design author` Step 6 (review-pass on `Status: review` docs, alternative to per-section Approve/Revise/Skip)
+- `/design translate` Step 4 (alternative to inline Reshape commands on proposed part split)
+
+Pick `"Hand off for external review"` when prompted.
+
+**Step 2 — Skill generates handoff artifacts.**
+
+The skill writes:
+
+- **Pre-handoff snapshot**: `<target-doc>.pre-handoff-<YYYYMMDDhhmmss>.md` — used by Claude on resume to diff against the revised version.
+- **Transfer-context file**: `.harness/transfer/<doc-slug>-<YYYYMMDDhhmmss>.md` — inlines operator intent + recent decisions to honor + dev-flow conventions + doc-type guardrails + explicit MUST-NOT rules. Gives Antigravity-Gemini everything it needs without requiring access to the Claude Code conversation. Template at `agent-toolkit/skills/design/templates/transfer-context.md`.
+
+The skill outputs a **handoff prompt** for you to take to Antigravity:
+
+```
+External-review handoff ready. Take to Antigravity:
+
+  1. Open the target doc: <absolute path>
+  2. Open the transfer context: <.harness/transfer/<slug>-<ts>.md>
+  3. Add inline comments using Antigravity's native comment UI wherever
+     you want changes. The transfer context tells Gemini what conventions
+     to honor + what's locked.
+  4. When done commenting, ask Gemini: "apply my comments per the
+     transfer context". Gemini revises the doc + writes a change-summary
+     log at <target-doc>.diff.md.
+  5. Return to Claude Code and say "review complete on <slug>" (or run
+     `/design author <slug> --resume-external-review`). Claude will diff
+     against the pre-handoff snapshot and surface findings.
+
+Pre-handoff snapshot saved at <snapshot path>.
+```
+
+The Claude Code session pauses (return control to you) until resume.
+
+**Step 3 — Review in Antigravity.**
+
+Open the target doc + the transfer-context file side-by-side. Walk the doc; add inline comments using Antigravity's native UI wherever you want changes. The transfer context tells Gemini the conventions to follow + what's locked (frontmatter, Document History pre-handoff rows, Status fields, the 11 Quality Attribute sub-attrs discipline, etc.).
+
+When done commenting, ask Gemini: *"apply my comments per the transfer context"*. Gemini:
+
+1. Reads the transfer context.
+2. Applies each inline comment in document order, honoring the dev-flow conventions + MUST-NOT rules.
+3. Saves the revised doc to the same path.
+4. Writes a **change-summary log** at `<target-doc>.diff.md` listing per-comment narrative + any "Comments not applied" with rationale + a "Suggestions" section for adjacent issues you may want to address in a future pass.
+
+**Step 4 — Return to Claude Code with the resume prompt.**
+
+```
+/design author memoryvault --resume-external-review
+```
+
+(or natural language `"review complete on memoryvault"`).
+
+Claude reads the revised doc + the change-summary log, diffs against the pre-handoff snapshot, and surfaces:
+
+- **Applied changes**: per-comment, what changed and why.
+- **Frontmatter modifications**: any change to `status` / `visibility` / `last_major_revision` etc. (which should be flagged in the change-summary log if expected).
+- **"Recent decisions to honor" modifications**: any apparent override (should be flagged in the change-summary log if intentional).
+- **Suggestions**: Gemini's adjacent issues you may want to address in another pass.
+
+Claude asks: `"Accept all changes / iterate further (another external pass) / discard the handoff entirely?"`.
+
+- **Accept** → cleanup snapshot + transfer-context (moved to `.harness/transfer/_archive/`); continue original flow (transition to `review` if invoked at Step 5; final-approval prompt if invoked at Step 6).
+- **Iterate** → regenerate transfer-context with updated "Recent decisions to honor" (including what was applied in the previous round); re-run handoff.
+- **Discard** → restore from pre-handoff snapshot; doc returns to its pre-handoff state; archive the failed handoff for audit; continue with inline flow.
+
+**Step 5 — Multi-round iteration if needed.**
+
+The cycle can repeat. Each subsequent handoff regenerates a fresh transfer-context file with updated context. The pre-handoff snapshot is regenerated per round so diffs always compare against the immediate-prior state.
+
+**Trade-offs to know about**:
+
+- **Context-switch overhead** — you're moving between Claude Code + Antigravity per round. For short docs this overhead isn't worth it; for long docs the inline-comment UX win dominates.
+- **Silent-drift risk** — Antigravity-Gemini may revise things you didn't comment on. The transfer-context MUST-NOT list + Claude's diff-on-resume catch this; surfaces appear in the diff review.
+- **Artifacts to manage** — `.harness/transfer/`, `<path>.pre-handoff-<ts>.md`, `<path>.diff.md`. Cleanup happens on Accept (auto-archive) or Discard (auto-restore). 30-day GC on archived handoffs comes post-MemoryVault.
+
 ## Status lifecycle
 
 | State | Set by | Meaning | What's unlocked |

@@ -25,3 +25,12 @@
 - [0002 — evaluator design](0002-evaluator-design)
 - [0003 — base operator hooks](0003-base-operator-hooks)
 - [0004 — design skill](0004-design-skill)
+
+**Designs**
+- [MemoryVault — permanent agent memory](memoryvault)
+  - [write-primitives](write-primitives)
+  - [recall-loop](recall-loop)
+  - [reflection-and-recovery](reflection-and-recovery)
+  - [idea-ledger](idea-ledger)
+  - [seed-pass](seed-pass)
+  - [discovery-mining](discovery-mining)

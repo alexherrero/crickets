@@ -97,22 +97,87 @@ Default behavior pushes for at least one alternative. Only accept `"N/A: only on
 **Step 5 — Save + Status lifecycle.** After all sections are filled:
 
 1. Present a summary of the doc to the human (sections filled, sub-attrs marked N/A vs. described, total length).
-2. Ask: `"Ready for review? (Status → review)"` / `"Keep drafting?"` / `"Stop and resume later?"`.
+2. Ask the human to pick one:
+   - `"Ready for review (Status → review)"` — inline approval; locks the doc as `Status: review` for a future per-section review pass.
+   - `"Keep drafting"` — stay in draft; return to walk-sections for any section worth revisiting.
+   - `"Stop and resume later"` — save current state; `/design author --resume <path>` picks up where you left off.
+   - **`"Hand off for external review"`** — NEW in v0.8.1. Generate a transfer-context file + handoff prompt for an external editor (Antigravity-Gemini workflow). Doc stays `Status: draft`; resume via `/design author <slug> --resume-external-review` after the external pass completes. See `#### External-review handoff` section below for the full flow.
 3. On `Ready for review`: transition `status: draft → review`. Append to Document History: `| <date> | Author signaled ready for review. | review |`. Tell the human the doc is now in review and the next `/design author <slug>` invocation will run the review-pass flow.
-4. On `Keep drafting`: stay in draft; return to walk-sections for any section the human wants to revisit.
-5. On `Stop and resume later`: save current state; remind the human that `/design author --resume <path>` (or just `/design author <slug>`) will pick up where they left off.
+4. On `Keep drafting`: stay in draft; return to walk-sections.
+5. On `Stop and resume later`: save current state + reminder.
+6. On `Hand off for external review`: invoke the external-review-handoff flow (see section below).
 
 **Step 6 — Review pass support.** If `/design author` is invoked on a `Status: review` doc:
 
-1. Announce the review-pass mode: `"This doc is Status: review. Walking sections for approve / revise / skip."`.
-2. For each section (Context → Design → ... → Operations) and each sub-attr inside Quality Attributes: present the current content and prompt `"Approve / Revise / Skip?"`.
+1. Announce the review-pass mode: `"This doc is Status: review. Walking sections for approve / revise / skip — or hand off for external review."`.
+2. Ask the human to pick one (BEFORE walking sections):
+   - **Inline review** (default) — proceed with the section-by-section approve/revise/skip walk per the original flow.
+   - **`"Hand off for external review"`** — NEW in v0.8.1. Generate transfer-context + handoff prompt for the whole doc (rather than per-section). Doc stays `Status: review`; resume via `/design author <slug> --resume-external-review` after the external pass.
+3. **Inline review flow** (if picked): for each section (Context → Design → ... → Operations) and each sub-attr inside Quality Attributes: present the current content and prompt `"Approve / Revise / Skip?"`.
    - `Approve`: section passes review unchanged. Track the approval count.
    - `Revise`: open the section for edits via the same walk-sections flow as Step 2 (accept new content, replace).
    - `Skip`: move to next section without judgment. Track skip count.
-3. After all sections reviewed: present a summary. If any section was Skipped or Revised, ask: `"Some sections still need attention. Continue review pass? Or transition to final anyway?"`.
-4. On approval to finalize: ask explicit `"Approve as final? This locks the doc and unblocks /design translate."`. On `yes`: transition `status: review → final`. Append to Document History: `| <date> | Approved as final via /design author review pass. | final |`. Update `last_major_revision` to today.
+4. **External review flow** (if picked): invoke the external-review-handoff flow (see section below). On resume, present the diff + change-summary log instead of walking per-section; ask the human whether the externally-revised doc is ready for final approval.
+5. After review (either flow): present a summary. If any section was Skipped or Revised, ask: `"Some sections still need attention. Continue review pass? Or transition to final anyway?"`.
+6. On approval to finalize: ask explicit `"Approve as final? This locks the doc and unblocks /design translate."`. On `yes`: transition `status: review → final`. Append to Document History: `| <date> | Approved as final via /design author review pass. | final |`. Update `last_major_revision` to today.
 
 After `Status: final` is set, `/design author` refuses further invocations on the same doc — finalized docs are immutable until a `/design translate` run promotes them into structural parts (or a human manually edits the file + reverts Status to `review`, which is an escape hatch documented in the troubleshooting section of the how-to).
+
+#### External-review handoff (alternative to inline block-by-block review — added in v0.8.1)
+
+The block-by-block approve/revise/skip flow works for short docs but gets tedious on long ones (~7000+ word designs take ~30 min to walk inline). Operators who prefer Antigravity's native inline-comment UI + Gemini-applies-comments pattern can hand off to that workflow.
+
+**When the option is offered**: at three skill points:
+
+- `/design author` Step 5 — alternative to "Ready for review" inline transition.
+- `/design author` Step 6 — alternative to per-section approve/revise/skip walk.
+- `/design translate` Step 4 — alternative to inline reshape commands (see `/design translate` body below).
+
+**What the skill does on handoff**:
+
+1. **Write pre-handoff snapshot** at `<target-doc>.pre-handoff-<YYYYMMDDhhmmss>.md` — full copy of the doc as it stood when the operator picked "Hand off". Used by Claude on resume to diff against the externally-revised version. Cleaned up after resume completes.
+2. **Generate transfer-context file** at `<project>/.harness/transfer/<doc-slug>-<YYYYMMDDhhmmss>.md` from the template at `agent-toolkit/skills/design/templates/transfer-context.md`. Fill placeholders:
+   - `DOC_TITLE`, `DOC_TYPE` (= `design-doc`), absolute path to target doc, snapshot path, lock state.
+   - **`OPERATOR_INTENT_PARAGRAPH`** — 1-2 paragraphs the skill generates from the active design's Objective + parent context (what this doc is trying to achieve, where it sits in the larger plan/roadmap, what success looks like after the revision pass).
+   - **`RECENT_DECISIONS_BULLETS`** — extracted from the target doc's Document History (most recent 3-5 rows) + parent design's "Locked design calls" section if applicable + recent ADRs touching this scope.
+   - **`INLINED-CONVENTIONS-dev-flow`** — static expansion from a known list (paragraph-long Status:[x] narratives / ✅⬜ charts / link blocks / locked design calls section / CHANGELOG + ADR shapes / coordinated cross-repo release order / wake-on-CI / NEVER append Co-Authored-By trailer / etc.).
+   - **`INLINED-GUARDRAILS-FOR-design-doc`** — static expansion from the design-doc-specific guardrails list (10-section template lock; 11 QA sub-attrs N/A-with-rationale discipline; Status lifecycle; Visibility routing; Document History append-only).
+3. **Output handoff prompt** for the operator to take to Antigravity:
+
+   ```
+   External-review handoff ready. Take to Antigravity:
+
+     1. Open the target doc: <absolute path to design doc>
+     2. Open the transfer context: <absolute path to .harness/transfer/<slug>-<ts>.md>
+     3. Add inline comments using Antigravity's native comment UI wherever
+        you want changes. The transfer context tells Gemini what conventions
+        to honor + what's locked.
+     4. When done commenting, ask Gemini: "apply my comments per the
+        transfer context". Gemini revises the doc + writes a change-summary
+        log at <target-doc>.diff.md.
+     5. Return to Claude Code and say "review complete on <slug>" (or run
+        `/design author <slug> --resume-external-review`). Claude will diff
+        against the pre-handoff snapshot and surface findings.
+
+   Pre-handoff snapshot saved at <snapshot path> — Claude uses this on
+   resume to detect what changed.
+   ```
+
+4. **Pause the skill** — return control to the operator. The doc's Status is unchanged (still `draft` if invoked at Step 5; still `review` if invoked at Step 6). Resume happens on the operator's next invocation.
+
+**Resume flow** (`/design author <slug> --resume-external-review` or natural language "review complete on <slug>"):
+
+1. Verify expected files exist: revised target doc + `<target-doc>.diff.md` change-summary log + pre-handoff snapshot. If any missing, refuse with a clear error pointing the operator to re-do or cancel the handoff.
+2. **Diff revised doc against pre-handoff snapshot** — use `Read` on both + present a unified diff to the operator. Highlight: applied changes; any modifications to "Recent decisions to honor"; any modifications to frontmatter (which should be flagged in the change-summary log if expected).
+3. **Read the change-summary log** — surface Gemini's per-comment narrative + the "Suggestions" section (adjacent issues Gemini noticed but didn't apply).
+4. **Ask the operator**: `"Accept all changes / iterate further (another external pass) / discard the handoff entirely?"`.
+   - **Accept**: clean up snapshot + transfer-context files (move to `.harness/transfer/_archive/` for audit trail; can be GC'd at 30 days). Continue the original flow (Step 5 transition to `review` if invoked at Step 5; final-approval prompt if invoked at Step 6).
+   - **Iterate**: regenerate transfer-context file with updated "Recent decisions to honor" (including what was applied in the previous round); re-run handoff.
+   - **Discard**: restore from pre-handoff snapshot; doc returns to its pre-handoff state; archive the failed handoff for audit; continue with inline flow.
+
+**Transfer artifacts cleanup**: on successful resume + acceptance, move snapshot + transfer-context + diff-log to `.harness/transfer/_archive/` with the doc-slug + timestamp preserved in the filenames. Archive entries get GC'd at 30 days by the same idle-hook pass that cleans crash-recovery markers (post-MemoryVault). Until that lands, manual cleanup is operator-side.
+
+**Why this design**: leans on Antigravity-native primitives (inline-comment UI + Gemini-applies pattern) rather than inventing a comment marker we'd parse. The transfer-context file is the load-bearing handoff artifact — it gives Gemini everything it needs without requiring access to the Claude Code conversation. Pre-handoff snapshot + diff-on-resume is the safety net against silent drift (Gemini may revise things the operator didn't comment on; the diff surfaces them).
 
 #### Status transition summary
 
@@ -296,6 +361,7 @@ Accept human responses:
   - `rename <old-slug> <new-slug>` — rename without changing structure.
   - `reorder <slug-list>` — change ordering (used by Step 5 for filename numbering hints; doesn't affect dependencies).
   - After each reshape op, re-present the table; loop until `Approve`.
+- **`Hand off for external review`** — NEW in v0.8.1. Alternative to inline reshape commands. Generate a transfer-context file describing the proposed split + reshape options + parent design context; operator takes to Antigravity, comments on the split inline, asks Gemini to apply; revised split comes back to Claude for diff-review + Approve / Cancel decision. See `/design author`'s `#### External-review handoff` section for the mechanics — same template, same handoff prompt pattern, same resume flow. The handoff target doc for translate is a temporary `proposed-split-<slug>-<ts>.md` file at `.harness/transfer/` (the split table + per-part metadata in markdown form); operator's comments revise the split; on resume Claude reads the revised split + presents Approve/Cancel.
 - **`Cancel`** → halt without writing any files. Parent doc unmodified.
 
 The reshape loop is the human's primary lever — the agent's proposed split is a starting point, not the answer. Re-audit at retrospective (#12) if override rate exceeds 50% across real designs.

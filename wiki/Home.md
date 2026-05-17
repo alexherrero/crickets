@@ -36,6 +36,12 @@ Dogfood documentation for `agent-toolkit` — a personal collection of agent cus
 - [ADR 0003 — base operator-control hooks](0003-base-operator-hooks)
 - [ADR 0004 — design skill: human-facing design pipeline → agent execution handoff](0004-design-skill)
 
+### Designs
+
+The canonical "Why we built X" entry points (published via the `/design` skill, surfaced here when the parent design's last queued part hits `Status: done` and harness `/release` transitions the design to `launched`).
+
+- [MemoryVault — permanent agent memory via Obsidian-vault-folder + reflection sidecar](memoryvault) — single `memory` skill in `agent-toolkit` with sub-commands `save` / `evolve` / `reflect` / `search`; SessionStart + UserPromptSubmit recall hooks; reflection sidecar with tri-modal confidence routing; two-tier idea capture (Ideas.md surface + `_idea-incubator/` deep research); planned in 6 parts across plans #7a (5 parts) + #7b (1 part). See parts: [write-primitives](write-primitives), [recall-loop](recall-loop), [reflection-and-recovery](reflection-and-recovery), [idea-ledger](idea-ledger), [seed-pass](seed-pass), [discovery-mining](discovery-mining).
+
 ## Conventions
 
 Page templates, filename rules, and the Diátaxis four-mode split mirror the sibling repo's documentation convention — see [agentic-harness/harness/documentation.md](https://github.com/alexherrero/agentic-harness/blob/main/harness/documentation.md). The mode-purity lint (`scripts/check-wiki.py --strict`) is the same.
