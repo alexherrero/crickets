@@ -40,7 +40,7 @@ When a customization with an unsupported kind is encountered, the installer logs
 
 | You want… | Use |
 |---|---|
-| An agent-triggered helper that runs on a keyword or context match (e.g. [`design`](Use-The-Design-Skill), [`pii-scrubber`](https://github.com/alexherrero/agent-toolkit/blob/main/skills/pii-scrubber/SKILL.md)) | `skill` |
+| An agent-triggered helper that runs on a keyword or context match (e.g. [`design`](Use-The-Design-Skill), [`memory`](Use-The-Memory-Skill), [`pii-scrubber`](https://github.com/alexherrero/agent-toolkit/blob/main/skills/pii-scrubber/SKILL.md)) | `skill` |
 | A user-typed `/something` slash command | `command` |
 | A specialized agent for a specific kind of task (e.g. [`evaluator`](Use-The-Evaluator), `explorer`) | `agent` |
 

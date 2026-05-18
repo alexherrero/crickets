@@ -10,6 +10,7 @@
 - [Use the evaluator](Use-The-Evaluator)
 - [Use the base hooks](Use-The-Base-Hooks)
 - [Use the design skill](Use-The-Design-Skill)
+- [Use the memory skill](Use-The-Memory-Skill)
 
 ### 📖 Reference
 - [Customization Types](Customization-Types)
