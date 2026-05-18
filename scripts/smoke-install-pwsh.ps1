@@ -836,7 +836,7 @@ Workflow body $i containing keywords like budget and test.
             $body | Out-File -FilePath (Join-Path $mbudget "personal-private/workflow/budget-flow-$i.md") -Encoding utf8
         }
 
-        # Test A: session-start with 1ms budget → overrun warning
+        # Test A: session-start with 0ms budget (deadline in the past) → overrun warning
         $ssStderrFile = Join-Path $mbudget '.ss-stderr.log'
         python3 $recallPy '--vault-path' $mbudget 'session-start' '--budget-ms' '1' > $null 2> $ssStderrFile
         $ssExit = $LASTEXITCODE
@@ -845,33 +845,33 @@ Workflow body $i containing keywords like budget and test.
             throw "session-start with tight budget exited $ssExit (expected 0). stderr: $ssStderr"
         }
         if ($ssStderr -notmatch 'time budget exceeded') {
-            throw "session-start with 1ms budget did not emit overrun warning. stderr: $ssStderr"
+            throw "session-start with 0ms budget (deadline in the past) did not emit overrun warning. stderr: $ssStderr"
         }
         if ($ssStderr -notmatch 'Loaded [0-9]+ MemoryVault always-load entries') {
             throw "session-start overrun did not emit transparency line. stderr: $ssStderr"
         }
 
-        # Test B: prompt-submit with 1ms budget → overrun warning
+        # Test B: prompt-submit with 0ms budget (deadline in the past) → overrun warning
         $psBudgetPayload = '{"hookEventName":"UserPromptSubmit","prompt":"budget workflow test"}'
         $psStdinFile = Join-Path $mbudget '.ps-stdin.log'
         $psStderrFile = Join-Path $mbudget '.ps-stderr.log'
         Set-Content -LiteralPath $psStdinFile -Value $psBudgetPayload -NoNewline
-        $psProc = Start-Process -FilePath 'python3' -ArgumentList @($recallPy, '--vault-path', $mbudget, 'prompt-submit', '--budget-ms', '1') -NoNewWindow -Wait -RedirectStandardInput $psStdinFile -RedirectStandardError $psStderrFile -PassThru
+        $psProc = Start-Process -FilePath 'python3' -ArgumentList @($recallPy, '--vault-path', $mbudget, 'prompt-submit', '--budget-ms', '0') -NoNewWindow -Wait -RedirectStandardInput $psStdinFile -RedirectStandardError $psStderrFile -PassThru
         if ($psProc.ExitCode -ne 0) {
             throw "prompt-submit with tight budget exited $($psProc.ExitCode)"
         }
         $psBudgetStderr = Get-Content -LiteralPath $psStderrFile -Raw
         if ($psBudgetStderr -notmatch 'time budget exceeded') {
-            throw "prompt-submit with 1ms budget did not emit overrun warning. stderr: $psBudgetStderr"
+            throw "prompt-submit with 0ms budget (deadline in the past) did not emit overrun warning. stderr: $psBudgetStderr"
         }
         if ($psBudgetStderr -notmatch 'Loaded [0-9]+ relevant entries') {
             throw "prompt-submit overrun did not emit transparency line. stderr: $psBudgetStderr"
         }
 
-        # Test C: query with 1ms budget → exit 0
+        # Test C: query with 0ms budget (deadline in the past) → exit 0
         python3 $recallPy '--vault-path' $mbudget 'query' 'budget workflow' '--budget-ms' '1' '--mode' 'stub' > $null 2>&1
         if ($LASTEXITCODE -ne 0) {
-            throw "query with 1ms budget exited $LASTEXITCODE (expected 0)"
+            throw "query with 0ms budget (deadline in the past) exited $LASTEXITCODE (expected 0)"
         }
 
         # Test D: hooks NEVER raise / non-zero-exit under tight budget (5 iters each)
@@ -880,7 +880,7 @@ Workflow body $i containing keywords like budget and test.
             if ($LASTEXITCODE -ne 0) {
                 throw "session-start (iter $i) exited $LASTEXITCODE under tight budget — never-block contract broken"
             }
-            $loopProc = Start-Process -FilePath 'python3' -ArgumentList @($recallPy, '--vault-path', $mbudget, 'prompt-submit', '--budget-ms', '1') -NoNewWindow -Wait -RedirectStandardInput $psStdinFile -PassThru
+            $loopProc = Start-Process -FilePath 'python3' -ArgumentList @($recallPy, '--vault-path', $mbudget, 'prompt-submit', '--budget-ms', '0') -NoNewWindow -Wait -RedirectStandardInput $psStdinFile -PassThru
             if ($loopProc.ExitCode -ne 0) {
                 throw "prompt-submit (iter $i) exited $($loopProc.ExitCode) under tight budget — never-block contract broken"
             }

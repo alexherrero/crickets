@@ -199,7 +199,7 @@ def session_start(
 
     for md_path in candidates:
         # Budget check before each file.
-        if time.monotonic() > deadline:
+        if time.monotonic() >= deadline:
             overrun = True
             break
         try:
@@ -373,7 +373,7 @@ def _grep_search(
         return {}
     results: dict[str, int] = {}
     for md_path in _iter_entry_paths(vault, include_inbox=include_inbox):
-        if deadline is not None and time.monotonic() > deadline:
+        if deadline is not None and time.monotonic() >= deadline:
             break
         # Broad catch on file read: OSError for IO problems, UnicodeDecodeError
         # for invalid UTF-8 (rare but possible if an entry was hand-edited in
@@ -429,7 +429,7 @@ def _vec_search(
     except ImportError:
         return {}
 
-    if deadline is not None and time.monotonic() > deadline:
+    if deadline is not None and time.monotonic() >= deadline:
         return {}
 
     # Try to embed the query. EmbeddingUnavailable is the soft-fail path.
@@ -442,7 +442,7 @@ def _vec_search(
         print(f"[recall.query] embedding raised {type(e).__name__}: {e}", file=stderr)
         return {}
 
-    if deadline is not None and time.monotonic() > deadline:
+    if deadline is not None and time.monotonic() >= deadline:
         return {}
 
     conn = _open_index(vault)
@@ -676,7 +676,7 @@ def prompt_submit(
             print(_format_recall_result(result, body, fm), file=stdout)
             loaded_slugs.append(result["slug"])
 
-    overrun = time.monotonic() > deadline
+    overrun = time.monotonic() >= deadline
     slug_list = ", ".join(loaded_slugs) if loaded_slugs else "(none)"
     transparency = (
         f"[memory-recall-prompt-submit] Loaded {len(loaded_slugs)} relevant "

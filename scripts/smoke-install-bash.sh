@@ -1007,7 +1007,7 @@ rm -rf "$MFB"
 # Verify wall-clock budget enforcement is real: seed many entries + set a
 # tight budget (1ms) → the recall walk must terminate early + emit overrun
 # warnings + still return results without blocking. Tests both hooks:
-# session_start (500ms default, force overrun via --budget-ms 1) and
+# session_start (500ms default, force overrun via --budget-ms 0) and
 # prompt_submit (300ms default, same force).
 echo "==> Time budget enforcement test (plan #7a part 2 task 5)"
 MBUDGET="$(mktemp -d)"
@@ -1041,9 +1041,9 @@ Workflow body $i containing keywords like budget and test for grep matches.
 BUD_EOF
 done
 
-# Test A: session-start with 1ms budget → overrun warning + partial results
+# Test A: session-start with 0ms budget (deadline in the past) → overrun warning + partial results
 SS_STDERR_FILE="$MBUDGET/.ss-stderr.log"
-python3 "$RECALL_PY" --vault-path "$MBUDGET" session-start --budget-ms 1 > /dev/null 2> "$SS_STDERR_FILE"
+python3 "$RECALL_PY" --vault-path "$MBUDGET" session-start --budget-ms 0 > /dev/null 2> "$SS_STDERR_FILE"
 SS_BUDGET_EXIT=$?
 SS_STDERR_BUDGET="$(cat "$SS_STDERR_FILE")"
 if [[ $SS_BUDGET_EXIT -ne 0 ]]; then
@@ -1053,7 +1053,7 @@ if [[ $SS_BUDGET_EXIT -ne 0 ]]; then
   exit 1
 fi
 if ! echo "$SS_STDERR_BUDGET" | grep -qE "500ms time budget exceeded|1ms time budget exceeded|time budget exceeded"; then
-  echo "FAIL: session-start with 1ms budget did not emit overrun warning" >&2
+  echo "FAIL: session-start with 0ms budget (deadline in the past) did not emit overrun warning" >&2
   echo "    stderr: $SS_STDERR_BUDGET" >&2
   rm -rf "$MBUDGET"
   exit 1
@@ -1077,10 +1077,10 @@ if echo "$SS_DEFAULT_STDERR" | grep -qE "time budget exceeded"; then
   # but we accept it on slow machines.
 fi
 
-# Test C: prompt-submit with 1ms budget → engine should overrun + emit
+# Test C: prompt-submit with 0ms budget (deadline in the past) → engine should overrun + emit
 # warning on transparency line.
 PS_BUDGET_PAYLOAD='{"hookEventName":"UserPromptSubmit","prompt":"budget workflow test"}'
-PS_BUDGET_STDOUT="$(echo "$PS_BUDGET_PAYLOAD" | python3 "$RECALL_PY" --vault-path "$MBUDGET" prompt-submit --budget-ms 1 2>"$MBUDGET/.ps-stderr.log")"
+PS_BUDGET_STDOUT="$(echo "$PS_BUDGET_PAYLOAD" | python3 "$RECALL_PY" --vault-path "$MBUDGET" prompt-submit --budget-ms 0 2>"$MBUDGET/.ps-stderr.log")"
 PS_BUDGET_STDERR="$(cat "$MBUDGET/.ps-stderr.log")"
 PS_BUDGET_EXIT=$?
 if [[ $PS_BUDGET_EXIT -ne 0 ]]; then
@@ -1090,7 +1090,7 @@ if [[ $PS_BUDGET_EXIT -ne 0 ]]; then
   exit 1
 fi
 if ! echo "$PS_BUDGET_STDERR" | grep -qE "time budget exceeded"; then
-  echo "FAIL: prompt-submit with 1ms budget did not emit overrun warning" >&2
+  echo "FAIL: prompt-submit with 0ms budget (deadline in the past) did not emit overrun warning" >&2
   echo "    stderr: $PS_BUDGET_STDERR" >&2
   rm -rf "$MBUDGET"
   exit 1
@@ -1102,29 +1102,29 @@ if ! echo "$PS_BUDGET_STDERR" | grep -qE "Loaded [0-9]+ relevant entries"; then
   exit 1
 fi
 
-# Test D: query subcommand with 1ms budget — should still exit 0 + return
+# Test D: query subcommand with 0ms budget (deadline in the past) — should still exit 0 + return
 # whatever it could gather (possibly empty), never block.
 QUERY_BUDGET_EXIT=0
-python3 "$RECALL_PY" --vault-path "$MBUDGET" query "budget workflow" --budget-ms 1 --mode stub > /dev/null 2>&1 || QUERY_BUDGET_EXIT=$?
+python3 "$RECALL_PY" --vault-path "$MBUDGET" query "budget workflow" --budget-ms 0 --mode stub > /dev/null 2>&1 || QUERY_BUDGET_EXIT=$?
 if [[ $QUERY_BUDGET_EXIT -ne 0 ]]; then
-  echo "FAIL: query subcommand with 1ms budget exited $QUERY_BUDGET_EXIT (expected 0)" >&2
+  echo "FAIL: query subcommand with 0ms budget (deadline in the past) exited $QUERY_BUDGET_EXIT (expected 0)" >&2
   rm -rf "$MBUDGET"
   exit 1
 fi
 
 # Test E: confirm the hooks NEVER raise / non-zero-exit under tight budget.
-# Run session-start + prompt-submit each 5 times with 1ms budget; if any
+# Run session-start + prompt-submit each 5 times with 0ms budget (deadline in the past); if any
 # call exits non-zero, the never-block-the-prompt / never-block-session
 # contract is broken.
 for i in 1 2 3 4 5; do
-  python3 "$RECALL_PY" --vault-path "$MBUDGET" session-start --budget-ms 1 > /dev/null 2>&1
+  python3 "$RECALL_PY" --vault-path "$MBUDGET" session-start --budget-ms 0 > /dev/null 2>&1
   SS_LOOP_EXIT=$?
   if [[ $SS_LOOP_EXIT -ne 0 ]]; then
     echo "FAIL: session-start (iteration $i) exited $SS_LOOP_EXIT under tight budget — never-block contract broken" >&2
     rm -rf "$MBUDGET"
     exit 1
   fi
-  echo "$PS_BUDGET_PAYLOAD" | python3 "$RECALL_PY" --vault-path "$MBUDGET" prompt-submit --budget-ms 1 > /dev/null 2>&1
+  echo "$PS_BUDGET_PAYLOAD" | python3 "$RECALL_PY" --vault-path "$MBUDGET" prompt-submit --budget-ms 0 > /dev/null 2>&1
   PS_LOOP_EXIT=$?
   if [[ $PS_LOOP_EXIT -ne 0 ]]; then
     echo "FAIL: prompt-submit (iteration $i) exited $PS_LOOP_EXIT under tight budget — never-block contract broken" >&2
