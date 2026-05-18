@@ -154,7 +154,14 @@ def save_entry(
     body_stripped = body.rstrip("\n")
     content = fm + "\n" + body_stripped + "\n"
 
-    target.write_text(content, encoding="utf-8")
+    # Write in bytes mode to guarantee LF-only line endings on all platforms.
+    # MemoryVault entries are markdown files synced across Mac / Linux /
+    # Windows via the user's Obsidian vault — LF-only is the portable
+    # convention. Python's text-mode write translates '\n' to '\r\n' on
+    # Windows by default; bytes mode bypasses translation entirely.
+    # (Path.write_text's newline parameter would work too but requires
+    # Python 3.10+; bytes mode works on 3.9+.)
+    target.write_bytes(content.encode("utf-8"))
 
     # Embedding step is a no-op stub until plan #7a part 1 task 4.
     # Log to stderr so callers can grep but stdout stays clean for tests.
