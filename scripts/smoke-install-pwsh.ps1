@@ -54,11 +54,12 @@ try {
         '.claude/agents/evaluator.md',
         '.agent/skills/evaluator/SKILL.md',
         # Standalone hooks (claude-code only, v0.7.0); memory-recall-session-start
-        # added in plan #7a part 2 task 1 (v0.9.x).
+        # + memory-recall-prompt-submit added in plan #7a part 2 tasks 1+2 (v0.9.x).
         '.claude/hooks/kill-switch.ps1',
         '.claude/hooks/steer.ps1',
         '.claude/hooks/commit-on-stop.ps1',
         '.claude/hooks/memory-recall-session-start.ps1',
+        '.claude/hooks/memory-recall-prompt-submit.ps1',
         '.claude/settings.json',
         '.git/hooks/pre-push'
     )
@@ -119,7 +120,7 @@ try {
     if ($rerun -match 'created .claude/agents/evaluator') {
         throw 're-run recreated the evaluator agent (should be kept)'
     }
-    if ($rerun -match 'created .claude/hooks/(kill-switch|steer|commit-on-stop|memory-recall-session-start)') {
+    if ($rerun -match 'created .claude/hooks/(kill-switch|steer|commit-on-stop|memory-recall-session-start|memory-recall-prompt-submit)') {
         throw 're-run recreated a hook script (should be kept)'
     }
     if ($rerun -match 'merged  .claude/settings.json') {
@@ -460,17 +461,115 @@ Should be filtered.
         } finally {
             Remove-Item -LiteralPath $mempty -Recurse -Force -ErrorAction SilentlyContinue
         }
-        # Future-subcommand negative tests
-        python3 $recallPy 'prompt-submit' 2>$null | Out-Null
-        if ($LASTEXITCODE -eq 0) {
-            throw 'prompt-submit subcommand should error (not implemented until task 2)'
-        }
+        # Future-subcommand negative test: query still errors (task 3).
+        # prompt-submit became real in task 2; tested in the next block.
         python3 $recallPy 'query' 2>$null | Out-Null
         if ($LASTEXITCODE -eq 0) {
             throw 'query subcommand should error (not implemented until task 3)'
         }
     } finally {
         Remove-Item -LiteralPath $mrecall -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    # ── UserPromptSubmit recall hook end-to-end test (plan #7a part 2 task 2) ─
+    Write-Host '==> UserPromptSubmit recall hook end-to-end test (plan #7a part 2 task 2)'
+    $psHookPs1 = Join-Path $scratch '.claude/hooks/memory-recall-prompt-submit.ps1'
+    if (-not (Test-Path -LiteralPath $psHookPs1)) { throw "hook script $psHookPs1 missing" }
+    $settingsContent = Get-Content -LiteralPath $settingsJson -Raw
+    if ($settingsContent -notmatch 'UserPromptSubmit') {
+        throw "settings.json missing 'UserPromptSubmit' key after install"
+    }
+    if ($settingsContent -notmatch 'memory-recall-prompt-submit\.ps1') {
+        throw "settings.json UserPromptSubmit entry doesn't reference memory-recall-prompt-submit.ps1"
+    }
+    $mpsubmit = Join-Path ([System.IO.Path]::GetTempPath()) ("toolkit-mpsubmit-" + [System.Guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path (Join-Path $mpsubmit 'personal-private/_always-load') -Force | Out-Null
+    try {
+        $seeded = @"
+---
+kind: preferences
+status: active
+slug: seeded-pref
+---
+Seeded body.
+"@
+        $seeded | Out-File -FilePath (Join-Path $mpsubmit 'personal-private/_always-load/seeded-pref.md') -Encoding utf8
+
+        $payload = '{"hookEventName":"UserPromptSubmit","prompt":"how do I evolve a memory entry"}'
+        # Valid payload → scaffold transparency line + empty stdout
+        $stdoutFile = Join-Path $mpsubmit '.stdout.log'
+        $stderrFile = Join-Path $mpsubmit '.stderr.log'
+        $stdinFile = Join-Path $mpsubmit '.stdin.log'
+        Set-Content -LiteralPath $stdinFile -Value $payload -NoNewline
+        $proc = Start-Process -FilePath 'python3' -ArgumentList @($recallPy, '--vault-path', $mpsubmit, 'prompt-submit') -NoNewWindow -Wait -RedirectStandardInput $stdinFile -RedirectStandardOutput $stdoutFile -RedirectStandardError $stderrFile -PassThru
+        if ($proc.ExitCode -ne 0) {
+            throw "prompt-submit valid payload exited $($proc.ExitCode); expected 0"
+        }
+        $psStdout = Get-Content -LiteralPath $stdoutFile -Raw
+        $psStderr = Get-Content -LiteralPath $stderrFile -Raw
+        if ($psStdout -and $psStdout.Trim().Length -gt 0) {
+            throw "prompt-submit emitted stdout in task 2 scaffold. stdout: $psStdout"
+        }
+        if ($psStderr -notmatch 'scaffold') {
+            throw "stderr transparency line missing scaffold marker. stderr: $psStderr"
+        }
+        if ($psStderr -notmatch 'prompt length=30 chars') {
+            throw "stderr transparency line missing prompt length. stderr: $psStderr"
+        }
+        if ($psStderr -notmatch 'always-load dedup set size=1') {
+            throw "stderr transparency line missing dedup count. stderr: $psStderr"
+        }
+        Remove-Item -LiteralPath $stdoutFile, $stderrFile, $stdinFile -ErrorAction SilentlyContinue
+
+        # Graceful: empty stdin → exit 0 + "no prompt on stdin"
+        Set-Content -LiteralPath $stdinFile -Value "" -NoNewline
+        $proc2 = Start-Process -FilePath 'python3' -ArgumentList @($recallPy, '--vault-path', $mpsubmit, 'prompt-submit') -NoNewWindow -Wait -RedirectStandardInput $stdinFile -RedirectStandardError $stderrFile -PassThru
+        if ($proc2.ExitCode -ne 0) {
+            throw "empty stdin produced non-zero exit $($proc2.ExitCode)"
+        }
+        $emptyStderr = Get-Content -LiteralPath $stderrFile -Raw
+        if ($emptyStderr -notmatch 'no prompt on stdin') {
+            throw "empty stdin did not emit 'no prompt on stdin' warning. stderr: $emptyStderr"
+        }
+        Remove-Item -LiteralPath $stderrFile, $stdinFile -ErrorAction SilentlyContinue
+
+        # Graceful: malformed JSON → exit 0
+        Set-Content -LiteralPath $stdinFile -Value '{not json' -NoNewline
+        $proc3 = Start-Process -FilePath 'python3' -ArgumentList @($recallPy, '--vault-path', $mpsubmit, 'prompt-submit') -NoNewWindow -Wait -RedirectStandardInput $stdinFile -RedirectStandardError $stderrFile -PassThru
+        if ($proc3.ExitCode -ne 0) {
+            throw "malformed JSON produced non-zero exit $($proc3.ExitCode)"
+        }
+        $badStderr = Get-Content -LiteralPath $stderrFile -Raw
+        if ($badStderr -notmatch 'no prompt on stdin') {
+            throw "malformed JSON did not emit graceful warning. stderr: $badStderr"
+        }
+        Remove-Item -LiteralPath $stderrFile, $stdinFile -ErrorAction SilentlyContinue
+
+        # Graceful: JSON missing prompt field → exit 0
+        Set-Content -LiteralPath $stdinFile -Value '{"foo":"bar"}' -NoNewline
+        $proc4 = Start-Process -FilePath 'python3' -ArgumentList @($recallPy, '--vault-path', $mpsubmit, 'prompt-submit') -NoNewWindow -Wait -RedirectStandardInput $stdinFile -RedirectStandardError $stderrFile -PassThru
+        if ($proc4.ExitCode -ne 0) {
+            throw "missing-prompt JSON produced non-zero exit $($proc4.ExitCode)"
+        }
+        $missingStderr = Get-Content -LiteralPath $stderrFile -Raw
+        if ($missingStderr -notmatch 'no prompt on stdin') {
+            throw "missing-prompt JSON did not emit graceful warning. stderr: $missingStderr"
+        }
+        Remove-Item -LiteralPath $stderrFile, $stdinFile -ErrorAction SilentlyContinue
+
+        # Graceful: no vault + valid payload → silent stdout + exit 0
+        Remove-Item -Path Env:MEMORY_VAULT_PATH -ErrorAction SilentlyContinue
+        Set-Content -LiteralPath $stdinFile -Value $payload -NoNewline
+        $proc5 = Start-Process -FilePath 'python3' -ArgumentList @($recallPy, 'prompt-submit') -NoNewWindow -Wait -RedirectStandardInput $stdinFile -RedirectStandardOutput $stdoutFile -PassThru
+        if ($proc5.ExitCode -ne 0) {
+            throw "no-vault prompt-submit produced non-zero exit $($proc5.ExitCode)"
+        }
+        $noVaultStdout = Get-Content -LiteralPath $stdoutFile -Raw
+        if ($noVaultStdout -and $noVaultStdout.Trim().Length -gt 0) {
+            throw "prompt-submit emitted stdout despite no vault configured. stdout: $noVaultStdout"
+        }
+    } finally {
+        Remove-Item -LiteralPath $mpsubmit -Recurse -Force -ErrorAction SilentlyContinue
     }
 
     # ── validate-manifests negative test: gemini-cli rejected with v0.9.0 msg ─

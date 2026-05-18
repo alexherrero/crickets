@@ -27,6 +27,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 import time
@@ -204,6 +205,130 @@ def session_start(
     return 0
 
 
+def _read_prompt_from_stdin(stdin=sys.stdin) -> str | None:
+    """Read the UserPromptSubmit JSON payload from stdin + extract `prompt`.
+
+    Claude Code's UserPromptSubmit hook receives JSON like:
+        {"hookEventName": "UserPromptSubmit", "prompt": "the user's text", ...}
+
+    Returns the prompt string, or None on any parse failure (including empty
+    stdin, malformed JSON, or missing `prompt` field). Caller treats None as
+    "graceful-skip — exit 0 silently".
+
+    The function does NOT raise on parse errors — it's the soft-failure layer
+    that keeps the hook from ever blocking the user prompt.
+    """
+    try:
+        raw = stdin.read()
+    except Exception:  # pragma: no cover — stdin EOF or similar
+        return None
+    if not raw or not raw.strip():
+        return None
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    prompt = payload.get("prompt")
+    if not isinstance(prompt, str):
+        return None
+    return prompt
+
+
+def _collect_always_load_paths(vault: Path) -> set[str]:
+    """Return the set of always-load entry paths (relative to vault root) for dedup.
+
+    The UserPromptSubmit hook must NOT re-inject entries the SessionStart hook
+    already loaded. Returns a set of vault-relative path strings (POSIX-style,
+    matching the relative-path convention used in entry frontmatter).
+    """
+    always_load_dir = vault / _ALWAYS_LOAD_REL
+    if not always_load_dir.exists():
+        return set()
+    out: set[str] = set()
+    for md_path in always_load_dir.glob("*.md"):
+        # Vault-relative POSIX path (consistent with save.py's path convention).
+        rel = md_path.relative_to(vault).as_posix()
+        out.add(rel)
+    return out
+
+
+def prompt_submit(
+    *,
+    vault: Path | None,
+    prompt: str | None,
+    budget_ms: int = PROMPT_SUBMIT_BUDGET_MS,
+    stdout=sys.stdout,
+    stderr=sys.stderr,
+) -> int:
+    """Inject query-relevant MemoryVault entries on user prompt submit.
+
+    Plan #7a part 2 task 2 (this commit) ships the SCAFFOLD: the function
+    parses stdin, computes the always-load dedup set, emits a placeholder
+    transparency line, and returns. The actual RECALL ENGINE (sqlite-vec
+    query + grep+frontmatter parallel + rank-merge) lands in task 3, when
+    the `query` subcommand of this module gets its body. Until then,
+    prompt-submit returns 0 entries.
+
+    Returns exit code:
+        0 — always, even on errors (graceful-skip contract).
+
+    Errors are surfaced to stderr but never propagated to exit code. The
+    hook contract is "never block the user prompt".
+    """
+    deadline = time.monotonic() + (budget_ms / 1000.0)
+
+    if vault is None:
+        # No vault configured — exit 0 silently.
+        return 0
+    if not vault.exists():
+        print(
+            f"[memory-recall-prompt-submit] vault path not found: {vault} (skipping)",
+            file=stderr,
+        )
+        return 0
+    if prompt is None:
+        # Stdin missing / malformed / `prompt` field absent. Soft-fail.
+        print(
+            "[memory-recall-prompt-submit] no prompt on stdin (skipping)",
+            file=stderr,
+        )
+        return 0
+
+    # Collect the always-load dedup set (used by the recall engine in task 3
+    # to filter out entries already in session context). Cheap glob — no
+    # frontmatter parse here; the engine handles content-level filtering.
+    always_load_paths = _collect_always_load_paths(vault)
+
+    # ── TASK 2 SCAFFOLD ────────────────────────────────────────────────────
+    # Recall engine integration lands in task 3 (the `query` subcommand of
+    # this module). For now: emit a placeholder transparency line so the
+    # hook contract is verifiable in CI + smoke tests.
+    #
+    # When task 3 lands, this block becomes:
+    #   results = query(vault=vault, query_text=prompt, k=5, deadline=deadline)
+    #   results = [r for r in results if r.path not in always_load_paths]
+    #   <format results to stdout>
+    # ───────────────────────────────────────────────────────────────────────
+    loaded_count = 0
+    loaded_slugs: list[str] = []
+    overrun = time.monotonic() > deadline
+
+    transparency = (
+        f"[memory-recall-prompt-submit] (scaffold — recall engine lands in task 3 "
+        f"of plan #7a part 2; prompt length={len(prompt)} chars, "
+        f"always-load dedup set size={len(always_load_paths)})"
+    )
+    if overrun:
+        transparency += " (WARNING: 300ms time budget exceeded)"
+    print(transparency, file=stderr)
+
+    # No stdout output yet (no recall results to inject).
+    _ = (loaded_count, loaded_slugs)  # silence unused vars; placeholders for task 3 wiring.
+    return 0
+
+
 def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="memory-recall",
@@ -232,12 +357,22 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
         help=f"time budget in milliseconds (default: {SESSION_START_BUDGET_MS})",
     )
 
-    # Placeholders for future subcommands — fail fast with a clear message so
-    # accidental calls don't silently no-op.
-    sub.add_parser(
+    ps = sub.add_parser(
         "prompt-submit",
-        help="(NOT YET IMPLEMENTED — lands in plan #7a part 2 task 2)",
+        help=(
+            "read UserPromptSubmit JSON from stdin + inject query-relevant "
+            "entries on stdout (scaffold ships in task 2; recall engine wires "
+            "in task 3)"
+        ),
     )
+    ps.add_argument(
+        "--budget-ms",
+        type=int,
+        default=PROMPT_SUBMIT_BUDGET_MS,
+        help=f"time budget in milliseconds (default: {PROMPT_SUBMIT_BUDGET_MS})",
+    )
+
+    # Placeholder for the recall-engine query subcommand (task 3).
     sub.add_parser(
         "query",
         help="(NOT YET IMPLEMENTED — lands in plan #7a part 2 task 3)",
@@ -252,12 +387,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "session-start":
         return session_start(vault=vault, budget_ms=args.budget_ms)
     if args.cmd == "prompt-submit":
-        print(
-            "ERROR: prompt-submit subcommand not yet implemented "
-            "(lands in plan #7a part 2 task 2)",
-            file=sys.stderr,
-        )
-        return 2
+        prompt = _read_prompt_from_stdin()
+        return prompt_submit(vault=vault, prompt=prompt, budget_ms=args.budget_ms)
     if args.cmd == "query":
         print(
             "ERROR: query subcommand not yet implemented "

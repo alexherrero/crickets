@@ -59,11 +59,12 @@ expected=(
   .claude/agents/evaluator.md
   .agent/skills/evaluator/SKILL.md
   # Standalone hooks — claude-code only (v0.7.0); memory-recall-session-start
-  # added in plan #7a part 2 task 1 (v0.9.x).
+  # + memory-recall-prompt-submit added in plan #7a part 2 tasks 1+2 (v0.9.x).
   .claude/hooks/kill-switch.sh
   .claude/hooks/steer.sh
   .claude/hooks/commit-on-stop.sh
   .claude/hooks/memory-recall-session-start.sh
+  .claude/hooks/memory-recall-prompt-submit.sh
   .claude/settings.json
   # Pre-push hook
   .git/hooks/pre-push
@@ -149,7 +150,7 @@ if grep -qE "created .claude/agents/evaluator" "$SCRATCH/.rerun.log"; then
   exit 1
 fi
 # Same for hooks: re-run should not "create" scripts that already exist.
-if grep -qE "created .claude/hooks/(kill-switch|steer|commit-on-stop|memory-recall-session-start)" "$SCRATCH/.rerun.log"; then
+if grep -qE "created .claude/hooks/(kill-switch|steer|commit-on-stop|memory-recall-session-start|memory-recall-prompt-submit)" "$SCRATCH/.rerun.log"; then
   echo "FAIL: re-run recreated a hook script that already existed (should be 'kept')" >&2
   exit 1
 fi
@@ -607,16 +608,127 @@ if ! echo "$EMPTY_STDERR" | grep -qE "Loaded 0 MemoryVault always-load entries";
   exit 1
 fi
 rm -rf "$MEMPTY" "$MRECALL"
-# Future-subcommand negative tests: prompt-submit + query must error with
-# clear "not yet implemented" messages until tasks 2-3 land.
-if python3 "$RECALL_PY" prompt-submit >/dev/null 2>&1; then
-  echo "FAIL: prompt-submit subcommand should error (not implemented until task 2)" >&2
-  exit 1
-fi
+# Future-subcommand negative test: query must still error with "not yet
+# implemented" until task 3 lands. (prompt-submit became real in task 2;
+# see the prompt-submit end-to-end test below.)
 if python3 "$RECALL_PY" query >/dev/null 2>&1; then
   echo "FAIL: query subcommand should error (not implemented until task 3)" >&2
   exit 1
 fi
+
+# ── UserPromptSubmit recall hook end-to-end test (plan #7a part 2 task 2) ──
+# Verify the UserPromptSubmit hook lands the script + settings.json
+# registration, then exercise recall.py prompt-submit against a scratch vault
+# + JSON payload to confirm the scaffold wiring works end-to-end. The actual
+# recall engine lands in task 3; for now we verify the hook contract +
+# stdin parsing + dedup-set collection + transparency line emission.
+echo "==> UserPromptSubmit recall hook end-to-end test (plan #7a part 2 task 2)"
+PS_HOOK_SH="$SCRATCH/.claude/hooks/memory-recall-prompt-submit.sh"
+if [[ ! -x "$PS_HOOK_SH" ]]; then
+  echo "FAIL: hook script $PS_HOOK_SH not executable" >&2
+  exit 1
+fi
+# settings.json must contain a UserPromptSubmit hook entry naming our script.
+if ! grep -qE '"UserPromptSubmit"' "$SETTINGS_JSON"; then
+  echo "FAIL: settings.json missing 'UserPromptSubmit' key after install" >&2
+  cat "$SETTINGS_JSON" >&2
+  exit 1
+fi
+if ! grep -qE 'memory-recall-prompt-submit\.sh' "$SETTINGS_JSON"; then
+  echo "FAIL: settings.json UserPromptSubmit entry doesn't reference memory-recall-prompt-submit.sh" >&2
+  cat "$SETTINGS_JSON" >&2
+  exit 1
+fi
+# End-to-end: seed a scratch vault with 1 always-load entry; send a valid
+# UserPromptSubmit JSON payload; verify transparency line includes prompt
+# length + dedup set size; exit 0; stdout empty (engine lands in task 3).
+MPSUBMIT="$(mktemp -d)"
+mkdir -p "$MPSUBMIT/personal-private/_always-load"
+cat > "$MPSUBMIT/personal-private/_always-load/seeded-pref.md" << 'PS_EOF'
+---
+kind: preferences
+status: active
+slug: seeded-pref
+---
+Seeded body.
+PS_EOF
+PS_PAYLOAD='{"hookEventName":"UserPromptSubmit","prompt":"how do I evolve a memory entry"}'
+PS_STDOUT="$(echo "$PS_PAYLOAD" | python3 "$RECALL_PY" --vault-path "$MPSUBMIT" prompt-submit 2>/tmp/ps-stderr.log)"
+PS_STDERR="$(cat /tmp/ps-stderr.log)"
+rm -f /tmp/ps-stderr.log
+# Stdout: empty in task 2 scaffold (no engine yet).
+if [[ -n "$PS_STDOUT" ]]; then
+  echo "FAIL: prompt-submit emitted stdout in task 2 scaffold (engine not yet wired)" >&2
+  echo "    stdout was: $PS_STDOUT" >&2
+  rm -rf "$MPSUBMIT"
+  exit 1
+fi
+# Transparency line: scaffold marker + prompt length + dedup-set-size visible.
+if ! echo "$PS_STDERR" | grep -qE "memory-recall-prompt-submit.*scaffold"; then
+  echo "FAIL: stderr transparency line missing scaffold marker" >&2
+  echo "    stderr was: $PS_STDERR" >&2
+  rm -rf "$MPSUBMIT"
+  exit 1
+fi
+if ! echo "$PS_STDERR" | grep -qE "prompt length=30 chars"; then
+  echo "FAIL: stderr transparency line missing prompt length" >&2
+  echo "    stderr was: $PS_STDERR" >&2
+  rm -rf "$MPSUBMIT"
+  exit 1
+fi
+if ! echo "$PS_STDERR" | grep -qE "always-load dedup set size=1"; then
+  echo "FAIL: stderr transparency line missing always-load dedup count" >&2
+  echo "    stderr was: $PS_STDERR" >&2
+  rm -rf "$MPSUBMIT"
+  exit 1
+fi
+# Graceful: empty stdin → "no prompt on stdin" + exit 0
+EMPTY_STDIN_OUT="$(echo -n "" | python3 "$RECALL_PY" --vault-path "$MPSUBMIT" prompt-submit 2>&1)"
+EMPTY_EXIT=$?
+if [[ $EMPTY_EXIT -ne 0 ]]; then
+  echo "FAIL: empty stdin produced non-zero exit ($EMPTY_EXIT) — should be graceful 0" >&2
+  rm -rf "$MPSUBMIT"
+  exit 1
+fi
+if ! echo "$EMPTY_STDIN_OUT" | grep -qE "no prompt on stdin"; then
+  echo "FAIL: empty stdin did not emit 'no prompt on stdin' graceful warning" >&2
+  rm -rf "$MPSUBMIT"
+  exit 1
+fi
+# Graceful: malformed JSON → "no prompt on stdin" + exit 0
+BAD_JSON_OUT="$(echo '{not json' | python3 "$RECALL_PY" --vault-path "$MPSUBMIT" prompt-submit 2>&1)"
+BAD_EXIT=$?
+if [[ $BAD_EXIT -ne 0 ]]; then
+  echo "FAIL: malformed JSON produced non-zero exit ($BAD_EXIT) — should be graceful 0" >&2
+  rm -rf "$MPSUBMIT"
+  exit 1
+fi
+if ! echo "$BAD_JSON_OUT" | grep -qE "no prompt on stdin"; then
+  echo "FAIL: malformed JSON did not emit graceful warning" >&2
+  rm -rf "$MPSUBMIT"
+  exit 1
+fi
+# Graceful: JSON missing 'prompt' field → "no prompt on stdin" + exit 0
+NO_PROMPT_OUT="$(echo '{"foo":"bar"}' | python3 "$RECALL_PY" --vault-path "$MPSUBMIT" prompt-submit 2>&1)"
+NO_PROMPT_EXIT=$?
+if [[ $NO_PROMPT_EXIT -ne 0 ]]; then
+  echo "FAIL: missing-prompt JSON produced non-zero exit ($NO_PROMPT_EXIT) — should be graceful 0" >&2
+  rm -rf "$MPSUBMIT"
+  exit 1
+fi
+if ! echo "$NO_PROMPT_OUT" | grep -qE "no prompt on stdin"; then
+  echo "FAIL: missing-prompt JSON did not emit graceful warning" >&2
+  rm -rf "$MPSUBMIT"
+  exit 1
+fi
+# Graceful: no MEMORY_VAULT_PATH + no --vault-path → silent stdout + exit 0
+NO_VAULT_PS_OUT="$(unset MEMORY_VAULT_PATH; echo "$PS_PAYLOAD" | python3 "$RECALL_PY" prompt-submit 2>/dev/null)"
+if [[ -n "$NO_VAULT_PS_OUT" ]]; then
+  echo "FAIL: prompt-submit emitted stdout despite no vault configured" >&2
+  rm -rf "$MPSUBMIT"
+  exit 1
+fi
+rm -rf "$MPSUBMIT"
 
 # ── validate-manifests negative test: gemini-cli should error with v0.9.0 msg ─
 # Manifest containing 'gemini-cli' in supported_hosts must error with a clear
