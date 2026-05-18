@@ -328,6 +328,11 @@ def _iter_entry_paths(
     out: list[Path] = []
     if not vault.exists():
         return out
+    # _iter_entry_paths doesn't take a deadline itself — callers do per-file
+    # deadline checks during read. The walk is bounded by filesystem speed
+    # (typically microseconds per dirent on local FS / Obsidian-vault on
+    # Google Drive can be slower → another reason callers must check
+    # deadline per-file rather than relying on this list to be cheap).
     for dirpath, dirnames, filenames in os.walk(vault):
         # Prune excluded subdirs in-place (os.walk respects mutation).
         pruned: list[str] = []
@@ -517,16 +522,20 @@ def query(
         return []
     query_tokens = _tokenize(query_text)
 
-    # Vec search first — typically dominates the time budget. Done before
-    # grep so we can short-circuit on budget overrun and still return
-    # grep results (grep is fast).
+    # Vec search first — typically dominates the time budget (network /
+    # model-load latency on the embed call). Done before grep so we can
+    # short-circuit on budget overrun and still return grep results
+    # (grep is fast — typical <50ms on <100 entries).
     vec_results = _vec_search(
         vault, query_text, k=max(k * 2, 10),
         deadline=deadline, mode=mode, stderr=stderr,
     )
 
-    # Grep search — independently scored. Fast (<50ms typical) so we
-    # always run it even if vec failed.
+    # Grep search — independently scored. Fast (<50ms typical). Even if
+    # vec consumed most of the budget, we try grep — it's bounded by the
+    # _iter_entry_paths walk + per-file deadline check, so it naturally
+    # terminates if the budget is fully exhausted. Returns {} for no-time-
+    # left rather than blocking.
     grep_results = _grep_search(
         vault, query_tokens, deadline=deadline, include_inbox=include_inbox,
     )

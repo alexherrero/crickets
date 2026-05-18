@@ -1003,6 +1003,137 @@ if ! echo "$FB_OUT" | grep -qE "embedding unavailable"; then
 fi
 rm -rf "$MFB"
 
+# ── Time budget enforcement test (plan #7a part 2 task 5) ──────────────────
+# Verify wall-clock budget enforcement is real: seed many entries + set a
+# tight budget (1ms) → the recall walk must terminate early + emit overrun
+# warnings + still return results without blocking. Tests both hooks:
+# session_start (500ms default, force overrun via --budget-ms 1) and
+# prompt_submit (300ms default, same force).
+echo "==> Time budget enforcement test (plan #7a part 2 task 5)"
+MBUDGET="$(mktemp -d)"
+mkdir -p "$MBUDGET/personal-private/_always-load" \
+         "$MBUDGET/personal-private/workflow"
+# Seed 40 always-load entries — enough that even a fast machine can't
+# finish under 1ms of wall-clock (read 40 files + parse frontmatter each).
+for i in $(seq 1 40); do
+  cat > "$MBUDGET/personal-private/_always-load/budget-pref-$i.md" << BUD_EOF
+---
+kind: preferences
+status: active
+slug: budget-pref-$i
+tags: [test-budget]
+---
+Budget test entry number $i with some body text to make parsing nontrivial.
+Multiple lines of content to ensure the read_text call takes measurable time
+on slow filesystems (cloud-synced vaults, network drives, etc).
+BUD_EOF
+done
+# Also seed regular entries for the prompt-submit / query path.
+for i in $(seq 1 30); do
+  cat > "$MBUDGET/personal-private/workflow/budget-flow-$i.md" << BUD_EOF
+---
+kind: workflow
+status: active
+slug: budget-flow-$i
+tags: [budget, workflow, test]
+---
+Workflow body $i containing keywords like budget and test for grep matches.
+BUD_EOF
+done
+
+# Test A: session-start with 1ms budget → overrun warning + partial results
+SS_STDERR_FILE="$MBUDGET/.ss-stderr.log"
+python3 "$RECALL_PY" --vault-path "$MBUDGET" session-start --budget-ms 1 > /dev/null 2> "$SS_STDERR_FILE"
+SS_BUDGET_EXIT=$?
+SS_STDERR_BUDGET="$(cat "$SS_STDERR_FILE")"
+if [[ $SS_BUDGET_EXIT -ne 0 ]]; then
+  echo "FAIL: session-start with tight budget exited $SS_BUDGET_EXIT (expected graceful 0)" >&2
+  echo "    stderr: $SS_STDERR_BUDGET" >&2
+  rm -rf "$MBUDGET"
+  exit 1
+fi
+if ! echo "$SS_STDERR_BUDGET" | grep -qE "500ms time budget exceeded|1ms time budget exceeded|time budget exceeded"; then
+  echo "FAIL: session-start with 1ms budget did not emit overrun warning" >&2
+  echo "    stderr: $SS_STDERR_BUDGET" >&2
+  rm -rf "$MBUDGET"
+  exit 1
+fi
+# Transparency line should still report loaded count (could be 0 to 40
+# depending on machine speed — what matters is overrun warning + exit 0).
+if ! echo "$SS_STDERR_BUDGET" | grep -qE "Loaded [0-9]+ MemoryVault always-load entries"; then
+  echo "FAIL: session-start with overrun did not emit transparency line" >&2
+  echo "    stderr: $SS_STDERR_BUDGET" >&2
+  rm -rf "$MBUDGET"
+  exit 1
+fi
+
+# Test B: session-start with default 500ms budget → no overrun (40 entries
+# is well under typical budget on any sane machine).
+SS_DEFAULT_STDERR="$(python3 "$RECALL_PY" --vault-path "$MBUDGET" session-start 2>&1 >/dev/null)"
+if echo "$SS_DEFAULT_STDERR" | grep -qE "time budget exceeded"; then
+  echo "WARN: session-start with default 500ms budget overran on 40 entries — this machine is very slow OR there's a perf regression. stderr: $SS_DEFAULT_STDERR" >&2
+  # Don't fail — slow machines (e.g. emulated CI runners) might genuinely take longer.
+  # The test is primarily to assert "no overrun warning under normal conditions"
+  # but we accept it on slow machines.
+fi
+
+# Test C: prompt-submit with 1ms budget → engine should overrun + emit
+# warning on transparency line.
+PS_BUDGET_PAYLOAD='{"hookEventName":"UserPromptSubmit","prompt":"budget workflow test"}'
+PS_BUDGET_STDOUT="$(echo "$PS_BUDGET_PAYLOAD" | python3 "$RECALL_PY" --vault-path "$MBUDGET" prompt-submit --budget-ms 1 2>"$MBUDGET/.ps-stderr.log")"
+PS_BUDGET_STDERR="$(cat "$MBUDGET/.ps-stderr.log")"
+PS_BUDGET_EXIT=$?
+if [[ $PS_BUDGET_EXIT -ne 0 ]]; then
+  echo "FAIL: prompt-submit with tight budget exited $PS_BUDGET_EXIT (expected graceful 0)" >&2
+  echo "    stderr: $PS_BUDGET_STDERR" >&2
+  rm -rf "$MBUDGET"
+  exit 1
+fi
+if ! echo "$PS_BUDGET_STDERR" | grep -qE "time budget exceeded"; then
+  echo "FAIL: prompt-submit with 1ms budget did not emit overrun warning" >&2
+  echo "    stderr: $PS_BUDGET_STDERR" >&2
+  rm -rf "$MBUDGET"
+  exit 1
+fi
+if ! echo "$PS_BUDGET_STDERR" | grep -qE "Loaded [0-9]+ relevant entries"; then
+  echo "FAIL: prompt-submit with overrun did not emit transparency line" >&2
+  echo "    stderr: $PS_BUDGET_STDERR" >&2
+  rm -rf "$MBUDGET"
+  exit 1
+fi
+
+# Test D: query subcommand with 1ms budget — should still exit 0 + return
+# whatever it could gather (possibly empty), never block.
+QUERY_BUDGET_EXIT=0
+python3 "$RECALL_PY" --vault-path "$MBUDGET" query "budget workflow" --budget-ms 1 --mode stub > /dev/null 2>&1 || QUERY_BUDGET_EXIT=$?
+if [[ $QUERY_BUDGET_EXIT -ne 0 ]]; then
+  echo "FAIL: query subcommand with 1ms budget exited $QUERY_BUDGET_EXIT (expected 0)" >&2
+  rm -rf "$MBUDGET"
+  exit 1
+fi
+
+# Test E: confirm the hooks NEVER raise / non-zero-exit under tight budget.
+# Run session-start + prompt-submit each 5 times with 1ms budget; if any
+# call exits non-zero, the never-block-the-prompt / never-block-session
+# contract is broken.
+for i in 1 2 3 4 5; do
+  python3 "$RECALL_PY" --vault-path "$MBUDGET" session-start --budget-ms 1 > /dev/null 2>&1
+  SS_LOOP_EXIT=$?
+  if [[ $SS_LOOP_EXIT -ne 0 ]]; then
+    echo "FAIL: session-start (iteration $i) exited $SS_LOOP_EXIT under tight budget — never-block contract broken" >&2
+    rm -rf "$MBUDGET"
+    exit 1
+  fi
+  echo "$PS_BUDGET_PAYLOAD" | python3 "$RECALL_PY" --vault-path "$MBUDGET" prompt-submit --budget-ms 1 > /dev/null 2>&1
+  PS_LOOP_EXIT=$?
+  if [[ $PS_LOOP_EXIT -ne 0 ]]; then
+    echo "FAIL: prompt-submit (iteration $i) exited $PS_LOOP_EXIT under tight budget — never-block contract broken" >&2
+    rm -rf "$MBUDGET"
+    exit 1
+  fi
+done
+rm -rf "$MBUDGET"
+
 # ── validate-manifests negative test: gemini-cli should error with v0.9.0 msg ─
 # Manifest containing 'gemini-cli' in supported_hosts must error with a clear
 # message pointing at the v0.9.0 CHANGELOG. Catches regressions if HOST_ENUM

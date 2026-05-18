@@ -795,6 +795,93 @@ Evolve test body for fallback path.
         Remove-Item -LiteralPath $mfb -Recurse -Force -ErrorAction SilentlyContinue
     }
 
+    # ── Time budget enforcement test (plan #7a part 2 task 5) ──────────────
+    Write-Host '==> Time budget enforcement test (plan #7a part 2 task 5)'
+    $mbudget = Join-Path ([System.IO.Path]::GetTempPath()) ("toolkit-mbudget-" + [System.Guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path (Join-Path $mbudget 'personal-private/_always-load') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $mbudget 'personal-private/workflow') -Force | Out-Null
+    try {
+        # Seed 40 always-load entries
+        for ($i = 1; $i -le 40; $i++) {
+            $body = @"
+---
+kind: preferences
+status: active
+slug: budget-pref-$i
+tags: [test-budget]
+---
+Budget test entry number $i with some body text to make parsing nontrivial.
+Multiple lines of content to ensure the read_text call takes measurable time.
+"@
+            $body | Out-File -FilePath (Join-Path $mbudget "personal-private/_always-load/budget-pref-$i.md") -Encoding utf8
+        }
+        # Seed 30 workflow entries
+        for ($i = 1; $i -le 30; $i++) {
+            $body = @"
+---
+kind: workflow
+status: active
+slug: budget-flow-$i
+tags: [budget, workflow, test]
+---
+Workflow body $i containing keywords like budget and test.
+"@
+            $body | Out-File -FilePath (Join-Path $mbudget "personal-private/workflow/budget-flow-$i.md") -Encoding utf8
+        }
+
+        # Test A: session-start with 1ms budget → overrun warning
+        $ssStderrFile = Join-Path $mbudget '.ss-stderr.log'
+        python3 $recallPy '--vault-path' $mbudget 'session-start' '--budget-ms' '1' > $null 2> $ssStderrFile
+        $ssExit = $LASTEXITCODE
+        $ssStderr = Get-Content -LiteralPath $ssStderrFile -Raw
+        if ($ssExit -ne 0) {
+            throw "session-start with tight budget exited $ssExit (expected 0). stderr: $ssStderr"
+        }
+        if ($ssStderr -notmatch 'time budget exceeded') {
+            throw "session-start with 1ms budget did not emit overrun warning. stderr: $ssStderr"
+        }
+        if ($ssStderr -notmatch 'Loaded [0-9]+ MemoryVault always-load entries') {
+            throw "session-start overrun did not emit transparency line. stderr: $ssStderr"
+        }
+
+        # Test B: prompt-submit with 1ms budget → overrun warning
+        $psBudgetPayload = '{"hookEventName":"UserPromptSubmit","prompt":"budget workflow test"}'
+        $psStdinFile = Join-Path $mbudget '.ps-stdin.log'
+        $psStderrFile = Join-Path $mbudget '.ps-stderr.log'
+        Set-Content -LiteralPath $psStdinFile -Value $psBudgetPayload -NoNewline
+        $psProc = Start-Process -FilePath 'python3' -ArgumentList @($recallPy, '--vault-path', $mbudget, 'prompt-submit', '--budget-ms', '1') -NoNewWindow -Wait -RedirectStandardInput $psStdinFile -RedirectStandardError $psStderrFile -PassThru
+        if ($psProc.ExitCode -ne 0) {
+            throw "prompt-submit with tight budget exited $($psProc.ExitCode)"
+        }
+        $psBudgetStderr = Get-Content -LiteralPath $psStderrFile -Raw
+        if ($psBudgetStderr -notmatch 'time budget exceeded') {
+            throw "prompt-submit with 1ms budget did not emit overrun warning. stderr: $psBudgetStderr"
+        }
+        if ($psBudgetStderr -notmatch 'Loaded [0-9]+ relevant entries') {
+            throw "prompt-submit overrun did not emit transparency line. stderr: $psBudgetStderr"
+        }
+
+        # Test C: query with 1ms budget → exit 0
+        python3 $recallPy '--vault-path' $mbudget 'query' 'budget workflow' '--budget-ms' '1' '--mode' 'stub' > $null 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            throw "query with 1ms budget exited $LASTEXITCODE (expected 0)"
+        }
+
+        # Test D: hooks NEVER raise / non-zero-exit under tight budget (5 iters each)
+        for ($i = 1; $i -le 5; $i++) {
+            python3 $recallPy '--vault-path' $mbudget 'session-start' '--budget-ms' '1' > $null 2>&1
+            if ($LASTEXITCODE -ne 0) {
+                throw "session-start (iter $i) exited $LASTEXITCODE under tight budget — never-block contract broken"
+            }
+            $loopProc = Start-Process -FilePath 'python3' -ArgumentList @($recallPy, '--vault-path', $mbudget, 'prompt-submit', '--budget-ms', '1') -NoNewWindow -Wait -RedirectStandardInput $psStdinFile -PassThru
+            if ($loopProc.ExitCode -ne 0) {
+                throw "prompt-submit (iter $i) exited $($loopProc.ExitCode) under tight budget — never-block contract broken"
+            }
+        }
+    } finally {
+        Remove-Item -LiteralPath $mbudget -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
     # ── validate-manifests negative test: gemini-cli rejected with v0.9.0 msg ─
     Write-Host '==> validate-manifests negative test (gemini-cli rejected)'
     $vneg = Join-Path ([System.IO.Path]::GetTempPath()) ("toolkit-vneg-" + [System.Guid]::NewGuid().ToString('N'))
