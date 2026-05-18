@@ -46,20 +46,24 @@ expected=(
   .claude/skills/memory/scripts/evolve.py
   .claude/skills/memory/scripts/embed.py
   .claude/skills/memory/scripts/vec_index.py
+  .claude/skills/memory/scripts/recall.py
   .agent/skills/memory/SKILL.md
   .agent/skills/memory/scripts/save.py
   .agent/skills/memory/scripts/evolve.py
   .agent/skills/memory/scripts/embed.py
   .agent/skills/memory/scripts/vec_index.py
+  .agent/skills/memory/scripts/recall.py
   # Standalone agent: evaluator — claude-code is single-file destination;
   # antigravity wraps the agent as a skill. (gemini-cli destination
   # .gemini/agents/evaluator.md removed in v0.9.0.)
   .claude/agents/evaluator.md
   .agent/skills/evaluator/SKILL.md
-  # Standalone hooks — claude-code only (v0.7.0).
+  # Standalone hooks — claude-code only (v0.7.0); memory-recall-session-start
+  # added in plan #7a part 2 task 1 (v0.9.x).
   .claude/hooks/kill-switch.sh
   .claude/hooks/steer.sh
   .claude/hooks/commit-on-stop.sh
+  .claude/hooks/memory-recall-session-start.sh
   .claude/settings.json
   # Pre-push hook
   .git/hooks/pre-push
@@ -145,7 +149,7 @@ if grep -qE "created .claude/agents/evaluator" "$SCRATCH/.rerun.log"; then
   exit 1
 fi
 # Same for hooks: re-run should not "create" scripts that already exist.
-if grep -qE "created .claude/hooks/(kill-switch|steer|commit-on-stop)" "$SCRATCH/.rerun.log"; then
+if grep -qE "created .claude/hooks/(kill-switch|steer|commit-on-stop|memory-recall-session-start)" "$SCRATCH/.rerun.log"; then
   echo "FAIL: re-run recreated a hook script that already existed (should be 'kept')" >&2
   exit 1
 fi
@@ -486,6 +490,133 @@ if [[ ! -f "$MQUEUE/personal-private/preferences/no-api-test.md" ]]; then
   exit 1
 fi
 rm -rf "$MQUEUE"
+
+# ── SessionStart recall hook end-to-end test (plan #7a part 2 task 1) ──────
+# Verify the SessionStart hook lands the script + settings.json registration,
+# then exercise recall.py session-start against a scratch vault to confirm
+# the read loop works end-to-end.
+echo "==> SessionStart recall hook end-to-end test (plan #7a part 2 task 1)"
+RECALL_PY="$SCRATCH/.claude/skills/memory/scripts/recall.py"
+HOOK_SH="$SCRATCH/.claude/hooks/memory-recall-session-start.sh"
+SETTINGS_JSON="$SCRATCH/.claude/settings.json"
+if [[ ! -f "$RECALL_PY" ]]; then
+  echo "FAIL: recall.py not installed at $RECALL_PY" >&2
+  exit 1
+fi
+if [[ ! -x "$HOOK_SH" ]]; then
+  echo "FAIL: hook script $HOOK_SH not executable" >&2
+  exit 1
+fi
+# settings.json must contain a SessionStart hook entry naming our script.
+if ! grep -qE '"SessionStart"' "$SETTINGS_JSON"; then
+  echo "FAIL: settings.json missing 'SessionStart' key after install" >&2
+  cat "$SETTINGS_JSON" >&2
+  exit 1
+fi
+if ! grep -qE 'memory-recall-session-start\.sh' "$SETTINGS_JSON"; then
+  echo "FAIL: settings.json SessionStart entry doesn't reference memory-recall-session-start.sh" >&2
+  cat "$SETTINGS_JSON" >&2
+  exit 1
+fi
+# End-to-end: seed a scratch vault with 2 always-load entries + 1 superseded;
+# run recall.py session-start; verify output + transparency line + superseded filter.
+MRECALL="$(mktemp -d)"
+mkdir -p "$MRECALL/personal-private/_always-load"
+cat > "$MRECALL/personal-private/_always-load/pref-a.md" << 'AL_EOF'
+---
+kind: preferences
+status: active
+slug: pref-a
+tags: [test]
+---
+First always-load body.
+AL_EOF
+cat > "$MRECALL/personal-private/_always-load/pref-b.md" << 'AL_EOF'
+---
+kind: workflow
+status: active
+slug: pref-b
+tags: [test]
+---
+Second always-load body.
+AL_EOF
+cat > "$MRECALL/personal-private/_always-load/superseded-entry.md" << 'AL_EOF'
+---
+kind: preferences
+status: superseded
+slug: superseded-entry
+---
+Should be filtered.
+AL_EOF
+# Run recall.py session-start; capture stdout + stderr separately.
+RECALL_STDOUT="$(python3 "$RECALL_PY" --vault-path "$MRECALL" session-start 2>/tmp/recall-stderr.log)"
+RECALL_STDERR="$(cat /tmp/recall-stderr.log)"
+rm -f /tmp/recall-stderr.log
+# Transparency line on stderr must report 2 entries (superseded filtered).
+if ! echo "$RECALL_STDERR" | grep -qE "Loaded 2 MemoryVault always-load entries"; then
+  echo "FAIL: stderr transparency line missing or wrong count (expected 2 entries)" >&2
+  echo "    stderr was: $RECALL_STDERR" >&2
+  rm -rf "$MRECALL"
+  exit 1
+fi
+# Stdout must contain both pref-a and pref-b but NOT superseded-entry.
+if ! echo "$RECALL_STDOUT" | grep -qE "pref-a"; then
+  echo "FAIL: stdout missing pref-a entry" >&2
+  rm -rf "$MRECALL"
+  exit 1
+fi
+if ! echo "$RECALL_STDOUT" | grep -qE "pref-b"; then
+  echo "FAIL: stdout missing pref-b entry" >&2
+  rm -rf "$MRECALL"
+  exit 1
+fi
+if echo "$RECALL_STDOUT" | grep -qE "superseded-entry"; then
+  echo "FAIL: stdout contains superseded entry (should be filtered)" >&2
+  rm -rf "$MRECALL"
+  exit 1
+fi
+# Header line should be present.
+if ! echo "$RECALL_STDOUT" | grep -qE "^# MemoryVault — always-load entries$"; then
+  echo "FAIL: stdout missing header line" >&2
+  rm -rf "$MRECALL"
+  exit 1
+fi
+# Graceful-skip: no MEMORY_VAULT_PATH → exit 0, no output.
+NOVAULT_STDOUT="$(unset MEMORY_VAULT_PATH; python3 "$RECALL_PY" session-start 2>/dev/null)"
+if [[ -n "$NOVAULT_STDOUT" ]]; then
+  echo "FAIL: recall.py emitted stdout despite no vault configured (should be silent graceful-skip)" >&2
+  echo "    stdout was: $NOVAULT_STDOUT" >&2
+  rm -rf "$MRECALL"
+  exit 1
+fi
+# Graceful-skip: vault path doesn't exist → exit 0 with warning on stderr.
+BADVAULT_STDOUT="$(python3 "$RECALL_PY" --vault-path "/nonexistent/path/$$" session-start 2>/dev/null)"
+BADVAULT_EXIT=$?
+if [[ $BADVAULT_EXIT -ne 0 ]]; then
+  echo "FAIL: recall.py exited non-zero for nonexistent vault (should be graceful exit 0)" >&2
+  rm -rf "$MRECALL"
+  exit 1
+fi
+# Empty _always-load: exit 0, "Loaded 0" transparency line.
+MEMPTY="$(mktemp -d)"
+EMPTY_STDERR="$(python3 "$RECALL_PY" --vault-path "$MEMPTY" session-start 2>&1 >/dev/null)"
+if ! echo "$EMPTY_STDERR" | grep -qE "Loaded 0 MemoryVault always-load entries"; then
+  echo "FAIL: empty vault did not emit 'Loaded 0' transparency line" >&2
+  echo "    stderr was: $EMPTY_STDERR" >&2
+  rm -rf "$MEMPTY" "$MRECALL"
+  exit 1
+fi
+rm -rf "$MEMPTY" "$MRECALL"
+# Future-subcommand negative tests: prompt-submit + query must error with
+# clear "not yet implemented" messages until tasks 2-3 land.
+if python3 "$RECALL_PY" prompt-submit >/dev/null 2>&1; then
+  echo "FAIL: prompt-submit subcommand should error (not implemented until task 2)" >&2
+  exit 1
+fi
+if python3 "$RECALL_PY" query >/dev/null 2>&1; then
+  echo "FAIL: query subcommand should error (not implemented until task 3)" >&2
+  exit 1
+fi
 
 # ── validate-manifests negative test: gemini-cli should error with v0.9.0 msg ─
 # Manifest containing 'gemini-cli' in supported_hosts must error with a clear

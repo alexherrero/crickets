@@ -41,20 +41,24 @@ try {
         '.claude/skills/memory/scripts/evolve.py',
         '.claude/skills/memory/scripts/embed.py',
         '.claude/skills/memory/scripts/vec_index.py',
+        '.claude/skills/memory/scripts/recall.py',
         '.agent/skills/memory/SKILL.md',
         '.agent/skills/memory/scripts/save.py',
         '.agent/skills/memory/scripts/evolve.py',
         '.agent/skills/memory/scripts/embed.py',
         '.agent/skills/memory/scripts/vec_index.py',
+        '.agent/skills/memory/scripts/recall.py',
         # Standalone agent: evaluator. claude-code is single-file;
         # antigravity wraps the agent as a skill. (gemini-cli destination
         # .gemini/agents/evaluator.md removed in v0.9.0.)
         '.claude/agents/evaluator.md',
         '.agent/skills/evaluator/SKILL.md',
-        # Standalone hooks (claude-code only, v0.7.0).
+        # Standalone hooks (claude-code only, v0.7.0); memory-recall-session-start
+        # added in plan #7a part 2 task 1 (v0.9.x).
         '.claude/hooks/kill-switch.ps1',
         '.claude/hooks/steer.ps1',
         '.claude/hooks/commit-on-stop.ps1',
+        '.claude/hooks/memory-recall-session-start.ps1',
         '.claude/settings.json',
         '.git/hooks/pre-push'
     )
@@ -115,7 +119,7 @@ try {
     if ($rerun -match 'created .claude/agents/evaluator') {
         throw 're-run recreated the evaluator agent (should be kept)'
     }
-    if ($rerun -match 'created .claude/hooks/(kill-switch|steer|commit-on-stop)') {
+    if ($rerun -match 'created .claude/hooks/(kill-switch|steer|commit-on-stop|memory-recall-session-start)') {
         throw 're-run recreated a hook script (should be kept)'
     }
     if ($rerun -match 'merged  .claude/settings.json') {
@@ -360,6 +364,113 @@ try {
         }
     } finally {
         Remove-Item -LiteralPath $mqueue -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    # ── SessionStart recall hook end-to-end test (plan #7a part 2 task 1) ──
+    Write-Host '==> SessionStart recall hook end-to-end test (plan #7a part 2 task 1)'
+    $recallPy = Join-Path $scratch '.claude/skills/memory/scripts/recall.py'
+    $hookPs1 = Join-Path $scratch '.claude/hooks/memory-recall-session-start.ps1'
+    $settingsJson = Join-Path $scratch '.claude/settings.json'
+    if (-not (Test-Path -LiteralPath $recallPy)) { throw "recall.py not installed at $recallPy" }
+    if (-not (Test-Path -LiteralPath $hookPs1)) { throw "hook script $hookPs1 missing" }
+    $settingsContent = Get-Content -LiteralPath $settingsJson -Raw
+    if ($settingsContent -notmatch 'SessionStart') {
+        throw "settings.json missing 'SessionStart' key after install. Content: $settingsContent"
+    }
+    if ($settingsContent -notmatch 'memory-recall-session-start\.ps1') {
+        throw "settings.json SessionStart entry doesn't reference memory-recall-session-start.ps1. Content: $settingsContent"
+    }
+    $mrecall = Join-Path ([System.IO.Path]::GetTempPath()) ("toolkit-mrecall-" + [System.Guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path (Join-Path $mrecall 'personal-private/_always-load') -Force | Out-Null
+    try {
+        # Seed 2 active + 1 superseded
+        $prefA = @"
+---
+kind: preferences
+status: active
+slug: pref-a
+tags: [test]
+---
+First always-load body.
+"@
+        $prefB = @"
+---
+kind: workflow
+status: active
+slug: pref-b
+tags: [test]
+---
+Second always-load body.
+"@
+        $superseded = @"
+---
+kind: preferences
+status: superseded
+slug: superseded-entry
+---
+Should be filtered.
+"@
+        $prefA | Out-File -FilePath (Join-Path $mrecall 'personal-private/_always-load/pref-a.md') -Encoding utf8
+        $prefB | Out-File -FilePath (Join-Path $mrecall 'personal-private/_always-load/pref-b.md') -Encoding utf8
+        $superseded | Out-File -FilePath (Join-Path $mrecall 'personal-private/_always-load/superseded-entry.md') -Encoding utf8
+
+        # Capture stdout + stderr separately via process redirection.
+        $stdoutFile = Join-Path $mrecall '.stdout.log'
+        $stderrFile = Join-Path $mrecall '.stderr.log'
+        $proc = Start-Process -FilePath 'python3' -ArgumentList @($recallPy, '--vault-path', $mrecall, 'session-start') -NoNewWindow -Wait -RedirectStandardOutput $stdoutFile -RedirectStandardError $stderrFile -PassThru
+        if ($proc.ExitCode -ne 0) {
+            throw "recall.py session-start exited $($proc.ExitCode); expected 0"
+        }
+        $stdoutContent = Get-Content -LiteralPath $stdoutFile -Raw
+        $stderrContent = Get-Content -LiteralPath $stderrFile -Raw
+        if ($stderrContent -notmatch 'Loaded 2 MemoryVault always-load entries') {
+            throw "stderr transparency line missing/wrong count. stderr: $stderrContent"
+        }
+        if ($stdoutContent -notmatch 'pref-a') { throw 'stdout missing pref-a entry' }
+        if ($stdoutContent -notmatch 'pref-b') { throw 'stdout missing pref-b entry' }
+        if ($stdoutContent -match 'superseded-entry') {
+            throw 'stdout contains superseded entry (should be filtered)'
+        }
+        if ($stdoutContent -notmatch '# MemoryVault') {
+            throw 'stdout missing header line'
+        }
+        Remove-Item -LiteralPath $stdoutFile, $stderrFile -ErrorAction SilentlyContinue
+
+        # Graceful-skip: no vault → exit 0, silent stdout
+        Remove-Item -Path Env:MEMORY_VAULT_PATH -ErrorAction SilentlyContinue
+        $noVaultOut = python3 $recallPy 'session-start' 2>$null
+        if ($noVaultOut) {
+            throw "recall.py emitted stdout despite no vault configured. Output: $noVaultOut"
+        }
+        # Graceful-skip: bad vault → exit 0
+        python3 $recallPy '--vault-path' "/nonexistent/path/$([Guid]::NewGuid())" 'session-start' 2>$null | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            throw 'recall.py exited non-zero for nonexistent vault (should be graceful exit 0)'
+        }
+        # Empty vault: "Loaded 0" transparency line
+        $mempty = Join-Path ([System.IO.Path]::GetTempPath()) ("toolkit-mempty-" + [System.Guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $mempty -Force | Out-Null
+        try {
+            $emptyStderr = Join-Path $mempty '.stderr.log'
+            $emptyProc = Start-Process -FilePath 'python3' -ArgumentList @($recallPy, '--vault-path', $mempty, 'session-start') -NoNewWindow -Wait -RedirectStandardError $emptyStderr -PassThru
+            $emptyContent = Get-Content -LiteralPath $emptyStderr -Raw
+            if ($emptyContent -notmatch 'Loaded 0 MemoryVault always-load entries') {
+                throw "empty vault did not emit 'Loaded 0' transparency line. stderr: $emptyContent"
+            }
+        } finally {
+            Remove-Item -LiteralPath $mempty -Recurse -Force -ErrorAction SilentlyContinue
+        }
+        # Future-subcommand negative tests
+        python3 $recallPy 'prompt-submit' 2>$null | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            throw 'prompt-submit subcommand should error (not implemented until task 2)'
+        }
+        python3 $recallPy 'query' 2>$null | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            throw 'query subcommand should error (not implemented until task 3)'
+        }
+    } finally {
+        Remove-Item -LiteralPath $mrecall -Recurse -Force -ErrorAction SilentlyContinue
     }
 
     # ── validate-manifests negative test: gemini-cli rejected with v0.9.0 msg ─
