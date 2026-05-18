@@ -2,15 +2,27 @@
 # recall.py — MemoryVault read loop.
 #
 # Provides the recall operations invoked by:
-#   - the SessionStart hook (subcommand: session-start; lands plan #7a part 2 task 1).
-#   - the UserPromptSubmit hook (subcommand: prompt-submit; lands plan #7a part 2 task 2).
-#   - the future /memory search sub-command (subcommand: query; lands when the
-#     recall engine is wired up in plan #7a part 2 task 3).
+#   - the SessionStart hook (subcommand: session-start; plan #7a part 2 task 1).
+#   - the UserPromptSubmit hook (subcommand: prompt-submit; plan #7a part 2
+#     task 2 ships the scaffold, task 3 wires the recall engine).
+#   - the operator-facing `query` subcommand (manual semantic search; plan
+#     #7a part 2 task 3). Future `/memory search` sub-command in the memory
+#     skill will be a thin wrapper around this.
 #
-# v0.1.0 (this commit, plan #7a part 2 task 1) ships ONLY the session-start
-# subcommand. Tasks 2-3 of part 2 extend this module with prompt-submit + the
-# query/recall engine. Subcommands deferred to later tasks raise
-# `NotImplementedError` at CLI surface so the wiring stays explicit.
+# Recall engine (5-step algorithm per locked design call C2):
+#   1. Tokenize query.
+#   2. Embed query (api / local / stub) + sqlite-vec top-k by cosine sim.
+#   3. Grep + frontmatter scan in parallel — keyword match count per entry,
+#      filter `status: superseded`, exclude `_archive/` always + `_inbox/`
+#      by default.
+#   4. Merge: combined = sim × 0.7 + keyword × 0.3 (per design doc;
+#      Tech Debt #7 — tune from real use).
+#   5. Dedup against caller-provided path set (always-load), return top-K.
+#
+# All steps degrade gracefully:
+#   - sqlite-vec missing / embedding mode unavailable → grep-only recall.
+#   - Time budget exceeded → return whatever results gathered so far.
+#   - Vault path unresolvable → exit 0 with no output (never blocks hooks).
 #
 # Vault resolution chain (matches save.py / vec_index.py):
 #   1. --vault-path arg (highest priority; overrides env).
@@ -29,9 +41,19 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
+import sqlite3
 import sys
 import time
 from pathlib import Path
+
+# embed.py + vec_index.py live in this same scripts/ dir — sys.path-injected
+# import so the recall engine can pull in shared helpers (embedding modes,
+# sqlite-vec connection open, EMBEDDING_DIM). Lazy imports inside functions
+# so a missing dep doesn't break module-level load (mirrors vec_index.py).
+_SCRIPTS_DIR = Path(__file__).resolve().parent
+if str(_SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS_DIR))
 
 # Hard time budgets per locked design call (plan #7a part 2):
 #   SessionStart: 500ms
@@ -39,10 +61,33 @@ from pathlib import Path
 SESSION_START_BUDGET_MS = 500
 PROMPT_SUBMIT_BUDGET_MS = 300
 
+# Default top-K per locked design call (plan #7a part 2 recall-loop).
+DEFAULT_K = 5
+
+# Merge formula weights (per locked design call — recall-loop.md):
+#   combined = sim × SIM_WEIGHT + keyword × KEYWORD_WEIGHT
+# These are the guess-and-tune values per Tech Debt #7; ship instrumented
+# and refine from real use (see /memory inspect, future work).
+SIM_WEIGHT = 0.7
+KEYWORD_WEIGHT = 0.3
+
 # Path convention: always-load entries live under <vault>/personal-private/_always-load/.
 # Group-scoped _always-load/ dirs (e.g. work-public/_always-load/) are reserved
 # for future per-group recall; v0.1.0 hardwires personal-private/.
 _ALWAYS_LOAD_REL = Path("personal-private") / "_always-load"
+
+# Directories excluded from recall walks. _archive/ is always excluded
+# (audit-trail content, never surfaced to the agent). _inbox/ is excluded
+# by default but can be opted in via --include-inbox (raw unfiltered
+# capture; surfacing in recall would inject low-quality candidate noise).
+_EXCLUDE_DIR_NAMES = {"_archive"}
+_INBOX_DIR_NAME = "_inbox"
+
+# Tokenization for grep search: split on non-alphanumeric, lowercase, drop
+# tokens shorter than _MIN_TOKEN_LEN. Skipping classical stopword filtering
+# in v1 — keep tokenization simple + greppable; tune via real-use feedback.
+_MIN_TOKEN_LEN = 3
+_TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
 
 
 def _resolve_vault_path(arg_vault_path: str | None) -> Path | None:
@@ -254,22 +299,299 @@ def _collect_always_load_paths(vault: Path) -> set[str]:
     return out
 
 
+def _tokenize(text: str) -> list[str]:
+    """Tokenize text for keyword matching.
+
+    Lowercases, extracts alphanumeric runs, drops tokens shorter than
+    _MIN_TOKEN_LEN. Used for both query tokenization + entry-content
+    tokenization (symmetric).
+    """
+    return [t for t in _TOKEN_PATTERN.findall(text.lower()) if len(t) >= _MIN_TOKEN_LEN]
+
+
+def _iter_entry_paths(
+    vault: Path,
+    *,
+    include_inbox: bool = False,
+) -> list[Path]:
+    """Walk vault, yield all *.md entry paths (subject to filtering invariants).
+
+    Excludes:
+      - `_archive/` subtrees (always — audit-trail content).
+      - `_inbox/` subtrees unless `include_inbox=True`.
+      - Hidden directories (dirnames starting with `.`).
+
+    Does NOT filter by frontmatter `status` (that happens at match time).
+    Walks `<vault>/**` so all groups (`personal-private/`, `work-public/`,
+    future per-group dirs) are covered uniformly.
+    """
+    out: list[Path] = []
+    if not vault.exists():
+        return out
+    for dirpath, dirnames, filenames in os.walk(vault):
+        # Prune excluded subdirs in-place (os.walk respects mutation).
+        pruned: list[str] = []
+        for d in dirnames:
+            if d in _EXCLUDE_DIR_NAMES:
+                continue
+            if d == _INBOX_DIR_NAME and not include_inbox:
+                continue
+            if d.startswith("."):
+                continue
+            pruned.append(d)
+        dirnames[:] = pruned
+        for fname in filenames:
+            if not fname.endswith(".md"):
+                continue
+            out.append(Path(dirpath) / fname)
+    return out
+
+
+def _grep_search(
+    vault: Path,
+    query_tokens: list[str],
+    *,
+    deadline: float | None = None,
+    include_inbox: bool = False,
+) -> dict[str, int]:
+    """Scan vault entries for keyword matches.
+
+    Returns {relative_path_posix: keyword_match_count}. Each entry's score
+    is the count of DISTINCT query tokens that appear (as substring) in the
+    entry's searchable text (slug + tags + title + first 500 chars of body).
+    Entries with `status: superseded` are filtered out.
+
+    If `deadline` is set and elapsed past it, the walk stops early and
+    returns partial results (degraded-graceful).
+    """
+    if not query_tokens:
+        return {}
+    results: dict[str, int] = {}
+    for md_path in _iter_entry_paths(vault, include_inbox=include_inbox):
+        if deadline is not None and time.monotonic() > deadline:
+            break
+        try:
+            content = md_path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        fm, body = _parse_frontmatter(content)
+        if fm.get("status") == "superseded":
+            continue
+        slug = md_path.stem
+        tags = fm.get("tags", "")
+        # Searchable text: slug + tags + first 500 chars of body. Keeps
+        # the scoring cheap; tail content rarely changes search relevance
+        # for short MemoryVault entries (typical entry < 2 KB).
+        searchable = (slug + " " + tags + " " + body[:500]).lower()
+        score = sum(1 for t in query_tokens if t in searchable)
+        if score > 0:
+            rel = md_path.relative_to(vault).as_posix()
+            results[rel] = score
+    return results
+
+
+def _vec_search(
+    vault: Path,
+    query_text: str,
+    *,
+    k: int,
+    deadline: float | None = None,
+    mode: str | None = None,
+    stderr=sys.stderr,
+) -> dict[str, float]:
+    """Embed the query + search the vec-index for top-k nearest entries.
+
+    Returns {relative_path_posix: similarity_score}. similarity_score is
+    in [0, 1] where 1 = most similar (computed as 1 - cosine_distance).
+
+    Returns {} (silently) under any of:
+      - sqlite-vec not installed / Apple system Python missing
+        enable_load_extension
+      - embedding mode unavailable (no API key, no local model)
+      - query embedding raises any other exception
+      - deadline elapsed before vec search completes
+
+    All failures degrade gracefully — caller falls back to grep-only.
+    """
+    # Lazy imports — keep module-level load fast even if deps missing.
+    try:
+        from embed import EmbeddingUnavailable, embed_text  # type: ignore
+        from vec_index import _open_index  # type: ignore
+    except ImportError:
+        return {}
+
+    if deadline is not None and time.monotonic() > deadline:
+        return {}
+
+    # Try to embed the query. EmbeddingUnavailable is the soft-fail path.
+    try:
+        embedding = embed_text(query_text, mode=mode)
+    except EmbeddingUnavailable as e:
+        print(f"[recall.query] embedding unavailable: {e}", file=stderr)
+        return {}
+    except Exception as e:  # noqa: BLE001 — degraded-graceful catch-all
+        print(f"[recall.query] embedding raised {type(e).__name__}: {e}", file=stderr)
+        return {}
+
+    if deadline is not None and time.monotonic() > deadline:
+        return {}
+
+    conn = _open_index(vault)
+    if conn is None:
+        # sqlite-vec unavailable. Caller falls back to grep-only.
+        return {}
+    try:
+        emb_blob = json.dumps(embedding)
+        # sqlite-vec MATCH operator: top-k nearest by distance.
+        # `vec0` virtual tables expose `distance` (lower = closer).
+        try:
+            cursor = conn.execute(
+                "SELECT entries.rowid, distance "
+                "FROM entries "
+                "WHERE embedding MATCH ? AND k = ? "
+                "ORDER BY distance",
+                (emb_blob, k),
+            )
+            rows = cursor.fetchall()
+        except sqlite3.OperationalError as e:
+            print(f"[recall.query] vec search SQL error: {e}", file=stderr)
+            return {}
+        results: dict[str, float] = {}
+        for rowid, distance in rows:
+            # Look up the path for this rowid.
+            meta_cursor = conn.execute(
+                "SELECT path FROM entry_meta WHERE rowid = ?", (rowid,)
+            )
+            meta_row = meta_cursor.fetchone()
+            if not meta_row:
+                continue
+            rel_path = meta_row[0]
+            # Convert distance to similarity. sqlite-vec's default for vec0
+            # is cosine distance in [0, 2]; similarity = 1 - distance/2
+            # clamps to [0, 1]. (For L2 distance the conversion would be
+            # different; vec0 with FLOAT[N] uses cosine by default per
+            # sqlite-vec docs.)
+            sim = max(0.0, min(1.0, 1.0 - (distance / 2.0)))
+            results[rel_path] = sim
+        return results
+    finally:
+        conn.close()
+
+
+def query(
+    *,
+    vault: Path,
+    query_text: str,
+    k: int = DEFAULT_K,
+    dedup_paths: set[str] | None = None,
+    include_inbox: bool = False,
+    deadline: float | None = None,
+    mode: str | None = None,
+    stderr=sys.stderr,
+) -> list[dict]:
+    """Run the 5-step recall engine.
+
+    Steps (per locked design call C2 / recall-loop.md §recall-engine):
+      1. Tokenize query (lightweight; doesn't need to be in budget).
+      2. Vec search — embed query + sqlite-vec top-k by cosine similarity.
+         Returns {} on any failure (graceful — caller falls back).
+      3. Grep + frontmatter search — walk vault, count keyword matches
+         per entry; filter `status: superseded`; respect `_inbox/` flag.
+      4. Merge — union of both result sets; combined score =
+         sim × SIM_WEIGHT + keyword × KEYWORD_WEIGHT.
+      5. Dedup against `dedup_paths` (typically the always-load set);
+         sort by combined score; return top-k.
+
+    Returns a list of dicts:
+        [{"path": "<vault-relative-POSIX>", "slug": "<slug>",
+          "sim": <float in [0,1]>, "keyword": <int>,
+          "combined": <float>}, ...]
+    sorted by combined score descending.
+
+    Degraded-graceful: if vec search fails, returns grep-only results
+    (still scored via the merge formula with sim=0 for all entries).
+    """
+    if dedup_paths is None:
+        dedup_paths = set()
+    if not query_text or not query_text.strip():
+        return []
+    query_tokens = _tokenize(query_text)
+
+    # Vec search first — typically dominates the time budget. Done before
+    # grep so we can short-circuit on budget overrun and still return
+    # grep results (grep is fast).
+    vec_results = _vec_search(
+        vault, query_text, k=max(k * 2, 10),
+        deadline=deadline, mode=mode, stderr=stderr,
+    )
+
+    # Grep search — independently scored. Fast (<50ms typical) so we
+    # always run it even if vec failed.
+    grep_results = _grep_search(
+        vault, query_tokens, deadline=deadline, include_inbox=include_inbox,
+    )
+
+    # Merge: union of paths; score = sim × 0.7 + keyword × 0.3.
+    all_paths = set(vec_results.keys()) | set(grep_results.keys())
+    merged: list[dict] = []
+    for path in all_paths:
+        if path in dedup_paths:
+            continue
+        sim = vec_results.get(path, 0.0)
+        keyword = grep_results.get(path, 0)
+        combined = sim * SIM_WEIGHT + keyword * KEYWORD_WEIGHT
+        if combined <= 0:
+            continue  # Shouldn't happen given union, but defensive.
+        slug = Path(path).stem
+        merged.append({
+            "path": path,
+            "slug": slug,
+            "sim": sim,
+            "keyword": keyword,
+            "combined": combined,
+        })
+    # Sort by combined desc, tiebreak by sim desc then path asc.
+    merged.sort(key=lambda r: (-r["combined"], -r["sim"], r["path"]))
+    return merged[:k]
+
+
+def _format_recall_result(result: dict, body: str, fm: dict[str, str]) -> str:
+    """Format a single recall result for stdout injection.
+
+    Header includes slug + kind + sim/keyword breakdown so the agent sees
+    why this entry was recalled. Body follows verbatim (frontmatter
+    stripped by caller).
+    """
+    kind = fm.get("kind", "unknown")
+    tags = fm.get("tags", "")
+    header = (
+        f"### {result['slug']} (kind: {kind}, "
+        f"sim={result['sim']:.2f}, keywords={result['keyword']}"
+    )
+    if tags and tags not in {"[]", ""}:
+        header += f", tags: {tags}"
+    header += ")"
+    return f"{header}\n\n{body.strip()}"
+
+
 def prompt_submit(
     *,
     vault: Path | None,
     prompt: str | None,
     budget_ms: int = PROMPT_SUBMIT_BUDGET_MS,
+    k: int = DEFAULT_K,
+    include_inbox: bool = False,
+    mode: str | None = None,
     stdout=sys.stdout,
     stderr=sys.stderr,
 ) -> int:
     """Inject query-relevant MemoryVault entries on user prompt submit.
 
-    Plan #7a part 2 task 2 (this commit) ships the SCAFFOLD: the function
-    parses stdin, computes the always-load dedup set, emits a placeholder
-    transparency line, and returns. The actual RECALL ENGINE (sqlite-vec
-    query + grep+frontmatter parallel + rank-merge) lands in task 3, when
-    the `query` subcommand of this module gets its body. Until then,
-    prompt-submit returns 0 entries.
+    Calls the recall engine for top-K entries relevant to the prompt,
+    dedups against the always-load set (already in session context per
+    the SessionStart hook), formats matches as markdown + emits on stdout
+    for context injection. Stderr gets a transparency line listing what
+    got loaded so the operator can see what memory shaped the response.
 
     Returns exit code:
         0 — always, even on errors (graceful-skip contract).
@@ -280,7 +602,6 @@ def prompt_submit(
     deadline = time.monotonic() + (budget_ms / 1000.0)
 
     if vault is None:
-        # No vault configured — exit 0 silently.
         return 0
     if not vault.exists():
         print(
@@ -289,43 +610,70 @@ def prompt_submit(
         )
         return 0
     if prompt is None:
-        # Stdin missing / malformed / `prompt` field absent. Soft-fail.
         print(
             "[memory-recall-prompt-submit] no prompt on stdin (skipping)",
             file=stderr,
         )
         return 0
 
-    # Collect the always-load dedup set (used by the recall engine in task 3
-    # to filter out entries already in session context). Cheap glob — no
-    # frontmatter parse here; the engine handles content-level filtering.
     always_load_paths = _collect_always_load_paths(vault)
 
-    # ── TASK 2 SCAFFOLD ────────────────────────────────────────────────────
-    # Recall engine integration lands in task 3 (the `query` subcommand of
-    # this module). For now: emit a placeholder transparency line so the
-    # hook contract is verifiable in CI + smoke tests.
-    #
-    # When task 3 lands, this block becomes:
-    #   results = query(vault=vault, query_text=prompt, k=5, deadline=deadline)
-    #   results = [r for r in results if r.path not in always_load_paths]
-    #   <format results to stdout>
-    # ───────────────────────────────────────────────────────────────────────
-    loaded_count = 0
-    loaded_slugs: list[str] = []
-    overrun = time.monotonic() > deadline
+    try:
+        results = query(
+            vault=vault,
+            query_text=prompt,
+            k=k,
+            dedup_paths=always_load_paths,
+            include_inbox=include_inbox,
+            deadline=deadline,
+            mode=mode,
+            stderr=stderr,
+        )
+    except Exception as e:  # noqa: BLE001 — never block the prompt
+        print(
+            f"[memory-recall-prompt-submit] recall engine error ({type(e).__name__}: {e}); "
+            "skipping injection",
+            file=stderr,
+        )
+        return 0
 
+    # Output assembly: only print stdout when we have hits.
+    loaded_slugs: list[str] = []
+    if results:
+        print(
+            "# MemoryVault — recall hits for your prompt",
+            file=stdout,
+        )
+        print("", file=stdout)
+        print(
+            f"The following entries match your prompt (top {len(results)} by "
+            f"semantic+keyword merge; deduped against always-load set).",
+            file=stdout,
+        )
+        print("", file=stdout)
+        for i, result in enumerate(results):
+            md_path = vault / result["path"]
+            try:
+                content = md_path.read_text(encoding="utf-8")
+            except OSError:
+                continue
+            fm, body = _parse_frontmatter(content)
+            if i > 0:
+                print("\n---\n", file=stdout)
+            print(_format_recall_result(result, body, fm), file=stdout)
+            loaded_slugs.append(result["slug"])
+
+    overrun = time.monotonic() > deadline
+    slug_list = ", ".join(loaded_slugs) if loaded_slugs else "(none)"
     transparency = (
-        f"[memory-recall-prompt-submit] (scaffold — recall engine lands in task 3 "
-        f"of plan #7a part 2; prompt length={len(prompt)} chars, "
-        f"always-load dedup set size={len(always_load_paths)})"
+        f"[memory-recall-prompt-submit] Loaded {len(loaded_slugs)} relevant "
+        f"entries: {slug_list}"
     )
     if overrun:
-        transparency += " (WARNING: 300ms time budget exceeded)"
+        transparency += (
+            f" (WARNING: {budget_ms}ms time budget exceeded; results may be partial)"
+        )
     print(transparency, file=stderr)
-
-    # No stdout output yet (no recall results to inject).
-    _ = (loaded_count, loaded_slugs)  # silence unused vars; placeholders for task 3 wiring.
     return 0
 
 
@@ -372,11 +720,23 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
         help=f"time budget in milliseconds (default: {PROMPT_SUBMIT_BUDGET_MS})",
     )
 
-    # Placeholder for the recall-engine query subcommand (task 3).
-    sub.add_parser(
+    q = sub.add_parser(
         "query",
-        help="(NOT YET IMPLEMENTED — lands in plan #7a part 2 task 3)",
+        help=(
+            "run the recall engine against a query string; prints top-K "
+            "results as JSON (one record per line) for scripting / "
+            "operator-debug. Useful for tuning the rank-merge weights."
+        ),
     )
+    q.add_argument("query_text", help="the query string (use '-' to read stdin)")
+    q.add_argument("-k", type=int, default=DEFAULT_K,
+                   help=f"top-K results to return (default: {DEFAULT_K})")
+    q.add_argument("--budget-ms", type=int, default=PROMPT_SUBMIT_BUDGET_MS,
+                   help=f"time budget in milliseconds (default: {PROMPT_SUBMIT_BUDGET_MS})")
+    q.add_argument("--include-inbox", action="store_true",
+                   help="include _inbox/ entries in the search (default: excluded)")
+    q.add_argument("--mode", choices=["api", "local", "stub"], default=None,
+                   help="embedding mode override (default: api unless MEMORY_USE_API_EMBEDDINGS=false)")
 
     return parser.parse_args(argv)
 
@@ -390,12 +750,29 @@ def main(argv: list[str] | None = None) -> int:
         prompt = _read_prompt_from_stdin()
         return prompt_submit(vault=vault, prompt=prompt, budget_ms=args.budget_ms)
     if args.cmd == "query":
-        print(
-            "ERROR: query subcommand not yet implemented "
-            "(lands in plan #7a part 2 task 3)",
-            file=sys.stderr,
+        if vault is None:
+            print(
+                "ERROR: no vault path resolved (set --vault-path or MEMORY_VAULT_PATH)",
+                file=sys.stderr,
+            )
+            return 1
+        if not vault.exists():
+            print(f"ERROR: vault path does not exist: {vault}", file=sys.stderr)
+            return 1
+        query_text = sys.stdin.read() if args.query_text == "-" else args.query_text
+        deadline = time.monotonic() + (args.budget_ms / 1000.0)
+        results = query(
+            vault=vault,
+            query_text=query_text,
+            k=args.k,
+            include_inbox=args.include_inbox,
+            deadline=deadline,
+            mode=args.mode,
         )
-        return 2
+        # JSON-Lines output for scriptability.
+        for r in results:
+            print(json.dumps(r))
+        return 0
     return 1  # pragma: no cover
 
 

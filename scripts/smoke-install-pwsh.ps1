@@ -461,12 +461,6 @@ Should be filtered.
         } finally {
             Remove-Item -LiteralPath $mempty -Recurse -Force -ErrorAction SilentlyContinue
         }
-        # Future-subcommand negative test: query still errors (task 3).
-        # prompt-submit became real in task 2; tested in the next block.
-        python3 $recallPy 'query' 2>$null | Out-Null
-        if ($LASTEXITCODE -eq 0) {
-            throw 'query subcommand should error (not implemented until task 3)'
-        }
     } finally {
         Remove-Item -LiteralPath $mrecall -Recurse -Force -ErrorAction SilentlyContinue
     }
@@ -496,7 +490,8 @@ Seeded body.
         $seeded | Out-File -FilePath (Join-Path $mpsubmit 'personal-private/_always-load/seeded-pref.md') -Encoding utf8
 
         $payload = '{"hookEventName":"UserPromptSubmit","prompt":"how do I evolve a memory entry"}'
-        # Valid payload → scaffold transparency line + empty stdout
+        # Valid payload → real "Loaded N relevant entries" transparency line
+        # (task 3 wired the engine; scaffold marker is gone).
         $stdoutFile = Join-Path $mpsubmit '.stdout.log'
         $stderrFile = Join-Path $mpsubmit '.stderr.log'
         $stdinFile = Join-Path $mpsubmit '.stdin.log'
@@ -505,19 +500,9 @@ Seeded body.
         if ($proc.ExitCode -ne 0) {
             throw "prompt-submit valid payload exited $($proc.ExitCode); expected 0"
         }
-        $psStdout = Get-Content -LiteralPath $stdoutFile -Raw
         $psStderr = Get-Content -LiteralPath $stderrFile -Raw
-        if ($psStdout -and $psStdout.Trim().Length -gt 0) {
-            throw "prompt-submit emitted stdout in task 2 scaffold. stdout: $psStdout"
-        }
-        if ($psStderr -notmatch 'scaffold') {
-            throw "stderr transparency line missing scaffold marker. stderr: $psStderr"
-        }
-        if ($psStderr -notmatch 'prompt length=30 chars') {
-            throw "stderr transparency line missing prompt length. stderr: $psStderr"
-        }
-        if ($psStderr -notmatch 'always-load dedup set size=1') {
-            throw "stderr transparency line missing dedup count. stderr: $psStderr"
+        if ($psStderr -notmatch 'Loaded [0-9]+ relevant entries') {
+            throw "stderr transparency line missing 'Loaded N relevant entries' shape. stderr: $psStderr"
         }
         Remove-Item -LiteralPath $stdoutFile, $stderrFile, $stdinFile -ErrorAction SilentlyContinue
 
@@ -570,6 +555,161 @@ Seeded body.
         }
     } finally {
         Remove-Item -LiteralPath $mpsubmit -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    # ── Recall engine end-to-end test (plan #7a part 2 task 3) ─────────────
+    Write-Host '==> Recall engine end-to-end test (plan #7a part 2 task 3)'
+    $mquery = Join-Path ([System.IO.Path]::GetTempPath()) ("toolkit-mquery-" + [System.Guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path (Join-Path $mquery 'personal-private/preferences') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $mquery 'personal-private/workflow') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $mquery 'personal-private/_always-load') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $mquery 'personal-private/_inbox') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $mquery 'personal-private/_archive') -Force | Out-Null
+    try {
+        @"
+---
+kind: preferences
+status: active
+slug: always-pref
+tags: [evolve]
+---
+Already in session context.
+"@ | Out-File -FilePath (Join-Path $mquery 'personal-private/_always-load/always-pref.md') -Encoding utf8
+
+        @"
+---
+kind: preferences
+status: active
+slug: bulleted-status
+tags: [status-reports, dev-flow]
+---
+Use bulleted lists for status reports per task.
+"@ | Out-File -FilePath (Join-Path $mquery 'personal-private/preferences/bulleted-status.md') -Encoding utf8
+
+        @"
+---
+kind: workflow
+status: active
+slug: evolve-pattern
+tags: [memory, audit-trail]
+---
+When preferences change, use /memory evolve to preserve audit trail.
+"@ | Out-File -FilePath (Join-Path $mquery 'personal-private/workflow/evolve-pattern.md') -Encoding utf8
+
+        @"
+---
+kind: workflow
+status: active
+slug: release-pair
+tags: [release, coordination]
+---
+Toolkit and harness ship as coordinated release pairs.
+"@ | Out-File -FilePath (Join-Path $mquery 'personal-private/workflow/release-pair.md') -Encoding utf8
+
+        @"
+---
+kind: preferences
+status: superseded
+slug: superseded-pref
+tags: [old]
+---
+This should never surface.
+"@ | Out-File -FilePath (Join-Path $mquery 'personal-private/preferences/superseded-pref.md') -Encoding utf8
+
+        @"
+---
+kind: idea
+status: active
+slug: inbox-idea
+tags: [evolve, brainstorm]
+---
+Inbox candidate.
+"@ | Out-File -FilePath (Join-Path $mquery 'personal-private/_inbox/inbox-idea.md') -Encoding utf8
+
+        @"
+---
+kind: preferences
+status: superseded
+slug: archived-entry
+tags: [release]
+---
+Archived content.
+"@ | Out-File -FilePath (Join-Path $mquery 'personal-private/_archive/archived-entry.md') -Encoding utf8
+
+        # Test 1: query "evolve" returns workflow/evolve-pattern via grep
+        $q1Out = python3 $recallPy '--vault-path' $mquery 'query' 'evolve' '--mode' 'stub' 2>$null
+        $q1OutStr = ($q1Out -join "`n")
+        if ($q1OutStr -notmatch 'evolve-pattern') {
+            throw "query 'evolve' did not return evolve-pattern. output: $q1OutStr"
+        }
+        # Test 2: query "status reports bulleted" returns bulleted-status with 3 keyword matches
+        $q2Out = python3 $recallPy '--vault-path' $mquery 'query' 'status reports bulleted' '--mode' 'stub' 2>$null
+        $q2OutStr = ($q2Out -join "`n")
+        if ($q2OutStr -notmatch '"slug": "bulleted-status".*"keyword": 3') {
+            throw "query did not return bulleted-status with keyword=3. output: $q2OutStr"
+        }
+        # Test 3: superseded entries filtered
+        $q3Out = python3 $recallPy '--vault-path' $mquery 'query' 'superseded never surface' '--mode' 'stub' 2>$null
+        $q3OutStr = ($q3Out -join "`n")
+        if ($q3OutStr -match 'superseded-pref') {
+            throw "superseded entry surfaced. output: $q3OutStr"
+        }
+        # Test 4: _archive/ always excluded
+        $q4Out = python3 $recallPy '--vault-path' $mquery 'query' 'archived content release' '--mode' 'stub' 2>$null
+        $q4OutStr = ($q4Out -join "`n")
+        if ($q4OutStr -match 'archived-entry') {
+            throw "_archive/ entry surfaced. output: $q4OutStr"
+        }
+        # Test 5: _inbox/ excluded by default
+        $q5aOut = python3 $recallPy '--vault-path' $mquery 'query' 'inbox candidate brainstorm' '--mode' 'stub' 2>$null
+        $q5aOutStr = ($q5aOut -join "`n")
+        if ($q5aOutStr -match 'inbox-idea') {
+            throw "_inbox/ entry surfaced without --include-inbox. output: $q5aOutStr"
+        }
+        # Test 6: _inbox/ included with --include-inbox
+        $q5bOut = python3 $recallPy '--vault-path' $mquery 'query' 'inbox candidate brainstorm' '--include-inbox' '--mode' 'stub' 2>$null
+        $q5bOutStr = ($q5bOut -join "`n")
+        if ($q5bOutStr -notmatch 'inbox-idea') {
+            throw "--include-inbox did not surface _inbox/ entry. output: $q5bOutStr"
+        }
+        # Test 7: top-K respected (K=1 returns at most 1 result)
+        $q7Out = python3 $recallPy '--vault-path' $mquery 'query' 'release pair coordination' '-k' '1' '--mode' 'stub' 2>$null
+        $q7Lines = ($q7Out | Where-Object { $_ -ne '' }).Count
+        if ($q7Lines -ne 1) {
+            throw "-k 1 returned $q7Lines results. output: $($q7Out -join "`n")"
+        }
+        # Test 8: prompt-submit wires query() + dedups against always-load
+        $psPayload = '{"hookEventName":"UserPromptSubmit","prompt":"how do I evolve a memory entry"}'
+        $stdinFile = Join-Path $mquery '.stdin.log'
+        $stdoutFile = Join-Path $mquery '.stdout.log'
+        $stderrFile = Join-Path $mquery '.stderr.log'
+        Set-Content -LiteralPath $stdinFile -Value $psPayload -NoNewline
+        $proc = Start-Process -FilePath 'python3' -ArgumentList @($recallPy, '--vault-path', $mquery, 'prompt-submit') -NoNewWindow -Wait -RedirectStandardInput $stdinFile -RedirectStandardOutput $stdoutFile -RedirectStandardError $stderrFile -PassThru
+        if ($proc.ExitCode -ne 0) {
+            throw "prompt-submit (engine-wired) exited $($proc.ExitCode)"
+        }
+        $psStdout = Get-Content -LiteralPath $stdoutFile -Raw
+        $psStderr = Get-Content -LiteralPath $stderrFile -Raw
+        if ($psStdout -notmatch 'evolve-pattern') {
+            throw "prompt-submit did not surface evolve-pattern (engine wiring broken). stdout: $psStdout"
+        }
+        if ($psStdout -match 'always-pref') {
+            throw "prompt-submit surfaced always-pref (should be deduped). stdout: $psStdout"
+        }
+        if ($psStderr -match 'scaffold') {
+            throw "prompt-submit still emits scaffold marker. stderr: $psStderr"
+        }
+        if ($psStderr -notmatch 'Loaded [0-9]+ relevant entries') {
+            throw "prompt-submit stderr missing 'Loaded N relevant entries' line. stderr: $psStderr"
+        }
+        # Test 9: short-token query returns no results
+        $q9Out = python3 $recallPy '--vault-path' $mquery 'query' 'x' '--mode' 'stub' 2>$null
+        $q9OutStr = ($q9Out -join "`n").Trim()
+        if ($q9OutStr -ne '') {
+            throw "query 'x' (below _MIN_TOKEN_LEN) returned results. output: $q9OutStr"
+        }
+    } finally {
+        Remove-Item -LiteralPath $mquery -Recurse -Force -ErrorAction SilentlyContinue
     }
 
     # ── validate-manifests negative test: gemini-cli rejected with v0.9.0 msg ─

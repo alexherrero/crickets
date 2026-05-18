@@ -608,13 +608,6 @@ if ! echo "$EMPTY_STDERR" | grep -qE "Loaded 0 MemoryVault always-load entries";
   exit 1
 fi
 rm -rf "$MEMPTY" "$MRECALL"
-# Future-subcommand negative test: query must still error with "not yet
-# implemented" until task 3 lands. (prompt-submit became real in task 2;
-# see the prompt-submit end-to-end test below.)
-if python3 "$RECALL_PY" query >/dev/null 2>&1; then
-  echo "FAIL: query subcommand should error (not implemented until task 3)" >&2
-  exit 1
-fi
 
 # ── UserPromptSubmit recall hook end-to-end test (plan #7a part 2 task 2) ──
 # Verify the UserPromptSubmit hook lands the script + settings.json
@@ -639,9 +632,10 @@ if ! grep -qE 'memory-recall-prompt-submit\.sh' "$SETTINGS_JSON"; then
   cat "$SETTINGS_JSON" >&2
   exit 1
 fi
-# End-to-end: seed a scratch vault with 1 always-load entry; send a valid
-# UserPromptSubmit JSON payload; verify transparency line includes prompt
-# length + dedup set size; exit 0; stdout empty (engine lands in task 3).
+# End-to-end: seed a scratch vault with 1 always-load entry (no other
+# entries — keeps the test focused on hook contract + graceful-skip paths;
+# the recall engine itself is exercised by the task 3 smoke test below).
+# Verify exit 0 + transparency line ("Loaded N relevant entries") emitted.
 MPSUBMIT="$(mktemp -d)"
 mkdir -p "$MPSUBMIT/personal-private/_always-load"
 cat > "$MPSUBMIT/personal-private/_always-load/seeded-pref.md" << 'PS_EOF'
@@ -655,29 +649,18 @@ PS_EOF
 PS_PAYLOAD='{"hookEventName":"UserPromptSubmit","prompt":"how do I evolve a memory entry"}'
 PS_STDOUT="$(echo "$PS_PAYLOAD" | python3 "$RECALL_PY" --vault-path "$MPSUBMIT" prompt-submit 2>/tmp/ps-stderr.log)"
 PS_STDERR="$(cat /tmp/ps-stderr.log)"
+PS_EXIT=$?
 rm -f /tmp/ps-stderr.log
-# Stdout: empty in task 2 scaffold (no engine yet).
-if [[ -n "$PS_STDOUT" ]]; then
-  echo "FAIL: prompt-submit emitted stdout in task 2 scaffold (engine not yet wired)" >&2
-  echo "    stdout was: $PS_STDOUT" >&2
+if [[ $PS_EXIT -ne 0 ]]; then
+  echo "FAIL: prompt-submit exited non-zero ($PS_EXIT)" >&2
   rm -rf "$MPSUBMIT"
   exit 1
 fi
-# Transparency line: scaffold marker + prompt length + dedup-set-size visible.
-if ! echo "$PS_STDERR" | grep -qE "memory-recall-prompt-submit.*scaffold"; then
-  echo "FAIL: stderr transparency line missing scaffold marker" >&2
-  echo "    stderr was: $PS_STDERR" >&2
-  rm -rf "$MPSUBMIT"
-  exit 1
-fi
-if ! echo "$PS_STDERR" | grep -qE "prompt length=30 chars"; then
-  echo "FAIL: stderr transparency line missing prompt length" >&2
-  echo "    stderr was: $PS_STDERR" >&2
-  rm -rf "$MPSUBMIT"
-  exit 1
-fi
-if ! echo "$PS_STDERR" | grep -qE "always-load dedup set size=1"; then
-  echo "FAIL: stderr transparency line missing always-load dedup count" >&2
+# Transparency line: real "Loaded N relevant entries" line (task 3 wired engine).
+# With only 1 always-load entry seeded and no other entries in the vault,
+# the result count should be 0 (always-load is deduped + no other matches).
+if ! echo "$PS_STDERR" | grep -qE "memory-recall-prompt-submit.*Loaded [0-9]+ relevant entries"; then
+  echo "FAIL: stderr transparency line missing 'Loaded N relevant entries' shape" >&2
   echo "    stderr was: $PS_STDERR" >&2
   rm -rf "$MPSUBMIT"
   exit 1
@@ -729,6 +712,188 @@ if [[ -n "$NO_VAULT_PS_OUT" ]]; then
   exit 1
 fi
 rm -rf "$MPSUBMIT"
+
+# ── Recall engine end-to-end test (plan #7a part 2 task 3) ─────────────────
+# Verify the 5-step recall engine: tokenize / vec search (graceful-skip if
+# sqlite-vec missing) / grep+frontmatter parallel / merge via sim×0.7 +
+# keyword×0.3 / dedup against always-load + top-K. Uses stub embedding
+# mode so the test is deterministic + portable across CI environments
+# (the full happy path with populated vec-index runs only when sqlite-vec
+# is available; we test the grep path + graceful-skip path here).
+echo "==> Recall engine end-to-end test (plan #7a part 2 task 3)"
+MQUERY="$(mktemp -d)"
+mkdir -p "$MQUERY/personal-private/preferences" \
+         "$MQUERY/personal-private/workflow" \
+         "$MQUERY/personal-private/_always-load" \
+         "$MQUERY/personal-private/_inbox" \
+         "$MQUERY/personal-private/_archive"
+# Always-load entry (must be deduped against in prompt_submit results)
+cat > "$MQUERY/personal-private/_always-load/always-pref.md" << 'Q_EOF'
+---
+kind: preferences
+status: active
+slug: always-pref
+tags: [evolve]
+---
+Already in session context.
+Q_EOF
+# Active entries with distinctive keywords
+cat > "$MQUERY/personal-private/preferences/bulleted-status.md" << 'Q_EOF'
+---
+kind: preferences
+status: active
+slug: bulleted-status
+tags: [status-reports, dev-flow]
+---
+Use bulleted lists for status reports per task.
+Q_EOF
+cat > "$MQUERY/personal-private/workflow/evolve-pattern.md" << 'Q_EOF'
+---
+kind: workflow
+status: active
+slug: evolve-pattern
+tags: [memory, audit-trail]
+---
+When preferences change, use /memory evolve to preserve audit trail.
+Q_EOF
+cat > "$MQUERY/personal-private/workflow/release-pair.md" << 'Q_EOF'
+---
+kind: workflow
+status: active
+slug: release-pair
+tags: [release, coordination]
+---
+Toolkit and harness ship as coordinated release pairs.
+Q_EOF
+# Superseded entry (must be filtered out by grep search)
+cat > "$MQUERY/personal-private/preferences/superseded-pref.md" << 'Q_EOF'
+---
+kind: preferences
+status: superseded
+slug: superseded-pref
+tags: [old]
+---
+This should never surface.
+Q_EOF
+# Inbox entry (excluded by default; included with --include-inbox)
+cat > "$MQUERY/personal-private/_inbox/inbox-idea.md" << 'Q_EOF'
+---
+kind: idea
+status: active
+slug: inbox-idea
+tags: [evolve, brainstorm]
+---
+Inbox candidate.
+Q_EOF
+# Archive entry (always excluded — even outside _archive/, status:superseded)
+cat > "$MQUERY/personal-private/_archive/archived-entry.md" << 'Q_EOF'
+---
+kind: preferences
+status: superseded
+slug: archived-entry
+tags: [release]
+---
+Archived content.
+Q_EOF
+
+# Test 1: query "evolve" returns workflow/evolve-pattern via grep
+Q1_OUT="$(python3 "$RECALL_PY" --vault-path "$MQUERY" query "evolve" --mode stub 2>/dev/null)"
+if ! echo "$Q1_OUT" | grep -qE "evolve-pattern"; then
+  echo "FAIL: query 'evolve' did not return workflow/evolve-pattern" >&2
+  echo "    output was: $Q1_OUT" >&2
+  rm -rf "$MQUERY"
+  exit 1
+fi
+# Test 2: query "status reports bulleted" returns bulleted-status with 3 keyword matches
+Q2_OUT="$(python3 "$RECALL_PY" --vault-path "$MQUERY" query "status reports bulleted" --mode stub 2>/dev/null)"
+if ! echo "$Q2_OUT" | grep -qE '"slug": "bulleted-status".*"keyword": 3'; then
+  echo "FAIL: query 'status reports bulleted' did not return bulleted-status with keyword=3" >&2
+  echo "    output was: $Q2_OUT" >&2
+  rm -rf "$MQUERY"
+  exit 1
+fi
+# Test 3: superseded entries are filtered out by default
+Q3_OUT="$(python3 "$RECALL_PY" --vault-path "$MQUERY" query "superseded never surface" --mode stub 2>/dev/null)"
+if echo "$Q3_OUT" | grep -qE "superseded-pref"; then
+  echo "FAIL: superseded entry surfaced (should be filtered by status check)" >&2
+  echo "    output was: $Q3_OUT" >&2
+  rm -rf "$MQUERY"
+  exit 1
+fi
+# Test 4: _archive/ is always excluded (even non-superseded entries there)
+Q4_OUT="$(python3 "$RECALL_PY" --vault-path "$MQUERY" query "archived content release" --mode stub 2>/dev/null)"
+if echo "$Q4_OUT" | grep -qE "archived-entry"; then
+  echo "FAIL: _archive/ entry surfaced (should be excluded by directory filter)" >&2
+  echo "    output was: $Q4_OUT" >&2
+  rm -rf "$MQUERY"
+  exit 1
+fi
+# Test 5: _inbox/ excluded by default
+Q5A_OUT="$(python3 "$RECALL_PY" --vault-path "$MQUERY" query "inbox candidate brainstorm" --mode stub 2>/dev/null)"
+if echo "$Q5A_OUT" | grep -qE "inbox-idea"; then
+  echo "FAIL: _inbox/ entry surfaced without --include-inbox (should be excluded)" >&2
+  echo "    output was: $Q5A_OUT" >&2
+  rm -rf "$MQUERY"
+  exit 1
+fi
+# Test 6: _inbox/ included with --include-inbox
+Q5B_OUT="$(python3 "$RECALL_PY" --vault-path "$MQUERY" query "inbox candidate brainstorm" --include-inbox --mode stub 2>/dev/null)"
+if ! echo "$Q5B_OUT" | grep -qE "inbox-idea"; then
+  echo "FAIL: --include-inbox did not surface _inbox/ entry" >&2
+  echo "    output was: $Q5B_OUT" >&2
+  rm -rf "$MQUERY"
+  exit 1
+fi
+# Test 7: top-K respected (K=1 returns at most 1 result)
+Q7_OUT="$(python3 "$RECALL_PY" --vault-path "$MQUERY" query "release pair coordination" -k 1 --mode stub 2>/dev/null)"
+Q7_LINES="$(echo "$Q7_OUT" | wc -l | tr -d ' ')"
+if [[ "$Q7_LINES" != "1" ]]; then
+  echo "FAIL: -k 1 returned $Q7_LINES results (expected 1)" >&2
+  echo "    output was: $Q7_OUT" >&2
+  rm -rf "$MQUERY"
+  exit 1
+fi
+# Test 8: prompt-submit wires query() AND dedups against always-load.
+# Query "evolve" should match always-pref (via tag) + workflow/evolve-pattern;
+# prompt-submit must filter out always-pref + return only evolve-pattern.
+PS_PAYLOAD='{"hookEventName":"UserPromptSubmit","prompt":"how do I evolve a memory entry"}'
+PS_STDOUT="$(echo "$PS_PAYLOAD" | python3 "$RECALL_PY" --vault-path "$MQUERY" prompt-submit 2>/tmp/ps-engine-stderr.log)"
+PS_STDERR="$(cat /tmp/ps-engine-stderr.log)"
+rm -f /tmp/ps-engine-stderr.log
+if ! echo "$PS_STDOUT" | grep -qE "evolve-pattern"; then
+  echo "FAIL: prompt-submit did not surface evolve-pattern (engine wiring broken)" >&2
+  echo "    stdout was: $PS_STDOUT" >&2
+  rm -rf "$MQUERY"
+  exit 1
+fi
+if echo "$PS_STDOUT" | grep -qE "always-pref"; then
+  echo "FAIL: prompt-submit surfaced always-pref (should be deduped against always-load)" >&2
+  echo "    stdout was: $PS_STDOUT" >&2
+  rm -rf "$MQUERY"
+  exit 1
+fi
+# Transparency line should now report real loaded count, not scaffold marker
+if echo "$PS_STDERR" | grep -qE "scaffold"; then
+  echo "FAIL: prompt-submit still emits scaffold marker (engine should be wired in task 3)" >&2
+  echo "    stderr was: $PS_STDERR" >&2
+  rm -rf "$MQUERY"
+  exit 1
+fi
+if ! echo "$PS_STDERR" | grep -qE "Loaded [0-9]+ relevant entries"; then
+  echo "FAIL: prompt-submit stderr missing 'Loaded N relevant entries' line" >&2
+  echo "    stderr was: $PS_STDERR" >&2
+  rm -rf "$MQUERY"
+  exit 1
+fi
+# Test 9: empty query returns no results (token tokenization filters short tokens)
+Q9_OUT="$(python3 "$RECALL_PY" --vault-path "$MQUERY" query "x" --mode stub 2>/dev/null)"
+if [[ -n "$Q9_OUT" ]]; then
+  echo "FAIL: query 'x' (below _MIN_TOKEN_LEN) returned results (expected empty)" >&2
+  echo "    output was: $Q9_OUT" >&2
+  rm -rf "$MQUERY"
+  exit 1
+fi
+rm -rf "$MQUERY"
 
 # ── validate-manifests negative test: gemini-cli should error with v0.9.0 msg ─
 # Manifest containing 'gemini-cli' in supported_hosts must error with a clear
