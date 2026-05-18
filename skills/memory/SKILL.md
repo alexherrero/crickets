@@ -30,18 +30,193 @@ Auto-recall happens via the [SessionStart + UserPromptSubmit hooks](https://gith
 
 ### `/memory save`
 
-> [!NOTE]
-> **Status**: stub. Full body lands in **task 2** of plan #7a part 1 (`write-primitives`). See `.harness/PLAN.md` for the task spec.
+Synchronously writes a markdown entry to MemoryVault. File write returns immediately (<50ms target); embedding + vec-index update are async and deferred (the actual embedding integration lands in task 4 of plan #7a part 1; until then the embedding step is a no-op stub that logs `"embedding queued (deferred to task 4)"`).
 
-Synchronously writes a markdown entry at `MemoryVault/<group>/<kind>/<slug>.md` with YAML frontmatter (`kind`, `status: active`, `created`, `updated`, `tags`, optional `supersedes`). Body is free-form markdown. File write is synchronous (<50ms target); embedding + vec-index update are async (don't block the agent or the user).
-
-**Planned invocation shape** (subject to refinement in task 2):
+#### Invocation
 
 ```
-/memory save <kind> <slug> [--group <group>] [--always-load]
+/memory save <kind> <slug> [--group <group>] [--always-load] [--vault-path <path>]
+                            [--tags <tag1,tag2,...>] [--supersedes <old-path>]
 ```
 
-The `--always-load` flag writes to `MemoryVault/personal-private/_always-load/` and sets `always_load: true` frontmatter — entries flagged this way get injected at SessionStart per the recall-loop part.
+| Arg | Required | Default | Meaning |
+|---|---|---|---|
+| `<kind>` | yes | — | Entry kind (preference / workflow / fix / domain-reference / idea / etc.). Subdir name under the chosen group. |
+| `<slug>` | yes | — | Kebab-case identifier; filename stem. Validated as `^[a-z0-9-]+$`. |
+| `--group <group>` | no | `personal-private` | Memory group: `personal-private` / `personal-skills` / `personal-projects/<project-slug>`. |
+| `--always-load` | no | false | Routes to `MemoryVault/personal-private/_always-load/<slug>.md` and sets `always_load: true` frontmatter — entry gets injected at SessionStart per the recall-loop part. Overrides `--group` (always lands in `_always-load`). |
+| `--vault-path <path>` | no | from config | Absolute path to the MemoryVault folder. Resolution order: `--vault-path` arg > `MEMORY_VAULT_PATH` env var > `~/.config/agent-toolkit/memory.yml` `vault_path:` key > error. |
+| `--tags <tag1,tag2>` | no | empty list | Comma-separated tags; written to `tags:` frontmatter list. |
+| `--supersedes <old-path>` | no | empty | Path to an existing entry this new entry supersedes. Sets `supersedes:` frontmatter; **does NOT archive the old entry** — that's `/memory evolve`'s job (task 3). `--supersedes` is for cross-link-without-archive cases. |
+
+The entry body (free-form markdown after the YAML frontmatter) comes from stdin OR an interactive prompt. The agent following the skill body asks for the body content if not piped.
+
+#### Step-by-step flow
+
+**Step 1 — Resolve vault path.** Walk the resolution order: `--vault-path` arg → `MEMORY_VAULT_PATH` env var → `~/.config/agent-toolkit/memory.yml` (`vault_path:` key). If none found, halt with `"No vault path resolved. Set --vault-path, MEMORY_VAULT_PATH, or ~/.config/agent-toolkit/memory.yml vault_path: <path>."`. Verify the resolved path exists and is a directory; halt otherwise with a clear error.
+
+**Step 2 — Validate inputs.** `<kind>` and `<slug>` must match `^[a-z0-9-]+$` (kebab-case). `--group` (if provided) must match `^[a-z0-9-]+(/[a-z0-9-]+)?$` (kebab-case; one optional `/<project-slug>` segment for `personal-projects/<slug>`). Tags (if provided) each must match `^[a-z0-9-]+$`. Halt on any validation failure with a clear error pointing at the offending arg.
+
+**Step 3 — Compute target path.** Two cases:
+
+- `--always-load` set: `<vault-path>/personal-private/_always-load/<slug>.md`
+- `--always-load` not set: `<vault-path>/<group>/<kind>/<slug>.md` (with `<group>` defaulting to `personal-private`)
+
+Create parent directories if they don't exist (via Write tool's implicit dir creation, or explicit `Glob` + `Write` for clarity).
+
+**Step 4 — Collision check.** If the target path already exists, halt with `"Entry already exists at <path>. Use /memory evolve to supersede the existing entry, or pick a different slug."`. Never overwrite an existing entry from `/memory save` — that's `/memory evolve`'s job.
+
+**Step 5 — Build frontmatter.** Construct YAML frontmatter with these fields:
+
+```yaml
+---
+kind: <kind>
+status: active
+created: <today UTC, YYYY-MM-DD>
+updated: <today UTC, YYYY-MM-DD>
+tags: [<tag1>, <tag2>, ...]   # empty list [] if no --tags
+group: <group-or-personal-private>
+slug: <slug>
+always_load: <true-if-flag-set-else-false>
+supersedes: <old-path-if-flag-set>   # omit field entirely if no --supersedes
+---
+```
+
+Frontmatter field order is locked above for deterministic diffs. The `always_load` field is always present (true or false) so the recall hooks can grep for it without ambiguity.
+
+**Step 6 — Compose entry content.** Prepend the frontmatter to the body content. Final shape:
+
+```
+---
+<frontmatter>
+---
+
+<body markdown>
+```
+
+Trailing newline at EOF.
+
+**Step 7 — Write file.** Use the Write tool to create the file at the computed target path. Verify the write succeeded (Write tool returns success/error). File write is synchronous; on success, the file is on disk before the next step.
+
+**Step 8 — Queue async embedding + vec-index update.** Until task 4 of this plan lands (embedding integration), this step is a no-op stub: log `"embedding queued (deferred to task 4)"` and continue. After task 4 ships, this step kicks off an async embedding call to the configured provider (Anthropic API default; local sentence-transformers fallback per `memory.use_api_embeddings`) and writes the embedding to `MemoryVault/_meta/vec-index.db` via sqlite-vec. The async-ness ensures file write is never blocked by network or vec-index latency.
+
+**Step 9 — Return confirmation.** Report success to the operator with:
+
+```
+Saved entry to <relative-path-from-vault-root>/<slug>.md
+  kind:  <kind>
+  group: <group>
+  tags:  <tags-or-(none)>
+  flags: <always-load-and-supersedes-if-set>
+```
+
+Plus the deferred-embedding note: `"(Embedding deferred to plan #7a part 1 task 4; index will populate on next reindex.)"`.
+
+#### Tool allowlist
+
+**`Read, Write, Edit, Glob, Grep`** — no Bash. The skill body never invokes shell commands directly. The agent following this body uses Write to create the entry file; Read to check config files for vault-path resolution; Glob to discover existing parent directories. Python scripts under `skills/memory/scripts/` (added in this task + tasks 3 + 4) handle the heavy lifting when invoked from Claude Code hooks (which run as standalone scripts, not as skill bodies) — see `Tool allowlist` section below for the skill-vs-script split.
+
+#### Hard gates
+
+- **Collision check is non-negotiable** — `/memory save` never overwrites. Operators wanting to replace an entry use `/memory evolve` (task 3).
+- **Vault path must resolve** — no implicit fallback to `cwd` or `~`; explicit error if no resolution path succeeds. Prevents accidental writes to wrong directories.
+- **Kind / slug / group validation** is strict — kebab-case only. Catches typos before they create unparseable directory structures.
+
+#### Worked example
+
+Saving a dev-flow convention as an `_always-load` entry:
+
+**Invocation:**
+
+```
+/memory save preferences paragraph-long-status-narratives \
+  --always-load \
+  --tags dev-flow,status-reports,locked-design-call \
+  --vault-path ~/Library/CloudStorage/GoogleDrive-<account>/My\ Drive/Obsidian/MemoryVault
+```
+
+(With the entry body provided via stdin or the agent prompting interactively.)
+
+**Step 1** — `--vault-path` provided → resolved to the synced Obsidian vault root. Exists + is a directory. ✓
+
+**Step 2** — `kind=preferences` ✓; `slug=paragraph-long-status-narratives` ✓; `--always-load` set → group ignored. Tags `[dev-flow, status-reports, locked-design-call]` each match `^[a-z0-9-]+$` ✓.
+
+**Step 3** — `--always-load` set → target path: `<vault>/personal-private/_always-load/paragraph-long-status-narratives.md`. Parent dir created if absent.
+
+**Step 4** — Collision check: path does not exist → proceed.
+
+**Step 5** — Build frontmatter:
+
+```yaml
+---
+kind: preferences
+status: active
+created: 2026-05-17
+updated: 2026-05-17
+tags: [dev-flow, status-reports, locked-design-call]
+group: personal-private
+slug: paragraph-long-status-narratives
+always_load: true
+---
+```
+
+**Step 6** — Compose with body:
+
+```
+---
+<frontmatter>
+---
+
+Status:[x] task closeouts in `.harness/PLAN.md` must be paragraph-long narratives,
+not just checkmarks. The next session's context is whatever the closeout captures —
+so capture everything that matters: files changed, design calls, scope adjustments,
+CI per-OS times, manual verification scenarios, negative-test results when relevant.
+```
+
+**Step 7** — Write file at the target path. ✓
+
+**Step 8** — Log `"embedding queued (deferred to task 4)"`.
+
+**Step 9** — Report:
+
+```
+Saved entry to personal-private/_always-load/paragraph-long-status-narratives.md
+  kind:  preferences
+  group: personal-private (overridden by --always-load → _always-load)
+  tags:  dev-flow, status-reports, locked-design-call
+  flags: always_load
+
+(Embedding deferred to plan #7a part 1 task 4; index will populate on next reindex.)
+```
+
+#### Failure modes
+
+- **Missing vault path** — all 3 resolution paths fail → halt with clear next-step text pointing at the 3 resolution options.
+- **Vault path exists but is not a directory** — halt with `"<path>: not a directory."` and exit; never write to a file path treated as a vault root.
+- **Invalid kind / slug / group / tags** — halt with the specific arg + the expected kebab-case shape; never coerce or silently lowercase.
+- **Target file exists** — halt with the `/memory evolve` recommendation; never overwrite from `/memory save`.
+- **Write tool fails** (disk full, permission denied, etc.) — surface the Write tool's error verbatim + a hint that the entry was NOT saved.
+
+#### Anti-patterns
+
+`/memory save` must NOT:
+
+- **Overwrite an existing entry** — Step 4 collision check is the hard gate.
+- **Block on embedding** — Step 8 is async-deferred; file write must complete before any network call.
+- **Coerce slugs** — operator provides exact slug; validator rejects, never auto-lowercases or strips characters.
+- **Default vault path to `cwd` or `~`** — explicit resolution chain; no implicit defaults that could write to wrong directories.
+- **Modify Document History or other special files** in the vault — `/memory save` is a single-file-write primitive; cross-file ops are for `/memory evolve` (task 3) + the reflection sidecar (plan #7a part 3).
+
+#### Python-side script (`scripts/save.py`)
+
+In parallel with the agent-driven skill body, this part also ships a standalone Python script at `agent-toolkit/skills/memory/scripts/save.py` that implements the same save logic for **hooks** (which run as standalone Python scripts, not as skill bodies) + **operator-debug** (manual `python3 ...` invocation) + **testing** (deterministic fixture tests that don't require an agent).
+
+The script exposes:
+
+- **Function**: `save_entry(vault_path, kind, slug, body, *, group="personal-private", always_load=False, tags=None, supersedes=None) -> pathlib.Path` — the canonical save primitive. Returns the absolute path written. Raises `FileExistsError` on collision; `ValueError` on validation failure; `FileNotFoundError` if vault path doesn't exist.
+- **CLI entry point**: `python3 save.py <kind> <slug> --vault-path <path> [--group <g>] [--always-load] [--tags <t1,t2>] [--supersedes <p>] [--body-file <path-or-->]` — same flag semantics as the skill body's `/memory save` invocation. `--body-file -` reads from stdin.
+
+Both paths (skill-body Write + script-CLI Python) produce byte-identical entry files for the same inputs. Future hooks (plan #7a part 3's reflection sidecar) import + call `save_entry()` directly. The skill body's documented flow is operator-facing; the script is hook-facing; they don't compete.
 
 ### `/memory evolve`
 

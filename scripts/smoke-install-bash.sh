@@ -35,6 +35,12 @@ expected=(
   .claude/skills/design/templates/design-doc.md
   .agent/skills/design/SKILL.md
   .agent/skills/design/templates/design-doc.md
+  # Standalone skill: memory (plan #7a part 1 task 1 ships scaffold;
+  # task 2 of part 1 ships /memory save body + scripts/save.py).
+  .claude/skills/memory/SKILL.md
+  .claude/skills/memory/scripts/save.py
+  .agent/skills/memory/SKILL.md
+  .agent/skills/memory/scripts/save.py
   # Standalone agent: evaluator — claude-code is single-file destination;
   # antigravity wraps the agent as a skill. (gemini-cli destination
   # .gemini/agents/evaluator.md removed in v0.9.0.)
@@ -211,6 +217,69 @@ if [[ ! -e "$LEGACY/.agents/skills/design/SKILL.md" ]]; then
   exit 1
 fi
 rm -rf "$LEGACY"
+
+# ── /memory save end-to-end test (plan #7a part 1 task 2) ──────────────────
+# Exercise scripts/save.py via its CLI to verify the canonical Python save
+# primitive works post-install. Tests: positive save with frontmatter +
+# --always-load routing + collision detection + slug validation. Uses the
+# scratch dir as a mock vault root.
+echo "==> /memory save end-to-end test (plan #7a part 1 task 2)"
+MSAVE="$(mktemp -d)"
+SAVE_PY="$SCRATCH/.claude/skills/memory/scripts/save.py"
+if [[ ! -f "$SAVE_PY" ]]; then
+  echo "FAIL: save.py not installed at $SAVE_PY (smoke install expected-files should have caught this earlier)" >&2
+  rm -rf "$MSAVE"
+  exit 1
+fi
+# Positive: basic save with tags
+SAVE_OUT="$(echo "Test entry body." | python3 "$SAVE_PY" preferences smoke-test-positive --vault-path "$MSAVE" --tags "smoke,test" 2>/dev/null)"
+EXPECTED="$MSAVE/personal-private/preferences/smoke-test-positive.md"
+if [[ "$SAVE_OUT" != "$EXPECTED" ]]; then
+  echo "FAIL: save.py CLI returned $SAVE_OUT, expected $EXPECTED" >&2
+  rm -rf "$MSAVE"
+  exit 1
+fi
+if [[ ! -f "$EXPECTED" ]]; then
+  echo "FAIL: save.py did not create $EXPECTED" >&2
+  rm -rf "$MSAVE"
+  exit 1
+fi
+if ! grep -qE "^kind: preferences$" "$EXPECTED"; then
+  echo "FAIL: save.py output missing 'kind: preferences' frontmatter" >&2
+  rm -rf "$MSAVE"
+  exit 1
+fi
+if ! grep -qE "^always_load: false$" "$EXPECTED"; then
+  echo "FAIL: save.py output missing 'always_load: false' frontmatter" >&2
+  rm -rf "$MSAVE"
+  exit 1
+fi
+# Positive: --always-load routes to _always-load/
+echo "Always-load body." | python3 "$SAVE_PY" preferences smoke-test-al --vault-path "$MSAVE" --always-load >/dev/null 2>&1
+AL_PATH="$MSAVE/personal-private/_always-load/smoke-test-al.md"
+if [[ ! -f "$AL_PATH" ]]; then
+  echo "FAIL: --always-load did not route to _always-load/ (expected $AL_PATH)" >&2
+  rm -rf "$MSAVE"
+  exit 1
+fi
+if ! grep -qE "^always_load: true$" "$AL_PATH"; then
+  echo "FAIL: --always-load entry missing 'always_load: true' frontmatter" >&2
+  rm -rf "$MSAVE"
+  exit 1
+fi
+# Negative: collision should error non-zero
+if echo "x" | python3 "$SAVE_PY" preferences smoke-test-positive --vault-path "$MSAVE" >/dev/null 2>&1; then
+  echo "FAIL: save.py allowed overwriting an existing entry (collision check broken)" >&2
+  rm -rf "$MSAVE"
+  exit 1
+fi
+# Negative: invalid slug should error non-zero
+if echo "x" | python3 "$SAVE_PY" preferences "Bad_Slug" --vault-path "$MSAVE" >/dev/null 2>&1; then
+  echo "FAIL: save.py allowed non-kebab-case slug (validator broken)" >&2
+  rm -rf "$MSAVE"
+  exit 1
+fi
+rm -rf "$MSAVE"
 
 # ── validate-manifests negative test: gemini-cli should error with v0.9.0 msg ─
 # Manifest containing 'gemini-cli' in supported_hosts must error with a clear

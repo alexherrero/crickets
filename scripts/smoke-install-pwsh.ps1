@@ -32,6 +32,12 @@ try {
         '.claude/skills/design/templates/design-doc.md',
         '.agent/skills/design/SKILL.md',
         '.agent/skills/design/templates/design-doc.md',
+        # Standalone skill: memory (plan #7a part 1 task 1 ships scaffold;
+        # task 2 of part 1 ships /memory save body + scripts/save.py).
+        '.claude/skills/memory/SKILL.md',
+        '.claude/skills/memory/scripts/save.py',
+        '.agent/skills/memory/SKILL.md',
+        '.agent/skills/memory/scripts/save.py',
         # Standalone agent: evaluator. claude-code is single-file;
         # antigravity wraps the agent as a skill. (gemini-cli destination
         # .gemini/agents/evaluator.md removed in v0.9.0.)
@@ -156,6 +162,52 @@ try {
         }
     } finally {
         Remove-Item -LiteralPath $legacy -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    # ── /memory save end-to-end test (plan #7a part 1 task 2) ──────────────
+    Write-Host '==> /memory save end-to-end test (plan #7a part 1 task 2)'
+    $msave = Join-Path ([System.IO.Path]::GetTempPath()) ("toolkit-msave-" + [System.Guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $msave -Force | Out-Null
+    try {
+        $savePy = Join-Path $scratch '.claude/skills/memory/scripts/save.py'
+        if (-not (Test-Path -LiteralPath $savePy)) {
+            throw "save.py not installed at $savePy"
+        }
+        # Positive save
+        $expected = Join-Path $msave 'personal-private/preferences/smoke-test-positive.md'
+        $saveOut = 'Test entry body.' | python3 $savePy 'preferences' 'smoke-test-positive' '--vault-path' $msave '--tags' 'smoke,test' 2>$null
+        $saveOut = ($saveOut -join '').Trim()
+        if ($saveOut -ne $expected) {
+            throw "save.py CLI returned '$saveOut', expected '$expected'"
+        }
+        if (-not (Test-Path -LiteralPath $expected)) {
+            throw "save.py did not create $expected"
+        }
+        $content = Get-Content -LiteralPath $expected -Raw
+        if ($content -notmatch '(?m)^kind: preferences$') { throw "save.py output missing 'kind: preferences' frontmatter" }
+        if ($content -notmatch '(?m)^always_load: false$') { throw "save.py output missing 'always_load: false' frontmatter" }
+        # --always-load routing
+        'Always-load body.' | python3 $savePy 'preferences' 'smoke-test-al' '--vault-path' $msave '--always-load' | Out-Null
+        $alPath = Join-Path $msave 'personal-private/_always-load/smoke-test-al.md'
+        if (-not (Test-Path -LiteralPath $alPath)) {
+            throw "--always-load did not route to _always-load/ (expected $alPath)"
+        }
+        $alContent = Get-Content -LiteralPath $alPath -Raw
+        if ($alContent -notmatch '(?m)^always_load: true$') {
+            throw "--always-load entry missing 'always_load: true' frontmatter"
+        }
+        # Collision negative
+        'x' | python3 $savePy 'preferences' 'smoke-test-positive' '--vault-path' $msave 2>$null | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            throw 'save.py allowed overwriting an existing entry (collision check broken)'
+        }
+        # Invalid slug negative
+        'x' | python3 $savePy 'preferences' 'Bad_Slug' '--vault-path' $msave 2>$null | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            throw 'save.py allowed non-kebab-case slug (validator broken)'
+        }
+    } finally {
+        Remove-Item -LiteralPath $msave -Recurse -Force -ErrorAction SilentlyContinue
     }
 
     # ── validate-manifests negative test: gemini-cli rejected with v0.9.0 msg ─
