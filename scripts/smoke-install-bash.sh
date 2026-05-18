@@ -36,11 +36,14 @@ expected=(
   .agent/skills/design/SKILL.md
   .agent/skills/design/templates/design-doc.md
   # Standalone skill: memory (plan #7a part 1 task 1 ships scaffold;
-  # task 2 of part 1 ships /memory save body + scripts/save.py).
+  # task 2 of part 1 ships /memory save body + scripts/save.py;
+  # task 3 of part 1 ships /memory evolve body + scripts/evolve.py).
   .claude/skills/memory/SKILL.md
   .claude/skills/memory/scripts/save.py
+  .claude/skills/memory/scripts/evolve.py
   .agent/skills/memory/SKILL.md
   .agent/skills/memory/scripts/save.py
+  .agent/skills/memory/scripts/evolve.py
   # Standalone agent: evaluator — claude-code is single-file destination;
   # antigravity wraps the agent as a skill. (gemini-cli destination
   # .gemini/agents/evaluator.md removed in v0.9.0.)
@@ -280,6 +283,99 @@ if echo "x" | python3 "$SAVE_PY" preferences "Bad_Slug" --vault-path "$MSAVE" >/
   exit 1
 fi
 rm -rf "$MSAVE"
+
+# ── /memory evolve end-to-end test (plan #7a part 1 task 3) ────────────────
+# Exercise scripts/evolve.py via its CLI to verify atomic archive-and-replace.
+# Tests: in-place evolve + rename evolve + missing-entry negative +
+# already-superseded negative + empty-reason negative.
+echo "==> /memory evolve end-to-end test (plan #7a part 1 task 3)"
+MEVOL="$(mktemp -d)"
+SAVE_PY="$SCRATCH/.claude/skills/memory/scripts/save.py"
+EVOLVE_PY="$SCRATCH/.claude/skills/memory/scripts/evolve.py"
+if [[ ! -f "$EVOLVE_PY" ]]; then
+  echo "FAIL: evolve.py not installed at $EVOLVE_PY" >&2
+  rm -rf "$MEVOL"
+  exit 1
+fi
+# Setup: save an entry to evolve
+echo "Original body for in-place evolve." | python3 "$SAVE_PY" preferences smoke-evolve-ip --vault-path "$MEVOL" 2>/dev/null > /dev/null
+# Test 1: in-place evolve
+EVOL_OUT="$(echo "Evolved body." | python3 "$EVOLVE_PY" personal-private/preferences/smoke-evolve-ip.md "test in-place evolve" --vault-path "$MEVOL" 2>/dev/null)"
+# Output is tab-separated <new-path>\t<archive-path>
+NEW_PATH="$(echo "$EVOL_OUT" | cut -f1)"
+ARCH_PATH="$(echo "$EVOL_OUT" | cut -f2)"
+if [[ ! -f "$NEW_PATH" ]]; then
+  echo "FAIL: evolve.py did not create new entry at $NEW_PATH" >&2
+  rm -rf "$MEVOL"
+  exit 1
+fi
+if [[ ! -f "$ARCH_PATH" ]]; then
+  echo "FAIL: evolve.py did not create archive at $ARCH_PATH" >&2
+  rm -rf "$MEVOL"
+  exit 1
+fi
+# Active entry should have supersedes:
+if ! grep -qE "^supersedes: personal-private/_archive/" "$NEW_PATH"; then
+  echo "FAIL: active entry missing 'supersedes:' frontmatter pointing at archive" >&2
+  rm -rf "$MEVOL"
+  exit 1
+fi
+# Active entry status should be active
+if ! grep -qE "^status: active$" "$NEW_PATH"; then
+  echo "FAIL: active entry missing 'status: active'" >&2
+  rm -rf "$MEVOL"
+  exit 1
+fi
+# Archive should have superseded fields
+if ! grep -qE "^status: superseded$" "$ARCH_PATH"; then
+  echo "FAIL: archive missing 'status: superseded'" >&2
+  rm -rf "$MEVOL"
+  exit 1
+fi
+if ! grep -qE "^superseded_by: personal-private/preferences/smoke-evolve-ip" "$ARCH_PATH"; then
+  echo "FAIL: archive missing 'superseded_by:' cross-link" >&2
+  rm -rf "$MEVOL"
+  exit 1
+fi
+if ! grep -qE "^superseded_reason:" "$ARCH_PATH"; then
+  echo "FAIL: archive missing 'superseded_reason:'" >&2
+  rm -rf "$MEVOL"
+  exit 1
+fi
+# Test 2: rename evolve
+echo "Original body for rename evolve." | python3 "$SAVE_PY" preferences smoke-evolve-rename --vault-path "$MEVOL" 2>/dev/null > /dev/null
+echo "Renamed body." | python3 "$EVOLVE_PY" personal-private/preferences/smoke-evolve-rename.md "test rename" --new-slug smoke-evolve-renamed --vault-path "$MEVOL" 2>/dev/null > /dev/null
+if [[ -f "$MEVOL/personal-private/preferences/smoke-evolve-rename.md" ]]; then
+  echo "FAIL: rename evolve left old entry at original path (should be unlinked)" >&2
+  rm -rf "$MEVOL"
+  exit 1
+fi
+if [[ ! -f "$MEVOL/personal-private/preferences/smoke-evolve-renamed.md" ]]; then
+  echo "FAIL: rename evolve did not create new entry at new slug" >&2
+  rm -rf "$MEVOL"
+  exit 1
+fi
+# Test 3: negative — missing entry
+if echo "x" | python3 "$EVOLVE_PY" personal-private/preferences/nonexistent.md "test" --vault-path "$MEVOL" >/dev/null 2>&1; then
+  echo "FAIL: evolve.py allowed missing entry (should error non-zero)" >&2
+  rm -rf "$MEVOL"
+  exit 1
+fi
+# Test 4: negative — already-superseded
+TODAY_COMPACT="$(date +%Y%m%d)"
+SUPERSEDED_PATH="personal-private/_archive/personal-private/preferences/smoke-evolve-ip.md.${TODAY_COMPACT}.md"
+if echo "x" | python3 "$EVOLVE_PY" "$SUPERSEDED_PATH" "test" --vault-path "$MEVOL" >/dev/null 2>&1; then
+  echo "FAIL: evolve.py allowed evolving already-superseded entry (status check broken)" >&2
+  rm -rf "$MEVOL"
+  exit 1
+fi
+# Test 5: negative — empty reason
+if echo "x" | python3 "$EVOLVE_PY" personal-private/preferences/smoke-evolve-ip.md "" --vault-path "$MEVOL" >/dev/null 2>&1; then
+  echo "FAIL: evolve.py allowed empty reason (reason check broken)" >&2
+  rm -rf "$MEVOL"
+  exit 1
+fi
+rm -rf "$MEVOL"
 
 # ── validate-manifests negative test: gemini-cli should error with v0.9.0 msg ─
 # Manifest containing 'gemini-cli' in supported_hosts must error with a clear

@@ -220,18 +220,203 @@ Both paths (skill-body Write + script-CLI Python) produce byte-identical entry f
 
 ### `/memory evolve`
 
-> [!NOTE]
-> **Status**: stub. Full body lands in **task 3** of plan #7a part 1 (`write-primitives`). See `.harness/PLAN.md` for the task spec.
+Atomic archive-and-replace primitive that prevents memory rot when preferences change. The old entry gets archived with `status: superseded`; the new entry takes the old entry's place (in-place by default; renamed slot via `--new-slug` for evolutions that also rename). Both files cross-link via `supersedes` / `superseded_by` frontmatter so the supersession graph is queryable. Recall filters skip `status: superseded` entries by default (documented contract — implemented in the recall engine, plan #7a part 2).
 
-Atomic archive-and-replace primitive that prevents memory rot when preferences change. Five-step flow: (1) read the old entry; (2) write new entry with `supersedes: <old-path>` frontmatter pointing back; (3) atomically move old entry to `MemoryVault/personal-private/_archive/<original-path>.YYYYMMDD.md` via filesystem rename (single-syscall atomicity on APFS); (4) update old entry's frontmatter `status: superseded` + `superseded_by: <new-path>` cross-link; (5) trigger vec-index update for both. Recall filters skip `status: superseded` by default.
-
-**Planned invocation shape** (subject to refinement in task 3):
+#### Invocation
 
 ```
-/memory evolve <old-path> <new-content> <reason>
+/memory evolve <old-path> <reason> [--new-slug <slug>] [--body-file <path-or-->]
+                                    [--vault-path <path>]
 ```
 
-Integrates with the tri-modal review flow (lands in plan #7a part 3, `reflection-and-recovery`): when a new candidate contradicts an existing entry, "supersede existing entry X?" is one of the four approve / edit / reject / supersede options at review time.
+| Arg | Required | Default | Meaning |
+|---|---|---|---|
+| `<old-path>` | yes | — | Relative path from vault root to the entry being superseded (e.g. `personal-private/preferences/foo.md`). |
+| `<reason>` | yes | — | Free-text rationale recorded in the archive's `superseded_reason` frontmatter. Captures WHY this evolution happened — important for audit-trail review. |
+| `--new-slug <slug>` | no | (same slug as old) | If set, the new entry lands at `<old-parent-dir>/<new-slug>.md` (renamed evolution). If absent, the new entry takes the old entry's slot (in-place evolution; same slug). Validated as `^[a-z0-9-]+$`. |
+| `--body-file <path-or-->` | no | `-` (stdin) | Path to file with the new entry body, or `-` to read from stdin. |
+| `--vault-path <path>` | no | from config | Same resolution chain as `/memory save`: `--vault-path` arg > `MEMORY_VAULT_PATH` env > config (deferred) > error. |
+
+#### Step-by-step flow
+
+**Step 1 — Resolve vault path + validate.** Same resolution chain as `/memory save`. `<old-path>` must exist relative to vault root + be a file. `<reason>` must be non-empty. `--new-slug` (if provided) must be kebab-case.
+
+**Step 2 — Read old entry.** Parse YAML frontmatter + body from `<old-path>`. The old frontmatter must have `status: active` — refuse to evolve already-superseded or resolved entries (escape hatch: operator can edit `status` manually if they really want to evolve a superseded entry, but the skill doesn't do it).
+
+**Step 3 — Compute target paths.**
+
+- **Archive path**: `MemoryVault/personal-private/_archive/<original-relative-path>.<YYYYMMDD>.md`. Example: `personal-private/preferences/foo.md` → `personal-private/_archive/personal-private/preferences/foo.md.20260517.md`. (The double-`personal-private` reflects preserving the original path structure under the archive prefix so the relationship is reconstructable.)
+- **New entry path**: if `--new-slug` set → `<old-parent-dir>/<new-slug>.md`; else → same as `<old-path>` (in-place).
+
+**Step 4 — Build archive content.** Take the old entry's frontmatter + body, then update the archive's frontmatter:
+
+- `status: active` → `status: superseded`
+- Add `superseded_by: <relative-path-from-vault-to-new-entry>`
+- Add `superseded_at: <ISO-8601 UTC timestamp>` (YYYY-MM-DDThh:mm:ssZ)
+- Add `superseded_reason: <reason>` (escaped for YAML safety)
+- Preserve all other fields verbatim (kind, created, tags, group, etc.)
+
+The body stays unchanged in the archive — the archive is a point-in-time snapshot.
+
+**Step 5 — Build new entry content.** Frontmatter inherits relevant fields from old (kind, group, tags) but resets:
+
+- `status: active`
+- `created: <today UTC>` (today; the new entry's creation date is the evolution date)
+- `updated: <today UTC>`
+- `slug: <new-slug-or-old-slug>`
+- `supersedes: <relative-path-from-vault-to-archive>` ← cross-link back
+- `always_load`: inherited from old (operator can override by re-running with explicit args if they want to change it; default is "inherit").
+
+The new entry's body comes from `--body-file` (or stdin via `-`).
+
+**Step 6 — Atomic-ish write sequence.** Two-phase write:
+
+1. **Write archive** at `<archive-path>` (create + content via `Write` tool). This is purely additive — no state change to existing files yet.
+2. **Replace old entry**:
+   - **In-place case** (`<new-path>` == `<old-path>`): `Write` tool overwrites `<old-path>` with new content. Filesystem-atomic at the syscall level on APFS / ext4 / NTFS-same-volume.
+   - **Renamed case** (`<new-path>` != `<old-path>`): `Write` tool creates `<new-path>` with new content + `Glob`/`Read`-confirms old still there + delete old via a future filesystem op (skill body uses `Write` to create new + leaves the old in place as a transitional state — until the recall filter starts skipping `_archive/`-rooted paths, leaving the old entry temporarily doesn't pollute recall). Operator can clean up the old entry's location manually after verifying the new entry.
+
+The Python-side script (`scripts/evolve.py`) does both write + unlink atomically via `os.rename` + temp-file pattern — see the Python-side script section below.
+
+**Step 7 — Queue async vec-index update for both files.** Until task 4 lands, this step is a no-op stub: log `"vec-index update queued for: <new-path>, <archive-path> (deferred to task 4)"`. After task 4, both files get re-indexed: archive is marked status:superseded (so recall filters skip it) + new entry is freshly indexed.
+
+**Step 8 — Return confirmation.**
+
+```
+Evolved entry:
+  old: <relative-old-path> → archived to <relative-archive-path>
+  new: <relative-new-path>
+  reason: <reason>
+  status: old=superseded, new=active
+```
+
+#### Tool allowlist
+
+**`Read, Write, Edit, Glob, Grep`** — no Bash. The skill body uses `Read` for the old entry, `Write` for both archive + new entry, `Glob` for confirming paths. The atomic-rename guarantee in the Python-side script comes from `os.rename()` (called within `scripts/evolve.py`, which is dispatched from hooks but not from the skill body).
+
+#### Hard gates
+
+- **Old entry must exist + have `status: active`** — refuse to evolve missing entries or already-superseded entries (escape hatch is manual frontmatter edit).
+- **`<reason>` is non-empty + non-trivial** — single-word reasons like `"updated"` accepted but flagged in the confirmation output ("consider a more descriptive reason for the audit trail").
+- **Archive path collision check** — if `<archive-path>` already exists (rare; would happen if you evolved the same entry twice on the same day), append `-N` suffix until unique.
+- **Slug rename validation** — `--new-slug` must be kebab-case; matches `/memory save`'s slug discipline.
+- **No evolve on `_always-load/` entries via slug rename** — `--new-slug` doesn't apply to entries in `_always-load/`; those evolve in place only (operator can manually move + edit if they really want to rename an always-load entry). Skill body refuses with a clear error.
+
+#### Worked example
+
+In-place evolution of a stale preference:
+
+**Invocation:**
+
+```
+/memory evolve personal-private/preferences/paragraph-long-status-narratives.md \
+  "Switched preference: now want short bullet lists per task closeout, not paragraphs" \
+  --body-file -
+```
+
+(With the new body piped via stdin.)
+
+**Step 1** — vault path resolved; old path exists + readable; reason non-empty. ✓
+
+**Step 2** — Read old entry, parse frontmatter:
+
+```yaml
+kind: preferences
+status: active
+created: 2026-05-17
+updated: 2026-05-17
+tags: [dev-flow, status-reports, locked-design-call]
+group: personal-private
+slug: paragraph-long-status-narratives
+always_load: true
+```
+
+Status is `active` ✓ → can evolve.
+
+**Step 3** — Compute paths:
+- Archive: `personal-private/_archive/personal-private/preferences/paragraph-long-status-narratives.md.20260517.md`
+- New entry: `personal-private/preferences/paragraph-long-status-narratives.md` (in-place; same slug)
+
+**Step 4** — Build archive content. Old frontmatter updated:
+
+```yaml
+kind: preferences
+status: superseded
+created: 2026-05-17
+updated: 2026-05-17
+tags: [dev-flow, status-reports, locked-design-call]
+group: personal-private
+slug: paragraph-long-status-narratives
+always_load: true
+superseded_by: personal-private/preferences/paragraph-long-status-narratives.md
+superseded_at: 2026-05-17T23:45:00Z
+superseded_reason: 'Switched preference: now want short bullet lists per task closeout, not paragraphs'
+```
+
+Body unchanged in archive.
+
+**Step 5** — Build new entry content:
+
+```yaml
+kind: preferences
+status: active
+created: 2026-05-17
+updated: 2026-05-17
+tags: [dev-flow, status-reports, locked-design-call]
+group: personal-private
+slug: paragraph-long-status-narratives
+always_load: true
+supersedes: personal-private/_archive/personal-private/preferences/paragraph-long-status-narratives.md.20260517.md
+```
+
+New body (from stdin).
+
+**Step 6** — Write archive → overwrite old path with new content.
+
+**Step 7** — Log `"vec-index update queued for: ... (deferred to task 4)"`.
+
+**Step 8** — Confirm:
+
+```
+Evolved entry:
+  old: personal-private/preferences/paragraph-long-status-narratives.md
+       → archived to personal-private/_archive/personal-private/preferences/paragraph-long-status-narratives.md.20260517.md
+  new: personal-private/preferences/paragraph-long-status-narratives.md (in-place)
+  reason: Switched preference: now want short bullet lists per task closeout, not paragraphs
+  status: old=superseded, new=active
+```
+
+#### Failure modes
+
+- **Old path missing** — halt with `"<old-path>: not found relative to vault root."`.
+- **Old path is not a file** — halt with type error.
+- **Old entry frontmatter unparseable** — halt with `"<old-path>: frontmatter invalid; manual fix needed before evolve."`. Don't try to auto-repair.
+- **Old status not `active`** — halt with `"<old-path>: status is <status>, not active. Cannot evolve a non-active entry. Manual fix path: edit status field if you really want to evolve it."`.
+- **Archive collision (same-day re-evolve)** — append `-N` suffix until unique (`.20260517.md` → `.20260517-2.md`); continue without halting.
+- **`--new-slug` on `_always-load/` entry** — halt with `"Cannot rename _always-load/ entries via --new-slug; evolve in place only."`.
+- **Partial-failure recovery**: if step 6 fails between archive-write and new-entry-write, the operator sees both files present (archive with superseded frontmatter + old at its original path still with active frontmatter). Recovery: read the archive, decide whether to commit or revert; manual fix path documented in troubleshooting.
+
+#### Anti-patterns
+
+`/memory evolve` must NOT:
+
+- **Modify the old entry's body** — only frontmatter additions; body is the point-in-time snapshot.
+- **Skip the archive** — never replace old with new directly; the archive is the audit trail.
+- **Coerce or auto-rename slugs** — `--new-slug` is explicit operator intent.
+- **Evolve `status: superseded` entries silently** — refuse with clear error; the supersession graph must be traversable from the active state outward, not the other way.
+- **Inherit `created` from old** — the new entry's created date is the evolution date (the new entry didn't exist before).
+
+#### Python-side script (`scripts/evolve.py`)
+
+Canonical implementation at `agent-toolkit/skills/memory/scripts/evolve.py`. Same patterns as `save.py`:
+
+- **Function**: `evolve_entry(vault_path, old_path, new_body, reason, *, new_slug=None) -> tuple[Path, Path]` — returns `(new_entry_path, archive_path)`. Raises `FileNotFoundError` (old missing), `ValueError` (validation, status≠active, frontmatter unparseable), `FileExistsError` (archive collision after max retries).
+- **CLI entry point**: `python3 evolve.py <old-path> <reason> [--new-slug <slug>] [--body-file <p-or-->] [--vault-path <p>]`.
+- **Atomic-ish write sequence**: writes archive first (additive); writes new entry second; both via `write_bytes()` for LF-only output. Best-effort atomicity at the syscall level for individual file ops; multi-file consistency relies on the operator detecting + recovering from partial failures (documented in failure modes above).
+- **Frontmatter parsing**: uses `yaml.safe_load` (PyYAML required — already a toolkit dep via `validate-manifests.py`).
+- **LF-only output**: same convention as `save.py` — `target.write_bytes(content.encode("utf-8"))` to bypass platform-specific line-ending translation. Critical for cross-platform Obsidian-synced markdown.
+
+Both paths (skill-body `Write` + script-CLI Python) produce byte-identical files for the same inputs.
 
 ### `/memory reflect`
 

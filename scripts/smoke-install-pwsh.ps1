@@ -33,11 +33,14 @@ try {
         '.agent/skills/design/SKILL.md',
         '.agent/skills/design/templates/design-doc.md',
         # Standalone skill: memory (plan #7a part 1 task 1 ships scaffold;
-        # task 2 of part 1 ships /memory save body + scripts/save.py).
+        # task 2 of part 1 ships /memory save body + scripts/save.py;
+        # task 3 of part 1 ships /memory evolve body + scripts/evolve.py).
         '.claude/skills/memory/SKILL.md',
         '.claude/skills/memory/scripts/save.py',
+        '.claude/skills/memory/scripts/evolve.py',
         '.agent/skills/memory/SKILL.md',
         '.agent/skills/memory/scripts/save.py',
+        '.agent/skills/memory/scripts/evolve.py',
         # Standalone agent: evaluator. claude-code is single-file;
         # antigravity wraps the agent as a skill. (gemini-cli destination
         # .gemini/agents/evaluator.md removed in v0.9.0.)
@@ -208,6 +211,73 @@ try {
         }
     } finally {
         Remove-Item -LiteralPath $msave -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    # ── /memory evolve end-to-end test (plan #7a part 1 task 3) ────────────
+    Write-Host '==> /memory evolve end-to-end test (plan #7a part 1 task 3)'
+    $mevol = Join-Path ([System.IO.Path]::GetTempPath()) ("toolkit-mevol-" + [System.Guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $mevol -Force | Out-Null
+    try {
+        $savePy = Join-Path $scratch '.claude/skills/memory/scripts/save.py'
+        $evolvePy = Join-Path $scratch '.claude/skills/memory/scripts/evolve.py'
+        if (-not (Test-Path -LiteralPath $evolvePy)) {
+            throw "evolve.py not installed at $evolvePy"
+        }
+        # Setup
+        'Original body for in-place evolve.' | python3 $savePy 'preferences' 'smoke-evolve-ip' '--vault-path' $mevol | Out-Null
+        # Test 1: in-place evolve
+        $evolOut = 'Evolved body.' | python3 $evolvePy 'personal-private/preferences/smoke-evolve-ip.md' 'test in-place evolve' '--vault-path' $mevol 2>$null
+        $evolOut = ($evolOut -join '').Trim()
+        $parts = $evolOut -split "`t"
+        $newPath = $parts[0]
+        $archPath = $parts[1]
+        if (-not (Test-Path -LiteralPath $newPath)) { throw "evolve.py did not create new entry at $newPath" }
+        if (-not (Test-Path -LiteralPath $archPath)) { throw "evolve.py did not create archive at $archPath" }
+        $newContent = Get-Content -LiteralPath $newPath -Raw
+        if ($newContent -notmatch '(?m)^supersedes: personal-private/_archive/') {
+            throw "active entry missing 'supersedes:' frontmatter pointing at archive"
+        }
+        if ($newContent -notmatch '(?m)^status: active$') {
+            throw "active entry missing 'status: active'"
+        }
+        $archContent = Get-Content -LiteralPath $archPath -Raw
+        if ($archContent -notmatch '(?m)^status: superseded$') {
+            throw "archive missing 'status: superseded'"
+        }
+        if ($archContent -notmatch '(?m)^superseded_by: personal-private/preferences/smoke-evolve-ip') {
+            throw "archive missing 'superseded_by:' cross-link"
+        }
+        if ($archContent -notmatch '(?m)^superseded_reason:') {
+            throw "archive missing 'superseded_reason:'"
+        }
+        # Test 2: rename evolve
+        'Original body for rename evolve.' | python3 $savePy 'preferences' 'smoke-evolve-rename' '--vault-path' $mevol | Out-Null
+        'Renamed body.' | python3 $evolvePy 'personal-private/preferences/smoke-evolve-rename.md' 'test rename' '--new-slug' 'smoke-evolve-renamed' '--vault-path' $mevol | Out-Null
+        if (Test-Path -LiteralPath (Join-Path $mevol 'personal-private/preferences/smoke-evolve-rename.md')) {
+            throw "rename evolve left old entry at original path (should be unlinked)"
+        }
+        if (-not (Test-Path -LiteralPath (Join-Path $mevol 'personal-private/preferences/smoke-evolve-renamed.md'))) {
+            throw "rename evolve did not create new entry at new slug"
+        }
+        # Test 3: negative — missing entry
+        'x' | python3 $evolvePy 'personal-private/preferences/nonexistent.md' 'test' '--vault-path' $mevol 2>$null | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            throw 'evolve.py allowed missing entry (should error non-zero)'
+        }
+        # Test 4: negative — already-superseded
+        $todayCompact = Get-Date -Format 'yyyyMMdd'
+        $supersededPath = "personal-private/_archive/personal-private/preferences/smoke-evolve-ip.md.$todayCompact.md"
+        'x' | python3 $evolvePy $supersededPath 'test' '--vault-path' $mevol 2>$null | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            throw 'evolve.py allowed evolving already-superseded entry (status check broken)'
+        }
+        # Test 5: negative — empty reason
+        'x' | python3 $evolvePy 'personal-private/preferences/smoke-evolve-ip.md' '' '--vault-path' $mevol 2>$null | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            throw 'evolve.py allowed empty reason (reason check broken)'
+        }
+    } finally {
+        Remove-Item -LiteralPath $mevol -Recurse -Force -ErrorAction SilentlyContinue
     }
 
     # ── validate-manifests negative test: gemini-cli rejected with v0.9.0 msg ─
