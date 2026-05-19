@@ -45,6 +45,7 @@ try {
         '.claude/skills/memory/scripts/reflect.py',
         '.claude/skills/memory/scripts/permeable_boundary.py',
         '.claude/skills/memory/scripts/ideas_surface.py',
+        '.claude/skills/memory/scripts/ideas_incubator.py',
         '.agent/skills/memory/SKILL.md',
         '.agent/skills/memory/scripts/save.py',
         '.agent/skills/memory/scripts/evolve.py',
@@ -54,11 +55,14 @@ try {
         '.agent/skills/memory/scripts/reflect.py',
         '.agent/skills/memory/scripts/permeable_boundary.py',
         '.agent/skills/memory/scripts/ideas_surface.py',
+        '.agent/skills/memory/scripts/ideas_incubator.py',
         # Standalone agent: evaluator. claude-code is single-file;
         # antigravity wraps the agent as a skill. (gemini-cli destination
         # .gemini/agents/evaluator.md removed in v0.9.0.)
         '.claude/agents/evaluator.md',
         '.agent/skills/evaluator/SKILL.md',
+        '.claude/agents/memory-idea-researcher.md',
+        '.agent/skills/memory-idea-researcher/SKILL.md',
         # Standalone hooks (claude-code only, v0.7.0); memory-recall hooks
         # added in plan #7a part 2; memory-reflect-{stop,idle} added in
         # plan #7a part 3.
@@ -126,7 +130,7 @@ try {
     if ($rerun -match 'created .claude/skills/(example-skill|pii-scrubber)') {
         throw 're-run recreated a skill (should be kept)'
     }
-    if ($rerun -match 'created .claude/agents/evaluator') {
+    if ($rerun -match 'created .claude/agents/(evaluator|memory-idea-researcher)') {
         throw 're-run recreated the evaluator agent (should be kept)'
     }
     if ($rerun -match 'created .claude/hooks/(kill-switch|steer|commit-on-stop|memory-recall-session-start|memory-recall-prompt-submit|memory-reflect-stop|memory-reflect-idle)') {
@@ -1462,6 +1466,79 @@ print('OK')
         }
     } finally {
         Remove-Item -LiteralPath $misurface -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    # ── _idea-incubator skeleton writer test (plan #7a part 4 task 3) ──────
+    Write-Host '==> _idea-incubator skeleton writer test (plan #7a part 4 task 3)'
+    $iiPy = Join-Path $scratch '.claude/skills/memory/scripts/ideas_incubator.py'
+    if (-not (Test-Path -LiteralPath $iiPy)) {
+        throw "ideas_incubator.py not installed at $iiPy"
+    }
+    $miincub = Join-Path ([System.IO.Path]::GetTempPath()) ("toolkit-miincub-" + [System.Guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $miincub -Force | Out-Null
+    try {
+        # Test A: skeleton creates 4 files + locked frontmatter fields
+        $iiAOut = python3 $iiPy 'Add /memory inspect for tuning' 'Operators need to audit which patterns matched + adjust the merge weights.' '--vault-path' $miincub '--session-id' 'abc12345-deadbeef' '--rationale' 'Mentioned 3x during recall-loop part' '--excerpt' 'We should tune the rank-merge weights' 2>&1 | Out-String
+        if ($iiAOut -notmatch '"created": true') {
+            throw "ideas_incubator did not emit created:true. output: $iiAOut"
+        }
+        $incubDir = Join-Path $miincub 'personal-private/_idea-incubator/add-memory-inspect-for-tuning'
+        foreach ($fname in @('_index.md', 'research-pending.md', 'related-memoryvault.md', 'related-obsidian.md')) {
+            if (-not (Test-Path -LiteralPath (Join-Path $incubDir $fname))) {
+                throw "incubator skeleton missing $fname at $incubDir"
+            }
+        }
+        $indexMd = Join-Path $incubDir '_index.md'
+        $indexContent = Get-Content -LiteralPath $indexMd -Raw
+        foreach ($field in @('kind: idea', 'status: incubating', 'slug: add-memory-inspect-for-tuning', 'surfaced_in_session: abc12345-deadbeef', 'research_budget_wall_time_sec: 300', 'research_budget_web_fetches: 3', 'research_budget_tokens: 5000')) {
+            if ($indexContent -notmatch [regex]::Escape($field)) {
+                throw "_index.md missing field: $field"
+            }
+        }
+        if ($indexContent -notmatch 'Mentioned 3x during recall-loop part') {
+            throw "_index.md body missing rationale text"
+        }
+        if ($indexContent -notmatch 'tune the rank-merge weights') {
+            throw "_index.md body missing supporting excerpt"
+        }
+        # Test B: collision suffix
+        $iiBOut = python3 $iiPy 'Add /memory inspect for tuning' 'Same title, different summary.' '--vault-path' $miincub 2>&1 | Out-String
+        if ($iiBOut -notmatch '"slug": "add-memory-inspect-for-tuning-2"') {
+            throw "collision did not produce -2 suffix slug. output: $iiBOut"
+        }
+        if (-not (Test-Path -LiteralPath (Join-Path $miincub 'personal-private/_idea-incubator/add-memory-inspect-for-tuning-2'))) {
+            throw "-2 suffix dir not created"
+        }
+        # Test C: no vault → error
+        python3 $iiPy 'Title' 'Summary' '--vault-path' "/nonexistent/path/$([Guid]::NewGuid())" 2>$null | Out-Null
+        if ($LASTEXITCODE -ne 1) {
+            throw "nonexistent vault exited $LASTEXITCODE (expected 1)"
+        }
+        # Test D: empty title → error
+        python3 $iiPy '   ' 'Summary' '--vault-path' $miincub 2>$null | Out-Null
+        if ($LASTEXITCODE -ne 1) {
+            throw "empty title exited $LASTEXITCODE (expected 1)"
+        }
+        # Test E: custom budget caps
+        $iiEOut = python3 $iiPy 'Custom budget idea' 'Test custom budgets.' '--vault-path' $miincub '--budget-wall-time-sec' '60' '--budget-web-fetches' '1' '--budget-tokens' '1500' 2>&1 | Out-String
+        $customDir = ($iiEOut | ConvertFrom-Json).incubator_dir
+        $customIndex = Get-Content -LiteralPath (Join-Path $customDir '_index.md') -Raw
+        foreach ($budgetField in @('research_budget_wall_time_sec: 60', 'research_budget_web_fetches: 1', 'research_budget_tokens: 1500')) {
+            if ($customIndex -notmatch [regex]::Escape($budgetField)) {
+                throw "custom budget field missing: $budgetField"
+            }
+        }
+        # Test F: memory-idea-researcher sub-agent installed
+        $researcherMd = Join-Path $scratch '.claude/agents/memory-idea-researcher.md'
+        if (-not (Test-Path -LiteralPath $researcherMd)) {
+            throw "memory-idea-researcher.md not installed at $researcherMd"
+        }
+        $researcherAnti = Join-Path $scratch '.agent/skills/memory-idea-researcher/SKILL.md'
+        if (-not (Test-Path -LiteralPath $researcherAnti)) {
+            throw "memory-idea-researcher antigravity skill-wrap missing at $researcherAnti"
+        }
+    } finally {
+        Remove-Item -LiteralPath $miincub -Recurse -Force -ErrorAction SilentlyContinue
     }
 
     # ── validate-manifests negative test: gemini-cli rejected with v0.9.0 msg ─

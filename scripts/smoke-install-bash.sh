@@ -50,6 +50,7 @@ expected=(
   .claude/skills/memory/scripts/reflect.py
   .claude/skills/memory/scripts/permeable_boundary.py
   .claude/skills/memory/scripts/ideas_surface.py
+  .claude/skills/memory/scripts/ideas_incubator.py
   .agent/skills/memory/SKILL.md
   .agent/skills/memory/scripts/save.py
   .agent/skills/memory/scripts/evolve.py
@@ -59,11 +60,15 @@ expected=(
   .agent/skills/memory/scripts/reflect.py
   .agent/skills/memory/scripts/permeable_boundary.py
   .agent/skills/memory/scripts/ideas_surface.py
+  .agent/skills/memory/scripts/ideas_incubator.py
   # Standalone agent: evaluator — claude-code is single-file destination;
   # antigravity wraps the agent as a skill. (gemini-cli destination
-  # .gemini/agents/evaluator.md removed in v0.9.0.)
+  # .gemini/agents/evaluator.md removed in v0.9.0.) memory-idea-researcher
+  # added in plan #7a part 4 task 3 (deep-research worker for idea-incubator).
   .claude/agents/evaluator.md
   .agent/skills/evaluator/SKILL.md
+  .claude/agents/memory-idea-researcher.md
+  .agent/skills/memory-idea-researcher/SKILL.md
   # Standalone hooks — claude-code only (v0.7.0); memory-recall hooks
   # added in plan #7a part 2; memory-reflect-{stop,idle} added in plan
   # #7a part 3.
@@ -154,7 +159,7 @@ if grep -qE "created .claude/skills/(example-skill|pii-scrubber)" "$SCRATCH/.rer
   echo "FAIL: re-run recreated a skill that already existed (should be 'kept')" >&2
   exit 1
 fi
-if grep -qE "created .claude/agents/evaluator" "$SCRATCH/.rerun.log"; then
+if grep -qE "created .claude/agents/(evaluator|memory-idea-researcher)" "$SCRATCH/.rerun.log"; then
   echo "FAIL: re-run recreated an agent that already existed (should be 'kept')" >&2
   exit 1
 fi
@@ -1806,6 +1811,132 @@ if [[ ! -f "$ENV_IDEAS" ]]; then
   exit 1
 fi
 rm -rf "$MISURFACE"
+
+# ── _idea-incubator skeleton writer test (plan #7a part 4 task 3) ──────────
+# Verify ideas_incubator.py creates the 4-file skeleton (_index.md +
+# research-pending.md + related-memoryvault.md + related-obsidian.md);
+# verify slug-collision suffix; verify excerpts + rationale flow through
+# to _index.md frontmatter + body.
+echo "==> _idea-incubator skeleton writer test (plan #7a part 4 task 3)"
+II_PY="$SCRATCH/.claude/skills/memory/scripts/ideas_incubator.py"
+if [[ ! -f "$II_PY" ]]; then
+  echo "FAIL: ideas_incubator.py not installed at $II_PY" >&2
+  exit 1
+fi
+MIINCUB="$(mktemp -d)"
+# Test A: skeleton creates 4 files
+II_A_OUT="$(python3 "$II_PY" \
+  'Add /memory inspect for tuning' \
+  'Operators need to audit which patterns matched + adjust the merge weights.' \
+  --vault-path "$MIINCUB" \
+  --session-id "abc12345-deadbeef" \
+  --rationale "Mentioned 3x during recall-loop part" \
+  --excerpt "We should tune the rank-merge weights" 2>&1)"
+if ! echo "$II_A_OUT" | grep -qE '"created": true'; then
+  echo "FAIL: ideas_incubator did not emit created:true. output: $II_A_OUT" >&2
+  rm -rf "$MIINCUB"
+  exit 1
+fi
+INCUB_DIR="$MIINCUB/personal-private/_idea-incubator/add-memory-inspect-for-tuning"
+for fname in _index.md research-pending.md related-memoryvault.md related-obsidian.md; do
+  if [[ ! -f "$INCUB_DIR/$fname" ]]; then
+    echo "FAIL: incubator skeleton missing $fname at $INCUB_DIR" >&2
+    ls -la "$INCUB_DIR" >&2 2>/dev/null
+    rm -rf "$MIINCUB"
+    exit 1
+  fi
+done
+# Verify _index.md frontmatter has locked fields
+INDEX_MD="$INCUB_DIR/_index.md"
+for required_field in "kind: idea" "status: incubating" "slug: add-memory-inspect-for-tuning" "surfaced_in_session: abc12345-deadbeef" "research_budget_wall_time_sec: 300" "research_budget_web_fetches: 3" "research_budget_tokens: 5000"; do
+  if ! grep -qF "$required_field" "$INDEX_MD"; then
+    echo "FAIL: _index.md missing field: $required_field" >&2
+    cat "$INDEX_MD" >&2
+    rm -rf "$MIINCUB"
+    exit 1
+  fi
+done
+# Body should contain rationale + excerpt
+if ! grep -qF "Mentioned 3x during recall-loop part" "$INDEX_MD"; then
+  echo "FAIL: _index.md body missing rationale text" >&2
+  rm -rf "$MIINCUB"
+  exit 1
+fi
+if ! grep -qF "tune the rank-merge weights" "$INDEX_MD"; then
+  echo "FAIL: _index.md body missing supporting excerpt" >&2
+  rm -rf "$MIINCUB"
+  exit 1
+fi
+# Test B: collision suffix
+II_B_OUT="$(python3 "$II_PY" \
+  'Add /memory inspect for tuning' \
+  'Same title, different summary.' \
+  --vault-path "$MIINCUB" 2>&1)"
+if ! echo "$II_B_OUT" | grep -qE '"slug": "add-memory-inspect-for-tuning-2"'; then
+  echo "FAIL: collision did not produce -2 suffix slug" >&2
+  echo "    output: $II_B_OUT" >&2
+  rm -rf "$MIINCUB"
+  exit 1
+fi
+if [[ ! -d "$MIINCUB/personal-private/_idea-incubator/add-memory-inspect-for-tuning-2" ]]; then
+  echo "FAIL: -2 suffix dir not created" >&2
+  rm -rf "$MIINCUB"
+  exit 1
+fi
+# Test C: no vault → error
+II_C=0
+python3 "$II_PY" 'Title' 'Summary' --vault-path /nonexistent/path/$$ 2>/dev/null || II_C=$?
+if [[ $II_C -ne 1 ]]; then
+  echo "FAIL: nonexistent vault exited $II_C (expected 1)" >&2
+  rm -rf "$MIINCUB"
+  exit 1
+fi
+# Test D: empty title → error
+II_D=0
+python3 "$II_PY" '   ' 'Summary' --vault-path "$MIINCUB" 2>/dev/null || II_D=$?
+if [[ $II_D -ne 1 ]]; then
+  echo "FAIL: empty title exited $II_D (expected 1)" >&2
+  rm -rf "$MIINCUB"
+  exit 1
+fi
+# Test E: custom budget caps flow through frontmatter
+II_E_OUT="$(python3 "$II_PY" 'Custom budget idea' 'Test custom budgets.' \
+  --vault-path "$MIINCUB" \
+  --budget-wall-time-sec 60 \
+  --budget-web-fetches 1 \
+  --budget-tokens 1500 2>&1)"
+CUSTOM_DIR=$(echo "$II_E_OUT" | python3 -c 'import json,sys; print(json.loads(sys.stdin.read())["incubator_dir"])')
+if ! grep -qE "^research_budget_wall_time_sec: 60$" "$CUSTOM_DIR/_index.md"; then
+  echo "FAIL: custom wall-time budget not honored" >&2
+  cat "$CUSTOM_DIR/_index.md" >&2
+  rm -rf "$MIINCUB"
+  exit 1
+fi
+if ! grep -qE "^research_budget_web_fetches: 1$" "$CUSTOM_DIR/_index.md"; then
+  echo "FAIL: custom web-fetch budget not honored" >&2
+  rm -rf "$MIINCUB"
+  exit 1
+fi
+if ! grep -qE "^research_budget_tokens: 1500$" "$CUSTOM_DIR/_index.md"; then
+  echo "FAIL: custom token budget not honored" >&2
+  rm -rf "$MIINCUB"
+  exit 1
+fi
+# Test F: memory-idea-researcher sub-agent installed
+RESEARCHER_MD="$SCRATCH/.claude/agents/memory-idea-researcher.md"
+if [[ ! -f "$RESEARCHER_MD" ]]; then
+  echo "FAIL: memory-idea-researcher.md not installed at $RESEARCHER_MD" >&2
+  rm -rf "$MIINCUB"
+  exit 1
+fi
+RESEARCHER_ANTI="$SCRATCH/.agent/skills/memory-idea-researcher/SKILL.md"
+if [[ ! -f "$RESEARCHER_ANTI" ]]; then
+  echo "FAIL: memory-idea-researcher antigravity skill-wrap missing at $RESEARCHER_ANTI" >&2
+  rm -rf "$MIINCUB"
+  exit 1
+fi
+
+rm -rf "$MIINCUB"
 
 # ── validate-manifests negative test: gemini-cli should error with v0.9.0 msg ─
 # Manifest containing 'gemini-cli' in supported_hosts must error with a clear
