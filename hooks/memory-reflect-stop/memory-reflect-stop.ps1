@@ -113,4 +113,15 @@ except Exception:
 
 # Pass through captured reflect.py output on stdout.
 Write-Output $ReflectOut
+
+# ── Crash-recovery marker rename (plan #7a part 3 task 6) ──────────────────
+# Reflection succeeded → rename .harness/session-id-<sid>.start → .reflected.
+$Marker = Join-Path ".harness" "session-id-$SessionId.start"
+if (Test-Path $Marker) {
+    $ReflectedMarker = $Marker -replace '\.start$', '.reflected'
+    try {
+        Move-Item -LiteralPath $Marker -Destination $ReflectedMarker -Force -ErrorAction SilentlyContinue
+    } catch {}
+}
+
 exit 0

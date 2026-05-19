@@ -1517,6 +1517,104 @@ fi
 rm -rf "$MRIDLE" "$RIDLE_VAULT"
 unset MEMORY_VAULT_PATH
 
+# ── Crash-recovery marker lifecycle test (plan #7a part 3 task 6) ──────────
+# Verify the full marker lifecycle:
+#   1. SessionStart hook (memory-recall-session-start) writes
+#      .harness/session-id-<sid>.start with session_id+started_at+transcript
+#   2. Stop hook (memory-reflect-stop) renames .start → .reflected on
+#      successful reflection
+#   3. Idle hook (memory-reflect-idle) recovers orphan .start markers +
+#      GCs old .reflected markers — covered by task 4's smoke test
+echo "==> Crash-recovery marker lifecycle test (plan #7a part 3 task 6)"
+MMARKER="$(mktemp -d)"
+MMARKER_VAULT="$(mktemp -d)"
+MMARKER_SESSION_ID="b1c2d3e4-f5a6-7b8c-9d0e-marker6lifecyc"
+MMARKER_CWD_SLUG="-$(echo "$MMARKER" | tr '/' '-')"
+MMARKER_TRANSCRIPT_DIR="$HOME/.claude/projects/$MMARKER_CWD_SLUG"
+MMARKER_TRANSCRIPT="$MMARKER_TRANSCRIPT_DIR/$MMARKER_SESSION_ID.jsonl"
+mkdir -p "$MMARKER/.claude/skills/memory/scripts" "$MMARKER/.claude/hooks" "$MMARKER_TRANSCRIPT_DIR"
+for pyf in recall reflect save embed vec_index; do
+  cp "$SCRATCH/.claude/skills/memory/scripts/$pyf.py" "$MMARKER/.claude/skills/memory/scripts/"
+done
+cp "$SCRATCH/.claude/hooks/memory-recall-session-start.sh" "$MMARKER/.claude/hooks/"
+cp "$SCRATCH/.claude/hooks/memory-reflect-stop.sh" "$MMARKER/.claude/hooks/"
+chmod +x "$MMARKER/.claude/hooks/"*.sh
+cat > "$MMARKER_TRANSCRIPT" << 'MARKER_EOF'
+{"type":"user","message":{"role":"user","content":"Always commit before EOD."},"uuid":"u1"}
+MARKER_EOF
+
+# Test 1: SessionStart hook writes marker
+SS_PAYLOAD='{"session_id":"'$MMARKER_SESSION_ID'","cwd":"'$MMARKER'","hookEventName":"SessionStart"}'
+(cd "$MMARKER" && MEMORY_VAULT_PATH="$MMARKER_VAULT" bash -c "echo '$SS_PAYLOAD' | bash .claude/hooks/memory-recall-session-start.sh") > /dev/null 2>&1
+START_MARKER="$MMARKER/.harness/session-id-$MMARKER_SESSION_ID.start"
+if [[ ! -f "$START_MARKER" ]]; then
+  echo "FAIL: SessionStart hook did not write .start marker at $START_MARKER" >&2
+  ls -la "$MMARKER/.harness/" 2>/dev/null >&2
+  rm -rf "$MMARKER" "$MMARKER_VAULT" "$MMARKER_TRANSCRIPT_DIR"
+  exit 1
+fi
+if ! grep -q "session_id: $MMARKER_SESSION_ID" "$START_MARKER"; then
+  echo "FAIL: marker missing session_id field" >&2
+  cat "$START_MARKER" >&2
+  rm -rf "$MMARKER" "$MMARKER_VAULT" "$MMARKER_TRANSCRIPT_DIR"
+  exit 1
+fi
+if ! grep -q "^started_at: " "$START_MARKER"; then
+  echo "FAIL: marker missing started_at field" >&2
+  rm -rf "$MMARKER" "$MMARKER_VAULT" "$MMARKER_TRANSCRIPT_DIR"
+  exit 1
+fi
+if ! grep -q "^transcript: " "$START_MARKER"; then
+  echo "FAIL: marker missing transcript field" >&2
+  rm -rf "$MMARKER" "$MMARKER_VAULT" "$MMARKER_TRANSCRIPT_DIR"
+  exit 1
+fi
+
+# Test 2: re-invoking SessionStart hook with same session_id is idempotent
+# (doesn't overwrite existing marker)
+ORIG_MARKER_CONTENT="$(cat "$START_MARKER")"
+sleep 1  # ensure mtime would differ if overwritten
+(cd "$MMARKER" && MEMORY_VAULT_PATH="$MMARKER_VAULT" bash -c "echo '$SS_PAYLOAD' | bash .claude/hooks/memory-recall-session-start.sh") > /dev/null 2>&1
+NEW_MARKER_CONTENT="$(cat "$START_MARKER")"
+if [[ "$ORIG_MARKER_CONTENT" != "$NEW_MARKER_CONTENT" ]]; then
+  echo "FAIL: SessionStart re-invocation overwrote existing marker (should be idempotent)" >&2
+  rm -rf "$MMARKER" "$MMARKER_VAULT" "$MMARKER_TRANSCRIPT_DIR"
+  exit 1
+fi
+
+# Test 3: Stop hook renames .start → .reflected
+STOP_PAYLOAD='{"session_id":"'$MMARKER_SESSION_ID'","cwd":"'$MMARKER'","hookEventName":"Stop"}'
+(cd "$MMARKER" && MEMORY_VAULT_PATH="$MMARKER_VAULT" bash -c "echo '$STOP_PAYLOAD' | bash .claude/hooks/memory-reflect-stop.sh") > /dev/null 2>&1
+REFLECTED_MARKER="$MMARKER/.harness/session-id-$MMARKER_SESSION_ID.reflected"
+if [[ -f "$START_MARKER" ]]; then
+  echo "FAIL: Stop hook left .start marker in place (should have renamed to .reflected)" >&2
+  ls -la "$MMARKER/.harness/" >&2
+  rm -rf "$MMARKER" "$MMARKER_VAULT" "$MMARKER_TRANSCRIPT_DIR"
+  exit 1
+fi
+if [[ ! -f "$REFLECTED_MARKER" ]]; then
+  echo "FAIL: Stop hook did not create .reflected marker" >&2
+  ls -la "$MMARKER/.harness/" >&2
+  rm -rf "$MMARKER" "$MMARKER_VAULT" "$MMARKER_TRANSCRIPT_DIR"
+  exit 1
+fi
+
+# Test 4: Stop hook with no pre-existing marker is graceful no-op (marker
+# lifecycle is best-effort; Stop without prior SessionStart is rare but valid)
+NO_MARKER_SESSION_ID="c1d2e3f4-a5b6-7c8d-9e0f-marker6nostart"
+NO_MARKER_TRANSCRIPT="$MMARKER_TRANSCRIPT_DIR/$NO_MARKER_SESSION_ID.jsonl"
+cp "$MMARKER_TRANSCRIPT" "$NO_MARKER_TRANSCRIPT"
+NO_MARKER_STOP_PAYLOAD='{"session_id":"'$NO_MARKER_SESSION_ID'","cwd":"'$MMARKER'","hookEventName":"Stop"}'
+NO_MARKER_EXIT=0
+(cd "$MMARKER" && MEMORY_VAULT_PATH="$MMARKER_VAULT" bash -c "echo '$NO_MARKER_STOP_PAYLOAD' | bash .claude/hooks/memory-reflect-stop.sh") > /dev/null 2>&1 || NO_MARKER_EXIT=$?
+if [[ $NO_MARKER_EXIT -ne 0 ]]; then
+  echo "FAIL: Stop hook with no pre-existing marker exited $NO_MARKER_EXIT (expected 0)" >&2
+  rm -rf "$MMARKER" "$MMARKER_VAULT" "$MMARKER_TRANSCRIPT_DIR"
+  exit 1
+fi
+
+rm -rf "$MMARKER" "$MMARKER_VAULT" "$MMARKER_TRANSCRIPT_DIR"
+
 # ── validate-manifests negative test: gemini-cli should error with v0.9.0 msg ─
 # Manifest containing 'gemini-cli' in supported_hosts must error with a clear
 # message pointing at the v0.9.0 CHANGELOG. Catches regressions if HOST_ENUM

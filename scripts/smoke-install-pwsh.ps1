@@ -1229,6 +1229,98 @@ transcript: $($mridle.Replace('\','/'))/does-not-exist.jsonl
         Remove-Item -Path Env:MEMORY_VAULT_PATH -ErrorAction SilentlyContinue
     }
 
+    # ── Crash-recovery marker lifecycle test (plan #7a part 3 task 6) ──────
+    Write-Host '==> Crash-recovery marker lifecycle test (plan #7a part 3 task 6)'
+    $mmarker = Join-Path ([System.IO.Path]::GetTempPath()) ("toolkit-mmarker-" + [System.Guid]::NewGuid().ToString('N'))
+    $mmarkerVault = Join-Path ([System.IO.Path]::GetTempPath()) ("toolkit-mmarker-vault-" + [System.Guid]::NewGuid().ToString('N'))
+    $mmarkerSessionId = "c1d2e3f4-a5b6-7c8d-9e0f-pwshmarker6lc"
+    $mmarkerCwdSlug = "-" + (($mmarker -replace '[\\/]', '-') -replace ':', '')
+    $mmarkerTranscriptDir = Join-Path $HOME ".claude/projects/$mmarkerCwdSlug"
+    $mmarkerTranscript = Join-Path $mmarkerTranscriptDir "$mmarkerSessionId.jsonl"
+    New-Item -ItemType Directory -Path (Join-Path $mmarker '.claude/skills/memory/scripts') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $mmarker '.claude/hooks') -Force | Out-Null
+    New-Item -ItemType Directory -Path $mmarkerVault -Force | Out-Null
+    New-Item -ItemType Directory -Path $mmarkerTranscriptDir -Force | Out-Null
+    foreach ($pyf in @('recall', 'reflect', 'save', 'embed', 'vec_index')) {
+        Copy-Item -LiteralPath (Join-Path $scratch ".claude/skills/memory/scripts/$pyf.py") -Destination (Join-Path $mmarker ".claude/skills/memory/scripts/$pyf.py")
+    }
+    Copy-Item -LiteralPath (Join-Path $scratch '.claude/hooks/memory-recall-session-start.ps1') -Destination (Join-Path $mmarker '.claude/hooks/memory-recall-session-start.ps1')
+    Copy-Item -LiteralPath (Join-Path $scratch '.claude/hooks/memory-reflect-stop.ps1') -Destination (Join-Path $mmarker '.claude/hooks/memory-reflect-stop.ps1')
+    $mmarkerTxLines = @(
+        '{"type":"user","message":{"role":"user","content":"Always commit before EOD."},"uuid":"u1"}'
+    )
+    [System.IO.File]::WriteAllText($mmarkerTranscript, ($mmarkerTxLines -join "`n") + "`n")
+    try {
+        $env:MEMORY_VAULT_PATH = $mmarkerVault
+        $cwdEscaped = $mmarker.Replace('\','\\')
+        $ssPayload = '{"session_id":"' + $mmarkerSessionId + '","cwd":"' + $cwdEscaped + '","hookEventName":"SessionStart"}'
+
+        # Test 1: SessionStart hook writes marker
+        $stdinFile = Join-Path $mmarker '.stdin.log'
+        Set-Content -LiteralPath $stdinFile -Value $ssPayload -NoNewline
+        $proc1 = Start-Process -FilePath 'pwsh' -ArgumentList @('-NoProfile','-File','.claude/hooks/memory-recall-session-start.ps1') -WorkingDirectory $mmarker -NoNewWindow -Wait -RedirectStandardInput $stdinFile -PassThru
+        if ($proc1.ExitCode -ne 0) {
+            throw "SessionStart hook exited $($proc1.ExitCode)"
+        }
+        $startMarker = Join-Path $mmarker ".harness/session-id-$mmarkerSessionId.start"
+        if (-not (Test-Path -LiteralPath $startMarker)) {
+            throw "SessionStart hook did not write .start marker at $startMarker. .harness/ listing: $(Get-ChildItem -LiteralPath (Join-Path $mmarker '.harness') -ErrorAction SilentlyContinue | ForEach-Object Name)"
+        }
+        $markerContent = Get-Content -LiteralPath $startMarker -Raw
+        if ($markerContent -notmatch "session_id: $mmarkerSessionId") {
+            throw "marker missing session_id field. content: $markerContent"
+        }
+        if ($markerContent -notmatch 'started_at: ') {
+            throw "marker missing started_at field. content: $markerContent"
+        }
+        if ($markerContent -notmatch 'transcript: ') {
+            throw "marker missing transcript field. content: $markerContent"
+        }
+
+        # Test 2: re-invocation is idempotent (marker not overwritten)
+        $origContent = Get-Content -LiteralPath $startMarker -Raw
+        Start-Sleep -Seconds 1
+        $proc2 = Start-Process -FilePath 'pwsh' -ArgumentList @('-NoProfile','-File','.claude/hooks/memory-recall-session-start.ps1') -WorkingDirectory $mmarker -NoNewWindow -Wait -RedirectStandardInput $stdinFile -PassThru
+        if ($proc2.ExitCode -ne 0) {
+            throw "SessionStart re-invocation exited $($proc2.ExitCode)"
+        }
+        $newContent = Get-Content -LiteralPath $startMarker -Raw
+        if ($origContent -ne $newContent) {
+            throw "SessionStart re-invocation overwrote existing marker (should be idempotent)"
+        }
+
+        # Test 3: Stop hook renames .start → .reflected
+        $stopPayload = '{"session_id":"' + $mmarkerSessionId + '","cwd":"' + $cwdEscaped + '","hookEventName":"Stop"}'
+        Set-Content -LiteralPath $stdinFile -Value $stopPayload -NoNewline
+        $proc3 = Start-Process -FilePath 'pwsh' -ArgumentList @('-NoProfile','-File','.claude/hooks/memory-reflect-stop.ps1') -WorkingDirectory $mmarker -NoNewWindow -Wait -RedirectStandardInput $stdinFile -PassThru
+        if ($proc3.ExitCode -ne 0) {
+            throw "Stop hook exited $($proc3.ExitCode)"
+        }
+        if (Test-Path -LiteralPath $startMarker) {
+            throw "Stop hook left .start marker in place (should have renamed to .reflected)"
+        }
+        $reflectedMarker = Join-Path $mmarker ".harness/session-id-$mmarkerSessionId.reflected"
+        if (-not (Test-Path -LiteralPath $reflectedMarker)) {
+            throw "Stop hook did not create .reflected marker"
+        }
+
+        # Test 4: Stop hook with no pre-existing marker → graceful no-op
+        $noMarkerSessionId = "d1e2f3a4-b5c6-7d8e-9f0a-pwshmarker6no"
+        $noMarkerTranscript = Join-Path $mmarkerTranscriptDir "$noMarkerSessionId.jsonl"
+        Copy-Item -LiteralPath $mmarkerTranscript -Destination $noMarkerTranscript
+        $noMarkerStopPayload = '{"session_id":"' + $noMarkerSessionId + '","cwd":"' + $cwdEscaped + '","hookEventName":"Stop"}'
+        Set-Content -LiteralPath $stdinFile -Value $noMarkerStopPayload -NoNewline
+        $proc4 = Start-Process -FilePath 'pwsh' -ArgumentList @('-NoProfile','-File','.claude/hooks/memory-reflect-stop.ps1') -WorkingDirectory $mmarker -NoNewWindow -Wait -RedirectStandardInput $stdinFile -PassThru
+        if ($proc4.ExitCode -ne 0) {
+            throw "Stop hook with no pre-existing marker exited $($proc4.ExitCode)"
+        }
+    } finally {
+        Remove-Item -LiteralPath $mmarker -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $mmarkerVault -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $mmarkerTranscriptDir -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -Path Env:MEMORY_VAULT_PATH -ErrorAction SilentlyContinue
+    }
+
     # ── validate-manifests negative test: gemini-cli rejected with v0.9.0 msg ─
     Write-Host '==> validate-manifests negative test (gemini-cli rejected)'
     $vneg = Join-Path ([System.IO.Path]::GetTempPath()) ("toolkit-vneg-" + [System.Guid]::NewGuid().ToString('N'))

@@ -122,4 +122,15 @@ fi
 # Emit captured reflect.py output on stdout (one JSON record per line).
 printf '%s\n' "$REFLECT_OUT"
 
+# ── Crash-recovery marker rename (plan #7a part 3 task 6) ──────────────────
+# Reflection succeeded → rename .harness/session-id-<sid>.start → .reflected.
+# This marks the session as fully reflected; the idle hook's orphan scan
+# (memory-reflect-idle) will GC the .reflected marker after 30 days.
+# If the .start marker doesn't exist (operator never ran SessionStart, or
+# .harness/ wasn't initialized), this is a no-op.
+MARKER=".harness/session-id-${SESSION_ID}.start"
+if [[ -f "$MARKER" ]]; then
+    mv "$MARKER" "${MARKER%.start}.reflected" 2>/dev/null || true
+fi
+
 exit 0
