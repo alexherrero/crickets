@@ -61,13 +61,15 @@ expected=(
   .claude/agents/evaluator.md
   .agent/skills/evaluator/SKILL.md
   # Standalone hooks — claude-code only (v0.7.0); memory-recall hooks
-  # added in plan #7a part 2; memory-reflect-stop added in plan #7a part 3.
+  # added in plan #7a part 2; memory-reflect-{stop,idle} added in plan
+  # #7a part 3.
   .claude/hooks/kill-switch.sh
   .claude/hooks/steer.sh
   .claude/hooks/commit-on-stop.sh
   .claude/hooks/memory-recall-session-start.sh
   .claude/hooks/memory-recall-prompt-submit.sh
   .claude/hooks/memory-reflect-stop.sh
+  .claude/hooks/memory-reflect-idle.sh
   .claude/settings.json
   # Pre-push hook
   .git/hooks/pre-push
@@ -153,7 +155,7 @@ if grep -qE "created .claude/agents/evaluator" "$SCRATCH/.rerun.log"; then
   exit 1
 fi
 # Same for hooks: re-run should not "create" scripts that already exist.
-if grep -qE "created .claude/hooks/(kill-switch|steer|commit-on-stop|memory-recall-session-start|memory-recall-prompt-submit|memory-reflect-stop)" "$SCRATCH/.rerun.log"; then
+if grep -qE "created .claude/hooks/(kill-switch|steer|commit-on-stop|memory-recall-session-start|memory-recall-prompt-submit|memory-reflect-stop|memory-reflect-idle)" "$SCRATCH/.rerun.log"; then
   echo "FAIL: re-run recreated a hook script that already existed (should be 'kept')" >&2
   exit 1
 fi
@@ -1340,6 +1342,153 @@ fi
 
 # Cleanup
 rm -rf "$MRSTOP" "$RSTOP_TRANSCRIPT_DIR"
+
+# ── Idle-time reflection hook test (plan #7a part 3 task 4) ────────────────
+# Verify the memory-reflect-idle hook handles orphan markers correctly:
+# (1) hook installed at .claude/hooks/memory-reflect-idle.sh; (2) settings.json
+# has SessionStart entry referencing the script; (3) orphan marker → reflect.py
+# runs + marker renamed .start → .reflected; (4) fresh marker → no-op; (5)
+# missing transcript → graceful skip; (6) .reflected GC after threshold.
+echo "==> Idle-time reflection hook test (plan #7a part 3 task 4)"
+REFLECT_IDLE_SH="$SCRATCH/.claude/hooks/memory-reflect-idle.sh"
+if [[ ! -x "$REFLECT_IDLE_SH" ]]; then
+  echo "FAIL: memory-reflect-idle.sh not installed/executable at $REFLECT_IDLE_SH" >&2
+  exit 1
+fi
+if ! grep -qE 'memory-reflect-idle\.sh' "$SETTINGS_JSON"; then
+  echo "FAIL: settings.json missing memory-reflect-idle.sh SessionStart entry" >&2
+  exit 1
+fi
+# Stage scratch project + seed orphan marker + transcript.
+MRIDLE="$(mktemp -d)"
+mkdir -p "$MRIDLE/.claude/skills/memory/scripts" "$MRIDLE/.claude/hooks" "$MRIDLE/.harness"
+cp "$SCRATCH/.claude/skills/memory/scripts/reflect.py" "$MRIDLE/.claude/skills/memory/scripts/"
+cp "$REFLECT_IDLE_SH" "$MRIDLE/.claude/hooks/"
+chmod +x "$MRIDLE/.claude/hooks/memory-reflect-idle.sh"
+IDLE_TRANSCRIPT="$MRIDLE/orphan-transcript.jsonl"
+cat > "$IDLE_TRANSCRIPT" << 'IDLE_EOF'
+{"type":"user","message":{"role":"user","content":"Always commit before EOD."},"uuid":"u1"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","name":"Bash"}]},"uuid":"a1"}
+IDLE_EOF
+
+# Test A: orphan marker (mtime backdated past idle threshold) → reflection + rename
+cat > "$MRIDLE/.harness/session-id-aabbccdd.start" << IDLE_EOF
+session_id: aabbccdd-eeffaabb
+started_at: 2026-05-18T00:00:00Z
+transcript: $IDLE_TRANSCRIPT
+IDLE_EOF
+python3 -c "import os, sys, time; os.utime(sys.argv[1], (time.time() - 172800, time.time() - 172800))" "$MRIDLE/.harness/session-id-aabbccdd.start"
+IDLE_OUT="$(cd "$MRIDLE" && bash .claude/hooks/memory-reflect-idle.sh 2>&1)"
+if ! echo "$IDLE_OUT" | grep -qE "processed 1 orphans"; then
+  echo "FAIL: idle hook did not process orphan marker" >&2
+  echo "    output: $IDLE_OUT" >&2
+  rm -rf "$MRIDLE"
+  exit 1
+fi
+if ! echo "$IDLE_OUT" | grep -qE "always-commit-before-eod"; then
+  echo "FAIL: idle hook stdout missing expected reflection output" >&2
+  echo "    output: $IDLE_OUT" >&2
+  rm -rf "$MRIDLE"
+  exit 1
+fi
+if [[ -f "$MRIDLE/.harness/session-id-aabbccdd.start" ]]; then
+  echo "FAIL: orphan marker .start not renamed after reflection" >&2
+  rm -rf "$MRIDLE"
+  exit 1
+fi
+if [[ ! -f "$MRIDLE/.harness/session-id-aabbccdd.reflected" ]]; then
+  echo "FAIL: orphan marker not renamed to .reflected" >&2
+  rm -rf "$MRIDLE"
+  exit 1
+fi
+
+# Test B: fresh marker (mtime now) → no-op (preserve .start)
+rm -f "$MRIDLE/.harness"/*
+cat > "$MRIDLE/.harness/session-id-freshfresh.start" << IDLE_EOF
+session_id: freshfresh-eeffaabb
+started_at: 2026-05-18T00:00:00Z
+transcript: $IDLE_TRANSCRIPT
+IDLE_EOF
+FRESH_OUT="$(cd "$MRIDLE" && bash .claude/hooks/memory-reflect-idle.sh 2>&1)"
+FRESH_EXIT=$?
+if [[ $FRESH_EXIT -ne 0 ]]; then
+  echo "FAIL: idle hook with fresh marker exited $FRESH_EXIT (expected 0)" >&2
+  rm -rf "$MRIDLE"
+  exit 1
+fi
+if [[ ! -f "$MRIDLE/.harness/session-id-freshfresh.start" ]]; then
+  echo "FAIL: fresh marker was processed (should be preserved as .start)" >&2
+  rm -rf "$MRIDLE"
+  exit 1
+fi
+if echo "$FRESH_OUT" | grep -qE "processed [1-9]"; then
+  echo "FAIL: idle hook reported processing fresh marker (mtime too recent for threshold)" >&2
+  echo "    output: $FRESH_OUT" >&2
+  rm -rf "$MRIDLE"
+  exit 1
+fi
+
+# Test C: no .harness dir → silent exit 0
+rm -rf "$MRIDLE/.harness"
+NOHARNESS_OUT="$(cd "$MRIDLE" && bash .claude/hooks/memory-reflect-idle.sh 2>&1)"
+NOHARNESS_EXIT=$?
+if [[ $NOHARNESS_EXIT -ne 0 ]]; then
+  echo "FAIL: idle hook without .harness/ exited $NOHARNESS_EXIT (expected 0)" >&2
+  rm -rf "$MRIDLE"
+  exit 1
+fi
+if [[ -n "$NOHARNESS_OUT" ]]; then
+  echo "FAIL: idle hook without .harness/ emitted output (should be silent): $NOHARNESS_OUT" >&2
+  rm -rf "$MRIDLE"
+  exit 1
+fi
+mkdir -p "$MRIDLE/.harness"
+
+# Test D: missing transcript in marker → graceful skip
+cat > "$MRIDLE/.harness/session-id-missing00.start" << IDLE_EOF
+session_id: missing00-eeffaabb
+started_at: 2026-05-18T00:00:00Z
+transcript: /nonexistent/path/$$.jsonl
+IDLE_EOF
+python3 -c "import os, sys, time; os.utime(sys.argv[1], (time.time() - 172800, time.time() - 172800))" "$MRIDLE/.harness/session-id-missing00.start"
+MISS_OUT="$(cd "$MRIDLE" && bash .claude/hooks/memory-reflect-idle.sh 2>&1)"
+if ! echo "$MISS_OUT" | grep -qE "transcript not found"; then
+  echo "FAIL: idle hook with missing-transcript marker did not emit warning" >&2
+  echo "    output: $MISS_OUT" >&2
+  rm -rf "$MRIDLE"
+  exit 1
+fi
+# Marker should stay as .start (failed reflection leaves marker for retry).
+if [[ ! -f "$MRIDLE/.harness/session-id-missing00.start" ]]; then
+  echo "FAIL: failed-reflection marker was renamed (should stay .start for retry)" >&2
+  rm -rf "$MRIDLE"
+  exit 1
+fi
+
+# Test E: idle threshold env override (set to 86400 = 1 day; orphan from
+# python3 -c "import os, sys, time; os.utime(sys.argv[1], (time.time() - 172800, time.time() - 172800))" is older than that, so still processes; but fresh
+# marker stays fresh).
+rm -f "$MRIDLE/.harness"/*
+cat > "$MRIDLE/.harness/session-id-overridetst.start" << IDLE_EOF
+session_id: overridetst-eeffaabb
+started_at: 2026-05-18T00:00:00Z
+transcript: $IDLE_TRANSCRIPT
+IDLE_EOF
+# Don't backdate this one — mtime = now. With threshold=86400 it should NOT process.
+OVERRIDE_OUT="$(cd "$MRIDLE" && MEMORY_IDLE_THRESHOLD_SEC=86400 bash .claude/hooks/memory-reflect-idle.sh 2>&1)"
+if ! echo "$OVERRIDE_OUT" | grep -qE "idle threshold: 86400s"; then
+  echo "FAIL: idle hook did not honor MEMORY_IDLE_THRESHOLD_SEC env override" >&2
+  echo "    output: $OVERRIDE_OUT" >&2
+  rm -rf "$MRIDLE"
+  exit 1
+fi
+if echo "$OVERRIDE_OUT" | grep -qE "processed [1-9]"; then
+  echo "FAIL: idle hook processed marker that should be under 86400s threshold" >&2
+  rm -rf "$MRIDLE"
+  exit 1
+fi
+
+rm -rf "$MRIDLE"
 
 # ── validate-manifests negative test: gemini-cli should error with v0.9.0 msg ─
 # Manifest containing 'gemini-cli' in supported_hosts must error with a clear

@@ -56,13 +56,15 @@ try {
         '.claude/agents/evaluator.md',
         '.agent/skills/evaluator/SKILL.md',
         # Standalone hooks (claude-code only, v0.7.0); memory-recall hooks
-        # added in plan #7a part 2; memory-reflect-stop added in plan #7a part 3.
+        # added in plan #7a part 2; memory-reflect-{stop,idle} added in
+        # plan #7a part 3.
         '.claude/hooks/kill-switch.ps1',
         '.claude/hooks/steer.ps1',
         '.claude/hooks/commit-on-stop.ps1',
         '.claude/hooks/memory-recall-session-start.ps1',
         '.claude/hooks/memory-recall-prompt-submit.ps1',
         '.claude/hooks/memory-reflect-stop.ps1',
+        '.claude/hooks/memory-reflect-idle.ps1',
         '.claude/settings.json',
         '.git/hooks/pre-push'
     )
@@ -123,7 +125,7 @@ try {
     if ($rerun -match 'created .claude/agents/evaluator') {
         throw 're-run recreated the evaluator agent (should be kept)'
     }
-    if ($rerun -match 'created .claude/hooks/(kill-switch|steer|commit-on-stop|memory-recall-session-start|memory-recall-prompt-submit|memory-reflect-stop)') {
+    if ($rerun -match 'created .claude/hooks/(kill-switch|steer|commit-on-stop|memory-recall-session-start|memory-recall-prompt-submit|memory-reflect-stop|memory-reflect-idle)') {
         throw 're-run recreated a hook script (should be kept)'
     }
     if ($rerun -match 'merged  .claude/settings.json') {
@@ -1097,6 +1099,111 @@ print('RESULTS_COUNT:', len(results))
     } finally {
         Remove-Item -LiteralPath $mrstop -Recurse -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath $rstopTranscriptDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    # ── Idle-time reflection hook test (plan #7a part 3 task 4) ────────────
+    Write-Host '==> Idle-time reflection hook test (plan #7a part 3 task 4)'
+    $reflectIdlePs1 = Join-Path $scratch '.claude/hooks/memory-reflect-idle.ps1'
+    if (-not (Test-Path -LiteralPath $reflectIdlePs1)) {
+        throw "memory-reflect-idle.ps1 not installed at $reflectIdlePs1"
+    }
+    $settingsContent = Get-Content -LiteralPath $settingsJson -Raw
+    if ($settingsContent -notmatch 'memory-reflect-idle\.ps1') {
+        throw "settings.json missing memory-reflect-idle.ps1 SessionStart entry"
+    }
+    $mridle = Join-Path ([System.IO.Path]::GetTempPath()) ("toolkit-mridle-" + [System.Guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path (Join-Path $mridle '.claude/skills/memory/scripts') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $mridle '.claude/hooks') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $mridle '.harness') -Force | Out-Null
+    Copy-Item -LiteralPath (Join-Path $scratch '.claude/skills/memory/scripts/reflect.py') -Destination (Join-Path $mridle '.claude/skills/memory/scripts/reflect.py')
+    Copy-Item -LiteralPath $reflectIdlePs1 -Destination (Join-Path $mridle '.claude/hooks/memory-reflect-idle.ps1')
+    $idleTranscript = Join-Path $mridle 'orphan-transcript.jsonl'
+    $idleLines = @(
+        '{"type":"user","message":{"role":"user","content":"Always commit before EOD."},"uuid":"u1"}',
+        '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","name":"Bash"}]},"uuid":"a1"}'
+    )
+    [System.IO.File]::WriteAllText($idleTranscript, ($idleLines -join "`n") + "`n")
+    try {
+        # Test A: orphan marker (backdated mtime) → reflection + rename to .reflected
+        $markerA = Join-Path $mridle '.harness/session-id-aabbccdd.start'
+        $markerAContent = @"
+session_id: aabbccdd-eeffaabb
+started_at: 2026-05-18T00:00:00Z
+transcript: $($idleTranscript -replace '\\','/')
+"@
+        Set-Content -LiteralPath $markerA -Value $markerAContent
+        # Backdate mtime to ~ 2 days ago (well past 1hr idle threshold).
+        $backdate = (Get-Date).AddDays(-2)
+        (Get-Item -LiteralPath $markerA).LastWriteTime = $backdate
+
+        $aProc = Start-Process -FilePath 'pwsh' -ArgumentList @('-NoProfile','-File','.claude/hooks/memory-reflect-idle.ps1') -WorkingDirectory $mridle -NoNewWindow -Wait -RedirectStandardOutput (Join-Path $mridle '.idle-a.stdout') -RedirectStandardError (Join-Path $mridle '.idle-a.stderr') -PassThru
+        $aStdout = Get-Content -LiteralPath (Join-Path $mridle '.idle-a.stdout') -Raw -ErrorAction SilentlyContinue
+        $aStderr = Get-Content -LiteralPath (Join-Path $mridle '.idle-a.stderr') -Raw -ErrorAction SilentlyContinue
+        if ($aProc.ExitCode -ne 0) {
+            throw "idle hook on orphan exited $($aProc.ExitCode). stderr: $aStderr"
+        }
+        if ($aStderr -notmatch 'processed 1 orphans') {
+            throw "idle hook did not process orphan marker. stderr: $aStderr"
+        }
+        if ($aStdout -notmatch 'always-commit-before-eod') {
+            throw "idle hook stdout missing expected reflection output. stdout: $aStdout"
+        }
+        if (Test-Path -LiteralPath $markerA) {
+            throw "orphan marker .start not renamed after reflection"
+        }
+        if (-not (Test-Path -LiteralPath (Join-Path $mridle '.harness/session-id-aabbccdd.reflected'))) {
+            throw "orphan marker not renamed to .reflected"
+        }
+
+        # Test B: fresh marker → preserved as .start
+        Remove-Item -LiteralPath (Join-Path $mridle '.harness/*') -Force -ErrorAction SilentlyContinue
+        $markerB = Join-Path $mridle '.harness/session-id-freshfresh.start'
+        Set-Content -LiteralPath $markerB -Value $markerAContent
+        # Don't backdate; mtime = now → fresher than 1hr threshold.
+        $bProc = Start-Process -FilePath 'pwsh' -ArgumentList @('-NoProfile','-File','.claude/hooks/memory-reflect-idle.ps1') -WorkingDirectory $mridle -NoNewWindow -Wait -RedirectStandardError (Join-Path $mridle '.idle-b.stderr') -PassThru
+        if ($bProc.ExitCode -ne 0) {
+            throw "idle hook with fresh marker exited $($bProc.ExitCode)"
+        }
+        if (-not (Test-Path -LiteralPath $markerB)) {
+            throw "fresh marker was processed (should be preserved as .start)"
+        }
+        $bStderr = Get-Content -LiteralPath (Join-Path $mridle '.idle-b.stderr') -Raw -ErrorAction SilentlyContinue
+        if ($bStderr -match 'processed [1-9]') {
+            throw "idle hook reported processing fresh marker. stderr: $bStderr"
+        }
+
+        # Test C: no .harness/ → silent exit 0
+        Remove-Item -LiteralPath (Join-Path $mridle '.harness') -Recurse -Force
+        $cProc = Start-Process -FilePath 'pwsh' -ArgumentList @('-NoProfile','-File','.claude/hooks/memory-reflect-idle.ps1') -WorkingDirectory $mridle -NoNewWindow -Wait -RedirectStandardError (Join-Path $mridle '.idle-c.stderr') -RedirectStandardOutput (Join-Path $mridle '.idle-c.stdout') -PassThru
+        if ($cProc.ExitCode -ne 0) {
+            throw "idle hook without .harness/ exited $($cProc.ExitCode)"
+        }
+        $cStderr = Get-Content -LiteralPath (Join-Path $mridle '.idle-c.stderr') -Raw -ErrorAction SilentlyContinue
+        $cStdout = Get-Content -LiteralPath (Join-Path $mridle '.idle-c.stdout') -Raw -ErrorAction SilentlyContinue
+        if ($cStderr -or $cStdout) {
+            throw "idle hook without .harness/ emitted output (should be silent). stdout: $cStdout / stderr: $cStderr"
+        }
+        New-Item -ItemType Directory -Path (Join-Path $mridle '.harness') -Force | Out-Null
+
+        # Test D: missing transcript in orphan marker → graceful skip
+        $markerD = Join-Path $mridle '.harness/session-id-missing00.start'
+        $markerDContent = @"
+session_id: missing00-eeffaabb
+started_at: 2026-05-18T00:00:00Z
+transcript: $($mridle.Replace('\','/'))/does-not-exist.jsonl
+"@
+        Set-Content -LiteralPath $markerD -Value $markerDContent
+        (Get-Item -LiteralPath $markerD).LastWriteTime = $backdate
+        $dProc = Start-Process -FilePath 'pwsh' -ArgumentList @('-NoProfile','-File','.claude/hooks/memory-reflect-idle.ps1') -WorkingDirectory $mridle -NoNewWindow -Wait -RedirectStandardError (Join-Path $mridle '.idle-d.stderr') -PassThru
+        $dStderr = Get-Content -LiteralPath (Join-Path $mridle '.idle-d.stderr') -Raw -ErrorAction SilentlyContinue
+        if ($dStderr -notmatch 'transcript not found') {
+            throw "idle hook with missing-transcript marker did not emit warning. stderr: $dStderr"
+        }
+        if (-not (Test-Path -LiteralPath $markerD)) {
+            throw "failed-reflection marker was renamed (should stay .start for retry)"
+        }
+    } finally {
+        Remove-Item -LiteralPath $mridle -Recurse -Force -ErrorAction SilentlyContinue
     }
 
     # ── validate-manifests negative test: gemini-cli rejected with v0.9.0 msg ─
