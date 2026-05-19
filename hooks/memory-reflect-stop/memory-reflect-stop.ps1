@@ -63,14 +63,21 @@ if (-not (Test-Path $Transcript)) {
     exit 0
 }
 
-# Invoke reflect.py and capture summary line.
-$SummaryLine = (& $Py $ReflectPy $Transcript "--summary" 2>$null | Select-Object -First 1)
-if (-not $SummaryLine) {
-    [Console]::Error.WriteLine("[memory-reflect-stop] reflect.py returned no output for $Transcript (skipping)")
+# Invoke reflect.py with --summary + --route. Captured once so we can
+# reuse for transparency line + stdout pass-through (running --route
+# twice would error on slug collision for HIGH saves).
+$ReflectArgs = @($ReflectPy, $Transcript, "--summary", "--route")
+$ReflectOut = & $Py @ReflectArgs 2>&1 | Out-String
+$ReflectExit = $LASTEXITCODE
+if ($ReflectExit -ne 0) {
+    [Console]::Error.WriteLine("[memory-reflect-stop] reflect.py --route exited $ReflectExit (MEMORY_VAULT_PATH set?); transcript was $Transcript")
     exit 0
 }
 
-# Extract counts.
+# Parse summary + route lines.
+$SummaryLine = ($ReflectOut -split "`n" | Where-Object { $_ -match '"pass": "summary"' } | Select-Object -First 1)
+$RouteLine = ($ReflectOut -split "`n" | Where-Object { $_ -match '"pass": "route"' } | Select-Object -First 1)
+
 $CountDriver = @"
 import json, sys
 try:
@@ -81,12 +88,29 @@ except Exception:
     print(0)
     print(0)
 "@
-$Counts = ($SummaryLine | & $Py -c $CountDriver 2>$null) -split "`n"
+$Counts = if ($SummaryLine) { ($SummaryLine | & $Py -c $CountDriver 2>$null) -split "`n" } else { @('0', '0') }
 $MemCount = if ($Counts.Length -ge 1) { $Counts[0] } else { '0' }
 $IdeaCount = if ($Counts.Length -ge 2) { $Counts[1] } else { '0' }
 
-[Console]::Error.WriteLine("[memory-reflect-stop] Mined $MemCount memory candidates + $IdeaCount idea candidates from $Transcript")
+if ($RouteLine) {
+    $RouteCountDriver = @"
+import json, sys
+try:
+    d = json.loads(sys.stdin.read())
+    print(d.get('auto_saved', 0) + d.get('approved', 0))
+    print(d.get('inboxed', 0) + d.get('ideas_inboxed', 0))
+except Exception:
+    print(0)
+    print(0)
+"@
+    $RouteCounts = ($RouteLine | & $Py -c $RouteCountDriver 2>$null) -split "`n"
+    $Saved = if ($RouteCounts.Length -ge 1) { $RouteCounts[0] } else { '0' }
+    $Inboxed = if ($RouteCounts.Length -ge 2) { $RouteCounts[1] } else { '0' }
+    [Console]::Error.WriteLine("[memory-reflect-stop] Mined $MemCount memory + $IdeaCount idea candidates from $Transcript; saved $Saved, inboxed $Inboxed")
+} else {
+    [Console]::Error.WriteLine("[memory-reflect-stop] Mined $MemCount memory + $IdeaCount idea candidates from $Transcript (routing skipped)")
+}
 
-# Re-emit full output on stdout for task-5 routing.
-& $Py $ReflectPy $Transcript "--summary" 2>$null
+# Pass through captured reflect.py output on stdout.
+Write-Output $ReflectOut
 exit 0

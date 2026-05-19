@@ -80,8 +80,10 @@ for marker in "${markers[@]:-}"; do
         continue
     fi
 
-    # Run reflection. Output flows to stdout; task-5 routing will parse it later.
-    if python3 "$REFLECT_PY" "$transcript" --summary 2>/dev/null; then
+    # Run reflection with --route (HIGH → canonical / MEDIUM+LOW → _inbox/
+    # via reflect.py's tri-modal routing). Requires MEMORY_VAULT_PATH; if
+    # unset, --route fails non-zero + marker stays .start for next pass.
+    if python3 "$REFLECT_PY" "$transcript" --summary --route 2>/dev/null; then
         # Rename .start → .reflected on success.
         mv "$marker" "${marker%.start}.reflected" 2>/dev/null && processed_count=$((processed_count + 1))
     fi

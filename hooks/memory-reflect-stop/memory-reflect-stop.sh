@@ -72,36 +72,54 @@ if [[ ! -f "$TRANSCRIPT" ]]; then
     exit 0
 fi
 
-# Invoke reflect.py with --summary. stdout passes through (one JSON record
-# per line for future task-5 routing to consume); stderr gets our transparency
-# line + any errors from reflect.py.
-SUMMARY_LINE="$(python3 "$REFLECT_PY" "$TRANSCRIPT" --summary 2>/dev/null | head -1)"
-if [[ -z "$SUMMARY_LINE" ]]; then
-    echo "[memory-reflect-stop] reflect.py returned no output for $TRANSCRIPT (skipping)" >&2
+# Invoke reflect.py with --summary + --route. The routing pass auto-saves
+# HIGH candidates to canonical paths + sends MEDIUM/LOW + ideas to _inbox/.
+# Route-mode defaults to "auto" (hook-safe; never prompts; MEDIUM → _inbox/)
+# unless operator sets MEMORY_REVIEW_MODE=silent (auto-save MEDIUM) or
+# MEMORY_REVIEW_MODE=interactive (which falls back to auto here since hooks
+# have no TTY).
+#
+# We capture output once + reuse for both the transparency line + stdout
+# pass-through. Running reflect.py --route twice would error on slug
+# collision (HIGH save would refuse the second time).
+REFLECT_OUT="$(python3 "$REFLECT_PY" "$TRANSCRIPT" --summary --route 2>&1)"
+REFLECT_EXIT=$?
+if [[ $REFLECT_EXIT -ne 0 ]]; then
+    # Most common cause: MEMORY_VAULT_PATH not set in hook env. Reflection
+    # output is captured but routing failed; emit what we have + stderr note.
+    echo "$REFLECT_OUT" >&2 | head -3
+    echo "[memory-reflect-stop] reflect.py --route exited $REFLECT_EXIT (MEMORY_VAULT_PATH set?); transcript was $TRANSCRIPT" >&2
     exit 0
 fi
 
-# Extract candidate counts from the summary JSON for the transparency line.
-MEM_COUNT="$(printf '%s' "$SUMMARY_LINE" | python3 -c '
-import json, sys
-try:
-    d = json.loads(sys.stdin.read())
-    print(d.get("memory_candidate_count", 0))
-except Exception:
-    print(0)
-' 2>/dev/null || echo 0)"
-IDEA_COUNT="$(printf '%s' "$SUMMARY_LINE" | python3 -c '
-import json, sys
-try:
-    d = json.loads(sys.stdin.read())
-    print(d.get("idea_candidate_count", 0))
-except Exception:
-    print(0)
-' 2>/dev/null || echo 0)"
+# Extract counts from the summary + route records for the transparency line.
+SUMMARY_LINE="$(printf '%s' "$REFLECT_OUT" | grep -m1 '"pass": "summary"')"
+ROUTE_LINE="$(printf '%s' "$REFLECT_OUT" | grep -m1 '"pass": "route"')"
 
-echo "[memory-reflect-stop] Mined ${MEM_COUNT} memory candidates + ${IDEA_COUNT} idea candidates from $TRANSCRIPT" >&2
+MEM_COUNT="$(printf '%s' "$SUMMARY_LINE" | python3 -c 'import json,sys;
+try:
+    d=json.loads(sys.stdin.read()); print(d.get("memory_candidate_count",0))
+except: print(0)' 2>/dev/null || echo 0)"
+IDEA_COUNT="$(printf '%s' "$SUMMARY_LINE" | python3 -c 'import json,sys;
+try:
+    d=json.loads(sys.stdin.read()); print(d.get("idea_candidate_count",0))
+except: print(0)' 2>/dev/null || echo 0)"
 
-# Re-emit the full reflect.py output on stdout (task 5 routing will parse it).
-python3 "$REFLECT_PY" "$TRANSCRIPT" --summary 2>/dev/null
+if [[ -n "$ROUTE_LINE" ]]; then
+    SAVED="$(printf '%s' "$ROUTE_LINE" | python3 -c 'import json,sys;
+try:
+    d=json.loads(sys.stdin.read()); print(d.get("auto_saved",0)+d.get("approved",0))
+except: print(0)' 2>/dev/null || echo 0)"
+    INBOXED="$(printf '%s' "$ROUTE_LINE" | python3 -c 'import json,sys;
+try:
+    d=json.loads(sys.stdin.read()); print(d.get("inboxed",0)+d.get("ideas_inboxed",0))
+except: print(0)' 2>/dev/null || echo 0)"
+    echo "[memory-reflect-stop] Mined ${MEM_COUNT} memory + ${IDEA_COUNT} idea candidates from $TRANSCRIPT; saved $SAVED, inboxed $INBOXED" >&2
+else
+    echo "[memory-reflect-stop] Mined ${MEM_COUNT} memory + ${IDEA_COUNT} idea candidates from $TRANSCRIPT (routing skipped)" >&2
+fi
+
+# Emit captured reflect.py output on stdout (one JSON record per line).
+printf '%s\n' "$REFLECT_OUT"
 
 exit 0

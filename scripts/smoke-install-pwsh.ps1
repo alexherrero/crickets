@@ -1035,6 +1035,11 @@ print('RESULTS_COUNT:', len(results))
         Copy-Item -LiteralPath (Join-Path $scratch '.claude/skills/memory/scripts/reflect.py') -Destination (Join-Path $mrstop '.claude/skills/memory/scripts/reflect.py')
         Copy-Item -LiteralPath $reflectStopPs1 -Destination (Join-Path $mrstop '.claude/hooks/memory-reflect-stop.ps1')
 
+        # Stage save + embed + vec_index alongside reflect.py for the routing
+        # pass to import save module successfully.
+        foreach ($pyf in @('save', 'embed', 'vec_index')) {
+            Copy-Item -LiteralPath (Join-Path $scratch ".claude/skills/memory/scripts/$pyf.py") -Destination (Join-Path $mrstop ".claude/skills/memory/scripts/$pyf.py")
+        }
         # Test A: happy-path Stop payload. Use the JSON-safe form of $mrstop
         # (backslashes doubled for JSON string escaping).
         $cwdEscaped = $mrstop.Replace('\','\\')
@@ -1043,6 +1048,10 @@ print('RESULTS_COUNT:', len(results))
         $stdoutFile = Join-Path $mrstop '.stdout.log'
         $stderrFile = Join-Path $mrstop '.stderr.log'
         Set-Content -LiteralPath $stdinFile -Value $rstopPayload -NoNewline
+        # Vault for routing destination
+        $rstopVault = Join-Path ([System.IO.Path]::GetTempPath()) ("toolkit-rstop-vault-" + [System.Guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $rstopVault -Force | Out-Null
+        $env:MEMORY_VAULT_PATH = $rstopVault
         $proc = Start-Process -FilePath 'pwsh' -ArgumentList @('-NoProfile','-File',(Join-Path $mrstop '.claude/hooks/memory-reflect-stop.ps1')) -WorkingDirectory $mrstop -NoNewWindow -Wait -RedirectStandardInput $stdinFile -RedirectStandardOutput $stdoutFile -RedirectStandardError $stderrFile -PassThru
         if ($proc.ExitCode -ne 0) {
             $errOut = Get-Content -LiteralPath $stderrFile -Raw
@@ -1050,8 +1059,8 @@ print('RESULTS_COUNT:', len(results))
         }
         $rstopStderr = Get-Content -LiteralPath $stderrFile -Raw
         $rstopStdout = Get-Content -LiteralPath $stdoutFile -Raw
-        if ($rstopStderr -notmatch 'Mined [0-9]+ memory candidates \+ [0-9]+ idea candidates') {
-            throw "Stop hook stderr missing transparency line. stderr: $rstopStderr"
+        if ($rstopStderr -notmatch 'Mined [0-9]+ memory \+ [0-9]+ idea candidates.*saved [0-9]+, inboxed [0-9]+') {
+            throw "Stop hook stderr missing transparency line with route counts. stderr: $rstopStderr"
         }
         if ($rstopStdout -notmatch '"pass": "summary"') {
             throw "Stop hook stdout missing reflect.py summary record. stdout: $rstopStdout"
@@ -1059,7 +1068,13 @@ print('RESULTS_COUNT:', len(results))
         if ($rstopStdout -notmatch 'always-lint-before-pushing') {
             throw "Stop hook stdout missing expected always-lint candidate. stdout: $rstopStdout"
         }
+        # Verify routing wrote canonical entry
+        if (-not (Test-Path -LiteralPath (Join-Path $rstopVault 'personal-private/preferences/always-lint-before-pushing.md'))) {
+            throw "Stop hook --route did not auto-save HIGH candidate to canonical path. vault listing: $(Get-ChildItem -Recurse $rstopVault | ForEach-Object FullName)"
+        }
         Remove-Item -LiteralPath $stdinFile, $stdoutFile, $stderrFile -ErrorAction SilentlyContinue
+        Remove-Item -Path Env:MEMORY_VAULT_PATH -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $rstopVault -Recurse -Force -ErrorAction SilentlyContinue
 
         # Test B: empty stdin → graceful skip
         Set-Content -LiteralPath $stdinFile -Value '' -NoNewline
@@ -1115,8 +1130,14 @@ print('RESULTS_COUNT:', len(results))
     New-Item -ItemType Directory -Path (Join-Path $mridle '.claude/skills/memory/scripts') -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $mridle '.claude/hooks') -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $mridle '.harness') -Force | Out-Null
-    Copy-Item -LiteralPath (Join-Path $scratch '.claude/skills/memory/scripts/reflect.py') -Destination (Join-Path $mridle '.claude/skills/memory/scripts/reflect.py')
+    foreach ($pyf in @('reflect', 'save', 'embed', 'vec_index')) {
+        Copy-Item -LiteralPath (Join-Path $scratch ".claude/skills/memory/scripts/$pyf.py") -Destination (Join-Path $mridle ".claude/skills/memory/scripts/$pyf.py")
+    }
     Copy-Item -LiteralPath $reflectIdlePs1 -Destination (Join-Path $mridle '.claude/hooks/memory-reflect-idle.ps1')
+    # Vault for routing destination
+    $ridleVault = Join-Path ([System.IO.Path]::GetTempPath()) ("toolkit-ridle-vault-" + [System.Guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $ridleVault -Force | Out-Null
+    $env:MEMORY_VAULT_PATH = $ridleVault
     $idleTranscript = Join-Path $mridle 'orphan-transcript.jsonl'
     $idleLines = @(
         '{"type":"user","message":{"role":"user","content":"Always commit before EOD."},"uuid":"u1"}',
@@ -1204,6 +1225,8 @@ transcript: $($mridle.Replace('\','/'))/does-not-exist.jsonl
         }
     } finally {
         Remove-Item -LiteralPath $mridle -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $ridleVault -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -Path Env:MEMORY_VAULT_PATH -ErrorAction SilentlyContinue
     }
 
     # ── validate-manifests negative test: gemini-cli rejected with v0.9.0 msg ─

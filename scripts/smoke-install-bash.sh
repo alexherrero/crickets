@@ -1272,15 +1272,34 @@ cat > "$RSTOP_TRANSCRIPT" << 'RS_EOF'
 {"type":"user","message":{"role":"user","content":"We should also add a status line later."},"uuid":"u2"}
 RS_EOF
 
-# Test A: happy path — valid Stop payload + valid transcript → transparency line + reflect output
+# Test A: happy path — valid Stop payload + valid transcript → transparency line + reflect output.
+# Set MEMORY_VAULT_PATH so the hook's --route pass works end-to-end (saves
+# HIGH candidates to canonical paths + MEDIUM/LOW + ideas to _inbox/).
+# Stage reflect.py + save.py + embed.py + vec_index.py into the hook's
+# script search path (reflect.py imports save module via sys.path).
+mkdir -p "$MRSTOP/.claude/skills/memory/scripts" "$MRSTOP/.claude/hooks"
+for pyf in reflect save embed vec_index; do
+  cp "$SCRATCH/.claude/skills/memory/scripts/$pyf.py" "$MRSTOP/.claude/skills/memory/scripts/"
+done
+cp "$REFLECT_STOP_SH" "$MRSTOP/.claude/hooks/"
+chmod +x "$MRSTOP/.claude/hooks/memory-reflect-stop.sh"
+RSTOP_VAULT="$(mktemp -d)"
 RSTOP_PAYLOAD='{"session_id":"'$RSTOP_SESSION_ID'","cwd":"'$MRSTOP'","hookEventName":"Stop"}'
-RSTOP_STDOUT="$(cd "$MRSTOP" && mkdir -p .claude/skills/memory/scripts .claude/hooks && cp "$SCRATCH/.claude/skills/memory/scripts/reflect.py" .claude/skills/memory/scripts/ && cp "$REFLECT_STOP_SH" .claude/hooks/ && chmod +x .claude/hooks/memory-reflect-stop.sh && echo "$RSTOP_PAYLOAD" | bash .claude/hooks/memory-reflect-stop.sh 2>/tmp/rstop-stderr.log)"
+RSTOP_STDOUT="$(cd "$MRSTOP" && MEMORY_VAULT_PATH="$RSTOP_VAULT" echo "$RSTOP_PAYLOAD" | MEMORY_VAULT_PATH="$RSTOP_VAULT" bash .claude/hooks/memory-reflect-stop.sh 2>/tmp/rstop-stderr.log)"
 RSTOP_STDERR="$(cat /tmp/rstop-stderr.log)"
 rm -f /tmp/rstop-stderr.log
-if ! echo "$RSTOP_STDERR" | grep -qE "Mined [0-9]+ memory candidates \+ [0-9]+ idea candidates"; then
-  echo "FAIL: Stop hook stderr missing transparency line" >&2
+if ! echo "$RSTOP_STDERR" | grep -qE "Mined [0-9]+ memory \+ [0-9]+ idea candidates.*saved [0-9]+, inboxed [0-9]+"; then
+  echo "FAIL: Stop hook stderr missing transparency line with route counts" >&2
   echo "    stderr: $RSTOP_STDERR" >&2
-  rm -rf "$MRSTOP" "$RSTOP_TRANSCRIPT_DIR"
+  rm -rf "$MRSTOP" "$RSTOP_TRANSCRIPT_DIR" "$RSTOP_VAULT"
+  exit 1
+fi
+# Verify routing actually wrote at least one canonical entry (HIGH "Always lint" → preferences/)
+if [[ ! -f "$RSTOP_VAULT/personal-private/preferences/always-lint-before-pushing.md" ]]; then
+  echo "FAIL: Stop hook --route did not auto-save HIGH candidate to canonical path" >&2
+  echo "    vault listing:" >&2
+  find "$RSTOP_VAULT" -type f >&2 2>/dev/null
+  rm -rf "$MRSTOP" "$RSTOP_TRANSCRIPT_DIR" "$RSTOP_VAULT"
   exit 1
 fi
 if ! echo "$RSTOP_STDOUT" | grep -qE '"pass": "summary"'; then
@@ -1341,7 +1360,7 @@ if ! echo "$D_STDERR" | grep -qE "transcript not found"; then
 fi
 
 # Cleanup
-rm -rf "$MRSTOP" "$RSTOP_TRANSCRIPT_DIR"
+rm -rf "$MRSTOP" "$RSTOP_TRANSCRIPT_DIR" "$RSTOP_VAULT"
 
 # ── Idle-time reflection hook test (plan #7a part 3 task 4) ────────────────
 # Verify the memory-reflect-idle hook handles orphan markers correctly:
@@ -1362,9 +1381,16 @@ fi
 # Stage scratch project + seed orphan marker + transcript.
 MRIDLE="$(mktemp -d)"
 mkdir -p "$MRIDLE/.claude/skills/memory/scripts" "$MRIDLE/.claude/hooks" "$MRIDLE/.harness"
-cp "$SCRATCH/.claude/skills/memory/scripts/reflect.py" "$MRIDLE/.claude/skills/memory/scripts/"
+# Stage reflect.py + save.py + embed.py + vec_index.py (reflect.py --route
+# imports save module from same scripts/ dir; embed/vec_index needed by save).
+for pyf in reflect save embed vec_index; do
+  cp "$SCRATCH/.claude/skills/memory/scripts/$pyf.py" "$MRIDLE/.claude/skills/memory/scripts/"
+done
 cp "$REFLECT_IDLE_SH" "$MRIDLE/.claude/hooks/"
 chmod +x "$MRIDLE/.claude/hooks/memory-reflect-idle.sh"
+# Separate vault for routing destination
+RIDLE_VAULT="$(mktemp -d)"
+export MEMORY_VAULT_PATH="$RIDLE_VAULT"
 IDLE_TRANSCRIPT="$MRIDLE/orphan-transcript.jsonl"
 cat > "$IDLE_TRANSCRIPT" << 'IDLE_EOF'
 {"type":"user","message":{"role":"user","content":"Always commit before EOD."},"uuid":"u1"}
@@ -1488,7 +1514,8 @@ if echo "$OVERRIDE_OUT" | grep -qE "processed [1-9]"; then
   exit 1
 fi
 
-rm -rf "$MRIDLE"
+rm -rf "$MRIDLE" "$RIDLE_VAULT"
+unset MEMORY_VAULT_PATH
 
 # ── validate-manifests negative test: gemini-cli should error with v0.9.0 msg ─
 # Manifest containing 'gemini-cli' in supported_hosts must error with a clear

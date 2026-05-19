@@ -37,10 +37,18 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+
+# save_entry / evolve_entry live in this same scripts/ dir; lazy-imported
+# inside route_candidates() so reflect.py's mining-only path doesn't pay
+# the import cost (sys.path is augmented at module load below).
+_SCRIPTS_DIR = Path(__file__).resolve().parent
+if str(_SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS_DIR))
 
 # ── Pattern catalog ────────────────────────────────────────────────────────
 #
@@ -437,6 +445,284 @@ def mine_transcript(transcript_path: Path) -> dict:
     }
 
 
+# ── Routing (plan #7a part 3 task 5) ───────────────────────────────────────
+#
+# Tri-modal confidence routing per locked design call B2.iii:
+#   HIGH   → auto-save via save.save_entry() at canonical path
+#   MEDIUM → interactive prompt (if --route-mode=interactive AND stdin is a TTY)
+#            OR auto-save (if --route-mode=silent)
+#            OR write to _inbox/ (if --route-mode=auto — the safe default)
+#   LOW    → write to _inbox/ for batch triage
+#
+# Routing modes (--route-mode flag OR MEMORY_REVIEW_MODE env var):
+#   - `auto` (default): hook-safe; never prompts; MEDIUM → _inbox/. Used by
+#     Stop + idle hooks since hook contexts have no TTY.
+#   - `silent`: auto-approves MEDIUM (saves to canonical path); used when
+#     operator trusts the heuristic fully + wants zero prompts.
+#   - `interactive`: prompts for each MEDIUM candidate (only meaningful when
+#     stdin is a TTY; falls back to `auto` behavior otherwise).
+#
+# The HIGH path is unconditional auto-save — explicit user signals
+# (always X / never Y / prefer Z) are saved without prompting in all modes.
+# The LOW path is unconditional _inbox/ — single-instance inferences are
+# never important enough to interrupt the operator.
+
+ROUTE_MODE_AUTO = "auto"
+ROUTE_MODE_SILENT = "silent"
+ROUTE_MODE_INTERACTIVE = "interactive"
+_VALID_ROUTE_MODES = {ROUTE_MODE_AUTO, ROUTE_MODE_SILENT, ROUTE_MODE_INTERACTIVE}
+
+
+def _resolve_route_mode(arg_mode: str | None) -> str:
+    """Resolve routing mode: CLI arg → MEMORY_REVIEW_MODE env → default 'auto'."""
+    if arg_mode:
+        if arg_mode not in _VALID_ROUTE_MODES:
+            raise ValueError(
+                f"unknown route mode {arg_mode!r}: expected one of {_VALID_ROUTE_MODES}"
+            )
+        return arg_mode
+    env_mode = os.environ.get("MEMORY_REVIEW_MODE", "").strip().lower()
+    if env_mode in _VALID_ROUTE_MODES:
+        return env_mode
+    return ROUTE_MODE_AUTO
+
+
+def _save_candidate_to_inbox(
+    candidate: Candidate, vault: Path, *, stderr=sys.stderr
+) -> Path | None:
+    """Save a candidate to MemoryVault/personal-private/_inbox/<slug>.md.
+
+    Returns the saved path on success, None on failure (e.g. slug collision —
+    operator runs `/memory evolve` to resolve). Writes the candidate's body
+    with a header containing category + confidence + rationale + excerpts
+    (full instrumentation for later operator triage).
+    """
+    try:
+        from save import save_entry  # type: ignore  # noqa
+    except ImportError as e:
+        print(f"[reflect.route] cannot import save module: {e}", file=stderr)
+        return None
+
+    # Compose inbox body: the candidate's body + appended instrumentation
+    # (rationale + excerpts + occurrences) so triage has full context.
+    excerpts_block = ""
+    if candidate.excerpts:
+        excerpts_lines = [f"> {e}" for e in candidate.excerpts]
+        excerpts_block = "\n\n## Supporting excerpts\n\n" + "\n".join(excerpts_lines)
+    inbox_body = (
+        f"{candidate.body}\n\n"
+        f"## Mining metadata\n\n"
+        f"- **Category**: `{candidate.category}`\n"
+        f"- **Confidence**: `{candidate.confidence}`\n"
+        f"- **Rationale**: {candidate.rationale}\n"
+        f"- **Occurrences**: {candidate.occurrences}\n"
+        f"{excerpts_block}"
+    )
+
+    # Inbox path: <vault>/personal-private/_inbox/<slug>.md. save_entry's
+    # standard target is <vault>/<group>/<kind>/<slug>.md, so we save with
+    # kind="_inbox" to route there. Actually _inbox/ is a flat dir like
+    # _always-load/, not a kind subdir. Use group=personal-private + kind=_inbox.
+    # save_entry validates kind as kebab-case ([a-z0-9-]+) — "_inbox" has
+    # underscore, fails validation. Bypass via direct file write.
+    inbox_dir = vault / "personal-private" / "_inbox"
+    inbox_dir.mkdir(parents=True, exist_ok=True)
+    target = inbox_dir / f"{candidate.slug}.md"
+    if target.exists():
+        # Collision — append a numeric suffix to keep both. Inbox is a
+        # raw-capture surface; duplicates here are OK.
+        n = 1
+        while target.exists():
+            target = inbox_dir / f"{candidate.slug}-{n}.md"
+            n += 1
+    # Write a minimal frontmatter + body. Inbox entries are triage targets,
+    # not full canonical entries — they don't need the full save.py frontmatter
+    # shape (kind/status/created/updated/tags/group/slug/always_load).
+    fm = (
+        "---\n"
+        f"kind: {candidate.category}\n"
+        "status: inbox\n"
+        f"slug: {target.stem}\n"
+        f"mining_confidence: {candidate.confidence}\n"
+        f"mining_rationale: {json.dumps(candidate.rationale)}\n"
+        f"mining_occurrences: {candidate.occurrences}\n"
+        "---\n"
+    )
+    content = fm + "\n" + inbox_body + "\n"
+    target.write_bytes(content.encode("utf-8"))
+    return target
+
+
+def _save_candidate_canonical(
+    candidate: Candidate, vault: Path, *, stderr=sys.stderr
+) -> Path | None:
+    """Save a candidate to its canonical path via save.save_entry().
+
+    Returns saved path on success, None on collision / validation error.
+    """
+    try:
+        from save import save_entry  # type: ignore
+    except ImportError as e:
+        print(f"[reflect.route] cannot import save module: {e}", file=stderr)
+        return None
+
+    # save_entry signature requires kind + slug + body. Map category to kind
+    # using the same vocabulary save accepts (preferences / workflow / fix /
+    # idea — all are valid kebab-case names).
+    try:
+        return save_entry(
+            vault_path=vault,
+            kind=candidate.category,
+            slug=candidate.slug,
+            body=candidate.body,
+            group="personal-private",
+        )
+    except (FileExistsError, ValueError, FileNotFoundError) as e:
+        print(
+            f"[reflect.route] could not save {candidate.slug} ({candidate.category}): {e}",
+            file=stderr,
+        )
+        return None
+
+
+def _prompt_user_for_candidate(
+    candidate: Candidate, *, stdin=sys.stdin, stdout=sys.stdout
+) -> str:
+    """Display a MEDIUM-confidence candidate + prompt user for action.
+
+    Returns one of: 'approve' / 'reject' / 'skip' / 'inbox'.
+    The 'edit' + 'supersede' options from the design doc are deferred — v1
+    supports approve / reject / skip / inbox (the 4 verbs operator can
+    perform without launching $EDITOR or invoking /memory evolve mid-prompt).
+    """
+    print("", file=stdout)
+    print("─" * 72, file=stdout)
+    print(f"MEDIUM-confidence candidate ({candidate.category}):", file=stdout)
+    print(f"  slug:       {candidate.slug}", file=stdout)
+    print(f"  title:      {candidate.title[:80]}", file=stdout)
+    print(f"  rationale:  {candidate.rationale}", file=stdout)
+    print(f"  occurrences: {candidate.occurrences}", file=stdout)
+    if candidate.excerpts:
+        print(f"  excerpts:", file=stdout)
+        for ex in candidate.excerpts[:3]:
+            print(f"    > {ex[:120]}", file=stdout)
+    print("─" * 72, file=stdout)
+    print("Action: [a]pprove (save canonical) / [r]eject / [s]kip / [i]nbox (default: i)", file=stdout)
+    stdout.flush()
+    try:
+        choice = stdin.readline().strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        return "skip"
+    if not choice or choice in ("i", "inbox"):
+        return "inbox"
+    if choice in ("a", "approve"):
+        return "approve"
+    if choice in ("r", "reject"):
+        return "reject"
+    if choice in ("s", "skip"):
+        return "skip"
+    # Unknown input → safe default (inbox).
+    print(f"  (unknown choice {choice!r}; defaulting to inbox)", file=stdout)
+    return "inbox"
+
+
+def route_candidates(
+    memory_candidates: list[Candidate],
+    idea_candidates: list[Candidate],
+    *,
+    vault: Path,
+    mode: str = ROUTE_MODE_AUTO,
+    stdin=sys.stdin,
+    stdout=sys.stdout,
+    stderr=sys.stderr,
+) -> dict:
+    """Route mined candidates per the tri-modal heuristic.
+
+    Args:
+        memory_candidates: from `mine_transcript`'s memory_candidates list
+        idea_candidates: ditto idea_candidates
+        vault: MemoryVault root (where save.py writes)
+        mode: 'auto' | 'silent' | 'interactive' (see module-level docstring)
+
+    Returns stats dict:
+        {
+            "auto_saved": N,       # HIGH + silent-mode-MEDIUM auto-saves
+            "approved": N,         # interactive-mode-MEDIUM user-approved saves
+            "rejected": N,         # interactive-mode-MEDIUM user-rejected
+            "skipped": N,          # interactive-mode-MEDIUM user-skipped
+            "inboxed": N,          # LOW + auto-mode-MEDIUM + interactive-fallback
+            "ideas_inboxed": N,    # all idea candidates → _inbox/idea/<slug>.md
+            "errors": N,           # save errors (e.g. slug collision)
+        }
+    """
+    stats = {
+        "auto_saved": 0, "approved": 0, "rejected": 0,
+        "skipped": 0, "inboxed": 0, "ideas_inboxed": 0, "errors": 0,
+    }
+    # If interactive mode but stdin is not a TTY, fall back to auto (hook-safe).
+    if mode == ROUTE_MODE_INTERACTIVE and not stdin.isatty():
+        print(
+            "[reflect.route] interactive mode requested but stdin is not a TTY; "
+            "falling back to auto-route (MEDIUM → _inbox/)",
+            file=stderr,
+        )
+        mode = ROUTE_MODE_AUTO
+
+    for c in memory_candidates:
+        if c.confidence == "HIGH":
+            if _save_candidate_canonical(c, vault, stderr=stderr):
+                stats["auto_saved"] += 1
+            else:
+                stats["errors"] += 1
+            continue
+        if c.confidence == "MEDIUM":
+            if mode == ROUTE_MODE_SILENT:
+                if _save_candidate_canonical(c, vault, stderr=stderr):
+                    stats["auto_saved"] += 1
+                else:
+                    stats["errors"] += 1
+                continue
+            if mode == ROUTE_MODE_INTERACTIVE:
+                action = _prompt_user_for_candidate(c, stdin=stdin, stdout=stdout)
+                if action == "approve":
+                    if _save_candidate_canonical(c, vault, stderr=stderr):
+                        stats["approved"] += 1
+                    else:
+                        stats["errors"] += 1
+                elif action == "reject":
+                    stats["rejected"] += 1
+                elif action == "skip":
+                    stats["skipped"] += 1
+                else:  # inbox
+                    if _save_candidate_to_inbox(c, vault, stderr=stderr):
+                        stats["inboxed"] += 1
+                    else:
+                        stats["errors"] += 1
+                continue
+            # Default route mode: MEDIUM → inbox
+            if _save_candidate_to_inbox(c, vault, stderr=stderr):
+                stats["inboxed"] += 1
+            else:
+                stats["errors"] += 1
+            continue
+        # LOW → inbox unconditionally
+        if _save_candidate_to_inbox(c, vault, stderr=stderr):
+            stats["inboxed"] += 1
+        else:
+            stats["errors"] += 1
+
+    # Idea candidates always → _inbox/ (idea-ledger persistence is plan #7a
+    # part 4's scope; for v1 ideas go to inbox where the future ledger can
+    # pick them up).
+    for c in idea_candidates:
+        if _save_candidate_to_inbox(c, vault, stderr=stderr):
+            stats["ideas_inboxed"] += 1
+        else:
+            stats["errors"] += 1
+
+    return stats
+
+
 def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="memory-reflect",
@@ -466,6 +752,24 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
         help="prefix output with a 1-line summary "
              "(messages processed + candidate counts per pass)",
     )
+    parser.add_argument(
+        "--route", action="store_true",
+        help="after mining, route candidates per tri-modal heuristic "
+             "(HIGH → auto-save; MEDIUM → see --route-mode; LOW → _inbox/). "
+             "Requires --vault-path or MEMORY_VAULT_PATH env var.",
+    )
+    parser.add_argument(
+        "--route-mode", choices=list(_VALID_ROUTE_MODES), default=None,
+        help="MEDIUM-confidence routing: 'auto' (default; → _inbox/), "
+             "'silent' (auto-save), or 'interactive' (prompt user via stdin; "
+             "falls back to 'auto' if stdin isn't a TTY). "
+             "Resolves from --route-mode flag → MEMORY_REVIEW_MODE env → 'auto'.",
+    )
+    parser.add_argument(
+        "--vault-path",
+        help="MemoryVault root (used when --route is set). Resolves from "
+             "--vault-path → MEMORY_VAULT_PATH env. Required for --route.",
+    )
     return parser.parse_args(argv)
 
 
@@ -492,6 +796,44 @@ def main(argv: list[str] | None = None) -> int:
     if not args.memory_only:
         for c in result["idea_candidates"]:
             print(json.dumps({"pass": "idea", **asdict(c)}))
+
+    # ── Routing pass (plan #7a part 3 task 5) ──────────────────────────────
+    if args.route:
+        # Resolve vault path: arg → env → error.
+        vault_arg = args.vault_path
+        if not vault_arg:
+            vault_arg = os.environ.get("MEMORY_VAULT_PATH", "").strip() or None
+        if not vault_arg:
+            print(
+                "ERROR: --route requires --vault-path or MEMORY_VAULT_PATH env var",
+                file=sys.stderr,
+            )
+            return 1
+        vault = Path(vault_arg).expanduser()
+        if not vault.exists() or not vault.is_dir():
+            print(f"ERROR: vault path does not exist or is not a directory: {vault}",
+                  file=sys.stderr)
+            return 1
+        try:
+            route_mode = _resolve_route_mode(args.route_mode)
+        except ValueError as e:
+            print(f"ERROR: {e}", file=sys.stderr)
+            return 1
+        # idea_only / memory_only filter the routing pass too — if the
+        # operator only emitted one pass, only route that pass.
+        memory_to_route = result["memory_candidates"] if not args.idea_only else []
+        idea_to_route = result["idea_candidates"] if not args.memory_only else []
+        stats = route_candidates(
+            memory_to_route, idea_to_route, vault=vault, mode=route_mode,
+        )
+        # Routing stats as a final JSON-Lines record on stdout (after the
+        # candidate records). Operator scripts + hooks can parse this to
+        # surface counts in transparency lines.
+        print(json.dumps({
+            "pass": "route",
+            "route_mode": route_mode,
+            **stats,
+        }))
     return 0
 
 
