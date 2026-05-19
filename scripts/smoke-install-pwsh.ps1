@@ -1608,9 +1608,12 @@ print('OK')
         $oldIndex = Join-Path $mipromote 'personal-private/_idea-incubator/test-promote-flow/_index.md'
         $oldTimestamp = (Get-Date).AddDays(-365)
         (Get-Item -LiteralPath $oldIndex).LastWriteTime = $oldTimestamp
-        # Drive ideas_promote gc with non-TTY stdin (redirect from $null)
+        # Drive ideas_promote gc with non-TTY stdin (redirect from empty file
+        # — pwsh Start-Process rejects $null for RedirectStandardInput).
         $stdoutFile = Join-Path $mipromote '.gc-out.log'
-        $gcProc = Start-Process -FilePath 'python3' -ArgumentList @($ipPy, 'gc', '--vault-path', $mipromote) -NoNewWindow -Wait -RedirectStandardInput $null -RedirectStandardOutput $stdoutFile -PassThru
+        $emptyStdin = Join-Path $mipromote '.gc-stdin-empty'
+        Set-Content -LiteralPath $emptyStdin -Value '' -NoNewline
+        $gcProc = Start-Process -FilePath 'python3' -ArgumentList @($ipPy, 'gc', '--vault-path', $mipromote) -NoNewWindow -Wait -RedirectStandardInput $emptyStdin -RedirectStandardOutput $stdoutFile -PassThru
         $ipEOut = Get-Content -LiteralPath $stdoutFile -Raw
         if ($ipEOut -notmatch '"deleted": 0') {
             throw "gc with non-TTY stdin deleted entries (never-silent-delete contract broken). output: $ipEOut"
