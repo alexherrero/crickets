@@ -42,9 +42,12 @@ if [[ ${#markers[@]} -eq 0 && ${#reflected_markers[@]} -eq 0 ]]; then
     exit 0
 fi
 
-# Portable mtime: try BSD stat first (macOS), fall back to GNU stat (Linux).
+# Portable mtime via Python (we already require python3 above). Avoids the
+# stat(1) GNU-vs-BSD `-c` / `-f` flag mismatch (the original implementation
+# tried `stat -f %m` first → on Linux GNU stat treats `-f` as filesystem-info
+# and silently returned the wrong value, breaking orphan detection).
 get_mtime() {
-    stat -f %m "$1" 2>/dev/null || stat -c %Y "$1" 2>/dev/null || echo 0
+    python3 -c "import os, sys; print(int(os.path.getmtime(sys.argv[1])))" "$1" 2>/dev/null || echo 0
 }
 
 now=$(date +%s)
