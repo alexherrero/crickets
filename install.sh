@@ -23,6 +23,12 @@
 #                             install and offers backup+remove with operator
 #                             confirmation. This flag skips the prompt entirely
 #                             — useful for CI / scripted installs.)
+#   --no-python-deps         skip the pip-install step for the toolkit's
+#                            Python deps (pyyaml, sqlite-vec, sentence-
+#                            transformers). Use if you manage Python deps
+#                            via virtualenv / conda / system packages, or
+#                            in CI to avoid the ~1.3GB sentence-transformers
+#                            download per workflow run.
 #   --help, -h               print this help and exit
 
 set -euo pipefail
@@ -37,6 +43,7 @@ SELECT_HOOK=""
 UPDATE_MODE=0
 NO_PRE_PUSH_HOOK=0
 NO_LEGACY_CLEANUP=0
+NO_PYTHON_DEPS=0
 
 print_help() {
     sed -n '/^# install.sh/,/^[^#]/p' "$0" | sed 's|^# \?||' | head -n -1
@@ -68,6 +75,7 @@ while [[ $# -gt 0 ]]; do
         --update) UPDATE_MODE=1; shift ;;
         --no-pre-push-hook) NO_PRE_PUSH_HOOK=1; shift ;;
         --no-legacy-cleanup) NO_LEGACY_CLEANUP=1; shift ;;
+        --no-python-deps) NO_PYTHON_DEPS=1; shift ;;
         --help|-h) print_help; exit 0 ;;
         --*) echo "Unknown option: $1" >&2; echo "" >&2; print_help >&2; exit 2 ;;
         *)
@@ -597,6 +605,60 @@ fi
 
 echo "==> pre-push hook"
 install_pre_push_hook
+
+install_python_deps() {
+    # Best-effort install of the toolkit's Python deps from requirements.txt.
+    # Failure is logged but does NOT fail the toolkit install — the graceful-
+    # skip contracts (memory skill falls back to grep+frontmatter without
+    # sentence-transformers; vec-index ops no-op without sqlite-vec) mean
+    # operators can still use most functionality. The pip-install is
+    # opportunistic; the toolkit's contract is "tries to set you up but
+    # never blocks the install on Python dep state."
+    if [[ "$NO_PYTHON_DEPS" -eq 1 ]]; then
+        echo "==> python deps: skipped (--no-python-deps)"
+        return 0
+    fi
+    if [[ ! -f "$TOOLKIT_ROOT/requirements.txt" ]]; then
+        echo "WARN: requirements.txt missing at $TOOLKIT_ROOT; python deps not installed" >&2
+        return 0
+    fi
+    if ! command -v python3 >/dev/null 2>&1; then
+        echo "WARN: python3 not found on PATH; python deps not installed" >&2
+        echo "      install Python 3.9+ and re-run, or pass --no-python-deps to suppress" >&2
+        return 0
+    fi
+    if ! python3 -m pip --version >/dev/null 2>&1; then
+        echo "WARN: pip not available; python deps not installed" >&2
+        return 0
+    fi
+    echo "==> python deps"
+    # Idempotent quick-path: skip if all three are already importable.
+    if python3 -c "import yaml, sqlite_vec, sentence_transformers" >/dev/null 2>&1; then
+        echo "    pyyaml + sqlite-vec + sentence-transformers already installed"
+        return 0
+    fi
+    echo "    installing pyyaml + sqlite-vec + sentence-transformers from requirements.txt"
+    echo "    (sentence-transformers pulls torch + transformers + tokenizers; first install can take 2-5min)"
+    # Try --user first (works on Homebrew Python, conda, most distros).
+    # On PEP 668 systems (Debian 12+, recent macOS system Python), operator
+    # may need --break-system-packages — surfaced as a manual fallback hint
+    # if pip install fails.
+    if python3 -m pip install --user --quiet -r "$TOOLKIT_ROOT/requirements.txt" 2>&1; then
+        echo "    installed (note: sentence-transformers' default BGE-large model — ~1.3GB — downloads lazily on first /memory save or embed.py --mode local)"
+    else
+        cat >&2 << EOF
+WARN: pip install failed.
+      The toolkit will graceful-skip embedding + vec-index operations until
+      Python deps are installed. To install manually:
+        python3 -m pip install --user -r $TOOLKIT_ROOT/requirements.txt
+      If on a PEP 668 system (Debian 12+, recent macOS system Python):
+        python3 -m pip install --user --break-system-packages -r $TOOLKIT_ROOT/requirements.txt
+      Or rerun install.sh with --no-python-deps to suppress this attempt.
+EOF
+    fi
+}
+
+install_python_deps
 
 echo ""
 echo "agent-toolkit install: complete."

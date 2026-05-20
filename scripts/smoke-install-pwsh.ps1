@@ -16,7 +16,7 @@ try {
     git -C $scratch init -q -b main | Out-Null
 
     Write-Host "==> fresh install into $scratch"
-    pwsh -NoProfile -File (Join-Path $ToolkitRoot 'install.ps1') $scratch | Out-File (Join-Path $scratch '.install.log')
+    pwsh -NoProfile -File (Join-Path $ToolkitRoot 'install.ps1') -NoPythonDeps $scratch | Out-File (Join-Path $scratch '.install.log')
     if ($LASTEXITCODE -ne 0) { throw "install.ps1 returned non-zero ($LASTEXITCODE)" }
 
     # ── expected files ─────────────────────────────────────────────────────
@@ -127,7 +127,7 @@ try {
 
     # ── idempotent re-run ──────────────────────────────────────────────────
     Write-Host '==> idempotent re-run'
-    pwsh -NoProfile -File (Join-Path $ToolkitRoot 'install.ps1') $scratch | Out-File (Join-Path $scratch '.rerun.log')
+    pwsh -NoProfile -File (Join-Path $ToolkitRoot 'install.ps1') -NoPythonDeps $scratch | Out-File (Join-Path $scratch '.rerun.log')
     $rerun = Get-Content (Join-Path $scratch '.rerun.log') -Raw
     if ($rerun -match 'created .claude/skills/(example-skill|pii-scrubber)') {
         throw 're-run recreated a skill (should be kept)'
@@ -147,7 +147,7 @@ try {
 
     # ── --update ───────────────────────────────────────────────────────────
     Write-Host '==> --update wipe + recreate'
-    pwsh -NoProfile -File (Join-Path $ToolkitRoot 'install.ps1') -Update $scratch | Out-File (Join-Path $scratch '.update.log')
+    pwsh -NoProfile -File (Join-Path $ToolkitRoot 'install.ps1') -Update -NoPythonDeps $scratch | Out-File (Join-Path $scratch '.update.log')
     $update = Get-Content (Join-Path $scratch '.update.log') -Raw
     if ($update -notmatch 'removed .claude/skills/') {
         throw '-Update did not run sync wipe'
@@ -164,7 +164,7 @@ try {
     New-Item -ItemType Directory -Path $nohook -Force | Out-Null
     try {
         git -C $nohook init -q -b main | Out-Null
-        pwsh -NoProfile -File (Join-Path $ToolkitRoot 'install.ps1') -NoPrePushHook $nohook | Out-File (Join-Path $nohook '.install.log')
+        pwsh -NoProfile -File (Join-Path $ToolkitRoot 'install.ps1') -NoPrePushHook -NoPythonDeps $nohook | Out-File (Join-Path $nohook '.install.log')
         if (Test-Path -LiteralPath (Join-Path $nohook '.git/hooks/pre-push')) {
             throw '-NoPrePushHook installed the hook anyway'
         }
@@ -180,7 +180,7 @@ try {
         git -C $legacy init -q -b main | Out-Null
         New-Item -ItemType Directory -Path (Join-Path $legacy '.agents/skills/design') -Force | Out-Null
         'fake legacy skill' | Out-File -FilePath (Join-Path $legacy '.agents/skills/design/SKILL.md')
-        pwsh -NoProfile -File (Join-Path $ToolkitRoot 'install.ps1') -NoLegacyCleanup $legacy | Out-File (Join-Path $legacy '.install.log')
+        pwsh -NoProfile -File (Join-Path $ToolkitRoot 'install.ps1') -NoLegacyCleanup -NoPythonDeps $legacy | Out-File (Join-Path $legacy '.install.log')
         $log = Get-Content (Join-Path $legacy '.install.log') -Raw
         if ($log -match 'legacy gemini-cli cleanup') {
             throw '-NoLegacyCleanup did not suppress the cleanup prompt'

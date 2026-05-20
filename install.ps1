@@ -23,6 +23,12 @@
 #                            backup+remove with operator confirmation. This
 #                            switch skips the prompt entirely — useful for CI
 #                            / scripted installs.)
+#   -NoPythonDeps            skip the pip-install step for the toolkit's
+#                            Python deps (pyyaml, sqlite-vec, sentence-
+#                            transformers). Use if you manage Python deps
+#                            via virtualenv / conda / system packages, or
+#                            in CI to avoid the ~1.3GB sentence-transformers
+#                            download per workflow run.
 #   -Help                    print this help and exit
 
 [CmdletBinding()]
@@ -35,6 +41,7 @@ param(
     [switch]$Update,
     [switch]$NoPrePushHook,
     [switch]$NoLegacyCleanup,
+    [switch]$NoPythonDeps,
     [switch]$Help,
     [Parameter(Position=0)]
     [string]$Target
@@ -465,6 +472,63 @@ if ($ModeAll -or $Hook) {
 
 Write-Host '==> pre-push hook'
 Install-PrePushHook
+
+function Install-PythonDeps {
+    # Best-effort install of the toolkit's Python deps from requirements.txt.
+    # Failure is logged but does NOT fail the toolkit install — the graceful-
+    # skip contracts (memory skill falls back to grep+frontmatter without
+    # sentence-transformers; vec-index ops no-op without sqlite-vec) mean
+    # operators can still use most functionality. The pip-install is
+    # opportunistic.
+    if ($script:NoPythonDeps) {
+        Write-Host '==> python deps: skipped (-NoPythonDeps)'
+        return
+    }
+    $reqFile = Join-Path $script:ToolkitRoot 'requirements.txt'
+    if (-not (Test-Path -LiteralPath $reqFile)) {
+        Write-Warning "requirements.txt missing at $script:ToolkitRoot; python deps not installed"
+        return
+    }
+    # Resolve python executable: prefer python3 if available, else python.
+    $pythonExe = $null
+    foreach ($candidate in @('python3', 'python')) {
+        $cmd = Get-Command $candidate -ErrorAction SilentlyContinue
+        if ($cmd) { $pythonExe = $cmd.Source; break }
+    }
+    if (-not $pythonExe) {
+        Write-Warning 'python3 / python not found on PATH; python deps not installed'
+        Write-Warning '   install Python 3.9+ and re-run, or pass -NoPythonDeps to suppress'
+        return
+    }
+    # Verify pip available.
+    $pipCheck = & $pythonExe -m pip --version 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning 'pip not available; python deps not installed'
+        return
+    }
+    Write-Host '==> python deps'
+    # Idempotent quick-path: skip if all three are already importable.
+    $importCheck = & $pythonExe -c "import yaml, sqlite_vec, sentence_transformers" 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host '    pyyaml + sqlite-vec + sentence-transformers already installed'
+        return
+    }
+    Write-Host '    installing pyyaml + sqlite-vec + sentence-transformers from requirements.txt'
+    Write-Host '    (sentence-transformers pulls torch + transformers + tokenizers; first install can take 2-5min)'
+    # Try --user; failure is logged + non-fatal.
+    & $pythonExe -m pip install --user --quiet -r $reqFile 2>&1 | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "    installed (note: sentence-transformers' default BGE-large model — ~1.3GB — downloads lazily on first /memory save or embed.py --mode local)"
+    } else {
+        Write-Warning 'pip install failed.'
+        Write-Warning '   The toolkit will graceful-skip embedding + vec-index operations until'
+        Write-Warning '   Python deps are installed. To install manually:'
+        Write-Warning "     $pythonExe -m pip install --user -r $reqFile"
+        Write-Warning '   Or rerun install.ps1 with -NoPythonDeps to suppress this attempt.'
+    }
+}
+
+Install-PythonDeps
 
 Write-Host ''
 Write-Host 'agent-toolkit install: complete.'

@@ -17,7 +17,7 @@ trap 'rm -rf "$SCRATCH"' EXIT
 git -C "$SCRATCH" init -q -b main
 
 echo "==> fresh install into $SCRATCH"
-bash "$TOOLKIT_ROOT/install.sh" "$SCRATCH" > "$SCRATCH/.install.log"
+bash "$TOOLKIT_ROOT/install.sh" --no-python-deps "$SCRATCH" > "$SCRATCH/.install.log"
 
 # ── expected files (every supported_host × every shipped primitive) ─────────
 expected=(
@@ -156,7 +156,7 @@ fi
 
 # ── idempotent re-run: no "created" for previously-created paths ────────────
 echo "==> idempotent re-run"
-bash "$TOOLKIT_ROOT/install.sh" "$SCRATCH" > "$SCRATCH/.rerun.log"
+bash "$TOOLKIT_ROOT/install.sh" --no-python-deps "$SCRATCH" > "$SCRATCH/.rerun.log"
 if grep -qE "created .claude/skills/(example-skill|pii-scrubber)" "$SCRATCH/.rerun.log"; then
   echo "FAIL: re-run recreated a skill that already existed (should be 'kept')" >&2
   exit 1
@@ -190,7 +190,7 @@ fi
 
 # ── --update: wipe + recreate semantics ─────────────────────────────────────
 echo "==> --update wipe + recreate"
-bash "$TOOLKIT_ROOT/install.sh" --update "$SCRATCH" > "$SCRATCH/.update.log"
+bash "$TOOLKIT_ROOT/install.sh" --update --no-python-deps "$SCRATCH" > "$SCRATCH/.update.log"
 if ! grep -qE "removed .claude/skills/" "$SCRATCH/.update.log"; then
   echo "FAIL: --update did not run the sync wipe block" >&2
   exit 1
@@ -211,7 +211,7 @@ done
 echo "==> --no-pre-push-hook"
 NOHOOK="$(mktemp -d)"
 git -C "$NOHOOK" init -q -b main
-bash "$TOOLKIT_ROOT/install.sh" --no-pre-push-hook "$NOHOOK" > "$NOHOOK/.install.log"
+bash "$TOOLKIT_ROOT/install.sh" --no-pre-push-hook --no-python-deps "$NOHOOK" > "$NOHOOK/.install.log"
 if [[ -e "$NOHOOK/.git/hooks/pre-push" ]]; then
   echo "FAIL: --no-pre-push-hook installed the hook anyway" >&2
   rm -rf "$NOHOOK"
@@ -236,7 +236,7 @@ LEGACY="$(mktemp -d)"
 git -C "$LEGACY" init -q -b main
 mkdir -p "$LEGACY/.agents/skills/design"
 echo "fake legacy skill" > "$LEGACY/.agents/skills/design/SKILL.md"
-bash "$TOOLKIT_ROOT/install.sh" --no-legacy-cleanup "$LEGACY" > "$LEGACY/.install.log"
+bash "$TOOLKIT_ROOT/install.sh" --no-legacy-cleanup --no-python-deps "$LEGACY" > "$LEGACY/.install.log"
 if grep -qF "legacy gemini-cli cleanup" "$LEGACY/.install.log"; then
   echo "FAIL: --no-legacy-cleanup did not suppress the cleanup prompt" >&2
   rm -rf "$LEGACY"
