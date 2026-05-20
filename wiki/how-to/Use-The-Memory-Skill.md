@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > **Goal:** capture durable preferences / workflows / fixes to MemoryVault so the agent's behavior compounds across sessions. Evolve entries when preferences change without losing the audit trail.
-> **Prereqs:** `agent-toolkit` installed (skill lands at `.claude/skills/memory/` + `.agent/skills/memory/`); an Obsidian vault folder set up as your `MemoryVault/` root + the path exported as `MEMORY_VAULT_PATH` (or passed via `--vault-path` on each invocation). Optional: `pip install sqlite-vec sentence-transformers` for full vec-index + offline embedding; `VOYAGE_API_KEY` or `ANTHROPIC_API_KEY` env var for online embedding. Without these the skill still works (file writes always succeed; embedding work queues for later).
+> **Prereqs:** `agent-toolkit` installed (skill lands at `.claude/skills/memory/` + `.agent/skills/memory/`); an Obsidian vault folder set up as your `MemoryVault/` root + the path exported as `MEMORY_VAULT_PATH` (or passed via `--vault-path` on each invocation). Python deps (`pyyaml`, `sqlite-vec`, `sentence-transformers`) install by default when you run `bash install.sh ~/your-project` — opt out with `--no-python-deps` if you manage Python deps yourself. Without `sentence-transformers` the skill still works (file writes always succeed; embedding queues for later; recall degrades to grep+frontmatter-only). **v0.10.0 (2026-05-20): local `sentence-transformers` is now the only embedding mode** — see [ADR 0001's 2026-05-20 amendment](../explanation/decisions/0001-agent-toolkit-purpose.md#amendment-2026-05-20). The previous Voyage/Anthropic API mode + `MEMORY_USE_API_EMBEDDINGS` env var were removed.
 
 The `memory` skill ships as plan #7a parts 1 + 2 + 3 + 4 of [MemoryVault — Permanent agent memory via Obsidian-vault-folder + reflection sidecar](../explanation/designs/memoryvault.md). This page covers the **two write primitives** (`/memory save` + `/memory evolve`), the **two recall hooks** (SessionStart + UserPromptSubmit), the **`/memory reflect` skill + Stop / idle reflection hooks** (the write loop), **crash-recovery markers**, and the **two-tier idea ledger** (`Ideas.md` surface + `_idea-incubator/` deep research + `/memory promote` graduation + GC). Discovery-mining + seed-pass come in subsequent parts.
 
@@ -184,7 +184,7 @@ Flags:
 - `-k N` — top-K (default 5).
 - `--budget-ms N` — time budget override (default 300ms).
 - `--include-inbox` — surface `_inbox/` entries too (default excluded — those are raw, unfiltered candidates).
-- `--mode api|local|stub` — embedding mode override (default: api unless `MEMORY_USE_API_EMBEDDINGS=false`).
+- `--mode local|stub` — embedding mode override (default: `local`; `stub` is testing-only). `--mode api` was removed in v0.10.0 — see [ADR 0001 amendment](../explanation/decisions/0001-agent-toolkit-purpose.md#amendment-2026-05-20).
 
 ### Antigravity equivalent
 
@@ -380,18 +380,24 @@ The skill resolves the MemoryVault root in this order:
 
 If none resolve, both `save.py` and `evolve.py` error out with a clear next-step message. No implicit fallback to `cwd` or `~` (prevents accidental writes to wrong directories).
 
-## Embedding modes
+## Embedding mode (v0.10.0+: local-only)
 
-By default the skill embeds entries via the Voyage AI endpoint (Anthropic's recommended embedding provider). Set `MEMORY_USE_API_EMBEDDINGS=false` to use the local `sentence-transformers` fallback (offline-capable; ~80MB `all-MiniLM-L6-v2` model; `pip install sentence-transformers` required). The local model cache lives at `~/.cache/agent-toolkit/sentence-transformers/` — override with `AGENT_TOOLKIT_SENTENCE_TRANSFORMERS_CACHE` if you need a different location.
+**As of v0.10.0 (2026-05-20)**, the skill embeds entries via local `sentence-transformers` only — see [ADR 0001's 2026-05-20 amendment](../explanation/decisions/0001-agent-toolkit-purpose.md#amendment-2026-05-20) for the rationale (dual-mode API + local was the v1 design; collapsed to local-only since the primary operator is a Claude Ultra subscriber without a separate API key, and modern small-to-mid local models deliver near-SOTA quality on desktop-class hardware).
+
+Default model: **`BAAI/bge-large-en-v1.5`** (1024-d native; ~1.3GB on disk + ~1.5GB RAM at runtime; downloads lazily on first invocation; PyTorch MPS on Apple Silicon for acceleration). The model cache lives at `~/.cache/agent-toolkit/sentence-transformers/` — override with `AGENT_TOOLKIT_SENTENCE_TRANSFORMERS_CACHE` env var if you need a different location.
+
+**Model swap escape hatch:** set `AGENT_TOOLKIT_EMBEDDING_MODEL=<huggingface-model-name>` to use a different local model. Useful on low-spec hosts (e.g. `AGENT_TOOLKIT_EMBEDDING_MODEL=all-MiniLM-L6-v2` for the lightweight ~80MB option). The model must produce 1024-d native output to match the vec-index schema; mismatches trigger a graceful-skip with a clear stderr message + `python3 vec_index.py rebuild` migration command.
+
+There is no API mode in v0.10.0+. The `--mode api` CLI flag exits 1 with a clear error pointing at the ADR amendment.
 
 The embedding step is **async** for writes — `/memory save` and `/memory evolve` queue to `<vault>/_meta/embedding-queue.jsonl` synchronously (fast; never blocks the file write) and a separate drain step (`python3 vec_index.py --vault-path <vault> drain` or future idle-time hook) processes the queue + writes to the vec-index. The **recall** side (UserPromptSubmit hook) is **synchronous** — it embeds the query inline + runs vec search + grep merge within the 300ms budget. This means:
 
-- Save / evolve always succeed even if no embedding mode is available (no API key, no local model, sqlite-vec missing). The queue accumulates pending work.
-- Recall always returns SOMETHING — if vec search fails (no API key, no local model, sqlite-vec missing, network down), the grep+frontmatter path still runs and returns keyword matches.
-- Drain processes the queue when deps become available — graceful-skip pattern across multiple layers (sqlite-vec / embedding mode / enable_load_extension).
+- Save / evolve always succeed even if no embedding deps are available (no sentence-transformers, no sqlite-vec, no PyTorch MPS). The queue accumulates pending work.
+- Recall always returns SOMETHING — if vec search fails (no sentence-transformers, no sqlite-vec, model download failed), the grep+frontmatter path still runs and returns keyword matches.
+- Drain processes the queue when deps become available — graceful-skip pattern across multiple layers (sqlite-vec / sentence-transformers / enable_load_extension).
 - The queue file is operator-debuggable (`cat <vault>/_meta/embedding-queue.jsonl`) and the drain function is idempotent (re-runs on a stable queue produce the same final state).
 
-**Offline-capable recall**: with `MEMORY_USE_API_EMBEDDINGS=false` + `pip install sentence-transformers` + `pip install sqlite-vec` + a Homebrew/pyenv Python (Apple's macOS system Python disables `enable_load_extension`), the full happy path works without network access. Without those deps, recall degrades gracefully to grep-only — slower-to-match but always-on.
+**Offline-capable recall by default (v0.10.0+)**: with `sentence-transformers` + `sqlite-vec` installed (which `install.sh` handles by default) + a Homebrew/pyenv Python (Apple's macOS system Python disables `enable_load_extension`), the full happy path works without network access once the BGE-large model is cached. Without those deps, recall degrades gracefully to grep-only — slower-to-match but always-on.
 
 ## Troubleshooting
 
@@ -408,7 +414,7 @@ You can't evolve an already-superseded entry. The supersession graph traverses o
 This is the graceful-skip path: sqlite-vec is missing OR the Python build doesn't support `enable_load_extension` (Apple system Python). Workaround: install Homebrew Python (`brew install python`) or use pyenv, then `pip install sqlite-vec`. Until then, save + evolve still work; embeddings queue stays pending.
 
 **Drain reports embedding skipped for some entries**
-The configured embedding mode wasn't available for those entries (no API key for api mode, or `sentence-transformers` missing for local mode). The entries stay in the queue; re-running drain after configuring the mode will process them.
+`sentence-transformers` wasn't available for those entries (not installed, or PyTorch MPS issue, or model download failed). The entries stay in the queue; re-running drain after `pip install sentence-transformers` (or fixing the underlying issue) will process them.
 
 **Recall hook fires but no entries surface in the agent's context**
 Check the hook's stderr line — Claude Code shows hook output in its logs. If it says `Loaded 0 ...` despite saved entries, either `MEMORY_VAULT_PATH` is unset (hook can't find the vault), `_always-load/` is empty (SessionStart hook), or no entries matched the query tokens (UserPromptSubmit hook — verify via the manual `recall.py query` invocation above).
@@ -417,7 +423,7 @@ Check the hook's stderr line — Claude Code shows hook output in its logs. If i
 The vault has grown large enough that the walk + frontmatter parse + read overrun the 500ms (SessionStart) or 300ms (UserPromptSubmit) budgets. Partial results were emitted; the hook didn't block. Mitigation: prune `_always-load/` (those are read on every session boot — keep them lean), or move stale entries to `_archive/` via `/memory evolve`.
 
 **Recall returns "embedding unavailable" stderr but still surfaces results**
-This is the graceful-skip path firing — no API key + no local model, so vec search short-circuits and recall falls back to grep+frontmatter-only. Results are still returned; semantic-paraphrase matches won't surface but exact-keyword matches will. Configure `VOYAGE_API_KEY` / `ANTHROPIC_API_KEY` env var (api mode) or `pip install sentence-transformers` + set `MEMORY_USE_API_EMBEDDINGS=false` (local mode) to restore the full pipeline.
+This is the graceful-skip path firing — `sentence-transformers` isn't available, so vec search short-circuits and recall falls back to grep+frontmatter-only. Results are still returned; semantic-paraphrase matches won't surface but exact-keyword matches will. Run `pip install sentence-transformers` (or `bash install.sh` without `--no-python-deps`) to restore the full pipeline. As of v0.10.0 there is no API mode to fall back to — local `sentence-transformers` is the only production path; see [ADR 0001 amendment](../explanation/decisions/0001-agent-toolkit-purpose.md#amendment-2026-05-20).
 
 **Stop hook fired but no entries appear in MemoryVault**
 Check the hook's stderr line in Claude Code logs. If it says `saved 0, inboxed N`, no HIGH-confidence patterns were detected — all candidates went to `_inbox/` for triage. Check `<vault>/personal-private/_inbox/` for the mined candidates; review + promote via `/memory save` (or `/memory evolve` to supersede an existing entry). If stderr says `MEMORY_VAULT_PATH set?`, the hook's environment didn't inherit the vault env var — set it globally in your shell config (`.bashrc` / `.zshrc`) so Claude Code's hook child processes see it.
