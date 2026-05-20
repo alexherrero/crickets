@@ -769,8 +769,8 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
                    help=f"time budget in milliseconds (default: {PROMPT_SUBMIT_BUDGET_MS})")
     q.add_argument("--include-inbox", action="store_true",
                    help="include _inbox/ entries in the search (default: excluded)")
-    q.add_argument("--mode", choices=["api", "local", "stub"], default=None,
-                   help="embedding mode override (default: api unless MEMORY_USE_API_EMBEDDINGS=false)")
+    q.add_argument("--mode", choices=["local", "stub"], default=None,
+                   help="embedding mode override (default: local; see embed.py for details)")
 
     return parser.parse_args(argv)
 

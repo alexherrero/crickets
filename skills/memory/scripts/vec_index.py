@@ -337,9 +337,9 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     drain_p = sub.add_parser("drain", help="process embedding queue + upsert into index")
     drain_p.add_argument(
         "--mode",
-        choices=["api", "local", "stub"],
+        choices=["local", "stub"],
         default=None,
-        help="embedding mode override (default: api unless MEMORY_USE_API_EMBEDDINGS=false)",
+        help="embedding mode override (default: local; see embed.py for details)",
     )
     sub.add_parser("size", help="report vec-index entry count")
     return parser.parse_args(argv)
