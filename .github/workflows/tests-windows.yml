@@ -17,6 +17,12 @@ jobs:
       - name: Run smoke-install (pwsh) + post-install integrity
         shell: pwsh
         run: pwsh -NoProfile -File scripts/smoke-install-pwsh.ps1
+        env:
+          # Skip the local-mode integration test in CI (avoids the
+          # ~1.3GB BGE-large model download per workflow run). Operators
+          # validate local mode on their own machine after `pip install
+          # sentence-transformers` per plan #18 task 3.
+          SKIP_LOCAL_MODE_INTEGRATION: '1'
       - name: Validate manifests
         run: python scripts/validate-manifests.py
       - name: AST-parse every .ps1

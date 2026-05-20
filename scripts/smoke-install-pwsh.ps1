@@ -879,6 +879,44 @@ Evolve test body for fallback path.
         Remove-Item -LiteralPath $mfb -Recurse -Force -ErrorAction SilentlyContinue
     }
 
+    # ── Local-mode integration test (plan #18 task 3) ──────────────────────
+    # Validates real 1024-d embedding from BGE-large. Skipped in CI to avoid
+    # the ~1.3GB BGE-large model download (SKIP_LOCAL_MODE_INTEGRATION env
+    # var set by .github/workflows/tests-windows.yml). Operators with
+    # sentence-transformers installed can opt in by clearing the env var
+    # locally; gracefully skips if sentence-transformers itself is missing.
+    Write-Host '==> Local-mode integration test (plan #18 task 3)'
+    if (Test-Path Env:SKIP_LOCAL_MODE_INTEGRATION) {
+        Write-Host '    SKIP_LOCAL_MODE_INTEGRATION set — skipped (typically CI; clear var + re-run locally to validate BGE-large)'
+    } else {
+        $localOutFile = Join-Path $scratch '.local-mode-out.log'
+        $localProc = Start-Process -FilePath 'python3' -ArgumentList @($embedPy, 'smoke test text for local mode', '--mode', 'local') -NoNewWindow -Wait -RedirectStandardOutput $localOutFile -RedirectStandardError $localOutFile -PassThru
+        $localOut = Get-Content -LiteralPath $localOutFile -Raw
+        Remove-Item -LiteralPath $localOutFile -ErrorAction SilentlyContinue
+        if ($localProc.ExitCode -eq 2) {
+            if ($localOut -notmatch 'sentence-transformers') {
+                throw "--mode local exit 2 but error doesn't mention sentence-transformers. Output: $localOut"
+            }
+            Write-Host '    sentence-transformers unavailable — skipped (pip install sentence-transformers to enable; first-run downloads BGE-large ~1.3GB)'
+        } elseif ($localProc.ExitCode -eq 0) {
+            $parsed = $localOut | ConvertFrom-Json
+            if ($parsed.Count -ne 1024) {
+                throw "--mode local returned $($parsed.Count)-d output, expected 1024 (BGE-large native). Output: $localOut"
+            }
+            # All numeric? (PowerShell ConvertFrom-Json gives Double / Int64 for JSON numbers.)
+            $allNumeric = $true
+            foreach ($v in $parsed) {
+                if ($v -isnot [double] -and $v -isnot [int] -and $v -isnot [long]) { $allNumeric = $false; break }
+            }
+            if (-not $allNumeric) {
+                throw "--mode local output had non-numeric values. Output: $localOut"
+            }
+            Write-Host '    local-mode integration verified: 1024-d numeric vector from BGE-large'
+        } else {
+            throw "--mode local exited $($localProc.ExitCode) (expected 0 success or 2 graceful-skip). Output: $localOut"
+        }
+    }
+
     # ── Time budget enforcement test (plan #7a part 2 task 5) ──────────────
     Write-Host '==> Time budget enforcement test (plan #7a part 2 task 5)'
     $mbudget = Join-Path ([System.IO.Path]::GetTempPath()) ("toolkit-mbudget-" + [System.Guid]::NewGuid().ToString('N'))

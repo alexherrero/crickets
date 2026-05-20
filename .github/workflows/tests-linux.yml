@@ -18,6 +18,12 @@ jobs:
         run: pip install pyyaml
       - name: Run smoke-install (bash) + post-install integrity
         run: bash scripts/smoke-install-bash.sh
+        env:
+          # Skip the local-mode integration test in CI (avoids the
+          # ~1.3GB BGE-large model download per workflow run). Operators
+          # validate local mode on their own machine after `pip install
+          # sentence-transformers` per plan #18 task 3.
+          SKIP_LOCAL_MODE_INTEGRATION: '1'
 
   validate:
     name: validate

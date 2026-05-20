@@ -1117,6 +1117,58 @@ if ! echo "$FB_OUT" | grep -qE "embedding unavailable"; then
 fi
 rm -rf "$MFB"
 
+# ── Local-mode integration test (plan #18 task 3) ──────────────────────────
+# Validates that embed.py with --mode local (the v0.10.0 default) returns
+# a real 1024-d embedding when sentence-transformers + the BGE-large model
+# are available. Skipped in CI to avoid the ~1.3GB BGE-large model download
+# per workflow run (SKIP_LOCAL_MODE_INTEGRATION env var set by the three
+# .github/workflows/tests-*.yml files). Operators with sentence-transformers
+# installed can opt in by clearing the env var + running this script
+# locally; the test will gracefully skip if sentence-transformers itself
+# is missing.
+echo "==> Local-mode integration test (plan #18 task 3)"
+if [[ -n "${SKIP_LOCAL_MODE_INTEGRATION:-}" ]]; then
+  echo "    SKIP_LOCAL_MODE_INTEGRATION set — skipped (typically CI; clear var + re-run locally to validate BGE-large)"
+else
+  LOCAL_EXIT=0
+  LOCAL_OUT="$(python3 "$EMBED_PY" "smoke test text for local mode" --mode local 2>&1)" || LOCAL_EXIT=$?
+  if [[ $LOCAL_EXIT -eq 2 ]]; then
+    # sentence-transformers not installed; graceful-skip path.
+    if ! echo "$LOCAL_OUT" | grep -qE "sentence-transformers"; then
+      echo "FAIL: --mode local exit 2 but error doesn't mention sentence-transformers" >&2
+      echo "    output: $LOCAL_OUT" >&2
+      exit 1
+    fi
+    echo "    sentence-transformers unavailable — skipped (pip install sentence-transformers to enable; first-run downloads BGE-large ~1.3GB)"
+  elif [[ $LOCAL_EXIT -eq 0 ]]; then
+    LOCAL_LEN="$(echo "$LOCAL_OUT" | python3 -c "import json,sys; print(len(json.load(sys.stdin)))" 2>/dev/null || echo 0)"
+    if [[ "$LOCAL_LEN" != "1024" ]]; then
+      echo "FAIL: --mode local returned $LOCAL_LEN-d output, expected 1024 (BGE-large native)" >&2
+      echo "    output: $LOCAL_OUT" >&2
+      exit 1
+    fi
+    # Verify all values are numeric (json.load returns floats/ints).
+    FLOAT_CHECK="$(echo "$LOCAL_OUT" | python3 -c "
+import json, sys
+v = json.load(sys.stdin)
+if all(isinstance(x, (int, float)) for x in v):
+    print('OK')
+else:
+    print('FAIL')
+" 2>/dev/null || echo "FAIL")"
+    if [[ "$FLOAT_CHECK" != "OK" ]]; then
+      echo "FAIL: --mode local output had non-numeric values" >&2
+      echo "    output: $LOCAL_OUT" >&2
+      exit 1
+    fi
+    echo "    local-mode integration verified: 1024-d numeric vector from BGE-large"
+  else
+    echo "FAIL: --mode local exited $LOCAL_EXIT (expected 0 success or 2 graceful-skip)" >&2
+    echo "    output: $LOCAL_OUT" >&2
+    exit 1
+  fi
+fi
+
 # ── Time budget enforcement test (plan #7a part 2 task 5) ──────────────────
 # Verify wall-clock budget enforcement is real: seed many entries + set a
 # tight budget (1ms) → the recall walk must terminate early + emit overrun
