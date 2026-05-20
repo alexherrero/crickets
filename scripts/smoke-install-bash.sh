@@ -498,6 +498,66 @@ else
   rm -rf "$MQUEUE"
   exit 1
 fi
+
+# Rebuild subcommand test (plan #18 task 2): drop + recreate at current
+# EMBEDDING_DIM. Outcome again depends on sqlite-vec availability.
+REBUILD_OUT="$(python3 "$VEC_PY" --vault-path "$MQUEUE" rebuild 2>/dev/null)"
+REBUILD_EXIT=$?
+if [[ $REBUILD_EXIT -eq 0 ]]; then
+  # Full happy path: rebuild reports old_dim + new_dim=1024.
+  NEW_DIM="$(echo "$REBUILD_OUT" | python3 -c "import json,sys; print(json.load(sys.stdin).get('new_dim'))")"
+  if [[ "$NEW_DIM" != "1024" ]]; then
+    echo "FAIL: rebuild new_dim should be 1024, got '$NEW_DIM'" >&2
+    echo "    output: $REBUILD_OUT" >&2
+    rm -rf "$MQUEUE"
+    exit 1
+  fi
+  echo "    (rebuild succeeded — new_dim=1024 confirmed)"
+elif [[ $REBUILD_EXIT -eq 2 ]]; then
+  # Graceful-skip: sqlite-vec unavailable. Output should mention "skipped".
+  if ! echo "$REBUILD_OUT" | grep -q '"skipped"'; then
+    echo "FAIL: rebuild graceful-skip output missing 'skipped' marker" >&2
+    echo "    output: $REBUILD_OUT" >&2
+    rm -rf "$MQUEUE"
+    exit 1
+  fi
+  echo "    (rebuild graceful-skip — sqlite-vec unavailable)"
+else
+  echo "FAIL: rebuild exited $REBUILD_EXIT (expected 0 or 2)" >&2
+  echo "    output: $REBUILD_OUT" >&2
+  rm -rf "$MQUEUE"
+  exit 1
+fi
+
+# Dim-mismatch detection test (plan #18 task 2): the _detect_index_dim
+# regex parses the CREATE statement; verify it returns the expected
+# dim for a synthetic CREATE string. Pure-regex test — no sqlite-vec
+# required.
+DIM_TEST_OUT="$(python3 -c "
+import sys
+sys.path.insert(0, '$SCRATCH/.claude/skills/memory/scripts')
+from vec_index import _DIM_REGEX
+import re
+samples = [
+    ('CREATE VIRTUAL TABLE entries USING vec0(embedding FLOAT[384])', 384),
+    ('CREATE VIRTUAL TABLE entries USING vec0(embedding FLOAT[1024])', 1024),
+    ('CREATE TABLE entry_meta (rowid INTEGER PRIMARY KEY)', None),
+]
+for sql, expected in samples:
+    m = _DIM_REGEX.search(sql)
+    got = int(m.group(1)) if m else None
+    if got != expected:
+        print(f'FAIL: expected={expected}, got={got}, sql={sql!r}')
+        sys.exit(1)
+print('OK')
+")"
+if [[ "$DIM_TEST_OUT" != "OK" ]]; then
+  echo "FAIL: _DIM_REGEX parsing test failed: $DIM_TEST_OUT" >&2
+  rm -rf "$MQUEUE"
+  exit 1
+fi
+echo "    (dim-mismatch detection regex verified)"
+
 # Verify file write is never blocked even with no embedding mode available.
 # Save with no sentence-transformers installed (local mode unavailable) —
 # save still works because the embedding is async + graceful-skip.

@@ -370,6 +370,53 @@ try {
         } else {
             throw "drain produced unexpected outcome (processed=$($drainParsed.processed), skipped=$($drainParsed.skipped), errors=$($drainParsed.errors))"
         }
+
+        # Rebuild subcommand test (plan #18 task 2): drop + recreate at
+        # current EMBEDDING_DIM. Outcome again depends on sqlite-vec
+        # availability.
+        $rebuildOutFile = Join-Path $scratch '.rebuild-out.log'
+        $rebuildProc = Start-Process -FilePath 'python3' -ArgumentList @($vecPy, '--vault-path', $mqueue, 'rebuild') -NoNewWindow -Wait -RedirectStandardOutput $rebuildOutFile -RedirectStandardError ([System.IO.Path]::GetTempFileName()) -PassThru
+        $rebuildOut = Get-Content -LiteralPath $rebuildOutFile -Raw
+        Remove-Item -LiteralPath $rebuildOutFile -ErrorAction SilentlyContinue
+        if ($rebuildProc.ExitCode -eq 0) {
+            $rebuildParsed = $rebuildOut | ConvertFrom-Json
+            if ($rebuildParsed.new_dim -ne 1024) {
+                throw "rebuild new_dim should be 1024, got '$($rebuildParsed.new_dim)'. Output: $rebuildOut"
+            }
+            Write-Host '    (rebuild succeeded — new_dim=1024 confirmed)'
+        } elseif ($rebuildProc.ExitCode -eq 2) {
+            if ($rebuildOut -notmatch '"skipped"') {
+                throw "rebuild graceful-skip output missing 'skipped' marker. Output: $rebuildOut"
+            }
+            Write-Host '    (rebuild graceful-skip — sqlite-vec unavailable)'
+        } else {
+            throw "rebuild exited $($rebuildProc.ExitCode) (expected 0 or 2). Output: $rebuildOut"
+        }
+
+        # Dim-mismatch detection test (plan #18 task 2): pure-regex test
+        # of _DIM_REGEX. No sqlite-vec required.
+        $dimTestOut = (python3 -c "
+import sys
+sys.path.insert(0, r'$($scratch -replace '\\','/')/.claude/skills/memory/scripts')
+from vec_index import _DIM_REGEX
+samples = [
+    ('CREATE VIRTUAL TABLE entries USING vec0(embedding FLOAT[384])', 384),
+    ('CREATE VIRTUAL TABLE entries USING vec0(embedding FLOAT[1024])', 1024),
+    ('CREATE TABLE entry_meta (rowid INTEGER PRIMARY KEY)', None),
+]
+for sql, expected in samples:
+    m = _DIM_REGEX.search(sql)
+    got = int(m.group(1)) if m else None
+    if got != expected:
+        print(f'FAIL: expected={expected}, got={got}, sql={sql!r}')
+        sys.exit(1)
+print('OK')
+").Trim()
+        if ($dimTestOut -ne 'OK') {
+            throw "_DIM_REGEX parsing test failed: $dimTestOut"
+        }
+        Write-Host '    (dim-mismatch detection regex verified)'
+
         # File write never blocked: no local model installed → save still succeeds
         'No-embed body.' | python3 $savePy 'preferences' 'no-embed-test' '--vault-path' $mqueue 2>$null | Out-Null
         $noEmbedPath = Join-Path $mqueue 'personal-private/preferences/no-embed-test.md'

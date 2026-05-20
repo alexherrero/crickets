@@ -4,9 +4,8 @@
 # Stores per-entry embeddings in <vault>/_meta/vec-index.db via the
 # sqlite-vec SQLite extension. Provides upsert/delete/query ops + a
 # JSONL-based queue that save.py / evolve.py append to (queue drain
-# happens via this module's `drain_queue` function — called from a
-# future idle-time hook in plan #7a part 3, or manually via
-# /memory reindex).
+# happens via this module's `drain_queue` function — called from the
+# idle-time hook or manually via `python3 vec_index.py drain`).
 #
 # Two-tier architecture:
 #   1. Queue layer (vault-local; always works): save.py / evolve.py
@@ -20,15 +19,33 @@
 # Graceful-skip pattern:
 #   - sqlite-vec not installed → all index ops are no-ops + log warning;
 #     queue entries stay pending.
-#   - Embedding unavailable (no API key, no local model) → drain skips
-#     that queue entry + leaves it for next drain.
+#   - Embedding unavailable (no local model) → drain skips that queue
+#     entry + leaves it for next drain.
 #   - File-write side (save.py / evolve.py) is NEVER blocked by either.
+#
+# Dimension-mismatch handling (v0.10.0, plan #18 task 2):
+#   - The vec-index virtual table is created at EMBEDDING_DIM (currently
+#     1024 from embed.py; was 384 in v0.x).
+#   - On open, _open_index() introspects the existing virtual-table
+#     schema and compares its dim to EMBEDDING_DIM. If mismatched
+#     (e.g. operator upgraded the toolkit on top of an old 384-d
+#     index), _open_index() prints a clear "vec-index dim mismatch;
+#     rebuild required" message to stderr and returns None (graceful-
+#     skip — never blocks the prompt). Caller treats the same as
+#     "sqlite-vec unavailable".
+#   - Operator runs `python3 vec_index.py rebuild --vault-path <path>`
+#     to drop + recreate the index at the current dim. The embedding
+#     queue is preserved across rebuild; the operator's existing vault
+#     entries are NOT auto-re-enqueued (operators can manually re-save
+#     each entry or wait for a future `reindex` subcommand that walks
+#     the vault + enqueues all .md files).
 
 from __future__ import annotations
 
 import argparse
 import json
 import os
+import re
 import sqlite3
 import sys
 from datetime import datetime, timezone
@@ -47,6 +64,10 @@ except ImportError as e:  # pragma: no cover
 _META_DIR = "_meta"
 _INDEX_FILENAME = "vec-index.db"
 _QUEUE_FILENAME = "embedding-queue.jsonl"
+
+# Regex to parse the FLOAT[N] dim from a vec0 virtual-table CREATE
+# statement as returned by SELECT sql FROM sqlite_master.
+_DIM_REGEX = re.compile(r"FLOAT\[(\d+)\]", re.IGNORECASE)
 
 
 def _meta_dir(vault: Path) -> Path:
@@ -86,12 +107,40 @@ def _try_import_sqlite_vec() -> bool:
     return True
 
 
+def _detect_index_dim(conn: sqlite3.Connection) -> int | None:
+    """Detect the embedding dimension of the existing `entries` virtual
+    table by parsing the CREATE statement stored in sqlite_master.
+
+    Returns the parsed dim, or None if the `entries` table doesn't
+    exist yet (fresh DB) or the dim can't be parsed (defensive — should
+    not happen for any vec_index.py-created table since the CREATE
+    statement is always FLOAT[N]).
+    """
+    cursor = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='entries'"
+    )
+    row = cursor.fetchone()
+    if not row or not row[0]:
+        return None
+    m = _DIM_REGEX.search(row[0])
+    if not m:
+        return None
+    return int(m.group(1))
+
+
 def _open_index(vault: Path) -> sqlite3.Connection | None:
     """Open the vec-index DB and load the sqlite-vec extension.
 
-    Returns None if sqlite-vec is unavailable or the local SQLite build
-    doesn't support extension loading. Caller should treat None as
-    "skip index op + leave queue pending".
+    Returns None in any of these cases (all treated as "skip index op +
+    leave queue pending"):
+      - sqlite-vec module not installed
+      - SQLite build doesn't support extension loading (e.g. macOS
+        system Python)
+      - extension load fails at runtime (rare; some sqlite3 builds
+        advertise enable_load_extension but refuse at call time)
+      - existing `entries` virtual table has a dim != EMBEDDING_DIM
+        (operator upgraded the toolkit on top of an older-dim index;
+        a clear stderr warning + rebuild instruction is printed)
     """
     if not _try_import_sqlite_vec():
         return None
@@ -106,6 +155,22 @@ def _open_index(vault: Path) -> sqlite3.Connection | None:
         # Defensive: a Python build can have enable_load_extension as a
         # method but fail at runtime (some sqlite3 builds report it as
         # unsupported via OperationalError). Treat the same as missing.
+        conn.close()
+        return None
+    # Dim-mismatch detection (plan #18 task 2): if an `entries` virtual
+    # table already exists with a dimension different from EMBEDDING_DIM,
+    # the CREATE TABLE IF NOT EXISTS below would be a no-op and we'd
+    # silently proceed against an incompatible schema. Catch + warn +
+    # graceful-skip.
+    existing_dim = _detect_index_dim(conn)
+    if existing_dim is not None and existing_dim != EMBEDDING_DIM:
+        print(
+            f"[vec_index] dim mismatch: existing index at "
+            f"{_index_path(vault)} is {existing_dim}-d but current code "
+            f"expects {EMBEDDING_DIM}-d. Rebuild required: "
+            f"python3 vec_index.py rebuild --vault-path {vault}",
+            file=sys.stderr,
+        )
         conn.close()
         return None
     # Ensure schema exists.
@@ -209,6 +274,92 @@ def index_size(vault_path: Path | str) -> int | None:
         conn.close()
 
 
+def rebuild_index(vault_path: Path | str) -> dict:
+    """Drop + recreate the vec-index virtual table at current EMBEDDING_DIM.
+
+    Used after a toolkit upgrade that changes EMBEDDING_DIM (e.g. v0.9.0
+    → v0.10.0 bumped 384 → 1024 for the BGE-large default). Detection
+    + warning happens automatically in _open_index(); this function
+    is the operator-driven remediation.
+
+    Behavior:
+      - Drops `entries` virtual table + `entry_meta` table.
+      - Recreates both at the current EMBEDDING_DIM.
+      - Preserves the embedding queue file (`<vault>/_meta/embedding-
+        queue.jsonl`). Any pending queue entries can be drained on the
+        next `drain` invocation.
+      - Does NOT auto-walk the vault to re-enqueue existing entries
+        (that's a future `reindex` subcommand). Operators who want a
+        fully-populated index after rebuild can manually re-save each
+        entry, or wait for the planned reindex feature.
+
+    Returns a stats dict:
+      {
+        "old_dim": int | None,
+        "new_dim": int,
+        "entries_dropped": int,
+        "queue_preserved": bool,
+      }
+    Or, if sqlite-vec is unavailable:
+      {"skipped": True, "note": "sqlite-vec unavailable"}
+    """
+    vault = Path(vault_path)
+    if not _try_import_sqlite_vec():
+        return {"skipped": True, "note": "sqlite-vec unavailable"}
+    _meta_dir(vault).mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(_index_path(vault))
+    try:
+        conn.enable_load_extension(True)
+        import sqlite_vec  # type: ignore
+        sqlite_vec.load(conn)
+        conn.enable_load_extension(False)
+    except (AttributeError, sqlite3.OperationalError):
+        conn.close()
+        return {"skipped": True, "note": "extension load failed"}
+
+    # Detect old dim (informational; mismatch is the WHOLE POINT of
+    # rebuild, so we don't bail on it).
+    old_dim = _detect_index_dim(conn)
+
+    # Count entries before drop (best-effort; entry_meta may not exist
+    # on truly-fresh DBs).
+    entries_count = 0
+    try:
+        cursor = conn.execute("SELECT COUNT(*) FROM entry_meta")
+        entries_count = cursor.fetchone()[0]
+    except sqlite3.OperationalError:
+        pass
+
+    # Drop existing tables. DROP VIRTUAL TABLE syntax handles vec0
+    # virtual tables; DROP TABLE IF EXISTS handles the regular table.
+    conn.execute("DROP TABLE IF EXISTS entries")
+    conn.execute("DROP TABLE IF EXISTS entry_meta")
+    conn.commit()
+
+    # Recreate at current EMBEDDING_DIM.
+    conn.execute(
+        f"CREATE VIRTUAL TABLE entries USING vec0("
+        f"  embedding FLOAT[{EMBEDDING_DIM}]"
+        f")"
+    )
+    conn.execute(
+        "CREATE TABLE entry_meta ("
+        "  rowid INTEGER PRIMARY KEY,"
+        "  path TEXT UNIQUE NOT NULL,"
+        "  updated_at TEXT NOT NULL"
+        ")"
+    )
+    conn.commit()
+    conn.close()
+
+    return {
+        "old_dim": old_dim,
+        "new_dim": EMBEDDING_DIM,
+        "entries_dropped": entries_count,
+        "queue_preserved": _queue_path(vault).exists(),
+    }
+
+
 def enqueue(vault_path: Path | str, entry_relative: str, op: str, *, text: str = "") -> None:
     """Append an entry to the embedding queue.
 
@@ -245,11 +396,11 @@ def drain_queue(vault_path: Path | str, *, mode: str | None = None) -> dict:
     Returns a stats dict: {"processed": N, "skipped": N, "errors": N, "remaining": N}.
 
     Graceful-skip semantics:
-      - If sqlite-vec missing: all queue entries are skipped (stay
-        pending); returns stats with skipped == queue_size.
+      - If sqlite-vec missing OR dim-mismatch detected: all queue
+        entries are skipped (stay pending); returns stats with skipped
+        == queue_size.
       - If embedding unavailable for an entry: that entry is left in
-        the queue for a future drain (when API key / local model
-        becomes available); other entries continue processing.
+        the queue for a future drain; other entries continue processing.
       - The queue file is rewritten with unprocessed entries at the end
         (idempotent: re-running drain on a stable queue + dep state
         produces the same final state).
@@ -264,11 +415,16 @@ def drain_queue(vault_path: Path | str, *, mode: str | None = None) -> dict:
     lines = queue_file.read_text(encoding="utf-8").splitlines()
     entries = [json.loads(ln) for ln in lines if ln.strip()]
 
-    if not _try_import_sqlite_vec():
-        # sqlite-vec missing — all entries stay pending.
+    # Use _open_index probe rather than just _try_import_sqlite_vec so
+    # we catch the dim-mismatch case too — _open_index() prints the
+    # rebuild-required warning if a mismatched index exists.
+    probe = _open_index(vault)
+    if probe is None:
+        # sqlite-vec missing OR dim mismatch — all entries stay pending.
         stats["skipped"] = len(entries)
         stats["remaining"] = len(entries)
         return stats
+    probe.close()
 
     unprocessed: list[dict] = []
     for record in entries:
@@ -322,10 +478,12 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="memory-vec-index",
         description=(
-            "MemoryVault vec-index management. Subcommands: drain (process "
-            "embedding queue), size (report index count), reindex (rebuild "
-            "from vault .md files — not yet implemented; placeholder for "
-            "future plan #7a part 2 recall-loop)."
+            "MemoryVault vec-index management. Subcommands: drain "
+            "(process embedding queue), size (report index count), "
+            "rebuild (drop + recreate at current EMBEDDING_DIM, used "
+            "after toolkit upgrades that change embedding dimension; "
+            "see ADR 0001's 2026-05-20 amendment for the v0.10.0 "
+            "384 → 1024 bump)."
         ),
     )
     parser.add_argument(
@@ -342,6 +500,14 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
         help="embedding mode override (default: local; see embed.py for details)",
     )
     sub.add_parser("size", help="report vec-index entry count")
+    sub.add_parser(
+        "rebuild",
+        help=(
+            "drop + recreate vec-index at current EMBEDDING_DIM (use "
+            "after upgrading the toolkit when a dim-mismatch warning "
+            "appears)"
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -373,6 +539,13 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps({"size": None, "note": "sqlite-vec unavailable"}))
             return 2  # Distinct exit for graceful-skip.
         print(json.dumps({"size": size}))
+        return 0
+    if args.cmd == "rebuild":
+        stats = rebuild_index(vault)
+        if stats.get("skipped"):
+            print(json.dumps(stats))
+            return 2  # Distinct exit for graceful-skip.
+        print(json.dumps(stats))
         return 0
     return 1  # pragma: no cover
 
