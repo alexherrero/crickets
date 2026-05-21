@@ -1841,6 +1841,101 @@ Beta body paragraph.
         Remove-Item -LiteralPath $idxtmp -Recurse -Force -ErrorAction SilentlyContinue
     }
 
+    # ── Reflect corpus mode test (plan #7b task 2) ─────────────────────────
+    Write-Host '==> Reflect corpus mode test (plan #7b task 2)'
+    $rcPy = Join-Path $scratch '.claude/skills/memory/scripts/reflect.py'
+    if (-not (Test-Path -LiteralPath $rcPy)) {
+        throw "reflect.py not installed at $rcPy"
+    }
+    $rctmp = Join-Path ([System.IO.Path]::GetTempPath()) ("toolkit-rc-" + [System.Guid]::NewGuid().ToString('N'))
+    $rcVault = Join-Path $rctmp 'vault'
+    $rcProj = Join-Path $rctmp 'projects'
+    New-Item -ItemType Directory -Path $rcVault -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $rcProj 'repo-a') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $rcProj 'repo-b') -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $rcProj 'repo-a/sess-001.jsonl') -Value @'
+{"type":"user","message":{"role":"user","content":"I prefer concise commit messages."}}
+{"type":"assistant","message":{"role":"assistant","content":"OK."}}
+'@ -Encoding utf8
+    Set-Content -LiteralPath (Join-Path $rcProj 'repo-a/sess-002.jsonl') -Value @'
+{"type":"user","message":{"role":"user","content":"Always use snake_case for python variables."}}
+'@ -Encoding utf8
+    Set-Content -LiteralPath (Join-Path $rcProj 'repo-b/sess-003.jsonl') -Value @'
+{"type":"user","message":{"role":"user","content":"hi"}}
+'@ -Encoding utf8
+    $rcState = Join-Path $rcVault '_meta/transcript-reflection-state.json'
+    try {
+        # Test A: dry-run default
+        $rcAOut = & python3 $rcPy corpus --vault-path $rcVault --projects-root $rcProj 2>&1 | Out-String
+        if ($rcAOut -notmatch '"dry_run":\s*true') {
+            throw "corpus default did not run in dry-run mode. output: $rcAOut"
+        }
+        if ($rcAOut -notmatch '"to_process":\s*3') {
+            throw "corpus dry-run did not discover 3 transcripts. output: $rcAOut"
+        }
+        if (Test-Path -LiteralPath $rcState) {
+            throw "dry-run wrote state file (should not have)"
+        }
+
+        # Test B: --execute populates state
+        $rcBOut = & python3 $rcPy corpus --vault-path $rcVault --projects-root $rcProj --execute 2>&1 | Out-String
+        if ($rcBOut -notmatch '"dry_run":\s*false') {
+            throw "--execute did not flip dry_run to false. output: $rcBOut"
+        }
+        if ($rcBOut -notmatch '"processed_this_run":\s*3') {
+            throw "--execute did not process 3 sessions. output: $rcBOut"
+        }
+        if (-not (Test-Path -LiteralPath $rcState)) {
+            throw "--execute did not write state file"
+        }
+        $stateData = Get-Content -LiteralPath $rcState -Raw | ConvertFrom-Json
+        $sessCount = ($stateData.sessions.PSObject.Properties | Measure-Object).Count
+        if ($sessCount -ne 3) {
+            throw "state file should have 3 sessions, got $sessCount"
+        }
+
+        # Test C: resume skips done sessions
+        $rcCOut = & python3 $rcPy corpus --vault-path $rcVault --projects-root $rcProj --execute 2>&1 | Out-String
+        if ($rcCOut -notmatch '"to_process":\s*0') {
+            throw "resume did not skip already-processed. output: $rcCOut"
+        }
+        if ($rcCOut -notmatch '"skipped_already_processed":\s*3') {
+            throw "resume did not report 3 skipped. output: $rcCOut"
+        }
+
+        # Test D: --reset re-enumerates
+        $rcDOut = & python3 $rcPy corpus --vault-path $rcVault --projects-root $rcProj --reset 2>&1 | Out-String
+        if ($rcDOut -notmatch '"to_process":\s*3') {
+            throw "--reset did not re-enumerate 3 sessions. output: $rcDOut"
+        }
+
+        # Test E: --max-batches halts; state preserved. Uses fresh vault to
+        # avoid colliding with Test B's canonical saves.
+        $rcVault2 = Join-Path $rctmp 'vault2'
+        New-Item -ItemType Directory -Path $rcVault2 -Force | Out-Null
+        $rcState2 = Join-Path $rcVault2 '_meta/transcript-reflection-state.json'
+        $rcEOut = & python3 $rcPy corpus --vault-path $rcVault2 --projects-root $rcProj --execute --batch-size 1 --max-batches 2 2>&1 | Out-String
+        if ($rcEOut -notmatch '"batches":\s*2') {
+            throw "--max-batches did not halt at 2. output: $rcEOut"
+        }
+        if ($rcEOut -notmatch '"processed_this_run":\s*2') {
+            throw "--max-batches with batch-size=1 should process 2. output: $rcEOut"
+        }
+        $stateDataE = Get-Content -LiteralPath $rcState2 -Raw | ConvertFrom-Json
+        $sessECount = ($stateDataE.sessions.PSObject.Properties | Measure-Object).Count
+        if ($sessECount -ne 2) {
+            throw "state should have 2 sessions after max-batches halt, got $sessECount"
+        }
+
+        # Test F: missing vault path → exit 1
+        $rcFProc = Start-Process -FilePath 'python3' -ArgumentList @($rcPy, 'corpus', '--projects-root', $rcProj) -NoNewWindow -PassThru -Wait -RedirectStandardOutput ([System.IO.Path]::GetTempFileName()) -RedirectStandardError ([System.IO.Path]::GetTempFileName())
+        if ($rcFProc.ExitCode -ne 1) {
+            throw "missing vault path expected exit 1, got $($rcFProc.ExitCode)"
+        }
+    } finally {
+        Remove-Item -LiteralPath $rctmp -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
     # ── validate-manifests negative test: gemini-cli rejected with v0.9.0 msg ─
     Write-Host '==> validate-manifests negative test (gemini-cli rejected)'
     $vneg = Join-Path ([System.IO.Path]::GetTempPath()) ("toolkit-vneg-" + [System.Guid]::NewGuid().ToString('N'))

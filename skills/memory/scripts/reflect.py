@@ -723,6 +723,312 @@ def route_candidates(
     return stats
 
 
+# ── Corpus mode (plan #7b task 2) ──────────────────────────────────────────
+#
+# Batched paced processing of historical Claude Code transcripts at
+# ~/.claude/projects/*/<session>.jsonl. Single-transcript reflect logic
+# (mine_transcript + route_candidates) stays unchanged; corpus mode wraps
+# both in a paced loop with skip-resume state-file management.
+#
+# Locked design calls for this mode:
+#   - Default behavior is DRY-RUN: first call counts sessions + estimates
+#     candidate volume without writing entries. Operator re-runs with
+#     --execute after seeing scope. Mitigates the "transcript backlog
+#     produces thousands of inbox candidates" risk flagged in PLAN.md.
+#   - State file lives at <vault>/_meta/transcript-reflection-state.json.
+#     Schema (versioned): {schema_version: 1, sessions: {<session-id>:
+#     {processed_at, message_count, memory_count, idea_count, status}}}.
+#   - Sessions identified by transcript-file BASENAME (typically the
+#     session UUID assigned by Claude Code). Resume = skip session IDs
+#     already present in state file with status == "done".
+#   - Atomic state-file writes via tempfile + rename so Ctrl-C mid-write
+#     can't leave a half-written state file. State writes happen after
+#     each session (not each batch) — finer-grained resume.
+#   - MEDIUM-confidence candidates route to _inbox/ by default (auto mode)
+#     since historical-pass volume makes interactive routing impractical.
+#     Operator triages later via inbox-bulk-review (separate follow-up).
+
+_STATE_SCHEMA_VERSION = 1
+
+
+def _resolve_projects_root(arg_path: str | None) -> Path:
+    """Resolve transcript-projects root: arg → env → default ~/.claude/projects."""
+    if arg_path:
+        return Path(arg_path).expanduser()
+    env = os.environ.get("MEMORY_TRANSCRIPT_ROOT", "").strip()
+    if env:
+        return Path(env).expanduser()
+    return Path.home() / ".claude" / "projects"
+
+
+def _discover_transcripts(projects_root: Path) -> list[Path]:
+    """Find every .jsonl transcript under projects_root recursively.
+
+    Returns a sorted list of absolute paths. Deterministic ordering (by
+    relative path) so batch boundaries are stable across runs.
+    """
+    if not projects_root.exists() or not projects_root.is_dir():
+        return []
+    found: list[Path] = []
+    for p in projects_root.rglob("*.jsonl"):
+        if p.is_file():
+            found.append(p.resolve())
+    return sorted(found)
+
+
+def _state_file_path(vault: Path) -> Path:
+    return vault / "_meta" / "transcript-reflection-state.json"
+
+
+def load_state(vault: Path) -> dict:
+    """Load resume state from disk. Returns empty initialized state if missing.
+
+    State shape:
+        {
+            "schema_version": 1,
+            "sessions": {
+                "<session-id>": {
+                    "processed_at": "<ISO8601>",
+                    "message_count": int,
+                    "memory_count": int,
+                    "idea_count": int,
+                    "status": "done" | "error",
+                    "transcript_path": "<absolute path>"
+                },
+                ...
+            }
+        }
+    """
+    sf = _state_file_path(vault)
+    if not sf.exists():
+        return {"schema_version": _STATE_SCHEMA_VERSION, "sessions": {}}
+    try:
+        data = json.loads(sf.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        # Corrupted state file — start fresh rather than corrupt further.
+        return {"schema_version": _STATE_SCHEMA_VERSION, "sessions": {}}
+    if not isinstance(data, dict) or "sessions" not in data:
+        return {"schema_version": _STATE_SCHEMA_VERSION, "sessions": {}}
+    # Forward-compat: if a future schema bumps the version, we don't try to
+    # interpret it. Treat unknown-future as "skip nothing" + warn.
+    if data.get("schema_version", 0) != _STATE_SCHEMA_VERSION:
+        return {"schema_version": _STATE_SCHEMA_VERSION, "sessions": {}}
+    return data
+
+
+def save_state(vault: Path, state: dict) -> None:
+    """Atomically write state to disk via tempfile + rename.
+
+    Ctrl-C mid-write can't leave a half-written state file because we write
+    to a sibling tempfile first, fsync, then rename (rename is atomic on
+    POSIX + acceptably-atomic on Windows for files on the same volume).
+    """
+    sf = _state_file_path(vault)
+    sf.parent.mkdir(parents=True, exist_ok=True)
+    tmp = sf.with_suffix(sf.suffix + ".tmp")
+    payload = json.dumps(state, indent=2, sort_keys=True)
+    tmp.write_text(payload, encoding="utf-8")
+    os.replace(tmp, sf)
+
+
+def _session_id_from_path(transcript_path: Path) -> str:
+    """Extract a session ID from a transcript file path.
+
+    For ~/.claude/projects/<repo-slug>/<session-uuid>.jsonl the session ID
+    is the file stem. We also prefix the parent-dir name so sessions across
+    different projects don't collide even if their UUIDs somehow matched.
+    """
+    return f"{transcript_path.parent.name}/{transcript_path.stem}"
+
+
+def reflect_corpus(
+    *,
+    vault: Path,
+    projects_root: Path,
+    batch_size: int = 10,
+    max_batches: int | None = None,
+    dry_run: bool = True,
+    reset: bool = False,
+    route_mode: str = ROUTE_MODE_AUTO,
+    stdout=sys.stdout,
+    stderr=sys.stderr,
+) -> dict:
+    """Walk historical transcripts; mine + route in paced batches.
+
+    Args:
+        vault: MemoryVault root (where inbox + state file live).
+        projects_root: where to find .jsonl transcripts (recursive).
+        batch_size: sessions per batch (state-flushed each session, but
+            batch summaries print every N sessions).
+        max_batches: if set, stop after this many batches (operator scout
+            mode). None = process all unseen sessions.
+        dry_run: if True, count + estimate but don't write entries or
+            update state. Default True for safety.
+        reset: if True, ignore the existing state file (re-process everything).
+        route_mode: route_candidates() mode; default 'auto' (MEDIUM → _inbox/).
+        stdout, stderr: streams for output.
+
+    Returns summary dict:
+        {
+            "dry_run": bool,
+            "projects_root": str,
+            "total_transcripts": int,
+            "skipped_already_processed": int,
+            "to_process": int,
+            "processed_this_run": int,
+            "candidates_estimated": int  (dry-run only),
+            "candidates_written": int    (real-run only),
+            "memory_inboxed": int,
+            "memory_auto_saved": int,
+            "ideas_inboxed": int,
+            "errors": int,
+            "batches": int,
+        }
+    """
+    if not vault.exists() or not vault.is_dir():
+        raise FileNotFoundError(
+            f"vault path does not exist or is not a directory: {vault}"
+        )
+
+    transcripts = _discover_transcripts(projects_root)
+    state = {"schema_version": _STATE_SCHEMA_VERSION, "sessions": {}} if reset else load_state(vault)
+    already_done = {
+        sid for sid, info in state["sessions"].items()
+        if info.get("status") == "done"
+    }
+
+    to_process: list[Path] = []
+    for t in transcripts:
+        sid = _session_id_from_path(t)
+        if sid not in already_done:
+            to_process.append(t)
+
+    summary = {
+        "dry_run": dry_run,
+        "projects_root": str(projects_root),
+        "total_transcripts": len(transcripts),
+        "skipped_already_processed": len(transcripts) - len(to_process),
+        "to_process": len(to_process),
+        "processed_this_run": 0,
+        "candidates_estimated": 0,
+        "candidates_written": 0,
+        "memory_inboxed": 0,
+        "memory_auto_saved": 0,
+        "ideas_inboxed": 0,
+        "errors": 0,
+        "batches": 0,
+    }
+
+    if not to_process:
+        print(
+            f"[reflect.corpus] nothing to process: "
+            f"{len(transcripts)} transcripts, all already in state file.",
+            file=stderr,
+        )
+        return summary
+
+    mode_label = "DRY-RUN" if dry_run else "EXECUTE"
+    print(
+        f"[reflect.corpus] {mode_label} mode | projects_root={projects_root} | "
+        f"to_process={len(to_process)} sessions (of {len(transcripts)} total; "
+        f"{summary['skipped_already_processed']} already in state)",
+        file=stderr,
+    )
+
+    batch_idx = 0
+    batch_processed = 0
+    batch_mem_total = 0
+    batch_idea_total = 0
+
+    for t_idx, transcript in enumerate(to_process, start=1):
+        sid = _session_id_from_path(transcript)
+        try:
+            result = mine_transcript(transcript)
+        except (FileNotFoundError, OSError) as e:
+            print(f"[reflect.corpus] ERROR mining {sid}: {e}", file=stderr)
+            summary["errors"] += 1
+            if not dry_run:
+                state["sessions"][sid] = {
+                    "processed_at": _utcnow_iso(),
+                    "message_count": 0,
+                    "memory_count": 0,
+                    "idea_count": 0,
+                    "status": "error",
+                    "transcript_path": str(transcript),
+                    "error": str(e),
+                }
+                save_state(vault, state)
+            continue
+
+        mem_count = len(result["memory_candidates"])
+        idea_count = len(result["idea_candidates"])
+        batch_mem_total += mem_count
+        batch_idea_total += idea_count
+        summary["processed_this_run"] += 1
+        batch_processed += 1
+
+        if dry_run:
+            summary["candidates_estimated"] += mem_count + idea_count
+        else:
+            stats = route_candidates(
+                result["memory_candidates"],
+                result["idea_candidates"],
+                vault=vault,
+                mode=route_mode,
+                stderr=stderr,
+            )
+            summary["memory_auto_saved"] += stats["auto_saved"]
+            summary["memory_inboxed"] += stats["inboxed"]
+            summary["ideas_inboxed"] += stats["ideas_inboxed"]
+            summary["errors"] += stats["errors"]
+            summary["candidates_written"] += (
+                stats["auto_saved"] + stats["inboxed"] + stats["ideas_inboxed"]
+            )
+            state["sessions"][sid] = {
+                "processed_at": _utcnow_iso(),
+                "message_count": result["messages_processed"],
+                "memory_count": mem_count,
+                "idea_count": idea_count,
+                "status": "done",
+                "transcript_path": str(transcript),
+            }
+            save_state(vault, state)
+
+        # Batch boundary (every `batch_size` sessions or at the end of to_process)
+        is_batch_end = (
+            batch_processed >= batch_size or t_idx == len(to_process)
+        )
+        if is_batch_end:
+            batch_idx += 1
+            summary["batches"] = batch_idx
+            print(
+                f"[reflect.corpus] Batch {batch_idx}"
+                f"{f'/{max_batches}' if max_batches else ''}: "
+                f"{batch_processed} session(s) | "
+                f"~{batch_mem_total} memory + {batch_idea_total} idea candidates"
+                f"{' (dry-run; not written)' if dry_run else ''}",
+                file=stderr,
+            )
+            batch_processed = 0
+            batch_mem_total = 0
+            batch_idea_total = 0
+            if max_batches is not None and batch_idx >= max_batches:
+                print(
+                    f"[reflect.corpus] reached --max-batches={max_batches}; "
+                    f"halting. State preserved for resume.",
+                    file=stderr,
+                )
+                break
+
+    return summary
+
+
+def _utcnow_iso() -> str:
+    """UTC now in ISO 8601 (sub-second precision dropped for state-file readability)."""
+    from datetime import datetime, timezone
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+
 def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="memory-reflect",
@@ -773,8 +1079,104 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def _parse_corpus_args(argv: list[str]) -> argparse.Namespace:
+    """Parse args for the corpus subcommand (plan #7b task 2)."""
+    parser = argparse.ArgumentParser(
+        prog="memory-reflect corpus",
+        description=(
+            "Walk historical Claude Code transcripts (~/.claude/projects/*/) "
+            "and mine each via the single-transcript reflect pipeline. "
+            "Batched + paced with state-file resume. Dry-run by default — "
+            "first call counts sessions + estimates candidate volume; "
+            "operator re-runs with --execute after seeing scope."
+        ),
+    )
+    parser.add_argument(
+        "--projects-root", default=None,
+        help="root dir to walk for .jsonl transcripts "
+             "(default: $MEMORY_TRANSCRIPT_ROOT or ~/.claude/projects)",
+    )
+    parser.add_argument(
+        "--vault-path", default=None,
+        help="MemoryVault root (default: $MEMORY_VAULT_PATH env var). "
+             "Required — state file + inbox entries land here.",
+    )
+    parser.add_argument(
+        "--batch-size", type=int, default=10,
+        help="sessions per batch (state saved each session; batch summary "
+             "printed every N sessions). Default 10.",
+    )
+    parser.add_argument(
+        "--max-batches", type=int, default=None,
+        help="stop after this many batches — scout mode. State preserved for "
+             "resume. Default: process all unseen sessions.",
+    )
+    parser.add_argument(
+        "--execute", action="store_true",
+        help="actually write entries + update state (default: dry-run, "
+             "estimates only). Pair with --reset to re-process everything.",
+    )
+    parser.add_argument(
+        "--reset", action="store_true",
+        help="ignore existing state file (re-process everything). Combine "
+             "with --execute to actually re-write — otherwise the dry-run "
+             "just re-counts.",
+    )
+    parser.add_argument(
+        "--route-mode", choices=list(_VALID_ROUTE_MODES), default=None,
+        help="MEDIUM-confidence routing mode. Default 'auto' (→ _inbox/) — "
+             "appropriate for historical-pass volume.",
+    )
+    return parser.parse_args(argv)
+
+
+def _main_corpus(argv: list[str]) -> int:
+    """Entry point for the `reflect.py corpus ...` subcommand."""
+    args = _parse_corpus_args(argv)
+    # Resolve vault.
+    vault_arg = args.vault_path
+    if not vault_arg:
+        vault_arg = os.environ.get("MEMORY_VAULT_PATH", "").strip() or None
+    if not vault_arg:
+        print(
+            "ERROR: corpus mode requires --vault-path or MEMORY_VAULT_PATH env var",
+            file=sys.stderr,
+        )
+        return 1
+    vault = Path(vault_arg).expanduser()
+    if not vault.exists() or not vault.is_dir():
+        print(
+            f"ERROR: vault path does not exist or is not a directory: {vault}",
+            file=sys.stderr,
+        )
+        return 1
+    projects_root = _resolve_projects_root(args.projects_root)
+    try:
+        route_mode = _resolve_route_mode(args.route_mode)
+    except ValueError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        return 1
+    # --reset without --execute = dry-run re-count (harmless).
+    summary = reflect_corpus(
+        vault=vault,
+        projects_root=projects_root,
+        batch_size=args.batch_size,
+        max_batches=args.max_batches,
+        dry_run=not args.execute,
+        reset=args.reset,
+        route_mode=route_mode,
+    )
+    print(json.dumps(summary, indent=2))
+    return 0 if summary["errors"] == 0 else 2
+
+
 def main(argv: list[str] | None = None) -> int:
-    args = _parse_args(argv if argv is not None else sys.argv[1:])
+    argv = list(argv if argv is not None else sys.argv[1:])
+    # Subcommand dispatch — corpus mode is a different shape from the
+    # existing single-transcript mine + route path.
+    if argv and argv[0] == "corpus":
+        return _main_corpus(argv[1:])
+    args = _parse_args(argv)
     try:
         result = mine_transcript(Path(args.transcript_path).expanduser())
     except FileNotFoundError as e:

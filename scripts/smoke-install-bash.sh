@@ -2362,6 +2362,134 @@ fi
 
 rm -rf "$IDXTMP"
 
+# ── Reflect corpus mode test (plan #7b task 2) ─────────────────────────────
+# Verify reflect.py corpus subcommand:
+#   - dry-run (default) counts sessions without writing
+#   - --execute writes entries + populates state file
+#   - resume skips already-processed sessions
+#   - --reset re-enumerates
+#   - --max-batches halts after N batches with state preserved
+echo "==> Reflect corpus mode test (plan #7b task 2)"
+RC_PY="$SCRATCH/.claude/skills/memory/scripts/reflect.py"
+if [[ ! -f "$RC_PY" ]]; then
+  echo "FAIL: reflect.py not installed at $RC_PY" >&2
+  exit 1
+fi
+RCTMP="$(mktemp -d)"
+RCVAULT="$RCTMP/vault"
+RCPROJ="$RCTMP/projects"
+mkdir -p "$RCVAULT" "$RCPROJ/repo-a" "$RCPROJ/repo-b"
+# 2 mini transcripts with HIGH-confidence patterns + 1 noise transcript
+cat > "$RCPROJ/repo-a/sess-001.jsonl" << 'RC_EOF'
+{"type":"user","message":{"role":"user","content":"I prefer concise commit messages."}}
+{"type":"assistant","message":{"role":"assistant","content":"OK."}}
+RC_EOF
+cat > "$RCPROJ/repo-a/sess-002.jsonl" << 'RC_EOF'
+{"type":"user","message":{"role":"user","content":"Always use snake_case for python variables."}}
+RC_EOF
+cat > "$RCPROJ/repo-b/sess-003.jsonl" << 'RC_EOF'
+{"type":"user","message":{"role":"user","content":"hi"}}
+RC_EOF
+
+# Test A: dry-run default (no --execute)
+RC_A_OUT="$(python3 "$RC_PY" corpus --vault-path "$RCVAULT" --projects-root "$RCPROJ" 2>&1)"
+if ! echo "$RC_A_OUT" | grep -qE '"dry_run": true'; then
+  echo "FAIL: corpus default did not run in dry-run mode. output: $RC_A_OUT" >&2
+  rm -rf "$RCTMP"
+  exit 1
+fi
+if ! echo "$RC_A_OUT" | grep -qE '"to_process": 3'; then
+  echo "FAIL: corpus dry-run did not discover 3 transcripts. output: $RC_A_OUT" >&2
+  rm -rf "$RCTMP"
+  exit 1
+fi
+if [[ -f "$RCVAULT/_meta/transcript-reflection-state.json" ]]; then
+  echo "FAIL: dry-run wrote state file (should not have)" >&2
+  rm -rf "$RCTMP"
+  exit 1
+fi
+
+# Test B: --execute populates state + routes candidates
+RC_B_OUT="$(python3 "$RC_PY" corpus --vault-path "$RCVAULT" --projects-root "$RCPROJ" --execute 2>&1)"
+if ! echo "$RC_B_OUT" | grep -qE '"dry_run": false'; then
+  echo "FAIL: --execute did not flip dry_run to false. output: $RC_B_OUT" >&2
+  rm -rf "$RCTMP"
+  exit 1
+fi
+if ! echo "$RC_B_OUT" | grep -qE '"processed_this_run": 3'; then
+  echo "FAIL: --execute did not process 3 sessions. output: $RC_B_OUT" >&2
+  rm -rf "$RCTMP"
+  exit 1
+fi
+RCSTATE="$RCVAULT/_meta/transcript-reflection-state.json"
+if [[ ! -f "$RCSTATE" ]]; then
+  echo "FAIL: --execute did not write state file" >&2
+  rm -rf "$RCTMP"
+  exit 1
+fi
+SESS_COUNT="$(python3 -c "import json; d=json.load(open('$RCSTATE')); print(len(d['sessions']))")"
+if [[ "$SESS_COUNT" != "3" ]]; then
+  echo "FAIL: state file should have 3 sessions, got $SESS_COUNT" >&2
+  cat "$RCSTATE" >&2
+  rm -rf "$RCTMP"
+  exit 1
+fi
+
+# Test C: resume — re-running with --execute skips done sessions
+RC_C_OUT="$(python3 "$RC_PY" corpus --vault-path "$RCVAULT" --projects-root "$RCPROJ" --execute 2>&1)"
+if ! echo "$RC_C_OUT" | grep -qE '"to_process": 0'; then
+  echo "FAIL: resume did not skip already-processed. output: $RC_C_OUT" >&2
+  rm -rf "$RCTMP"
+  exit 1
+fi
+if ! echo "$RC_C_OUT" | grep -qE '"skipped_already_processed": 3'; then
+  echo "FAIL: resume did not report 3 skipped. output: $RC_C_OUT" >&2
+  rm -rf "$RCTMP"
+  exit 1
+fi
+
+# Test D: --reset re-enumerates (dry-run, doesn't actually re-write)
+RC_D_OUT="$(python3 "$RC_PY" corpus --vault-path "$RCVAULT" --projects-root "$RCPROJ" --reset 2>&1)"
+if ! echo "$RC_D_OUT" | grep -qE '"to_process": 3'; then
+  echo "FAIL: --reset did not re-enumerate 3 sessions. output: $RC_D_OUT" >&2
+  rm -rf "$RCTMP"
+  exit 1
+fi
+
+# Test E: --max-batches halts; state preserved for next resume
+# Uses a fresh vault dir to avoid colliding with Test B's canonical saves.
+RCVAULT2="$RCTMP/vault2"
+mkdir -p "$RCVAULT2"
+RCSTATE2="$RCVAULT2/_meta/transcript-reflection-state.json"
+RC_E_OUT="$(python3 "$RC_PY" corpus --vault-path "$RCVAULT2" --projects-root "$RCPROJ" --execute --batch-size 1 --max-batches 2 2>&1)"
+if ! echo "$RC_E_OUT" | grep -qE '"batches": 2'; then
+  echo "FAIL: --max-batches did not halt at 2. output: $RC_E_OUT" >&2
+  rm -rf "$RCTMP"
+  exit 1
+fi
+if ! echo "$RC_E_OUT" | grep -qE '"processed_this_run": 2'; then
+  echo "FAIL: --max-batches with --batch-size=1 should process 2, got otherwise. output: $RC_E_OUT" >&2
+  rm -rf "$RCTMP"
+  exit 1
+fi
+SESS_E_COUNT="$(python3 -c "import json; d=json.load(open('$RCSTATE2')); print(len(d['sessions']))")"
+if [[ "$SESS_E_COUNT" != "2" ]]; then
+  echo "FAIL: state should have 2 sessions after max-batches halt, got $SESS_E_COUNT" >&2
+  rm -rf "$RCTMP"
+  exit 1
+fi
+
+# Test F: missing vault path → exit 1
+RC_F=0
+python3 "$RC_PY" corpus --projects-root "$RCPROJ" >/dev/null 2>&1 || RC_F=$?
+if [[ $RC_F -ne 1 ]]; then
+  echo "FAIL: missing vault path expected exit 1, got $RC_F" >&2
+  rm -rf "$RCTMP"
+  exit 1
+fi
+
+rm -rf "$RCTMP"
+
 # ── validate-manifests negative test: gemini-cli should error with v0.9.0 msg ─
 # Manifest containing 'gemini-cli' in supported_hosts must error with a clear
 # message pointing at the v0.9.0 CHANGELOG. Catches regressions if HOST_ENUM

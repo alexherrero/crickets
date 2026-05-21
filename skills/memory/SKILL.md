@@ -22,6 +22,7 @@ The first toolkit skill that integrates with the user's own personal note-taking
 | Capture a specific preference / workflow / fix manually right now | `/memory save` |
 | Replace an existing entry with a corrected version (preserving audit trail) | `/memory evolve` |
 | Run reflection over the current session transcript on demand (or a specified transcript path) | `/memory reflect` |
+| Mine the full historical transcript backlog (`~/.claude/projects/*/`) with dry-run preview + resume-safe batching | `/memory reflect corpus` |
 | Search the vault for entries matching a query (when auto-recall via UserPromptSubmit hook didn't pull what you wanted) | `/memory search` |
 | Refresh the auto-indexed `personal-skills/` pointers (after a SKILL.md change, or on a fresh install) | `/memory index-skills` |
 
@@ -489,6 +490,67 @@ Routed:
 ```
 
 (Until task 5 ships, the "Routed" section reads `<deferred to plan #7a part 3 task 5>` and no actual save happens — the candidates print to stdout for review only.)
+
+#### `/memory reflect corpus` — historical-pass mode (plan #7b task 2)
+
+Batched paced walk over **all historical transcripts** at `~/.claude/projects/*/<session>.jsonl` (or `$MEMORY_TRANSCRIPT_ROOT`). Wraps the same mining + tri-modal-routing pipeline as the single-transcript path, plus skip-resume state-file management for safe interruption.
+
+#### Invocation shape
+
+```
+python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/reflect.py corpus \
+  [--projects-root <dir>] [--vault-path <path>] \
+  [--batch-size N] [--max-batches M] \
+  [--execute] [--reset] [--route-mode auto|silent|interactive]
+```
+
+| Arg | Required | Default | Meaning |
+|---|---|---|---|
+| `--projects-root <dir>` | no | `$MEMORY_TRANSCRIPT_ROOT` or `~/.claude/projects` | Recursive walk root. |
+| `--vault-path <path>` | yes¹ | `$MEMORY_VAULT_PATH` env | MemoryVault root — state file + inbox writes land here. ¹Required via flag or env. |
+| `--batch-size N` | no | 10 | Sessions per batch (state saved each session; summary line printed every N sessions). |
+| `--max-batches M` | no | unlimited | Stop after M batches — scout mode. State preserved for resume. |
+| `--execute` | no | **off (dry-run default)** | Actually write entries + update state file. Without this flag, runs in dry-run mode (counts + estimates only). |
+| `--reset` | no | off | Ignore existing state file (re-process everything). Combine with `--execute` to actually re-write. |
+| `--route-mode <m>` | no | `auto` | MEDIUM-confidence routing. Default `auto` (→ `_inbox/`) is appropriate for historical-pass volume — interactive prompting per-candidate isn't practical at scale. |
+
+#### Why dry-run by default
+
+The first historical pass over hundreds of sessions can emit thousands of LOW-confidence candidates → most land in `_inbox/`. Dry-run lets the operator see scope first (counts + estimates) before committing to writes. Pattern: `corpus → review summary → corpus --execute → bulk-triage _inbox/`. Mitigates the firehose risk flagged in plan #7b PLAN.md Risks.
+
+#### State file shape
+
+`<vault>/_meta/transcript-reflection-state.json`:
+
+```json
+{
+  "schema_version": 1,
+  "sessions": {
+    "<repo-slug>/<session-id>": {
+      "processed_at": "2026-05-20T17:30:00+00:00",
+      "message_count": 47,
+      "memory_count": 3,
+      "idea_count": 1,
+      "status": "done",
+      "transcript_path": "/absolute/path/to/session.jsonl"
+    }
+  }
+}
+```
+
+Atomic writes via tempfile + rename — Ctrl-C mid-write can't leave a half-written state. State writes happen **after every session** (not every batch), so resume granularity is single-session.
+
+#### Resume + interruption
+
+- Re-running without `--reset` skips sessions with `status: "done"` in the state file.
+- Ctrl-C at any time is safe — the in-progress session may have partial inbox entries from successful sub-writes, but the session itself is not marked `done` so it'll be re-processed on next run (potential for inbox-entry duplication; operator can dedupe during bulk-review).
+- `--reset` clears the in-memory skip list but **does not delete the state file** — the next save_state call overwrites it with the new run's progress. To fully wipe, delete the file manually before re-running.
+
+#### Anti-patterns
+
+- **Don't run `corpus --execute` without first running dry-run.** First-pass scope is unpredictable; the dry-run estimate keeps the operator in control of how much `_inbox/` churn they're committing to.
+- **Don't run `corpus` against `~/.claude/projects/` without setting `--max-batches` for the first execute run.** Even with the dry-run preview, scout-mode (e.g. `--max-batches 1 --batch-size 5`) is the safer escalation — process 5 sessions, eyeball the inbox output, decide whether to continue.
+- **Don't combine `corpus` with `interactive` route-mode.** Historical-pass volume means hundreds of prompts. The hook-style `auto` mode (default) routes MEDIUM → `_inbox/` for later batch triage via `/memory inbox --bulk-review` (separate follow-up; until that lands, operators triage `_inbox/` manually via Obsidian).
 
 #### Canonical Python implementation
 
