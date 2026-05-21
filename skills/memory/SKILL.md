@@ -25,6 +25,7 @@ The first toolkit skill that integrates with the user's own personal note-taking
 | Mine the full historical transcript backlog (`~/.claude/projects/*/`) with dry-run preview + resume-safe batching | `/memory reflect corpus` |
 | Search the vault for entries matching a query (when auto-recall via UserPromptSubmit hook didn't pull what you wanted) | `/memory search` |
 | Refresh the auto-indexed `personal-skills/` pointers (after a SKILL.md change, or on a fresh install) | `/memory index-skills` |
+| Manually trigger the internet skill-discovery scan (cadence-checked by default via the idle hook) | `/memory discover-skills` |
 
 Auto-recall happens via the [SessionStart + UserPromptSubmit hooks](https://github.com/alexherrero/agent-toolkit/blob/main/wiki/explanation/designs/memoryvault/parts/recall-loop.md) — operators don't invoke a recall command directly. Reflection happens automatically via Stop + idle hooks too; the manual `/memory reflect` is for one-off runs against arbitrary transcripts.
 
@@ -741,6 +742,98 @@ The CLI prints a JSON summary to stdout (suitable for piping into `jq`):
 - **Don't hand-edit `personal-skills/<repo>/<skill>.md` entries** — the next index run overwrites your changes if `skill_version` or description shifted. Hand-curate at the source SKILL.md instead.
 - **Don't add personal-skills entries via `/memory save`** — the layout is reserved for the indexer's output. Operator-curated skill notes go in `personal-private/` with a `[[skill-pointer:<skill>]]` cross-link to the auto-indexed pointer.
 - **Don't use `/memory evolve` against an auto-indexed entry** — evolve is for human-curated entries. The indexer is the source of truth for skill-pointer entries; just re-run `/memory index-skills` after a SKILL.md change.
+
+### `/memory discover-skills`
+
+Internet skill-discovery scan (plan #7b task 3). Fetches a curated set of "skill-shaped pattern" sources from the internet on a configurable cadence; caches each fetch as a dated snapshot; diffs against the previous snapshot; emits "new content since last scan" candidate signals for the adapt-don't-import workflow (task 4) to evaluate. **Never writes to `agent-toolkit/skills/`** — adoption decisions are gated by the watchlist review pattern in task 5.
+
+Auto-fires from the idle-time hook (`memory-reflect-idle`) with `--cadence-check` so the scan self-throttles to the configured cadence (default 7 days). Manual invocation is also supported.
+
+#### Invocation shape
+
+```
+python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/discover_skills.py \
+  [--vault-path <path>] [--cadence-days N] [--cadence-check] \
+  [--dry-run] [--max-sources N]
+```
+
+| Arg | Required | Default | Meaning |
+|---|---|---|---|
+| `--vault-path <path>` | yes¹ | `$MEMORY_VAULT_PATH` env | MemoryVault root — whitelist + cache + state land here. ¹Required via flag or env. |
+| `--cadence-days N` | no | `7` (or `$MEMORY_SKILL_DISCOVERY_CADENCE_DAYS`) | Minimum days between scans. Used with `--cadence-check`. |
+| `--cadence-check` | no | off | Skip the fetch entirely if `last_scan` was within the cadence window. Used by the idle-hook to avoid hammering URLs on every idle fire. |
+| `--dry-run` | no | off | List sources that would be scanned without actually fetching. |
+| `--max-sources N` | no | unlimited | Limit to first N sources from the whitelist (scout / testing mode). |
+
+#### Source whitelist
+
+Lives at `<vault>/personal-private/skill-discovery-sources.md` — operator-editable markdown. Format: `#`-prefixed comment lines, blank lines ignored, one URL per non-comment line. **Order matters** (sources scanned top-to-bottom; `--max-sources` truncates against this order).
+
+First-ever scan auto-seeds the file with the operator's confirmed v1 set in exactly this order:
+
+1. **Anthropic Cookbook** — `https://raw.githubusercontent.com/anthropics/anthropic-cookbook/main/README.md`
+2. **awesome-claude-code** — `https://raw.githubusercontent.com/hesreallyhim/awesome-claude-code/main/README.md`
+3. **awesome-mcp-servers** — `https://raw.githubusercontent.com/punkpeye/awesome-mcp-servers/main/README.md`
+4. **awesome-llm-apps** — `https://raw.githubusercontent.com/Shubhamsaboo/awesome-llm-apps/main/README.md`
+
+Operator edits the file in Obsidian to add, remove, or reorder sources. Auto-seed only happens once; subsequent runs read the file as-is.
+
+#### Cache layout
+
+Per-source cache lives under `<vault>/_meta/skill-discovery-cache/`:
+
+```
+<vault>/_meta/skill-discovery-cache/
+├── state.json                                # last_scan + per-source last_fetch/status
+├── <source-slug>/
+│   ├── 2026-05-21.md                        # full snapshot of the URL response on this date
+│   ├── diff-2026-05-21.md                   # added lines vs. previous snapshot (task 4 consumes this)
+│   └── ...
+```
+
+`<source-slug>` is derived from the URL: `<owner>-<repo>` for GitHub raw URLs (kebab-normalized), or `url-<8-char-hex>` for non-GitHub sources.
+
+#### Step-by-step flow
+
+**Step 1 — Resolve vault path** via `--vault-path` arg → `MEMORY_VAULT_PATH` env. Halt with clear error on failure.
+
+**Step 2 — Resolve cadence** via `--cadence-days` arg → `$MEMORY_SKILL_DISCOVERY_CADENCE_DAYS` env → default 7.
+
+**Step 3 — Load (or auto-seed) the source whitelist.** If `<vault>/personal-private/skill-discovery-sources.md` is missing, write the default 4-URL seed (operator-confirmed v1 order) + log `whitelist_seeded: true` in the summary. Otherwise read URLs in file order.
+
+**Step 4 — Cadence check** (when `--cadence-check` is set). Load `state.json`; if `last_scan` is within `cadence_days × 86400 seconds`, skip the fetch entirely + return `cadence_skipped: true` in summary.
+
+**Step 5 — Per-source fetch loop.** For each URL (in whitelist file order, truncated to `--max-sources` if given):
+
+  a. `urllib.request` GET with 10s timeout + `User-Agent: agent-toolkit-skill-discovery/0.1`.
+  b. On 200: write `<source-slug>/<YYYY-MM-DD>.md` snapshot; compute diff against most-recent prior-day snapshot; write `diff-<YYYY-MM-DD>.md` if diff non-empty; update state.json with `{url, last_fetch, last_status: 200, last_snapshot, last_diff_chars}`.
+  c. On 4xx/5xx/timeout/DNS-failure: log to state.json (`{last_attempt, last_status, last_error}`) but don't overwrite snapshot/diff. Continue to next source.
+  d. First-ever fetch of a source: prev snapshot doesn't exist, so diff = full content (everything is "new").
+
+**Step 6 — Save state + return summary.** Atomic state.json write (tempfile + rename). Summary JSON to stdout: `{vault, whitelist, whitelist_seeded, total_sources, cadence_days, dry_run, cadence_skipped, sources: [...], fetched, errors, skipped_dry_run}`.
+
+#### Idle-hook integration
+
+`memory-reflect-idle` (the existing orphan-recovery hook from plan #7a part 3 task 4) extends to call `discover_skills.py --cadence-check` at the end of its run. Graceful-skip when `MEMORY_VAULT_PATH` is unset or `discover_skills.py` is absent. The cadence-check means the hook can fire frequently (every SessionStart) without hammering URLs.
+
+#### Failure modes (graceful)
+
+- **Vault path unresolved** → exit 1 with actionable error.
+- **Whitelist file missing** → auto-seed with v1 defaults; first scan proceeds with the seeded URLs.
+- **Whitelist empty (all comments)** → `total_sources: 0`; no fetches; no state update.
+- **Network failure (timeout / DNS / 5xx)** → per-source recorded as `action: error`; other sources continue; summary exit code 2 (any errors).
+- **4xx HTTP** → per-source `action: error` with `status_code: <4xx>`; no snapshot overwrite.
+- **State.json corrupted** → silently reset to empty state (next save overwrites with clean JSON).
+- **Same-day re-run** → snapshot for today gets overwritten; diff compares to most-recent **prior-day** snapshot (excluding today). Same-day re-runs without a prior-day baseline treat everything as new.
+
+#### Anti-patterns
+
+- **Don't run `discover-skills` without `--cadence-check` in idle-hook contexts.** Hooks fire frequently; without the cadence guard the same URLs get fetched many times per day.
+- **Don't add to the whitelist URLs that aren't the markdown content you want to scan.** The fetcher does no HTML parsing — it expects markdown-shaped sources (READMEs, awesome-lists, raw `.md` files). HTML pages get cached as raw HTML; the diff still works but downstream consumers (task 4) assume markdown content.
+- **Don't shipping-pipe `discover-skills` output to `/memory save`.** The cache + diff are intermediate artifacts — task 4 (adapt-don't-import) is the authorized consumer; auto-saving the raw diffs would defeat the whole adapt-don't-import design.
+
+> [!NOTE]
+> **Adapt-don't-import workflow status**: plan #7b task 4 wires the actual evaluation of these cached diffs into `_skill-watchlist/` entries; task 5 ships the `/memory watchlist` review command. Task 3 (this commit) only handles the fetch + cache + diff infrastructure.
 
 ### `/memory search`
 

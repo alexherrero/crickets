@@ -48,6 +48,7 @@ try {
         '.claude/skills/memory/scripts/ideas_incubator.py',
         '.claude/skills/memory/scripts/ideas_promote.py',
         '.claude/skills/memory/scripts/index_skills.py',
+        '.claude/skills/memory/scripts/discover_skills.py',
         '.agent/skills/memory/SKILL.md',
         '.agent/skills/memory/scripts/save.py',
         '.agent/skills/memory/scripts/evolve.py',
@@ -60,6 +61,7 @@ try {
         '.agent/skills/memory/scripts/ideas_incubator.py',
         '.agent/skills/memory/scripts/ideas_promote.py',
         '.agent/skills/memory/scripts/index_skills.py',
+        '.agent/skills/memory/scripts/discover_skills.py',
         # Standalone agent: evaluator. claude-code is single-file;
         # antigravity wraps the agent as a skill. (gemini-cli destination
         # .gemini/agents/evaluator.md removed in v0.9.0.)
@@ -1934,6 +1936,125 @@ Beta body paragraph.
         }
     } finally {
         Remove-Item -LiteralPath $rctmp -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    # ── Skill-discovery scan test (plan #7b task 3) ─────────────────────────
+    Write-Host '==> Skill-discovery scan test (plan #7b task 3)'
+    $dsPy = Join-Path $scratch '.claude/skills/memory/scripts/discover_skills.py'
+    if (-not (Test-Path -LiteralPath $dsPy)) {
+        throw "discover_skills.py not installed at $dsPy"
+    }
+    $dstmp = Join-Path ([System.IO.Path]::GetTempPath()) ("toolkit-ds-" + [System.Guid]::NewGuid().ToString('N'))
+    $dsVault = Join-Path $dstmp 'vault'
+    $dsRoot = Join-Path $dstmp 'wwwroot'
+    New-Item -ItemType Directory -Path (Join-Path $dsVault 'personal-private') -Force | Out-Null
+    New-Item -ItemType Directory -Path $dsRoot -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $dsRoot 'source-a.md') -Value "# Source A`nItem 1`nItem 2" -Encoding utf8
+    Set-Content -LiteralPath (Join-Path $dsRoot 'source-b.md') -Value "# Source B`nItem X" -Encoding utf8
+    # Free port lookup via Python.
+    $dsPort = (& python3 -c "import socket; s=socket.socket(); s.bind(('127.0.0.1',0)); print(s.getsockname()[1]); s.close()").Trim()
+    # Start the http.server in background. Capture as a process object.
+    $dsServer = Start-Process -FilePath 'python3' -ArgumentList @('-m', 'http.server', $dsPort) -WorkingDirectory $dsRoot -NoNewWindow -PassThru -RedirectStandardOutput ([System.IO.Path]::GetTempFileName()) -RedirectStandardError ([System.IO.Path]::GetTempFileName())
+    # Wait briefly for the server to bind.
+    $bound = $false
+    for ($i = 0; $i -lt 10; $i++) {
+        try {
+            $resp = Invoke-WebRequest -Uri "http://127.0.0.1:$dsPort/source-a.md" -UseBasicParsing -TimeoutSec 1 -ErrorAction Stop
+            if ($resp.StatusCode -eq 200) { $bound = $true; break }
+        } catch {}
+        Start-Sleep -Milliseconds 200
+    }
+    if (-not $bound) {
+        Stop-Process -Id $dsServer.Id -Force -ErrorAction SilentlyContinue
+        throw "fixture http.server did not bind on port $dsPort"
+    }
+    try {
+        # Pre-write the whitelist pointing at fixture URLs.
+        Set-Content -LiteralPath (Join-Path $dsVault 'personal-private/skill-discovery-sources.md') -Value @"
+# fixture whitelist
+http://127.0.0.1:$dsPort/source-a.md
+http://127.0.0.1:$dsPort/source-b.md
+"@ -Encoding utf8
+
+        # Test A: --dry-run
+        $dsAOut = & python3 $dsPy --vault-path $dsVault --dry-run 2>&1 | Out-String
+        if ($dsAOut -notmatch '"dry_run":\s*true') {
+            throw "dry-run did not set dry_run=true. output: $dsAOut"
+        }
+        if ($dsAOut -notmatch '"total_sources":\s*2') {
+            throw "dry-run did not discover 2 sources. output: $dsAOut"
+        }
+        if (Test-Path -LiteralPath (Join-Path $dsVault '_meta/skill-discovery-cache/state.json')) {
+            throw "dry-run wrote state.json (should not have)"
+        }
+
+        # Test B: live fetch creates cache + state
+        $dsBOut = & python3 $dsPy --vault-path $dsVault 2>&1 | Out-String
+        if ($dsBOut -notmatch '"fetched":\s*2') {
+            throw "live fetch did not fetch 2 sources. output: $dsBOut"
+        }
+        $dsState = Join-Path $dsVault '_meta/skill-discovery-cache/state.json'
+        if (-not (Test-Path -LiteralPath $dsState)) {
+            throw "live fetch did not write state.json"
+        }
+        $snapshotCount = (Get-ChildItem -Path (Join-Path $dsVault '_meta/skill-discovery-cache') -Recurse -File | Where-Object { $_.Name -match '^\d{4}-\d{2}-\d{2}\.md$' } | Measure-Object).Count
+        if ($snapshotCount -ne 2) {
+            throw "expected 2 snapshot files, got $snapshotCount"
+        }
+
+        # Test C: --cadence-check skips re-fetch
+        $dsCOut = & python3 $dsPy --vault-path $dsVault --cadence-check 2>&1 | Out-String
+        if ($dsCOut -notmatch '"cadence_skipped":\s*true') {
+            throw "--cadence-check did not skip. output: $dsCOut"
+        }
+        if ($dsCOut -notmatch '"fetched":\s*0') {
+            throw "--cadence-check should not fetch. output: $dsCOut"
+        }
+
+        # Test D: 404 graceful-skip
+        Set-Content -LiteralPath (Join-Path $dsVault 'personal-private/skill-discovery-sources.md') -Value @"
+http://127.0.0.1:$dsPort/nonexistent.md
+http://127.0.0.1:$dsPort/source-a.md
+"@ -Encoding utf8
+        $dsDOut = & python3 $dsPy --vault-path $dsVault 2>&1 | Out-String
+        if ($dsDOut -notmatch '"errors":\s*1') {
+            throw "404 should produce errors=1. output: $dsDOut"
+        }
+        if ($dsDOut -notmatch '"fetched":\s*1') {
+            throw "source-a should still fetch after 404 on nonexistent. output: $dsDOut"
+        }
+
+        # Test E: auto-seed whitelist
+        $dsVault2 = Join-Path $dstmp 'vault2'
+        New-Item -ItemType Directory -Path $dsVault2 -Force | Out-Null
+        $dsEOut = & python3 $dsPy --vault-path $dsVault2 --dry-run 2>&1 | Out-String
+        if ($dsEOut -notmatch '"whitelist_seeded":\s*true') {
+            throw "missing whitelist did not auto-seed. output: $dsEOut"
+        }
+        if ($dsEOut -notmatch '"total_sources":\s*4') {
+            throw "auto-seeded whitelist should have 4 sources. output: $dsEOut"
+        }
+        $seededFile = Get-Content -LiteralPath (Join-Path $dsVault2 'personal-private/skill-discovery-sources.md') -Raw
+        foreach ($expected in @('anthropic-cookbook', 'awesome-claude-code', 'awesome-mcp-servers', 'awesome-llm-apps')) {
+            if ($seededFile -notmatch [regex]::Escape("/$expected/")) {
+                throw "auto-seeded whitelist missing expected source: $expected"
+            }
+        }
+
+        # Test F: empty whitelist returns total_sources=0
+        $dsVault3 = Join-Path $dstmp 'vault3'
+        New-Item -ItemType Directory -Path (Join-Path $dsVault3 'personal-private') -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $dsVault3 'personal-private/skill-discovery-sources.md') -Value "# empty whitelist`n# no URLs configured" -Encoding utf8
+        $dsFOut = & python3 $dsPy --vault-path $dsVault3 2>&1 | Out-String
+        if ($dsFOut -notmatch '"total_sources":\s*0') {
+            throw "empty whitelist should have total_sources=0. output: $dsFOut"
+        }
+        if ($dsFOut -notmatch '"fetched":\s*0') {
+            throw "empty whitelist should fetch 0. output: $dsFOut"
+        }
+    } finally {
+        Stop-Process -Id $dsServer.Id -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $dstmp -Recurse -Force -ErrorAction SilentlyContinue
     }
 
     # ── validate-manifests negative test: gemini-cli rejected with v0.9.0 msg ─

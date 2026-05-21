@@ -29,9 +29,8 @@ if (-not (Test-Path $HarnessDir)) {
 $markers = @(Get-ChildItem -LiteralPath $HarnessDir -Filter 'session-id-*.start' -ErrorAction SilentlyContinue)
 $reflectedMarkers = @(Get-ChildItem -LiteralPath $HarnessDir -Filter 'session-id-*.reflected' -ErrorAction SilentlyContinue)
 
-if ($markers.Count -eq 0 -and $reflectedMarkers.Count -eq 0) {
-    exit 0
-}
+# Note: removed an early `exit 0` here so the skill-discovery cadence-check
+# (plan #7b task 3) still runs even when there's no orphan work to do.
 
 $now = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
 $processedCount = 0
@@ -83,6 +82,20 @@ foreach ($reflected in $reflectedMarkers) {
 
 if ($markers.Count -gt 0 -or $gcCount -gt 0) {
     [Console]::Error.WriteLine("[memory-reflect-idle] Scanned $($markers.Count) .start + $($reflectedMarkers.Count) .reflected markers; processed $processedCount orphans, GC'd $gcCount old markers (idle threshold: ${IdleThresholdSec}s)")
+}
+
+# ── Skill-discovery cadence-checked scan (plan #7b task 3) ─────────────────
+# Fire discover_skills.py with --cadence-check (self-throttles to configured
+# cadence, default 7d). Graceful-skip if MEMORY_VAULT_PATH unset / script
+# absent. Output → stderr so the hook's stdout stays clean.
+$DiscoverPy = ".claude/skills/memory/scripts/discover_skills.py"
+$VaultEnv = $env:MEMORY_VAULT_PATH
+if ((Test-Path $DiscoverPy) -and $VaultEnv) {
+    try {
+        & $Py $DiscoverPy "--vault-path" $VaultEnv "--cadence-check" 2>&1 | ForEach-Object { [Console]::Error.WriteLine($_) }
+    } catch {
+        # Non-fatal — the hook never blocks on discover-skills failure.
+    }
 }
 
 exit 0

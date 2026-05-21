@@ -39,7 +39,11 @@ reflected_markers=(.harness/session-id-*.reflected)
 shopt -u nullglob
 
 if [[ ${#markers[@]} -eq 0 && ${#reflected_markers[@]} -eq 0 ]]; then
-    exit 0
+    # No orphan work to do — but the skill-discovery scan still runs.
+    # Fall through to the bottom of the script (discover-skills block + exit).
+    no_orphan_work=1
+else
+    no_orphan_work=0
 fi
 
 # Portable mtime via Python (we already require python3 above). Avoids the
@@ -53,8 +57,9 @@ get_mtime() {
 now=$(date +%s)
 processed_count=0
 
-if (( ${#markers[@]} == 0 )); then
-    : # No orphan candidates; skip to GC pass.
+if (( no_orphan_work == 1 )); then
+    # Skip the orphan + GC passes entirely; fall through to discover-skills.
+    :
 fi
 
 for marker in "${markers[@]:-}"; do
@@ -106,6 +111,17 @@ fi
 
 if (( ${#markers[@]} > 0 || gc_count > 0 )); then
     echo "[memory-reflect-idle] Scanned ${#markers[@]} .start + ${#reflected_markers[@]} .reflected markers; processed $processed_count orphans, GC'd $gc_count old markers (idle threshold: ${IDLE_THRESHOLD_SEC}s)" >&2
+fi
+
+# ── Skill-discovery cadence-checked scan (plan #7b task 3) ─────────────────
+# Fire discover_skills.py with --cadence-check so it self-throttles to the
+# configured cadence (default 7d). Requires MEMORY_VAULT_PATH; graceful-skip
+# if unset / discover_skills.py absent / Python deps unavailable. Output
+# routes to stderr so the hook's overall stdout stays clean for any
+# downstream parsing.
+DISCOVER_PY=".claude/skills/memory/scripts/discover_skills.py"
+if [[ -f "$DISCOVER_PY" && -n "${MEMORY_VAULT_PATH:-}" ]]; then
+    python3 "$DISCOVER_PY" --vault-path "$MEMORY_VAULT_PATH" --cadence-check >&2 2>&1 || true
 fi
 
 exit 0

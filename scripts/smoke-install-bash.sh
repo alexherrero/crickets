@@ -53,6 +53,7 @@ expected=(
   .claude/skills/memory/scripts/ideas_incubator.py
   .claude/skills/memory/scripts/ideas_promote.py
   .claude/skills/memory/scripts/index_skills.py
+  .claude/skills/memory/scripts/discover_skills.py
   .agent/skills/memory/SKILL.md
   .agent/skills/memory/scripts/save.py
   .agent/skills/memory/scripts/evolve.py
@@ -65,6 +66,7 @@ expected=(
   .agent/skills/memory/scripts/ideas_incubator.py
   .agent/skills/memory/scripts/ideas_promote.py
   .agent/skills/memory/scripts/index_skills.py
+  .agent/skills/memory/scripts/discover_skills.py
   # Standalone agent: evaluator — claude-code is single-file destination;
   # antigravity wraps the agent as a skill. (gemini-cli destination
   # .gemini/agents/evaluator.md removed in v0.9.0.) memory-idea-researcher
@@ -2489,6 +2491,202 @@ if [[ $RC_F -ne 1 ]]; then
 fi
 
 rm -rf "$RCTMP"
+
+# ── Skill-discovery scan test (plan #7b task 3) ─────────────────────────────
+# Verify discover_skills.py:
+#   - --dry-run lists sources without fetching
+#   - live fetch (against local stdlib http.server fixture) caches snapshot + diff
+#   - --cadence-check skips re-fetch within window
+#   - 404 graceful-skips with action=error
+#   - auto-seeds source whitelist on first run if absent
+#   - empty whitelist (all comments) returns total_sources=0
+echo "==> Skill-discovery scan test (plan #7b task 3)"
+DS_PY="$SCRATCH/.claude/skills/memory/scripts/discover_skills.py"
+if [[ ! -f "$DS_PY" ]]; then
+  echo "FAIL: discover_skills.py not installed at $DS_PY" >&2
+  exit 1
+fi
+DSTMP="$(mktemp -d)"
+DSVAULT="$DSTMP/vault"
+DSROOT="$DSTMP/wwwroot"
+mkdir -p "$DSVAULT/personal-private" "$DSROOT"
+cat > "$DSROOT/source-a.md" << 'DS_EOF'
+# Source A
+Item 1
+Item 2
+DS_EOF
+cat > "$DSROOT/source-b.md" << 'DS_EOF'
+# Source B
+Item X
+DS_EOF
+# Start a local stdlib http.server on a free port. Find one via a tiny
+# Python helper so we don't collide with anything else on the host.
+DS_PORT="$(python3 -c "import socket; s=socket.socket(); s.bind(('127.0.0.1',0)); print(s.getsockname()[1]); s.close()")"
+# Start python3 directly (no subshell) so $! captures the python PID, not a
+# bash subshell wrapper PID. Critical for cleanup — killing the wrapper
+# doesn't always reap the python child cleanly on CI.
+pushd "$DSROOT" > /dev/null
+python3 -m http.server "$DS_PORT" >/dev/null 2>&1 &
+DS_SERVER_PID=$!
+popd > /dev/null
+# Ensure cleanup on any exit path (success, failure, signal).
+trap "kill -9 $DS_SERVER_PID 2>/dev/null; rm -rf '$DSTMP' 2>/dev/null" EXIT INT TERM
+# Wait briefly for the server to bind. Tries up to 2s.
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  if curl -s -o /dev/null "http://127.0.0.1:$DS_PORT/source-a.md"; then break; fi
+  sleep 0.2
+done
+
+# Pre-write the whitelist pointing at fixture URLs (skips auto-seed for now).
+cat > "$DSVAULT/personal-private/skill-discovery-sources.md" << DS_EOF
+# fixture whitelist
+http://127.0.0.1:$DS_PORT/source-a.md
+http://127.0.0.1:$DS_PORT/source-b.md
+DS_EOF
+
+# Test A: --dry-run lists sources without fetching
+DS_A_OUT="$(python3 "$DS_PY" --vault-path "$DSVAULT" --dry-run 2>&1)"
+if ! echo "$DS_A_OUT" | grep -qE '"dry_run": true'; then
+  echo "FAIL: dry-run did not set dry_run=true. output: $DS_A_OUT" >&2
+  kill $DS_SERVER_PID 2>/dev/null
+  rm -rf "$DSTMP"
+  exit 1
+fi
+if ! echo "$DS_A_OUT" | grep -qE '"total_sources": 2'; then
+  echo "FAIL: dry-run did not discover 2 sources. output: $DS_A_OUT" >&2
+  kill $DS_SERVER_PID 2>/dev/null
+  rm -rf "$DSTMP"
+  exit 1
+fi
+if ! echo "$DS_A_OUT" | grep -qE '"skipped_dry_run": 2'; then
+  echo "FAIL: dry-run did not skip 2 sources. output: $DS_A_OUT" >&2
+  kill $DS_SERVER_PID 2>/dev/null
+  rm -rf "$DSTMP"
+  exit 1
+fi
+# State.json should NOT exist after dry-run
+if [[ -f "$DSVAULT/_meta/skill-discovery-cache/state.json" ]]; then
+  echo "FAIL: dry-run wrote state.json (should not have)" >&2
+  kill $DS_SERVER_PID 2>/dev/null
+  rm -rf "$DSTMP"
+  exit 1
+fi
+
+# Test B: live fetch creates cache + state
+DS_B_OUT="$(python3 "$DS_PY" --vault-path "$DSVAULT" 2>&1)"
+if ! echo "$DS_B_OUT" | grep -qE '"fetched": 2'; then
+  echo "FAIL: live fetch did not fetch 2 sources. output: $DS_B_OUT" >&2
+  kill $DS_SERVER_PID 2>/dev/null
+  rm -rf "$DSTMP"
+  exit 1
+fi
+DSSTATE="$DSVAULT/_meta/skill-discovery-cache/state.json"
+if [[ ! -f "$DSSTATE" ]]; then
+  echo "FAIL: live fetch did not write state.json" >&2
+  kill $DS_SERVER_PID 2>/dev/null
+  rm -rf "$DSTMP"
+  exit 1
+fi
+SNAPSHOT_COUNT="$(find "$DSVAULT/_meta/skill-discovery-cache" -name "2*.md" -not -name "diff-*" | wc -l | tr -d ' ')"
+if [[ "$SNAPSHOT_COUNT" != "2" ]]; then
+  echo "FAIL: expected 2 snapshot files, got $SNAPSHOT_COUNT" >&2
+  find "$DSVAULT/_meta/skill-discovery-cache" -type f >&2
+  kill $DS_SERVER_PID 2>/dev/null
+  rm -rf "$DSTMP"
+  exit 1
+fi
+
+# Test C: --cadence-check skips re-fetch (last_scan was just now)
+DS_C_OUT="$(python3 "$DS_PY" --vault-path "$DSVAULT" --cadence-check 2>&1)"
+if ! echo "$DS_C_OUT" | grep -qE '"cadence_skipped": true'; then
+  echo "FAIL: --cadence-check did not skip. output: $DS_C_OUT" >&2
+  kill $DS_SERVER_PID 2>/dev/null
+  rm -rf "$DSTMP"
+  exit 1
+fi
+if ! echo "$DS_C_OUT" | grep -qE '"fetched": 0'; then
+  echo "FAIL: --cadence-check shouldn't fetch. output: $DS_C_OUT" >&2
+  kill $DS_SERVER_PID 2>/dev/null
+  rm -rf "$DSTMP"
+  exit 1
+fi
+
+# Test D: 404 graceful-skips (URL doesn't exist but other sources continue)
+cat > "$DSVAULT/personal-private/skill-discovery-sources.md" << DS_EOF
+http://127.0.0.1:$DS_PORT/nonexistent.md
+http://127.0.0.1:$DS_PORT/source-a.md
+DS_EOF
+DS_D_OUT="$(python3 "$DS_PY" --vault-path "$DSVAULT" 2>&1 || true)"
+if ! echo "$DS_D_OUT" | grep -qE '"errors": 1'; then
+  echo "FAIL: 404 should produce errors=1. output: $DS_D_OUT" >&2
+  kill $DS_SERVER_PID 2>/dev/null
+  rm -rf "$DSTMP"
+  exit 1
+fi
+if ! echo "$DS_D_OUT" | grep -qE '"fetched": 1'; then
+  echo "FAIL: source-a should still fetch after 404 on nonexistent. output: $DS_D_OUT" >&2
+  kill $DS_SERVER_PID 2>/dev/null
+  rm -rf "$DSTMP"
+  exit 1
+fi
+
+# Test E: auto-seed whitelist on missing file (use fresh vault)
+DSVAULT2="$DSTMP/vault2"
+mkdir -p "$DSVAULT2"
+DS_E_OUT="$(python3 "$DS_PY" --vault-path "$DSVAULT2" --dry-run 2>&1)"
+if ! echo "$DS_E_OUT" | grep -qE '"whitelist_seeded": true'; then
+  echo "FAIL: missing whitelist did not auto-seed. output: $DS_E_OUT" >&2
+  rm -rf "$DSTMP"
+  kill $DS_SERVER_PID 2>/dev/null
+  exit 1
+fi
+if ! echo "$DS_E_OUT" | grep -qE '"total_sources": 4'; then
+  echo "FAIL: auto-seeded whitelist should have 4 sources (operator-confirmed v1). output: $DS_E_OUT" >&2
+  kill $DS_SERVER_PID 2>/dev/null
+  rm -rf "$DSTMP"
+  exit 1
+fi
+SEEDED_FILE="$DSVAULT2/personal-private/skill-discovery-sources.md"
+# Verify operator-specified order: cookbook → claude-code → mcp-servers → llm-apps
+URL_LINES="$(grep -E '^https://' "$SEEDED_FILE" || true)"
+EXPECTED_ORDER="anthropic-cookbook awesome-claude-code awesome-mcp-servers awesome-llm-apps"
+for expected in $EXPECTED_ORDER; do
+  if ! grep -qF "/${expected}/" "$SEEDED_FILE"; then
+    echo "FAIL: auto-seeded whitelist missing expected source: $expected" >&2
+    cat "$SEEDED_FILE" >&2
+    kill $DS_SERVER_PID 2>/dev/null
+    rm -rf "$DSTMP"
+    exit 1
+  fi
+done
+
+# Test F: empty whitelist (all comments) returns total_sources=0
+DSVAULT3="$DSTMP/vault3"
+mkdir -p "$DSVAULT3/personal-private"
+cat > "$DSVAULT3/personal-private/skill-discovery-sources.md" << 'DS_EOF'
+# empty whitelist
+# no URLs configured
+DS_EOF
+DS_F_OUT="$(python3 "$DS_PY" --vault-path "$DSVAULT3" 2>&1)"
+if ! echo "$DS_F_OUT" | grep -qE '"total_sources": 0'; then
+  echo "FAIL: empty whitelist should have total_sources=0. output: $DS_F_OUT" >&2
+  kill $DS_SERVER_PID 2>/dev/null
+  rm -rf "$DSTMP"
+  exit 1
+fi
+if ! echo "$DS_F_OUT" | grep -qE '"fetched": 0'; then
+  echo "FAIL: empty whitelist should fetch 0. output: $DS_F_OUT" >&2
+  kill $DS_SERVER_PID 2>/dev/null
+  rm -rf "$DSTMP"
+  exit 1
+fi
+
+# cleanup — trap above also handles this, but explicit kill ensures
+# the http.server is reaped before we move on to the next test block.
+kill -9 $DS_SERVER_PID 2>/dev/null
+wait $DS_SERVER_PID 2>/dev/null || true
+trap - EXIT INT TERM
+rm -rf "$DSTMP"
 
 # ── validate-manifests negative test: gemini-cli should error with v0.9.0 msg ─
 # Manifest containing 'gemini-cli' in supported_hosts must error with a clear
