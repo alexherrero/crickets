@@ -29,6 +29,12 @@
 #                            via virtualenv / conda / system packages, or
 #                            in CI to avoid the ~1.3GB sentence-transformers
 #                            download per workflow run.
+#   -NoSkillIndex            skip the personal-skills auto-indexer step
+#                            (plan #7b task 1). Best-effort post-install
+#                            run that walks SKILL.md across the toolkit +
+#                            harness sibling and writes pointer entries to
+#                            MemoryVault/personal-skills/. Requires
+#                            MEMORY_VAULT_PATH; silently skipped if unset.
 #   -Help                    print this help and exit
 
 [CmdletBinding()]
@@ -42,6 +48,7 @@ param(
     [switch]$NoPrePushHook,
     [switch]$NoLegacyCleanup,
     [switch]$NoPythonDeps,
+    [switch]$NoSkillIndex,
     [switch]$Help,
     [Parameter(Position=0)]
     [string]$Target
@@ -529,6 +536,53 @@ function Install-PythonDeps {
 }
 
 Install-PythonDeps
+
+function Install-PersonalSkillsIndex {
+    # Best-effort: run the personal-skills auto-indexer against the
+    # toolkit's own skills/ + the sibling agentic-harness/.claude/skills/
+    # if discoverable. Pointers land in MemoryVault/personal-skills/<repo>/.
+    # Requires MEMORY_VAULT_PATH to be set (we don't guess the vault path —
+    # operators without a vault configured silently skip this).
+    if ($script:NoSkillIndex) {
+        Write-Host '==> personal-skills index: skipped (-NoSkillIndex)'
+        return
+    }
+    $indexer = Join-Path $script:ToolkitRoot 'skills/memory/scripts/index_skills.py'
+    if (-not (Test-Path -LiteralPath $indexer)) {
+        # Memory skill not yet shipped to this toolkit checkout (pre-#7b).
+        return
+    }
+    $vaultPath = $env:MEMORY_VAULT_PATH
+    if (-not $vaultPath) {
+        Write-Host '==> personal-skills index: skipped (MEMORY_VAULT_PATH unset)'
+        return
+    }
+    # Resolve python executable: prefer python3 then python.
+    $pythonExe = $null
+    foreach ($candidate in @('python3', 'python')) {
+        $cmd = Get-Command $candidate -ErrorAction SilentlyContinue
+        if ($cmd) { $pythonExe = $cmd.Source; break }
+    }
+    if (-not $pythonExe) {
+        return
+    }
+    Write-Host '==> personal-skills index'
+    $toolkitSkills = Join-Path $script:ToolkitRoot 'skills'
+    $argList = @('--vault-path', $vaultPath, '--skill-path', $toolkitSkills)
+    # Also index sibling agentic-harness skills if present (canonical clone:
+    # ~/Antigravity/agentic-harness next to ~/Antigravity/agent-toolkit).
+    $harnessSibling = Join-Path $script:ToolkitRoot '../agentic-harness/.claude/skills'
+    if (Test-Path -LiteralPath $harnessSibling) {
+        $argList += @('--skill-path', $harnessSibling)
+    }
+    & $pythonExe $indexer @argList 2>&1 | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning 'personal-skills indexer exited non-zero — pointers may be incomplete'
+        # Non-fatal: skill-pointer entries are nice-to-have.
+    }
+}
+
+Install-PersonalSkillsIndex
 
 Write-Host ''
 Write-Host 'agent-toolkit install: complete.'

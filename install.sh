@@ -29,6 +29,12 @@
 #                            via virtualenv / conda / system packages, or
 #                            in CI to avoid the ~1.3GB sentence-transformers
 #                            download per workflow run.
+#   --no-skill-index         skip the personal-skills auto-indexer step
+#                            (plan #7b task 1). Best-effort post-install
+#                            run that walks SKILL.md across the toolkit +
+#                            harness sibling and writes pointer entries to
+#                            MemoryVault/personal-skills/. Requires
+#                            MEMORY_VAULT_PATH; silently skipped if unset.
 #   --help, -h               print this help and exit
 
 set -euo pipefail
@@ -44,6 +50,7 @@ UPDATE_MODE=0
 NO_PRE_PUSH_HOOK=0
 NO_LEGACY_CLEANUP=0
 NO_PYTHON_DEPS=0
+NO_SKILL_INDEX=0
 
 print_help() {
     sed -n '/^# install.sh/,/^[^#]/p' "$0" | sed 's|^# \?||' | head -n -1
@@ -76,6 +83,7 @@ while [[ $# -gt 0 ]]; do
         --no-pre-push-hook) NO_PRE_PUSH_HOOK=1; shift ;;
         --no-legacy-cleanup) NO_LEGACY_CLEANUP=1; shift ;;
         --no-python-deps) NO_PYTHON_DEPS=1; shift ;;
+        --no-skill-index) NO_SKILL_INDEX=1; shift ;;
         --help|-h) print_help; exit 0 ;;
         --*) echo "Unknown option: $1" >&2; echo "" >&2; print_help >&2; exit 2 ;;
         *)
@@ -659,6 +667,47 @@ EOF
 }
 
 install_python_deps
+
+index_personal_skills() {
+    # Best-effort: run the personal-skills auto-indexer against the
+    # toolkit's own skills/ + the sibling agentic-harness/.claude/skills/
+    # if discoverable. Pointers land in MemoryVault/personal-skills/<repo>/.
+    # Requires MEMORY_VAULT_PATH to be set (we don't guess the vault path —
+    # operators without a vault configured silently skip this).
+    if [[ "$NO_SKILL_INDEX" -eq 1 ]]; then
+        echo "==> personal-skills index: skipped (--no-skill-index)"
+        return 0
+    fi
+    local indexer="$TOOLKIT_ROOT/skills/memory/scripts/index_skills.py"
+    if [[ ! -f "$indexer" ]]; then
+        # Memory skill not yet shipped to this toolkit checkout (would only
+        # happen on a pre-#7b checkout). Nothing to do.
+        return 0
+    fi
+    if [[ -z "${MEMORY_VAULT_PATH:-}" ]]; then
+        echo "==> personal-skills index: skipped (MEMORY_VAULT_PATH unset)"
+        return 0
+    fi
+    if ! command -v python3 >/dev/null 2>&1; then
+        return 0
+    fi
+    echo "==> personal-skills index"
+    local toolkit_skills="$TOOLKIT_ROOT/skills"
+    local args=("--vault-path" "$MEMORY_VAULT_PATH" "--skill-path" "$toolkit_skills")
+    # Also index the sibling agentic-harness skills if present (canonical
+    # clone is ~/Antigravity/agentic-harness, sibling to ~/Antigravity/
+    # agent-toolkit). The toolkit + harness are deliberately co-located.
+    local harness_sibling="$TOOLKIT_ROOT/../agentic-harness/.claude/skills"
+    if [[ -d "$harness_sibling" ]]; then
+        args+=("--skill-path" "$harness_sibling")
+    fi
+    if ! python3 "$indexer" "${args[@]}" 2>&1; then
+        echo "WARN: personal-skills indexer exited non-zero — pointers may be incomplete" >&2
+        # Non-fatal: skill-pointer entries are nice-to-have, not load-bearing.
+    fi
+}
+
+index_personal_skills
 
 echo ""
 echo "agent-toolkit install: complete."

@@ -16,7 +16,7 @@ try {
     git -C $scratch init -q -b main | Out-Null
 
     Write-Host "==> fresh install into $scratch"
-    pwsh -NoProfile -File (Join-Path $ToolkitRoot 'install.ps1') -NoPythonDeps $scratch | Out-File (Join-Path $scratch '.install.log')
+    pwsh -NoProfile -File (Join-Path $ToolkitRoot 'install.ps1') -NoPythonDeps -NoSkillIndex $scratch | Out-File (Join-Path $scratch '.install.log')
     if ($LASTEXITCODE -ne 0) { throw "install.ps1 returned non-zero ($LASTEXITCODE)" }
 
     # ── expected files ─────────────────────────────────────────────────────
@@ -47,6 +47,7 @@ try {
         '.claude/skills/memory/scripts/ideas_surface.py',
         '.claude/skills/memory/scripts/ideas_incubator.py',
         '.claude/skills/memory/scripts/ideas_promote.py',
+        '.claude/skills/memory/scripts/index_skills.py',
         '.agent/skills/memory/SKILL.md',
         '.agent/skills/memory/scripts/save.py',
         '.agent/skills/memory/scripts/evolve.py',
@@ -58,6 +59,7 @@ try {
         '.agent/skills/memory/scripts/ideas_surface.py',
         '.agent/skills/memory/scripts/ideas_incubator.py',
         '.agent/skills/memory/scripts/ideas_promote.py',
+        '.agent/skills/memory/scripts/index_skills.py',
         # Standalone agent: evaluator. claude-code is single-file;
         # antigravity wraps the agent as a skill. (gemini-cli destination
         # .gemini/agents/evaluator.md removed in v0.9.0.)
@@ -127,7 +129,7 @@ try {
 
     # ── idempotent re-run ──────────────────────────────────────────────────
     Write-Host '==> idempotent re-run'
-    pwsh -NoProfile -File (Join-Path $ToolkitRoot 'install.ps1') -NoPythonDeps $scratch | Out-File (Join-Path $scratch '.rerun.log')
+    pwsh -NoProfile -File (Join-Path $ToolkitRoot 'install.ps1') -NoPythonDeps -NoSkillIndex $scratch | Out-File (Join-Path $scratch '.rerun.log')
     $rerun = Get-Content (Join-Path $scratch '.rerun.log') -Raw
     if ($rerun -match 'created .claude/skills/(example-skill|pii-scrubber)') {
         throw 're-run recreated a skill (should be kept)'
@@ -147,7 +149,7 @@ try {
 
     # ── --update ───────────────────────────────────────────────────────────
     Write-Host '==> --update wipe + recreate'
-    pwsh -NoProfile -File (Join-Path $ToolkitRoot 'install.ps1') -Update -NoPythonDeps $scratch | Out-File (Join-Path $scratch '.update.log')
+    pwsh -NoProfile -File (Join-Path $ToolkitRoot 'install.ps1') -Update -NoPythonDeps -NoSkillIndex $scratch | Out-File (Join-Path $scratch '.update.log')
     $update = Get-Content (Join-Path $scratch '.update.log') -Raw
     if ($update -notmatch 'removed .claude/skills/') {
         throw '-Update did not run sync wipe'
@@ -164,7 +166,7 @@ try {
     New-Item -ItemType Directory -Path $nohook -Force | Out-Null
     try {
         git -C $nohook init -q -b main | Out-Null
-        pwsh -NoProfile -File (Join-Path $ToolkitRoot 'install.ps1') -NoPrePushHook -NoPythonDeps $nohook | Out-File (Join-Path $nohook '.install.log')
+        pwsh -NoProfile -File (Join-Path $ToolkitRoot 'install.ps1') -NoPrePushHook -NoPythonDeps -NoSkillIndex $nohook | Out-File (Join-Path $nohook '.install.log')
         if (Test-Path -LiteralPath (Join-Path $nohook '.git/hooks/pre-push')) {
             throw '-NoPrePushHook installed the hook anyway'
         }
@@ -180,7 +182,7 @@ try {
         git -C $legacy init -q -b main | Out-Null
         New-Item -ItemType Directory -Path (Join-Path $legacy '.agents/skills/design') -Force | Out-Null
         'fake legacy skill' | Out-File -FilePath (Join-Path $legacy '.agents/skills/design/SKILL.md')
-        pwsh -NoProfile -File (Join-Path $ToolkitRoot 'install.ps1') -NoLegacyCleanup -NoPythonDeps $legacy | Out-File (Join-Path $legacy '.install.log')
+        pwsh -NoProfile -File (Join-Path $ToolkitRoot 'install.ps1') -NoLegacyCleanup -NoPythonDeps -NoSkillIndex $legacy | Out-File (Join-Path $legacy '.install.log')
         $log = Get-Content (Join-Path $legacy '.install.log') -Raw
         if ($log -match 'legacy gemini-cli cleanup') {
             throw '-NoLegacyCleanup did not suppress the cleanup prompt'
@@ -1724,6 +1726,119 @@ print('OK')
     } finally {
         Remove-Item -LiteralPath $mipromote -Recurse -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath $promoteIdeasDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    # ── Personal-skills auto-indexer test (plan #7b task 1) ────────────────
+    Write-Host '==> Personal-skills auto-indexer test (plan #7b task 1)'
+    $idxPy = Join-Path $scratch '.claude/skills/memory/scripts/index_skills.py'
+    if (-not (Test-Path -LiteralPath $idxPy)) {
+        throw "index_skills.py not installed at $idxPy"
+    }
+    $idxtmp = Join-Path ([System.IO.Path]::GetTempPath()) ("toolkit-idx-" + [System.Guid]::NewGuid().ToString('N'))
+    $idxVault = Join-Path $idxtmp 'vault'
+    $idxSrc = Join-Path $idxtmp 'srcrepo'
+    New-Item -ItemType Directory -Path $idxVault -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $idxSrc 'alpha') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $idxSrc 'beta') -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $idxSrc 'AGENTS.md') -Value '' -NoNewline
+    $alphaManifest = @"
+---
+name: alpha
+description: First fixture skill for the auto-indexer test.
+kind: skill
+supported_hosts: [claude-code, antigravity]
+version: 1.0.0
+install_scope: project
+---
+
+# alpha
+
+First paragraph after H1 - used as the extracted summary.
+
+## More content
+not extracted.
+"@
+    Set-Content -LiteralPath (Join-Path $idxSrc 'alpha/SKILL.md') -Value $alphaManifest -Encoding utf8
+    $betaManifest = @"
+---
+name: beta
+description: Second fixture skill.
+kind: skill
+supported_hosts: [claude-code]
+version: 0.5.0
+---
+
+# beta
+
+Beta body paragraph.
+"@
+    Set-Content -LiteralPath (Join-Path $idxSrc 'beta/SKILL.md') -Value $betaManifest -Encoding utf8
+    try {
+        # Test A: fresh index → 2 written
+        $idxAOut = & python3 $idxPy --skill-path $idxSrc --vault-path $idxVault 2>&1 | Out-String
+        if ($idxAOut -notmatch '"written":\s*2') {
+            throw "fresh index did not write 2 entries. output: $idxAOut"
+        }
+        $alphaEntry = Join-Path $idxVault 'personal-skills/srcrepo/alpha.md'
+        $betaEntry = Join-Path $idxVault 'personal-skills/srcrepo/beta.md'
+        if (-not (Test-Path -LiteralPath $alphaEntry) -or -not (Test-Path -LiteralPath $betaEntry)) {
+            throw "expected pointer entries missing under $idxVault"
+        }
+        $alphaText = Get-Content -LiteralPath $alphaEntry -Raw
+        foreach ($field in @('kind: skill-pointer', 'source_repo: srcrepo', 'skill_version: 1.0.0', 'slug: alpha', 'group: personal-skills/srcrepo')) {
+            if ($alphaText -notmatch [regex]::Escape($field)) {
+                throw "alpha.md missing field: $field"
+            }
+        }
+        if ($alphaText -notmatch 'First paragraph after H1') {
+            throw "alpha.md missing extracted body summary"
+        }
+
+        # Test B: idempotent re-run
+        $idxBOut = & python3 $idxPy --skill-path $idxSrc --vault-path $idxVault 2>&1 | Out-String
+        if ($idxBOut -notmatch '"written":\s*0') {
+            throw "idempotent re-run still wrote entries. output: $idxBOut"
+        }
+        if ($idxBOut -notmatch '"skipped":\s*2') {
+            throw "idempotent re-run did not skip 2. output: $idxBOut"
+        }
+
+        # Test C: version bump → 1 written
+        $alphaManifestBumped = $alphaManifest -replace 'version: 1\.0\.0', 'version: 1.1.0'
+        Set-Content -LiteralPath (Join-Path $idxSrc 'alpha/SKILL.md') -Value $alphaManifestBumped -Encoding utf8
+        $idxCOut = & python3 $idxPy --skill-path $idxSrc --vault-path $idxVault 2>&1 | Out-String
+        if ($idxCOut -notmatch '"written":\s*1') {
+            throw "version bump did not write 1. output: $idxCOut"
+        }
+        $alphaTextBumped = Get-Content -LiteralPath $alphaEntry -Raw
+        if ($alphaTextBumped -notmatch 'skill_version: 1\.1\.0') {
+            throw "alpha.md skill_version not bumped to 1.1.0"
+        }
+
+        # Test D: missing --skill-path → exit 1
+        $idxDProc = Start-Process -FilePath 'python3' -ArgumentList @($idxPy, '--vault-path', $idxVault) -NoNewWindow -PassThru -Wait -RedirectStandardOutput ([System.IO.Path]::GetTempFileName()) -RedirectStandardError ([System.IO.Path]::GetTempFileName())
+        if ($idxDProc.ExitCode -ne 1) {
+            throw "missing --skill-path expected exit 1, got $($idxDProc.ExitCode)"
+        }
+
+        # Test E: --repo-name normalization (My_Custom-Repo → my-custom-repo)
+        $idxVault2 = Join-Path $idxtmp 'vault2'
+        New-Item -ItemType Directory -Path $idxVault2 -Force | Out-Null
+        $idxEOut = & python3 $idxPy --skill-path $idxSrc --vault-path $idxVault2 --repo-name 'My_Custom-Repo' 2>&1 | Out-String
+        if ($idxEOut -notmatch '"written":\s*2') {
+            throw "--repo-name override did not write 2. output: $idxEOut"
+        }
+        if (-not (Test-Path -LiteralPath (Join-Path $idxVault2 'personal-skills/my-custom-repo'))) {
+            throw "--repo-name not normalized to kebab (expected my-custom-repo dir)"
+        }
+
+        # Test F: --no-skill-index flag propagation via install log
+        $installLogText = Get-Content -LiteralPath (Join-Path $scratch '.install.log') -Raw
+        if ($installLogText -notmatch 'personal-skills index: skipped \(-NoSkillIndex\)') {
+            throw "-NoSkillIndex flag did not produce expected skip line in install.log"
+        }
+    } finally {
+        Remove-Item -LiteralPath $idxtmp -Recurse -Force -ErrorAction SilentlyContinue
     }
 
     # ── validate-manifests negative test: gemini-cli rejected with v0.9.0 msg ─

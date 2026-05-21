@@ -23,6 +23,7 @@ The first toolkit skill that integrates with the user's own personal note-taking
 | Replace an existing entry with a corrected version (preserving audit trail) | `/memory evolve` |
 | Run reflection over the current session transcript on demand (or a specified transcript path) | `/memory reflect` |
 | Search the vault for entries matching a query (when auto-recall via UserPromptSubmit hook didn't pull what you wanted) | `/memory search` |
+| Refresh the auto-indexed `personal-skills/` pointers (after a SKILL.md change, or on a fresh install) | `/memory index-skills` |
 
 Auto-recall happens via the [SessionStart + UserPromptSubmit hooks](https://github.com/alexherrero/agent-toolkit/blob/main/wiki/explanation/designs/memoryvault/parts/recall-loop.md) — operators don't invoke a recall command directly. Reflection happens automatically via Stop + idle hooks too; the manual `/memory reflect` is for one-off runs against arbitrary transcripts.
 
@@ -594,6 +595,90 @@ Action: [k]eep (defer) / [a]rchive / [d]elete (default: k):
 
 - **Don't pick the same slug as an existing personal-projects/<slug>/.** Pre-check would help here but the operator typed the slug; we halt rather than guess.
 - **Don't run GC in batch / non-interactive contexts without `--mode silent`.** Default GC behavior defaults every prompt to Keep when stdin isn't a TTY, which is correct (never silent deletion), but means non-TTY runs do nothing. For batch GC with explicit pre-approval, the operator runs the gc subcommand interactively.
+
+### `/memory index-skills`
+
+Walks `SKILL.md` files across configured source paths (`agent-toolkit/skills/`, `agentic-harness/.claude/skills/`, any extra repos the operator adds) and writes one `kind: skill-pointer` entry per skill to `MemoryVault/personal-skills/<repo>/<skill-name>.md`. The agent then picks these up via the normal recall hooks — surfacing *"we have a `/design author` skill"* without the operator re-mentioning it. Plan #7b task 1 ships this body + the canonical Python implementation at `skills/memory/scripts/index_skills.py`.
+
+#### Invocation shape
+
+```
+/memory index-skills [--skill-path <dir>...] [--vault-path <path>] [--repo-name <slug>]
+```
+
+| Arg | Required | Default | Meaning |
+|---|---|---|---|
+| `--skill-path <dir>` | yes¹ | — | Skill source directory to walk. Repeatable. ¹Required unless `MEMORY_SKILL_PATHS` env var (colon-separated) supplies at least one path. |
+| `--vault-path <path>` | no | `$MEMORY_VAULT_PATH` env | MemoryVault root. Halts if neither arg nor env resolves. |
+| `--repo-name <slug>` | no | auto-detected | Explicit repo-slug for ALL discovered skills. Overrides the auto-detection walk (which finds the first ancestor containing `.git/` or `AGENTS.md`). Useful when sources don't sit under a git repo. Kebab-normalized regardless of input. |
+
+#### Step-by-step flow
+
+**Step 1 — Resolve vault path** via `--vault-path` arg → `MEMORY_VAULT_PATH` env. Halt with clear next-step on failure.
+
+**Step 2 — Resolve skill paths** via `--skill-path` args + `MEMORY_SKILL_PATHS` env (colon-separated, deduplicated). Halt with `"no skill paths configured"` if neither produced any path.
+
+**Step 3 — Discover SKILL.md files.** For each skill path: accept either `<root>/SKILL.md` (root is a skill dir) or `<root>/<skill-name>/SKILL.md` (canonical toolkit layout). Recursion depth is **exactly one level** — `SKILL.md` is a top-of-skill-dir convention, not a free-floating marker; deeper recursion would surface false positives.
+
+**Step 4 — For each SKILL.md, parse frontmatter** (locked fields: `name`, `description`, `version`, `supported_hosts`). Halt the single skill (not the whole run) if `name` is missing or non-kebab.
+
+**Step 5 — Extract a body summary.** First paragraph after the H1 (skipping leading blanks); falls back to empty if no body paragraph. Capped at 600 chars to keep pointer entries small.
+
+**Step 6 — Resolve repo-name.** Either: (a) explicit `--repo-name` (normalized to kebab); (b) walk up from the SKILL.md path until an ancestor with `.git/` or `AGENTS.md` matches → use that basename, normalized to kebab; (c) `unknown-repo` fallback.
+
+**Step 7 — Idempotency check.** Target path is `<vault>/personal-skills/<repo>/<skill-name>.md`. If it already exists AND its `skill_version` + description body match the current SKILL.md → record as `skipped`. Otherwise → proceed to write.
+
+**Step 8 — Write the entry.** Locked frontmatter shape:
+
+```yaml
+---
+kind: skill-pointer
+status: active
+created: <today UTC>
+updated: <today UTC>
+tags: [skill, personal-skills, auto-indexed]
+group: personal-skills/<repo>
+slug: <skill-name>
+always_load: false
+source_path: <absolute path to source SKILL.md>
+source_repo: <repo>
+skill_version: <version from source frontmatter>
+last_indexed: <today UTC>
+---
+```
+
+Body shape: title `# <skill-name> (skill pointer)` + an "auto-indexed; do not edit by hand" note + a metadata block (repo / version / hosts) + the description from frontmatter + the extracted summary.
+
+**Step 9 — Enqueue vec-index upsert** with embed text `<slug> skill (from <repo>)\n\n<description>\n\n<summary[:300]>`. Graceful-skip on any enqueue failure — the file write is the contract; embedding is best-effort.
+
+#### Failure modes (graceful)
+
+- **No `--skill-path` + no env** → exit 1 with the actionable next-step.
+- **Vault path unresolved or not a directory** → exit 1.
+- **A single SKILL.md fails to parse** → that skill is recorded as `action: error` in the per-skill results dict, but the rest of the run continues. Overall exit is 2 if any skill errored, 0 otherwise.
+- **Auto-detected repo name has non-kebab characters** → normalized via lowercasing + non-alnum → `-`. `My_Cool-Repo` → `my-cool-repo`.
+
+#### Output shape
+
+The CLI prints a JSON summary to stdout (suitable for piping into `jq`):
+
+```json
+{
+  "written": 3,
+  "skipped": 5,
+  "errors": 0,
+  "results": [
+    {"action": "written", "target": "...", "repo": "agent-toolkit", "skill": "memory", "reason": ""},
+    {"action": "skipped", "target": "...", "repo": "agent-toolkit", "skill": "design", "reason": "unchanged (same skill_version + description)"}
+  ]
+}
+```
+
+#### Anti-patterns
+
+- **Don't hand-edit `personal-skills/<repo>/<skill>.md` entries** — the next index run overwrites your changes if `skill_version` or description shifted. Hand-curate at the source SKILL.md instead.
+- **Don't add personal-skills entries via `/memory save`** — the layout is reserved for the indexer's output. Operator-curated skill notes go in `personal-private/` with a `[[skill-pointer:<skill>]]` cross-link to the auto-indexed pointer.
+- **Don't use `/memory evolve` against an auto-indexed entry** — evolve is for human-curated entries. The indexer is the source of truth for skill-pointer entries; just re-run `/memory index-skills` after a SKILL.md change.
 
 ### `/memory search`
 

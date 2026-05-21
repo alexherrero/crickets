@@ -17,7 +17,7 @@ trap 'rm -rf "$SCRATCH"' EXIT
 git -C "$SCRATCH" init -q -b main
 
 echo "==> fresh install into $SCRATCH"
-bash "$TOOLKIT_ROOT/install.sh" --no-python-deps "$SCRATCH" > "$SCRATCH/.install.log"
+bash "$TOOLKIT_ROOT/install.sh" --no-python-deps --no-skill-index "$SCRATCH" > "$SCRATCH/.install.log"
 
 # ── expected files (every supported_host × every shipped primitive) ─────────
 expected=(
@@ -52,6 +52,7 @@ expected=(
   .claude/skills/memory/scripts/ideas_surface.py
   .claude/skills/memory/scripts/ideas_incubator.py
   .claude/skills/memory/scripts/ideas_promote.py
+  .claude/skills/memory/scripts/index_skills.py
   .agent/skills/memory/SKILL.md
   .agent/skills/memory/scripts/save.py
   .agent/skills/memory/scripts/evolve.py
@@ -63,6 +64,7 @@ expected=(
   .agent/skills/memory/scripts/ideas_surface.py
   .agent/skills/memory/scripts/ideas_incubator.py
   .agent/skills/memory/scripts/ideas_promote.py
+  .agent/skills/memory/scripts/index_skills.py
   # Standalone agent: evaluator — claude-code is single-file destination;
   # antigravity wraps the agent as a skill. (gemini-cli destination
   # .gemini/agents/evaluator.md removed in v0.9.0.) memory-idea-researcher
@@ -156,7 +158,7 @@ fi
 
 # ── idempotent re-run: no "created" for previously-created paths ────────────
 echo "==> idempotent re-run"
-bash "$TOOLKIT_ROOT/install.sh" --no-python-deps "$SCRATCH" > "$SCRATCH/.rerun.log"
+bash "$TOOLKIT_ROOT/install.sh" --no-python-deps --no-skill-index "$SCRATCH" > "$SCRATCH/.rerun.log"
 if grep -qE "created .claude/skills/(example-skill|pii-scrubber)" "$SCRATCH/.rerun.log"; then
   echo "FAIL: re-run recreated a skill that already existed (should be 'kept')" >&2
   exit 1
@@ -190,7 +192,7 @@ fi
 
 # ── --update: wipe + recreate semantics ─────────────────────────────────────
 echo "==> --update wipe + recreate"
-bash "$TOOLKIT_ROOT/install.sh" --update --no-python-deps "$SCRATCH" > "$SCRATCH/.update.log"
+bash "$TOOLKIT_ROOT/install.sh" --update --no-python-deps --no-skill-index "$SCRATCH" > "$SCRATCH/.update.log"
 if ! grep -qE "removed .claude/skills/" "$SCRATCH/.update.log"; then
   echo "FAIL: --update did not run the sync wipe block" >&2
   exit 1
@@ -211,7 +213,7 @@ done
 echo "==> --no-pre-push-hook"
 NOHOOK="$(mktemp -d)"
 git -C "$NOHOOK" init -q -b main
-bash "$TOOLKIT_ROOT/install.sh" --no-pre-push-hook --no-python-deps "$NOHOOK" > "$NOHOOK/.install.log"
+bash "$TOOLKIT_ROOT/install.sh" --no-pre-push-hook --no-python-deps --no-skill-index "$NOHOOK" > "$NOHOOK/.install.log"
 if [[ -e "$NOHOOK/.git/hooks/pre-push" ]]; then
   echo "FAIL: --no-pre-push-hook installed the hook anyway" >&2
   rm -rf "$NOHOOK"
@@ -236,7 +238,7 @@ LEGACY="$(mktemp -d)"
 git -C "$LEGACY" init -q -b main
 mkdir -p "$LEGACY/.agents/skills/design"
 echo "fake legacy skill" > "$LEGACY/.agents/skills/design/SKILL.md"
-bash "$TOOLKIT_ROOT/install.sh" --no-legacy-cleanup --no-python-deps "$LEGACY" > "$LEGACY/.install.log"
+bash "$TOOLKIT_ROOT/install.sh" --no-legacy-cleanup --no-python-deps --no-skill-index "$LEGACY" > "$LEGACY/.install.log"
 if grep -qF "legacy gemini-cli cleanup" "$LEGACY/.install.log"; then
   echo "FAIL: --no-legacy-cleanup did not suppress the cleanup prompt" >&2
   rm -rf "$LEGACY"
@@ -2200,6 +2202,165 @@ if [[ ! -d "$MIPROMOTE/personal-private/_idea-incubator/test-promote-flow" ]]; t
 fi
 
 rm -rf "$MIPROMOTE" "$PROMOTE_IDEAS_DIR"
+
+# ── Personal-skills auto-indexer test (plan #7b task 1) ────────────────────
+# Verify index_skills.py walks fixture SKILL.md files and writes
+# personal-skills/<repo>/<skill>.md entries with the expected frontmatter,
+# is idempotent on re-run, and refreshes on version bump.
+echo "==> Personal-skills auto-indexer test (plan #7b task 1)"
+IDX_PY="$SCRATCH/.claude/skills/memory/scripts/index_skills.py"
+if [[ ! -f "$IDX_PY" ]]; then
+  echo "FAIL: index_skills.py not installed at $IDX_PY" >&2
+  exit 1
+fi
+IDXTMP="$(mktemp -d)"
+IDXVAULT="$IDXTMP/vault"
+IDXSRC="$IDXTMP/srcrepo"
+mkdir -p "$IDXVAULT" "$IDXSRC/alpha" "$IDXSRC/beta"
+# Add AGENTS.md so the auto-detect repo walk lands on srcrepo basename.
+touch "$IDXSRC/AGENTS.md"
+cat > "$IDXSRC/alpha/SKILL.md" << 'IDX_EOF'
+---
+name: alpha
+description: First fixture skill for the auto-indexer test.
+kind: skill
+supported_hosts: [claude-code, antigravity]
+version: 1.0.0
+install_scope: project
+---
+
+# alpha
+
+First paragraph after H1 — used as the extracted summary.
+
+## More content
+not extracted.
+IDX_EOF
+cat > "$IDXSRC/beta/SKILL.md" << 'IDX_EOF'
+---
+name: beta
+description: Second fixture skill.
+kind: skill
+supported_hosts: [claude-code]
+version: 0.5.0
+---
+
+# beta
+
+Beta body paragraph.
+IDX_EOF
+
+# Test A: fresh index → 2 written, 0 skipped, 0 errors
+IDX_A_OUT="$(python3 "$IDX_PY" --skill-path "$IDXSRC" --vault-path "$IDXVAULT" 2>&1)"
+if ! echo "$IDX_A_OUT" | grep -qE '"written": 2'; then
+  echo "FAIL: fresh index did not write 2 entries. output: $IDX_A_OUT" >&2
+  rm -rf "$IDXTMP"
+  exit 1
+fi
+ALPHA_ENTRY="$IDXVAULT/personal-skills/srcrepo/alpha.md"
+BETA_ENTRY="$IDXVAULT/personal-skills/srcrepo/beta.md"
+if [[ ! -f "$ALPHA_ENTRY" || ! -f "$BETA_ENTRY" ]]; then
+  echo "FAIL: expected pointer entries missing" >&2
+  ls -R "$IDXVAULT" >&2
+  rm -rf "$IDXTMP"
+  exit 1
+fi
+# Frontmatter shape check on alpha.md
+for field in "kind: skill-pointer" "source_repo: srcrepo" "skill_version: 1.0.0" "slug: alpha" "group: personal-skills/srcrepo"; do
+  if ! grep -qF "$field" "$ALPHA_ENTRY"; then
+    echo "FAIL: alpha.md missing field: $field" >&2
+    cat "$ALPHA_ENTRY" >&2
+    rm -rf "$IDXTMP"
+    exit 1
+  fi
+done
+if ! grep -qE '^A test skill for the auto-indexer\.|^First fixture skill for the auto-indexer test\.$' "$ALPHA_ENTRY"; then
+  # description body should appear under ## Description
+  if ! grep -qE 'First fixture skill for the auto-indexer test\.' "$ALPHA_ENTRY"; then
+    echo "FAIL: alpha.md description body missing" >&2
+    cat "$ALPHA_ENTRY" >&2
+    rm -rf "$IDXTMP"
+    exit 1
+  fi
+fi
+if ! grep -qE 'First paragraph after H1' "$ALPHA_ENTRY"; then
+  echo "FAIL: alpha.md missing extracted body summary" >&2
+  rm -rf "$IDXTMP"
+  exit 1
+fi
+
+# Test B: idempotent re-run → 0 written, 2 skipped
+IDX_B_OUT="$(python3 "$IDX_PY" --skill-path "$IDXSRC" --vault-path "$IDXVAULT" 2>&1)"
+if ! echo "$IDX_B_OUT" | grep -qE '"written": 0'; then
+  echo "FAIL: idempotent re-run still wrote entries. output: $IDX_B_OUT" >&2
+  rm -rf "$IDXTMP"
+  exit 1
+fi
+if ! echo "$IDX_B_OUT" | grep -qE '"skipped": 2'; then
+  echo "FAIL: idempotent re-run did not skip 2. output: $IDX_B_OUT" >&2
+  rm -rf "$IDXTMP"
+  exit 1
+fi
+
+# Test C: version bump → 1 written, 1 skipped
+# Update alpha's version + content; beta unchanged.
+sed -i.bak 's/version: 1.0.0/version: 1.1.0/' "$IDXSRC/alpha/SKILL.md" && rm "$IDXSRC/alpha/SKILL.md.bak"
+IDX_C_OUT="$(python3 "$IDX_PY" --skill-path "$IDXSRC" --vault-path "$IDXVAULT" 2>&1)"
+if ! echo "$IDX_C_OUT" | grep -qE '"written": 1'; then
+  echo "FAIL: version bump did not write 1. output: $IDX_C_OUT" >&2
+  rm -rf "$IDXTMP"
+  exit 1
+fi
+if ! grep -qF "skill_version: 1.1.0" "$ALPHA_ENTRY"; then
+  echo "FAIL: alpha.md skill_version not bumped to 1.1.0" >&2
+  rm -rf "$IDXTMP"
+  exit 1
+fi
+
+# Test D: no skill paths → exit 1 with actionable message
+IDX_D=0
+python3 "$IDX_PY" --vault-path "$IDXVAULT" >/dev/null 2>&1 || IDX_D=$?
+if [[ $IDX_D -ne 1 ]]; then
+  echo "FAIL: missing --skill-path expected exit 1, got $IDX_D" >&2
+  rm -rf "$IDXTMP"
+  exit 1
+fi
+
+# Test E: vault path missing → exit 1
+IDX_E=0
+python3 "$IDX_PY" --skill-path "$IDXSRC" >/dev/null 2>&1 || IDX_E=$?
+if [[ $IDX_E -ne 1 ]]; then
+  echo "FAIL: missing --vault-path expected exit 1 (env unset), got $IDX_E" >&2
+  rm -rf "$IDXTMP"
+  exit 1
+fi
+
+# Test F: --repo-name override (normalizes non-kebab → kebab)
+mkdir -p "$IDXTMP/vault2"
+IDX_F_OUT="$(python3 "$IDX_PY" --skill-path "$IDXSRC" --vault-path "$IDXTMP/vault2" --repo-name "My_Custom-Repo" 2>&1)"
+if ! echo "$IDX_F_OUT" | grep -qE '"written": 2'; then
+  echo "FAIL: --repo-name override did not write 2. output: $IDX_F_OUT" >&2
+  rm -rf "$IDXTMP"
+  exit 1
+fi
+if [[ ! -d "$IDXTMP/vault2/personal-skills/my-custom-repo" ]]; then
+  echo "FAIL: --repo-name not normalized to kebab (expected my-custom-repo dir)" >&2
+  ls -R "$IDXTMP/vault2" >&2
+  rm -rf "$IDXTMP"
+  exit 1
+fi
+
+# Test G: --no-skill-index flag propagation via fresh install log
+# (the fresh install at $SCRATCH used --no-skill-index above, so the log
+# should contain the "skipped" line)
+if ! grep -qE 'personal-skills index: skipped \(--no-skill-index\)' "$SCRATCH/.install.log"; then
+  echo "FAIL: --no-skill-index flag did not produce expected skip line in install.log" >&2
+  grep -E 'personal-skills|skill-index' "$SCRATCH/.install.log" >&2 || true
+  rm -rf "$IDXTMP"
+  exit 1
+fi
+
+rm -rf "$IDXTMP"
 
 # ── validate-manifests negative test: gemini-cli should error with v0.9.0 msg ─
 # Manifest containing 'gemini-cli' in supported_hosts must error with a clear
