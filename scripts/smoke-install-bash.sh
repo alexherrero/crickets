@@ -55,6 +55,7 @@ expected=(
   .claude/skills/memory/scripts/index_skills.py
   .claude/skills/memory/scripts/discover_skills.py
   .claude/skills/memory/scripts/adapt_skills.py
+  .claude/skills/memory/scripts/watchlist_review.py
   .agent/skills/memory/SKILL.md
   .agent/skills/memory/scripts/save.py
   .agent/skills/memory/scripts/evolve.py
@@ -69,6 +70,7 @@ expected=(
   .agent/skills/memory/scripts/index_skills.py
   .agent/skills/memory/scripts/discover_skills.py
   .agent/skills/memory/scripts/adapt_skills.py
+  .agent/skills/memory/scripts/watchlist_review.py
   # Standalone agent: evaluator — claude-code is single-file destination;
   # antigravity wraps the agent as a skill. (gemini-cli destination
   # .gemini/agents/evaluator.md removed in v0.9.0.) memory-idea-researcher
@@ -2862,6 +2864,151 @@ if ! echo "$AS_G_OUT" | grep -qE '"evaluated_count": 0'; then
 fi
 
 rm -rf "$ASTMP"
+
+# ── Watchlist review test (plan #7b task 5) ────────────────────────────────
+# Verify watchlist_review.py:
+#   - `list` emits JSON of pending entries
+#   - `promote` annotates frontmatter (status: promoted + promoted_at)
+#   - `dismiss` moves entry to _archive/ + annotates
+#   - `defer --until` updates frontmatter (status: deferred + deferred_until)
+#   - non-TTY review defaults all prompts to skip (never-silent-action)
+#   - missing entry → exit 1
+#   - invalid --until → exit 1
+echo "==> Watchlist review test (plan #7b task 5)"
+WL_PY="$SCRATCH/.claude/skills/memory/scripts/watchlist_review.py"
+if [[ ! -f "$WL_PY" ]]; then
+  echo "FAIL: watchlist_review.py not installed at $WL_PY" >&2
+  exit 1
+fi
+WLTMP="$(mktemp -d)"
+WLVAULT="$WLTMP/vault"
+mkdir -p "$WLVAULT/personal-private/_skill-watchlist/source-a"
+cat > "$WLVAULT/personal-private/_skill-watchlist/source-a/entry-one.md" << 'WL_EOF'
+---
+kind: skill-watchlist
+status: pending-review
+source_url: https://github.com/anthropics/example
+github_stars: 1000
+evaluator_classification: HIGH
+rubric_score: 4
+---
+# entry-one
+Body.
+WL_EOF
+cat > "$WLVAULT/personal-private/_skill-watchlist/source-a/entry-two.md" << 'WL_EOF'
+---
+kind: skill-watchlist
+status: pending-review
+source_url: https://github.com/other/example2
+evaluator_classification: MEDIUM
+rubric_score: 2
+---
+# entry-two
+WL_EOF
+cat > "$WLVAULT/personal-private/_skill-watchlist/source-a/entry-three.md" << 'WL_EOF'
+---
+status: pending-review
+---
+# entry-three
+WL_EOF
+
+# Test A: list emits JSON with 3 entries
+WL_A_OUT="$(python3 "$WL_PY" list --vault-path "$WLVAULT" 2>&1)"
+if ! echo "$WL_A_OUT" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+assert len(data) == 3, f'expected 3 entries, got {len(data)}'
+slugs = sorted(e['pattern_slug'] for e in data)
+assert slugs == ['entry-one', 'entry-three', 'entry-two'], f'unexpected slugs: {slugs}'
+print('OK')
+" 2>&1; then
+  echo "FAIL: list output wrong. output: $WL_A_OUT" >&2
+  rm -rf "$WLTMP"; exit 1
+fi
+
+# Test B: promote annotates frontmatter
+WL_B_OUT="$(python3 "$WL_PY" promote source-a entry-one --vault-path "$WLVAULT" 2>&1)"
+if ! echo "$WL_B_OUT" | grep -qE '"action": "promoted"'; then
+  echo "FAIL: promote should return action=promoted. output: $WL_B_OUT" >&2
+  rm -rf "$WLTMP"; exit 1
+fi
+if ! grep -qE '^status: promoted$' "$WLVAULT/personal-private/_skill-watchlist/source-a/entry-one.md"; then
+  echo "FAIL: entry-one not annotated as promoted" >&2
+  cat "$WLVAULT/personal-private/_skill-watchlist/source-a/entry-one.md" >&2
+  rm -rf "$WLTMP"; exit 1
+fi
+if ! grep -qE '^promoted_at: ' "$WLVAULT/personal-private/_skill-watchlist/source-a/entry-one.md"; then
+  echo "FAIL: entry-one missing promoted_at timestamp" >&2
+  rm -rf "$WLTMP"; exit 1
+fi
+
+# Test C: dismiss moves entry to _archive/
+WL_C_OUT="$(python3 "$WL_PY" dismiss source-a entry-two --vault-path "$WLVAULT" 2>&1)"
+if ! echo "$WL_C_OUT" | grep -qE '"action": "dismissed"'; then
+  echo "FAIL: dismiss should return action=dismissed. output: $WL_C_OUT" >&2
+  rm -rf "$WLTMP"; exit 1
+fi
+if [[ -f "$WLVAULT/personal-private/_skill-watchlist/source-a/entry-two.md" ]]; then
+  echo "FAIL: entry-two still in active watchlist after dismiss" >&2
+  rm -rf "$WLTMP"; exit 1
+fi
+ARCHIVED="$WLVAULT/personal-private/_skill-watchlist/_archive/source-a/entry-two.md"
+if [[ ! -f "$ARCHIVED" ]]; then
+  echo "FAIL: entry-two not moved to _archive/" >&2
+  find "$WLVAULT/personal-private/_skill-watchlist" -type f >&2
+  rm -rf "$WLTMP"; exit 1
+fi
+if ! grep -qE '^status: dismissed$' "$ARCHIVED"; then
+  echo "FAIL: archived entry-two not annotated as dismissed" >&2
+  cat "$ARCHIVED" >&2
+  rm -rf "$WLTMP"; exit 1
+fi
+
+# Test D: defer updates frontmatter
+WL_D_OUT="$(python3 "$WL_PY" defer source-a entry-three --until 2026-08-01 --reason "wait" --vault-path "$WLVAULT" 2>&1)"
+if ! echo "$WL_D_OUT" | grep -qE '"action": "deferred"'; then
+  echo "FAIL: defer should return action=deferred. output: $WL_D_OUT" >&2
+  rm -rf "$WLTMP"; exit 1
+fi
+if ! grep -qE '^status: deferred$' "$WLVAULT/personal-private/_skill-watchlist/source-a/entry-three.md"; then
+  echo "FAIL: entry-three not annotated as deferred" >&2
+  rm -rf "$WLTMP"; exit 1
+fi
+if ! grep -qE '^deferred_until: 2026-08-01$' "$WLVAULT/personal-private/_skill-watchlist/source-a/entry-three.md"; then
+  echo "FAIL: entry-three missing deferred_until" >&2
+  rm -rf "$WLTMP"; exit 1
+fi
+
+# Test E: non-TTY review defaults to skip
+WL_E_OUT="$(python3 "$WL_PY" review --vault-path "$WLVAULT" < /dev/null 2>&1)"
+if ! echo "$WL_E_OUT" | grep -qE 'stdin is not a TTY'; then
+  echo "FAIL: non-TTY review didn't emit TTY warning. output: $WL_E_OUT" >&2
+  rm -rf "$WLTMP"; exit 1
+fi
+# entry-one is now status=promoted (still listed), entry-three is status=deferred (still listed),
+# entry-two was archived. So 2 entries listed; both skipped.
+if ! echo "$WL_E_OUT" | grep -qE '"skipped": [12]'; then
+  echo "FAIL: non-TTY review didn't skip entries. output: $WL_E_OUT" >&2
+  rm -rf "$WLTMP"; exit 1
+fi
+
+# Test F: missing entry → exit 1
+WL_F=0
+python3 "$WL_PY" promote source-a nonexistent --vault-path "$WLVAULT" >/dev/null 2>&1 || WL_F=$?
+if [[ $WL_F -ne 1 ]]; then
+  echo "FAIL: promote on missing entry expected exit 1, got $WL_F" >&2
+  rm -rf "$WLTMP"; exit 1
+fi
+
+# Test G: invalid --until date → exit 1
+WL_G=0
+python3 "$WL_PY" defer source-a entry-three --until "not-a-date" --vault-path "$WLVAULT" >/dev/null 2>&1 || WL_G=$?
+if [[ $WL_G -ne 1 ]]; then
+  echo "FAIL: defer with bad --until expected exit 1, got $WL_G" >&2
+  rm -rf "$WLTMP"; exit 1
+fi
+
+rm -rf "$WLTMP"
 
 # ── validate-manifests negative test: gemini-cli should error with v0.9.0 msg ─
 # Manifest containing 'gemini-cli' in supported_hosts must error with a clear

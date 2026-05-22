@@ -50,6 +50,7 @@ try {
         '.claude/skills/memory/scripts/index_skills.py',
         '.claude/skills/memory/scripts/discover_skills.py',
         '.claude/skills/memory/scripts/adapt_skills.py',
+        '.claude/skills/memory/scripts/watchlist_review.py',
         '.agent/skills/memory/SKILL.md',
         '.agent/skills/memory/scripts/save.py',
         '.agent/skills/memory/scripts/evolve.py',
@@ -64,6 +65,7 @@ try {
         '.agent/skills/memory/scripts/index_skills.py',
         '.agent/skills/memory/scripts/discover_skills.py',
         '.agent/skills/memory/scripts/adapt_skills.py',
+        '.agent/skills/memory/scripts/watchlist_review.py',
         # Standalone agent: evaluator. claude-code is single-file;
         # antigravity wraps the agent as a skill. (gemini-cli destination
         # .gemini/agents/evaluator.md removed in v0.9.0.)
@@ -2187,6 +2189,125 @@ Hook for Claude Code that automates commit messages and release tagging.
         }
     } finally {
         Remove-Item -LiteralPath $astmp -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    # ── Watchlist review test (plan #7b task 5) ────────────────────────────
+    Write-Host '==> Watchlist review test (plan #7b task 5)'
+    $wlPy = Join-Path $scratch '.claude/skills/memory/scripts/watchlist_review.py'
+    if (-not (Test-Path -LiteralPath $wlPy)) {
+        throw "watchlist_review.py not installed at $wlPy"
+    }
+    $wltmp = Join-Path ([System.IO.Path]::GetTempPath()) ("toolkit-wl-" + [System.Guid]::NewGuid().ToString('N'))
+    $wlVault = Join-Path $wltmp 'vault'
+    New-Item -ItemType Directory -Path (Join-Path $wlVault 'personal-private/_skill-watchlist/source-a') -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $wlVault 'personal-private/_skill-watchlist/source-a/entry-one.md') -Value @'
+---
+kind: skill-watchlist
+status: pending-review
+source_url: https://github.com/anthropics/example
+github_stars: 1000
+evaluator_classification: HIGH
+rubric_score: 4
+---
+# entry-one
+Body.
+'@ -Encoding utf8
+    Set-Content -LiteralPath (Join-Path $wlVault 'personal-private/_skill-watchlist/source-a/entry-two.md') -Value @'
+---
+kind: skill-watchlist
+status: pending-review
+source_url: https://github.com/other/example2
+evaluator_classification: MEDIUM
+rubric_score: 2
+---
+# entry-two
+'@ -Encoding utf8
+    Set-Content -LiteralPath (Join-Path $wlVault 'personal-private/_skill-watchlist/source-a/entry-three.md') -Value @'
+---
+status: pending-review
+---
+# entry-three
+'@ -Encoding utf8
+    try {
+        # Test A: list emits JSON with 3 entries
+        $wlAOut = & python3 $wlPy list --vault-path $wlVault 2>&1 | Out-String
+        $wlAData = $wlAOut | ConvertFrom-Json
+        if ($wlAData.Count -ne 3) {
+            throw "list expected 3 entries, got $($wlAData.Count). output: $wlAOut"
+        }
+
+        # Test B: promote annotates frontmatter
+        $wlBOut = & python3 $wlPy promote source-a entry-one --vault-path $wlVault 2>&1 | Out-String
+        if ($wlBOut -notmatch '"action":\s*"promoted"') {
+            throw "promote should return action=promoted. output: $wlBOut"
+        }
+        $oneText = Get-Content -LiteralPath (Join-Path $wlVault 'personal-private/_skill-watchlist/source-a/entry-one.md') -Raw
+        if ($oneText -notmatch '(?m)^status: promoted$') {
+            throw "entry-one not annotated as promoted"
+        }
+        if ($oneText -notmatch '(?m)^promoted_at: ') {
+            throw "entry-one missing promoted_at timestamp"
+        }
+
+        # Test C: dismiss moves entry to _archive/
+        $wlCOut = & python3 $wlPy dismiss source-a entry-two --vault-path $wlVault 2>&1 | Out-String
+        if ($wlCOut -notmatch '"action":\s*"dismissed"') {
+            throw "dismiss should return action=dismissed. output: $wlCOut"
+        }
+        if (Test-Path -LiteralPath (Join-Path $wlVault 'personal-private/_skill-watchlist/source-a/entry-two.md')) {
+            throw "entry-two still in active watchlist after dismiss"
+        }
+        $archived = Join-Path $wlVault 'personal-private/_skill-watchlist/_archive/source-a/entry-two.md'
+        if (-not (Test-Path -LiteralPath $archived)) {
+            throw "entry-two not moved to _archive/"
+        }
+        $archText = Get-Content -LiteralPath $archived -Raw
+        if ($archText -notmatch '(?m)^status: dismissed$') {
+            throw "archived entry-two not annotated as dismissed"
+        }
+
+        # Test D: defer updates frontmatter
+        $wlDOut = & python3 $wlPy defer source-a entry-three --until 2026-08-01 --reason "wait" --vault-path $wlVault 2>&1 | Out-String
+        if ($wlDOut -notmatch '"action":\s*"deferred"') {
+            throw "defer should return action=deferred. output: $wlDOut"
+        }
+        $threeText = Get-Content -LiteralPath (Join-Path $wlVault 'personal-private/_skill-watchlist/source-a/entry-three.md') -Raw
+        if ($threeText -notmatch '(?m)^status: deferred$') {
+            throw "entry-three not annotated as deferred"
+        }
+        if ($threeText -notmatch '(?m)^deferred_until: 2026-08-01$') {
+            throw "entry-three missing deferred_until"
+        }
+
+        # Test E: non-TTY review defaults to skip (via empty-file stdin)
+        $emptyStdin = Join-Path $wltmp '.empty-stdin'
+        Set-Content -LiteralPath $emptyStdin -Value '' -NoNewline
+        $wlEOutFile = [System.IO.Path]::GetTempFileName()
+        $wlEErrFile = [System.IO.Path]::GetTempFileName()
+        $wlEProc = Start-Process -FilePath 'python3' -ArgumentList @($wlPy, 'review', '--vault-path', $wlVault) -NoNewWindow -PassThru -Wait -RedirectStandardInput $emptyStdin -RedirectStandardOutput $wlEOutFile -RedirectStandardError $wlEErrFile
+        $wlEStdOut = Get-Content -LiteralPath $wlEOutFile -Raw
+        $wlEStdErr = Get-Content -LiteralPath $wlEErrFile -Raw
+        $wlEFull = "$wlEStdOut`n$wlEStdErr"
+        if ($wlEFull -notmatch 'stdin is not a TTY') {
+            throw "non-TTY review didn't emit TTY warning. output: $wlEFull"
+        }
+        if ($wlEFull -notmatch '"skipped":\s*[12]') {
+            throw "non-TTY review didn't skip entries. output: $wlEFull"
+        }
+
+        # Test F: missing entry → exit 1
+        $wlFProc = Start-Process -FilePath 'python3' -ArgumentList @($wlPy, 'promote', 'source-a', 'nonexistent', '--vault-path', $wlVault) -NoNewWindow -PassThru -Wait -RedirectStandardOutput ([System.IO.Path]::GetTempFileName()) -RedirectStandardError ([System.IO.Path]::GetTempFileName())
+        if ($wlFProc.ExitCode -ne 1) {
+            throw "promote on missing entry expected exit 1, got $($wlFProc.ExitCode)"
+        }
+
+        # Test G: invalid --until → exit 1
+        $wlGProc = Start-Process -FilePath 'python3' -ArgumentList @($wlPy, 'defer', 'source-a', 'entry-three', '--until', 'not-a-date', '--vault-path', $wlVault) -NoNewWindow -PassThru -Wait -RedirectStandardOutput ([System.IO.Path]::GetTempFileName()) -RedirectStandardError ([System.IO.Path]::GetTempFileName())
+        if ($wlGProc.ExitCode -ne 1) {
+            throw "defer with bad --until expected exit 1, got $($wlGProc.ExitCode)"
+        }
+    } finally {
+        Remove-Item -LiteralPath $wltmp -Recurse -Force -ErrorAction SilentlyContinue
     }
 
     # ── validate-manifests negative test: gemini-cli rejected with v0.9.0 msg ─

@@ -27,6 +27,7 @@ The first toolkit skill that integrates with the user's own personal note-taking
 | Refresh the auto-indexed `personal-skills/` pointers (after a SKILL.md change, or on a fresh install) | `/memory index-skills` |
 | Manually trigger the internet skill-discovery scan (cadence-checked by default via the idle hook) | `/memory discover-skills` |
 | Run the adapt-don't-import workflow over discovered patterns (Python rubric → enriched JSONs → LLM sub-agent judgment → watchlist entries) | `/memory adapt-skills` |
+| Review pending entries in `_skill-watchlist/` — promote / dismiss / defer | `/memory watchlist` |
 
 Auto-recall happens via the [SessionStart + UserPromptSubmit hooks](https://github.com/alexherrero/agent-toolkit/blob/main/wiki/explanation/designs/memoryvault/parts/recall-loop.md) — operators don't invoke a recall command directly. Reflection happens automatically via Stop + idle hooks too; the manual `/memory reflect` is for one-off runs against arbitrary transcripts.
 
@@ -920,6 +921,68 @@ Watchlist entry shape locked in [`agents/adapt-evaluator.md`](../../agents/adapt
 
 > [!NOTE]
 > **Sub-agent budget**: Pass 2 has no hard token cap (operator dispatch is one-shot, bounded by operator attention). For batch dispatch (idle-hook in a future task), a `--limit N` flag caps how many candidates each idle pass evaluates — default 5.
+
+### `/memory watchlist`
+
+Review pending entries in `<vault>/personal-private/_skill-watchlist/` — the output of `/memory adapt-skills`. Three actions per entry: **promote** (mark ready for operator's manual fork to `agent-toolkit/skills/<x>/`), **dismiss** (archive to `_skill-watchlist/_archive/`), **defer** (snooze with a `deferred_until` date). Plan #7b task 5 ships the body + the canonical Python implementation at `skills/memory/scripts/watchlist_review.py`.
+
+**Adapt-don't-import contract enforcement**: this sub-command **never writes** to `agent-toolkit/skills/<x>/`. Promote is annotation-only — it marks the entry `status: promoted` + adds a `promoted_at` timestamp; the operator then manually authors the actual skill in a separate session. Adoption-by-agent is architecturally prevented.
+
+#### Invocation shape
+
+```
+python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/watchlist_review.py \
+  [list | review | promote <source-slug> <pattern-slug> | \
+   dismiss <source-slug> <pattern-slug> | \
+   defer <source-slug> <pattern-slug> --until YYYY-MM-DD [--reason "<text>"]] \
+  [--vault-path <path>]
+```
+
+| Sub-command | Use case |
+|---|---|
+| `list` | JSON list of pending entries (source-slug + pattern-slug + status + classification). Useful for piping into other tools or just eyeballing the backlog. |
+| `review` (default) | Interactive walk-through — prompts per entry with `[p]romote / [d]ismiss / [f]efer / (default skip)`. Non-TTY stdin defaults all prompts to skip (never silent action — same contract as `ideas_promote.py gc`). |
+| `promote <source> <pattern>` | Mark a specific entry promoted. Operator-typed slugs (autocomplete via `list` first). |
+| `dismiss <source> <pattern>` | Archive a specific entry to `_archive/`. |
+| `defer <source> <pattern>` | Snooze with `--until YYYY-MM-DD` + optional `--reason`. |
+
+#### Action semantics (locked)
+
+- **promote** → frontmatter `status: promoted` + `promoted_at: <iso ts>` + `updated: <today>`; removes `deferred_until` / `defer_reason` / `dismissed_at` if present. Entry stays in place — the operator's manual fork happens outside this script.
+- **dismiss** → frontmatter annotated with `status: dismissed` + `dismissed_at: <iso ts>`; then **moved** to `<vault>/personal-private/_skill-watchlist/_archive/<source-slug>/<pattern-slug>.md` (collision-safe `-N` suffix if needed). Preserves the audit trail; future passes can re-surface via direct file access.
+- **defer** → frontmatter `status: deferred` + `deferred_until: <iso date>` + optional `defer_reason`; removes `dismissed_at` / `promoted_at`. Entry stays in place; future list operations can filter `deferred_until` to surface only re-eligible entries.
+- **skip** (default for non-TTY + unrecognized input) → no change; entry stays in pending-review state for next pass.
+
+#### Interactive flow
+
+```
+────────────────────────────────────────────────────────────────────────
+Watchlist entry: anthropics-anthropic-cookbook/some-pattern
+  status:        pending-review
+  classification: HIGH
+  source_url:    https://github.com/anthropics/some-pattern
+  github_stars:  1247
+  trusted_org:   true
+  rubric_score:  4
+────────────────────────────────────────────────────────────────────────
+Action: [p]romote / [d]ismiss / [f] defer (default: skip)
+```
+
+On `f` (defer): a secondary prompt asks for `defer until (YYYY-MM-DD; blank = default <today+30d>)`. Blank input or invalid date falls back to the 30-day default.
+
+#### Failure modes (graceful)
+
+- **No entries in `_skill-watchlist/`** → `[watchlist] no pending entries` to stderr; exit 0.
+- **Non-TTY stdin** → defaults every prompt to skip; emits `interactive mode requested but stdin is not a TTY; defaulting all prompts to skip (never silent action)`; exit 0.
+- **Entry not found** for promote/dismiss/defer specific-slug commands → exit 1 with the actual path that was checked.
+- **Invalid `--until` date** for defer → exit 1 with `--until must be ISO date YYYY-MM-DD`.
+- **Archive collision** on dismiss → file goes to `<pattern-slug>-1.md`, `-2.md`, etc.
+
+#### Anti-patterns
+
+- **Don't run `review` in batch / non-interactive contexts.** Default-to-skip is the safety net; if you actually want batch action, use the specific-slug subcommands (`promote` / `dismiss` / `defer`) which are deterministic + scriptable.
+- **Don't auto-promote based on rubric_score alone.** The whole point of the watchlist is the operator's judgment on top of the rubric — auto-promotion bypasses the adapt-don't-import architectural guarantee.
+- **Don't `rm -rf` the `_archive/` directory.** It's the audit trail for "we considered this and dismissed it" — useful when the same pattern resurfaces from a different source later (cross-citation count goes up).
 
 ### `/memory search`
 
