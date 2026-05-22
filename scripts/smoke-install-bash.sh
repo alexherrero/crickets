@@ -54,6 +54,7 @@ expected=(
   .claude/skills/memory/scripts/ideas_promote.py
   .claude/skills/memory/scripts/index_skills.py
   .claude/skills/memory/scripts/discover_skills.py
+  .claude/skills/memory/scripts/adapt_skills.py
   .agent/skills/memory/SKILL.md
   .agent/skills/memory/scripts/save.py
   .agent/skills/memory/scripts/evolve.py
@@ -67,6 +68,7 @@ expected=(
   .agent/skills/memory/scripts/ideas_promote.py
   .agent/skills/memory/scripts/index_skills.py
   .agent/skills/memory/scripts/discover_skills.py
+  .agent/skills/memory/scripts/adapt_skills.py
   # Standalone agent: evaluator — claude-code is single-file destination;
   # antigravity wraps the agent as a skill. (gemini-cli destination
   # .gemini/agents/evaluator.md removed in v0.9.0.) memory-idea-researcher
@@ -75,6 +77,8 @@ expected=(
   .agent/skills/evaluator/SKILL.md
   .claude/agents/memory-idea-researcher.md
   .agent/skills/memory-idea-researcher/SKILL.md
+  .claude/agents/adapt-evaluator.md
+  .agent/skills/adapt-evaluator/SKILL.md
   # Standalone hooks — claude-code only (v0.7.0); memory-recall hooks
   # added in plan #7a part 2; memory-reflect-{stop,idle} added in plan
   # #7a part 3.
@@ -165,7 +169,7 @@ if grep -qE "created .claude/skills/(example-skill|pii-scrubber)" "$SCRATCH/.rer
   echo "FAIL: re-run recreated a skill that already existed (should be 'kept')" >&2
   exit 1
 fi
-if grep -qE "created .claude/agents/(evaluator|memory-idea-researcher)" "$SCRATCH/.rerun.log"; then
+if grep -qE "created .claude/agents/(evaluator|memory-idea-researcher|adapt-evaluator)" "$SCRATCH/.rerun.log"; then
   echo "FAIL: re-run recreated an agent that already existed (should be 'kept')" >&2
   exit 1
 fi
@@ -2687,6 +2691,177 @@ kill -9 $DS_SERVER_PID 2>/dev/null
 wait $DS_SERVER_PID 2>/dev/null || true
 trap - EXIT INT TERM
 rm -rf "$DSTMP"
+
+# ── Adapt-don't-import Pass 1 test (plan #7b task 4) ───────────────────────
+# Verify adapt_skills.py:
+#   - parses candidate patterns from a fixture diff
+#   - applies 6-rule rubric correctly (HIGH/MEDIUM/LOW classification)
+#   - enriches with GitHub metadata fields (null with --skip-network)
+#   - computes trustworthiness signals (from_trusted_org from auto-seed)
+#   - writes enriched JSON to adapt-state/<source-slug>/<pattern>.json
+#   - auto-seeds trusted-sources.md on first run
+#   - is idempotent on re-run (state file tracks evaluated tuples)
+#   - --dry-run skips writes
+echo "==> Adapt-don't-import Pass 1 test (plan #7b task 4)"
+AS_PY="$SCRATCH/.claude/skills/memory/scripts/adapt_skills.py"
+if [[ ! -f "$AS_PY" ]]; then
+  echo "FAIL: adapt_skills.py not installed at $AS_PY" >&2
+  exit 1
+fi
+ASTMP="$(mktemp -d)"
+ASVAULT="$ASTMP/vault"
+mkdir -p "$ASVAULT/_meta/skill-discovery-cache/anthropics-test" "$ASVAULT/personal-private/_always-load" "$ASVAULT/personal-skills/some-repo"
+# Always-load entry to give R2 something to match
+cat > "$ASVAULT/personal-private/_always-load/commit-no-coauthor.md" << 'AS_EOF'
+---
+slug: commit-no-coauthor
+tags: [commit, agent, workflow]
+---
+# commit-no-coauthor
+AS_EOF
+# Already-indexed skill to test R1 negation
+cat > "$ASVAULT/personal-skills/some-repo/existing-tool.md" << 'AS_EOF'
+---
+slug: existing-tool
+---
+AS_EOF
+# Fixture diff with mixed candidates
+cat > "$ASVAULT/_meta/skill-discovery-cache/anthropics-test/diff-2026-05-21.md" << 'AS_EOF'
+## new-mcp-server
+A skill that adds an MCP server for agent workflow integration. See https://github.com/anthropics/some-server for the implementation.
+
+## experimental-hack
+A workaround for a temporary CI bug. Don't use yet. WIP.
+
+- [cursor-helper](https://github.com/somevendor/cursor-helper) — Cursor IDE integration tool.
+
+## another-agent-skill
+Hook for Claude Code that automates commit messages and release tagging.
+AS_EOF
+
+# Test A: dry-run + skip-network classifies without writing
+AS_A_OUT="$(python3 "$AS_PY" --vault-path "$ASVAULT" --skip-network --dry-run 2>&1)"
+if ! echo "$AS_A_OUT" | grep -qE '"dry_run": true'; then
+  echo "FAIL: dry-run did not set dry_run=true. output: $AS_A_OUT" >&2
+  rm -rf "$ASTMP"; exit 1
+fi
+if ! echo "$AS_A_OUT" | grep -qE '"evaluated_count": 4'; then
+  echo "FAIL: dry-run should evaluate 4 candidates. output: $AS_A_OUT" >&2
+  rm -rf "$ASTMP"; exit 1
+fi
+if ! echo "$AS_A_OUT" | grep -qE '"high_count": 2'; then
+  echo "FAIL: dry-run should classify 2 HIGH (new-mcp-server + another-agent-skill). output: $AS_A_OUT" >&2
+  rm -rf "$ASTMP"; exit 1
+fi
+if ! echo "$AS_A_OUT" | grep -qE '"trusted_sources_seeded": true'; then
+  echo "FAIL: trusted-sources.md not auto-seeded on first run. output: $AS_A_OUT" >&2
+  rm -rf "$ASTMP"; exit 1
+fi
+# Dry-run should NOT write adapt-state files
+if [[ -d "$ASVAULT/_meta/skill-discovery-cache/adapt-state" ]] && [[ -n "$(ls "$ASVAULT/_meta/skill-discovery-cache/adapt-state" 2>/dev/null)" ]]; then
+  echo "FAIL: dry-run wrote adapt-state files" >&2
+  ls -R "$ASVAULT/_meta/skill-discovery-cache/adapt-state" >&2
+  rm -rf "$ASTMP"; exit 1
+fi
+
+# Test B: actual run writes 4 candidate JSONs + state file
+AS_B_OUT="$(python3 "$AS_PY" --vault-path "$ASVAULT" --skip-network 2>&1)"
+if ! echo "$AS_B_OUT" | grep -qE '"written_count": 4'; then
+  echo "FAIL: actual run should write 4. output: $AS_B_OUT" >&2
+  rm -rf "$ASTMP"; exit 1
+fi
+JSON_COUNT="$(find "$ASVAULT/_meta/skill-discovery-cache/adapt-state/anthropics-test" -name "*.json" | wc -l | tr -d ' ')"
+if [[ "$JSON_COUNT" != "4" ]]; then
+  echo "FAIL: expected 4 candidate JSONs, got $JSON_COUNT" >&2
+  rm -rf "$ASTMP"; exit 1
+fi
+STATE_FILE="$ASVAULT/_meta/skill-discovery-cache/adapt-state/evaluated.json"
+if [[ ! -f "$STATE_FILE" ]]; then
+  echo "FAIL: state file evaluated.json not written" >&2
+  rm -rf "$ASTMP"; exit 1
+fi
+
+# Test C: JSON shape — verify new-mcp-server entry has all enrichment fields
+NEW_MCP_JSON="$ASVAULT/_meta/skill-discovery-cache/adapt-state/anthropics-test/new-mcp-server.json"
+if [[ ! -f "$NEW_MCP_JSON" ]]; then
+  echo "FAIL: new-mcp-server.json missing" >&2
+  rm -rf "$ASTMP"; exit 1
+fi
+# Verify rubric_confidence is HIGH + from_trusted_org is true (anthropics matched)
+if ! python3 -c "
+import json, sys
+d = json.load(open('$NEW_MCP_JSON'))
+assert d['rubric_confidence'] == 'HIGH', f'expected HIGH, got {d[\"rubric_confidence\"]}'
+assert d['github_owner'] == 'anthropics', f'expected anthropics owner, got {d[\"github_owner\"]}'
+assert d['trust_signals']['from_trusted_org'] is True, 'expected trust_signals.from_trusted_org=true'
+assert 'rubric_rules_fired' in d and len(d['rubric_rules_fired']) >= 2, 'expected at least 2 rules fired'
+print('OK')
+" 2>&1; then
+  echo "FAIL: new-mcp-server.json shape check failed" >&2
+  cat "$NEW_MCP_JSON" >&2
+  rm -rf "$ASTMP"; exit 1
+fi
+# Verify cursor-helper got LOW (R6 cross-vendor)
+CURSOR_JSON="$ASVAULT/_meta/skill-discovery-cache/adapt-state/anthropics-test/cursor-helper.json"
+if [[ ! -f "$CURSOR_JSON" ]]; then
+  echo "FAIL: cursor-helper.json missing" >&2
+  rm -rf "$ASTMP"; exit 1
+fi
+if ! python3 -c "
+import json, sys
+d = json.load(open('$CURSOR_JSON'))
+assert d['rubric_confidence'] == 'LOW', f'cursor-helper should be LOW, got {d[\"rubric_confidence\"]}'
+assert any('R6' in r for r in d['rubric_rules_fired']), 'cursor-helper should fire R6:cross-vendor-proprietary'
+print('OK')
+" 2>&1; then
+  echo "FAIL: cursor-helper.json shape check failed" >&2
+  cat "$CURSOR_JSON" >&2
+  rm -rf "$ASTMP"; exit 1
+fi
+
+# Test D: idempotent re-run skips already-evaluated candidates
+AS_D_OUT="$(python3 "$AS_PY" --vault-path "$ASVAULT" --skip-network 2>&1)"
+if ! echo "$AS_D_OUT" | grep -qE '"written_count": 0'; then
+  echo "FAIL: idempotent re-run still wrote entries. output: $AS_D_OUT" >&2
+  rm -rf "$ASTMP"; exit 1
+fi
+if ! echo "$AS_D_OUT" | grep -qE '"skipped_count": 4'; then
+  echo "FAIL: idempotent re-run should skip 4. output: $AS_D_OUT" >&2
+  rm -rf "$ASTMP"; exit 1
+fi
+
+# Test E: missing vault path → exit 1
+AS_E=0
+python3 "$AS_PY" >/dev/null 2>&1 || AS_E=$?
+if [[ $AS_E -ne 1 ]]; then
+  echo "FAIL: missing vault path expected exit 1, got $AS_E" >&2
+  rm -rf "$ASTMP"; exit 1
+fi
+
+# Test F: trusted-sources.md auto-seed includes operator-approved defaults
+TS_FILE="$ASVAULT/personal-private/trusted-sources.md"
+if [[ ! -f "$TS_FILE" ]]; then
+  echo "FAIL: trusted-sources.md not seeded" >&2
+  rm -rf "$ASTMP"; exit 1
+fi
+for org in anthropics google microsoft hashicorp modelcontextprotocol; do
+  if ! grep -qE "^${org}$" "$TS_FILE"; then
+    echo "FAIL: trusted-sources.md missing expected default: $org" >&2
+    cat "$TS_FILE" >&2
+    rm -rf "$ASTMP"; exit 1
+  fi
+done
+
+# Test G: empty cache dir returns evaluated_count=0
+ASVAULT2="$ASTMP/vault2"
+mkdir -p "$ASVAULT2/_meta/skill-discovery-cache"
+AS_G_OUT="$(python3 "$AS_PY" --vault-path "$ASVAULT2" --skip-network 2>&1)"
+if ! echo "$AS_G_OUT" | grep -qE '"evaluated_count": 0'; then
+  echo "FAIL: empty cache should evaluate 0. output: $AS_G_OUT" >&2
+  rm -rf "$ASTMP"; exit 1
+fi
+
+rm -rf "$ASTMP"
 
 # ── validate-manifests negative test: gemini-cli should error with v0.9.0 msg ─
 # Manifest containing 'gemini-cli' in supported_hosts must error with a clear

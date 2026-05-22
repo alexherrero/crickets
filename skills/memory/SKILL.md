@@ -26,6 +26,7 @@ The first toolkit skill that integrates with the user's own personal note-taking
 | Search the vault for entries matching a query (when auto-recall via UserPromptSubmit hook didn't pull what you wanted) | `/memory search` |
 | Refresh the auto-indexed `personal-skills/` pointers (after a SKILL.md change, or on a fresh install) | `/memory index-skills` |
 | Manually trigger the internet skill-discovery scan (cadence-checked by default via the idle hook) | `/memory discover-skills` |
+| Run the adapt-don't-import workflow over discovered patterns (Python rubric → enriched JSONs → LLM sub-agent judgment → watchlist entries) | `/memory adapt-skills` |
 
 Auto-recall happens via the [SessionStart + UserPromptSubmit hooks](https://github.com/alexherrero/agent-toolkit/blob/main/wiki/explanation/designs/memoryvault/parts/recall-loop.md) — operators don't invoke a recall command directly. Reflection happens automatically via Stop + idle hooks too; the manual `/memory reflect` is for one-off runs against arbitrary transcripts.
 
@@ -833,7 +834,92 @@ Per-source cache lives under `<vault>/_meta/skill-discovery-cache/`:
 - **Don't shipping-pipe `discover-skills` output to `/memory save`.** The cache + diff are intermediate artifacts — task 4 (adapt-don't-import) is the authorized consumer; auto-saving the raw diffs would defeat the whole adapt-don't-import design.
 
 > [!NOTE]
-> **Adapt-don't-import workflow status**: plan #7b task 4 wires the actual evaluation of these cached diffs into `_skill-watchlist/` entries; task 5 ships the `/memory watchlist` review command. Task 3 (this commit) only handles the fetch + cache + diff infrastructure.
+> **Adapt-don't-import workflow status**: plan #7b task 4 (this sibling sub-command `/memory adapt-skills`) wires the actual evaluation of these cached diffs into `_skill-watchlist/` entries; task 5 ships the `/memory watchlist` review command.
+
+### `/memory adapt-skills`
+
+Adapt-don't-import workflow (plan #7b task 4). **Two-pass architecture**: Pass 1 (deterministic Python) walks the diff files from `/memory discover-skills`, parses candidate patterns, applies a 6-rule rubric, enriches with GitHub metadata + trustworthiness signals; Pass 2 (LLM sub-agent — `adapt-evaluator`) reads each enriched candidate + cross-references the operator's vault + renders the final HIGH/MEDIUM/LOW judgment + writes the watchlist entry. **Never forks** into `agent-toolkit/skills/`. Operator reviews via `/memory watchlist` (task 5).
+
+#### Two-pass invocation shape
+
+**Pass 1 — Python pipeline** (deterministic; safe to run repeatedly):
+
+```
+python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/adapt_skills.py \
+  [--vault-path <path>] [--source <slug>] [--skip-network] [--dry-run]
+```
+
+| Arg | Required | Default | Meaning |
+|---|---|---|---|
+| `--vault-path <path>` | yes¹ | `$MEMORY_VAULT_PATH` env | MemoryVault root. ¹Required via flag or env. |
+| `--source <slug>` | no | all sources | Limit Pass 1 to a single source-slug (e.g. `anthropics-anthropic-cookbook`). |
+| `--skip-network` | no | off | Skip GitHub API enrichment (offline / rate-limited contexts). |
+| `--dry-run` | no | off | Evaluate without writing JSON files or updating state. |
+
+**Pass 2 — sub-agent dispatch** (one-shot judgment per candidate):
+
+The Claude Code agent following this skill body dispatches the `adapt-evaluator` sub-agent with the caller-supplies-inline-rubric prompt documented in [`agents/adapt-evaluator.md`](../../agents/adapt-evaluator.md). The sub-agent walks each enriched JSON, judges, and writes the watchlist entry. Operator-side, both passes typically chain: `adapt-skills.py` then sub-agent dispatch.
+
+#### Pass 1: 6-rule rubric
+
+Cumulative scoring against each candidate's text:
+
+| Rule | Signal | Score |
+|---|---|---|
+| **R1** | Names a tool/skill the operator doesn't already have (cross-checks `personal-skills/` index) | +1 |
+| **R2** | Keyword-matches existing `_always-load/` content (complements a convention) | +1 |
+| **R3** | Section context is agent-building / dev-env / meta-improvement | +1 |
+| **R4** | Names an MCP server / hook / skill primitive (high-relevance for this dev-env) | +1 |
+| **R5** | Flagged as experimental / WIP / hack / deprecated / abandoned | –1 |
+| **R6** | Cross-vendor proprietary (cursor / windsurf / codex / etc.) | –2 |
+
+Thresholds: **3+ = HIGH** (passed to Pass 2 for judgment), **1-2 = MEDIUM** (also passed), **≤0 = LOW** (dropped before Pass 2 unless `--include-low` future flag added).
+
+#### Pass 1: enrichment payload
+
+For each candidate that clears the rubric, Pass 1 enriches with:
+
+1. **GitHub metadata** (unauthenticated API; graceful-skip on rate-limit or no-github-link):
+   - `github_owner`, `github_repo`, `github_stars`, `github_archived`, `github_last_commit_iso`, `github_license` (SPDX), `github_html_url`
+2. **Trustworthiness signals**:
+   - `from_trusted_org`: matches against operator-editable whitelist at `<vault>/personal-private/trusted-sources.md` (auto-seeded with curated defaults: anthropics / google / microsoft / hashicorp / etc.)
+   - `cross_citation_count`: how many of the 4 discovery sources reference this candidate (independent-validation signal)
+   - `high_stars` (≥500) / `low_stars` (<50) / `archived_warning` / `activity_recent` (committed in last 365d) / `permissive_license` (MIT / Apache-2.0 / BSD / ISC / MPL)
+3. **Rubric verdict**: `rubric_score`, `rubric_rules_fired`, `rubric_confidence`
+
+Output: one JSON per candidate at `<vault>/_meta/skill-discovery-cache/adapt-state/<source-slug>/<pattern-slug>.json`. State file at `adapt-state/evaluated.json` tracks (source, pattern, diff-date) tuples for idempotent re-runs.
+
+#### Pass 2: sub-agent judgment
+
+Caller dispatches `adapt-evaluator` (see [`agents/adapt-evaluator.md`](../../agents/adapt-evaluator.md)). The sub-agent:
+
+1. **Reads** each enriched candidate JSON.
+2. **Cross-references** the operator's vault (`personal-skills/` / `personal-private/_always-load/` / `personal-projects/<repo>/conventions.md`) for fit.
+3. **Classifies** with semantic judgment (HIGH / MEDIUM / LOW) — overrides Pass 1's rubric verdict when context warrants.
+4. **Writes** the watchlist entry to `<vault>/personal-private/_skill-watchlist/<source-slug>/<pattern-slug>.md` (HIGH + MEDIUM only; LOW dropped silently).
+
+Watchlist entry shape locked in [`agents/adapt-evaluator.md`](../../agents/adapt-evaluator.md) under "Watchlist entry shape".
+
+#### Trusted-sources whitelist
+
+`<vault>/personal-private/trusted-sources.md` — operator-editable in Obsidian. Auto-seeds on first Pass 1 run with: anthropics, anthropic, google, googleworkspace, googlecloudplatform, microsoft, vercel, hashicorp, openai, cloudflare, github, supabase, redis, kubernetes, docker, pytorch, huggingface, modelcontextprotocol. Operator edits freely; one org-slug per non-comment line; case-insensitive match against GitHub URL owner.
+
+#### Failure modes (graceful)
+
+- **No diff files in cache** → `diff_files_scanned: 0`; exit 0; no-op.
+- **All candidates already evaluated** → `written_count: 0` + `skipped_count: N`; exit 0.
+- **GitHub API rate-limited or down** → per-candidate `github_*` fields = null; rubric + trustworthiness signals still compute; sub-agent has reduced enrichment but still functions.
+- **Diff file unreadable** → `errors += 1`; other candidates continue.
+- **Sub-agent dispatch fails** (e.g. Claude Code unavailable) → enriched JSONs stay on disk; operator can re-dispatch later.
+
+#### Anti-patterns
+
+- **Don't run Pass 2 (sub-agent) without first inspecting Pass 1's JSON output** in unfamiliar territory. The JSON is the operator's verification surface for "is the rubric scoring sensibly?" — if R1/R5/R6 are firing on the wrong candidates, tune the rule constants in `adapt_skills.py` before paying the LLM cost.
+- **Don't promote a watchlist entry directly to `agent-toolkit/skills/`.** Use `/memory watchlist promote` (task 5) → operator decides; the workflow's whole point is that adoption is operator-explicit, not agent-driven.
+- **Don't bypass the rubric** by setting `--include-low` or hand-editing the evaluated.json state — the rubric is the deterministic gate that bounds the surface the sub-agent has to judge. Bypassing it makes Pass 2 expensive without value.
+
+> [!NOTE]
+> **Sub-agent budget**: Pass 2 has no hard token cap (operator dispatch is one-shot, bounded by operator attention). For batch dispatch (idle-hook in a future task), a `--limit N` flag caps how many candidates each idle pass evaluates — default 5.
 
 ### `/memory search`
 

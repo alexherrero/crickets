@@ -49,6 +49,7 @@ try {
         '.claude/skills/memory/scripts/ideas_promote.py',
         '.claude/skills/memory/scripts/index_skills.py',
         '.claude/skills/memory/scripts/discover_skills.py',
+        '.claude/skills/memory/scripts/adapt_skills.py',
         '.agent/skills/memory/SKILL.md',
         '.agent/skills/memory/scripts/save.py',
         '.agent/skills/memory/scripts/evolve.py',
@@ -62,6 +63,7 @@ try {
         '.agent/skills/memory/scripts/ideas_promote.py',
         '.agent/skills/memory/scripts/index_skills.py',
         '.agent/skills/memory/scripts/discover_skills.py',
+        '.agent/skills/memory/scripts/adapt_skills.py',
         # Standalone agent: evaluator. claude-code is single-file;
         # antigravity wraps the agent as a skill. (gemini-cli destination
         # .gemini/agents/evaluator.md removed in v0.9.0.)
@@ -69,6 +71,8 @@ try {
         '.agent/skills/evaluator/SKILL.md',
         '.claude/agents/memory-idea-researcher.md',
         '.agent/skills/memory-idea-researcher/SKILL.md',
+        '.claude/agents/adapt-evaluator.md',
+        '.agent/skills/adapt-evaluator/SKILL.md',
         # Standalone hooks (claude-code only, v0.7.0); memory-recall hooks
         # added in plan #7a part 2; memory-reflect-{stop,idle} added in
         # plan #7a part 3.
@@ -136,7 +140,7 @@ try {
     if ($rerun -match 'created .claude/skills/(example-skill|pii-scrubber)') {
         throw 're-run recreated a skill (should be kept)'
     }
-    if ($rerun -match 'created .claude/agents/(evaluator|memory-idea-researcher)') {
+    if ($rerun -match 'created .claude/agents/(evaluator|memory-idea-researcher|adapt-evaluator)') {
         throw 're-run recreated the evaluator agent (should be kept)'
     }
     if ($rerun -match 'created .claude/hooks/(kill-switch|steer|commit-on-stop|memory-recall-session-start|memory-recall-prompt-submit|memory-reflect-stop|memory-reflect-idle)') {
@@ -2055,6 +2059,134 @@ http://127.0.0.1:$dsPort/source-a.md
     } finally {
         Stop-Process -Id $dsServer.Id -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath $dstmp -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    # ── Adapt-don't-import Pass 1 test (plan #7b task 4) ───────────────────
+    Write-Host '==> Adapt-don''t-import Pass 1 test (plan #7b task 4)'
+    $asPy = Join-Path $scratch '.claude/skills/memory/scripts/adapt_skills.py'
+    if (-not (Test-Path -LiteralPath $asPy)) {
+        throw "adapt_skills.py not installed at $asPy"
+    }
+    $astmp = Join-Path ([System.IO.Path]::GetTempPath()) ("toolkit-as-" + [System.Guid]::NewGuid().ToString('N'))
+    $asVault = Join-Path $astmp 'vault'
+    New-Item -ItemType Directory -Path (Join-Path $asVault '_meta/skill-discovery-cache/anthropics-test') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $asVault 'personal-private/_always-load') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $asVault 'personal-skills/some-repo') -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $asVault 'personal-private/_always-load/commit-no-coauthor.md') -Value @'
+---
+slug: commit-no-coauthor
+tags: [commit, agent, workflow]
+---
+# commit-no-coauthor
+'@ -Encoding utf8
+    Set-Content -LiteralPath (Join-Path $asVault 'personal-skills/some-repo/existing-tool.md') -Value @'
+---
+slug: existing-tool
+---
+'@ -Encoding utf8
+    Set-Content -LiteralPath (Join-Path $asVault '_meta/skill-discovery-cache/anthropics-test/diff-2026-05-21.md') -Value @'
+## new-mcp-server
+A skill that adds an MCP server for agent workflow integration. See https://github.com/anthropics/some-server for the implementation.
+
+## experimental-hack
+A workaround for a temporary CI bug. Don't use yet. WIP.
+
+- [cursor-helper](https://github.com/somevendor/cursor-helper) — Cursor IDE integration tool.
+
+## another-agent-skill
+Hook for Claude Code that automates commit messages and release tagging.
+'@ -Encoding utf8
+    try {
+        # Test A: dry-run + skip-network
+        $asAOut = & python3 $asPy --vault-path $asVault --skip-network --dry-run 2>&1 | Out-String
+        if ($asAOut -notmatch '"dry_run":\s*true') {
+            throw "dry-run did not set dry_run=true. output: $asAOut"
+        }
+        if ($asAOut -notmatch '"evaluated_count":\s*4') {
+            throw "dry-run should evaluate 4 candidates. output: $asAOut"
+        }
+        if ($asAOut -notmatch '"high_count":\s*2') {
+            throw "dry-run should classify 2 HIGH. output: $asAOut"
+        }
+        if ($asAOut -notmatch '"trusted_sources_seeded":\s*true') {
+            throw "trusted-sources.md not auto-seeded on first run. output: $asAOut"
+        }
+        $adaptStateDir = Join-Path $asVault '_meta/skill-discovery-cache/adapt-state'
+        if (Test-Path -LiteralPath $adaptStateDir) {
+            $stateFiles = @(Get-ChildItem -LiteralPath $adaptStateDir -Recurse -File -ErrorAction SilentlyContinue)
+            if ($stateFiles.Count -gt 0) {
+                throw "dry-run wrote adapt-state files"
+            }
+        }
+
+        # Test B: actual run writes 4 JSONs + state file
+        $asBOut = & python3 $asPy --vault-path $asVault --skip-network 2>&1 | Out-String
+        if ($asBOut -notmatch '"written_count":\s*4') {
+            throw "actual run should write 4. output: $asBOut"
+        }
+        $jsonFiles = @(Get-ChildItem -LiteralPath (Join-Path $asVault '_meta/skill-discovery-cache/adapt-state/anthropics-test') -Filter '*.json' -ErrorAction SilentlyContinue)
+        if ($jsonFiles.Count -ne 4) {
+            throw "expected 4 candidate JSONs, got $($jsonFiles.Count)"
+        }
+        $stateFile = Join-Path $asVault '_meta/skill-discovery-cache/adapt-state/evaluated.json'
+        if (-not (Test-Path -LiteralPath $stateFile)) {
+            throw "state file evaluated.json not written"
+        }
+
+        # Test C: JSON shape check on new-mcp-server + cursor-helper
+        $newMcpJson = Join-Path $asVault '_meta/skill-discovery-cache/adapt-state/anthropics-test/new-mcp-server.json'
+        $newMcpData = Get-Content -LiteralPath $newMcpJson -Raw | ConvertFrom-Json
+        if ($newMcpData.rubric_confidence -ne 'HIGH') {
+            throw "new-mcp-server should be HIGH, got $($newMcpData.rubric_confidence)"
+        }
+        if ($newMcpData.github_owner -ne 'anthropics') {
+            throw "new-mcp-server github_owner should be anthropics, got $($newMcpData.github_owner)"
+        }
+        if ($newMcpData.trust_signals.from_trusted_org -ne $true) {
+            throw "new-mcp-server trust_signals.from_trusted_org should be true"
+        }
+        $cursorJson = Join-Path $asVault '_meta/skill-discovery-cache/adapt-state/anthropics-test/cursor-helper.json'
+        $cursorData = Get-Content -LiteralPath $cursorJson -Raw | ConvertFrom-Json
+        if ($cursorData.rubric_confidence -ne 'LOW') {
+            throw "cursor-helper should be LOW, got $($cursorData.rubric_confidence)"
+        }
+
+        # Test D: idempotent re-run
+        $asDOut = & python3 $asPy --vault-path $asVault --skip-network 2>&1 | Out-String
+        if ($asDOut -notmatch '"written_count":\s*0') {
+            throw "idempotent re-run still wrote entries. output: $asDOut"
+        }
+        if ($asDOut -notmatch '"skipped_count":\s*4') {
+            throw "idempotent re-run should skip 4. output: $asDOut"
+        }
+
+        # Test E: missing vault path → exit 1
+        $asEProc = Start-Process -FilePath 'python3' -ArgumentList @($asPy) -NoNewWindow -PassThru -Wait -RedirectStandardOutput ([System.IO.Path]::GetTempFileName()) -RedirectStandardError ([System.IO.Path]::GetTempFileName())
+        if ($asEProc.ExitCode -ne 1) {
+            throw "missing vault path expected exit 1, got $($asEProc.ExitCode)"
+        }
+
+        # Test F: trusted-sources.md auto-seed includes expected defaults
+        $tsFile = Join-Path $asVault 'personal-private/trusted-sources.md'
+        if (-not (Test-Path -LiteralPath $tsFile)) {
+            throw "trusted-sources.md not seeded"
+        }
+        $tsContent = Get-Content -LiteralPath $tsFile -Raw
+        foreach ($org in @('anthropics', 'google', 'microsoft', 'hashicorp', 'modelcontextprotocol')) {
+            if ($tsContent -notmatch "(?m)^${org}`$") {
+                throw "trusted-sources.md missing expected default: $org"
+            }
+        }
+
+        # Test G: empty cache returns evaluated_count=0
+        $asVault2 = Join-Path $astmp 'vault2'
+        New-Item -ItemType Directory -Path (Join-Path $asVault2 '_meta/skill-discovery-cache') -Force | Out-Null
+        $asGOut = & python3 $asPy --vault-path $asVault2 --skip-network 2>&1 | Out-String
+        if ($asGOut -notmatch '"evaluated_count":\s*0') {
+            throw "empty cache should evaluate 0. output: $asGOut"
+        }
+    } finally {
+        Remove-Item -LiteralPath $astmp -Recurse -Force -ErrorAction SilentlyContinue
     }
 
     # ── validate-manifests negative test: gemini-cli rejected with v0.9.0 msg ─
