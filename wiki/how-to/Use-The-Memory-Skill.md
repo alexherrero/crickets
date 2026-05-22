@@ -20,6 +20,11 @@ The `memory` skill ships as plan #7a parts 1 + 2 + 3 + 4 of [MemoryVault — Per
 | `/memory promote idea <slug>` | — | Moves `_idea-incubator/<slug>/` → `personal-projects/<slug>/`; annotates Ideas.md; recalculates vec-index | `skills/memory/scripts/ideas_promote.py promote` |
 | `python3 ideas_promote.py gc` | — | Walks `_idea-incubator/`; prompts Keep/Archive/Delete on entries older than 6 months | `skills/memory/scripts/ideas_promote.py gc` |
 | `/memory search` | — | (stub; thin wrap of `recall.py query` lands with seed-pass part) | — |
+| `/memory index-skills` | `[--skill-path <dir>]...` | One `kind: skill-pointer` entry per `SKILL.md` discovered, at `personal-skills/<repo>/<skill>.md` | `skills/memory/scripts/index_skills.py` |
+| `/memory reflect corpus` | `[--projects-root <dir>] [--max-batches N] [--execute]` | Mines `~/.claude/projects/*/<session>.jsonl` in paced batches; state at `_meta/transcript-reflection-state.json`; dry-run by default | `skills/memory/scripts/reflect.py corpus` |
+| `/memory discover-skills` | `[--cadence-check] [--dry-run] [--max-sources N]` | Per-source dated snapshot + diff at `_meta/skill-discovery-cache/<slug>/{<YYYY-MM-DD>.md, diff-<YYYY-MM-DD>.md}` | `skills/memory/scripts/discover_skills.py` |
+| `/memory adapt-skills` | `[--source <slug>] [--skip-network]` | Enriched candidate JSONs at `_meta/skill-discovery-cache/adapt-state/<slug>/<pattern>.json`; sub-agent dispatched separately | `skills/memory/scripts/adapt_skills.py` + `adapt-evaluator` sub-agent |
+| `/memory watchlist [list \| review \| promote \| dismiss \| defer]` | per-subcommand | promote → annotate; dismiss → archive; defer → snooze | `skills/memory/scripts/watchlist_review.py` |
 
 ## When to use which sub-command
 
@@ -36,6 +41,11 @@ The `memory` skill ships as plan #7a parts 1 + 2 + 3 + 4 of [MemoryVault — Per
 | Capture an idea / follow-up surfaced by the reflection sidecar | Auto — surfaces in `~/Obsidian/Ideas.md` after operator confirmation; see [Idea ledger — two-tier capture](#idea-ledger--two-tier-capture) |
 | Graduate an idea to a real project | `/memory promote idea <slug>` — moves to `personal-projects/<slug>/` + annotates Ideas.md |
 | GC old incubator entries (6+ months idle) | `python3 ideas_promote.py gc` — prompts Keep / Archive / Delete per entry |
+| Index the installed `SKILL.md` files into `personal-skills/<repo>/` pointers (auto-fires on install) | `/memory index-skills` — see [Discovery + mining (plan #7b)](#discovery--mining-plan-7b) |
+| Mine the historical Claude Code transcript backlog (`~/.claude/projects/*/`) with dry-run preview + resume-safe batching | `/memory reflect corpus` — see [Discovery + mining](#discovery--mining-plan-7b) |
+| Scan curated internet sources for skill-shaped patterns (cadence-checked via idle hook) | `/memory discover-skills` |
+| Run adapt-don't-import workflow over discovered patterns (Pass 1 Python rubric + Pass 2 LLM sub-agent → watchlist entries) | `/memory adapt-skills` |
+| Review pending watchlist entries (promote / dismiss / defer) | `/memory watchlist` |
 
 ## Scenario 1 — Save a new preference
 
@@ -452,9 +462,105 @@ Check the promote output's `ideas_annotation:` field. Three possible values: `wr
 **GC scanned old entries but didn't delete anything**
 The GC pass defaults to Keep when stdin isn't a TTY — locked design call B1.i says **never silent deletion**. To actually delete entries: run GC interactively (`python3 ideas_promote.py gc --vault-path <vault>` in your terminal) and type `d` at the prompt. For batch deletion, pipe explicit answers via stdin (`echo "d\nd\na\nk" | python3 ideas_promote.py gc ...`).
 
+## Discovery + mining (plan #7b)
+
+Plan #7b shipped four new sub-commands that turn the vault from a static curated store into a **living surface** — automatic indexing of installed skills, transcript backlog mining, internet skill-discovery, and adapt-don't-import judgment via the watchlist. Full architecture in [ADR 0007](../explanation/decisions/0007-memoryvault-discovery.md).
+
+### `/memory index-skills` — personal-skills auto-indexer
+
+Walks `SKILL.md` files across configured skill paths and writes one `kind: skill-pointer` entry per skill to `<vault>/personal-skills/<repo>/<skill-name>.md`. The agent picks these up via the normal recall hooks — surfacing *"we have a `/design author` skill"* without you re-mentioning it.
+
+Auto-fires from the installer's post-install step (against toolkit's own `skills/` + sibling `agentic-harness/.claude/skills/`); manual re-run via:
+
+```bash
+python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/index_skills.py \
+  --vault-path "$MEMORY_VAULT_PATH" \
+  --skill-path ~/Antigravity/agent-toolkit/skills \
+  --skill-path ~/Antigravity/agentic-harness/.claude/skills
+```
+
+Idempotent: unchanged entries skip; version/description shifts trigger rewrite. Repo-name auto-detection walks up for `.git/` or `AGENTS.md` ancestor; override with `--repo-name <slug>` for non-git sources.
+
+### `/memory reflect corpus` — historical transcript mining
+
+Batched paced walk over `~/.claude/projects/*/<session>.jsonl` with skip-resume state. **Dry-run by default** — first call counts sessions + estimates candidate volume without writing entries; re-run with `--execute` after seeing scope.
+
+```bash
+# Dry-run first to see scope
+python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/reflect.py corpus \
+  --vault-path "$MEMORY_VAULT_PATH"
+# Then commit to the real run
+python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/reflect.py corpus \
+  --vault-path "$MEMORY_VAULT_PATH" --execute --max-batches 5
+```
+
+State file at `<vault>/_meta/transcript-reflection-state.json` tracks per-session `{processed_at, message_count, memory_count, idea_count, status}`. Atomic writes; saved after every session for single-session resume granularity. Ctrl-C safe.
+
+### `/memory discover-skills` — internet skill-discovery scan
+
+Periodically (default weekly) fetches curated "skill-shaped pattern" sources from the internet; caches each as a dated snapshot; diffs against prior snapshot to surface new content. **Source whitelist is operator-editable** at `<vault>/personal-private/skill-discovery-sources.md`. First-run auto-seeds 4 sources in priority order: Anthropic Cookbook → awesome-claude-code → awesome-mcp-servers → awesome-llm-apps.
+
+```bash
+# Manual scan
+python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/discover_skills.py \
+  --vault-path "$MEMORY_VAULT_PATH"
+# Idle-hook cadence-checked variant (fires automatically; --cadence-check
+# skips fetch if last_scan was within --cadence-days N — default 7)
+python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/discover_skills.py \
+  --vault-path "$MEMORY_VAULT_PATH" --cadence-check
+```
+
+Cache layout: per-source dated snapshots + diff files under `<vault>/_meta/skill-discovery-cache/<slug>/`; central `state.json` for `last_scan + per-source { last_fetch, last_status, last_diff_chars }`. Diff files (`diff-<YYYY-MM-DD>.md`) are the input to `/memory adapt-skills`.
+
+### `/memory adapt-skills` — adapt-don't-import workflow
+
+Two-pass architecture: Pass 1 (Python — `adapt_skills.py`) walks discover_skills's diff files, applies a 6-rule rubric, enriches with GitHub metadata + trustworthiness signals; Pass 2 (LLM sub-agent — `adapt-evaluator`) reads each enriched JSON, cross-references vault context, renders final HIGH/MEDIUM/LOW classification + writes watchlist entry. **Never writes to `agent-toolkit/skills/`** — adapt-don't-import is architectural (only the operator manually authors real skills).
+
+```bash
+# Pass 1: walk diffs + enrich (deterministic)
+python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/adapt_skills.py \
+  --vault-path "$MEMORY_VAULT_PATH"
+# Pass 2: sub-agent dispatch (interactive — operator-gated)
+# Caller dispatches the adapt-evaluator sub-agent per its caller-supplies-
+# inline-rubric contract; see agents/adapt-evaluator.md
+```
+
+6-rule rubric: R1 new-tool (+1) / R2 complements-convention (+1) / R3 agent-building-context (+1) / R4 names-primitive (+1) / R5 experimental-flag (-1) / R6 cross-vendor-proprietary (-2). Thresholds 3+ HIGH / 1-2 MEDIUM / ≤0 LOW.
+
+GitHub enrichment fields: `github_owner / repo / stars / archived / last_commit_iso / license / html_url`. Trustworthiness signals: `from_trusted_org` (match against operator-editable whitelist at `<vault>/personal-private/trusted-sources.md` — auto-seeded with 18 default orgs: anthropics / google / microsoft / hashicorp / openai / github / modelcontextprotocol / huggingface / pytorch / etc.); `cross_citation_count` (mentions across the 4 discovery sources); `activity_recent` (committed in last 365d); `permissive_license` (MIT / Apache-2.0 / BSD / ISC / MPL); `high_stars` (≥500) / `low_stars` (<50).
+
+### `/memory watchlist` — review pending entries
+
+List + interactive review + specific-slug actions on `_skill-watchlist/` entries. Promote / dismiss / defer mirrors `ideas_promote.py gc`'s never-silent-action contract.
+
+```bash
+# List all pending entries as JSON
+python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/watchlist_review.py \
+  list --vault-path "$MEMORY_VAULT_PATH"
+# Interactive review (defaults to skip in non-TTY)
+python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/watchlist_review.py \
+  review --vault-path "$MEMORY_VAULT_PATH"
+# Specific-slug actions for scripting
+python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/watchlist_review.py \
+  promote anthropics-anthropic-cookbook some-pattern --vault-path "$MEMORY_VAULT_PATH"
+python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/watchlist_review.py \
+  dismiss some-source some-pattern --vault-path "$MEMORY_VAULT_PATH"
+python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/watchlist_review.py \
+  defer some-source some-pattern --until 2026-09-01 --reason "wait-for-stable" \
+  --vault-path "$MEMORY_VAULT_PATH"
+```
+
+**Promote is annotation-only** — adds `status: promoted` + `promoted_at`; entry stays in place. The actual fork to `agent-toolkit/skills/<x>/` is your manual work outside this script (adapt-don't-import architectural rule). **Dismiss archives**, not deletes — moves to `_skill-watchlist/_archive/<source-slug>/` with collision-safe naming, preserves audit trail. **Defer snoozes** with `--until YYYY-MM-DD` + optional `--reason`; future passes can filter `deferred_until` to re-surface eligible entries.
+
+### Cadence + automation
+
+`memory-reflect-idle` hook (existing from plan #7a part 3 task 4 — extended in #7b task 3) auto-fires `discover_skills.py --cadence-check` at end of each idle pass. Self-throttles to the configured cadence (default 7 days) so the hook can fire frequently without hammering URLs. `adapt_skills.py` and `watchlist_review.py` are operator-gated for v1 — future task may add idle-hook auto-dispatch with `--limit N`.
+
 ## See also
 
 - [MemoryVault design doc](memoryvault) — the canonical "Why we built this" entry point per the locked design call from plan #6. Covers the full architecture across all 6 parts.
+- [ADR 0007 — MemoryVault Discovery + Mining](../explanation/decisions/0007-memoryvault-discovery.md) — locked design calls + load-bearing assumptions for the four discovery sub-commands.
+- [`adapt-evaluator` sub-agent](../../agents/adapt-evaluator.md) — read-only Pass 2 worker for the adapt-don't-import workflow.
 - [Customization Types](Customization-Types) — `kind: skill` row covers the memory skill.
 - [Manifest Schema](Manifest-Schema) — frontmatter contract for skill manifests.
 - [Per-Host Paths](Per-Host-Paths) — destination paths per kind per host.
