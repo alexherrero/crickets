@@ -246,16 +246,97 @@ Interactive fix-application for drift detected by `/diataxis check`. Per finding
 
 ### `/diataxis migrate`
 
+One-shot migration of legacy audience-based wikis (`development/` + `operational/` + `design/` + `architecture/`) to the four-mode Diátaxis layout. Subsumes the harness's predecessor [`migrate-to-diataxis`](https://github.com/alexherrero/agentic-harness/blob/main/harness/skills/migrate-to-diataxis.md) skill — same contract: preview-first, deterministic classification by heading shape per ADR 0004, `git mv` for blame preservation, mode-mixed pages flagged for human split (delegates to `/diataxis repair` for the actual split work). Auto-seeds `wiki/.diataxis` marker + `wiki/.diataxis-conventions.md` (per-repo overrides) post-migration. **Never commits** — operator stages + commits manually after reviewing diff (single-commit safety net via operator-driven commit boundary).
+
+#### Invocation shape
+
+```
+/diataxis migrate [--wiki-root <path>] [--preview | --execute | --yes] [--skip-precheck]
+```
+
+| Arg | Required | Default | Meaning |
+|---|---|---|---|
+| `--wiki-root <path>` | no | `./wiki` | Wiki root directory. |
+| `--preview` | no | default behavior (no flag = preview + hint) | Emit preview only; never touch filesystem. Exit 0. |
+| `--execute` | no | off | Apply migration. |
+| `--yes` | no | off | Synonym for `--execute` (matches predecessor convention). |
+| `--skip-precheck` | no | off | Skip clean-tree + already-migrated preconditions. **Testing-fixture only**; operators should never use this. |
+
+#### Preconditions (matches predecessor)
+
+Before any filesystem change, all of these must be true:
+
+1. **Clean working tree** — `git status --porcelain` must be empty. Abort with clear error otherwise.
+2. **`wiki/` directory exists** at the repo root.
+3. **`wiki/.diataxis` marker does NOT exist** — if present, migration already ran; abort with "already migrated".
+4. **At least one legacy mode-dir exists** — one of `development/`, `operational/`, `design/`, `architecture/` must be present. If none, this is already a non-audience layout; abort with "nothing to migrate".
+
+#### Classification rules
+
+Applied in order; first match wins:
+
+| Rule | Pattern | Target |
+|---|---|---|
+| **ADR** | H1 matches `# ADR \d{4}:` OR path under `decisions/` with `NNNN-*.md` | `explanation/decisions/<basename>` |
+| **Status page** | NOTE block in first 25 lines with `**Status:**` + `**Plan:**` | `explanation/<basename>` |
+| **Tutorial** | `## Step N —` heading + `## What you learned` + `## Next` | `tutorials/<basename>` (plural per Diátaxis convention) |
+| **How-to** | `## Steps` H2 OR ≥3 numbered imperative steps in first 40 lines, AND no `## Rationale\|Why\|Background\|Context` | `how-to/<basename>` |
+| **Reference** | `## ⚡ Quick Reference` or `## Quick Reference` in first 20 lines OR ≥60% table lines | `reference/<basename>` |
+| **Mode-mixed (flag)** | ≥2 of {how-to, reference, explanation} fire with competing strength | **Flag for human split** — page stays at old path; preview emits `NEEDS HUMAN SPLIT`. Operator runs `/diataxis repair` after migration for the split. |
+| **Explanation (default)** | Anything else | `explanation/<basename>` |
+
+Classification is deterministic (no LLM, no random sampling, no wall-clock).
+
+#### Step-by-step flow
+
+**Step 1 — Precondition check** (skipped under `--skip-precheck`). Abort with clear error on any failure.
+
+**Step 2 — Walk wiki/** for all `.md` files, excluding structural pages (`Home.md`, `_Sidebar.md`, `README.md`).
+
+**Step 3 — Classify each page** by applying the rules above; collect mode-mixed pages for human-split flagging.
+
+**Step 4 — Compute new paths** preserving basename. ADRs stay under `explanation/decisions/`. Mode-mixed pages get `new_path = None` (no move).
+
+**Step 5 — Emit preview** to stdout. `MOVES` + `NEEDS HUMAN SPLIT` + `POST-MIGRATION` sections.
+
+**Step 6 — Apply (if `--execute` or `--yes`)**:
+
+1. `git mv` each page from old to new path. Using `git mv` is what lets git detect the rename so `git log --follow` preserves blame.
+2. Create `wiki/.diataxis` marker (empty file).
+3. Auto-seed `wiki/.diataxis-conventions.md` with detected conventions.
+4. **Do not commit.** Operator stages + commits manually after reviewing diff.
+
+**Step 7 — Final summary** with per-stat counts + NEXT-steps for operator (git status review + blame spot-check + manual split via `/diataxis repair` + check-wiki strict run + commit).
+
+#### Examples
+
+```bash
+# Default: preview only (no flag) + hint
+python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/migrate.py
+# Explicit preview-only (preview-first contract)
+python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/migrate.py --preview
+# Apply the migration
+python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/migrate.py --execute
+# Skip prompts (synonym)
+python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/migrate.py --yes
+```
+
+#### Failure modes (graceful)
+
+- **Dirty working tree** → exit 1 with "git status --porcelain non-empty; commit or stash first".
+- **Already migrated** (`.diataxis` exists) → exit 1 with "already migrated; remove marker to re-run".
+- **No legacy dirs** → exit 1 with "nothing to migrate; use /diataxis author for fresh projects".
+- **Missing wiki root** → exit 1 with operator next-step.
+- **`git mv` fails** (file moved already, permission denied) → error logged per-file; migration continues with other files; final summary reports `errors: N`; exit 2 if any errors.
+
+#### Anti-patterns
+
+- **Don't run `--skip-precheck` outside CI smoke tests.** It bypasses critical safety checks (clean tree + already-migrated guard); production use without these has caused real losses during the predecessor's dogfood era.
+- **Don't `git commit` immediately after migration.** Review the diff first; spot-check `git log --follow` on a couple of moved pages to verify blame preserved; only then commit. The single-commit safety net (entire migration in one commit) only works if you actually examine the migration before committing.
+- **Don't hand-edit `.diataxis-conventions.md` immediately**. Let the auto-seeded version run for a session or two so you can spot which conventions actually need overriding vs. which the defaults handle well. Premature editing here defeats the convention-evolution learning loop.
+
 > [!NOTE]
-> **Status**: stub. Full body lands in plan #13 **part 4** (`migrate-subsume`). See the [migrate-subsume part](https://github.com/alexherrero/agent-toolkit/blob/main/wiki/explanation/designs/diataxis-author/parts/migrate-subsume.md) for the locked design.
-
-One-shot migration of legacy audience-based wikis (`development/` + `operational/` + `design/` + `architecture/`) to the four-mode Diátaxis layout. Subsumes the harness's predecessor `migrate-to-diataxis` skill — same contract: preview-first, deterministic classification by heading shape per ADR 0004's machine-enforceable rules, `git mv` for blame preservation, mode-mixed pages flagged for human split (delegates to `/diataxis repair` for the actual split work), link rewrites across all `wiki/**/*.md`. Single-commit safety net (entire migration is one git commit; revert is one `git revert <SHA>`).
-
-**Planned invocation shape** (subject to refinement in plan #13 part 4):
-
-```
-/diataxis migrate [--preview | --execute] [--yes]
-```
+> **Predecessor relationship**: harness's [`migrate-to-diataxis.md`](https://github.com/alexherrero/agentic-harness/blob/main/harness/skills/migrate-to-diataxis.md) is being deprecated alongside this part's ship (plan #13 part 4). Predecessor stays in the harness through v1 dogfood window (operators with mid-flight installs can keep using it if needed); follow-up harness PATCH release removes the predecessor file entirely once `/diataxis migrate` proves out.
 
 ### `/diataxis classify <file>`
 

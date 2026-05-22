@@ -89,6 +89,7 @@ expected=(
   .claude/skills/diataxis-author/scripts/author.py
   .claude/skills/diataxis-author/scripts/check.py
   .claude/skills/diataxis-author/scripts/repair.py
+  .claude/skills/diataxis-author/scripts/migrate.py
   .claude/skills/diataxis-author/templates/tutorial.md
   .claude/skills/diataxis-author/templates/how-to.md
   .claude/skills/diataxis-author/templates/reference.md
@@ -98,6 +99,7 @@ expected=(
   .agent/skills/diataxis-author/scripts/author.py
   .agent/skills/diataxis-author/scripts/check.py
   .agent/skills/diataxis-author/scripts/repair.py
+  .agent/skills/diataxis-author/scripts/migrate.py
   .agent/skills/diataxis-author/templates/tutorial.md
   .agent/skills/diataxis-author/templates/how-to.md
   .agent/skills/diataxis-author/templates/reference.md
@@ -3327,6 +3329,142 @@ if ! echo "$RP_REPLAY_OUT" | grep -qE '"total_findings": 3'; then
 fi
 
 rm -rf "$DXRTMP"
+
+# ── Diátaxis migrate test (plan #13 part 4) ────────────────────────────────
+# Verify migrate.py against a fixture legacy wiki:
+#   - --preview classifies + emits report without filesystem changes
+#   - --execute does git-mv operations + creates .diataxis marker +
+#     auto-seeds .diataxis-conventions.md
+#   - ADR pages → explanation/decisions/<basename>
+#   - Status pages + plain explanation pages → explanation/
+#   - Reference pages → reference/
+#   - How-to-shaped pages (no rationale section) → how-to/
+#   - Mode-mixed pages stay at old path with "needs human split" flag
+#   - already-migrated precondition fails when .diataxis exists
+echo "==> Diátaxis migrate test (plan #13 part 4)"
+MG_PY="$SCRATCH/.claude/skills/diataxis-author/scripts/migrate.py"
+if [[ ! -f "$MG_PY" ]]; then
+  echo "FAIL: migrate.py not installed at $MG_PY" >&2
+  exit 1
+fi
+MGTMP="$(mktemp -d)"
+mkdir -p "$MGTMP/wiki/development" "$MGTMP/wiki/operational" "$MGTMP/wiki/design" "$MGTMP/wiki/architecture/decisions"
+# Mode-mixed fixture (how-to + explanation signals → flagged for human split)
+cat > "$MGTMP/wiki/development/Getting-Started.md" << 'MG_EOF'
+# Getting Started
+## Steps
+1. Install foo.
+2. Run foo init.
+## Rationale
+Why this way.
+MG_EOF
+# Reference fixture (Quick Reference + table-heavy)
+cat > "$MGTMP/wiki/operational/Runbook.md" << 'MG_EOF'
+# Runbook
+## ⚡ Quick Reference
+| Command | Effect |
+|---|---|
+| restart | restarts |
+MG_EOF
+# Explanation fixture (prose-heavy with Context + Why)
+cat > "$MGTMP/wiki/design/Product-Intent.md" << 'MG_EOF'
+# Product Intent
+This explains the product.
+## Context
+History.
+## Why
+Reasons.
+MG_EOF
+# ADR fixture
+cat > "$MGTMP/wiki/architecture/decisions/0001-foo.md" << 'MG_EOF'
+# ADR 0001: foo decision
+> [!NOTE]
+> **Status:** accepted
+MG_EOF
+
+# Init as git repo so migrate.py's git mv works.
+(cd "$MGTMP" && git init -q && git add . && git -c user.email=test@example.com -c user.name=test commit -q -m "init")
+
+# Test A: --preview produces report without filesystem changes
+MG_A_OUT="$(python3 "$MG_PY" --wiki-root "$MGTMP/wiki" --preview --skip-precheck 2>&1)"
+if ! echo "$MG_A_OUT" | grep -qE 'MOVES \(3 pages\)'; then
+  echo "FAIL: --preview should show 3 moves. output: $MG_A_OUT" >&2
+  rm -rf "$MGTMP"; exit 1
+fi
+if ! echo "$MG_A_OUT" | grep -qE 'NEEDS HUMAN SPLIT \(1 pages\)'; then
+  echo "FAIL: --preview should flag 1 human-split. output: $MG_A_OUT" >&2
+  rm -rf "$MGTMP"; exit 1
+fi
+# Verify no filesystem changes
+if [[ -f "$MGTMP/wiki/.diataxis" ]]; then
+  echo "FAIL: --preview created .diataxis marker (should NOT touch fs)" >&2
+  rm -rf "$MGTMP"; exit 1
+fi
+if [[ ! -f "$MGTMP/wiki/architecture/decisions/0001-foo.md" ]]; then
+  echo "FAIL: --preview moved ADR (should NOT touch fs)" >&2
+  rm -rf "$MGTMP"; exit 1
+fi
+
+# Test B: --execute applies migration
+MG_B_OUT="$(python3 "$MG_PY" --wiki-root "$MGTMP/wiki" --execute --skip-precheck 2>&1)"
+if ! echo "$MG_B_OUT" | grep -qE 'moved:\s+3 pages'; then
+  echo "FAIL: --execute should report 3 moved. output: $MG_B_OUT" >&2
+  rm -rf "$MGTMP"; exit 1
+fi
+# Verify expected paths
+if [[ ! -f "$MGTMP/wiki/explanation/decisions/0001-foo.md" ]]; then
+  echo "FAIL: ADR not moved to explanation/decisions/" >&2
+  find "$MGTMP/wiki" -type f | sort >&2
+  rm -rf "$MGTMP"; exit 1
+fi
+if [[ ! -f "$MGTMP/wiki/reference/Runbook.md" ]]; then
+  echo "FAIL: Runbook not moved to reference/" >&2
+  rm -rf "$MGTMP"; exit 1
+fi
+if [[ ! -f "$MGTMP/wiki/explanation/Product-Intent.md" ]]; then
+  echo "FAIL: Product-Intent not moved to explanation/" >&2
+  rm -rf "$MGTMP"; exit 1
+fi
+# Verify mode-mixed flagged page stayed at old path
+if [[ ! -f "$MGTMP/wiki/development/Getting-Started.md" ]]; then
+  echo "FAIL: mode-mixed Getting-Started should stay at old path" >&2
+  rm -rf "$MGTMP"; exit 1
+fi
+# Verify marker + conventions auto-seeded
+if [[ ! -f "$MGTMP/wiki/.diataxis" ]]; then
+  echo "FAIL: .diataxis marker not created" >&2
+  rm -rf "$MGTMP"; exit 1
+fi
+if [[ ! -f "$MGTMP/wiki/.diataxis-conventions.md" ]]; then
+  echo "FAIL: .diataxis-conventions.md not auto-seeded" >&2
+  rm -rf "$MGTMP"; exit 1
+fi
+
+# Test C: blame preservation via git log --follow
+(cd "$MGTMP" && git add -A && git -c user.email=test@example.com -c user.name=test commit -q -m "migrate")
+BLAME_OUT=$(cd "$MGTMP" && git log --follow --oneline wiki/explanation/decisions/0001-foo.md 2>&1 | wc -l | tr -d ' ')
+if [[ "$BLAME_OUT" -lt 2 ]]; then
+  echo "FAIL: blame not preserved on ADR (expected ≥2 commits in --follow log)" >&2
+  rm -rf "$MGTMP"; exit 1
+fi
+
+# Test D: already-migrated precondition fails (when --skip-precheck not set)
+MG_D_EXIT=0
+python3 "$MG_PY" --wiki-root "$MGTMP/wiki" --execute >/dev/null 2>&1 || MG_D_EXIT=$?
+if [[ $MG_D_EXIT -ne 1 ]]; then
+  echo "FAIL: re-running without --skip-precheck should fail (already migrated), got $MG_D_EXIT" >&2
+  rm -rf "$MGTMP"; exit 1
+fi
+
+# Test E: missing wiki root → exit 1
+MG_E_EXIT=0
+python3 "$MG_PY" --wiki-root /nonexistent >/dev/null 2>&1 || MG_E_EXIT=$?
+if [[ $MG_E_EXIT -ne 1 ]]; then
+  echo "FAIL: missing wiki root should exit 1, got $MG_E_EXIT" >&2
+  rm -rf "$MGTMP"; exit 1
+fi
+
+rm -rf "$MGTMP"
 
 # ── validate-manifests negative test: gemini-cli should error with v0.9.0 msg ─
 # Manifest containing 'gemini-cli' in supported_hosts must error with a clear

@@ -83,6 +83,7 @@ try {
         '.claude/skills/diataxis-author/scripts/author.py',
         '.claude/skills/diataxis-author/scripts/check.py',
         '.claude/skills/diataxis-author/scripts/repair.py',
+        '.claude/skills/diataxis-author/scripts/migrate.py',
         '.claude/skills/diataxis-author/templates/tutorial.md',
         '.claude/skills/diataxis-author/templates/how-to.md',
         '.claude/skills/diataxis-author/templates/reference.md',
@@ -92,6 +93,7 @@ try {
         '.agent/skills/diataxis-author/scripts/author.py',
         '.agent/skills/diataxis-author/scripts/check.py',
         '.agent/skills/diataxis-author/scripts/repair.py',
+        '.agent/skills/diataxis-author/scripts/migrate.py',
         '.agent/skills/diataxis-author/templates/tutorial.md',
         '.agent/skills/diataxis-author/templates/how-to.md',
         '.agent/skills/diataxis-author/templates/reference.md',
@@ -2587,6 +2589,126 @@ Some context.
         }
     } finally {
         Remove-Item -LiteralPath $dxrtmp -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    # ── Diátaxis migrate test (plan #13 part 4) ────────────────────────────
+    Write-Host '==> Diátaxis migrate test (plan #13 part 4)'
+    $mgPy = Join-Path $scratch '.claude/skills/diataxis-author/scripts/migrate.py'
+    if (-not (Test-Path -LiteralPath $mgPy)) {
+        throw "migrate.py not installed at $mgPy"
+    }
+    $mgtmp = Join-Path ([System.IO.Path]::GetTempPath()) ("toolkit-mg-" + [System.Guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path (Join-Path $mgtmp 'wiki/development') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $mgtmp 'wiki/operational') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $mgtmp 'wiki/design') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $mgtmp 'wiki/architecture/decisions') -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $mgtmp 'wiki/development/Getting-Started.md') -Value @'
+# Getting Started
+## Steps
+1. Install foo.
+2. Run foo init.
+## Rationale
+Why this way.
+'@ -Encoding utf8
+    Set-Content -LiteralPath (Join-Path $mgtmp 'wiki/operational/Runbook.md') -Value @'
+# Runbook
+## Quick Reference
+| Command | Effect |
+|---|---|
+| restart | restarts |
+'@ -Encoding utf8
+    Set-Content -LiteralPath (Join-Path $mgtmp 'wiki/design/Product-Intent.md') -Value @'
+# Product Intent
+This explains the product.
+## Context
+History.
+## Why
+Reasons.
+'@ -Encoding utf8
+    Set-Content -LiteralPath (Join-Path $mgtmp 'wiki/architecture/decisions/0001-foo.md') -Value @'
+# ADR 0001: foo decision
+> [!NOTE]
+> **Status:** accepted
+'@ -Encoding utf8
+    # Init as git repo so migrate.py's git mv works.
+    Push-Location $mgtmp
+    try {
+        git init -q
+        git add . | Out-Null
+        git -c user.email=test@example.com -c user.name=test commit -q -m "init" | Out-Null
+    } finally {
+        Pop-Location
+    }
+    try {
+        # Test A: --preview produces report without filesystem changes
+        $mgAOut = & python3 $mgPy --wiki-root (Join-Path $mgtmp 'wiki') --preview --skip-precheck 2>&1 | Out-String
+        if ($mgAOut -notmatch 'MOVES \(3 pages\)') {
+            throw "--preview should show 3 moves. output: $mgAOut"
+        }
+        if ($mgAOut -notmatch 'NEEDS HUMAN SPLIT \(1 pages\)') {
+            throw "--preview should flag 1 human-split. output: $mgAOut"
+        }
+        if (Test-Path -LiteralPath (Join-Path $mgtmp 'wiki/.diataxis')) {
+            throw "--preview created .diataxis marker (should NOT touch fs)"
+        }
+
+        # Test B: --execute applies migration
+        $mgBOut = & python3 $mgPy --wiki-root (Join-Path $mgtmp 'wiki') --execute --skip-precheck 2>&1 | Out-String
+        if ($mgBOut -notmatch 'moved:\s+3 pages') {
+            throw "--execute should report 3 moved. output: $mgBOut"
+        }
+        $expectedPaths = @(
+            'wiki/explanation/decisions/0001-foo.md',
+            'wiki/reference/Runbook.md',
+            'wiki/explanation/Product-Intent.md',
+            'wiki/development/Getting-Started.md',  # mode-mixed stays at old path
+            'wiki/.diataxis',
+            'wiki/.diataxis-conventions.md'
+        )
+        foreach ($rel in $expectedPaths) {
+            $full = Join-Path $mgtmp $rel
+            if (-not (Test-Path -LiteralPath $full)) {
+                throw "expected post-migration path missing: $rel"
+            }
+        }
+
+        # Test C: blame preservation via git log --follow
+        Push-Location $mgtmp
+        try {
+            git add -A | Out-Null
+            git -c user.email=test@example.com -c user.name=test commit -q -m "migrate" | Out-Null
+            $blameLines = (git log --follow --oneline wiki/explanation/decisions/0001-foo.md 2>&1) -split "`n" | Where-Object { $_.Trim() } | Measure-Object
+            if ($blameLines.Count -lt 2) {
+                throw "blame not preserved on ADR (expected ≥2 commits in --follow log, got $($blameLines.Count))"
+            }
+        } finally {
+            Pop-Location
+        }
+
+        # Test D: already-migrated precondition (without --skip-precheck)
+        $mgDOutFile = [System.IO.Path]::GetTempFileName()
+        $mgDErrFile = [System.IO.Path]::GetTempFileName()
+        # NOTE: --execute without --skip-precheck must run from within the
+        # git repo for the clean-tree check. Push-Location into mgtmp.
+        Push-Location $mgtmp
+        try {
+            $mgDProc = Start-Process -FilePath 'python3' -ArgumentList @($mgPy, '--wiki-root', (Join-Path $mgtmp 'wiki'), '--execute') -NoNewWindow -PassThru -Wait -RedirectStandardOutput $mgDOutFile -RedirectStandardError $mgDErrFile
+        } finally {
+            Pop-Location
+        }
+        if ($mgDProc.ExitCode -ne 1) {
+            throw "re-run without --skip-precheck should fail (already migrated), got $($mgDProc.ExitCode)"
+        }
+
+        # Test E: missing wiki root → exit 1
+        $mgEOutFile = [System.IO.Path]::GetTempFileName()
+        $mgEErrFile = [System.IO.Path]::GetTempFileName()
+        $mgEProc = Start-Process -FilePath 'python3' -ArgumentList @($mgPy, '--wiki-root', '/nonexistent') -NoNewWindow -PassThru -Wait -RedirectStandardOutput $mgEOutFile -RedirectStandardError $mgEErrFile
+        if ($mgEProc.ExitCode -ne 1) {
+            throw "missing wiki root should exit 1, got $($mgEProc.ExitCode)"
+        }
+    } finally {
+        Remove-Item -LiteralPath $mgtmp -Recurse -Force -ErrorAction SilentlyContinue
     }
 
     # ── validate-manifests negative test: gemini-cli rejected with v0.9.0 msg ─
