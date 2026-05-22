@@ -75,6 +75,12 @@ try {
         '.agent/skills/memory-idea-researcher/SKILL.md',
         '.claude/agents/adapt-evaluator.md',
         '.agent/skills/adapt-evaluator/SKILL.md',
+        # Standalone skill: diataxis-author (plan #13 part 1 ships scaffold).
+        '.claude/skills/diataxis-author/SKILL.md',
+        '.agent/skills/diataxis-author/SKILL.md',
+        # Standalone agent: diataxis-evaluator (plan #13 part 1 ships stub).
+        '.claude/agents/diataxis-evaluator.md',
+        '.agent/skills/diataxis-evaluator/SKILL.md',
         # Standalone hooks (claude-code only, v0.7.0); memory-recall hooks
         # added in plan #7a part 2; memory-reflect-{stop,idle} added in
         # plan #7a part 3.
@@ -142,7 +148,7 @@ try {
     if ($rerun -match 'created .claude/skills/(example-skill|pii-scrubber)') {
         throw 're-run recreated a skill (should be kept)'
     }
-    if ($rerun -match 'created .claude/agents/(evaluator|memory-idea-researcher|adapt-evaluator)') {
+    if ($rerun -match 'created .claude/agents/(evaluator|memory-idea-researcher|adapt-evaluator|diataxis-evaluator)') {
         throw 're-run recreated the evaluator agent (should be kept)'
     }
     if ($rerun -match 'created .claude/hooks/(kill-switch|steer|commit-on-stop|memory-recall-session-start|memory-recall-prompt-submit|memory-reflect-stop|memory-reflect-idle)') {

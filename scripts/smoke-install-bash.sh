@@ -81,6 +81,14 @@ expected=(
   .agent/skills/memory-idea-researcher/SKILL.md
   .claude/agents/adapt-evaluator.md
   .agent/skills/adapt-evaluator/SKILL.md
+  # Standalone skill: diataxis-author (plan #13 part 1 ships scaffold;
+  # parts 2-5 fill in 5 sub-commands across the plan).
+  .claude/skills/diataxis-author/SKILL.md
+  .agent/skills/diataxis-author/SKILL.md
+  # Standalone agent: diataxis-evaluator (plan #13 part 1 ships stub;
+  # operational flow in part 2 - author-classify).
+  .claude/agents/diataxis-evaluator.md
+  .agent/skills/diataxis-evaluator/SKILL.md
   # Standalone hooks — claude-code only (v0.7.0); memory-recall hooks
   # added in plan #7a part 2; memory-reflect-{stop,idle} added in plan
   # #7a part 3.
@@ -171,7 +179,7 @@ if grep -qE "created .claude/skills/(example-skill|pii-scrubber)" "$SCRATCH/.rer
   echo "FAIL: re-run recreated a skill that already existed (should be 'kept')" >&2
   exit 1
 fi
-if grep -qE "created .claude/agents/(evaluator|memory-idea-researcher|adapt-evaluator)" "$SCRATCH/.rerun.log"; then
+if grep -qE "created .claude/agents/(evaluator|memory-idea-researcher|adapt-evaluator|diataxis-evaluator)" "$SCRATCH/.rerun.log"; then
   echo "FAIL: re-run recreated an agent that already existed (should be 'kept')" >&2
   exit 1
 fi
