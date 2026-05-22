@@ -81,6 +81,8 @@ try {
         '.claude/skills/diataxis-author/SKILL.md',
         '.claude/skills/diataxis-author/scripts/classify.py',
         '.claude/skills/diataxis-author/scripts/author.py',
+        '.claude/skills/diataxis-author/scripts/check.py',
+        '.claude/skills/diataxis-author/scripts/repair.py',
         '.claude/skills/diataxis-author/templates/tutorial.md',
         '.claude/skills/diataxis-author/templates/how-to.md',
         '.claude/skills/diataxis-author/templates/reference.md',
@@ -88,6 +90,8 @@ try {
         '.agent/skills/diataxis-author/SKILL.md',
         '.agent/skills/diataxis-author/scripts/classify.py',
         '.agent/skills/diataxis-author/scripts/author.py',
+        '.agent/skills/diataxis-author/scripts/check.py',
+        '.agent/skills/diataxis-author/scripts/repair.py',
         '.agent/skills/diataxis-author/templates/tutorial.md',
         '.agent/skills/diataxis-author/templates/how-to.md',
         '.agent/skills/diataxis-author/templates/reference.md',
@@ -2468,6 +2472,121 @@ More prose.
         }
     } finally {
         Remove-Item -LiteralPath $dxtmp -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    # ── Diátaxis check + repair test (plan #13 part 3) ─────────────────────
+    Write-Host '==> Diátaxis check + repair test (plan #13 part 3)'
+    $ckPy = Join-Path $scratch '.claude/skills/diataxis-author/scripts/check.py'
+    $rpPy = Join-Path $scratch '.claude/skills/diataxis-author/scripts/repair.py'
+    if (-not (Test-Path -LiteralPath $ckPy)) {
+        throw "check.py not installed at $ckPy"
+    }
+    if (-not (Test-Path -LiteralPath $rpPy)) {
+        throw "repair.py not installed at $rpPy"
+    }
+    $dxrtmp = Join-Path ([System.IO.Path]::GetTempPath()) ("toolkit-dxr-" + [System.Guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path (Join-Path $dxrtmp 'wiki/how-to') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $dxrtmp 'wiki/reference') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $dxrtmp 'wiki/explanation') -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $dxrtmp 'wiki/how-to/install.md') -Value @'
+# How to install
+## Steps
+1. Run init.
+## Rationale
+We did this.
+'@ -Encoding utf8
+    Set-Content -LiteralPath (Join-Path $dxrtmp 'wiki/explanation/intro.md') -Value @'
+# Intro
+See [Missing](Nonexistent-Page) for details.
+'@ -Encoding utf8
+    Set-Content -LiteralPath (Join-Path $dxrtmp 'wiki/reference/wrong.md') -Value @'
+# Tutorial 1 - Wrong
+## Step 1 - Do
+Run.
+## Step 2 - Verify
+Check.
+## What you learned
+- Stuff.
+## Next
+- More.
+'@ -Encoding utf8
+    try {
+        # Test A: check.py emits 3 findings with check-wiki absent
+        $ckOut = & python3 $ckPy --wiki-root (Join-Path $dxrtmp 'wiki') --check-wiki-py '/nonexistent' 2>&1 | Out-String
+        if ($ckOut -notmatch '"check_wiki_status":\s*"skipped-absent"') {
+            throw "check.py should skip-absent. output: $ckOut"
+        }
+        if ($ckOut -notmatch '"total_findings":\s*3') {
+            throw "check.py should find 3 drifts. output: $ckOut"
+        }
+
+        # Test B: each rule fires
+        foreach ($rule in @('diataxis/mode-mixed', 'diataxis/stale-xref', 'diataxis/template-drift')) {
+            if ($ckOut -notmatch [regex]::Escape("`"$rule`":")) {
+                throw "check.py missing expected rule: $rule"
+            }
+        }
+
+        # Test C: non-zero exit on findings (direct & invocation; capture exit code)
+        $null = & python3 $ckPy --wiki-root (Join-Path $dxrtmp 'wiki') --check-wiki-py '/nonexistent' 2>&1
+        if ($LASTEXITCODE -ne 1) {
+            throw "check.py with findings should exit 1, got $LASTEXITCODE"
+        }
+
+        # Test D: clean wiki → exit 0
+        $cleanWiki = Join-Path $dxrtmp 'clean/wiki/explanation'
+        New-Item -ItemType Directory -Path $cleanWiki -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $cleanWiki 'clean.md') -Value @'
+# Clean
+This is prose only. Explains rationale.
+## Context
+Some context.
+'@ -Encoding utf8
+        $null = & python3 $ckPy --wiki-root (Join-Path $dxrtmp 'clean/wiki') --check-wiki-py '/nonexistent' 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            throw "check.py on clean wiki should exit 0, got $LASTEXITCODE"
+        }
+
+        # Test E: repair.py non-TTY review defaults to skip
+        $emptyStdin = Join-Path $dxrtmp '.empty-stdin'
+        Set-Content -LiteralPath $emptyStdin -Value '' -NoNewline
+        $rpEOutFile = [System.IO.Path]::GetTempFileName()
+        $rpEErrFile = [System.IO.Path]::GetTempFileName()
+        $null = Start-Process -FilePath 'python3' -ArgumentList @($rpPy, '--wiki-root', (Join-Path $dxrtmp 'wiki'), '--stub') -NoNewWindow -PassThru -Wait -RedirectStandardInput $emptyStdin -RedirectStandardOutput $rpEOutFile -RedirectStandardError $rpEErrFile
+        $rpEOut = (Get-Content -LiteralPath $rpEOutFile -Raw) + "`n" + (Get-Content -LiteralPath $rpEErrFile -Raw)
+        if ($rpEOut -notmatch 'stdin is not a TTY') {
+            throw "non-TTY review didn't emit TTY warning. output: $rpEOut"
+        }
+        if ($rpEOut -notmatch '"skipped":\s*3') {
+            throw "non-TTY review should skip 3 findings. output: $rpEOut"
+        }
+
+        # Test F: --limit caps findings
+        $rpFOutFile = [System.IO.Path]::GetTempFileName()
+        $rpFErrFile = [System.IO.Path]::GetTempFileName()
+        $null = Start-Process -FilePath 'python3' -ArgumentList @($rpPy, '--wiki-root', (Join-Path $dxrtmp 'wiki'), '--stub', '--limit', '2') -NoNewWindow -PassThru -Wait -RedirectStandardInput $emptyStdin -RedirectStandardOutput $rpFOutFile -RedirectStandardError $rpFErrFile
+        $rpFOut = (Get-Content -LiteralPath $rpFOutFile -Raw) + "`n" + (Get-Content -LiteralPath $rpFErrFile -Raw)
+        if ($rpFOut -notmatch 'reached --limit 2') {
+            throw "--limit 2 should emit reached-limit message. output: $rpFOut"
+        }
+        if ($rpFOut -notmatch '"skipped":\s*2') {
+            throw "--limit 2 should skip 2 not 3. output: $rpFOut"
+        }
+
+        # Test G: --findings JSON replay
+        $findingsJson = Join-Path $dxrtmp 'findings.json'
+        $checkOutFile = [System.IO.Path]::GetTempFileName()
+        $null = & python3 $ckPy --wiki-root (Join-Path $dxrtmp 'wiki') --check-wiki-py '/nonexistent' 2>$null > $checkOutFile
+        Copy-Item -LiteralPath $checkOutFile -Destination $findingsJson -Force
+        $rpGOutFile = [System.IO.Path]::GetTempFileName()
+        $rpGErrFile = [System.IO.Path]::GetTempFileName()
+        $null = Start-Process -FilePath 'python3' -ArgumentList @($rpPy, '--wiki-root', (Join-Path $dxrtmp 'wiki'), '--findings', $findingsJson, '--stub') -NoNewWindow -PassThru -Wait -RedirectStandardInput $emptyStdin -RedirectStandardOutput $rpGOutFile -RedirectStandardError $rpGErrFile
+        $rpGOut = (Get-Content -LiteralPath $rpGOutFile -Raw) + "`n" + (Get-Content -LiteralPath $rpGErrFile -Raw)
+        if ($rpGOut -notmatch '"total_findings":\s*3') {
+            throw "--findings JSON replay should load 3 findings. output: $rpGOut"
+        }
+    } finally {
+        Remove-Item -LiteralPath $dxrtmp -Recurse -Force -ErrorAction SilentlyContinue
     }
 
     # ── validate-manifests negative test: gemini-cli rejected with v0.9.0 msg ─

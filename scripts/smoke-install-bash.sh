@@ -87,6 +87,8 @@ expected=(
   .claude/skills/diataxis-author/SKILL.md
   .claude/skills/diataxis-author/scripts/classify.py
   .claude/skills/diataxis-author/scripts/author.py
+  .claude/skills/diataxis-author/scripts/check.py
+  .claude/skills/diataxis-author/scripts/repair.py
   .claude/skills/diataxis-author/templates/tutorial.md
   .claude/skills/diataxis-author/templates/how-to.md
   .claude/skills/diataxis-author/templates/reference.md
@@ -94,6 +96,8 @@ expected=(
   .agent/skills/diataxis-author/SKILL.md
   .agent/skills/diataxis-author/scripts/classify.py
   .agent/skills/diataxis-author/scripts/author.py
+  .agent/skills/diataxis-author/scripts/check.py
+  .agent/skills/diataxis-author/scripts/repair.py
   .agent/skills/diataxis-author/templates/tutorial.md
   .agent/skills/diataxis-author/templates/how-to.md
   .agent/skills/diataxis-author/templates/reference.md
@@ -3199,6 +3203,130 @@ if [[ $AU_J -ne 1 ]]; then
 fi
 
 rm -rf "$DXTMP"
+
+# ── Diátaxis check + repair test (plan #13 part 3) ─────────────────────────
+# Verify check.py + repair.py:
+#   - check.py detects mode-mixed page (drift type 1)
+#   - check.py detects stale cross-reference (drift type 2)
+#   - check.py detects template-shape drift (drift type 3)
+#   - check.py graceful-skips when check-wiki.py absent
+#   - check.py exits non-zero on findings
+#   - repair.py loads findings + non-TTY defaults all to skip
+#   - repair.py --limit caps findings reviewed
+#   - repair.py --stub returns canned marker for mode-mixed dispatches
+echo "==> Diátaxis check + repair test (plan #13 part 3)"
+CK_PY="$SCRATCH/.claude/skills/diataxis-author/scripts/check.py"
+RP_PY="$SCRATCH/.claude/skills/diataxis-author/scripts/repair.py"
+if [[ ! -f "$CK_PY" ]]; then
+  echo "FAIL: check.py not installed at $CK_PY" >&2
+  exit 1
+fi
+if [[ ! -f "$RP_PY" ]]; then
+  echo "FAIL: repair.py not installed at $RP_PY" >&2
+  exit 1
+fi
+DXRTMP="$(mktemp -d)"
+mkdir -p "$DXRTMP/wiki/how-to" "$DXRTMP/wiki/reference" "$DXRTMP/wiki/explanation"
+# Drift fixture 1: mode-mixed (how-to + explanation signals)
+cat > "$DXRTMP/wiki/how-to/install.md" << 'DXR_EOF'
+# How to install
+## Steps
+1. Run init.
+## Rationale
+We did this.
+DXR_EOF
+# Drift fixture 2: stale cross-reference
+cat > "$DXRTMP/wiki/explanation/intro.md" << 'DXR_EOF'
+# Intro
+See [Missing](Nonexistent-Page) for details.
+DXR_EOF
+# Drift fixture 3: template-shape drift (tutorial-shaped page in reference/)
+cat > "$DXRTMP/wiki/reference/wrong.md" << 'DXR_EOF'
+# Tutorial 1 — Wrong
+## Step 1 — Do
+Run.
+## Step 2 — Verify
+Check.
+## What you learned
+- Stuff.
+## Next
+- More.
+DXR_EOF
+
+# Test A: check.py emits structured report with 3 findings (check-wiki absent → skill-side only)
+CK_OUT="$(python3 "$CK_PY" --wiki-root "$DXRTMP/wiki" --check-wiki-py /nonexistent 2>&1 || true)"
+if ! echo "$CK_OUT" | grep -qE '"check_wiki_status": "skipped-absent"'; then
+  echo "FAIL: check.py should skip-absent for missing check-wiki.py. output: $CK_OUT" >&2
+  rm -rf "$DXRTMP"; exit 1
+fi
+if ! echo "$CK_OUT" | grep -qE '"total_findings": 3'; then
+  echo "FAIL: check.py should find 3 drifts (mode-mixed + stale-xref + template-drift). output: $CK_OUT" >&2
+  rm -rf "$DXRTMP"; exit 1
+fi
+
+# Test B: each drift type fires its expected rule
+for rule in "diataxis/mode-mixed" "diataxis/stale-xref" "diataxis/template-drift"; do
+  if ! echo "$CK_OUT" | grep -qE "\"$rule\":"; then
+    echo "FAIL: check.py missing expected rule: $rule" >&2
+    rm -rf "$DXRTMP"; exit 1
+  fi
+done
+
+# Test C: non-zero exit on findings
+CK_EXIT=0
+python3 "$CK_PY" --wiki-root "$DXRTMP/wiki" --check-wiki-py /nonexistent >/dev/null 2>&1 || CK_EXIT=$?
+if [[ $CK_EXIT -ne 1 ]]; then
+  echo "FAIL: check.py with findings should exit 1, got $CK_EXIT" >&2
+  rm -rf "$DXRTMP"; exit 1
+fi
+
+# Test D: clean wiki → exit 0
+mkdir -p "$DXRTMP/clean/wiki/explanation"
+cat > "$DXRTMP/clean/wiki/explanation/clean.md" << 'DXR_EOF'
+# Clean
+This is prose only. Explains rationale.
+## Context
+Some context.
+DXR_EOF
+CK_D_EXIT=0
+python3 "$CK_PY" --wiki-root "$DXRTMP/clean/wiki" --check-wiki-py /nonexistent >/dev/null 2>&1 || CK_D_EXIT=$?
+if [[ $CK_D_EXIT -ne 0 ]]; then
+  echo "FAIL: check.py on clean wiki should exit 0, got $CK_D_EXIT" >&2
+  rm -rf "$DXRTMP"; exit 1
+fi
+
+# Test E: repair.py non-TTY review defaults to skip
+RP_OUT="$(python3 "$RP_PY" --wiki-root "$DXRTMP/wiki" --stub < /dev/null 2>&1)"
+if ! echo "$RP_OUT" | grep -qE 'stdin is not a TTY'; then
+  echo "FAIL: non-TTY review didn't emit TTY warning. output: $RP_OUT" >&2
+  rm -rf "$DXRTMP"; exit 1
+fi
+if ! echo "$RP_OUT" | grep -qE '"skipped": 3'; then
+  echo "FAIL: non-TTY review should skip 3 findings. output: $RP_OUT" >&2
+  rm -rf "$DXRTMP"; exit 1
+fi
+
+# Test F: --limit caps findings
+RP_LIM_OUT="$(python3 "$RP_PY" --wiki-root "$DXRTMP/wiki" --stub --limit 2 < /dev/null 2>&1)"
+if ! echo "$RP_LIM_OUT" | grep -qE 'reached --limit 2'; then
+  echo "FAIL: --limit 2 should emit reached-limit message. output: $RP_LIM_OUT" >&2
+  rm -rf "$DXRTMP"; exit 1
+fi
+if ! echo "$RP_LIM_OUT" | grep -qE '"skipped": 2'; then
+  echo "FAIL: --limit 2 should skip 2 (not 3). output: $RP_LIM_OUT" >&2
+  rm -rf "$DXRTMP"; exit 1
+fi
+
+# Test G: repair.py with findings JSON file path (replay analysis)
+FINDINGS_JSON="$DXRTMP/findings.json"
+python3 "$CK_PY" --wiki-root "$DXRTMP/wiki" --check-wiki-py /nonexistent > "$FINDINGS_JSON" 2>/dev/null || true
+RP_REPLAY_OUT="$(python3 "$RP_PY" --wiki-root "$DXRTMP/wiki" --findings "$FINDINGS_JSON" --stub < /dev/null 2>&1)"
+if ! echo "$RP_REPLAY_OUT" | grep -qE '"total_findings": 3'; then
+  echo "FAIL: --findings JSON replay should load 3 findings. output: $RP_REPLAY_OUT" >&2
+  rm -rf "$DXRTMP"; exit 1
+fi
+
+rm -rf "$DXRTMP"
 
 # ── validate-manifests negative test: gemini-cli should error with v0.9.0 msg ─
 # Manifest containing 'gemini-cli' in supported_hosts must error with a clear

@@ -104,16 +104,132 @@ python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/author.py \
 
 ### `/diataxis check [--strict]`
 
+Drift detection — wraps `scripts/check-wiki.py` (harness-side) as a subprocess + adds 3 operational skill-side heuristics (mode-mixed + ambiguous-mode page detection / stale cross-references / template-shape drift) + 1 stub heuristic (convention drift; full wiring lands part 5 alongside AgentMemory). Outputs a structured JSON report grouped by rule. Non-zero exit on findings. Graceful-skip when check-wiki.py absent → in-skill heuristic-only mode + clear stderr warning.
+
+#### Invocation shape
+
+```
+/diataxis check [--strict] [--wiki-root <path>] [--check-wiki-py <path>]
+```
+
+| Arg | Required | Default | Meaning |
+|---|---|---|---|
+| `--wiki-root <path>` | no | `./wiki` | Wiki root directory. |
+| `--strict` | no | off | Pass `--strict` to check-wiki.py + escalate skill-side warnings to errors. |
+| `--check-wiki-py <path>` | no | auto-detect sibling clone | Explicit path to check-wiki.py for non-standard layouts. |
+
+#### Step-by-step flow
+
+**Step 1 — Resolve wiki root + check-wiki.py path.** Auto-detect check-wiki.py at `<toolkit>/../agentic-harness/scripts/check-wiki.py` or `~/Antigravity/agentic-harness/scripts/check-wiki.py`.
+
+**Step 2 — Run check-wiki.py subprocess** (if found). Parse `<path>:<line>: <rule>: <msg>` line format from stdout into Finding objects with `rule: check-wiki/<rule>`. Status: `ran` on success; `skipped-absent` if not found; `skipped-error` on subprocess failure (timeout, non-zero exit not from clean run, OSError).
+
+**Step 3 — Walk wiki pages** under each mode-dir, skipping structural pages (Home.md, _Sidebar.md, README.md).
+
+**Step 4 — Apply 4 skill-side heuristics per page**:
+
+- `diataxis/mode-mixed` — calls `classify.py`; flags when `mode_mixed: true` OR `needs_subagent: true` (latter catches the penalty-masked case where how-to score drops below 0.5 due to rationale-section penalty but the page is still mode-mixed semantically).
+- `diataxis/stale-xref` — extracts wiki-style markdown links; resolves target stem; flags when no matching page exists.
+- `diataxis/template-drift` — page lives in mode-dir X but classify.py says it's mode Y with confidence ≥0.7. Suggested fix: move file or rewrite body.
+- `diataxis/convention-drift` — v1 stub (always None); part 5 wires AgentMemory read-side to compare against operator-defined conventions.
+
+**Step 5 — Aggregate + emit report.** Findings grouped by rule with counts. JSON output to stdout; non-zero exit on findings.
+
+#### Examples
+
+```bash
+# Run against the toolkit's own wiki
+python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/check.py \
+  --wiki-root ~/Antigravity/agent-toolkit/wiki
+# Strict mode (escalate warnings)
+python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/check.py \
+  --wiki-root ~/Antigravity/agent-toolkit/wiki --strict
+# Custom check-wiki.py path
+python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/check.py \
+  --wiki-root /path/to/project/wiki \
+  --check-wiki-py /path/to/check-wiki.py
+```
+
+#### Failure modes (graceful)
+
+- **No wiki root** → exit 1 with actionable error.
+- **check-wiki.py absent** → `check_wiki_status: skipped-absent`; skill heuristics still run; warning on stderr.
+- **check-wiki.py subprocess error** (timeout / OS error) → `check_wiki_status: skipped-error`; warning + heuristics-only fallback.
+- **Empty wiki** → 0 findings; exit 0.
+- **No mode-dir pages found** → skill heuristics emit 0 findings; exit 0 if check-wiki also clean.
+
+#### Anti-patterns
+
+- **Don't rely on `/diataxis check` to catch every Diátaxis violation.** check-wiki.py is the strict validator; the skill heuristics catch additional drift signals (mode-mixed, template-drift). For pre-commit gating, run `check-wiki.py --strict` directly (it's the canonical CI gate). `/diataxis check` is for **interactive audit + drift surfacing**, not the gate.
+- **Don't pipe `/diataxis check` output to `/memory save`.** The JSON report is an interactive surface; persistence belongs in the wiki itself (operator decides what to act on via `/diataxis repair`).
+- **Don't tune the skill-side heuristic thresholds per-invocation.** Defaults are tuned to v1 fixtures; operator-level tuning belongs in `classify.py` constants + future AgentMemory always-load entries (part 5).
+
+### `/diataxis repair`
+
+Interactive fix-application for drift detected by `/diataxis check`. Per finding: presents the suggested fix + operator approves (`a`) / edits (`e`) / rejects (`r`) / skips (default). Preview-first; never silent. Mode-mixed splits dispatch `documenter` sub-agent for the mechanical write work (the first consumer of `documenter` as worker per locked design call Q3). Same pattern as `/memory watchlist review` + `ideas_promote.py gc`'s never-silent-action contract.
+
+#### Invocation shape
+
+```
+/diataxis repair [--wiki-root <path>] [--findings <json-path>] [--limit N] [--stub]
+```
+
+| Arg | Required | Default | Meaning |
+|---|---|---|---|
+| `--wiki-root <path>` | no | `./wiki` | Wiki root directory. |
+| `--findings <path>` | no | inline check.py run | JSON file with findings (output of check.py). If omitted, runs check.py inline. |
+| `--limit N` | no | unlimited | Cap on findings to review per invocation. Useful for batched repair: do N today, more tomorrow. |
+| `--stub` | no | off | `documenter` sub-agent dispatches return no-op marker instead of invoking. Used by CI smoke tests to avoid live LLM calls. |
+
+#### Step-by-step flow
+
+**Step 1 — Resolve wiki root + load findings.** If `--findings <path>` set, parse JSON. Otherwise run `check.run_check()` inline.
+
+**Step 2 — TTY check.** If stdin is not a TTY, default ALL prompts to skip + emit warning. Same never-silent-action contract as `ideas_promote.py gc`.
+
+**Step 3 — Per-finding loop** (capped by `--limit N` if set):
+
+1. Display finding (`──`-separated card with rule + file + severity + msg + suggested fix).
+2. Prompt `Action: [a]pply / [e]dit / [r]eject / (default: skip)`.
+3. Operator chooses; default = skip on non-TTY or empty input.
+
+**Step 4 — Apply repair per rule** (when action == `apply`):
+
+- `diataxis/template-drift` → preview a `git mv` from current path to the suggested mode-dir path. v1 emits the preview ONLY (operator runs git mv manually); v2 may add an `--auto-apply` flag.
+- `diataxis/mode-mixed` → dispatch `documenter` sub-agent for the actual split. CLI emits the dispatch marker; the calling skill body (or operator interactive context) handles the dispatch. In `--stub` mode, returns canned marker without invoking.
+- `diataxis/stale-xref` → record finding only; operator manually rewrites the link target (right target is judgment; no auto-fix in v1).
+- `diataxis/convention-drift` → v1 stub; full handling lands in part 5.
+- `check-wiki/*` → record finding only; operator manually addresses each (check-wiki rules surface known violations from the validator).
+
+**Step 5 — Emit summary.** Per-action counts (applied / edited / rejected / skipped / errors) + per-finding results array. JSON to stdout.
+
+#### Examples
+
+```bash
+# Interactive review against ./wiki
+python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/repair.py
+# Use a pre-recorded findings file (replay analysis)
+python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/check.py --wiki-root wiki > findings.json
+python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/repair.py --findings findings.json
+# CI smoke-safe with sub-agent stub + small limit
+python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/repair.py --stub --limit 3
+```
+
+#### Failure modes (graceful)
+
+- **Non-TTY stdin** → defaults all prompts to skip; emits warning; exit 0 with all findings marked skipped.
+- **No findings** → emits `no findings to repair`; exit 0.
+- **Findings JSON malformed** → exit 1 with parse error.
+- **`--limit N` reached mid-walk** → prints `reached --limit N; X findings unreviewed`; exit 0.
+
+#### Anti-patterns
+
+- **Don't apply mode-mixed splits without operator review of the proposed split.** The sub-agent suggests; the operator decides. `--stub` mode in CI exists precisely to avoid silent sub-agent dispatch.
+- **Don't run `/diataxis repair` in batch mode (non-TTY).** The never-silent-action contract makes it a no-op; use specific-rule sub-commands or operator-driven scripting if you need batch action.
+- **Don't auto-apply template-drift moves** without verifying the operator's intent. A page that "looks like" a tutorial but lives in `reference/` may be intentionally cross-cutting (especially for ADRs that reference how-tos). v1 emits preview only; v2 may add auto-apply behind explicit flag.
+
 > [!NOTE]
-> **Status**: stub. Full body lands in plan #13 **part 3** (`check-repair`). See the [check-repair part](https://github.com/alexherrero/agent-toolkit/blob/main/wiki/explanation/designs/diataxis-author/parts/check-repair.md) for the locked design.
-
-Drift detection — wraps `scripts/check-wiki.py` (harness-side) as a subprocess + adds 4 skill-side heuristics (mode-mixed page detection / stale cross-references / template-shape drift / convention drift against AgentMemory conventions). Outputs a structured report grouped by mode. `--strict` mirrors check-wiki.py's strict mode. Non-zero exit on findings. Graceful-skip when check-wiki.py absent → in-skill heuristic-only mode + clear stderr warning.
-
-**Planned invocation shape** (subject to refinement in plan #13 part 3):
-
-```
-/diataxis check [--strict] [--mode <tutorial|how-to|reference|explanation>] [--wiki-root <path>]
-```
+> **Sub-agent budget**: `--limit N` (no hard default) caps how many findings each interactive pass processes. For batched contexts (future idle-hook auto-repair, out of scope for v1), default would land at 3-5 to bound sub-agent dispatches.
 
 ### `/diataxis repair`
 
