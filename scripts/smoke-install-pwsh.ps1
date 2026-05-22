@@ -75,9 +75,23 @@ try {
         '.agent/skills/memory-idea-researcher/SKILL.md',
         '.claude/agents/adapt-evaluator.md',
         '.agent/skills/adapt-evaluator/SKILL.md',
-        # Standalone skill: diataxis-author (plan #13 part 1 ships scaffold).
+        # Standalone skill: diataxis-author (plan #13 part 1 ships scaffold;
+        # part 2 adds /diataxis author + /diataxis classify + 4 templates +
+        # 2 scripts; parts 3-5 fill in remaining sub-commands).
         '.claude/skills/diataxis-author/SKILL.md',
+        '.claude/skills/diataxis-author/scripts/classify.py',
+        '.claude/skills/diataxis-author/scripts/author.py',
+        '.claude/skills/diataxis-author/templates/tutorial.md',
+        '.claude/skills/diataxis-author/templates/how-to.md',
+        '.claude/skills/diataxis-author/templates/reference.md',
+        '.claude/skills/diataxis-author/templates/explanation.md',
         '.agent/skills/diataxis-author/SKILL.md',
+        '.agent/skills/diataxis-author/scripts/classify.py',
+        '.agent/skills/diataxis-author/scripts/author.py',
+        '.agent/skills/diataxis-author/templates/tutorial.md',
+        '.agent/skills/diataxis-author/templates/how-to.md',
+        '.agent/skills/diataxis-author/templates/reference.md',
+        '.agent/skills/diataxis-author/templates/explanation.md',
         # Standalone agent: diataxis-evaluator (plan #13 part 1 ships stub).
         '.claude/agents/diataxis-evaluator.md',
         '.agent/skills/diataxis-evaluator/SKILL.md',
@@ -2314,6 +2328,144 @@ status: pending-review
         }
     } finally {
         Remove-Item -LiteralPath $wltmp -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    # ── Diátaxis classify + author test (plan #13 part 2) ──────────────────
+    Write-Host '==> Diátaxis classify + author test (plan #13 part 2)'
+    $clPy = Join-Path $scratch '.claude/skills/diataxis-author/scripts/classify.py'
+    $auPy = Join-Path $scratch '.claude/skills/diataxis-author/scripts/author.py'
+    if (-not (Test-Path -LiteralPath $clPy)) {
+        throw "classify.py not installed at $clPy"
+    }
+    if (-not (Test-Path -LiteralPath $auPy)) {
+        throw "author.py not installed at $auPy"
+    }
+    $dxtmp = Join-Path ([System.IO.Path]::GetTempPath()) ("toolkit-dx-" + [System.Guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path (Join-Path $dxtmp 'fixtures') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $dxtmp 'wiki') -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $dxtmp 'fixtures/tut.md') -Value @'
+# Tutorial 1 - Get started
+## Step 1 - Install
+Run `foo install`.
+## Step 2 - Verify
+Run `foo version`.
+## What you learned
+- You installed foo.
+## Next
+- [Tutorial 2](#)
+'@ -Encoding utf8
+    Set-Content -LiteralPath (Join-Path $dxtmp 'fixtures/how.md') -Value @'
+# How to install foo
+## Steps
+1. Run `foo init`.
+2. Run `foo install`.
+3. Run `foo build`.
+'@ -Encoding utf8
+    Set-Content -LiteralPath (Join-Path $dxtmp 'fixtures/ref.md') -Value @'
+# CLI Reference
+## Quick Reference
+| Flag | Default |
+|---|---|
+| --foo | true |
+| --bar | false |
+'@ -Encoding utf8
+    Set-Content -LiteralPath (Join-Path $dxtmp 'fixtures/exp.md') -Value @'
+# Why we chose Diátaxis
+This is prose. It explains rationale.
+## Context
+Team needed framework.
+'@ -Encoding utf8
+    try {
+        # Tests A: classify 4 mode-pure fixtures
+        $expectedByFile = @{ 'tut.md' = 'tutorial'; 'how.md' = 'how-to'; 'ref.md' = 'reference'; 'exp.md' = 'explanation' }
+        foreach ($f in $expectedByFile.Keys) {
+            $out = & python3 $clPy (Join-Path $dxtmp "fixtures/$f") 2>&1 | Out-String
+            $data = $out | ConvertFrom-Json
+            if ($data.mode -ne $expectedByFile[$f]) {
+                throw "classify $f expected $($expectedByFile[$f]), got $($data.mode). output: $out"
+            }
+        }
+
+        # Test B: mode-mixed fixture
+        Set-Content -LiteralPath (Join-Path $dxtmp 'fixtures/mixed.md') -Value @'
+# Install + Why
+## Steps
+1. Do thing.
+2. Do another.
+## Rationale
+We did it this way because.
+## Why this matters
+More prose.
+'@ -Encoding utf8
+        $outMixed = & python3 $clPy (Join-Path $dxtmp 'fixtures/mixed.md') 2>&1 | Out-String
+        $dataMixed = $outMixed | ConvertFrom-Json
+        if (-not $dataMixed.needs_subagent) {
+            throw "mixed.md should flag needs_subagent=true, got $($dataMixed.needs_subagent)"
+        }
+
+        # Test C: --no-subagent
+        $outNo = & python3 $clPy (Join-Path $dxtmp 'fixtures/mixed.md') --no-subagent 2>&1 | Out-String
+        $dataNo = $outNo | ConvertFrom-Json
+        if ($dataNo.needs_subagent) {
+            throw "--no-subagent should set needs_subagent=false, got true"
+        }
+
+        # Test D: --stub
+        $outStub = & python3 $clPy (Join-Path $dxtmp 'fixtures/mixed.md') --stub 2>&1 | Out-String
+        $dataStub = $outStub | ConvertFrom-Json
+        if ($dataStub.dispatched_subagent) {
+            throw "--stub should set dispatched_subagent=false, got true"
+        }
+
+        # Test E: author.py how-to skeleton
+        $auOut = & python3 $auPy 'Install foo into a project' --mode how-to --wiki-root (Join-Path $dxtmp 'wiki') 2>&1 | Out-String
+        if ($auOut -notmatch '"action":\s*"authored"') {
+            throw "author.py how-to did not emit authored. output: $auOut"
+        }
+        $howToPath = Join-Path $dxtmp 'wiki/how-to/Install-Foo-Into-A-Project.md'
+        if (-not (Test-Path -LiteralPath $howToPath)) {
+            throw "author.py how-to did not write target at expected path"
+        }
+        $howToContent = Get-Content -LiteralPath $howToPath -Raw
+        if ($howToContent -notmatch '(?m)^# How to ') {
+            throw "how-to target missing How to header"
+        }
+
+        # Test F: tutorial → tutorials/ (plural)
+        $auTut = & python3 $auPy 'Tutorial 1' --mode tutorial --wiki-root (Join-Path $dxtmp 'wiki') 2>&1 | Out-String
+        $tutPath = Join-Path $dxtmp 'wiki/tutorials/Tutorial-1.md'
+        if (-not (Test-Path -LiteralPath $tutPath)) {
+            throw "author.py tutorial did not write to tutorials/ (plural). output: $auTut"
+        }
+
+        # Test G: filename style
+        $auKebab = & python3 $auPy 'Tutorial 2' --mode tutorial --filename-style kebab-case --wiki-root (Join-Path $dxtmp 'wiki') 2>&1 | Out-String
+        $kebabPath = Join-Path $dxtmp 'wiki/tutorials/tutorial-2.md'
+        if (-not (Test-Path -LiteralPath $kebabPath)) {
+            throw "author.py kebab-case did not write tutorial-2.md"
+        }
+
+        # Test H: collision refused
+        $auHProc = Start-Process -FilePath 'python3' -ArgumentList @($auPy, 'Install foo into a project', '--mode', 'how-to', '--wiki-root', (Join-Path $dxtmp 'wiki')) -NoNewWindow -PassThru -Wait -RedirectStandardOutput ([System.IO.Path]::GetTempFileName()) -RedirectStandardError ([System.IO.Path]::GetTempFileName())
+        if ($auHProc.ExitCode -ne 1) {
+            throw "collision should exit 1, got $($auHProc.ExitCode)"
+        }
+
+        # Test I: --intent infers reference
+        $wiki2 = Join-Path $dxtmp 'wiki2'
+        New-Item -ItemType Directory -Path $wiki2 -Force | Out-Null
+        $auIntent = & python3 $auPy 'CLI flags lookup' --intent "## Quick Reference`n`n| Flag | Default |`n|---|---|`n| --foo | true |" --wiki-root $wiki2 2>&1 | Out-String
+        if ($auIntent -notmatch '"mode":\s*"reference"') {
+            throw "--intent should infer reference. output: $auIntent"
+        }
+
+        # Test J: missing mode + intent → exit 1
+        $auJProc = Start-Process -FilePath 'python3' -ArgumentList @($auPy, 'slug', '--wiki-root', (Join-Path $dxtmp 'wiki')) -NoNewWindow -PassThru -Wait -RedirectStandardOutput ([System.IO.Path]::GetTempFileName()) -RedirectStandardError ([System.IO.Path]::GetTempFileName())
+        if ($auJProc.ExitCode -ne 1) {
+            throw "missing mode + intent should exit 1, got $($auJProc.ExitCode)"
+        }
+    } finally {
+        Remove-Item -LiteralPath $dxtmp -Recurse -Force -ErrorAction SilentlyContinue
     }
 
     # ── validate-manifests negative test: gemini-cli rejected with v0.9.0 msg ─

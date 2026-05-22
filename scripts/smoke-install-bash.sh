@@ -82,9 +82,22 @@ expected=(
   .claude/agents/adapt-evaluator.md
   .agent/skills/adapt-evaluator/SKILL.md
   # Standalone skill: diataxis-author (plan #13 part 1 ships scaffold;
-  # parts 2-5 fill in 5 sub-commands across the plan).
+  # part 2 adds /diataxis author + /diataxis classify + 4 templates +
+  # 2 scripts; parts 3-5 fill in the remaining sub-commands).
   .claude/skills/diataxis-author/SKILL.md
+  .claude/skills/diataxis-author/scripts/classify.py
+  .claude/skills/diataxis-author/scripts/author.py
+  .claude/skills/diataxis-author/templates/tutorial.md
+  .claude/skills/diataxis-author/templates/how-to.md
+  .claude/skills/diataxis-author/templates/reference.md
+  .claude/skills/diataxis-author/templates/explanation.md
   .agent/skills/diataxis-author/SKILL.md
+  .agent/skills/diataxis-author/scripts/classify.py
+  .agent/skills/diataxis-author/scripts/author.py
+  .agent/skills/diataxis-author/templates/tutorial.md
+  .agent/skills/diataxis-author/templates/how-to.md
+  .agent/skills/diataxis-author/templates/reference.md
+  .agent/skills/diataxis-author/templates/explanation.md
   # Standalone agent: diataxis-evaluator (plan #13 part 1 ships stub;
   # operational flow in part 2 - author-classify).
   .claude/agents/diataxis-evaluator.md
@@ -3017,6 +3030,175 @@ if [[ $WL_G -ne 1 ]]; then
 fi
 
 rm -rf "$WLTMP"
+
+# ── Diátaxis classify + author test (plan #13 part 2) ──────────────────────
+# Verify classify.py + author.py:
+#   - classify.py correctly classifies 4 mode-pure fixtures (tutorial /
+#     how-to / reference / explanation)
+#   - classify.py flags mode-mixed fixture for sub-agent dispatch
+#   - --no-subagent suppresses dispatch flag
+#   - --stub returns marker without actual dispatch
+#   - author.py writes correct template skeleton per mode
+#   - author.py applies filename style correctly
+#   - author.py mode-dir mapping (tutorial → tutorials/, others singular)
+#   - author.py refuses to overwrite existing target
+echo "==> Diátaxis classify + author test (plan #13 part 2)"
+CL_PY="$SCRATCH/.claude/skills/diataxis-author/scripts/classify.py"
+AU_PY="$SCRATCH/.claude/skills/diataxis-author/scripts/author.py"
+if [[ ! -f "$CL_PY" ]]; then
+  echo "FAIL: classify.py not installed at $CL_PY" >&2
+  exit 1
+fi
+if [[ ! -f "$AU_PY" ]]; then
+  echo "FAIL: author.py not installed at $AU_PY" >&2
+  exit 1
+fi
+DXTMP="$(mktemp -d)"
+mkdir -p "$DXTMP/fixtures" "$DXTMP/wiki"
+
+# Test A: classify 4 mode-pure fixtures
+cat > "$DXTMP/fixtures/tut.md" << 'DX_EOF'
+# Tutorial 1 — Get started
+## Step 1 — Install
+Run `foo install`.
+## Step 2 — Verify
+Run `foo version`.
+## What you learned
+- You installed foo.
+## Next
+- [Tutorial 2](#)
+DX_EOF
+cat > "$DXTMP/fixtures/how.md" << 'DX_EOF'
+# How to install foo
+## Steps
+1. Run `foo init`.
+2. Run `foo install`.
+3. Run `foo build`.
+DX_EOF
+cat > "$DXTMP/fixtures/ref.md" << 'DX_EOF'
+# CLI Reference
+## ⚡ Quick Reference
+| Flag | Default |
+|---|---|
+| --foo | true |
+| --bar | false |
+DX_EOF
+cat > "$DXTMP/fixtures/exp.md" << 'DX_EOF'
+# Why we chose Diátaxis
+This is prose. It explains rationale.
+## Context
+Team needed framework.
+DX_EOF
+
+for f in tut how ref exp; do
+  case "$f" in
+    tut) expected_mode="tutorial" ;;
+    how) expected_mode="how-to" ;;
+    ref) expected_mode="reference" ;;
+    exp) expected_mode="explanation" ;;
+  esac
+  out="$(python3 "$CL_PY" "$DXTMP/fixtures/$f.md" 2>&1)"
+  actual=$(echo "$out" | python3 -c "import sys,json; print(json.load(sys.stdin)['mode'])")
+  if [[ "$actual" != "$expected_mode" ]]; then
+    echo "FAIL: classify $f.md expected $expected_mode, got $actual. output: $out" >&2
+    rm -rf "$DXTMP"; exit 1
+  fi
+done
+
+# Test B: mode-mixed fixture flags needs_subagent
+cat > "$DXTMP/fixtures/mixed.md" << 'DX_EOF'
+# Install + Why
+## Steps
+1. Do thing.
+2. Do another.
+## Rationale
+We did it this way because.
+## Why this matters
+More prose.
+DX_EOF
+out_mixed="$(python3 "$CL_PY" "$DXTMP/fixtures/mixed.md" 2>&1)"
+needs="$(echo "$out_mixed" | python3 -c "import sys,json; print(json.load(sys.stdin)['needs_subagent'])")"
+if [[ "$needs" != "True" ]]; then
+  echo "FAIL: mixed.md should flag needs_subagent=True, got $needs. output: $out_mixed" >&2
+  rm -rf "$DXTMP"; exit 1
+fi
+
+# Test C: --no-subagent suppresses flag
+out_no="$(python3 "$CL_PY" "$DXTMP/fixtures/mixed.md" --no-subagent 2>&1)"
+needs_no="$(echo "$out_no" | python3 -c "import sys,json; print(json.load(sys.stdin)['needs_subagent'])")"
+if [[ "$needs_no" != "False" ]]; then
+  echo "FAIL: --no-subagent should set needs_subagent=False, got $needs_no" >&2
+  rm -rf "$DXTMP"; exit 1
+fi
+
+# Test D: --stub returns marker
+out_stub="$(python3 "$CL_PY" "$DXTMP/fixtures/mixed.md" --stub 2>&1)"
+dispatched="$(echo "$out_stub" | python3 -c "import sys,json; print(json.load(sys.stdin)['dispatched_subagent'])")"
+if [[ "$dispatched" != "False" ]]; then
+  echo "FAIL: --stub should set dispatched_subagent=False, got $dispatched" >&2
+  rm -rf "$DXTMP"; exit 1
+fi
+
+# Test E: author.py writes how-to skeleton
+au_out="$(python3 "$AU_PY" "Install foo into a project" --mode how-to --wiki-root "$DXTMP/wiki" 2>&1)"
+if ! echo "$au_out" | grep -qE '"action": "authored"'; then
+  echo "FAIL: author.py how-to did not emit authored. output: $au_out" >&2
+  rm -rf "$DXTMP"; exit 1
+fi
+if [[ ! -f "$DXTMP/wiki/how-to/Install-Foo-Into-A-Project.md" ]]; then
+  echo "FAIL: author.py how-to did not write target at expected path" >&2
+  find "$DXTMP/wiki" -type f >&2
+  rm -rf "$DXTMP"; exit 1
+fi
+if ! grep -qE '^# How to ' "$DXTMP/wiki/how-to/Install-Foo-Into-A-Project.md"; then
+  echo "FAIL: how-to target missing How to header" >&2
+  rm -rf "$DXTMP"; exit 1
+fi
+
+# Test F: author.py mode-dir mapping (tutorial → tutorials/ plural)
+au_tut="$(python3 "$AU_PY" "Tutorial 1" --mode tutorial --wiki-root "$DXTMP/wiki" 2>&1)"
+if [[ ! -f "$DXTMP/wiki/tutorials/Tutorial-1.md" ]]; then
+  echo "FAIL: author.py tutorial did not write to tutorials/ (plural). output: $au_tut" >&2
+  find "$DXTMP/wiki" -type f >&2
+  rm -rf "$DXTMP"; exit 1
+fi
+
+# Test G: filename style applied
+au_kebab="$(python3 "$AU_PY" "Tutorial 2" --mode tutorial --filename-style kebab-case --wiki-root "$DXTMP/wiki" 2>&1)"
+if [[ ! -f "$DXTMP/wiki/tutorials/tutorial-2.md" ]]; then
+  echo "FAIL: author.py kebab-case did not write tutorial-2.md" >&2
+  rm -rf "$DXTMP"; exit 1
+fi
+
+# Test H: collision refused
+AU_H=0
+python3 "$AU_PY" "Install foo into a project" --mode how-to --wiki-root "$DXTMP/wiki" >/dev/null 2>&1 || AU_H=$?
+if [[ $AU_H -ne 1 ]]; then
+  echo "FAIL: collision should exit 1, got $AU_H" >&2
+  rm -rf "$DXTMP"; exit 1
+fi
+
+# Test I: --intent → infer mode
+mkdir -p "$DXTMP/wiki2"
+au_intent="$(python3 "$AU_PY" "CLI flags lookup" --intent "## ⚡ Quick Reference
+
+| Flag | Default |
+|---|---|
+| --foo | true |" --wiki-root "$DXTMP/wiki2" 2>&1)"
+if ! echo "$au_intent" | grep -qE '"mode": "reference"'; then
+  echo "FAIL: --intent should infer reference. output: $au_intent" >&2
+  rm -rf "$DXTMP"; exit 1
+fi
+
+# Test J: missing mode + missing intent → exit 1
+AU_J=0
+python3 "$AU_PY" "slug" --wiki-root "$DXTMP/wiki" >/dev/null 2>&1 || AU_J=$?
+if [[ $AU_J -ne 1 ]]; then
+  echo "FAIL: missing mode + intent should exit 1, got $AU_J" >&2
+  rm -rf "$DXTMP"; exit 1
+fi
+
+rm -rf "$DXTMP"
 
 # ── validate-manifests negative test: gemini-cli should error with v0.9.0 msg ─
 # Manifest containing 'gemini-cli' in supported_hosts must error with a clear

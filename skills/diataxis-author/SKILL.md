@@ -31,18 +31,76 @@ The second major skill in `agent-toolkit` (after `memory`). Encodes the operator
 
 ### `/diataxis author <slug>`
 
-> [!NOTE]
-> **Status**: stub. Full body lands in plan #13 **part 2** (`author-classify`) where the mode-classification engine + 4 templates + invocation flow ship. See the [author-classify part](https://github.com/alexherrero/agent-toolkit/blob/main/wiki/explanation/designs/diataxis-author/parts/author-classify.md) for the locked design.
+Live authoring guidance — operator invokes when starting a new wiki page. Skill resolves the mode (explicit `--mode` flag, or inferred from `--intent <sentence>` via `classify.py`, or operator prompt), loads the right Diátaxis template from `templates/<mode>.md`, applies the operator's filename style, computes target path `<wiki-root>/<mode-dir>/<filename>.md`, refuses if target exists (operator picks a different slug), and writes the skeleton. Operator edits in their editor; skill doesn't write further content after the skeleton.
 
-Live authoring guidance — operator invokes when starting a new wiki page. Skill prompts for mode (tutorial / how-to / reference / explanation; sub-agent classifies from one-sentence intent if uncertain), picks the right Diátaxis template from the 4 ADR 0004 templates, applies the operator's filename style (default `CamelCase-With-Dashes` per AgentMemory always-load entry), and emits a pre-filled skeleton at `wiki/<mode>/<filename>.md`. Operator edits in their editor; skill doesn't write further.
-
-**Planned invocation shape** (subject to refinement in plan #13 part 2):
+#### Invocation shape
 
 ```
 /diataxis author <slug> [--mode <tutorial|how-to|reference|explanation>]
-                        [--filename-style <CamelCase-With-Dashes|snake_case|kebab-case>]
                         [--intent "<one sentence>"]
+                        [--filename-style <CamelCase-With-Dashes|kebab-case|snake_case>]
+                        [--wiki-root <path>]
+                        [--overwrite]
 ```
+
+| Arg | Required | Default | Meaning |
+|---|---|---|---|
+| `<slug>` | yes | — | Page slug (e.g. "Install foo into a project"). Words extracted via alphanumeric splitting; filename style applied. |
+| `--mode <m>` | yes¹ | — | Diátaxis mode. ¹Required unless `--intent` provided (then `classify.py` infers); halts with operator-prompt if neither given. |
+| `--intent "<text>"` | no | — | One-sentence intent statement. Passed to `classify.py` as classification input; mode inferred if heuristic confidence ≥0.7. Sub-agent dispatch triggered if below threshold. |
+| `--filename-style <s>` | no | `CamelCase-With-Dashes` | Filename style. Three options: `CamelCase-With-Dashes` (default) / `kebab-case` / `snake_case`. AgentMemory always-load entry override planned for part 5. |
+| `--wiki-root <path>` | no | `./wiki` | Wiki root directory. Auto-detected as `<cwd>/wiki`; override for cross-repo invocations. |
+| `--overwrite` | no | off | Allow overwriting an existing target. Default: refuse + ask operator to pick a different slug. |
+
+#### Step-by-step flow
+
+**Step 1 — Resolve mode.** If `--mode` set, use it directly. If `--intent` set, call `classify.py` on the intent text + check `needs_subagent` flag; halt + prompt operator for explicit `--mode` if classifier confidence is below threshold. Otherwise halt with "ERROR: --mode or --intent required".
+
+**Step 2 — Validate inputs.** Mode in `{tutorial, how-to, reference, explanation}`; filename style in valid set; wiki root exists + is a directory.
+
+**Step 3 — Compute target path.** Apply filename style to slug → base name. Mode-to-directory mapping: `tutorial → tutorials/` (plural per Diátaxis convention; only this mode is pluralized), `how-to → how-to/`, `reference → reference/`, `explanation → explanation/`. Target = `<wiki-root>/<mode-dir>/<base>.md`.
+
+**Step 4 — Collision check.** If target exists + `--overwrite` not set, halt with `"target already exists: <path>; pick a different slug or pass --overwrite"`.
+
+**Step 5 — Load template.** Read `templates/<mode>.md` (ships in this part). Halt if missing (shouldn't happen post-install; indicates broken install).
+
+**Step 6 — Create parent dirs + write.** `mkdir -p` for the mode-dir; write template content via `write_bytes` (LF-only line endings — Windows portability per `save.py` + `adapt_skills.py` convention).
+
+**Step 7 — Return confirmation.** JSON: `{action: "authored", target: <path>, mode: <mode>, template: <path>, filename_style: <style>, filename: <base.md>}`. Operator opens the target file in their editor + fills in placeholders.
+
+#### Examples
+
+```bash
+# Explicit mode
+python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/author.py \
+  "Install agent-toolkit into a project" --mode how-to
+# → wiki/how-to/Install-Agent-Toolkit-Into-A-Project.md
+
+# Infer mode from intent
+python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/author.py \
+  "CLI reference for the installer" --intent "lookup table for all install.sh flags"
+# → wiki/reference/Cli-Reference-For-The-Installer.md  (inferred: reference)
+
+# Kebab-case filename style
+python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/author.py \
+  "Tutorial 3 — Advanced things" --mode tutorial --filename-style kebab-case
+# → wiki/tutorials/tutorial-3-advanced-things.md
+```
+
+#### Failure modes (graceful)
+
+- **Missing wiki root** → exit 1 with `"wiki root not found: <path>; pass --wiki-root or cd into a project with a wiki/ dir"`.
+- **Target collision** (page exists) → exit 1 with operator next-step.
+- **Mode + intent both missing** → exit 1 with `"--mode or --intent required"`.
+- **Intent classification ambiguous** (confidence < threshold) → exit 1 with classifier output + prompt to disambiguate via explicit `--mode`.
+- **Template missing** → exit 1 with broken-install indication.
+- **Invalid mode** → exit 1 with valid options listed.
+
+#### Anti-patterns
+
+- **Don't pass `--overwrite` casually.** The collision refusal is intentional — re-using a slug across modes (e.g. how-to + explanation with the same name) is usually a sign you meant to split a mode-mixed page. Use `/diataxis classify` to verify.
+- **Don't write skill body content beyond the skeleton.** The skill emits the template + lets the operator fill in. Auto-writing body content would defeat the "live authoring guidance" promise.
+- **Don't bypass `--filename-style`.** The default `CamelCase-With-Dashes` matches the operator's convention from the canonical wikis (agentic-harness + agent-toolkit + dev-setup). AgentMemory override (planned part 5) lets you tune per-repo.
 
 ### `/diataxis check [--strict]`
 
@@ -85,16 +143,81 @@ One-shot migration of legacy audience-based wikis (`development/` + `operational
 
 ### `/diataxis classify <file>`
 
-> [!NOTE]
-> **Status**: stub. Full body lands in plan #13 **part 2** (`author-classify`). See the [author-classify part](https://github.com/alexherrero/agent-toolkit/blob/main/wiki/explanation/designs/diataxis-author/parts/author-classify.md) for the locked design.
+Single-page mode classification — operator-debug surface + the `diataxis-evaluator` sub-agent's primary invocation surface for ambiguous cases. Takes a file path; returns mode + confidence + per-mode scores + rationale + `needs_subagent` flag. Tier-1 (deterministic Python heuristic in `classify.py`) handles clear cases via regex + heading-shape rules from ADR 0004. Tier-2 (`diataxis-evaluator` sub-agent — operational from this part) handles ambiguous mode-mixed pages where heuristic scoring is tight (default confidence threshold 0.7).
 
-Single-page mode classification — operator-debug surface + the `diataxis-evaluator` sub-agent's primary invocation surface for ambiguous cases. Takes a file path; returns mode classification + confidence + rationale + (if ambiguous) suggested splits. Pure-Python heuristic for clear cases (heading shape + frontmatter signals from ADR 0004's machine-enforceable rules); dispatches `diataxis-evaluator` sub-agent for ambiguous mode-mixed pages where heuristic scoring is tight.
-
-**Planned invocation shape** (subject to refinement in plan #13 part 2):
+#### Invocation shape
 
 ```
-/diataxis classify <file> [--no-subagent] [--limit N]
+/diataxis classify <file> [--threshold N] [--no-subagent] [--stub]
 ```
+
+| Arg | Required | Default | Meaning |
+|---|---|---|---|
+| `<file>` | yes | — | Path to the wiki page to classify. |
+| `--threshold N` | no | `0.7` | Confidence threshold below which Tier-1 emits `needs_subagent: true`. |
+| `--no-subagent` | no | off | Never set `needs_subagent: true`; return Tier-1 result even if ambiguous. Operator-debug + scripting. |
+| `--stub` | no | off | When sub-agent dispatch would fire, emit `needs_subagent: true` marker without actually invoking sub-agent. Used by CI smoke tests to avoid live LLM calls. |
+
+#### Step-by-step flow
+
+**Step 1 — Read file.** Halt with `"ERROR: page not found"` if missing.
+
+**Step 2 — Strip frontmatter.** If file starts with `---`, parse YAML frontmatter (best-effort tolerant); else treat whole file as body.
+
+**Step 3 — Score 4 modes** via the heuristic engine in `classify.py`:
+
+- **Tutorial**: `## Step N — ...` heading + `## What you learned` + `## Next` → 0.95; partial signals 0.5-0.75.
+- **How-to**: `## Steps` section → 0.85; ≥3 numbered imperative steps in first 40 lines → 0.65; penalty 50% if `## Rationale|Why|Background|Context` sections detected (mode-mixed signal).
+- **Reference**: `## ⚡ Quick Reference` heading near top → 0.8; ≥60% table lines → 0.9.
+- **Explanation**: default mode; `1.0 - max(other 3)`; bumped to 0.85 if ADR-shape (`> [!NOTE]` block with `Status:` line) detected.
+
+**Step 4 — Pick winning mode** (highest score). Mode-mixed flag = true if ≥1 other mode within 0.2 of winner AND above 0.5.
+
+**Step 5 — Decide on sub-agent dispatch.** `needs_subagent: true` when (a) winning score < `--threshold`, OR (b) `mode_mixed: true`. Default threshold 0.7.
+
+**Step 6 — Return classification.** JSON: `{mode, confidence, rationale, mode_mixed, needs_subagent, scores: {tutorial, how-to, reference, explanation}}` + (when caller dispatches) `suggested_split: [{mode, body_section_ranges}]`.
+
+#### Sub-agent dispatch (Tier 2)
+
+When `needs_subagent: true`, the caller (typically `/diataxis author --intent` or future `/diataxis check` / `/diataxis repair` from part 3) dispatches the `diataxis-evaluator` sub-agent with the caller-supplies-inline-rubric pattern documented in [`agents/diataxis-evaluator.md`](../../agents/diataxis-evaluator.md). Sub-agent has **zero filesystem write scope** (allowlist Read/Glob/Grep/WebFetch only) — returns classification decision; caller acts on it.
+
+The CLI itself doesn't dispatch sub-agents directly — it returns the marker + lets the calling skill body handle dispatch. Same pattern as `adapt_skills.py` from plan #7b task 4.
+
+#### Examples
+
+```bash
+# Clear tutorial page → mode: tutorial, confidence: 0.95
+python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/classify.py \
+  wiki/tutorials/01-Getting-Started.md
+
+# Ambiguous mode-mixed page → needs_subagent: true
+python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/classify.py \
+  wiki/some/ambiguous.md
+# → {mode: "explanation", confidence: 0.575, mode_mixed: true, needs_subagent: true, ...}
+
+# Force Tier-1-only via --no-subagent (operator-debug)
+python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/classify.py \
+  wiki/some/ambiguous.md --no-subagent
+# → {needs_subagent: false, ...} (Tier-1 verdict regardless of confidence)
+
+# CI smoke-safe: --stub avoids actual sub-agent dispatch
+python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/classify.py \
+  wiki/some/ambiguous.md --stub
+# → {needs_subagent: true, dispatched_subagent: false, ...}
+```
+
+#### Failure modes (graceful)
+
+- **File not found** → exit 1 with the actual path checked.
+- **File empty** → emit `{mode: "explanation", confidence: 0.3, rationale: "empty page; default to explanation"}` (stub-style page; reasonable default).
+- **Frontmatter malformed** → ignore frontmatter; classify body only.
+- **All 4 modes score 0** → emit `explanation` with confidence based on `1.0 - max(others) = 1.0` (perfect default — no positive signal for any other mode).
+
+#### Anti-patterns
+
+- **Don't use `--no-subagent` in automation.** The `needs_subagent` flag is the signal to escalate; bypassing it loses information. `--no-subagent` is operator-debug only.
+- **Don't tune `--threshold` per-invocation.** The default 0.7 is tuned to v1 fixtures; operator-level threshold should be set globally via AgentMemory always-load entry (part 5 wires this).
+- **Don't dispatch the sub-agent without passing classify.py's Tier-1 output as rubric context.** The sub-agent's caller-supplies-inline-rubric contract expects the heuristic verdict + per-mode scores so it can validate or override. Bare dispatch wastes the deterministic signal.
 
 ## Tool allowlist
 
