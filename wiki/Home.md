@@ -29,6 +29,7 @@ Dogfood documentation for `agent-toolkit` — a personal collection of agent cus
 ## 💡 Want to know why?
 
 - [Purpose and scope](Purpose-And-Scope) — what this repo is for, what it's not.
+- [Cross-Repo Memory Protocol](Cross-Repo-Memory-Protocol) — how agentic-harness reads from + writes to the toolkit-side `/memory` skill at phase boundaries.
 
 ### Architecture decisions
 
