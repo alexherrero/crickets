@@ -5,6 +5,35 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.11.1] — 2026-05-22 — Cross-Repo Memory Protocol doc (paired with agentic-harness v2.5.0)
+
+Patch — wiki-only release paired with [`agentic-harness v2.5.0`](https://github.com/alexherrero/agentic-harness/releases/tag/v2.5.0). Substantive change ships entirely on the harness side: new `scripts/harness_memory.py` dispatcher + phase-spec amendments wire MemoryVault read + write into every harness phase command (`/setup` `/plan` `/work` `/review` `/release` `/bugfix`) at natural boundaries.
+
+This toolkit-side release adds the **companion documentation** describing the cross-repo contract: what the harness expects from `skills/memory/scripts/save.py` (+ planned `recall.py query`), what stability guarantees the toolkit makes, and how graceful-skip works in both directions when one side isn't installed.
+
+**5th consecutive paired-release-as-documentation pair** (after v2.4.0/v2.4.1/v2.4.2/v2.4.3) — but **first non-doc-only pair** in the run when measured from the harness side (harness ships real new phase behavior, not just docs).
+
+### Added
+
+- **New `wiki/explanation/Cross-Repo-Memory-Protocol.md`** (~80 lines) — documents the harness↔toolkit memory contract:
+  - **What the harness expects** from `save.py` — CLI flag stability (`--vault-path` / `--group` / `--body-file -`), body-via-stdin, exit-0-on-success, deduplication contract.
+  - **What the toolkit guarantees** — 5 stability points that anchor the harness's `_invoke_toolkit_save()` function in `scripts/harness_memory.py`.
+  - **Phase-boundary integration map** — table showing which toolkit script each harness phase calls + which vault paths get read vs. written.
+  - **Graceful-skip protocol** — both directions: toolkit-absent + harness-present (manual `/memory save` still works), harness-present + toolkit-absent (phases run unchanged with stderr `[harness_memory] toolkit not installed — recorded intent only` notice), and vault-missing (harness short-circuits before invoking toolkit).
+  - **Versioning + compatibility note** — explicit "soft contract" framing; neither repo's CI verifies the cross-repo integration. Harness ships smoke tests against a fixture toolkit stub (`TestOfferSaveBehavior` + `TestOfferSaveToolkitAbsent` in `scripts/test_harness_memory.py`).
+
+- **`wiki/Home.md`** reference added under "Want to know why?" → Cross-Repo Memory Protocol.
+
+### Changed
+
+- None — no skill code, no installer changes, no manifest schema changes. Toolkit `skills/memory/` is byte-identical to v0.11.0.
+
+### Internal
+
+- **1 commit** (`9176bc2`) — wiki-only addition.
+- **No CI changes** — wiki page lints clean against the toolkit's `check-wiki.py`; the 22 pre-existing soft errors in toolkit-side check-wiki output are unchanged baseline drift (not gated in toolkit CI).
+- **Paired-release ordering**: this toolkit release tagged first; harness v2.5.0 release notes URL-link this release per `[[coordinated-release-order]]` convention.
+
 ## [v0.11.0] — 2026-05-22 — diataxis-author skill (paired with agentic-harness v2.4.3)
 
 Minor — second major skill in the toolkit after `memory`. Ships [`diataxis-author`](skills/diataxis-author/SKILL.md) — one skill, five sub-commands covering the full Diátaxis-wiki lifecycle (author + maintain + migrate). Encodes the operator's preferred conventions from [agentic-harness ADR 0004](https://github.com/alexherrero/agentic-harness/blob/main/wiki/explanation/decisions/0004-diataxis-documentation-spec.md) into proactive authoring guidance + ongoing drift detection + repair + one-shot migration. Subsumes harness's `migrate-to-diataxis` predecessor (deprecated 2026-05-22; predecessor file removal in follow-up harness PATCH after dogfood). Second real dogfood of plan #6's `/design` skill (after MemoryVault). Paired with [`agentic-harness v2.4.3`](https://github.com/alexherrero/agentic-harness/releases/tag/v2.4.3) (paired-doc-only on harness side — 4th consecutive paired-release-as-documentation pair after v2.4.0/v2.4.1/v2.4.2).
