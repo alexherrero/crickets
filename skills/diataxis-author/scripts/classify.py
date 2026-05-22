@@ -268,9 +268,30 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def _resolve_threshold(arg_threshold: float | None, file_path: Path) -> float:
+    """Resolve confidence threshold: explicit arg → AgentMemory conventions → default."""
+    if arg_threshold is not None:
+        return arg_threshold
+    # Try AgentMemory conventions; per-repo wiki override takes precedence.
+    try:
+        import agentmemory_conventions  # type: ignore
+        # Walk up from the file path to find a wiki/ ancestor for per-repo conventions.
+        wiki_root = None
+        cur = file_path.resolve().parent
+        while cur != cur.parent:
+            if cur.name == "wiki":
+                wiki_root = cur
+                break
+            cur = cur.parent
+        conv = agentmemory_conventions.load_conventions(wiki_root=wiki_root)
+        return float(conv.get("confidence_threshold", _DEFAULT_CONFIDENCE_THRESHOLD))
+    except Exception:
+        return _DEFAULT_CONFIDENCE_THRESHOLD
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv if argv is not None else sys.argv[1:])
-    threshold = args.threshold if args.threshold is not None else _DEFAULT_CONFIDENCE_THRESHOLD
+    threshold = _resolve_threshold(args.threshold, Path(args.file).expanduser())
     try:
         result = classify_file(Path(args.file).expanduser(), confidence_threshold=threshold)
     except FileNotFoundError as e:

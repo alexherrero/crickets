@@ -121,6 +121,22 @@ def author_page(
     }
 
 
+def _resolve_filename_style(arg_style: str | None, wiki_root: Path) -> str:
+    """Filename style resolution: explicit arg → AgentMemory conventions → default."""
+    if arg_style:
+        return arg_style
+    # Try AgentMemory conventions (per-repo wiki overrides; then vault entries).
+    try:
+        import agentmemory_conventions  # type: ignore
+        conv = agentmemory_conventions.load_conventions(wiki_root=wiki_root)
+        style = conv.get("filename_style", _DEFAULT_FILENAME_STYLE)
+        if style in _VALID_FILENAME_STYLES:
+            return style
+    except Exception:
+        pass
+    return _DEFAULT_FILENAME_STYLE
+
+
 def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="diataxis-author",
@@ -142,9 +158,9 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
              "(used when --mode not provided)",
     )
     parser.add_argument(
-        "--filename-style", default=_DEFAULT_FILENAME_STYLE,
+        "--filename-style", default=None,
         choices=sorted(_VALID_FILENAME_STYLES),
-        help=f"filename style (default {_DEFAULT_FILENAME_STYLE})",
+        help=f"filename style (default: AgentMemory conventions → {_DEFAULT_FILENAME_STYLE})",
     )
     parser.add_argument(
         "--wiki-root", default=None,
@@ -190,12 +206,15 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 1
+    # Resolve filename style via AgentMemory conventions fallback if not
+    # explicitly passed.
+    resolved_style = _resolve_filename_style(args.filename_style, wiki_root)
     try:
         result = author_page(
             slug=args.slug,
             mode=mode,
             wiki_root=wiki_root,
-            filename_style=args.filename_style,
+            filename_style=resolved_style,
             overwrite=args.overwrite,
         )
     except (FileNotFoundError, FileExistsError, ValueError) as e:
