@@ -41,6 +41,12 @@ import sys
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 
+# Force UTF-8 stdout so Unicode in the preview report (e.g. `→` arrow in
+# the MOVES section) doesn't crash on Windows Python's default cp1252
+# encoding. Python 3.7+ supports reconfigure; toolkit minimum is 3.9+.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
 _SCRIPTS_DIR = Path(__file__).resolve().parent
 if str(_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS_DIR))
