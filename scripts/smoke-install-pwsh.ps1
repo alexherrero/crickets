@@ -2445,10 +2445,12 @@ More prose.
             throw "author.py kebab-case did not write tutorial-2.md"
         }
 
-        # Test H: collision refused
-        $auHProc = Start-Process -FilePath 'python3' -ArgumentList @($auPy, 'Install foo into a project', '--mode', 'how-to', '--wiki-root', (Join-Path $dxtmp 'wiki')) -NoNewWindow -PassThru -Wait -RedirectStandardOutput ([System.IO.Path]::GetTempFileName()) -RedirectStandardError ([System.IO.Path]::GetTempFileName())
-        if ($auHProc.ExitCode -ne 1) {
-            throw "collision should exit 1, got $($auHProc.ExitCode)"
+        # Test H: collision refused. Use direct & invocation (not Start-Process)
+        # because Start-Process splits multi-word args on spaces on Windows,
+        # causing argparse to reject extras + exit 2 instead of the expected 1.
+        $null = & python3 $auPy 'Install foo into a project' --mode how-to --wiki-root (Join-Path $dxtmp 'wiki') 2>&1
+        if ($LASTEXITCODE -ne 1) {
+            throw "collision should exit 1, got $LASTEXITCODE"
         }
 
         # Test I: --intent infers reference
