@@ -2836,11 +2836,12 @@ Reasons.
     # ── quality-gates bundle install test (plan #10 task 2) ─────────────────
     Write-Host '==> quality-gates bundle install test (plan #10 task 2)'
     $qgtmp = Join-Path ([System.IO.Path]::GetTempPath()) ("toolkit-qg-" + [System.Guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $qgtmp -Force | Out-Null
     try {
         $installScript = Join-Path $ToolkitRoot 'install.ps1'
-        $qgProc = Start-Process -FilePath 'pwsh' -ArgumentList @('-NoProfile', '-File', $installScript, $qgtmp, '-Bundle', 'quality-gates') -NoNewWindow -PassThru -Wait
-        if ($qgProc.ExitCode -ne 0) {
-            throw "--bundle quality-gates install returned $($qgProc.ExitCode)"
+        pwsh -NoProfile -File $installScript -Bundle 'quality-gates' -NoPythonDeps -NoSkillIndex -NoPrePushHook $qgtmp | Out-File (Join-Path $qgtmp '.install.log')
+        if ($LASTEXITCODE -ne 0) {
+            throw "--bundle quality-gates install returned $LASTEXITCODE"
         }
 
         # Assert all 5 primitives' files landed at expected .claude/ paths.
