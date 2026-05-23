@@ -491,7 +491,7 @@ install_bundles() {
         local contents_pairs
         contents_pairs="$(python3 - "$bundle_md" <<'PYEOF'
 import sys, yaml
-with open(sys.argv[1]) as f:
+with open(sys.argv[1], encoding="utf-8") as f:
     text = f.read()
 parts = text.split("---", 2)
 if len(parts) < 3:

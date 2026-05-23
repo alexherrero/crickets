@@ -375,7 +375,7 @@ function Install-Bundles {
             # is the legacy fallback (example-bundle uses it for its stub skill).
             $contentsPairs = python3 -c @"
 import sys, yaml
-with open(r'$bundleMd') as f:
+with open(r'$bundleMd', encoding='utf-8') as f:
     text = f.read()
 parts = text.split('---', 2)
 if len(parts) < 3:
