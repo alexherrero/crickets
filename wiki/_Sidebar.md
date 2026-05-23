@@ -24,6 +24,7 @@
 ### 💡 Explanation
 - [Purpose and scope](Purpose-And-Scope)
 - [Cross-Repo Memory Protocol](Cross-Repo-Memory-Protocol)
+- [V3 Retrospective](v3-retrospective)
 
 **Decisions**
 - [0001 — agent-toolkit purpose](0001-agent-toolkit-purpose)
