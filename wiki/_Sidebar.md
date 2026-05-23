@@ -9,6 +9,7 @@
 - [Add a bundle](Add-A-Bundle)
 - [Use the evaluator](Use-The-Evaluator)
 - [Use the base hooks](Use-The-Base-Hooks)
+- [Use the evidence-tracker hook](Use-The-Evidence-Tracker-Hook)
 - [Use the design skill](Use-The-Design-Skill)
 - [Use the memory skill](Use-The-Memory-Skill)
 
