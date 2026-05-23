@@ -122,11 +122,15 @@ if [[ -d "$full" ]]; then
       echo "FAIL: .claude/hooks/$name/ is a stray subdir (hook parent contains only <name>.sh / <name>.ps1 files)" >&2
       fail=1
     elif [[ -f "$entry" ]]; then
-      if [[ "$entry" != *.sh && "$entry" != *.ps1 ]]; then
-        echo "FAIL: .claude/hooks/$name is a stray non-.sh/.ps1 file" >&2
+      # Allowed extensions in .claude/hooks/: .sh / .ps1 (entry points) +
+      # .py (Python sidecar helpers — plan #9 evidence-tracker introduced
+      # this pattern; future hooks may use it too).
+      if [[ "$entry" != *.sh && "$entry" != *.ps1 && "$entry" != *.py ]]; then
+        echo "FAIL: .claude/hooks/$name is a stray non-.sh/.ps1/.py file" >&2
         fail=1
       fi
-      # POSIX scripts (.sh) must be executable.
+      # POSIX scripts (.sh) must be executable. .py helpers don't need to be
+      # since they're invoked via `python3 <path>`.
       if [[ "$entry" == *.sh && ! -x "$entry" ]]; then
         echo "FAIL: .claude/hooks/$name is not executable" >&2
         fail=1

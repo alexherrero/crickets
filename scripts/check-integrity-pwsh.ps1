@@ -116,8 +116,10 @@ if (Test-Path -LiteralPath $hookFull -PathType Container) {
         if ($_.PSIsContainer) {
             Write-Error "FAIL: .claude/hooks/$($_.Name)/ is a stray subdir (hook parent contains only <name>.sh / <name>.ps1 files)"
             $fail = $true
-        } elseif ($_.Extension -notin '.sh', '.ps1') {
-            Write-Error "FAIL: .claude/hooks/$($_.Name) is a stray non-.sh/.ps1 file"
+        } elseif ($_.Extension -notin '.sh', '.ps1', '.py') {
+            # Allowed: .sh / .ps1 (entry points) + .py (Python sidecar
+            # helpers — plan #9 evidence-tracker introduced this pattern).
+            Write-Error "FAIL: .claude/hooks/$($_.Name) is a stray non-.sh/.ps1/.py file"
             $fail = $true
         }
     }
