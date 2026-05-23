@@ -1,6 +1,10 @@
 # How to use the diataxis-author skill
 
-The `diataxis-author` skill author + maintain a Diátaxis-style wiki for any repo. It encodes the operator's preferred conventions from [agentic-harness ADR 0004](https://github.com/alexherrero/agentic-harness/blob/main/wiki/explanation/decisions/0004-diataxis-documentation-spec.md) into proactive authoring guidance + ongoing drift detection + repair + one-shot migration. One skill, five sub-commands (matches `/memory`'s shape).
+> [!NOTE]
+> **Goal:** Author + maintain a Diátaxis-style wiki for any repo via the 5-sub-command `/diataxis` skill — live authoring (`author`), drift detection (`check`), interactive repair (`repair`), one-shot legacy migration (`migrate`), and mode classification (`classify`).
+> **Prereqs:** `agent-toolkit` installed (see [Manifest-Schema](Manifest-Schema) for the `kind: skill` shape); for `check`/`repair`: `scripts/check-wiki.py` from `agentic-harness` available via sibling clone (graceful-skip if absent); for `migrate`: clean working tree + a legacy audience-based wiki layout to migrate from.
+
+The `diataxis-author` skill encodes the operator's preferred conventions from [agentic-harness ADR 0004](https://github.com/alexherrero/agentic-harness/blob/main/wiki/explanation/decisions/0004-diataxis-documentation-spec.md) into proactive authoring guidance + ongoing drift detection + repair + one-shot migration. One skill, five sub-commands (matches `/memory`'s shape).
 
 ## Prerequisites
 

@@ -19,6 +19,7 @@ Dogfood documentation for `agent-toolkit` — a personal collection of agent cus
 - [Use the evidence-tracker hook](Use-The-Evidence-Tracker-Hook) — default-FAIL evidence enforcement on `/work` task closeouts (4th base hook; agent must Read evidence files before flipping PLAN.md `[x]`).
 - [Use the design skill](Use-The-Design-Skill) — `/design author` walks the 10-section template, `/design translate` splits into parts, `/design sequence` generates a PLAN.md per part. Hand-off to harness `/work` + `/review` for execution.
 - [Use the memory skill](Use-The-Memory-Skill) — `/memory save` captures durable preferences / workflows / fixes; `/memory evolve` supersedes existing entries (preserves audit trail). Recall (auto-injection at SessionStart + UserPromptSubmit), reflection sidecar, idea ledger, discovery come in subsequent parts of [the MemoryVault design](memoryvault).
+- [Use the diataxis-author skill](Use-Diataxis-Author) — `/diataxis author` / `check` / `repair` / `migrate` / `classify` covering the full Diátaxis-wiki lifecycle. See [the diataxis-author design](diataxis-author).
 
 ## 📖 Looking up a detail?
 
@@ -39,12 +40,15 @@ Dogfood documentation for `agent-toolkit` — a personal collection of agent cus
 - [ADR 0003 — base operator-control hooks](0003-base-operator-hooks)
 - [ADR 0004 — design skill: human-facing design pipeline → agent execution handoff](0004-design-skill)
 - [ADR 0006 — Gemini CLI host removal](0006-gemini-cli-host-removal)
+- [ADR 0007 — MemoryVault Discovery + Mining](0007-memoryvault-discovery)
+- [ADR 0008 — diataxis-author skill](0008-diataxis-author)
 
 ### Designs
 
 The canonical "Why we built X" entry points (published via the `/design` skill, surfaced here when the parent design's last queued part hits `Status: done` and harness `/release` transitions the design to `launched`).
 
 - [MemoryVault — permanent agent memory via Obsidian-vault-folder + reflection sidecar](memoryvault) — single `memory` skill in `agent-toolkit` with sub-commands `save` / `evolve` / `reflect` / `search`; SessionStart + UserPromptSubmit recall hooks; reflection sidecar with tri-modal confidence routing; two-tier idea capture (Ideas.md surface + `_idea-incubator/` deep research); planned in 6 parts across plans #7a (5 parts) + #7b (1 part). See parts: [write-primitives](write-primitives), [recall-loop](recall-loop), [reflection-and-recovery](reflection-and-recovery), [idea-ledger](idea-ledger), [seed-pass](seed-pass), [discovery-mining](discovery-mining).
+- [diataxis-author — Diátaxis wiki authoring + maintenance for any repo](diataxis-author) — second major skill after `memory`; subsumes the harness's `migrate-to-diataxis` predecessor; AgentMemory-integrated conventions; planned in 5 parts. See parts: [skill-scaffold](skill-scaffold), [author-classify](author-classify), [check-repair](check-repair), [migrate-subsume](migrate-subsume), [agentmemory-docs-release](agentmemory-docs-release).
 
 ## Conventions
 
