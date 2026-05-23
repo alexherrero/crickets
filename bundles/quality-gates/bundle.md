@@ -61,27 +61,25 @@ Post-install, the target project has:
 
 Plus the matching `.ps1` entries for Windows hosts.
 
+## How this bundle works
+
+**Sibling-reference, not copies.** The bundle is a *manifest pointing at standalone primitives* — `contents:` lists `- agent: evaluator` / `- hook: kill-switch` / etc., and the installer resolves each entry against the toolkit's standalone primitive locations (`agent-toolkit/agents/evaluator.md`, `agent-toolkit/hooks/kill-switch/`, etc.). The bundle directory contains only `bundle.md`; the primitives themselves live at their canonical standalone paths.
+
+This means:
+- **Single source of truth** — editing `agent-toolkit/hooks/kill-switch/kill-switch.sh` updates the bundle automatically.
+- **No drift possible** — the bundle physically can't diverge from the standalone primitive, because there's nothing to diverge.
+- **No maintenance burden** — no parity gate needed; no sync script needed; no operator-must-remember step.
+- **Bundle-local fallback preserved** for stubs that exist only inside a bundle (see `example-bundle` for the reference-skeleton case).
+
+Per Q1 in [ADR 0010 — quality-gates bundle](../../wiki/explanation/decisions/0010-quality-gates-bundle.md) for the design rationale.
+
 ## Version-bump convention
 
-**The bundle's `version:` bumps whenever ANY constituent primitive changes** — even if the change is a single-character fix to one hook's stderr message. Bundle version pins the **set**; operators installing `quality-gates@v0.1.0` get a known frozen quartet (current versions: evaluator 0.1.0, kill-switch 0.1.0, steer 0.1.0, commit-on-stop 0.1.0, evidence-tracker 0.1.0).
+**The bundle's `version:` bumps whenever ANY constituent primitive changes** — even if the change is a single-character fix to one hook's stderr message. Bundle version pins the **set**; operators installing `quality-gates@v0.1.0` get a known-good combination of primitives at known versions.
 
-Why not version-by-highest-constituent or version-by-substantive-only: the parity-check CI gate (see [`scripts/check-bundle-parity.sh`](../../scripts/check-bundle-parity.sh)) makes drift between bundle copies and standalone primitives **impossible to merge** — so bumping bundle version on every primitive change is the natural cadence. Operators reading the CHANGELOG know exactly what they're getting per bundle release.
+Since the bundle references rather than copies, this version is a **stamp of approval for the set** rather than a marker of what's in the bundle dir (which is just one file). Operators reading the CHANGELOG know exactly what set they're getting per bundle release.
 
-Per [ADR 0010 — quality-gates bundle](../../wiki/explanation/decisions/0010-quality-gates-bundle.md) for the locked design calls + 4 load-bearing assumptions with re-audit triggers.
-
-## Maintenance contract — read this before editing a primitive
-
-Per Q1 in [ADR 0010](../../wiki/explanation/decisions/0010-quality-gates-bundle.md), the bundle ships **byte-identical copies** of the standalone primitives. When you edit a standalone primitive (e.g. `agent-toolkit/hooks/kill-switch/kill-switch.sh`), you MUST also update the bundle copy (`agent-toolkit/bundles/quality-gates/hooks/kill-switch/kill-switch.sh`) in the same commit. The CI gate [`scripts/check-bundle-parity.sh`](../../scripts/check-bundle-parity.sh) fails any PR where the two diverge.
-
-The simplest workflow:
-
-```bash
-# After editing the standalone primitive:
-cp -r hooks/kill-switch/. bundles/quality-gates/hooks/kill-switch/
-bash scripts/check-bundle-parity.sh   # local verify (CI also runs this)
-```
-
-Future operators may extract this into a `make sync-bundles` helper or a pre-commit hook. For now: manual + parity-gated.
+Per Q2 in [ADR 0010](../../wiki/explanation/decisions/0010-quality-gates-bundle.md) for the locked design call.
 
 ## See also
 

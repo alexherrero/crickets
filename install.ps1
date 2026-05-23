@@ -369,31 +369,74 @@ function Install-Bundles {
                 Write-Warning "bundle '$bundleName' has no supported_hosts - skipped"
                 return
             }
-            $skillsDir = Join-Path $bundleDir 'skills'
-            if (Test-Path -LiteralPath $skillsDir -PathType Container) {
-                Get-ChildItem -LiteralPath $skillsDir -Directory | ForEach-Object {
-                    Install-Skill $_.FullName $_.Name $hosts
-                }
+            # Plan #10: contents-driven dispatch with sibling-reference resolution.
+            # For each `- kind: name` in the manifest's contents:, prefer the
+            # standalone toolkit location over the bundle-local copy. Bundle-local
+            # is the legacy fallback (example-bundle uses it for its stub skill).
+            $contentsPairs = python3 -c @"
+import sys, yaml
+with open(r'$bundleMd') as f:
+    text = f.read()
+parts = text.split('---', 2)
+if len(parts) < 3:
+    sys.exit(0)
+try:
+    fm = yaml.safe_load(parts[1]) or {}
+except yaml.YAMLError:
+    sys.exit(0)
+for entry in fm.get('contents', []) or []:
+    if isinstance(entry, dict) and len(entry) == 1:
+        kind, name = next(iter(entry.items()))
+        print(f'{kind}`t{name}')
+"@
+            if (-not $contentsPairs) {
+                Write-Warning "bundle '$bundleName' has empty/unparseable contents - skipped"
+                return
             }
-            $agentsDir = Join-Path $bundleDir 'agents'
-            if (Test-Path -LiteralPath $agentsDir -PathType Container) {
-                Get-ChildItem -LiteralPath $agentsDir -Filter '*.md' -File | ForEach-Object {
-                    Install-Agent $_.FullName $_.BaseName $hosts
-                }
-            }
-            $hooksDir = Join-Path $bundleDir 'hooks'
-            if (Test-Path -LiteralPath $hooksDir -PathType Container) {
-                Get-ChildItem -LiteralPath $hooksDir -Directory | ForEach-Object {
-                    $innerHookMd = Join-Path $_.FullName 'hook.md'
-                    if (Test-Path -LiteralPath $innerHookMd) {
-                        Install-Hook $_.FullName $_.Name $hosts
+            foreach ($pair in $contentsPairs -split "`n") {
+                $pair = $pair.Trim()
+                if (-not $pair) { continue }
+                $parts2 = $pair -split "`t", 2
+                if ($parts2.Count -ne 2) { continue }
+                $entryKind = $parts2[0]
+                $entryName = $parts2[1]
+                switch ($entryKind) {
+                    'skill' {
+                        $standalonePath = Join-Path $ToolkitRoot "skills/$entryName"
+                        $bundleLocalPath = Join-Path $bundleDir "skills/$entryName"
+                        if (Test-Path -LiteralPath (Join-Path $standalonePath 'SKILL.md')) {
+                            Install-Skill $standalonePath $entryName $hosts
+                        } elseif (Test-Path -LiteralPath (Join-Path $bundleLocalPath 'SKILL.md')) {
+                            Install-Skill $bundleLocalPath $entryName $hosts
+                        } else {
+                            Write-Warning "bundle '$bundleName' skill '$entryName' not found at $standalonePath or $bundleLocalPath - skipped"
+                        }
                     }
-                }
-            }
-            foreach ($other in 'commands','mcp-servers','status-line','output-styles','workflows','rules','snippets','settings-fragments') {
-                $od = Join-Path $bundleDir $other
-                if ((Test-Path -LiteralPath $od -PathType Container) -and (Get-ChildItem -LiteralPath $od -Force -ErrorAction SilentlyContinue)) {
-                    Write-Warning "kind '$other' is not yet supported by this installer - skipped"
+                    'agent' {
+                        $standalonePath = Join-Path $ToolkitRoot "agents/$entryName.md"
+                        $bundleLocalPath = Join-Path $bundleDir "agents/$entryName.md"
+                        if (Test-Path -LiteralPath $standalonePath) {
+                            Install-Agent $standalonePath $entryName $hosts
+                        } elseif (Test-Path -LiteralPath $bundleLocalPath) {
+                            Install-Agent $bundleLocalPath $entryName $hosts
+                        } else {
+                            Write-Warning "bundle '$bundleName' agent '$entryName' not found at $standalonePath or $bundleLocalPath - skipped"
+                        }
+                    }
+                    'hook' {
+                        $standalonePath = Join-Path $ToolkitRoot "hooks/$entryName"
+                        $bundleLocalPath = Join-Path $bundleDir "hooks/$entryName"
+                        if (Test-Path -LiteralPath (Join-Path $standalonePath 'hook.md')) {
+                            Install-Hook $standalonePath $entryName $hosts
+                        } elseif (Test-Path -LiteralPath (Join-Path $bundleLocalPath 'hook.md')) {
+                            Install-Hook $bundleLocalPath $entryName $hosts
+                        } else {
+                            Write-Warning "bundle '$bundleName' hook '$entryName' not found at $standalonePath or $bundleLocalPath - skipped"
+                        }
+                    }
+                    default {
+                        Write-Warning "kind '$entryKind' is not yet supported by this installer - skipped"
+                    }
                 }
             }
         }

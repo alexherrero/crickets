@@ -466,7 +466,7 @@ warn_unsupported_kind() {
 
 # ── install bundles ───────────────────────────────────────────────────────
 install_bundles() {
-    local bundle_md bundle_dir bundle_name hosts kind
+    local bundle_md bundle_dir bundle_name hosts
     for bundle_md in "$TOOLKIT_ROOT"/bundles/*/bundle.md; do
         [[ -f "$bundle_md" ]] || continue
         bundle_dir="$(dirname "$bundle_md")"
@@ -481,38 +481,85 @@ install_bundles() {
             continue
         fi
 
-        # v0.6.0: handle skill + agent kinds inside bundles. Other kinds are stubs.
-        if [[ -d "$bundle_dir/skills" ]]; then
-            local skill_dir skill_name
-            for skill_dir in "$bundle_dir"/skills/*/; do
-                [[ -d "$skill_dir" ]] || continue
-                skill_name="$(basename "$skill_dir")"
-                install_skill "${skill_dir%/}" "$skill_name" "$hosts"
-            done
+        # Plan #10: contents-driven dispatch with sibling-reference resolution.
+        # For each `- kind: name` in the manifest's contents:, prefer the
+        # standalone toolkit location (<TOOLKIT_ROOT>/<kind>s/<name>/) over
+        # the bundle-local copy (<bundle_dir>/<kind>s/<name>/). Bundle-local
+        # is the legacy fallback (example-bundle uses it for its stub skill).
+        # Single source of truth: each primitive lives once at the standalone
+        # location; the bundle is just a manifest referencing the set.
+        local contents_pairs
+        contents_pairs="$(python3 - "$bundle_md" <<'PYEOF'
+import sys, yaml
+with open(sys.argv[1]) as f:
+    text = f.read()
+parts = text.split("---", 2)
+if len(parts) < 3:
+    sys.exit(0)
+try:
+    fm = yaml.safe_load(parts[1]) or {}
+except yaml.YAMLError:
+    sys.exit(0)
+for entry in fm.get("contents", []) or []:
+    if isinstance(entry, dict) and len(entry) == 1:
+        kind, name = next(iter(entry.items()))
+        print(f"{kind}\t{name}")
+PYEOF
+)"
+
+        if [[ -z "$contents_pairs" ]]; then
+            echo "    warning: bundle '$bundle_name' has empty/unparseable contents — skipped" >&2
+            continue
         fi
-        if [[ -d "$bundle_dir/agents" ]]; then
-            local agent_md inner_agent_name
-            for agent_md in "$bundle_dir"/agents/*.md; do
-                [[ -f "$agent_md" ]] || continue
-                inner_agent_name="$(basename "$agent_md" .md)"
-                install_agent "$agent_md" "$inner_agent_name" "$hosts"
-            done
-        fi
-        if [[ -d "$bundle_dir/hooks" ]]; then
-            local inner_hook_md inner_hook_dir inner_hook_name
-            for inner_hook_md in "$bundle_dir"/hooks/*/hook.md; do
-                [[ -f "$inner_hook_md" ]] || continue
-                inner_hook_dir="$(dirname "$inner_hook_md")"
-                inner_hook_name="$(basename "$inner_hook_dir")"
-                install_hook "$inner_hook_dir" "$inner_hook_name" "$hosts"
-            done
-        fi
-        # Future: iterate other kind subdirs (commands/, mcp-servers/, etc.)
-        for other in commands mcp-servers status-line output-styles workflows rules snippets settings-fragments; do
-            if [[ -d "$bundle_dir/$other" ]] && [[ -n "$(ls -A "$bundle_dir/$other" 2>/dev/null)" ]]; then
-                warn_unsupported_kind "$other"
-            fi
-        done
+
+        local entry_kind entry_name standalone_path bundle_local_path src_path
+        while IFS=$'\t' read -r entry_kind entry_name; do
+            [[ -z "$entry_kind" ]] && continue
+            case "$entry_kind" in
+                skill)
+                    standalone_path="$TOOLKIT_ROOT/skills/$entry_name"
+                    bundle_local_path="$bundle_dir/skills/$entry_name"
+                    if [[ -f "$standalone_path/SKILL.md" ]]; then
+                        src_path="$standalone_path"
+                    elif [[ -f "$bundle_local_path/SKILL.md" ]]; then
+                        src_path="$bundle_local_path"
+                    else
+                        echo "    warning: bundle '$bundle_name' skill '$entry_name' not found at $standalone_path or $bundle_local_path — skipped" >&2
+                        continue
+                    fi
+                    install_skill "$src_path" "$entry_name" "$hosts"
+                    ;;
+                agent)
+                    standalone_path="$TOOLKIT_ROOT/agents/$entry_name.md"
+                    bundle_local_path="$bundle_dir/agents/$entry_name.md"
+                    if [[ -f "$standalone_path" ]]; then
+                        src_path="$standalone_path"
+                    elif [[ -f "$bundle_local_path" ]]; then
+                        src_path="$bundle_local_path"
+                    else
+                        echo "    warning: bundle '$bundle_name' agent '$entry_name' not found at $standalone_path or $bundle_local_path — skipped" >&2
+                        continue
+                    fi
+                    install_agent "$src_path" "$entry_name" "$hosts"
+                    ;;
+                hook)
+                    standalone_path="$TOOLKIT_ROOT/hooks/$entry_name"
+                    bundle_local_path="$bundle_dir/hooks/$entry_name"
+                    if [[ -f "$standalone_path/hook.md" ]]; then
+                        src_path="$standalone_path"
+                    elif [[ -f "$bundle_local_path/hook.md" ]]; then
+                        src_path="$bundle_local_path"
+                    else
+                        echo "    warning: bundle '$bundle_name' hook '$entry_name' not found at $standalone_path or $bundle_local_path — skipped" >&2
+                        continue
+                    fi
+                    install_hook "$src_path" "$entry_name" "$hosts"
+                    ;;
+                *)
+                    warn_unsupported_kind "$entry_kind"
+                    ;;
+            esac
+        done <<< "$contents_pairs"
     done
 }
 

@@ -188,18 +188,35 @@ def check_contents(path: Path, fm: dict, bundle_dir: Path) -> None:
         if kind not in KIND_ENUM:
             err(path, f"contents[{i}] unknown kind: {kind!r}")
             continue
-        # Resolve the primitive within the bundle.
+        # Resolve the primitive: prefer sibling-reference (standalone toolkit
+        # location); fall back to bundle-local copy (legacy / example-bundle
+        # use case where the primitive only exists inside the bundle dir).
+        # Plan #10 introduced sibling-reference; the fallback preserves
+        # example-bundle's reference-skeleton role.
         if kind == "skill":
-            primitive_path = bundle_dir / "skills" / str(name) / "SKILL.md"
+            primitive_paths = [
+                ROOT / "skills" / str(name) / "SKILL.md",       # sibling-reference
+                bundle_dir / "skills" / str(name) / "SKILL.md", # bundle-local fallback
+            ]
         elif kind == "agent":
-            primitive_path = bundle_dir / "agents" / f"{name}.md"
+            primitive_paths = [
+                ROOT / "agents" / f"{name}.md",
+                bundle_dir / "agents" / f"{name}.md",
+            ]
         elif kind == "hook":
-            primitive_path = bundle_dir / "hooks" / str(name) / "hook.md"
+            primitive_paths = [
+                ROOT / "hooks" / str(name) / "hook.md",
+                bundle_dir / "hooks" / str(name) / "hook.md",
+            ]
         else:
-            # other kinds: not yet exercised; check the dir exists
-            primitive_path = bundle_dir / f"{kind}s" / str(name)
-        if not primitive_path.exists():
-            err(path, f"contents[{i}] resolves to non-existent path: {primitive_path.relative_to(ROOT)}")
+            # other kinds: not yet exercised; check the dir exists at either location
+            primitive_paths = [
+                ROOT / f"{kind}s" / str(name),
+                bundle_dir / f"{kind}s" / str(name),
+            ]
+        if not any(p.exists() for p in primitive_paths):
+            rels = " or ".join(str(p.relative_to(ROOT)) for p in primitive_paths)
+            err(path, f"contents[{i}] resolves to non-existent path: {rels}")
 
 
 # ── discovery + dispatch ──────────────────────────────────────────────────
