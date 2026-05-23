@@ -32,6 +32,7 @@
 - [0006 — gemini-cli host removal](0006-gemini-cli-host-removal)
 - [0007 — MemoryVault Discovery + Mining](0007-memoryvault-discovery)
 - [0008 — diataxis-author skill](0008-diataxis-author)
+- [0009 — evidence-tracker hook](0009-evidence-tracker-hook)
 
 **Designs**
 - [MemoryVault — permanent agent memory](memoryvault)

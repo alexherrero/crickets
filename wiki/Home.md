@@ -42,6 +42,7 @@ Dogfood documentation for `agent-toolkit` — a personal collection of agent cus
 - [ADR 0006 — Gemini CLI host removal](0006-gemini-cli-host-removal)
 - [ADR 0007 — MemoryVault Discovery + Mining](0007-memoryvault-discovery)
 - [ADR 0008 — diataxis-author skill](0008-diataxis-author)
+- [ADR 0009 — evidence-tracker hook](0009-evidence-tracker-hook)
 
 ### Designs
 
