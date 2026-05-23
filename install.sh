@@ -374,6 +374,16 @@ install_hook() {
                 mkdir -p .claude/hooks
                 cp_managed "$script_src" ".claude/hooks/$name.sh"
                 chmod +x ".claude/hooks/$name.sh"
+                # Copy any sibling Python helpers (foo.py / foo_helper.py / etc.)
+                # alongside the hook script. Lets hooks ship a Python helper
+                # without requiring it to live in a separate skill dir.
+                # Plan #9 (evidence-tracker) introduced this pattern.
+                shopt -s nullglob
+                for py_src in "$hook_dir"/*.py; do
+                    py_name="$(basename "$py_src")"
+                    cp_managed "$py_src" ".claude/hooks/$py_name"
+                done
+                shopt -u nullglob
                 mkdir -p .claude
                 python3 "$TOOLKIT_ROOT/scripts/merge-settings-fragment.py" \
                     .claude/settings.json "$fragment_src"

@@ -279,6 +279,13 @@ function Install-Hook([string]$hookDir, [string]$name, [string]$hosts) {
                 }
                 New-Item -ItemType Directory -Path '.claude/hooks' -Force | Out-Null
                 Copy-ManagedFile $scriptSrc (Join-Path '.claude/hooks' "$name.ps1")
+                # Copy any sibling Python helpers (foo.py / foo_helper.py / etc.)
+                # alongside the hook script. Lets hooks ship a Python helper
+                # without requiring it to live in a separate skill dir.
+                # Plan #9 (evidence-tracker) introduced this pattern.
+                Get-ChildItem -Path $hookDir -Filter '*.py' -File -ErrorAction SilentlyContinue | ForEach-Object {
+                    Copy-ManagedFile $_.FullName (Join-Path '.claude/hooks' $_.Name)
+                }
                 New-Item -ItemType Directory -Path '.claude' -Force | Out-Null
                 python3 (Join-Path $ToolkitRoot 'scripts/merge-settings-fragment.py') `
                     '.claude/settings.json' $fragmentSrc
