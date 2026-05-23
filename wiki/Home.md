@@ -20,6 +20,7 @@ Dogfood documentation for `agent-toolkit` — a personal collection of agent cus
 - [Use the design skill](Use-The-Design-Skill) — `/design author` walks the 10-section template, `/design translate` splits into parts, `/design sequence` generates a PLAN.md per part. Hand-off to harness `/work` + `/review` for execution.
 - [Use the memory skill](Use-The-Memory-Skill) — `/memory save` captures durable preferences / workflows / fixes; `/memory evolve` supersedes existing entries (preserves audit trail). Recall (auto-injection at SessionStart + UserPromptSubmit), reflection sidecar, idea ledger, discovery come in subsequent parts of [the MemoryVault design](memoryvault).
 - [Use the diataxis-author skill](Use-Diataxis-Author) — `/diataxis author` / `check` / `repair` / `migrate` / `classify` covering the full Diátaxis-wiki lifecycle. See [the diataxis-author design](diataxis-author).
+- [Use the quality-gates bundle](Use-The-Quality-Gates-Bundle) — one-command install of the 4 base primitives (`evaluator` + `kill-switch` + `steer` + `commit-on-stop` + `evidence-tracker`) most harness `/work` sessions want.
 
 ## 📖 Looking up a detail?
 
@@ -43,6 +44,7 @@ Dogfood documentation for `agent-toolkit` — a personal collection of agent cus
 - [ADR 0007 — MemoryVault Discovery + Mining](0007-memoryvault-discovery)
 - [ADR 0008 — diataxis-author skill](0008-diataxis-author)
 - [ADR 0009 — evidence-tracker hook](0009-evidence-tracker-hook)
+- [ADR 0010 — quality-gates bundle + sibling-reference dispatch](0010-quality-gates-bundle)
 
 ### Designs
 

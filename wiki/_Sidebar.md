@@ -13,6 +13,7 @@
 - [Use the design skill](Use-The-Design-Skill)
 - [Use the memory skill](Use-The-Memory-Skill)
 - [Use the diataxis-author skill](Use-Diataxis-Author)
+- [Use the quality-gates bundle](Use-The-Quality-Gates-Bundle)
 
 ### 📖 Reference
 - [Customization Types](Customization-Types)
@@ -33,6 +34,7 @@
 - [0007 — MemoryVault Discovery + Mining](0007-memoryvault-discovery)
 - [0008 — diataxis-author skill](0008-diataxis-author)
 - [0009 — evidence-tracker hook](0009-evidence-tracker-hook)
+- [0010 — quality-gates bundle](0010-quality-gates-bundle)
 
 **Designs**
 - [MemoryVault — permanent agent memory](memoryvault)
