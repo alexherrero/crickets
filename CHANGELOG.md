@@ -5,6 +5,39 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.13.0] — 2026-05-23 — quality-gates bundle (paired with agentic-harness v2.6.1)
+
+Minor — **first real-substance bundle** in the toolkit after the `example-bundle` stub. Ships [`quality-gates`](bundles/quality-gates/bundle.md) — one-command install for the 4 base operator-control + verification primitives that earn their keep on every agentic-harness `/work` session: `evaluator` sub-agent + `kill-switch` / `steer` / `commit-on-stop` / `evidence-tracker` hooks. Paired with [`agentic-harness v2.6.1`](https://github.com/alexherrero/agentic-harness/releases/tag/v2.6.1) (paired-doc-only — bundle is pure toolkit packaging).
+
+**Why this earns its keep**: pre-#10, operators adopting harness `/work` had to install each of the 5 primitives individually + remember they all wanted the full set. Real-world adopters routinely missed one — usually `commit-on-stop`, the safety net you only notice when a session crashes mid-task. The "I forgot to install commit-on-stop and lost an hour" failure mode was predictable + recurring. The bundle closes that gap: one `--bundle quality-gates` install lands all 5 primitives at the right `.claude/` paths + merges all 4 settings.json registrations (3 PreToolUse + 1 Stop) atomically.
+
+**Notable design call — operator-driven mid-plan pivot from COPY to sibling-reference.** Initial plan (matching the existing `example-bundle` precedent) was to copy each primitive's files into `bundles/quality-gates/{agents,hooks}/` + add a CI parity gate to catch drift. Operator pushed back: *"wait why did we make a bunch of copies?"* The example-bundle precedent was set by a one-stub-skill toy + didn't survive contact with a real 5-primitive set. Pivoted to **sibling-reference**: bundle directory contains only `bundle.md`; the installer's `install_bundles()` / `Install-Bundles` dispatch resolves each `contents:` entry against the standalone toolkit primitive location (`<TOOLKIT_ROOT>/<kind>s/<name>/`), with bundle-local fallback preserving example-bundle's stub-only-in-bundle role. Net: -1992 lines vs. the COPY pivot; zero ongoing maintenance burden; bundle is metadata pointing at standalone primitives, single source of truth.
+
+Decision rationale + 2 locked design calls Q1-Q2 + 4 load-bearing assumptions with re-audit triggers in the new [ADR 0010 — quality-gates bundle](wiki/explanation/decisions/0010-quality-gates-bundle.md).
+
+### Added
+
+- **`bundles/quality-gates/bundle.md`** (~85 lines) — manifest with `contents:` listing 5 entries (1 agent + 4 hooks); `kind: bundle`; `supported_hosts: [claude-code]`; `version: 0.1.0`; body documents what / why / install / version-bump convention / sibling-reference invariant + how-it-works section.
+- **`install.sh` `install_bundles()` extension** (~50 lines) — contents-driven dispatch: parses `bundle.md` `contents:` via inline `python3 -c` + for each `kind: name` entry, resolves source path (standalone-first; bundle-local fallback); invokes the existing per-kind `install_*` dispatch.
+- **`install.ps1` `Install-Bundles` extension** (~50 lines) — PowerShell mirror of the bash logic.
+- **`scripts/validate-manifests.py` `check_contents()` update** — accepts either standalone OR bundle-local path resolution for bundle contents.
+- **Smoke install tests (bash + pwsh)** — `==> quality-gates bundle install test` block in both `scripts/smoke-install-bash.sh` + `smoke-install-pwsh.ps1`. 3 assertions per OS: [a] 6 expected files land (1 agent + 4 hook .sh/.ps1 + evidence_tracker.py sidecar); [b] settings.json shape — exactly 3 PreToolUse + 1 Stop with correct script references; [c] kill-switch sentinel works end-to-end against the bundle-installed `.sh` (touch `.harness/STOP` → exit 2).
+- **New [ADR 0010 — quality-gates bundle](wiki/explanation/decisions/0010-quality-gates-bundle.md)** (~1500 words) — full Status block + Context + Decision Q1-Q2 + Consequences positive/negative/load-bearing with re-audit triggers + Related. Documents the COPY→sibling-reference pivot as the key design call.
+- **New [`wiki/how-to/Use-The-Quality-Gates-Bundle.md`](wiki/how-to/Use-The-Quality-Gates-Bundle.md)** (~570 words, under 600 soft ceiling) — operator-facing: when-to-use guide; install command for bash + pwsh; post-install state tree; verification commands; troubleshooting that cross-links to per-primitive how-tos rather than duplicating.
+- **`wiki/Home.md` + `wiki/_Sidebar.md`** references added for both new entries.
+
+### Changed
+
+- **`install.sh` + `install.ps1`** — bundle dispatch is now contents-driven (was alphabetical-from-directory-listing). Install order = `contents:` order in the manifest. For bundles like quality-gates this is deterministic + explicit.
+- **`validate-manifests.py`** — bundle `contents:` entries validate against either standalone or bundle-local primitive paths.
+
+### Internal
+
+- **6 commits across plan #10** on this side: `325481c` (initial COPY pivot — reverted) + `62a38a7` (COPY→sibling-reference pivot; -1992 lines) + `62230ca` (smoke tests) + `2667348` (pwsh `mkdir` fix — Windows CI failure) + `16d55e4` (UTF-8 fix — Windows cp1252 failure) + `45a23e9` (how-to + ADR 0010) + this v0.13.0 release commit.
+- **2 cross-platform Python gotchas caught + fixed mid-plan**: (a) `Join-Path` constructs path strings but doesn't `mkdir` on pwsh — bash `mktemp -d` implicitly creates the dir, so tests passed locally but Windows failed. (b) Inline `python3 -c "open(file)..."` uses cp1252 on Windows → `UnicodeDecodeError` on UTF-8 bundle.md (em dashes + arrows). Same family as the plan #13 `→`-arrow + cp1252 stdout bugs; defensive fix in both install.sh + install.ps1. Lesson logged: when extending toolkit installers with inline Python, audit for `encoding='utf-8'` explicit on every `open()`.
+- **Paired-release ordering**: this toolkit release tagged first; harness v2.6.1 release notes URL-link this release per `[[coordinated-release-order]]` convention.
+- **7th consecutive paired-release pair** (after v0.9.0/v0.9.2/v0.10.0/v0.11.0/v0.11.1/v0.12.0). First real-substance MINOR since v0.12.0.
+
 ## [v0.12.0] — 2026-05-23 — evidence-tracker hook (paired with agentic-harness v2.6.0)
 
 Minor — **4th base hook** in the toolkit after kill-switch / steer / commit-on-stop (ADR 0003). Ships [`evidence-tracker`](hooks/evidence-tracker/hook.md) — a `PreToolUse` hook that enforces a **default-FAIL evidence contract** on harness `/work` task closeouts. The agent must demonstrably *read* (via the `Read` tool, which the hook observes) a spec/test/evidence file matching the task's requirement *before* a `Write`/`Edit` that flips PLAN.md `[ ]` → `[x]` is allowed. Hook blocks (exit 2) otherwise with a helpful stderr message + 3 recovery paths. Paired with [`agentic-harness v2.6.0`](https://github.com/alexherrero/agentic-harness/releases/tag/v2.6.0) which ships the corresponding `/work` §5b spec amendment.
