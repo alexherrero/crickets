@@ -36,3 +36,5 @@ jobs:
       - name: Run check-no-pii.sh
         shell: bash
         run: bash scripts/check-no-pii.sh --all
+      - name: Unit tests — evidence_tracker.py
+        run: python hooks/evidence-tracker/evidence_tracker.py --mode self-test
