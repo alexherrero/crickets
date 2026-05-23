@@ -2833,6 +2833,72 @@ Reasons.
         Remove-Item -LiteralPath $evtmp -Recurse -Force -ErrorAction SilentlyContinue
     }
 
+    # ── quality-gates bundle install test (plan #10 task 2) ─────────────────
+    Write-Host '==> quality-gates bundle install test (plan #10 task 2)'
+    $qgtmp = Join-Path ([System.IO.Path]::GetTempPath()) ("toolkit-qg-" + [System.Guid]::NewGuid().ToString('N'))
+    try {
+        $installScript = Join-Path $ToolkitRoot 'install.ps1'
+        $qgProc = Start-Process -FilePath 'pwsh' -ArgumentList @('-NoProfile', '-File', $installScript, $qgtmp, '-Bundle', 'quality-gates') -NoNewWindow -PassThru -Wait
+        if ($qgProc.ExitCode -ne 0) {
+            throw "--bundle quality-gates install returned $($qgProc.ExitCode)"
+        }
+
+        # Assert all 5 primitives' files landed at expected .claude/ paths.
+        $expectedFiles = @(
+            '.claude/agents/evaluator.md',
+            '.claude/hooks/kill-switch.ps1',
+            '.claude/hooks/steer.ps1',
+            '.claude/hooks/commit-on-stop.ps1',
+            '.claude/hooks/evidence-tracker.ps1',
+            '.claude/hooks/evidence_tracker.py'
+        )
+        foreach ($f in $expectedFiles) {
+            if (-not (Test-Path -LiteralPath (Join-Path $qgtmp $f))) {
+                throw "--bundle quality-gates did not install $f"
+            }
+        }
+
+        # Assert .claude/settings.json parses + contains all 4 hook registrations.
+        $settingsPath = Join-Path $qgtmp '.claude/settings.json'
+        $settings = Get-Content -LiteralPath $settingsPath -Raw | ConvertFrom-Json
+        $pre = @($settings.hooks.PreToolUse)
+        $stop = @($settings.hooks.Stop)
+        if ($pre.Count -ne 3) { throw "PreToolUse count $($pre.Count) != 3" }
+        if ($stop.Count -ne 1) { throw "Stop count $($stop.Count) != 1" }
+        $expectedScripts = @('kill-switch.ps1', 'steer.ps1', 'evidence-tracker.ps1')
+        $foundScripts = @()
+        foreach ($entry in $pre) {
+            foreach ($h in $entry.hooks) {
+                foreach ($name in $expectedScripts) {
+                    if ($h.command -match [regex]::Escape($name)) { $foundScripts += $name }
+                }
+            }
+        }
+        foreach ($name in $expectedScripts) {
+            if ($foundScripts -notcontains $name) { throw "PreToolUse missing script: $name" }
+        }
+        $stopHasCommitOnStop = $false
+        foreach ($entry in $stop) {
+            foreach ($h in $entry.hooks) {
+                if ($h.command -match 'commit-on-stop\.ps1') { $stopHasCommitOnStop = $true }
+            }
+        }
+        if (-not $stopHasCommitOnStop) { throw "Stop missing commit-on-stop.ps1" }
+
+        # Verify kill-switch sentinel still works end-to-end.
+        New-Item -ItemType Directory -Path (Join-Path $qgtmp '.harness') -Force | Out-Null
+        New-Item -ItemType File -Path (Join-Path $qgtmp '.harness/STOP') -Force | Out-Null
+        Push-Location $qgtmp
+        try {
+            $ksProc = Start-Process -FilePath 'pwsh' -ArgumentList @('-NoProfile', '-File', '.claude/hooks/kill-switch.ps1') -NoNewWindow -PassThru -Wait
+            if ($ksProc.ExitCode -ne 2) {
+                throw "kill-switch.ps1 with .harness/STOP present should exit 2; got $($ksProc.ExitCode)"
+            }
+        } finally { Pop-Location }
+    } finally {
+        Remove-Item -LiteralPath $qgtmp -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
     # ── validate-manifests negative test: gemini-cli rejected with v0.9.0 msg ─
     Write-Host '==> validate-manifests negative test (gemini-cli rejected)'
     $vneg = Join-Path ([System.IO.Path]::GetTempPath()) ("toolkit-vneg-" + [System.Guid]::NewGuid().ToString('N'))

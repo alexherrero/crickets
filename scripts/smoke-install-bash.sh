@@ -3595,6 +3595,83 @@ fi
 cd "$TOOLKIT_ROOT"
 rm -rf "$EVTMP"
 
+# ── quality-gates bundle install test (plan #10 task 2) ────────────────────
+# Verify the new `quality-gates` bundle installs the 4 base primitives + agent
+# via sibling-reference dispatch (plan #10 design call Q1: bundle is a manifest
+# referencing standalone primitives, not copies).
+echo "==> quality-gates bundle install test (plan #10 task 2)"
+QGTMP="$(mktemp -d)"
+bash "$TOOLKIT_ROOT/install.sh" "$QGTMP" --bundle quality-gates >/dev/null 2>&1 || {
+    echo "FAIL: --bundle quality-gates install returned non-zero" >&2
+    rm -rf "$QGTMP"; exit 1
+}
+
+# Assert all 5 primitives' files landed at expected .claude/ paths.
+for path in \
+    .claude/agents/evaluator.md \
+    .claude/hooks/kill-switch.sh \
+    .claude/hooks/steer.sh \
+    .claude/hooks/commit-on-stop.sh \
+    .claude/hooks/evidence-tracker.sh \
+    .claude/hooks/evidence_tracker.py
+do
+    if [[ ! -f "$QGTMP/$path" ]]; then
+        echo "FAIL: --bundle quality-gates did not install $path" >&2
+        rm -rf "$QGTMP"; exit 1
+    fi
+done
+
+# Assert .claude/settings.json parses + contains all 4 hook registrations.
+QG_SETTINGS_CHECK="$(python3 - "$QGTMP/.claude/settings.json" <<'PYEOF'
+import json, sys
+with open(sys.argv[1]) as f:
+    s = json.load(f)
+hooks = s.get("hooks", {})
+pre = hooks.get("PreToolUse", [])
+stop = hooks.get("Stop", [])
+# 3 PreToolUse: kill-switch + steer + evidence-tracker
+# 1 Stop: commit-on-stop
+if len(pre) != 3:
+    print(f"FAIL: PreToolUse count {len(pre)} != 3"); sys.exit(1)
+if len(stop) != 1:
+    print(f"FAIL: Stop count {len(stop)} != 1"); sys.exit(1)
+# Each PreToolUse entry must reference one of the expected scripts.
+expected = {"kill-switch.sh", "steer.sh", "evidence-tracker.sh"}
+found = set()
+for entry in pre:
+    for h in entry.get("hooks", []):
+        cmd = h.get("command", "")
+        for name in expected:
+            if name in cmd:
+                found.add(name)
+if found != expected:
+    missing = expected - found
+    print(f"FAIL: PreToolUse missing scripts: {sorted(missing)}"); sys.exit(1)
+# Stop entry must reference commit-on-stop.sh.
+if not any("commit-on-stop.sh" in h.get("command", "")
+           for entry in stop for h in entry.get("hooks", [])):
+    print("FAIL: Stop missing commit-on-stop.sh"); sys.exit(1)
+print("OK")
+PYEOF
+)"
+if [[ "$QG_SETTINGS_CHECK" != "OK" ]]; then
+    echo "FAIL: settings.json post-install assertion: $QG_SETTINGS_CHECK" >&2
+    rm -rf "$QGTMP"; exit 1
+fi
+
+# Verify kill-switch sentinel still works end-to-end (the bundle dispatched the
+# same primitive the standalone install would, so the .sh should behave
+# identically — proves sibling-reference doesn't break runtime behavior).
+mkdir -p "$QGTMP/.harness"
+touch "$QGTMP/.harness/STOP"
+QG_KS_EXIT=0
+(cd "$QGTMP" && bash .claude/hooks/kill-switch.sh >/dev/null 2>&1) || QG_KS_EXIT=$?
+if [[ $QG_KS_EXIT -ne 2 ]]; then
+    echo "FAIL: kill-switch.sh with .harness/STOP present should exit 2; got $QG_KS_EXIT" >&2
+    rm -rf "$QGTMP"; exit 1
+fi
+rm -rf "$QGTMP"
+
 # ── validate-manifests negative test: gemini-cli should error with v0.9.0 msg ─
 # Manifest containing 'gemini-cli' in supported_hosts must error with a clear
 # message pointing at the v0.9.0 CHANGELOG. Catches regressions if HOST_ENUM
