@@ -2711,6 +2711,128 @@ Reasons.
         Remove-Item -LiteralPath $mgtmp -Recurse -Force -ErrorAction SilentlyContinue
     }
 
+    # ── evidence-tracker hook test (plan #9 task 3) ─────────────────────────
+    Write-Host '==> evidence-tracker hook test (plan #9 task 3)'
+    $evtmp = Join-Path ([System.IO.Path]::GetTempPath()) ("toolkit-evtracker-" + [System.Guid]::NewGuid().ToString('N'))
+    try {
+        $evPy = Join-Path $Root 'hooks/evidence-tracker/evidence_tracker.py'
+        New-Item -ItemType Directory -Path (Join-Path $evtmp '.harness') -Force | Out-Null
+        New-Item -ItemType Directory -Path (Join-Path $evtmp 'tests') -Force | Out-Null
+        New-Item -ItemType Directory -Path (Join-Path $evtmp 'custom') -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $evtmp 'tests/foo.py') -Value '# fixture' -NoNewline
+        Set-Content -LiteralPath (Join-Path $evtmp 'tests/bar.py') -Value '# fixture' -NoNewline
+        Set-Content -LiteralPath (Join-Path $evtmp 'custom/path.md') -Value '# custom evidence' -NoNewline
+
+        $planContent = @'
+# Plan: evidence-tracker smoke
+
+## Tasks
+
+### 1. Override task
+- **What:** uses custom evidence pattern
+- **Verification:** see custom/path.md
+- **Evidence:** custom/*.md
+- **Status:** [ ]
+
+### 2. Opt-out task
+- **What:** docs-only, no evidence required
+- **Evidence:** none — pure documentation
+- **Status:** [ ]
+
+### 3. Heuristic task
+- **What:** standard heuristic match
+- **Verification:** tests/bar.py covers it
+- **Status:** [ ]
+
+### 4. Unmet task
+- **What:** should be blocked
+- **Verification:** must read the specific override file
+- **Evidence:** never/matched/path.xyz
+- **Status:** [ ]
+'@
+        Set-Content -LiteralPath (Join-Path $evtmp '.harness/PLAN.md') -Value $planContent
+
+        # Helper: invoke evidence_tracker.py --mode check with stdin JSON.
+        # Resolve python once (prefer python3, fall back to python).
+        $pythonCmd = Get-Command python3 -ErrorAction SilentlyContinue
+        if (-not $pythonCmd) { $pythonCmd = Get-Command python -ErrorAction SilentlyContinue }
+        if (-not $pythonCmd) { throw 'No python3 or python on PATH' }
+        $pythonExe = $pythonCmd.Source
+
+        function Invoke-EvTracker {
+            param([string]$JsonInput, [string]$EvPy, [string]$Cwd, [string]$PythonExe, [string]$ErrPath = $null)
+            $psi = New-Object System.Diagnostics.ProcessStartInfo
+            $psi.FileName = $PythonExe
+            $psi.ArgumentList.Add($EvPy) | Out-Null
+            $psi.ArgumentList.Add('--mode') | Out-Null
+            $psi.ArgumentList.Add('check') | Out-Null
+            $psi.RedirectStandardInput = $true
+            $psi.RedirectStandardOutput = $true
+            $psi.RedirectStandardError = $true
+            $psi.UseShellExecute = $false
+            $psi.WorkingDirectory = $Cwd
+            $proc = [System.Diagnostics.Process]::Start($psi)
+            $proc.StandardInput.Write($JsonInput)
+            $proc.StandardInput.Close()
+            $proc.WaitForExit()
+            if ($ErrPath) { $proc.StandardError.ReadToEnd() | Set-Content -LiteralPath $ErrPath -NoNewline }
+            return $proc.ExitCode
+        }
+
+        # Sub-tests (a/d) — override allow.
+        Write-Host '    [a/d] per-task Evidence: override allows after matching read'
+        $rc = Invoke-EvTracker -JsonInput '{"tool_name":"Read","tool_input":{"file_path":"custom/path.md"}}' -EvPy $evPy -Cwd $evtmp -PythonExe $pythonExe
+        if ($rc -ne 0) { throw "Read of custom/path.md should record; exit was $rc" }
+        $rc = Invoke-EvTracker -JsonInput '{"tool_name":"Edit","tool_input":{"file_path":".harness/PLAN.md","old_string":"- **Evidence:** custom/*.md\n- **Status:** [ ]","new_string":"- **Evidence:** custom/*.md\n- **Status:** [x] — shipped"}}' -EvPy $evPy -Cwd $evtmp -PythonExe $pythonExe
+        if ($rc -ne 0) { throw "task 1 [x] flip should be allowed after override-matching read; exit was $rc" }
+
+        # Sub-test (b) — explicit opt-out.
+        Write-Host '    [b] **Evidence:** none allows flip without any read'
+        $rc = Invoke-EvTracker -JsonInput '{"tool_name":"Edit","tool_input":{"file_path":".harness/PLAN.md","old_string":"- **Evidence:** none — pure documentation\n- **Status:** [ ]","new_string":"- **Evidence:** none — pure documentation\n- **Status:** [x] — shipped"}}' -EvPy $evPy -Cwd $evtmp -PythonExe $pythonExe
+        if ($rc -ne 0) { throw "opt-out task should always allow flip; exit was $rc" }
+
+        # Sub-test (c) — heuristic match.
+        Write-Host '    [c] heuristic (tests/ + code ext) allows flip after matching read'
+        $rc = Invoke-EvTracker -JsonInput '{"tool_name":"Read","tool_input":{"file_path":"tests/bar.py"}}' -EvPy $evPy -Cwd $evtmp -PythonExe $pythonExe
+        if ($rc -ne 0) { throw "Read of tests/bar.py should record; exit was $rc" }
+        $rc = Invoke-EvTracker -JsonInput '{"tool_name":"Edit","tool_input":{"file_path":".harness/PLAN.md","old_string":"- **Verification:** tests/bar.py covers it\n- **Status:** [ ]","new_string":"- **Verification:** tests/bar.py covers it\n- **Status:** [x] — shipped"}}' -EvPy $evPy -Cwd $evtmp -PythonExe $pythonExe
+        if ($rc -ne 0) { throw "task 3 [x] flip should be allowed after heuristic-matching read; exit was $rc" }
+
+        # Sub-test (f) — block-and-message.
+        Write-Host '    [f] unmet evidence blocks (exit 2) + helpful stderr'
+        $errPath = [System.IO.Path]::GetTempFileName()
+        $rc = Invoke-EvTracker -JsonInput '{"tool_name":"Edit","tool_input":{"file_path":".harness/PLAN.md","old_string":"- **Evidence:** never/matched/path.xyz\n- **Status:** [ ]","new_string":"- **Evidence:** never/matched/path.xyz\n- **Status:** [x] — shipped"}}' -EvPy $evPy -Cwd $evtmp -PythonExe $pythonExe -ErrPath $errPath
+        if ($rc -ne 2) { Get-Content -LiteralPath $errPath | Write-Host; throw "unmet task 4 [x] flip should exit 2; got $rc" }
+        $stderrContent = Get-Content -LiteralPath $errPath -Raw
+        if (-not $stderrContent.Contains('evidence-tracker: default-FAIL')) {
+            Write-Host $stderrContent
+            throw "block message should contain 'evidence-tracker: default-FAIL'"
+        }
+        if (-not $stderrContent.Contains('never/matched/path.xyz')) {
+            Write-Host $stderrContent
+            throw "block message should mention the expected evidence path"
+        }
+        Remove-Item -LiteralPath $errPath -Force -ErrorAction SilentlyContinue
+
+        # Sub-test (e) — state reset.
+        Write-Host '    [e] --mode reset clears state file'
+        $statePath = Join-Path $evtmp '.harness/.evidence-reads'
+        if (-not (Test-Path -LiteralPath $statePath)) { throw '.evidence-reads should exist after the reads above' }
+        Push-Location $evtmp
+        try {
+            & $pythonExe $evPy --mode reset | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw "--mode reset returned $LASTEXITCODE" }
+        } finally { Pop-Location }
+        if (Test-Path -LiteralPath $statePath) { throw '--mode reset should delete .evidence-reads' }
+
+        # Sub-test (extra) — fictitious-path read is no-op.
+        Write-Host '    [extra] fictitious-path read is no-op (no bypass)'
+        $rc = Invoke-EvTracker -JsonInput '{"tool_name":"Read","tool_input":{"file_path":"tests/nonexistent.py"}}' -EvPy $evPy -Cwd $evtmp -PythonExe $pythonExe
+        if (Test-Path -LiteralPath $statePath) { throw 'Read of nonexistent file should not record state' }
+    } finally {
+        Remove-Item -LiteralPath $evtmp -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
     # ── validate-manifests negative test: gemini-cli rejected with v0.9.0 msg ─
     Write-Host '==> validate-manifests negative test (gemini-cli rejected)'
     $vneg = Join-Path ([System.IO.Path]::GetTempPath()) ("toolkit-vneg-" + [System.Guid]::NewGuid().ToString('N'))

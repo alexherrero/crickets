@@ -3466,6 +3466,135 @@ fi
 
 rm -rf "$MGTMP"
 
+# ── evidence-tracker hook tests (plan #9 task 3) ────────────────────────────
+# Exercise the hook's PreToolUse check logic via direct invocation of
+# evidence_tracker.py --mode check (with synthesized stdin JSON matching
+# Claude Code's PreToolUse contract). The .sh entry just shells out to
+# Python so testing the Python directly covers the substantive surface.
+echo "==> evidence-tracker hook test (plan #9 task 3)"
+EVTMP="$(mktemp -d)"
+EV_PY="$ROOT/hooks/evidence-tracker/evidence_tracker.py"
+mkdir -p "$EVTMP/.harness" "$EVTMP/tests" "$EVTMP/custom"
+echo "# fixture" > "$EVTMP/tests/foo.py"
+echo "# fixture" > "$EVTMP/tests/bar.py"
+echo "# custom evidence file" > "$EVTMP/custom/path.md"
+
+# Fixture PLAN.md covering all 4 paths (override / opt-out / heuristic / unmet).
+cat > "$EVTMP/.harness/PLAN.md" <<'PLAN_EOF'
+# Plan: evidence-tracker smoke
+
+## Tasks
+
+### 1. Override task
+- **What:** uses custom evidence pattern
+- **Verification:** see custom/path.md
+- **Evidence:** custom/*.md
+- **Status:** [ ]
+
+### 2. Opt-out task
+- **What:** docs-only, no evidence required
+- **Evidence:** none — pure documentation
+- **Status:** [ ]
+
+### 3. Heuristic task
+- **What:** standard heuristic match
+- **Verification:** tests/bar.py covers it
+- **Status:** [ ]
+
+### 4. Unmet task
+- **What:** should be blocked
+- **Verification:** must read the specific override file
+- **Evidence:** never/matched/path.xyz
+- **Status:** [ ]
+PLAN_EOF
+
+cd "$EVTMP"
+
+# Sub-test (d) — per-task override: read custom/path.md (matches the per-task
+# Evidence: pattern), then flip task 1 [x]. Should allow (exit 0).
+echo "    [a/d] per-task Evidence: override allows after matching read"
+echo '{"tool_name":"Read","tool_input":{"file_path":"custom/path.md"}}' | \
+    python3 "$EV_PY" --mode check >/dev/null 2>&1 || { echo "FAIL: Read of custom/path.md should record; exit was $?" >&2; rm -rf "$EVTMP"; cd "$ROOT"; exit 1; }
+EV_RC=0
+echo '{"tool_name":"Edit","tool_input":{"file_path":".harness/PLAN.md","old_string":"- **Evidence:** custom/*.md\n- **Status:** [ ]","new_string":"- **Evidence:** custom/*.md\n- **Status:** [x] — shipped"}}' | \
+    python3 "$EV_PY" --mode check >/dev/null 2>&1 || EV_RC=$?
+if [[ $EV_RC -ne 0 ]]; then
+    echo "FAIL: task 1 [x] flip should be allowed after override-matching read; exit was $EV_RC" >&2
+    rm -rf "$EVTMP"; cd "$ROOT"; exit 1
+fi
+
+# Sub-test (b) — explicit opt-out: flip task 2 [x] WITHOUT any read.
+echo "    [b] **Evidence:** none allows flip without any read"
+EV_RC=0
+echo '{"tool_name":"Edit","tool_input":{"file_path":".harness/PLAN.md","old_string":"- **Evidence:** none — pure documentation\n- **Status:** [ ]","new_string":"- **Evidence:** none — pure documentation\n- **Status:** [x] — shipped"}}' | \
+    python3 "$EV_PY" --mode check >/dev/null 2>&1 || EV_RC=$?
+if [[ $EV_RC -ne 0 ]]; then
+    echo "FAIL: opt-out task should always allow flip; exit was $EV_RC" >&2
+    rm -rf "$EVTMP"; cd "$ROOT"; exit 1
+fi
+
+# Sub-test (c) — heuristic match: read tests/bar.py (matches default heuristic),
+# then flip task 3 [x]. Should allow.
+echo "    [c] heuristic (tests/ + code ext) allows flip after matching read"
+echo '{"tool_name":"Read","tool_input":{"file_path":"tests/bar.py"}}' | \
+    python3 "$EV_PY" --mode check >/dev/null 2>&1 || { echo "FAIL: Read of tests/bar.py should record; exit was $?" >&2; rm -rf "$EVTMP"; cd "$ROOT"; exit 1; }
+EV_RC=0
+echo '{"tool_name":"Edit","tool_input":{"file_path":".harness/PLAN.md","old_string":"- **Verification:** tests/bar.py covers it\n- **Status:** [ ]","new_string":"- **Verification:** tests/bar.py covers it\n- **Status:** [x] — shipped"}}' | \
+    python3 "$EV_PY" --mode check >/dev/null 2>&1 || EV_RC=$?
+if [[ $EV_RC -ne 0 ]]; then
+    echo "FAIL: task 3 [x] flip should be allowed after heuristic-matching read; exit was $EV_RC" >&2
+    rm -rf "$EVTMP"; cd "$ROOT"; exit 1
+fi
+
+# Sub-test (f) — block-and-message: try to flip task 4 [x] without ANY
+# evidence for it. Should exit 2 + stderr explains.
+echo "    [f] unmet evidence blocks (exit 2) + helpful stderr"
+EV_STDERR="$(mktemp)"
+EV_RC=0
+echo '{"tool_name":"Edit","tool_input":{"file_path":".harness/PLAN.md","old_string":"- **Evidence:** never/matched/path.xyz\n- **Status:** [ ]","new_string":"- **Evidence:** never/matched/path.xyz\n- **Status:** [x] — shipped"}}' | \
+    python3 "$EV_PY" --mode check 2>"$EV_STDERR" >/dev/null || EV_RC=$?
+if [[ $EV_RC -ne 2 ]]; then
+    echo "FAIL: unmet task 4 [x] flip should exit 2; got $EV_RC" >&2
+    cat "$EV_STDERR" >&2
+    rm -rf "$EVTMP" "$EV_STDERR"; cd "$ROOT"; exit 1
+fi
+if ! grep -q "evidence-tracker: default-FAIL" "$EV_STDERR"; then
+    echo "FAIL: block message should contain 'evidence-tracker: default-FAIL'; stderr:" >&2
+    cat "$EV_STDERR" >&2
+    rm -rf "$EVTMP" "$EV_STDERR"; cd "$ROOT"; exit 1
+fi
+if ! grep -q "never/matched/path.xyz" "$EV_STDERR"; then
+    echo "FAIL: block message should mention the expected evidence path; stderr:" >&2
+    cat "$EV_STDERR" >&2
+    rm -rf "$EVTMP" "$EV_STDERR"; cd "$ROOT"; exit 1
+fi
+rm -f "$EV_STDERR"
+
+# Sub-test (e) — state reset: invoke --mode reset, then verify .evidence-reads gone.
+echo "    [e] --mode reset clears state file"
+if [[ ! -f .harness/.evidence-reads ]]; then
+    echo "FAIL: .evidence-reads should exist after the reads above" >&2
+    rm -rf "$EVTMP"; cd "$ROOT"; exit 1
+fi
+python3 "$EV_PY" --mode reset >/dev/null 2>&1 || { echo "FAIL: --mode reset returned non-zero" >&2; rm -rf "$EVTMP"; cd "$ROOT"; exit 1; }
+if [[ -f .harness/.evidence-reads ]]; then
+    echo "FAIL: --mode reset should delete .evidence-reads" >&2
+    rm -rf "$EVTMP"; cd "$ROOT"; exit 1
+fi
+
+# Sub-test (extra) — fictitious-path read: Read of a non-existent file is
+# silently no-op'd (no state recorded → next flip would still block).
+echo "    [extra] fictitious-path read is no-op (no bypass)"
+echo '{"tool_name":"Read","tool_input":{"file_path":"tests/nonexistent.py"}}' | \
+    python3 "$EV_PY" --mode check >/dev/null 2>&1
+if [[ -f .harness/.evidence-reads ]]; then
+    echo "FAIL: Read of nonexistent file should not record state" >&2
+    rm -rf "$EVTMP"; cd "$ROOT"; exit 1
+fi
+
+cd "$ROOT"
+rm -rf "$EVTMP"
+
 # ── validate-manifests negative test: gemini-cli should error with v0.9.0 msg ─
 # Manifest containing 'gemini-cli' in supported_hosts must error with a clear
 # message pointing at the v0.9.0 CHANGELOG. Catches regressions if HOST_ENUM
