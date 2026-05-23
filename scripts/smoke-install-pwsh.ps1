@@ -2715,7 +2715,7 @@ Reasons.
     Write-Host '==> evidence-tracker hook test (plan #9 task 3)'
     $evtmp = Join-Path ([System.IO.Path]::GetTempPath()) ("toolkit-evtracker-" + [System.Guid]::NewGuid().ToString('N'))
     try {
-        $evPy = Join-Path $Root 'hooks/evidence-tracker/evidence_tracker.py'
+        $evPy = Join-Path $ToolkitRoot 'hooks/evidence-tracker/evidence_tracker.py'
         New-Item -ItemType Directory -Path (Join-Path $evtmp '.harness') -Force | Out-Null
         New-Item -ItemType Directory -Path (Join-Path $evtmp 'tests') -Force | Out-Null
         New-Item -ItemType Directory -Path (Join-Path $evtmp 'custom') -Force | Out-Null

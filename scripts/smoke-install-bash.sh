@@ -3473,7 +3473,7 @@ rm -rf "$MGTMP"
 # Python so testing the Python directly covers the substantive surface.
 echo "==> evidence-tracker hook test (plan #9 task 3)"
 EVTMP="$(mktemp -d)"
-EV_PY="$ROOT/hooks/evidence-tracker/evidence_tracker.py"
+EV_PY="$TOOLKIT_ROOT/hooks/evidence-tracker/evidence_tracker.py"
 mkdir -p "$EVTMP/.harness" "$EVTMP/tests" "$EVTMP/custom"
 echo "# fixture" > "$EVTMP/tests/foo.py"
 echo "# fixture" > "$EVTMP/tests/bar.py"
@@ -3514,13 +3514,13 @@ cd "$EVTMP"
 # Evidence: pattern), then flip task 1 [x]. Should allow (exit 0).
 echo "    [a/d] per-task Evidence: override allows after matching read"
 echo '{"tool_name":"Read","tool_input":{"file_path":"custom/path.md"}}' | \
-    python3 "$EV_PY" --mode check >/dev/null 2>&1 || { echo "FAIL: Read of custom/path.md should record; exit was $?" >&2; rm -rf "$EVTMP"; cd "$ROOT"; exit 1; }
+    python3 "$EV_PY" --mode check >/dev/null 2>&1 || { echo "FAIL: Read of custom/path.md should record; exit was $?" >&2; rm -rf "$EVTMP"; cd "$TOOLKIT_ROOT"; exit 1; }
 EV_RC=0
 echo '{"tool_name":"Edit","tool_input":{"file_path":".harness/PLAN.md","old_string":"- **Evidence:** custom/*.md\n- **Status:** [ ]","new_string":"- **Evidence:** custom/*.md\n- **Status:** [x] — shipped"}}' | \
     python3 "$EV_PY" --mode check >/dev/null 2>&1 || EV_RC=$?
 if [[ $EV_RC -ne 0 ]]; then
     echo "FAIL: task 1 [x] flip should be allowed after override-matching read; exit was $EV_RC" >&2
-    rm -rf "$EVTMP"; cd "$ROOT"; exit 1
+    rm -rf "$EVTMP"; cd "$TOOLKIT_ROOT"; exit 1
 fi
 
 # Sub-test (b) — explicit opt-out: flip task 2 [x] WITHOUT any read.
@@ -3530,20 +3530,20 @@ echo '{"tool_name":"Edit","tool_input":{"file_path":".harness/PLAN.md","old_stri
     python3 "$EV_PY" --mode check >/dev/null 2>&1 || EV_RC=$?
 if [[ $EV_RC -ne 0 ]]; then
     echo "FAIL: opt-out task should always allow flip; exit was $EV_RC" >&2
-    rm -rf "$EVTMP"; cd "$ROOT"; exit 1
+    rm -rf "$EVTMP"; cd "$TOOLKIT_ROOT"; exit 1
 fi
 
 # Sub-test (c) — heuristic match: read tests/bar.py (matches default heuristic),
 # then flip task 3 [x]. Should allow.
 echo "    [c] heuristic (tests/ + code ext) allows flip after matching read"
 echo '{"tool_name":"Read","tool_input":{"file_path":"tests/bar.py"}}' | \
-    python3 "$EV_PY" --mode check >/dev/null 2>&1 || { echo "FAIL: Read of tests/bar.py should record; exit was $?" >&2; rm -rf "$EVTMP"; cd "$ROOT"; exit 1; }
+    python3 "$EV_PY" --mode check >/dev/null 2>&1 || { echo "FAIL: Read of tests/bar.py should record; exit was $?" >&2; rm -rf "$EVTMP"; cd "$TOOLKIT_ROOT"; exit 1; }
 EV_RC=0
 echo '{"tool_name":"Edit","tool_input":{"file_path":".harness/PLAN.md","old_string":"- **Verification:** tests/bar.py covers it\n- **Status:** [ ]","new_string":"- **Verification:** tests/bar.py covers it\n- **Status:** [x] — shipped"}}' | \
     python3 "$EV_PY" --mode check >/dev/null 2>&1 || EV_RC=$?
 if [[ $EV_RC -ne 0 ]]; then
     echo "FAIL: task 3 [x] flip should be allowed after heuristic-matching read; exit was $EV_RC" >&2
-    rm -rf "$EVTMP"; cd "$ROOT"; exit 1
+    rm -rf "$EVTMP"; cd "$TOOLKIT_ROOT"; exit 1
 fi
 
 # Sub-test (f) — block-and-message: try to flip task 4 [x] without ANY
@@ -3556,17 +3556,17 @@ echo '{"tool_name":"Edit","tool_input":{"file_path":".harness/PLAN.md","old_stri
 if [[ $EV_RC -ne 2 ]]; then
     echo "FAIL: unmet task 4 [x] flip should exit 2; got $EV_RC" >&2
     cat "$EV_STDERR" >&2
-    rm -rf "$EVTMP" "$EV_STDERR"; cd "$ROOT"; exit 1
+    rm -rf "$EVTMP" "$EV_STDERR"; cd "$TOOLKIT_ROOT"; exit 1
 fi
 if ! grep -q "evidence-tracker: default-FAIL" "$EV_STDERR"; then
     echo "FAIL: block message should contain 'evidence-tracker: default-FAIL'; stderr:" >&2
     cat "$EV_STDERR" >&2
-    rm -rf "$EVTMP" "$EV_STDERR"; cd "$ROOT"; exit 1
+    rm -rf "$EVTMP" "$EV_STDERR"; cd "$TOOLKIT_ROOT"; exit 1
 fi
 if ! grep -q "never/matched/path.xyz" "$EV_STDERR"; then
     echo "FAIL: block message should mention the expected evidence path; stderr:" >&2
     cat "$EV_STDERR" >&2
-    rm -rf "$EVTMP" "$EV_STDERR"; cd "$ROOT"; exit 1
+    rm -rf "$EVTMP" "$EV_STDERR"; cd "$TOOLKIT_ROOT"; exit 1
 fi
 rm -f "$EV_STDERR"
 
@@ -3574,12 +3574,12 @@ rm -f "$EV_STDERR"
 echo "    [e] --mode reset clears state file"
 if [[ ! -f .harness/.evidence-reads ]]; then
     echo "FAIL: .evidence-reads should exist after the reads above" >&2
-    rm -rf "$EVTMP"; cd "$ROOT"; exit 1
+    rm -rf "$EVTMP"; cd "$TOOLKIT_ROOT"; exit 1
 fi
-python3 "$EV_PY" --mode reset >/dev/null 2>&1 || { echo "FAIL: --mode reset returned non-zero" >&2; rm -rf "$EVTMP"; cd "$ROOT"; exit 1; }
+python3 "$EV_PY" --mode reset >/dev/null 2>&1 || { echo "FAIL: --mode reset returned non-zero" >&2; rm -rf "$EVTMP"; cd "$TOOLKIT_ROOT"; exit 1; }
 if [[ -f .harness/.evidence-reads ]]; then
     echo "FAIL: --mode reset should delete .evidence-reads" >&2
-    rm -rf "$EVTMP"; cd "$ROOT"; exit 1
+    rm -rf "$EVTMP"; cd "$TOOLKIT_ROOT"; exit 1
 fi
 
 # Sub-test (extra) — fictitious-path read: Read of a non-existent file is
@@ -3589,10 +3589,10 @@ echo '{"tool_name":"Read","tool_input":{"file_path":"tests/nonexistent.py"}}' | 
     python3 "$EV_PY" --mode check >/dev/null 2>&1
 if [[ -f .harness/.evidence-reads ]]; then
     echo "FAIL: Read of nonexistent file should not record state" >&2
-    rm -rf "$EVTMP"; cd "$ROOT"; exit 1
+    rm -rf "$EVTMP"; cd "$TOOLKIT_ROOT"; exit 1
 fi
 
-cd "$ROOT"
+cd "$TOOLKIT_ROOT"
 rm -rf "$EVTMP"
 
 # ── validate-manifests negative test: gemini-cli should error with v0.9.0 msg ─
