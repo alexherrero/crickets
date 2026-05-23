@@ -5,6 +5,44 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.12.0] — 2026-05-23 — evidence-tracker hook (paired with agentic-harness v2.6.0)
+
+Minor — **4th base hook** in the toolkit after kill-switch / steer / commit-on-stop (ADR 0003). Ships [`evidence-tracker`](hooks/evidence-tracker/hook.md) — a `PreToolUse` hook that enforces a **default-FAIL evidence contract** on harness `/work` task closeouts. The agent must demonstrably *read* (via the `Read` tool, which the hook observes) a spec/test/evidence file matching the task's requirement *before* a `Write`/`Edit` that flips PLAN.md `[ ]` → `[x]` is allowed. Hook blocks (exit 2) otherwise with a helpful stderr message + 3 recovery paths. Paired with [`agentic-harness v2.6.0`](https://github.com/alexherrero/agentic-harness/releases/tag/v2.6.0) which ships the corresponding `/work` §5b spec amendment.
+
+**Why this matters**: today's `/work` trusts the agent to *verify* before flipping a task `[x]`. The verification step is in the contract but not *observable* — sometimes the agent claims completion based on partial signals (passing tests that didn't cover the new code; "looks good" judgments on diffs the agent didn't actually read against the spec). The cwc-long-running-agents pattern, paraphrased: *"The only evidence that counts is a file matching the patterns."* This hook makes that observable + enforced.
+
+**Evidence resolution is HYBRID** (per Q1 in the new ADR 0009):
+- **HEURISTIC** by default — file under `tests/` / `spec/` / matching `*.spec.*` / `*.test.*` / `*_test.py` / `test_*.py` with a code extension (markdown explicitly excluded — `tests/README.md` does NOT satisfy evidence), OR any path literally named in the task's `**Verification:**` text.
+- **Per-task override** via `**Evidence:** <glob-or-paths>` task-body annotation.
+- **Explicit opt-out** via `**Evidence:** none — <rationale>` (rationale mandatory; becomes audit trail).
+
+**Granularity** (Q2): per-task PLAN.md `[ ]` → `[x]` flips only; `features.json passes:true` is `/release`'s domain.
+**Bypass** (Q3): explicit opt-out only; no auto-detection (would let lazy refactor commits dodge via .md-only-touch).
+
+Decision rationale + 3 locked design calls (Q1-Q3) + 4 load-bearing assumptions with re-audit triggers in the new [ADR 0009 — evidence-tracker hook](wiki/explanation/decisions/0009-evidence-tracker-hook.md).
+
+### Added
+
+- **`hooks/evidence-tracker/evidence_tracker.py`** (~720 lines, stdlib-only) — core resolver + state-file management + checkbox-flip detector. 5 core functions (parse_plan / resolve_evidence_requirement / matches_heuristic / matches_list / state-file-mgmt + check_evidence_met + would_flip_checkbox) + CLI dispatcher (`--mode check|reset|self-test`). **61 unit tests** across 9 classes covering all paths including the negative blocking case. Fictitious-path bypass blocked at CLI level (only existing files recorded).
+- **`hooks/evidence-tracker/{hook.md, evidence-tracker.sh, evidence-tracker.ps1, settings-fragment-bash.json, settings-fragment-pwsh.json}`** — manifest + thin shell + pwsh entry points (just shell out to the Python helper via stdin pipe-through) + settings registrations for PreToolUse on `Read|Write|Edit` matcher.
+- **Smoke install tests (bash + pwsh)** — 6 evidence-tracker sub-tests in both `scripts/smoke-install-bash.sh` + `smoke-install-pwsh.ps1` covering happy path / opt-out / heuristic / per-task override / state reset / blocking-with-helpful-stderr.
+- **CI step** added to all 3 OS workflows (`tests-linux.yml`, `tests-mac.yml`, `tests-windows.yml`): `python3 hooks/evidence-tracker/evidence_tracker.py --mode self-test`.
+- **New [ADR 0009 — evidence-tracker hook](wiki/explanation/decisions/0009-evidence-tracker-hook.md)** — full Status block + Context + Decision Q1-Q3 + Consequences positive/negative/load-bearing with re-audit triggers + Related. Matches ADR 0007/0008 shape.
+- **New [`wiki/how-to/Use-The-Evidence-Tracker-Hook.md`](wiki/how-to/Use-The-Evidence-Tracker-Hook.md)** — operator-facing per-hook walkthrough: when-it-fires per-tool table + 3 worked scenarios + 3 recovery paths + 6-row troubleshooting table + dogfood walkthrough. Length-justified inline.
+- **`wiki/Home.md` + `wiki/_Sidebar.md`** references added for the new how-to + ADR.
+
+### Changed
+
+- **`install.sh` + `install.ps1`** — `install_hook` / `Install-Hook` extended to copy any sibling `*.py` files in the hook source dir to `.claude/hooks/` alongside the `.sh`/`.ps1` entry. Lets hooks ship a Python helper without requiring it to live in a separate skill dir. Plan #9 introduced this pattern; ~7 lines per installer.
+- **`scripts/check-integrity-bash.sh` + `check-integrity-pwsh.ps1`** — `.claude/hooks/` integrity assertion updated to permit `.py` files (previously only `.sh`/`.ps1` allowed; would reject the new sibling helper layout).
+
+### Internal
+
+- **8 commits across plan #9 on this side**: `8c6419f` (evidence_tracker.py + 61 tests) + `6e875d5` (hook scaffolding + installer + integrity-check extension) + `e6f4411` (integrity-check fix for sibling-.py pattern caught by CI) + `83fb3e7` + `a3100ab` (smoke tests + variable-name fix caught by CI) + `4569c20` (how-to) + `8793237` (wiki baseline drift cleanup — 21 → 0 structural errors) + `ecd8d6c` (ADR 0009) + this v0.12.0 release commit.
+- **2 in-flight scope expansions caught + fixed mid-plan**: (a) installer needed to copy sibling `.py` helpers (not original scope; necessary for the new hook design) + corresponding integrity-check update; (b) toolkit-side check-wiki baseline drift accumulated from plans #7b/#13/#8 not refreshing Home.md/Sidebar.md — surfaced when adding the new how-to + ADR; fixed in `8793237`. Both expansions were necessary for the task; documented in commit messages.
+- **Paired-release ordering**: this toolkit release tagged first; harness v2.6.0 release notes URL-link this release per `[[coordinated-release-order]]` convention.
+- **6th consecutive paired-release pair** (after v0.9.0/v0.9.2/v0.10.0/v0.11.0/v0.11.1). First real-substance toolkit MINOR since v0.11.0 (intervening v0.11.1 was wiki-only).
+
 ## [v0.11.1] — 2026-05-22 — Cross-Repo Memory Protocol doc (paired with agentic-harness v2.5.0)
 
 Patch — wiki-only release paired with [`agentic-harness v2.5.0`](https://github.com/alexherrero/agentic-harness/releases/tag/v2.5.0). Substantive change ships entirely on the harness side: new `scripts/harness_memory.py` dispatcher + phase-spec amendments wire MemoryVault read + write into every harness phase command (`/setup` `/plan` `/work` `/review` `/release` `/bugfix`) at natural boundaries.
