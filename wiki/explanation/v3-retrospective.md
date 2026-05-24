@@ -123,4 +123,4 @@ Non-V4 frontiers: #17 Antigravity 2.0 + CLI host support; #19 Ideas.md format re
 - [`agent-memory-evolution`](agent-memory-evolution) — the AgentMemory evolution HLD (V1 → V4), shipped alongside this retrospective in plan #14
 - [`memoryvault`](memoryvault) — the parent MemoryVault design (V3 implementation)
 - [`agentic-harness/.harness/ROADMAP-AgentMemoryV4.md`](https://github.com/alexherrero/agentic-harness/blob/main/.harness/ROADMAP-AgentMemoryV4.md) — V4 roadmap (lands in plan #14 task 3)
-- [`agentic-harness/.harness/ROADMAP.archive.20260523-v3-complete.md`](https://github.com/alexherrero/agentic-harness/blob/main/.harness/ROADMAP.archive.20260523-v3-complete.md) — full V3-era ROADMAP archive (lands in plan #14 task 4)
+- `agentic-harness/.harness/ROADMAP.archive.20260523-v3-complete.md` — full V3-era ROADMAP snapshot (operator-local; `.harness/` is gitignored — archive preserved for eventual vault migration)
