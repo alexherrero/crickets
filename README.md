@@ -1,30 +1,36 @@
-# agent-toolkit
+# Cricket
 
 [![Linux Tests](https://github.com/alexherrero/agent-toolkit/actions/workflows/tests-linux.yml/badge.svg?branch=main)](https://github.com/alexherrero/agent-toolkit/actions/workflows/tests-linux.yml)
 [![Mac Tests](https://github.com/alexherrero/agent-toolkit/actions/workflows/tests-mac.yml/badge.svg?branch=main)](https://github.com/alexherrero/agent-toolkit/actions/workflows/tests-mac.yml)
 [![Windows Tests](https://github.com/alexherrero/agent-toolkit/actions/workflows/tests-windows.yml/badge.svg?branch=main)](https://github.com/alexherrero/agent-toolkit/actions/workflows/tests-windows.yml)
+[![Latest release](https://img.shields.io/github/v/release/alexherrero/agent-toolkit?label=latest&color=blue)](https://github.com/alexherrero/agent-toolkit/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-Personal collection of agent customizations — skills, sub-agents, hooks, MCP servers, slash commands, bundles, and more — across Claude Code, Antigravity, and Gemini CLI. Sibling repo to [`agentic-harness`](https://github.com/alexherrero/agentic-harness): the harness owns phase-gated workflow, this toolkit owns the customizations that ride on top.
+**Cricket** is the noisy cricket — small, focused agent customizations that punch above their weight. Skills, hooks, sub-agents, bundles, MCP servers, slash commands, status lines, output styles, workflows, rules, snippets, settings-fragments. The primitives **you** carry into any project to make [Agent M (`agentic-harness`)](https://github.com/alexherrero/agentic-harness) effective.
+
+Sibling repo [Agent M](https://github.com/alexherrero/agentic-harness) holds the phase-gated workflow + auto-recall + on-disk state. Cricket holds everything that rides on top.
 
 [![Works with Claude Code](https://img.shields.io/badge/works%20with-Claude%20Code-D97706?style=flat)](#)
 [![Works with Antigravity](https://img.shields.io/badge/works%20with-Antigravity-7C3AED?style=flat)](#)
-[![Works with Gemini CLI](https://img.shields.io/badge/works%20with-Gemini%20CLI-4285F4?style=flat)](#)
 
-## What's inside (v0.9.0)
+## What's inside
 
-Four skills + one agent + three hooks + one reference bundle:
+The current shipped catalog (see [wiki/Customization-Types.md](wiki/reference/Customization-Types.md) for what each kind is):
 
 | Customization | Kind | What it does |
 |---|---|---|
 | [`pii-scrubber`](skills/pii-scrubber/SKILL.md) | skill | Agent-facing PII guardrail — scans the current git diff before commit/push, presents findings, offers redactions. Companion to the pre-push hook. |
-| [`dependabot-fixer`](skills/dependabot-fixer/SKILL.md) | skill | Fix breakage on a Dependabot PR. Reads failing CI logs, applies a bounded fix loop, pushes commits to the Dependabot branch, comments residual risks. Never merges. (Migrated from agentic-harness v1.x.) |
-| [`ship-release`](skills/ship-release/SKILL.md) | skill | Cut a tagged GitHub release with semver-driven version bumps from conventional commits. Writes CHANGELOG, tags, pushes, creates the release. (Migrated from agentic-harness v1.x.) |
-| [`evaluator`](agents/evaluator.md) | agent | Read-only fresh-context grader. Caller supplies ARTIFACT + RUBRIC; evaluator returns PASS / NEEDS_WORK + per-rubric-item reasoning. Augments the harness's `adversarial-reviewer` at `/review`; consumed by the future design skill + quality-gates bundle. (New in v0.6.0.) |
-| [`kill-switch`](hooks/kill-switch/hook.md) | hook | Operator emergency halt for long-running Claude Code sessions. `touch .harness/STOP` → next `PreToolUse` halts the tool call with a stderr message; `rm` to resume. (New in v0.7.0.) |
-| [`steer`](hooks/steer/hook.md) | hook | Mid-run redirect without restart. Write `.harness/STEER.md` with a "do it this way instead" instruction → next `PreToolUse` injects the contents into agent context + renames to `STEER.consumed-<iso-ts>.md` for audit trail. (New in v0.7.0.) |
-| [`commit-on-stop`](hooks/commit-on-stop/hook.md) | hook | Safety-branch commit at session end. Fires on `Stop` event; dirty tree → `auto-save/<iso-ts>` branch with commit. Recovery via `git checkout auto-save/<ts>`. Never modifies the current branch; never pushes. (New in v0.7.0.) |
-| [`design`](skills/design/SKILL.md) | skill | Human-facing design pipeline → agent execution handoff. `/design author` walks a locked 10-section template (gating on review approval), `/design translate` splits the approved design into structural parts, `/design sequence` generates one PLAN.md per part for the harness's `/work` + `/review` flow. Published designs surface in `wiki/Home.md` as the canonical "Why we built X" entry point. (New in v0.8.0.) |
+| [`dependabot-fixer`](skills/dependabot-fixer/SKILL.md) | skill | Fix breakage on a Dependabot PR. Reads failing CI logs, applies a bounded fix loop, pushes commits to the Dependabot branch, comments residual risks. Never merges. |
+| [`ship-release`](skills/ship-release/SKILL.md) | skill | Cut a tagged GitHub release with semver-driven version bumps from conventional commits. Writes CHANGELOG, tags, pushes, creates the release. |
+| [`design`](skills/design/SKILL.md) | skill | Human-facing design pipeline → agent execution handoff. `/design author` walks a locked 10-section template; `/design translate` splits the approved design into structural parts; `/design sequence` generates a `PLAN.md` per part for Agent M's `/work` + `/review` flow. |
+| [`memory`](skills/memory/SKILL.md) | skill | The Agent M memory skill itself. `/memory save` / `evolve` / `reflect` / `search` / `index-skills` / `discover-skills` / `adapt-skills` / `watchlist` / `promote`. Permeable A3 write boundary; collision-checked; supersession-not-deletion. |
+| [`diataxis-author`](skills/diataxis-author/SKILL.md) | skill | Author + maintain a Diátaxis-style wiki for any repo. `/diataxis author` / `check` / `repair` / `migrate` / `classify`. Subsumes the harness's `migrate-to-diataxis` predecessor. |
+| [`evaluator`](agents/evaluator.md) | agent | Read-only fresh-context grader. Caller supplies ARTIFACT + RUBRIC; evaluator returns PASS / NEEDS_WORK + per-rubric-item reasoning. Augments Agent M's `adversarial-reviewer` at `/review`. |
+| [`kill-switch`](hooks/kill-switch/hook.md) | hook | Operator emergency halt for long-running Claude Code sessions. `touch .harness/STOP` → next `PreToolUse` halts the tool call; `rm` to resume. |
+| [`steer`](hooks/steer/hook.md) | hook | Mid-run redirect without restart. Write `.harness/STEER.md` with a "do it this way instead" instruction → next `PreToolUse` injects the contents into agent context + renames to `STEER.consumed-<iso-ts>.md` for audit trail. |
+| [`commit-on-stop`](hooks/commit-on-stop/hook.md) | hook | Safety-branch commit at session end. Fires on `Stop` event; dirty tree → `auto-save/<iso-ts>` branch with commit. Recovery via `git checkout auto-save/<ts>`. Never modifies the current branch; never pushes. |
+| [`evidence-tracker`](hooks/evidence-tracker/hook.md) | hook | Default-FAIL evidence enforcement on `/work` task closeouts. Blocks `[ ]` → `[x]` flips in `PLAN.md` unless the agent demonstrably `Read` the spec/test files first. Hybrid resolver (heuristic + per-task override + explicit opt-out with mandatory rationale). |
+| [`quality-gates`](bundles/quality-gates/bundle.md) | bundle | One-shot install of `evaluator` + the four base hooks (kill-switch, steer, commit-on-stop, evidence-tracker). What most Agent M `/work` sessions want. Sibling-reference dispatch — primitives stay single-source-of-truth in their standalone locations. |
 | [`example-bundle`](bundles/example-bundle/bundle.md) | bundle | Reference skeleton showing how to package a multi-primitive customization. Safe to delete in your fork. |
 
 ## How it works
@@ -43,23 +49,27 @@ flowchart LR
     I --> H
 ```
 
-One manifest, two host destinations (`claude-code` + `antigravity`). The installer reads each customization's `supported_hosts` and dispatches to the right paths per kind (see [wiki/reference/Per-Host-Paths](wiki/reference/Per-Host-Paths.md)). (v0.9.0 removed standalone Gemini CLI host per [ROADMAP item #15](https://github.com/alexherrero/agentic-harness/blob/main/.harness/ROADMAP.md); see [ADR 0006](wiki/explanation/decisions/0006-gemini-cli-host-removal.md).)
+One manifest, two host destinations (`claude-code` + `antigravity`). The installer reads each customization's `supported_hosts` and dispatches to the right paths per kind — see [wiki/reference/Per-Host-Paths](wiki/reference/Per-Host-Paths.md). Bundles use sibling-reference dispatch: a bundle is a manifest pointing at standalone primitives, not a copy of them.
 
-## Install
+## Get started
+
+Cricket is one half of [Agent M](https://github.com/alexherrero/agentic-harness). Install the harness alongside for the full system; Cricket also works standalone if you only want the customizations.
 
 ```bash
 # Clone as a sibling of agentic-harness (recommended layout)
 cd ~/Antigravity
 git clone https://github.com/alexherrero/agent-toolkit.git
+git clone https://github.com/alexherrero/agentic-harness.git   # the harness
 
-# Drop all customizations into a target project (default — installs everything + pre-push hook)
+# Drop everything Cricket ships into a target project
 bash ~/Antigravity/agent-toolkit/install.sh /path/to/your-project
 
-# Or install only one bundle / skill:
-bash ~/Antigravity/agent-toolkit/install.sh --bundle example-bundle /path/to/your-project
-bash ~/Antigravity/agent-toolkit/install.sh --skill pii-scrubber /path/to/your-project
+# Or pull just one bundle / skill / hook
+bash ~/Antigravity/agent-toolkit/install.sh /path/to/your-project --bundle quality-gates
+bash ~/Antigravity/agent-toolkit/install.sh /path/to/your-project --skill memory
+bash ~/Antigravity/agent-toolkit/install.sh /path/to/your-project --hook kill-switch
 
-# Refresh (true-sync — wipe + recreate managed dirs):
+# Refresh (true-sync — wipe + recreate managed dirs)
 bash ~/Antigravity/agent-toolkit/install.sh --update /path/to/your-project
 ```
 
@@ -69,13 +79,13 @@ On Windows / PowerShell 7+:
 pwsh -NoProfile -File C:\path\to\agent-toolkit\install.ps1 C:\path\to\your-project
 ```
 
-Full details: [wiki/how-to/Install-Into-Project.md](wiki/how-to/Install-Into-Project.md). Flag reference: [wiki/reference/Installer-CLI.md](wiki/reference/Installer-CLI.md).
+Full install detail: [wiki/how-to/Install-Into-Project.md](wiki/how-to/Install-Into-Project.md). Flag reference: [wiki/reference/Installer-CLI.md](wiki/reference/Installer-CLI.md).
 
 ## PII guardrails (foundational)
 
 This repo is **public** and holds personal customizations. Three enforcement layers protect against personal information leaking into commits:
 
-1. **Pre-push git hook** (`templates/hooks/pre-push`) — installed by the toolkit's installer into target projects' `.git/hooks/pre-push`. Runs `check-no-pii.sh` against every push; blocks non-zero. **Mandatory enforcer.**
+1. **Pre-push git hook** (`templates/hooks/pre-push`) — installed by Cricket's installer into target projects' `.git/hooks/pre-push`. Runs `check-no-pii.sh` against every push; blocks non-zero. **Mandatory enforcer.**
 2. **`pii-scrubber` skill** — agent-facing interactive layer. Scans the current diff, presents findings, offers redactions interactively.
 3. **CI gate** — `check-no-pii.sh --all` + the official `gitleaks-action` run on every push to GitHub.
 
@@ -83,16 +93,24 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the override protocol.
 
 ## Adding your own customizations
 
-- [Tutorial 1 — Your first customization](wiki/tutorials/01-First-Customization.md) (10-minute walkthrough)
-- [How to add a skill](wiki/how-to/Add-A-Skill.md)
-- [How to add a bundle](wiki/how-to/Add-A-Bundle.md)
-- [How to use the evaluator](wiki/how-to/Use-The-Evaluator.md) — dispatch the `evaluator` sub-agent for PASS / NEEDS_WORK grading.
-- [How to use the base hooks](wiki/how-to/Use-The-Base-Hooks.md) — kill-switch / steer / commit-on-stop for long-running Claude Code sessions.
-- [How to use the design skill](wiki/how-to/Use-The-Design-Skill.md) — `/design author` → `/design translate` → `/design sequence` for design-first projects with structural parts.
+- [Tutorial 1 — Your first customization](wiki/tutorials/01-First-Customization.md) — 10-minute walkthrough
+- [Add a skill](wiki/how-to/Add-A-Skill.md)
+- [Add a bundle](wiki/how-to/Add-A-Bundle.md)
+- [Use the evaluator](wiki/how-to/Use-The-Evaluator.md)
+- [Use the base hooks](wiki/how-to/Use-The-Base-Hooks.md)
+- [Use the memory skill](wiki/how-to/Use-The-Memory-Skill.md)
+- [Use the design skill](wiki/how-to/Use-The-Design-Skill.md)
+- [Use the diataxis-author skill](wiki/how-to/Use-Diataxis-Author.md)
+- [Use the quality-gates bundle](wiki/how-to/Use-The-Quality-Gates-Bundle.md)
+- [Use the evidence-tracker hook](wiki/how-to/Use-The-Evidence-Tracker-Hook.md)
+
+## Architecture history
+
+Cricket grew across paired releases with Agent M. The full V1→V4 evolution of the memory system this toolkit feeds into lives in [Agent Memory Evolution](wiki/explanation/designs/agent-memory-evolution.md); the [V3 Retrospective](wiki/explanation/v3-retrospective.md) covers what shipped, what we learned, what's deferred.
 
 ## Status
 
-Actively evolving. Releases and release notes are the source of truth — see [CHANGELOG.md](CHANGELOG.md) and the [latest release](https://github.com/alexherrero/agent-toolkit/releases/latest).
+Currently shipping **v1.0.0** — Cricket commits to a stable public API surface: bundle/manifest schema, installer flags, the `bundles/` namespace, and the 11 customization kinds. Internal surface (`scripts/`, `lib/install/`) remains pre-1.0 in spirit. See [CHANGELOG.md](CHANGELOG.md) and the [latest release](https://github.com/alexherrero/agent-toolkit/releases/latest). Cricket ships in lockstep with Agent M as paired releases.
 
 ## Contributing
 

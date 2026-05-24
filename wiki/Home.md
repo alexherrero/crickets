@@ -1,6 +1,8 @@
-# agent-toolkit Wiki
+# Cricket — `agent-toolkit`
 
-Dogfood documentation for `agent-toolkit` — a personal collection of agent customizations across Claude Code, Antigravity, and Gemini CLI. Sibling repo to [`agentic-harness`](https://github.com/alexherrero/agentic-harness). Every page is written for a single reader intent (learn / do / look up / understand) per the Diátaxis convention.
+**Cricket** is the noisy cricket — small, focused agent customizations that punch above their weight. Skills, hooks, sub-agents, bundles, MCP servers, slash commands, status lines, output styles, workflows, rules, snippets, settings-fragments. The primitives **you** carry into any project to make [Agent M (`agentic-harness`)](https://github.com/alexherrero/agentic-harness) effective.
+
+This wiki is the contributor-facing documentation for Cricket itself. Every page is written for a single reader intent (learn / do / look up / understand) per the Diátaxis convention.
 
 > [!NOTE]
 > Repo: [github.com/alexherrero/agent-toolkit](https://github.com/alexherrero/agent-toolkit). Public, MIT-licensed. PII guardrails (script + skill + pre-push hook) are foundational — see [Purpose and scope](Purpose-And-Scope) for why.
