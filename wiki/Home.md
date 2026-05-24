@@ -34,6 +34,7 @@ Dogfood documentation for `agent-toolkit` — a personal collection of agent cus
 - [Purpose and scope](Purpose-And-Scope) — what this repo is for, what it's not.
 - [Cross-Repo Memory Protocol](Cross-Repo-Memory-Protocol) — how agentic-harness reads from + writes to the toolkit-side `/memory` skill at phase boundaries.
 - [V3 Retrospective](v3-retrospective) — what shipped, what we learned, what's next (closes the V3 arc; ships with harness v3.0.0 + toolkit v1.0.0).
+- [Agent Memory Evolution: From ContextVault to V4](agent-memory-evolution) — V1→V4 HLD of the AgentMemory architecture (V3 ships with this release; V4 is roadmap-deferred).
 
 ### Architecture decisions
 
