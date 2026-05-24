@@ -5,6 +5,54 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.0.0] — 2026-05-24 — Cricket 1.0 (paired with agentic-harness v3.0.0 — Agent M V3 close-out)
+
+Major — **1.0 commitment** after the V3 arc validates the customization surface. The toolkit is now **Cricket** — the noisy cricket of the system, small primitives that punch above their weight. Paired with [`agentic-harness v3.0.0`](https://github.com/alexherrero/agentic-harness/releases/tag/v3.0.0) which ships **Agent M V3** — the agentic memory system that the harness + Cricket + vault folder together compose.
+
+**What 1.0 commits to** (stable public API surface):
+
+- **Manifest schema** — YAML frontmatter contract (`name` / `kind` / `description` / `supported_hosts` / `version` / `install_scope` / `deprecated` / `contents`). Stable. Breaking changes require a 2.0.
+- **Installer flags** — `--skill <name>`, `--agent <name>`, `--hook <name>`, `--bundle <name>`, `--update`, `--hooks` (verification hooks), `--no-pre-push-hook`. Stable.
+- **`bundles/` namespace** — bundles are manifests pointing at standalone primitives (sibling-reference dispatch); the `contents:` schema is stable.
+- **11 customization kinds** — `skill` / `command` / `agent` / `hook` / `mcp-server` / `bundle` / `status-line` / `output-style` / `workflow` / `rule` / `snippet` / `settings-fragment`. Adding kinds is non-breaking; removing or renaming is a 2.0.
+- **Per-host install paths** — destinations per kind per host (see [wiki/reference/Per-Host-Paths](wiki/reference/Per-Host-Paths.md)). Stable.
+
+**What stays pre-1.0 in spirit** (internal surface, may evolve):
+
+- **`scripts/`** — `validate-manifests.py`, `check-lib-parity.sh`, `check-syntax.sh`, `check-no-pii.sh`, `check-wiki.py`, etc. Used by Cricket's own CI; not part of the public contract.
+- **`lib/install/`** — shared install plumbing copied byte-identical between Cricket + `agentic-harness`. Internal to both repos.
+
+### What shipped across the V3 arc (v0.5.0 → v1.0.0)
+
+13 paired releases over ~12 days. Headline customizations:
+
+| Layer | What Cricket ships today |
+|---|---|
+| **Skills** (6) | `pii-scrubber`, `dependabot-fixer`, `ship-release`, `design`, `memory`, `diataxis-author` |
+| **Sub-agents** (1) | `evaluator` (+ `adapt-evaluator` write-allowlist-scoped helper) |
+| **Hooks** (4) | `kill-switch`, `steer`, `commit-on-stop`, `evidence-tracker` |
+| **Bundles** (2) | `quality-gates` (real-substance), `example-bundle` (reference skeleton) |
+| **ADRs** (9) | 0001 purpose, 0002 evaluator, 0003 base hooks, 0004 design skill, 0006 Gemini-CLI removal, 0007 MemoryVault Discovery + Mining, 0008 diataxis-author, 0009 evidence-tracker, 0010 quality-gates |
+
+Plus the wiki — Diátaxis four-mode (tutorials / how-to / reference / explanation) with the V3 retrospective + Agent M evolution HLD shipped fresh in this release pair.
+
+### Added
+
+- **`README.md`** — Cricket brand-framed rewrite. Lead paragraph names Cricket, the catalog table covers what ships today, install commands paired with Agent M, architecture-history pointers go to the HLD + V3 retrospective.
+- **`wiki/Home.md`** — Cricket lead paragraph above the Diátaxis nav.
+- **`wiki/explanation/v3-retrospective.md`** (new, 1749 words) — what shipped across the V3 arc, what we learned, what's deferred. 7 sections: scope / what shipped / architecture themes that crystallized / repeat lessons / operator-driven mid-plan pivots / deferred items + rationale / TBD frontiers heading into V4.
+- **`wiki/explanation/designs/agent-memory-evolution.md`** (new, ~3000 words) — Agent M V1→V4 HLD. 8 sections: Goals / Background / Architecture / Constitutional Schema / Autonomous Workflows / Background Automations / Commands Reference + See also. Forward-looking V4 framing covers role split (raw yours / wiki agent's / schema joint), three-stage pipeline (raw / inbox / wiki), file-back compile loop, multi-domain scope (Agent M for coding, vacation, cooking, crafting, research, learning), universal sub-dirs, first-class binary assets, domain-as-tag, cross-project layers, entry content rule, synthesis primitive, auto-save default, tighter guardrails. V4.5 (harness rework for any domain) noted as separate future design.
+
+### Changed
+
+- **Brand**: the toolkit is now **Cricket** in operator-facing prose. The `agent-toolkit` repo name + `agent-toolkit/` path literal stay as code-side names (renaming the repo would break every existing install). Per the locked branding convention.
+
+### Internal
+
+- **4 commits on this side** since v0.13.0: `6cea91d` (V3 retrospective), `33dc752` (Agent M HLD + Home/Sidebar/retrospective back-links), `e30fbef` (cross-ref fix — `.harness/` paths are gitignored, so GitHub URLs to them resolve to 404; demoted to inline path mentions), `d22ea0d` (Cricket README + wiki Home rewrite), plus this v1.0.0 release commit.
+- **Paired-release ordering**: this toolkit release tagged first; harness v3.0.0 release notes URL-link this release per `[[coordinated-release-order]]` convention.
+- **8th consecutive paired-release pair** (after v0.9.0/v0.9.2/v0.10.0/v0.11.0/v0.11.1/v0.12.0/v0.13.0). First MAJOR.
+
 ## [v0.13.0] — 2026-05-23 — quality-gates bundle (paired with agentic-harness v2.6.1)
 
 Minor — **first real-substance bundle** in the toolkit after the `example-bundle` stub. Ships [`quality-gates`](bundles/quality-gates/bundle.md) — one-command install for the 4 base operator-control + verification primitives that earn their keep on every agentic-harness `/work` session: `evaluator` sub-agent + `kill-switch` / `steer` / `commit-on-stop` / `evidence-tracker` hooks. Paired with [`agentic-harness v2.6.1`](https://github.com/alexherrero/agentic-harness/releases/tag/v2.6.1) (paired-doc-only — bundle is pure toolkit packaging).
