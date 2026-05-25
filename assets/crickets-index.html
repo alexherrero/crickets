@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Crickets — Asset Set</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="crickets/crickets-disc-32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="crickets/crickets-disc-16.png" />
+  <style>
+    :root { --ink:#0a0a0a; --paper:#f4efe6; --line:#d9d2c4; --mute:#6a6358; }
+    html, body { margin:0; background:var(--paper); color:var(--ink); font-family:'Inter Tight',system-ui,sans-serif; }
+    .wrap { max-width:1100px; margin:0 auto; padding:48px 32px 80px; }
+    h1 { font-size:32px; margin:0 0 4px; letter-spacing:-0.02em; }
+    .sub { font-family:ui-monospace,'JetBrains Mono',Menlo,monospace; font-size:12px; color:var(--mute); text-transform:uppercase; letter-spacing:0.08em; }
+    h2 { font-size:20px; margin:48px 0 4px; letter-spacing:-0.01em; }
+    h3 { font-size:12px; margin:24px 0 8px; font-family:ui-monospace,'JetBrains Mono',Menlo,monospace; text-transform:uppercase; letter-spacing:0.1em; color:var(--mute); font-weight:600; }
+    .row { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-end; padding:16px 0; }
+    .row.dark { background:var(--ink); padding:20px; border-radius:8px; }
+    .row.checker {
+      background:
+        linear-gradient(45deg, #c4bcab 25%, transparent 25%),
+        linear-gradient(-45deg, #c4bcab 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #c4bcab 75%),
+        linear-gradient(-45deg, transparent 75%, #c4bcab 75%);
+      background-size:16px 16px;
+      background-position:0 0, 0 8px, 8px -8px, -8px 0;
+      background-color:#ddd5c2;
+      padding:20px; border-radius:8px;
+    }
+    .cell { display:flex; flex-direction:column; align-items:center; gap:6px; }
+    .cell img { display:block; image-rendering:-webkit-optimize-contrast; }
+    .cell .lbl { font-family:ui-monospace,'JetBrains Mono',Menlo,monospace; font-size:10px; color:var(--mute); letter-spacing:0.06em; }
+    .row.dark .lbl { color:#999; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px; margin-top:8px; }
+    .file { padding:10px 12px; background:white; border:1px solid var(--line); border-radius:6px; font-family:ui-monospace,'JetBrains Mono',Menlo,monospace; font-size:10.5px; line-height:1.5; }
+    .file .size { color:var(--mute); font-size:9px; text-transform:uppercase; letter-spacing:0.08em; display:block; margin-bottom:2px; }
+    .intro { padding:16px 18px; background:#ece6d8; border-left:3px solid var(--ink); font-size:14px; line-height:1.55; margin:16px 0 8px; }
+    .intro p { margin:6px 0; }
+    .intro code { background:#ddd5c2; padding:1px 5px; border-radius:3px; font-size:12px; }
+    hr { border:none; border-top:1px solid var(--line); margin:56px 0; }
+    .repo-row { display:flex; gap:12px; align-items:center; padding:14px; background:white; border:1px solid var(--line); border-radius:8px; }
+    .repo-row img { width:64px; height:64px; border-radius:8px; }
+    .repo-row .name { font-weight:600; font-size:14px; }
+    .repo-row .desc { font-size:12px; color:var(--mute); }
+    .badge-context { display:inline-flex; align-items:center; gap:10px; padding:8px 14px; background:white; border:1px solid var(--line); border-radius:999px; font-size:13px; }
+    .badge-context img { width:22px; height:22px; border-radius:999px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Crickets — Asset Set</h1>
+    <div class="sub">Agentic toolkit · Men in Black ref · final assets</div>
+
+    <div class="intro">
+      <p><strong>The mark.</strong> Noisy-cricket-style sidearm inside a white-ringed black disc. Gun shifted 70px down from the original generation so the barrel reads as optically centered in the disc.</p>
+      <p>Generated four variants per size: <code>crickets-*</code> (original gray bg), <code>crickets-transparent-*</code> (gray wiped to alpha), <strong><code>crickets-disc-*</code> (recommended — disc only on transparent)</strong>, and <code>crickets-on-black-*</code> (disc on a solid black square for OG cards / dark plates).</p>
+    </div>
+
+    <hr/>
+
+    <!-- ============ README BANNER =========== -->
+    <h2>README banner</h2>
+    <div class="sub">assets/crickets/banner-1600.png · 1600×640 (2.5:1 GitHub README ratio)</div>
+    <div style="margin: 20px 0; padding: 24px; background: #111; border-radius: 8px;">
+      <img src="crickets/banner-1600.png" style="width: 100%; height: auto; display: block; border-radius: 4px;" alt="Crickets banner"/>
+    </div>
+    <div class="intro" style="margin-top: 0;">
+      <p><strong>Files:</strong> <code>banner-1600.png</code> (1600×640, 1x) and <code>banner-3200.png</code> (3200×1280, 2x retina). Both pre-rendered, ready to drop into a README.</p>
+      <p><strong>Live source:</strong> <code>banner.html</code> — open this if you want to tweak copy, colors, or status badges and re-export.</p>
+      <p>README snippet:</p>
+      <div class="file" style="white-space:pre; line-height:1.5;">&lt;p align="center"&gt;
+  &lt;img src="assets/crickets/banner-1600.png" alt="Crickets" width="100%"&gt;
+&lt;/p&gt;</div>
+    </div>
+
+    <hr/>
+
+    <h2>Recommended · disc on transparent</h2>
+    <div class="sub">assets/crickets/crickets-disc-*.png · use for avatars / favicons / repo icon</div>
+    <div class="row checker">
+      <div class="cell"><img src="crickets/crickets-disc-2048.png" width="220" height="220" alt=""/><div class="lbl">2048 · hero</div></div>
+      <div class="cell"><img src="crickets/crickets-disc-512.png" width="180" height="180" alt=""/><div class="lbl">512 · repo / avatar</div></div>
+      <div class="cell"><img src="crickets/crickets-disc-256.png" width="128" height="128" alt=""/><div class="lbl">256</div></div>
+      <div class="cell"><img src="crickets/crickets-disc-128.png" width="96" height="96" alt=""/><div class="lbl">128</div></div>
+      <div class="cell"><img src="crickets/crickets-disc-64.png" width="64" height="64" alt=""/><div class="lbl">64</div></div>
+      <div class="cell"><img src="crickets/crickets-disc-48.png" width="48" height="48" alt=""/><div class="lbl">48</div></div>
+      <div class="cell"><img src="crickets/crickets-disc-32.png" width="32" height="32" alt=""/><div class="lbl">32 · favicon</div></div>
+      <div class="cell"><img src="crickets/crickets-disc-16.png" width="16" height="16" alt=""/><div class="lbl">16 · favicon</div></div>
+    </div>
+
+    <h3>Context previews</h3>
+    <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:6px;">
+      <span class="badge-context"><img src="crickets/crickets-disc-128.png" alt=""/><span><strong>crickets</strong> · agentic toolkit</span></span>
+      <div class="repo-row">
+        <img src="crickets/crickets-disc-256.png" alt=""/>
+        <div><div class="name">alexherrero/crickets</div><div class="desc">Crickets — agentic toolkit</div></div>
+      </div>
+    </div>
+
+    <hr/>
+
+    <h2>Disc on solid black</h2>
+    <div class="sub">assets/crickets/crickets-on-black-*.png · for OG cards / dark plates</div>
+    <div class="row dark">
+      <div class="cell"><img src="crickets/crickets-on-black-2048.png" width="220" height="220" alt=""/><div class="lbl">2048</div></div>
+      <div class="cell"><img src="crickets/crickets-on-black-512.png" width="180" height="180" alt=""/><div class="lbl">512</div></div>
+      <div class="cell"><img src="crickets/crickets-on-black-256.png" width="128" height="128" alt=""/><div class="lbl">256</div></div>
+      <div class="cell"><img src="crickets/crickets-on-black-128.png" width="96" height="96" alt=""/><div class="lbl">128</div></div>
+      <div class="cell"><img src="crickets/crickets-on-black-64.png" width="64" height="64" alt=""/><div class="lbl">64</div></div>
+      <div class="cell"><img src="crickets/crickets-on-black-48.png" width="48" height="48" alt=""/><div class="lbl">48</div></div>
+      <div class="cell"><img src="crickets/crickets-on-black-32.png" width="32" height="32" alt=""/><div class="lbl">32</div></div>
+      <div class="cell"><img src="crickets/crickets-on-black-16.png" width="16" height="16" alt=""/><div class="lbl">16</div></div>
+    </div>
+
+    <hr/>
+
+    <h2>Original (gray bg preserved) · transparent</h2>
+    <div class="row">
+      <div class="cell"><img src="crickets/crickets-2048.png" width="180" height="180" alt=""/><div class="lbl">crickets-2048</div></div>
+      <div class="cell"><img src="crickets/crickets-512.png" width="140" height="140" alt=""/><div class="lbl">crickets-512</div></div>
+    </div>
+    <div class="row checker">
+      <div class="cell"><img src="crickets/crickets-transparent-2048.png" width="180" height="180" alt=""/><div class="lbl">transparent-2048</div></div>
+      <div class="cell"><img src="crickets/crickets-transparent-512.png" width="140" height="140" alt=""/><div class="lbl">transparent-512</div></div>
+    </div>
+
+    <hr/>
+
+    <h2>Favicon snippet</h2>
+    <div class="file" style="white-space:pre; line-height:1.5;">&lt;link rel="icon" type="image/png" sizes="32x32" href="/assets/crickets/crickets-disc-32.png"&gt;
+&lt;link rel="icon" type="image/png" sizes="16x16" href="/assets/crickets/crickets-disc-16.png"&gt;
+&lt;link rel="apple-touch-icon" sizes="256x256" href="/assets/crickets/crickets-disc-256.png"&gt;</div>
+
+    <hr/>
+
+    <h2>File index</h2>
+    <h3>assets/crickets/ — recommended (disc only)</h3>
+    <div class="grid">
+      <div class="file"><span class="size">SVG</span>crickets.svg</div>
+      <div class="file"><span class="size">2048</span>crickets-disc-2048.png</div>
+      <div class="file"><span class="size">1024</span>crickets-disc-1024.png</div>
+      <div class="file"><span class="size">512</span>crickets-disc-512.png</div>
+      <div class="file"><span class="size">256</span>crickets-disc-256.png</div>
+      <div class="file"><span class="size">128</span>crickets-disc-128.png</div>
+      <div class="file"><span class="size">64</span>crickets-disc-64.png</div>
+      <div class="file"><span class="size">48</span>crickets-disc-48.png</div>
+      <div class="file"><span class="size">32</span>crickets-disc-32.png</div>
+      <div class="file"><span class="size">16</span>crickets-disc-16.png</div>
+    </div>
+    <h3>assets/crickets/ — on solid black</h3>
+    <div class="grid">
+      <div class="file"><span class="size">2048</span>crickets-on-black-2048.png</div>
+      <div class="file"><span class="size">1024</span>crickets-on-black-1024.png</div>
+      <div class="file"><span class="size">512</span>crickets-on-black-512.png</div>
+      <div class="file"><span class="size">256</span>crickets-on-black-256.png</div>
+      <div class="file"><span class="size">128</span>crickets-on-black-128.png</div>
+      <div class="file"><span class="size">64</span>crickets-on-black-64.png</div>
+      <div class="file"><span class="size">48</span>crickets-on-black-48.png</div>
+      <div class="file"><span class="size">32</span>crickets-on-black-32.png</div>
+      <div class="file"><span class="size">16</span>crickets-on-black-16.png</div>
+    </div>
+    <h3>assets/crickets/ — original gray bg + transparent</h3>
+    <div class="grid">
+      <div class="file"><span class="size">2048</span>crickets-2048.png</div>
+      <div class="file"><span class="size">1024</span>crickets-1024.png</div>
+      <div class="file"><span class="size">512</span>crickets-512.png</div>
+      <div class="file"><span class="size">256</span>crickets-256.png</div>
+      <div class="file"><span class="size">128</span>crickets-128.png</div>
+      <div class="file"><span class="size">64</span>crickets-64.png</div>
+      <div class="file"><span class="size">48</span>crickets-48.png</div>
+      <div class="file"><span class="size">32</span>crickets-32.png</div>
+      <div class="file"><span class="size">16</span>crickets-16.png</div>
+      <div class="file"><span class="size">2048 tp</span>crickets-transparent-2048.png</div>
+      <div class="file"><span class="size">1024 tp</span>crickets-transparent-1024.png</div>
+      <div class="file"><span class="size">512 tp</span>crickets-transparent-512.png</div>
+      <div class="file"><span class="size">256 tp</span>crickets-transparent-256.png</div>
+      <div class="file"><span class="size">128 tp</span>crickets-transparent-128.png</div>
+      <div class="file"><span class="size">64 tp</span>crickets-transparent-64.png</div>
+    </div>
+  </div>
+</body>
+</html>

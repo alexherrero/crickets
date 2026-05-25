@@ -5,9 +5,36 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v1.0.0] — 2026-05-24 — Cricket 1.0 (paired with agentic-harness v3.0.0 — Agent M V3 close-out)
+## [v1.0.1] — 2026-05-24 — Crickets logo hero + brand-name clarification (toolkit-only PATCH)
 
-Major — **1.0 commitment** after the V3 arc validates the customization surface. The toolkit is now **Cricket** — the noisy cricket of the system, small primitives that punch above their weight. Paired with [`agentic-harness v3.0.0`](https://github.com/alexherrero/agentic-harness/releases/tag/v3.0.0) which ships **Agent M V3** — the agentic memory system that the harness + Cricket + vault folder together compose.
+Patch — **first visual brand iteration on the Crickets side**, mirroring the [`agentic-harness v3.0.1`](https://github.com/alexherrero/agentic-harness/releases/tag/v3.0.1) Agent M logo pass from earlier today. Adds the Crickets logo asset set and refreshes `README.md` + `wiki/Home.md` with the brand-aligned visual hero. Toolkit-only PATCH (no paired harness release this round — harness already shipped v3.0.1 with the Agent M hero; this matches it on the Crickets side).
+
+**Brand-name clarification — singular "Cricket" → plural "Crickets" across all surfaces.** The brand was always meant to be plural (per the asset directory `assets/crickets/` shipped here and `<title>Crickets — Asset Set</title>` in the operator's brand artifacts); earlier CHANGELOG entries / READMEs introduced the singular form by typo. This release corrects retroactively — CHANGELOG entries for `v1.0.0` (and harness v3.0.0 / v3.0.1 on the harness side) read "Crickets" consistently end-to-end. **GitHub release pages preserved as-shipped** (those are immutable in practice).
+
+### Added
+
+- **`assets/crickets/`** — Crickets logo asset set in 4 treatments (standard / transparent / on-black / disc) × multiple PNG sizes (16 / 32 / 48 / 64 / 128 / 256 / 512 / 1024 / 2048) + SVG wrapper. ~33 asset files.
+- **`assets/crickets/banner-1600.png`** + **`banner-3200.png`** — wide banner format (1600×640 — common GitHub README banner ratio).
+- **`assets/crickets-index.html`** — brand-asset preview page showing all variants on light / dark / checkered backgrounds.
+- **`assets/banner.html`** — preview page for the banner format.
+
+### Changed
+
+- **Brand name clarified Cricket → Crickets** everywhere in this repo's `CHANGELOG.md` (v1.0.0 entry retroactively), `README.md`, `wiki/Home.md`. Asset directory was already `assets/crickets/` (plural) — the rename aligns text with directory.
+- **`README.md` hero** — centered logo hero (`assets/crickets/crickets-transparent-512.png` at displayed 256px), italic tagline (*"Small agent primitives that punch above their weight."*), and reorganized badge layout into two centered blocks (test/release/license + host-compat). H1 swapped from markdown `#` to `<h1 align="center">` for visual coherence with the centered hero. Rest of the README untouched.
+- **`wiki/Home.md`** lead paragraph updated for Crickets branding (singular → plural).
+
+### Internal
+
+- 1 commit on this side: `<pending>` (assets + rename + README hero + wiki Home) + this v1.0.1 release commit.
+- **Toolkit-only PATCH** — harness reference cleanup (singular Cricket → plural Crickets in harness README + CHANGELOG + Completed-Features) rides as a separate harness docs commit (no harness version bump this round; harness already shipped v3.0.1).
+- **Same brand palette + typography as Agent M** — `--ink: #0a0a0a` + `--paper: #f4efe6` + Inter Tight + JetBrains Mono. Brand-system coherence is real; operator delivered both sets from Claude.ai Artifacts.
+- Establishes `assets/` as the brand-asset convention on the Crickets side (matches the convention already established on the Agent M side).
+- **Operator-review-gated** per [[docs-prose-style]] workflow; explicit approve-and-ship green-light received before push.
+
+## [v1.0.0] — 2026-05-24 — Crickets 1.0 (paired with agentic-harness v3.0.0 — Agent M V3 close-out)
+
+Major — **1.0 commitment** after the V3 arc validates the customization surface. The toolkit is now **Crickets** — the noisy cricket of the system, small primitives that punch above their weight. Paired with [`agentic-harness v3.0.0`](https://github.com/alexherrero/agentic-harness/releases/tag/v3.0.0) which ships **Agent M V3** — the agentic memory system that the harness + Crickets + vault folder together compose.
 
 **What 1.0 commits to** (stable public API surface):
 
@@ -19,14 +46,14 @@ Major — **1.0 commitment** after the V3 arc validates the customization surfac
 
 **What stays pre-1.0 in spirit** (internal surface, may evolve):
 
-- **`scripts/`** — `validate-manifests.py`, `check-lib-parity.sh`, `check-syntax.sh`, `check-no-pii.sh`, `check-wiki.py`, etc. Used by Cricket's own CI; not part of the public contract.
-- **`lib/install/`** — shared install plumbing copied byte-identical between Cricket + `agentic-harness`. Internal to both repos.
+- **`scripts/`** — `validate-manifests.py`, `check-lib-parity.sh`, `check-syntax.sh`, `check-no-pii.sh`, `check-wiki.py`, etc. Used by Crickets' own CI; not part of the public contract.
+- **`lib/install/`** — shared install plumbing copied byte-identical between Crickets + `agentic-harness`. Internal to both repos.
 
 ### What shipped across the V3 arc (v0.5.0 → v1.0.0)
 
 13 paired releases over ~12 days. Headline customizations:
 
-| Layer | What Cricket ships today |
+| Layer | What Crickets ships today |
 |---|---|
 | **Skills** (6) | `pii-scrubber`, `dependabot-fixer`, `ship-release`, `design`, `memory`, `diataxis-author` |
 | **Sub-agents** (1) | `evaluator` (+ `adapt-evaluator` write-allowlist-scoped helper) |
@@ -38,18 +65,18 @@ Plus the wiki — Diátaxis four-mode (tutorials / how-to / reference / explanat
 
 ### Added
 
-- **`README.md`** — Cricket brand-framed rewrite. Lead paragraph names Cricket, the catalog table covers what ships today, install commands paired with Agent M, architecture-history pointers go to the HLD + V3 retrospective.
-- **`wiki/Home.md`** — Cricket lead paragraph above the Diátaxis nav.
+- **`README.md`** — Crickets brand-framed rewrite. Lead paragraph names Crickets, the catalog table covers what ships today, install commands paired with Agent M, architecture-history pointers go to the HLD + V3 retrospective.
+- **`wiki/Home.md`** — Crickets lead paragraph above the Diátaxis nav.
 - **`wiki/explanation/v3-retrospective.md`** (new, 1749 words) — what shipped across the V3 arc, what we learned, what's deferred. 7 sections: scope / what shipped / architecture themes that crystallized / repeat lessons / operator-driven mid-plan pivots / deferred items + rationale / TBD frontiers heading into V4.
 - **`wiki/explanation/designs/agent-memory-evolution.md`** (new, ~3000 words) — Agent M V1→V4 HLD. 8 sections: Goals / Background / Architecture / Constitutional Schema / Autonomous Workflows / Background Automations / Commands Reference + See also. Forward-looking V4 framing covers role split (raw yours / wiki agent's / schema joint), three-stage pipeline (raw / inbox / wiki), file-back compile loop, multi-domain scope (Agent M for coding, vacation, cooking, crafting, research, learning), universal sub-dirs, first-class binary assets, domain-as-tag, cross-project layers, entry content rule, synthesis primitive, auto-save default, tighter guardrails. V4.5 (harness rework for any domain) noted as separate future design.
 
 ### Changed
 
-- **Brand**: the toolkit is now **Cricket** in operator-facing prose. The `agent-toolkit` repo name + `agent-toolkit/` path literal stay as code-side names (renaming the repo would break every existing install). Per the locked branding convention.
+- **Brand**: the toolkit is now **Crickets** in operator-facing prose. The `agent-toolkit` repo name + `agent-toolkit/` path literal stay as code-side names (renaming the repo would break every existing install). Per the locked branding convention.
 
 ### Internal
 
-- **4 commits on this side** since v0.13.0: `6cea91d` (V3 retrospective), `33dc752` (Agent M HLD + Home/Sidebar/retrospective back-links), `e30fbef` (cross-ref fix — `.harness/` paths are gitignored, so GitHub URLs to them resolve to 404; demoted to inline path mentions), `d22ea0d` (Cricket README + wiki Home rewrite), plus this v1.0.0 release commit.
+- **4 commits on this side** since v0.13.0: `6cea91d` (V3 retrospective), `33dc752` (Agent M HLD + Home/Sidebar/retrospective back-links), `e30fbef` (cross-ref fix — `.harness/` paths are gitignored, so GitHub URLs to them resolve to 404; demoted to inline path mentions), `d22ea0d` (Crickets README + wiki Home rewrite), plus this v1.0.0 release commit.
 - **Paired-release ordering**: this toolkit release tagged first; harness v3.0.0 release notes URL-link this release per `[[coordinated-release-order]]` convention.
 - **8th consecutive paired-release pair** (after v0.9.0/v0.9.2/v0.10.0/v0.11.0/v0.11.1/v0.12.0/v0.13.0). First MAJOR.
 

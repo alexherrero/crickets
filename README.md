@@ -1,17 +1,27 @@
-# Cricket
+<p align="center">
+  <img src="assets/crickets/crickets-transparent-512.png" alt="Crickets" width="256">
+</p>
 
-[![Linux Tests](https://github.com/alexherrero/agent-toolkit/actions/workflows/tests-linux.yml/badge.svg?branch=main)](https://github.com/alexherrero/agent-toolkit/actions/workflows/tests-linux.yml)
-[![Mac Tests](https://github.com/alexherrero/agent-toolkit/actions/workflows/tests-mac.yml/badge.svg?branch=main)](https://github.com/alexherrero/agent-toolkit/actions/workflows/tests-mac.yml)
-[![Windows Tests](https://github.com/alexherrero/agent-toolkit/actions/workflows/tests-windows.yml/badge.svg?branch=main)](https://github.com/alexherrero/agent-toolkit/actions/workflows/tests-windows.yml)
-[![Latest release](https://img.shields.io/github/v/release/alexherrero/agent-toolkit?label=latest&color=blue)](https://github.com/alexherrero/agent-toolkit/releases/latest)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+<h1 align="center">Crickets</h1>
 
-**Cricket** is the noisy cricket — small, focused agent customizations that punch above their weight. Skills, hooks, sub-agents, bundles, MCP servers, slash commands, status lines, output styles, workflows, rules, snippets, settings-fragments. The primitives **you** carry into any project to make [Agent M (`agentic-harness`)](https://github.com/alexherrero/agentic-harness) effective.
+<p align="center"><em>Small agent primitives that punch above their weight.</em></p>
 
-Sibling repo [Agent M](https://github.com/alexherrero/agentic-harness) holds the phase-gated workflow + auto-recall + on-disk state. Cricket holds everything that rides on top.
+<p align="center">
+  <a href="https://github.com/alexherrero/agent-toolkit/actions/workflows/tests-linux.yml"><img src="https://github.com/alexherrero/agent-toolkit/actions/workflows/tests-linux.yml/badge.svg?branch=main" alt="Linux Tests"></a>
+  <a href="https://github.com/alexherrero/agent-toolkit/actions/workflows/tests-mac.yml"><img src="https://github.com/alexherrero/agent-toolkit/actions/workflows/tests-mac.yml/badge.svg?branch=main" alt="Mac Tests"></a>
+  <a href="https://github.com/alexherrero/agent-toolkit/actions/workflows/tests-windows.yml"><img src="https://github.com/alexherrero/agent-toolkit/actions/workflows/tests-windows.yml/badge.svg?branch=main" alt="Windows Tests"></a>
+  <a href="https://github.com/alexherrero/agent-toolkit/releases/latest"><img src="https://img.shields.io/github/v/release/alexherrero/agent-toolkit?label=latest&color=blue" alt="Latest release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License: MIT"></a>
+</p>
 
-[![Works with Claude Code](https://img.shields.io/badge/works%20with-Claude%20Code-D97706?style=flat)](#)
-[![Works with Antigravity](https://img.shields.io/badge/works%20with-Antigravity-7C3AED?style=flat)](#)
+<p align="center">
+  <a href="#"><img src="https://img.shields.io/badge/works%20with-Claude%20Code-D97706?style=flat" alt="Works with Claude Code"></a>
+  <a href="#"><img src="https://img.shields.io/badge/works%20with-Antigravity-7C3AED?style=flat" alt="Works with Antigravity"></a>
+</p>
+
+**Crickets** is the noisy cricket — small, focused agent customizations that punch above their weight. Skills, hooks, sub-agents, bundles, MCP servers, slash commands, status lines, output styles, workflows, rules, snippets, settings-fragments. The primitives **you** carry into any project to make [Agent M (`agentic-harness`)](https://github.com/alexherrero/agentic-harness) effective.
+
+Sibling repo [Agent M](https://github.com/alexherrero/agentic-harness) holds the phase-gated workflow + auto-recall + on-disk state. Crickets holds everything that rides on top.
 
 ## What's inside
 
@@ -53,7 +63,7 @@ One manifest, two host destinations (`claude-code` + `antigravity`). The install
 
 ## Get started
 
-Cricket is one half of [Agent M](https://github.com/alexherrero/agentic-harness). Install the harness alongside for the full system; Cricket also works standalone if you only want the customizations.
+Crickets is one half of [Agent M](https://github.com/alexherrero/agentic-harness). Install the harness alongside for the full system; Crickets also works standalone if you only want the customizations.
 
 ```bash
 # Clone as a sibling of agentic-harness (recommended layout)
@@ -61,7 +71,7 @@ cd ~/Antigravity
 git clone https://github.com/alexherrero/agent-toolkit.git
 git clone https://github.com/alexherrero/agentic-harness.git   # the harness
 
-# Drop everything Cricket ships into a target project
+# Drop everything Crickets ships into a target project
 bash ~/Antigravity/agent-toolkit/install.sh /path/to/your-project
 
 # Or pull just one bundle / skill / hook
@@ -85,7 +95,7 @@ Full install detail: [wiki/how-to/Install-Into-Project.md](wiki/how-to/Install-I
 
 This repo is **public** and holds personal customizations. Three enforcement layers protect against personal information leaking into commits:
 
-1. **Pre-push git hook** (`templates/hooks/pre-push`) — installed by Cricket's installer into target projects' `.git/hooks/pre-push`. Runs `check-no-pii.sh` against every push; blocks non-zero. **Mandatory enforcer.**
+1. **Pre-push git hook** (`templates/hooks/pre-push`) — installed by Crickets' installer into target projects' `.git/hooks/pre-push`. Runs `check-no-pii.sh` against every push; blocks non-zero. **Mandatory enforcer.**
 2. **`pii-scrubber` skill** — agent-facing interactive layer. Scans the current diff, presents findings, offers redactions interactively.
 3. **CI gate** — `check-no-pii.sh --all` + the official `gitleaks-action` run on every push to GitHub.
 
@@ -106,11 +116,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the override protocol.
 
 ## Architecture history
 
-Cricket grew across paired releases with Agent M. The full V1→V4 evolution of the memory system this toolkit feeds into lives in [Agent Memory Evolution](wiki/explanation/designs/agent-memory-evolution.md); the [V3 Retrospective](wiki/explanation/v3-retrospective.md) covers what shipped, what we learned, what's deferred.
+Crickets grew across paired releases with Agent M. The full V1→V4 evolution of the memory system this toolkit feeds into lives in [Agent Memory Evolution](wiki/explanation/designs/agent-memory-evolution.md); the [V3 Retrospective](wiki/explanation/v3-retrospective.md) covers what shipped, what we learned, what's deferred.
 
 ## Status
 
-Currently shipping **v1.0.0** — Cricket commits to a stable public API surface: bundle/manifest schema, installer flags, the `bundles/` namespace, and the 11 customization kinds. Internal surface (`scripts/`, `lib/install/`) remains pre-1.0 in spirit. See [CHANGELOG.md](CHANGELOG.md) and the [latest release](https://github.com/alexherrero/agent-toolkit/releases/latest). Cricket ships in lockstep with Agent M as paired releases.
+Currently shipping **v1.0.0** — Crickets commits to a stable public API surface: bundle/manifest schema, installer flags, the `bundles/` namespace, and the 11 customization kinds. Internal surface (`scripts/`, `lib/install/`) remains pre-1.0 in spirit. See [CHANGELOG.md](CHANGELOG.md) and the [latest release](https://github.com/alexherrero/agent-toolkit/releases/latest). Crickets ships in lockstep with Agent M as paired releases.
 
 ## Contributing
 
