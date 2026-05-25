@@ -67,6 +67,22 @@ bash scripts/smoke-install-bash.sh
 > - `validate-manifests.py` — shipped (task 3)
 > - `smoke-install-bash.sh` — still coming (task 4)
 
+## Regenerating the brand banner
+
+The Crickets brand banner (`assets/crickets/banner-1600.png` + `banner-3200.png`) ships in the README hero + the wiki Home page. The banner is rendered from `assets/banner.html` via headless Chrome.
+
+**Run whenever you change `assets/banner.html`:**
+
+```bash
+bash scripts/regenerate-banner.sh
+```
+
+The script renders both PNG sizes (1600×430 + 3200×860 retina) and writes them to `assets/crickets/`. **Commit the regenerated PNGs alongside the `banner.html` change.**
+
+Requirements: a Google Chrome install (macOS auto-detected; Linux `google-chrome`/`chromium` on `PATH`; Windows Chrome in default Program Files). If Chrome isn't found the script prints the install paths it checked.
+
+The banner is a **static brand asset** — it does not carry release-version data (live version + CI status live in shields.io badges in the README), so regeneration is NOT tied to releases. Mirrors the equivalent setup in the sibling [`agentic-harness`](https://github.com/alexherrero/agentic-harness/blob/main/CONTRIBUTING.md#regenerating-the-brand-banner) repo.
+
 ## Commit messages
 
 Do not append `Co-Authored-By:` trailers naming agents or models. Plain commit message only. See [AGENTS.md § Conventions § Commit messages](AGENTS.md#commit-messages) for the full rule.

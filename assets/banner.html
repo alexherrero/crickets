@@ -7,14 +7,16 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
   <style>
-    /* 1600×640 (2.5:1) — common GitHub README banner ratio. */
+    /* 1600×430 — matches Agent M banner dims exactly for cross-repo brand consistency.
+       (Was 1600×640 with a fake hardcoded status panel; status panel dropped per
+       plan #15 task 7 — version/CI/license data lives in the live shields.io
+       badges in the README hero, not baked into the banner PNG.) */
     :root {
       --bw: 1600;
-      --bh: 640;
+      --bh: 430;
       --ink: #000;
-      --paper: #d9d2c4;
+      --paper: #f4efe6;     /* brand paper — aligned with badge convention (was #d9d2c4 drift) */
       --line: rgba(255,255,255,0.18);
-      --mono: #d4cfc1;
     }
     html, body { margin: 0; height: 100%; background: #1a1818; display: grid; place-items: center; font-family: 'Inter Tight', system-ui, sans-serif; }
     .stage {
@@ -29,6 +31,7 @@
       color: white;
       display: grid;
       grid-template-columns: 640px 1fr;
+      grid-template-rows: 100%;     /* bugfix: ensures .copy gets real height so its 1fr 1fr rows distribute */
       overflow: hidden;
       position: relative;
     }
@@ -56,7 +59,7 @@
     /* RIGHT: stacked panels */
     .copy {
       display: grid;
-      grid-template-rows: 1fr 1fr 1.05fr;
+      grid-template-rows: 1fr 1fr;
       min-width: 0;
     }
 
@@ -86,38 +89,10 @@
     .tagline {
       font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
       font-weight: 500;
-      font-size: 32px;
+      font-size: 28px;        /* sized down from 32px to fit single-line tagline at 1600px width */
       line-height: 1.2;
       letter-spacing: -0.01em;
-    }
-
-    .band-status {
-      background: var(--ink);
-      padding: 22px 56px 0;
-      display: flex; flex-direction: column; justify-content: center; gap: 4px;
-      border-top: 1px solid var(--line);
-    }
-    .status-line {
-      font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
-      font-weight: 400;
-      font-size: 24px;
-      line-height: 1.5;
-      color: var(--mono);
-    }
-    .status-line .sep {
-      color: rgba(255,255,255,0.35);
-      margin: 0 0.6em;
-    }
-    .status-line.ci { color: white; font-weight: 500; }
-    .status-rule {
-      display: block;
-      height: 5px;
-      background:
-        linear-gradient(to bottom,
-          rgba(255,255,255,0.4) 0, rgba(255,255,255,0.4) 1px,
-          transparent 1px, transparent 4px,
-          rgba(255,255,255,0.4) 4px, rgba(255,255,255,0.4) 5px);
-      margin: 10px 0;
+      white-space: nowrap;    /* keep single-line per operator request 2026-05-25 */
     }
   </style>
 </head>
@@ -136,23 +111,19 @@
           </div>
         </div>
         <div class="band-tagline">
-          <div class="tagline">[ A LOUD LITTLE TOOLKIT<br/>&nbsp;&nbsp;FOR AGENTIC SYSTEMS ]</div>
-        </div>
-        <div class="band-status">
-          <div class="status-line ci">[ CI &nbsp;|&nbsp; PASSING ]</div>
-          <span class="status-rule"></span>
-          <div class="status-line">[ Coverage <span class="sep">|</span> 98% ]</div>
-          <div class="status-line">[ Version &nbsp;<span class="sep">|</span> v0.1.0 ]</div>
-          <div class="status-line">[ License &nbsp;<span class="sep">|</span> MIT ]</div>
+          <div class="tagline">[ A LOUD LITTLE TOOLKIT FOR AGENTIC SYSTEMS ]</div>
         </div>
       </div>
     </div>
   </div>
 
   <script>
-    const bw = 1600, bh = 640;
+    // Scale banner to fit viewport while preserving aspect ratio.
+    // pad=0 means screenshot capture at exact 1600x430 renders at scale 1
+    // (no shrinkage); browser preview at larger viewports still scales down to fit.
+    const bw = 1600, bh = 430;
     const fit = () => {
-      const pad = 32;
+      const pad = 0;
       const sx = (window.innerWidth - pad * 2) / bw;
       const sy = (window.innerHeight - pad * 2) / bh;
       document.documentElement.style.setProperty('--scale', Math.min(sx, sy, 1));
