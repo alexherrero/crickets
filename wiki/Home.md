@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/alexherrero/agent-toolkit/main/assets/crickets/banner-1600.png" alt="Crickets — Inspired by the noisy cricket from Men in Black">
+  <img src="https://raw.githubusercontent.com/alexherrero/agent-toolkit/main/assets/crickets/banner-1600.png" alt="Crickets — Inspired by the Noisy Cricket">
 </p>
 
-<p align="center"><em>Inspired by the noisy cricket from Men in Black — agent primitives that punch far above their weight.</em></p>
+<p align="center"><em>Inspired by the Noisy Cricket — agent primitives that punch far above their weight.</em></p>
 
 <p align="center">
   <a href="https://github.com/alexherrero/agent-toolkit/actions/workflows/ci-all.yml"><img src="https://img.shields.io/github/actions/workflow/status/alexherrero/agent-toolkit/ci-all.yml?branch=main&style=for-the-badge&label=CI&labelColor=0a0a0a&logo=github&logoColor=f4efe6" alt="CI"></a>

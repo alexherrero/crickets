@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="assets/crickets/banner-1600.png" alt="Crickets — Inspired by the noisy cricket from Men in Black">
+  <img src="assets/crickets/banner-1600.png" alt="Crickets — Inspired by the Noisy Cricket">
 </p>
 
-<p align="center"><em>Inspired by the noisy cricket from Men in Black — agent primitives that punch far above their weight.</em></p>
+<p align="center"><em>Inspired by the Noisy Cricket — agent primitives that punch far above their weight.</em></p>
 
 <!--
   Badge convention (plan #15 task 7) — mirrors the harness side (task 6 v2):
