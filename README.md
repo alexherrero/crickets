@@ -25,23 +25,52 @@ Inspired by the iconic noisy cricket from Men in Black, **Crickets** is a tactic
 
 ## What's inside
 
-The current shipped catalog (see [wiki/Customization-Types.md](wiki/reference/Customization-Types.md) for what each kind is):
+The current shipped catalog (see [wiki/reference/Customization-Types.md](wiki/reference/Customization-Types.md) for what each kind is):
 
-| Customization | Kind | What it does |
+### Skills (6)
+
+| Skill | What it does |
+|---|---|
+| [`pii-scrubber`](skills/pii-scrubber/SKILL.md) | Agent-facing PII guardrail — scans the current git diff before commit/push, presents findings, offers redactions. Companion to the pre-push hook. |
+| [`dependabot-fixer`](skills/dependabot-fixer/SKILL.md) | Fix breakage on a Dependabot PR. Reads failing CI logs, applies a bounded fix loop, pushes commits to the Dependabot branch, comments residual risks. Never merges. |
+| [`ship-release`](skills/ship-release/SKILL.md) | Cut a tagged GitHub release with semver-driven version bumps from conventional commits. Writes CHANGELOG, tags, pushes, creates the release. |
+| [`design`](skills/design/SKILL.md) | Human-facing design pipeline → agent execution handoff. `/design author` walks a locked 10-section template; `/design translate` splits the approved design into structural parts; `/design sequence` generates a `PLAN.md` per part for Agent M's `/work` + `/review` flow. |
+| [`memory`](skills/memory/SKILL.md) | The Agent M memory skill itself. `/memory save` / `evolve` / `reflect` / `search` / `index-skills` / `discover-skills` / `adapt-skills` / `watchlist` / `promote`. Permeable A3 write boundary; collision-checked; supersession-not-deletion. |
+| [`diataxis-author`](skills/diataxis-author/SKILL.md) | Author + maintain a Diátaxis-style wiki for any repo. `/diataxis author` / `check` / `repair` / `migrate` / `classify`. Subsumes the harness's `migrate-to-diataxis` predecessor. |
+
+### Sub-agents (1)
+
+| Sub-agent | What it does |
+|---|---|
+| [`evaluator`](agents/evaluator.md) | Read-only fresh-context grader. Caller supplies ARTIFACT + RUBRIC; evaluator returns PASS / NEEDS_WORK + per-rubric-item reasoning. Augments Agent M's `adversarial-reviewer` at `/review`. |
+
+### Hooks (4)
+
+| Hook | What it does |
+|---|---|
+| [`kill-switch`](hooks/kill-switch/hook.md) | Operator emergency halt for long-running Claude Code sessions. `touch .harness/STOP` → next `PreToolUse` halts the tool call; `rm` to resume. |
+| [`steer`](hooks/steer/hook.md) | Mid-run redirect without restart. Write `.harness/STEER.md` with a "do it this way instead" instruction → next `PreToolUse` injects the contents into agent context + renames to `STEER.consumed-<iso-ts>.md` for audit trail. |
+| [`commit-on-stop`](hooks/commit-on-stop/hook.md) | Safety-branch commit at session end. Fires on `Stop` event; dirty tree → `auto-save/<iso-ts>` branch with commit. Recovery via `git checkout auto-save/<ts>`. Never modifies the current branch; never pushes. |
+| [`evidence-tracker`](hooks/evidence-tracker/hook.md) | Default-FAIL evidence enforcement on `/work` task closeouts. Blocks `[ ]` → `[x]` flips in `PLAN.md` unless the agent demonstrably `Read` the spec/test files first. Hybrid resolver (heuristic + per-task override + explicit opt-out with mandatory rationale). |
+
+### Bundles (2)
+
+| Bundle | What it does |
+|---|---|
+| [`quality-gates`](bundles/quality-gates/bundle.md) | One-shot install of `evaluator` + the four base hooks (kill-switch, steer, commit-on-stop, evidence-tracker). What most Agent M `/work` sessions want. Sibling-reference dispatch — primitives stay single-source-of-truth in their standalone locations. |
+| [`example-bundle`](bundles/example-bundle/bundle.md) | Reference skeleton showing how to package a multi-primitive customization. Safe to delete in your fork. |
+
+## Why Crickets?
+
+|  | Cherry-picking from awesome-claude-code | Crickets |
 |---|---|---|
-| [`pii-scrubber`](skills/pii-scrubber/SKILL.md) | skill | Agent-facing PII guardrail — scans the current git diff before commit/push, presents findings, offers redactions. Companion to the pre-push hook. |
-| [`dependabot-fixer`](skills/dependabot-fixer/SKILL.md) | skill | Fix breakage on a Dependabot PR. Reads failing CI logs, applies a bounded fix loop, pushes commits to the Dependabot branch, comments residual risks. Never merges. |
-| [`ship-release`](skills/ship-release/SKILL.md) | skill | Cut a tagged GitHub release with semver-driven version bumps from conventional commits. Writes CHANGELOG, tags, pushes, creates the release. |
-| [`design`](skills/design/SKILL.md) | skill | Human-facing design pipeline → agent execution handoff. `/design author` walks a locked 10-section template; `/design translate` splits the approved design into structural parts; `/design sequence` generates a `PLAN.md` per part for Agent M's `/work` + `/review` flow. |
-| [`memory`](skills/memory/SKILL.md) | skill | The Agent M memory skill itself. `/memory save` / `evolve` / `reflect` / `search` / `index-skills` / `discover-skills` / `adapt-skills` / `watchlist` / `promote`. Permeable A3 write boundary; collision-checked; supersession-not-deletion. |
-| [`diataxis-author`](skills/diataxis-author/SKILL.md) | skill | Author + maintain a Diátaxis-style wiki for any repo. `/diataxis author` / `check` / `repair` / `migrate` / `classify`. Subsumes the harness's `migrate-to-diataxis` predecessor. |
-| [`evaluator`](agents/evaluator.md) | agent | Read-only fresh-context grader. Caller supplies ARTIFACT + RUBRIC; evaluator returns PASS / NEEDS_WORK + per-rubric-item reasoning. Augments Agent M's `adversarial-reviewer` at `/review`. |
-| [`kill-switch`](hooks/kill-switch/hook.md) | hook | Operator emergency halt for long-running Claude Code sessions. `touch .harness/STOP` → next `PreToolUse` halts the tool call; `rm` to resume. |
-| [`steer`](hooks/steer/hook.md) | hook | Mid-run redirect without restart. Write `.harness/STEER.md` with a "do it this way instead" instruction → next `PreToolUse` injects the contents into agent context + renames to `STEER.consumed-<iso-ts>.md` for audit trail. |
-| [`commit-on-stop`](hooks/commit-on-stop/hook.md) | hook | Safety-branch commit at session end. Fires on `Stop` event; dirty tree → `auto-save/<iso-ts>` branch with commit. Recovery via `git checkout auto-save/<ts>`. Never modifies the current branch; never pushes. |
-| [`evidence-tracker`](hooks/evidence-tracker/hook.md) | hook | Default-FAIL evidence enforcement on `/work` task closeouts. Blocks `[ ]` → `[x]` flips in `PLAN.md` unless the agent demonstrably `Read` the spec/test files first. Hybrid resolver (heuristic + per-task override + explicit opt-out with mandatory rationale). |
-| [`quality-gates`](bundles/quality-gates/bundle.md) | bundle | One-shot install of `evaluator` + the four base hooks (kill-switch, steer, commit-on-stop, evidence-tracker). What most Agent M `/work` sessions want. Sibling-reference dispatch — primitives stay single-source-of-truth in their standalone locations. |
-| [`example-bundle`](bundles/example-bundle/bundle.md) | bundle | Reference skeleton showing how to package a multi-primitive customization. Safe to delete in your fork. |
+| **Manifest schema** | None — each repo invents its own conventions; you read the README to figure out what each primitive expects | YAML frontmatter on every customization (`name` / `kind` / `supported_hosts` / `version`) validated by `scripts/validate-manifests.py` so the install layer can dispatch without guessing |
+| **Per-host dispatch** | Manual per-project copying into `.claude/` / `.agent/` paths; you maintain the mapping yourself | One install command reads each manifest's `supported_hosts` and writes to the right host-specific paths automatically |
+| **Sibling-reference bundles** | No bundle concept — pieces install individually; you remember the set | `--bundle quality-gates` installs `evaluator` + 4 base hooks in one shot; bundles point at standalone primitives so the source-of-truth stays in one place |
+| **PII guardrails** | Per-author rigor; no enforcement layer | Three layers: pre-push hook (blocks commits), `pii-scrubber` skill (interactive scrub), CI gate (`check-no-pii.sh --all` + `gitleaks-action`) |
+| **Paired-release coordination with Agent M** | Standalone repos; independent release cycles | Lockstep paired releases with `agentic-harness`; release notes cross-link the sibling; CI green on both repos required at release commits |
+
+Crickets isn't a curated list of other people's primitives — it's a single repo with one schema, one installer, one PII policy, and one coordinated release cycle paired with Agent M.
 
 ## How it works
 
@@ -114,13 +143,45 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the override protocol.
 - [Use the quality-gates bundle](wiki/how-to/Use-The-Quality-Gates-Bundle.md)
 - [Use the evidence-tracker hook](wiki/how-to/Use-The-Evidence-Tracker-Hook.md)
 
+## Repo structure
+
+<details>
+<summary>Top-level layout</summary>
+
+```text
+agent-toolkit/
+├── skills/             # standalone skills — pii-scrubber, dependabot-fixer, ship-release, design, memory, diataxis-author
+├── agents/             # standalone sub-agents — evaluator
+├── hooks/              # hooks — kill-switch, steer, commit-on-stop, evidence-tracker
+├── bundles/            # multi-primitive bundles — quality-gates, example-bundle
+├── commands/           # standalone slash commands (Claude Code + Antigravity surface)
+├── mcp-servers/        # MCP server configs + launchers
+├── status-line/        # Claude Code status-line customizations
+├── output-styles/      # Claude Code output-style customizations
+├── workflows/          # Antigravity-specific workflow primitives
+├── rules/              # Antigravity-specific rules
+├── snippets/           # fragments appended to AGENTS.md / CLAUDE.md at install time
+├── settings-fragments/ # JSON fragments merged into host settings.json files
+├── assets/             # Crickets brand assets — logo, banners, brand preview
+├── templates/          # scaffolding (e.g. hooks/pre-push) installed into target projects
+├── scripts/            # manifest validators + smoke tests + PII detector + CI helpers
+├── lib/                # shared install plumbing — byte-identical to Agent M's lib/install/
+├── wiki/               # Diátaxis-shaped docs (tutorials/, how-to/, reference/, explanation/)
+├── AGENTS.md           # universal instructions for any AGENTS.md-aware host
+├── CLAUDE.md           # Claude Code entry point — points back at AGENTS.md
+├── install.sh          # POSIX installer (Linux + Mac)
+└── install.ps1         # Windows installer (PowerShell 7+)
+```
+
+</details>
+
 ## Architecture history
 
 Crickets grew across paired releases with Agent M. The full V1→V4 evolution of the memory system this toolkit feeds into lives in [Agent Memory Evolution](wiki/explanation/designs/agent-memory-evolution.md); the [V3 Retrospective](wiki/explanation/v3-retrospective.md) covers what shipped, what we learned, what's deferred.
 
 ## Status
 
-Currently shipping **v1.0.0** — Crickets commits to a stable public API surface: bundle/manifest schema, installer flags, the `bundles/` namespace, and the 11 customization kinds. Internal surface (`scripts/`, `lib/install/`) remains pre-1.0 in spirit. See [CHANGELOG.md](CHANGELOG.md) and the [latest release](https://github.com/alexherrero/agent-toolkit/releases/latest). Crickets ships in lockstep with Agent M as paired releases.
+Currently shipping **v1.0.2** — Crickets commits to a stable public API surface: bundle/manifest schema, installer flags, the `bundles/` namespace, and the 11 customization kinds. Internal surface (`scripts/`, `lib/install/`) remains pre-1.0 in spirit. See [CHANGELOG.md](CHANGELOG.md) and the [latest release](https://github.com/alexherrero/agent-toolkit/releases/latest). Crickets ships in lockstep with Agent M as paired releases.
 
 ## Contributing
 
