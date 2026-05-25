@@ -4,7 +4,7 @@
 
 <h1 align="center">Crickets</h1>
 
-<p align="center"><em>Small agent primitives that punch above their weight.</em></p>
+<p align="center"><em>Inspired by the noisy cricket from Men in Black — agent primitives that punch far above their weight.</em></p>
 
 <p align="center">
   <a href="https://github.com/alexherrero/agent-toolkit/actions/workflows/tests-linux.yml"><img src="https://github.com/alexherrero/agent-toolkit/actions/workflows/tests-linux.yml/badge.svg?branch=main" alt="Linux Tests"></a>
@@ -19,9 +19,9 @@
   <a href="#"><img src="https://img.shields.io/badge/works%20with-Antigravity-7C3AED?style=flat" alt="Works with Antigravity"></a>
 </p>
 
-**Crickets** is the noisy cricket — small, focused agent customizations that punch above their weight. Skills, hooks, sub-agents, bundles, MCP servers, slash commands, status lines, output styles, workflows, rules, snippets, settings-fragments. The primitives **you** carry into any project to make [Agent M (`agentic-harness`)](https://github.com/alexherrero/agentic-harness) effective.
+Inspired by the iconic noisy cricket from Men in Black, **Crickets** is a tactical suite of agent primitives engineered to punch far above their weight. Skills, hooks, sub-agents, bundles, MCP servers, slash commands, status lines, output styles, workflows, rules, snippets, settings-fragments. The execution engine behind [**Agent M**](https://github.com/alexherrero/agentic-harness) — the primitives **you** carry into any project to make the system work.
 
-Sibling repo [Agent M](https://github.com/alexherrero/agentic-harness) holds the phase-gated workflow + auto-recall + on-disk state. Crickets holds everything that rides on top.
+[**Agent M**](https://github.com/alexherrero/agentic-harness) holds the phase-gated workflow, auto-recall, and on-disk state — the structural backend. Crickets holds everything that rides on top.
 
 ## What's inside
 
