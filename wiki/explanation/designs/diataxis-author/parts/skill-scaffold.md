@@ -24,13 +24,13 @@ project:
 
 Foundational ship for the diataxis-author skill. Lands the skill on disk + in the host install destinations; all 5 sub-commands are stubbed (body says "lands in part N") but the manifest, installer wiring, smoke install tests, and `diataxis-evaluator` sub-agent stub are real. Mirrors plan #7a part 1's shape (`write-primitives` scaffolded the `memory` skill with stubs that filled in across subsequent parts).
 
-**1. Skill manifest** at `agent-toolkit/skills/diataxis-author/SKILL.md`:
+**1. Skill manifest** at `crickets/skills/diataxis-author/SKILL.md`:
 
 - Frontmatter: `name: diataxis-author`, `description: <one sentence per /memory's shape>`, `kind: skill`, `supported_hosts: [claude-code, antigravity]`, `version: 0.1.0`, `install_scope: project`.
 - Body sections: "What this skill does" (1 paragraph), "When to reach for which sub-command" (table with 5 rows), "Sub-commands" (5 sub-sections, each a stub with status note + planned invocation shape from the parent design § Detailed Design), "Tool allowlist", "Host scope", "Cross-references", "Status".
 - Status: stub-shipped per the established pattern (matches plan #7a part 1's memory skill scaffold).
 
-**2. `diataxis-evaluator` sub-agent stub** at `agent-toolkit/agents/diataxis-evaluator.md`:
+**2. `diataxis-evaluator` sub-agent stub** at `crickets/agents/diataxis-evaluator.md`:
 
 - Frontmatter mirroring `adapt-evaluator.md` and `memory-idea-researcher.md` (read-only sub-agent).
 - Tool allowlist: `Read, Glob, Grep, WebFetch` (WebFetch for ADR 0004 cross-reference; can drop if not needed in v1).
@@ -46,12 +46,12 @@ Foundational ship for the diataxis-author skill. Lands the skill on disk + in th
 **4. Smoke install tests** (bash + pwsh):
 
 - Expected files list gains 4 new paths: `.claude/skills/diataxis-author/SKILL.md` + `.agent/skills/diataxis-author/SKILL.md` + `.claude/agents/diataxis-evaluator.md` + `.agent/skills/diataxis-evaluator/SKILL.md`.
-- Negative-existence assertion: no `agent-toolkit/skills/diataxis-author/scripts/` Python files yet (those land in subsequent parts; verify scaffold doesn't ship empty/broken script files).
+- Negative-existence assertion: no `crickets/skills/diataxis-author/scripts/` Python files yet (those land in subsequent parts; verify scaffold doesn't ship empty/broken script files).
 - Manifest validation: `validate-manifests.py` runs against the new manifests; passes.
 
 ## Verification
 
-- `bash agent-toolkit/install.sh ~/scratch` produces all 4 expected paths.
+- `bash crickets/install.sh ~/scratch` produces all 4 expected paths.
 - `validate-manifests.py` clean on both manifest files.
 - Smoke install tests pass on Linux + Mac + Windows.
 - Skill `SKILL.md` body renders cleanly in markdown preview (no broken `<!-- -->` blocks).
@@ -79,7 +79,7 @@ Foundational ship for the diataxis-author skill. Lands the skill on disk + in th
 4. Skill body renders cleanly in markdown preview.
 5. Sub-agent's tool allowlist matches spec (no Bash; no Write/Edit outside scoped allowlist).
 6. No new third-party deps added (stdlib-only per ADR 0007 D7).
-7. No `agent-toolkit/skills/diataxis-author/scripts/` directory yet (sub-command Python lands in parts 2-5).
+7. No `crickets/skills/diataxis-author/scripts/` directory yet (sub-command Python lands in parts 2-5).
 
 ## Locked design calls (inherited)
 

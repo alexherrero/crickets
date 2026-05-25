@@ -76,7 +76,7 @@ Auto-cleanup is **not** part of v0.7.0 — operators manage their own safety-bra
 The hook commits as:
 
 - `user.name = "commit-on-stop hook"`
-- `user.email = "commit-on-stop@agent-toolkit.local"`
+- `user.email = "commit-on-stop@crickets.local"`
 
 These are scoped to the single commit via `git -c user.email=... -c user.name=...` — they don't pollute `git config`. The commits are also unsigned (`commit.gpgsign=false`) since the hook runs non-interactively and signing prompts would hang.
 

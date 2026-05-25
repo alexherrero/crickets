@@ -49,7 +49,7 @@ The skill accepts (in any order):
 **Step 1 — Bootstrap (new doc only).** If the target path doesn't exist:
 
 1. Confirm the title with the human (default: derive from slug → title case).
-2. Copy the template at `agent-toolkit/skills/design/templates/design-doc.md` (or the equivalent project-local path if the skill is installed) to the target path.
+2. Copy the template at `crickets/skills/design/templates/design-doc.md` (or the equivalent project-local path if the skill is installed) to the target path.
 3. Prefill frontmatter:
    - `title` ← confirmed title
    - `status: draft`
@@ -136,7 +136,7 @@ The block-by-block approve/revise/skip flow works for short docs but gets tediou
 **What the skill does on handoff**:
 
 1. **Write pre-handoff snapshot** at `<target-doc>.pre-handoff-<YYYYMMDDhhmmss>.md` — full copy of the doc as it stood when the operator picked "Hand off". Used by Claude on resume to diff against the externally-revised version. Cleaned up after resume completes.
-2. **Generate transfer-context file** at `<project>/.harness/transfer/<doc-slug>-<YYYYMMDDhhmmss>.md` from the template at `agent-toolkit/skills/design/templates/transfer-context.md`. Fill placeholders:
+2. **Generate transfer-context file** at `<project>/.harness/transfer/<doc-slug>-<YYYYMMDDhhmmss>.md` from the template at `crickets/skills/design/templates/transfer-context.md`. Fill placeholders:
    - `DOC_TITLE`, `DOC_TYPE` (= `design-doc`), absolute path to target doc, snapshot path, lock state.
    - **`OPERATOR_INTENT_PARAGRAPH`** — 1-2 paragraphs the skill generates from the active design's Objective + parent context (what this doc is trying to achieve, where it sits in the larger plan/roadmap, what success looks like after the revision pass).
    - **`RECENT_DECISIONS_BULLETS`** — extracted from the target doc's Document History (most recent 3-5 rows) + parent design's "Locked design calls" section if applicable + recent ADRs touching this scope.
@@ -265,7 +265,7 @@ Walking a 3-section synthetic design end-to-end ("add a `/foo` command").
 
 #### Failure modes
 
-- **Template not found** — if `agent-toolkit/skills/design/templates/design-doc.md` is unreadable, the skill halts with a clear error and a hint to verify the toolkit install. Never falls back to a degraded inline template.
+- **Template not found** — if `crickets/skills/design/templates/design-doc.md` is unreadable, the skill halts with a clear error and a hint to verify the toolkit install. Never falls back to a degraded inline template.
 - **Existing doc with malformed frontmatter** — if resume hits a doc whose frontmatter doesn't parse as YAML, the skill halts with `"<path>: frontmatter invalid; manual fix needed before resume"`. Doesn't try to auto-repair.
 - **Existing doc with unknown Status value** — Status must be one of `draft|review|final|launched`. Anything else halts with an error.
 - **Session interrupted mid-section** — the doc is saved after each section, so partial state survives. Resume picks up at the first incomplete section. If the user wrote half a section and the session died mid-Edit, the half-written state may be present — the resume prompt presents what's there and asks `"Keep / Edit / Replace?"`.
@@ -279,7 +279,7 @@ Walking a 3-section synthetic design end-to-end ("add a `/foo` command").
 - **Skip Quality Attributes prompts.** Even on resume, any sub-attr without content is prompted.
 - **Auto-publish a confidential doc.** Visibility transitions (`confidential → published`) require explicit human change of the frontmatter field + a fresh `/design author` invocation.
 - **Edit Status backwards.** The skill never moves `final → review` or `review → draft`. The escape hatch is manual: human edits the Status field directly.
-- **Lose work on session crash.** Saves are per-section, not batched. `commit-on-stop` (from agent-toolkit's base hooks, plan #4) provides additional safety net if the session crashes mid-Edit.
+- **Lose work on session crash.** Saves are per-section, not batched. `commit-on-stop` (from crickets's base hooks, plan #4) provides additional safety net if the session crashes mid-Edit.
 
 ### `/design translate`
 
@@ -593,7 +593,7 @@ The skill writes to the **target project's** `.harness/` directory (cwd-rooted; 
 - **Subsequent parts** (topologically 2nd through Nth): write to `<project>/.harness/designs/<doc-slug>/queued-plans/<part-slug>.PLAN.md`. Create the `designs/<doc-slug>/queued-plans/` subdirs if absent.
 - **Existing queued plans on re-run**: if `<project>/.harness/designs/<doc-slug>/queued-plans/` already has files (re-running sequence after edits), present a diff per file and ask `"<part-slug>.PLAN.md exists. Overwrite / Keep existing / Cancel?"` — never silent clobber.
 
-**Manual-promotion fallback (until task 5 ships):** v0.8.0 of this skill ships the WRITE side only. The promotion logic — where harness `/release` moves the next queued plan to `.harness/PLAN.md` when the active plan hits `Status: done` — lands in task 5 of plan #6 (agentic-harness v2.3.0). **Until v2.3.0 is installed alongside, operators promote manually:**
+**Manual-promotion fallback (until task 5 ships):** v0.8.0 of this skill ships the WRITE side only. The promotion logic — where harness `/release` moves the next queued plan to `.harness/PLAN.md` when the active plan hits `Status: done` — lands in task 5 of plan #6 (agentm v2.3.0). **Until v2.3.0 is installed alongside, operators promote manually:**
 
 ```bash
 # After the active plan completes (Status: done):
@@ -691,7 +691,7 @@ Parent design at `wiki/explanation/designs/foo-system.md`, `Status: final`.
 > ```
 > | 2026-05-15 | Sequenced into 3 plans via /design sequence; first plan active at .harness/PLAN.md (foundations), 2 queued at .harness/designs/foo-system/queued-plans/. | final |
 > ```
-> Agent: "Sequence complete. 3 plans generated. foundations.PLAN.md is active. Run `/plan` to refine task decomposition, then `/work` to start on the first task. When foundations completes (Status: done), promote the next plan: `mv .harness/designs/foo-system/queued-plans/command-surface.PLAN.md .harness/PLAN.md` (until v2.3.0 of agentic-harness ships and auto-promotion lands)."
+> Agent: "Sequence complete. 3 plans generated. foundations.PLAN.md is active. Run `/plan` to refine task decomposition, then `/work` to start on the first task. When foundations completes (Status: done), promote the next plan: `mv .harness/designs/foo-system/queued-plans/command-surface.PLAN.md .harness/PLAN.md` (until v2.3.0 of agentm ships and auto-promotion lands)."
 
 **Alternate case (tie-breaking demo):** suppose two parts (`alpha` and `bravo`) both have `dependencies: []`. After Step 2:
 
@@ -707,7 +707,7 @@ Deterministic — re-running sequence produces identical ordering.
 - **Cycle in part dependencies** — refuse with the smallest cycle path; operator edits parts/ files to break the cycle.
 - **Missing dependency target** — refuse with the part + missing-slug; operator either removes the dependency or creates the missing part.
 - **`.harness/PLAN.md` in-progress without `--force-replace`** — refuse with clear remediation (close the active plan or use the flag).
-- **No `.harness/` in cwd or ancestors** — refuse with "must run from inside a harness-installed project" + hint to install harness via `agentic-harness/install.sh`.
+- **No `.harness/` in cwd or ancestors** — refuse with "must run from inside a harness-installed project" + hint to install harness via `agentm/install.sh`.
 - **Re-run after parts/ edits** — the skill diffs proposed plans against existing queued plans; presents per-file overwrite/keep/cancel. Existing active PLAN.md is preserved unless `--force-replace`.
 
 #### Anti-patterns
@@ -727,7 +727,7 @@ Deterministic — re-running sequence produces identical ordering.
 
 ## File conventions
 
-- **Template:** `agent-toolkit/skills/design/templates/design-doc.md` (ships with the skill). The `/design author` flow copies this template into the target project as the starting point for a new design.
+- **Template:** `crickets/skills/design/templates/design-doc.md` (ships with the skill). The `/design author` flow copies this template into the target project as the starting point for a new design.
 - **Confidential designs:** `.harness/designs/<slug>.md` — gitignored, machine-local; not committed to a public repo. Use for early exploration, internal-only designs.
 - **Published designs:** `wiki/explanation/designs/<slug>.md` — committed; surfaces in `wiki/Home.md` + `wiki/_Sidebar.md` as the canonical "Why we built X" entry point per ADR 0004 (lands in task 6 of plan #6).
 - **Parts:** `<doc-dir>/parts/<part-slug>.md` — same dir as the parent design doc, in a `parts/` subdir.
@@ -755,4 +755,4 @@ Deterministic — re-running sequence produces identical ordering.
 - [Use-The-Design-Skill](../../wiki/how-to/Use-The-Design-Skill.md) — practical recipe with three worked scenarios *(lands in task 6 of plan #6)*
 - [ADR 0004 — Design skill design](../../wiki/explanation/decisions/0004-design-skill.md) — locked design calls + rationale + consequences *(lands in task 6 of plan #6)*
 - Template: [`templates/design-doc.md`](templates/design-doc.md) — the 10-section structure all `/design author` flows write against
-- agentic-harness phases: [`/work`](https://github.com/alexherrero/agentic-harness/blob/main/harness/phases/03-work.md), [`/release`](https://github.com/alexherrero/agentic-harness/blob/main/harness/phases/05-release.md) — execute the per-part PLAN.md files generated by `/design sequence`
+- agentm phases: [`/work`](https://github.com/alexherrero/agentm/blob/main/harness/phases/03-work.md), [`/release`](https://github.com/alexherrero/agentm/blob/main/harness/phases/05-release.md) — execute the per-part PLAN.md files generated by `/design sequence`

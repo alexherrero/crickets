@@ -15,7 +15,7 @@
 # <vault>/personal-private/_skill-watchlist/<source-slug>/<pattern-slug>.md.
 #
 # Adapt-don't-import contract (locked from plan #7b PLAN.md):
-#   - Never writes to `agent-toolkit/skills/<x>/SKILL.md`.
+#   - Never writes to `crickets/skills/<x>/SKILL.md`.
 #   - Only writes to `_skill-watchlist/` (review surface) — task 5's
 #     /memory watchlist command lets the operator promote / dismiss / defer.
 #   - Sub-agent is read-only with a tightly-scoped write allowlist.
@@ -52,7 +52,7 @@ if str(_SCRIPTS_DIR) not in sys.path:
 
 
 _FETCH_TIMEOUT_SEC = 10
-_USER_AGENT = "agent-toolkit-adapt-skills/0.1 (+local; stdlib-urllib)"
+_USER_AGENT = "crickets-adapt-skills/0.1 (+local; stdlib-urllib)"
 
 # Default trusted-sources whitelist seeded on first run. Operator edits
 # this file in Obsidian to add/remove orgs. The signal is "patterns from

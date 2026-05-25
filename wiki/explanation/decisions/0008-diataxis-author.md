@@ -3,11 +3,11 @@
 > [!NOTE]
 > **Status:** accepted
 > **Date:** 2026-05-22
-> **Related:** [Parent design — diataxis-author](../designs/diataxis-author.md) · [agentic-harness ADR 0004 — Diátaxis Documentation Spec](https://github.com/alexherrero/agentic-harness/blob/main/wiki/explanation/decisions/0004-diataxis-documentation-spec.md) · [ADR 0001 — agent-toolkit purpose](0001-agent-toolkit-purpose) · [ADR 0007 — MemoryVault Discovery + Mining](0007-memoryvault-discovery) (the sub-agent dispatch pattern this ADR reuses) · [ROADMAP item #13](https://github.com/alexherrero/agentic-harness/blob/main/.harness/ROADMAP.md)
+> **Related:** [Parent design — diataxis-author](../designs/diataxis-author.md) · [agentm ADR 0004 — Diátaxis Documentation Spec](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0004-diataxis-documentation-spec.md) · [ADR 0001 — crickets purpose](0001-crickets-purpose) · [ADR 0007 — MemoryVault Discovery + Mining](0007-memoryvault-discovery) (the sub-agent dispatch pattern this ADR reuses) · [ROADMAP item #13](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md)
 
 ## Context
 
-ROADMAP item #13 shipped as the natural follow-on to the MemoryVault parent design (#7a + #7b closed 2026-05-20 + 2026-05-22). The operator maintains three Diátaxis-shaped wikis (`agentic-harness`, `agent-toolkit`, `dev-setup`) plus the just-shipped MemoryVault parent design documents — Diátaxis discipline is real, ongoing, and previously supported only by:
+ROADMAP item #13 shipped as the natural follow-on to the MemoryVault parent design (#7a + #7b closed 2026-05-20 + 2026-05-22). The operator maintains three Diátaxis-shaped wikis (`agentm`, `crickets`, `dev-setup`) plus the just-shipped MemoryVault parent design documents — Diátaxis discipline is real, ongoing, and previously supported only by:
 
 - **`scripts/check-wiki.py`** (harness-side) — strict validator; catches violations at commit time + in CI.
 - **`documenter` sub-agent** (harness-side) — fires at `/release` boundaries; periodic sweep, not live authoring guidance.
@@ -19,7 +19,7 @@ The locked execution-order ROADMAP note explicitly placed this as #13: "natural 
 
 ## Decision
 
-**Ship `diataxis-author` as a single agent-toolkit skill with five sub-commands**, mirroring `/memory`'s shape: one `SKILL.md` with multi-sub-command bodies, deterministic Python pipelines under `skills/diataxis-author/scripts/`, one read-only sub-agent (`diataxis-evaluator`) for ambiguous mode-classification. The skill **subsumes** the harness's `migrate-to-diataxis` predecessor (ships deprecation notice in v1; predecessor file removed in follow-up harness PATCH after dogfood). The harness-side `documenter` sub-agent is **repurposed as the skill's mechanical-write worker** (same orchestration-vs-worker split as `/memory adapt-skills` + `adapt-evaluator` from ADR 0007 / plan #7b). **AgentMemory integration is read + write** (per-repo overrides at `<repo>/wiki/.diataxis-conventions.md`; global vault entries at `<vault>/personal-private/_always-load/diataxis-*.md`).
+**Ship `diataxis-author` as a single crickets skill with five sub-commands**, mirroring `/memory`'s shape: one `SKILL.md` with multi-sub-command bodies, deterministic Python pipelines under `skills/diataxis-author/scripts/`, one read-only sub-agent (`diataxis-evaluator`) for ambiguous mode-classification. The skill **subsumes** the harness's `migrate-to-diataxis` predecessor (ships deprecation notice in v1; predecessor file removed in follow-up harness PATCH after dogfood). The harness-side `documenter` sub-agent is **repurposed as the skill's mechanical-write worker** (same orchestration-vs-worker split as `/memory adapt-skills` + `adapt-evaluator` from ADR 0007 / plan #7b). **AgentMemory integration is read + write** (per-repo overrides at `<repo>/wiki/.diataxis-conventions.md`; global vault entries at `<vault>/personal-private/_always-load/diataxis-*.md`).
 
 Four locked design calls Q1-Q4 (operator answers to AskUserQuestion at design-author time):
 
@@ -88,10 +88,10 @@ Matches `/memory`'s established pattern (save / evolve / reflect / promote / sea
 ## Related
 
 - [Parent design — diataxis-author](../designs/diataxis-author.md) — full architectural context including all 8 Detailed Design subsections + Tech Debt + Quality Attributes + Migrations.
-- [agentic-harness ADR 0004 — Diátaxis Documentation Spec](https://github.com/alexherrero/agentic-harness/blob/main/wiki/explanation/decisions/0004-diataxis-documentation-spec.md) — canonical Diátaxis spec this skill enforces (upstream).
+- [agentm ADR 0004 — Diátaxis Documentation Spec](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0004-diataxis-documentation-spec.md) — canonical Diátaxis spec this skill enforces (upstream).
 - [ADR 0007 — MemoryVault Discovery + Mining](0007-memoryvault-discovery) — precedent for the orchestration-skill + worker-sub-agent + scoped-write-allowlist architectural pattern this skill mirrors.
-- [ADR 0001 — agent-toolkit purpose](0001-agent-toolkit-purpose) — upstream for the stdlib-only / no-new-third-party-deps convention all skill scripts follow.
+- [ADR 0001 — crickets purpose](0001-crickets-purpose) — upstream for the stdlib-only / no-new-third-party-deps convention all skill scripts follow.
 - [Use Diataxis Author how-to](../../how-to/Use-Diataxis-Author.md) — operator-facing how-to with worked scenarios for all 5 sub-commands + AgentMemory integration walkthrough.
 - [`diataxis-evaluator` sub-agent](../../../agents/diataxis-evaluator.md) — read-only Tier-2 worker; zero-write-scope architectural enforcement.
-- [ROADMAP item #13](https://github.com/alexherrero/agentic-harness/blob/main/.harness/ROADMAP.md) — the roadmap entry that triggered this design.
-- [Predecessor `migrate-to-diataxis`](https://github.com/alexherrero/agentic-harness/blob/main/harness/skills/migrate-to-diataxis.md) — deprecated 2026-05-22; subsumed by `/diataxis migrate` (Migrations §1 in parent design).
+- [ROADMAP item #13](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md) — the roadmap entry that triggered this design.
+- [Predecessor `migrate-to-diataxis`](https://github.com/alexherrero/agentm/blob/main/harness/skills/migrate-to-diataxis.md) — deprecated 2026-05-22; subsumed by `/diataxis migrate` (Migrations §1 in parent design).

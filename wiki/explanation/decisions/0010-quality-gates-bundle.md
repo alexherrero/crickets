@@ -3,7 +3,7 @@
 > [!NOTE]
 > **Status:** accepted
 > **Date:** 2026-05-23
-> **Related:** [ADR 0001 — agent-toolkit purpose](0001-agent-toolkit-purpose) (`kind: bundle` is in the original 11-kind taxonomy) · [ADR 0002 — evaluator design](0002-evaluator-design) (bundled primitive) · [ADR 0003 — base operator-control hooks](0003-base-operator-hooks) (3 of the bundled primitives) · [ADR 0009 — evidence-tracker hook](0009-evidence-tracker-hook) (4th bundled primitive) · [Use The Quality-Gates Bundle how-to](../../how-to/Use-The-Quality-Gates-Bundle.md) · [bundle.md manifest](https://github.com/alexherrero/agent-toolkit/blob/main/bundles/quality-gates/bundle.md) · [agentic-harness ROADMAP item #10](https://github.com/alexherrero/agentic-harness/blob/main/.harness/ROADMAP.md)
+> **Related:** [ADR 0001 — crickets purpose](0001-crickets-purpose) (`kind: bundle` is in the original 11-kind taxonomy) · [ADR 0002 — evaluator design](0002-evaluator-design) (bundled primitive) · [ADR 0003 — base operator-control hooks](0003-base-operator-hooks) (3 of the bundled primitives) · [ADR 0009 — evidence-tracker hook](0009-evidence-tracker-hook) (4th bundled primitive) · [Use The Quality-Gates Bundle how-to](../../how-to/Use-The-Quality-Gates-Bundle.md) · [bundle.md manifest](https://github.com/alexherrero/crickets/blob/main/bundles/quality-gates/bundle.md) · [agentm ROADMAP item #10](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md)
 
 ## Context
 
@@ -17,7 +17,7 @@ ROADMAP item #10 shipped after all 4 base primitives existed as standalone custo
 | `commit-on-stop` hook | v0.7.0 (2026-05-14) | #5 |
 | `evidence-tracker` hook | v0.12.0 (2026-05-23) | #9 |
 
-The gap pre-#10: **operators adopting agentic-harness `/work` had to install each primitive individually** (5 separate `--hook X` / `--agent Y` invocations) AND remember they all wanted the full set. Result: real-world adopters routinely missed one — usually `commit-on-stop`, the safety net you only notice when a session crashes mid-task. The "I forgot to install commit-on-stop and lost an hour" failure mode was predictable + recurring.
+The gap pre-#10: **operators adopting agentm `/work` had to install each primitive individually** (5 separate `--hook X` / `--agent Y` invocations) AND remember they all wanted the full set. Result: real-world adopters routinely missed one — usually `commit-on-stop`, the safety net you only notice when a session crashes mid-task. The "I forgot to install commit-on-stop and lost an hour" failure mode was predictable + recurring.
 
 **The bundle pattern from ADR 0001's original design** was always intended to package related primitives as one install unit. Until #10, only `example-bundle` (a stub for reference) existed. This ADR captures the design calls for the **first real-substance bundle** — the pattern this validates.
 
@@ -98,10 +98,10 @@ The bundle's `version:` is independent of primitive versions but bumps whenever 
 
 ## Related
 
-- [ADR 0001 — agent-toolkit purpose](0001-agent-toolkit-purpose) — `kind: bundle` is in the original 11-kind taxonomy; this ADR ships the first real-substance one.
+- [ADR 0001 — crickets purpose](0001-crickets-purpose) — `kind: bundle` is in the original 11-kind taxonomy; this ADR ships the first real-substance one.
 - [ADR 0002 — evaluator design](0002-evaluator-design), [ADR 0003 — base operator-control hooks](0003-base-operator-hooks), [ADR 0009 — evidence-tracker hook](0009-evidence-tracker-hook) — the 5 primitives this bundle packages.
 - [Use The Quality-Gates Bundle how-to](../../how-to/Use-The-Quality-Gates-Bundle.md) — operator-facing install + troubleshooting guide.
-- [bundle.md manifest](https://github.com/alexherrero/agent-toolkit/blob/main/bundles/quality-gates/bundle.md) — what + why + install for the bundle itself.
-- [example-bundle](https://github.com/alexherrero/agent-toolkit/blob/main/bundles/example-bundle/bundle.md) — reference skeleton; preserved via the bundle-local fallback path.
-- [agentic-harness ROADMAP item #10](https://github.com/alexherrero/agentic-harness/blob/main/.harness/ROADMAP.md) — the roadmap entry that triggered this work.
-- [agentic-harness `/work` §5b](https://github.com/alexherrero/agentic-harness/blob/main/harness/phases/03-work.md) — the harness-side contract `evidence-tracker` enforces (the primary reason most operators want this bundle).
+- [bundle.md manifest](https://github.com/alexherrero/crickets/blob/main/bundles/quality-gates/bundle.md) — what + why + install for the bundle itself.
+- [example-bundle](https://github.com/alexherrero/crickets/blob/main/bundles/example-bundle/bundle.md) — reference skeleton; preserved via the bundle-local fallback path.
+- [agentm ROADMAP item #10](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md) — the roadmap entry that triggered this work.
+- [agentm `/work` §5b](https://github.com/alexherrero/agentm/blob/main/harness/phases/03-work.md) — the harness-side contract `evidence-tracker` enforces (the primary reason most operators want this bundle).

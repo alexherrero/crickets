@@ -1,6 +1,6 @@
 # Customization types reference
 
-The 12 primitive types `agent-toolkit` recognizes via its `kind` field. Each maps to a subdirectory in the repo and a destination path per host.
+The 12 primitive types `crickets` recognizes via its `kind` field. Each maps to a subdirectory in the repo and a destination path per host.
 
 ## ⚡ Quick Reference
 
@@ -20,7 +20,7 @@ The 12 primitive types `agent-toolkit` recognizes via its `kind` field. Each map
 | `settings-fragment` | `settings-fragments/` | JSON fragment merged into host `settings.json` | claude-code (Antigravity: TBD) |
 
 > [!NOTE]
-> **Gemini CLI host removed in v0.9.0** per [ROADMAP item #15](https://github.com/alexherrero/agentic-harness/blob/main/.harness/ROADMAP.md). Standalone Gemini CLI is no longer a supported host. Antigravity (Gemini-in-IDE) stays as a supported host — different surface. See [ADR 0006](decisions/0006-gemini-cli-host-removal) for the host-scope-reduction rationale.
+> **Gemini CLI host removed in v0.9.0** per [ROADMAP item #15](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md). Standalone Gemini CLI is no longer a supported host. Antigravity (Gemini-in-IDE) stays as a supported host — different surface. See [ADR 0006](decisions/0006-gemini-cli-host-removal) for the host-scope-reduction rationale.
 
 ## Implementation status
 
@@ -40,7 +40,7 @@ When a customization with an unsupported kind is encountered, the installer logs
 
 | You want… | Use |
 |---|---|
-| An agent-triggered helper that runs on a keyword or context match (e.g. [`design`](Use-The-Design-Skill), [`memory`](Use-The-Memory-Skill), [`pii-scrubber`](https://github.com/alexherrero/agent-toolkit/blob/main/skills/pii-scrubber/SKILL.md)) | `skill` |
+| An agent-triggered helper that runs on a keyword or context match (e.g. [`design`](Use-The-Design-Skill), [`memory`](Use-The-Memory-Skill), [`pii-scrubber`](https://github.com/alexherrero/crickets/blob/main/skills/pii-scrubber/SKILL.md)) | `skill` |
 | A user-typed `/something` slash command | `command` |
 | A specialized agent for a specific kind of task (e.g. [`evaluator`](Use-The-Evaluator), `explorer`) | `agent` |
 

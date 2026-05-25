@@ -17,11 +17,11 @@ See [Per-Host-Paths](Per-Host-Paths) for the full per-kind destination matrix.
 
 | OS | Tested via | Frequency |
 |---|---|---|
-| Linux (`ubuntu-latest`) | [`.github/workflows/tests-linux.yml`](https://github.com/alexherrero/agent-toolkit/blob/main/.github/workflows/tests-linux.yml) | Every push + every PR |
-| macOS (`macos-latest`) | [`.github/workflows/tests-mac.yml`](https://github.com/alexherrero/agent-toolkit/blob/main/.github/workflows/tests-mac.yml) | Every push + every PR |
-| Windows (`windows-latest`, PowerShell 7+) | [`.github/workflows/tests-windows.yml`](https://github.com/alexherrero/agent-toolkit/blob/main/.github/workflows/tests-windows.yml) | Every push + every PR |
+| Linux (`ubuntu-latest`) | [`.github/workflows/tests-linux.yml`](https://github.com/alexherrero/crickets/blob/main/.github/workflows/tests-linux.yml) | Every push + every PR |
+| macOS (`macos-latest`) | [`.github/workflows/tests-mac.yml`](https://github.com/alexherrero/crickets/blob/main/.github/workflows/tests-mac.yml) | Every push + every PR |
+| Windows (`windows-latest`, PowerShell 7+) | [`.github/workflows/tests-windows.yml`](https://github.com/alexherrero/crickets/blob/main/.github/workflows/tests-windows.yml) | Every push + every PR |
 
-The single aggregate `CI` badge in the README + wiki Home points at a dedicated [`ci-all.yml`](https://github.com/alexherrero/agent-toolkit/blob/main/.github/workflows/ci-all.yml) workflow that waits for all 3 OS workflows then reports a combined success/failure. Diagnostic drill-down: click the badge → Actions tab → pick the OS that's failing.
+The single aggregate `CI` badge in the README + wiki Home points at a dedicated [`ci-all.yml`](https://github.com/alexherrero/crickets/blob/main/.github/workflows/ci-all.yml) workflow that waits for all 3 OS workflows then reports a combined success/failure. Diagnostic drill-down: click the badge → Actions tab → pick the OS that's failing.
 
 ## Per-customization compatibility
 
@@ -38,7 +38,7 @@ The installer respects each manifest's `supported_hosts` — installing into a t
 
 ## Sibling repo
 
-Crickets pairs with **[Agent M (`agentic-harness`)](https://github.com/alexherrero/agentic-harness)** — the structural backend harness (phase-gated workflow, auto-recall, on-disk state). Agent M is tested on the same OS matrix; both repos ship paired releases per [ADR 0006](https://github.com/alexherrero/agentic-harness/blob/main/wiki/explanation/decisions/0006-agent-toolkit-split.md).
+Crickets pairs with **[Agent M (`agentm`)](https://github.com/alexherrero/agentm)** — the structural backend harness (phase-gated workflow, auto-recall, on-disk state). Agent M is tested on the same OS matrix; both repos ship paired releases per [ADR 0006](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0006-crickets-split.md).
 
 ## Out-of-scope hosts
 
@@ -56,4 +56,4 @@ If a host's CI starts failing or a customization's adapter goes stale:
 3. Run `bash scripts/smoke-install-bash.sh` locally; if it fails on the affected host, you've reproduced
 4. Patch the installer dispatch logic OR the customization's manifest, whichever resolves the surface change at the right layer
 
-For adding new hosts, see [ADR 0006 — Split customizations into agent-toolkit](https://github.com/alexherrero/agentic-harness/blob/main/wiki/explanation/decisions/0006-agent-toolkit-split.md) for the customization contract + [Manifest-Schema](Manifest-Schema) for the per-customization declaration shape.
+For adding new hosts, see [ADR 0006 — Split customizations into crickets](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0006-crickets-split.md) for the customization contract + [Manifest-Schema](Manifest-Schema) for the per-customization declaration shape.

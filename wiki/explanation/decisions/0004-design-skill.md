@@ -1,7 +1,7 @@
 # ADR 0004 — Design skill: human-facing design pipeline → agent execution handoff
 
 > [!NOTE]
-> **Status:** accepted · **Date:** 2026-05-15 · **Related:** [ADR 0001 — agent-toolkit purpose](0001-agent-toolkit-purpose.md) · [ADR 0002 — evaluator design](0002-evaluator-design.md) · [ADR 0003 — base operator-control hooks](0003-base-operator-hooks.md) · [agentic-harness ADR 0006 — agent-toolkit split](https://github.com/alexherrero/agentic-harness/blob/main/wiki/explanation/decisions/0006-agent-toolkit-split.md)
+> **Status:** accepted · **Date:** 2026-05-15 · **Related:** [ADR 0001 — crickets purpose](0001-crickets-purpose.md) · [ADR 0002 — evaluator design](0002-evaluator-design.md) · [ADR 0003 — base operator-control hooks](0003-base-operator-hooks.md) · [agentm ADR 0006 — crickets split](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0006-crickets-split.md)
 
 ## Context
 
@@ -28,7 +28,7 @@ Agent-driven development in this personal-dev-env has had four persistent gaps t
 - Sub-design / parts location? → `<doc-dir>/parts/<part-slug>.md` (Decision §3).
 - One PLAN.md per part or shared? → One per part (Decision §6).
 - Mid-execution design changes? → Human edits design + appends Document History + re-runs translate (Decision §9).
-- Skill home? → `agent-toolkit` (Decision §7).
+- Skill home? → `crickets` (Decision §7).
 
 ## Decision
 
@@ -36,7 +36,7 @@ Seven locked design calls captured at plan time (2026-05-14):
 
 ### §1 — Hybrid decomposition: `/design` skill for stages 1-4 + harness `/work` + `/review` for stage 5
 
-The skill ships with three sub-commands in `agent-toolkit/skills/design/`:
+The skill ships with three sub-commands in `crickets/skills/design/`:
 
 - `/design author` — interactive 10-section authoring (workflow stages 1-2)
 - `/design translate` — Status: final doc → N structural parts (stage 3)
@@ -51,7 +51,7 @@ The skill ships with three sub-commands in `agent-toolkit/skills/design/`:
 
 ### §2 — User's 10-section design-doc template locked verbatim 2026-05-14
 
-The skill embeds the user's specific design-doc pattern, not a generic shape. The template at `agent-toolkit/skills/design/templates/design-doc.md` codifies:
+The skill embeds the user's specific design-doc pattern, not a generic shape. The template at `crickets/skills/design/templates/design-doc.md` codifies:
 
 **Frontmatter** (10 fields): title, status (`draft|review|final|launched`), visibility (`confidential|published`), author, contributors, created, updated, last_major_revision, prd, project.
 
@@ -79,7 +79,7 @@ The template is the load-bearing artifact for tasks 2-7 of plan #6 — sub-comma
 
 `visibility: published` design docs live at `wiki/explanation/designs/<slug>.md` and surface in `wiki/Home.md` + `wiki/_Sidebar.md` as the canonical "Why we built X" entry point. Not buried metadata; the headline artifact.
 
-The harness `/release` flow (§1b, agentic-harness v2.3.0) handles the surfacing: when the design's last queued part's `PLAN.md` completes, the design Status transitions `final → launched` and `/release` updates `Home.md` + `_Sidebar.md` to add the design to the wiki's "Designs" section. Idempotent — re-runs are no-op.
+The harness `/release` flow (§1b, agentm v2.3.0) handles the surfacing: when the design's last queued part's `PLAN.md` completes, the design Status transitions `final → launched` and `/release` updates `Home.md` + `_Sidebar.md` to add the design to the wiki's "Designs" section. Idempotent — re-runs are no-op.
 
 **Why not the alternatives:**
 
@@ -124,11 +124,11 @@ Each structural part gets its own `PLAN.md` file. First part topologically activ
 
 - **One shared PLAN.md with sections per part**: considered + rejected. Each part should be independently shippable + reviewable; sharing one PLAN.md couples the parts' lifecycles. The `/work` phase expects one active task at a time, and a single PLAN.md with multiple parts blurs which task is current.
 
-### §7 — Skill ships in `agent-toolkit`, not the harness
+### §7 — Skill ships in `crickets`, not the harness
 
-`/design` is customization-shaped (an authoring + translation skill that produces artifacts the harness consumes) — not phase-shaped (the harness owns the phase-gated workflow). Per [ADR 0001](0001-agent-toolkit-purpose.md) (agent-toolkit purpose) and agentic-harness ADR 0006 (the split), customizations live in toolkit; phases live in harness.
+`/design` is customization-shaped (an authoring + translation skill that produces artifacts the harness consumes) — not phase-shaped (the harness owns the phase-gated workflow). Per [ADR 0001](0001-crickets-purpose.md) (crickets purpose) and agentm ADR 0006 (the split), customizations live in toolkit; phases live in harness.
 
-The harness gains a small `/release` lifecycle hook (§1b, v2.3.0) for plan promotion + Status transition, but no `/design` slash command. Users install agent-toolkit alongside the harness to get the skill.
+The harness gains a small `/release` lifecycle hook (§1b, v2.3.0) for plan promotion + Status transition, but no `/design` slash command. Users install crickets alongside the harness to get the skill.
 
 **Why not the alternative:** putting `/design` in the harness would conflate authoring (customization) with phase orchestration (harness identity). Same reasoning as the dependabot-fixer + ship-release migration from harness to toolkit in v2.0.0.
 
@@ -164,7 +164,7 @@ The Document History at the doc's bottom is the **audit trail** — every transl
 - **`/design author` is interactive and slow first time** — walking 10 sections + 11 Quality Attribute sub-attrs takes time. Acceptable for substantial designs; overkill for small features. Operators can skip-with-rationale per section; the friction is the price of the discipline.
 - **Quality Attributes prompts add friction for small designs** — designing a 1-day feature shouldn't require 11 sub-attr decisions. Mitigation: explicit "skip with one-line N/A" guidance per section + the cap-of-6-parts soft warning suggesting splitting upstream if the design is too small to need parts.
 - **Per-part PLAN.md promotion adds `/release` complexity** — `/release` §1b is conditional on design-doc origin signals; three cases (A/B/C) with different halt-vs-continue semantics. More moving parts in the release flow.
-- **Cross-repo coordinated designs not supported in v0.8.0** — a design that spans both agent-toolkit + agentic-harness needs to live as two separate design docs cross-linking each other. Future plan can extend.
+- **Cross-repo coordinated designs not supported in v0.8.0** — a design that spans both crickets + agentm needs to live as two separate design docs cross-linking each other. Future plan can extend.
 - **Mid-execution revisions require operator discipline** — the skill doesn't auto-detect when a design is wrong; the human has to notice + edit + re-translate. Acceptable for a v1 skill; auto-detection is speculative.
 
 ### Load-bearing assumptions (re-audit triggers)
@@ -246,8 +246,8 @@ This amendment ships in toolkit v0.8.1 + paired harness v2.3.1 (the harness adds
 - [Transfer-context template](../../skills/design/templates/transfer-context.md) — new in v0.8.1; the handoff artifact's structural shape
 - [10-section design-doc template](../../skills/design/templates/design-doc.md) — locked verbatim 2026-05-14
 - [How to use the design skill](../how-to/Use-The-Design-Skill.md) — practical recipe with three worked scenarios
-- [agentic-harness `/release` §1b](https://github.com/alexherrero/agentic-harness/blob/main/harness/phases/05-release.md) — harness-side plan promotion + Status transition hook (v2.3.0)
-- [ADR 0001 — agent-toolkit purpose](0001-agent-toolkit-purpose.md) — sibling-repo + customization-vs-phase split decision
+- [agentm `/release` §1b](https://github.com/alexherrero/agentm/blob/main/harness/phases/05-release.md) — harness-side plan promotion + Status transition hook (v2.3.0)
+- [ADR 0001 — crickets purpose](0001-crickets-purpose.md) — sibling-repo + customization-vs-phase split decision
 - [ADR 0002 — evaluator design](0002-evaluator-design.md) — fresh-context grader consumed by `/review` during stage 5 execution
 - [ADR 0003 — base operator-control hooks](0003-base-operator-hooks.md) — kill-switch / steer / commit-on-stop consumed by stage 5 execution
-- [ROADMAP item #6](https://github.com/alexherrero/agentic-harness/blob/main/.harness/ROADMAP.md) — locally-stored roadmap context (gitignored; see plan #6 in `.harness/PLAN.archive.<date>.md` after plan close for the full task breakdown + locked design calls)
+- [ROADMAP item #6](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md) — locally-stored roadmap context (gitignored; see plan #6 in `.harness/PLAN.archive.<date>.md` after plan close for the full task breakdown + locked design calls)

@@ -1,4 +1,4 @@
-# install.ps1 — agent-toolkit installer.
+# install.ps1 — crickets installer.
 #
 # Installs personal agent customizations (skills, sub-agents, hooks, MCP
 # servers, slash commands, etc.) into a target project under host-specific
@@ -102,11 +102,11 @@ $BoundaryRoots = @(
 
 # ── operate from inside target dir ────────────────────────────────────────
 Set-Location $Target
-Write-Host "==> agent-toolkit install: $Target"
+Write-Host "==> crickets install: $Target"
 
 # ── -Update sync ──────────────────────────────────────────────────────────
 # See install.sh note on .claude/agents + .gemini/agents + .claude/hooks —
-# these parents are also written to by the sibling agentic-harness installer;
+# these parents are also written to by the sibling agentm installer;
 # the LATER-run installer's -Update wipes the parent before recreating from
 # its own source. .claude/settings.json is NOT wiped — it's user-state-merged
 # and the toolkit re-merges its hook fragments idempotently via
@@ -129,7 +129,7 @@ $EmptyParentCandidates = @()
 # to N (no-op unless operator opts in). -NoLegacyCleanup suppresses the
 # prompt entirely (useful for CI / scripted installs). Non-interactive
 # sessions also skip the prompt with a one-line notice. Never hard-deletes —
-# moves to timestamped backups at <path>.agent-toolkit-bak.<ts>/ per the
+# moves to timestamped backups at <path>.crickets-bak.<ts>/ per the
 # pre-push-hook backup convention. Only touches entries the installer
 # recognizes as toolkit-managed (matches manifest names); leaves any
 # unmanaged user files alone.
@@ -182,7 +182,7 @@ function Invoke-LegacyCleanupGeminiCli {
 
     Write-Host ''
     Write-Host '==> legacy gemini-cli cleanup'
-    Write-Host 'agent-toolkit v0.9.0+ removed standalone Gemini CLI host support.'
+    Write-Host 'crickets v0.9.0+ removed standalone Gemini CLI host support.'
     Write-Host 'Found legacy toolkit-managed entries from a prior install:'
     foreach ($m in $matchedSkills) { Write-Host "  - $m/  (legacy skill destination)" }
     foreach ($m in $matchedAgents) { Write-Host "  - $m  (legacy agent destination)" }
@@ -199,7 +199,7 @@ function Invoke-LegacyCleanupGeminiCli {
     if ($response -match '^[Yy]$') {
         $ts = Get-Date -Format 'yyyyMMddHHmmss'
         if ($matchedSkills.Count -gt 0) {
-            $bak = ".agents/skills.agent-toolkit-bak.$ts"
+            $bak = ".agents/skills.crickets-bak.$ts"
             Move-Item -LiteralPath '.agents/skills' -Destination $bak
             Write-Host "    moved .agents/skills/ -> $bak/"
             if ((Test-Path -LiteralPath '.agents') -and -not (Get-ChildItem -LiteralPath '.agents' -Force -ErrorAction SilentlyContinue)) {
@@ -208,7 +208,7 @@ function Invoke-LegacyCleanupGeminiCli {
             }
         }
         if ($matchedAgents.Count -gt 0) {
-            $bak = ".gemini/agents.agent-toolkit-bak.$ts"
+            $bak = ".gemini/agents.crickets-bak.$ts"
             Move-Item -LiteralPath '.gemini/agents' -Destination $bak
             Write-Host "    moved .gemini/agents/ -> $bak/"
             if ((Test-Path -LiteralPath '.gemini') -and -not (Get-ChildItem -LiteralPath '.gemini' -Force -ErrorAction SilentlyContinue)) {
@@ -344,10 +344,10 @@ function Install-PrePushHook {
         $a = Get-FileHash -LiteralPath $hookSrc -Algorithm SHA256
         $b = Get-FileHash -LiteralPath $hookDst -Algorithm SHA256
         if ($a.Hash -eq $b.Hash) {
-            Write-Host "    kept    $hookDst (already managed by agent-toolkit)"
+            Write-Host "    kept    $hookDst (already managed by crickets)"
             return
         }
-        $bak = "$hookDst.agent-toolkit-bak.$([int][double]::Parse((Get-Date -UFormat %s)))"
+        $bak = "$hookDst.crickets-bak.$([int][double]::Parse((Get-Date -UFormat %s)))"
         Copy-Item -LiteralPath $hookDst -Destination $bak
         Write-Host "    backed up existing $hookDst -> $bak"
     }
@@ -589,7 +589,7 @@ Install-PythonDeps
 
 function Install-PersonalSkillsIndex {
     # Best-effort: run the personal-skills auto-indexer against the
-    # toolkit's own skills/ + the sibling agentic-harness/.claude/skills/
+    # toolkit's own skills/ + the sibling agentm/.claude/skills/
     # if discoverable. Pointers land in MemoryVault/personal-skills/<repo>/.
     # Requires MEMORY_VAULT_PATH to be set (we don't guess the vault path —
     # operators without a vault configured silently skip this).
@@ -619,9 +619,9 @@ function Install-PersonalSkillsIndex {
     Write-Host '==> personal-skills index'
     $toolkitSkills = Join-Path $script:ToolkitRoot 'skills'
     $argList = @('--vault-path', $vaultPath, '--skill-path', $toolkitSkills)
-    # Also index sibling agentic-harness skills if present (canonical clone:
-    # ~/Antigravity/agentic-harness next to ~/Antigravity/agent-toolkit).
-    $harnessSibling = Join-Path $script:ToolkitRoot '../agentic-harness/.claude/skills'
+    # Also index sibling agentm skills if present (canonical clone:
+    # ~/Antigravity/agentm next to ~/Antigravity/crickets).
+    $harnessSibling = Join-Path $script:ToolkitRoot '../agentm/.claude/skills'
     if (Test-Path -LiteralPath $harnessSibling) {
         $argList += @('--skill-path', $harnessSibling)
     }
@@ -635,4 +635,4 @@ function Install-PersonalSkillsIndex {
 Install-PersonalSkillsIndex
 
 Write-Host ''
-Write-Host 'agent-toolkit install: complete.'
+Write-Host 'crickets install: complete.'

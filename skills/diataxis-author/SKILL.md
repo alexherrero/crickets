@@ -9,7 +9,7 @@ install_scope: project
 
 # diataxis-author — author + maintain a Diátaxis wiki for any repo
 
-The second major skill in `agent-toolkit` (after `memory`). Encodes the operator's Diátaxis discipline from [agentic-harness ADR 0004 — Diátaxis Documentation Spec](https://github.com/alexherrero/agentic-harness/blob/main/wiki/explanation/decisions/0004-diataxis-documentation-spec.md) into proactive authoring guidance + ongoing drift detection + repair + one-shot migration, with per-repo overrides via `wiki/.diataxis-conventions.md` and global conventions stored in AgentMemory (`_always-load/diataxis-*.md`). Designed via [agent-toolkit's design skill](https://github.com/alexherrero/agent-toolkit/blob/main/wiki/explanation/designs/diataxis-author.md) — second real dogfood of plan #6's `/design author` after MemoryVault closed.
+The second major skill in `crickets` (after `memory`). Encodes the operator's Diátaxis discipline from [agentm ADR 0004 — Diátaxis Documentation Spec](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0004-diataxis-documentation-spec.md) into proactive authoring guidance + ongoing drift detection + repair + one-shot migration, with per-repo overrides via `wiki/.diataxis-conventions.md` and global conventions stored in AgentMemory (`_always-load/diataxis-*.md`). Designed via [crickets's design skill](https://github.com/alexherrero/crickets/blob/main/wiki/explanation/designs/diataxis-author.md) — second real dogfood of plan #6's `/design author` after MemoryVault closed.
 
 **Position vs. `check-wiki.py` strict validator**: validators catch violations after-the-fact; diataxis-author provides **proactive** guidance at write time (template selection, mode classification, filename style). Both layers complement: skill prevents drift at write time; `check-wiki.py` catches drift at commit time + during `/diataxis check`.
 
@@ -72,17 +72,17 @@ Live authoring guidance — operator invokes when starting a new wiki page. Skil
 
 ```bash
 # Explicit mode
-python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/author.py \
-  "Install agent-toolkit into a project" --mode how-to
+python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/author.py \
+  "Install crickets into a project" --mode how-to
 # → wiki/how-to/Install-Agent-Toolkit-Into-A-Project.md
 
 # Infer mode from intent
-python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/author.py \
+python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/author.py \
   "CLI reference for the installer" --intent "lookup table for all install.sh flags"
 # → wiki/reference/Cli-Reference-For-The-Installer.md  (inferred: reference)
 
 # Kebab-case filename style
-python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/author.py \
+python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/author.py \
   "Tutorial 3 — Advanced things" --mode tutorial --filename-style kebab-case
 # → wiki/tutorials/tutorial-3-advanced-things.md
 ```
@@ -100,7 +100,7 @@ python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/author.py \
 
 - **Don't pass `--overwrite` casually.** The collision refusal is intentional — re-using a slug across modes (e.g. how-to + explanation with the same name) is usually a sign you meant to split a mode-mixed page. Use `/diataxis classify` to verify.
 - **Don't write skill body content beyond the skeleton.** The skill emits the template + lets the operator fill in. Auto-writing body content would defeat the "live authoring guidance" promise.
-- **Don't bypass `--filename-style`.** The default `CamelCase-With-Dashes` matches the operator's convention from the canonical wikis (agentic-harness + agent-toolkit + dev-setup). AgentMemory override (planned part 5) lets you tune per-repo.
+- **Don't bypass `--filename-style`.** The default `CamelCase-With-Dashes` matches the operator's convention from the canonical wikis (agentm + crickets + dev-setup). AgentMemory override (planned part 5) lets you tune per-repo.
 
 ### `/diataxis check [--strict]`
 
@@ -120,7 +120,7 @@ Drift detection — wraps `scripts/check-wiki.py` (harness-side) as a subprocess
 
 #### Step-by-step flow
 
-**Step 1 — Resolve wiki root + check-wiki.py path.** Auto-detect check-wiki.py at `<toolkit>/../agentic-harness/scripts/check-wiki.py` or `~/Antigravity/agentic-harness/scripts/check-wiki.py`.
+**Step 1 — Resolve wiki root + check-wiki.py path.** Auto-detect check-wiki.py at `<toolkit>/../agentm/scripts/check-wiki.py` or `~/Antigravity/agentm/scripts/check-wiki.py`.
 
 **Step 2 — Run check-wiki.py subprocess** (if found). Parse `<path>:<line>: <rule>: <msg>` line format from stdout into Finding objects with `rule: check-wiki/<rule>`. Status: `ran` on success; `skipped-absent` if not found; `skipped-error` on subprocess failure (timeout, non-zero exit not from clean run, OSError).
 
@@ -139,13 +139,13 @@ Drift detection — wraps `scripts/check-wiki.py` (harness-side) as a subprocess
 
 ```bash
 # Run against the toolkit's own wiki
-python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/check.py \
-  --wiki-root ~/Antigravity/agent-toolkit/wiki
+python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/check.py \
+  --wiki-root ~/Antigravity/crickets/wiki
 # Strict mode (escalate warnings)
-python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/check.py \
-  --wiki-root ~/Antigravity/agent-toolkit/wiki --strict
+python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/check.py \
+  --wiki-root ~/Antigravity/crickets/wiki --strict
 # Custom check-wiki.py path
-python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/check.py \
+python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/check.py \
   --wiki-root /path/to/project/wiki \
   --check-wiki-py /path/to/check-wiki.py
 ```
@@ -207,12 +207,12 @@ Interactive fix-application for drift detected by `/diataxis check`. Per finding
 
 ```bash
 # Interactive review against ./wiki
-python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/repair.py
+python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/repair.py
 # Use a pre-recorded findings file (replay analysis)
-python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/check.py --wiki-root wiki > findings.json
-python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/repair.py --findings findings.json
+python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/check.py --wiki-root wiki > findings.json
+python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/repair.py --findings findings.json
 # CI smoke-safe with sub-agent stub + small limit
-python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/repair.py --stub --limit 3
+python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/repair.py --stub --limit 3
 ```
 
 #### Failure modes (graceful)
@@ -234,7 +234,7 @@ python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/repair.py --s
 ### `/diataxis repair`
 
 > [!NOTE]
-> **Status**: stub. Full body lands in plan #13 **part 3** (`check-repair`). See the [check-repair part](https://github.com/alexherrero/agent-toolkit/blob/main/wiki/explanation/designs/diataxis-author/parts/check-repair.md) for the locked design.
+> **Status**: stub. Full body lands in plan #13 **part 3** (`check-repair`). See the [check-repair part](https://github.com/alexherrero/crickets/blob/main/wiki/explanation/designs/diataxis-author/parts/check-repair.md) for the locked design.
 
 Interactive fix-application for drift detected by `/diataxis check`. Per finding: present suggested fix (cross-ref rewrite / mode reclassification / template realignment / split-mode-mixed-into-N-pages) + operator approves / edits / rejects. Pattern matches `/memory watchlist review`'s interactive flow. Mode-mixed splits dispatch `documenter` sub-agent (the mechanical-write worker). All file modifications preview-first; never silent.
 
@@ -246,7 +246,7 @@ Interactive fix-application for drift detected by `/diataxis check`. Per finding
 
 ### `/diataxis migrate`
 
-One-shot migration of legacy audience-based wikis (`development/` + `operational/` + `design/` + `architecture/`) to the four-mode Diátaxis layout. Subsumes the harness's predecessor [`migrate-to-diataxis`](https://github.com/alexherrero/agentic-harness/blob/main/harness/skills/migrate-to-diataxis.md) skill — same contract: preview-first, deterministic classification by heading shape per ADR 0004, `git mv` for blame preservation, mode-mixed pages flagged for human split (delegates to `/diataxis repair` for the actual split work). Auto-seeds `wiki/.diataxis` marker + `wiki/.diataxis-conventions.md` (per-repo overrides) post-migration. **Never commits** — operator stages + commits manually after reviewing diff (single-commit safety net via operator-driven commit boundary).
+One-shot migration of legacy audience-based wikis (`development/` + `operational/` + `design/` + `architecture/`) to the four-mode Diátaxis layout. Subsumes the harness's predecessor [`migrate-to-diataxis`](https://github.com/alexherrero/agentm/blob/main/harness/skills/migrate-to-diataxis.md) skill — same contract: preview-first, deterministic classification by heading shape per ADR 0004, `git mv` for blame preservation, mode-mixed pages flagged for human split (delegates to `/diataxis repair` for the actual split work). Auto-seeds `wiki/.diataxis` marker + `wiki/.diataxis-conventions.md` (per-repo overrides) post-migration. **Never commits** — operator stages + commits manually after reviewing diff (single-commit safety net via operator-driven commit boundary).
 
 #### Invocation shape
 
@@ -312,13 +312,13 @@ Classification is deterministic (no LLM, no random sampling, no wall-clock).
 
 ```bash
 # Default: preview only (no flag) + hint
-python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/migrate.py
+python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/migrate.py
 # Explicit preview-only (preview-first contract)
-python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/migrate.py --preview
+python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/migrate.py --preview
 # Apply the migration
-python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/migrate.py --execute
+python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/migrate.py --execute
 # Skip prompts (synonym)
-python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/migrate.py --yes
+python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/migrate.py --yes
 ```
 
 #### Failure modes (graceful)
@@ -336,7 +336,7 @@ python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/migrate.py --
 - **Don't hand-edit `.diataxis-conventions.md` immediately**. Let the auto-seeded version run for a session or two so you can spot which conventions actually need overriding vs. which the defaults handle well. Premature editing here defeats the convention-evolution learning loop.
 
 > [!NOTE]
-> **Predecessor relationship**: harness's [`migrate-to-diataxis.md`](https://github.com/alexherrero/agentic-harness/blob/main/harness/skills/migrate-to-diataxis.md) is being deprecated alongside this part's ship (plan #13 part 4). Predecessor stays in the harness through v1 dogfood window (operators with mid-flight installs can keep using it if needed); follow-up harness PATCH release removes the predecessor file entirely once `/diataxis migrate` proves out.
+> **Predecessor relationship**: harness's [`migrate-to-diataxis.md`](https://github.com/alexherrero/agentm/blob/main/harness/skills/migrate-to-diataxis.md) is being deprecated alongside this part's ship (plan #13 part 4). Predecessor stays in the harness through v1 dogfood window (operators with mid-flight installs can keep using it if needed); follow-up harness PATCH release removes the predecessor file entirely once `/diataxis migrate` proves out.
 
 ### `/diataxis classify <file>`
 
@@ -384,21 +384,21 @@ The CLI itself doesn't dispatch sub-agents directly — it returns the marker + 
 
 ```bash
 # Clear tutorial page → mode: tutorial, confidence: 0.95
-python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/classify.py \
+python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/classify.py \
   wiki/tutorials/01-Getting-Started.md
 
 # Ambiguous mode-mixed page → needs_subagent: true
-python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/classify.py \
+python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/classify.py \
   wiki/some/ambiguous.md
 # → {mode: "explanation", confidence: 0.575, mode_mixed: true, needs_subagent: true, ...}
 
 # Force Tier-1-only via --no-subagent (operator-debug)
-python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/classify.py \
+python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/classify.py \
   wiki/some/ambiguous.md --no-subagent
 # → {needs_subagent: false, ...} (Tier-1 verdict regardless of confidence)
 
 # CI smoke-safe: --stub avoids actual sub-agent dispatch
-python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/classify.py \
+python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/classify.py \
   wiki/some/ambiguous.md --stub
 # → {needs_subagent: true, dispatched_subagent: false, ...}
 ```
@@ -424,17 +424,17 @@ Python-side scripts can use whatever they need (network for ADR 0004 cross-refer
 
 ## Host scope
 
-`supported_hosts: [claude-code, antigravity]` — `gemini-cli` excluded per [ROADMAP item #15](https://github.com/alexherrero/agentic-harness/blob/main/.harness/ROADMAP.md) (Gemini-CLI host removal, shipped in toolkit v0.9.0 / ADR 0006). Same scope as the sibling `memory` skill.
+`supported_hosts: [claude-code, antigravity]` — `gemini-cli` excluded per [ROADMAP item #15](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md) (Gemini-CLI host removal, shipped in toolkit v0.9.0 / ADR 0006). Same scope as the sibling `memory` skill.
 
 ## Cross-references
 
-- **Parent design**: [diataxis-author](https://github.com/alexherrero/agent-toolkit/blob/main/wiki/explanation/designs/diataxis-author.md) — the canonical "Why we built this" entry point per the locked design call from plan #6.
-- **Diátaxis spec source**: [agentic-harness ADR 0004 — Diátaxis Documentation Spec](https://github.com/alexherrero/agentic-harness/blob/main/wiki/explanation/decisions/0004-diataxis-documentation-spec.md) — the canonical convention this skill enforces.
-- **Predecessor (being subsumed)**: [agentic-harness `migrate-to-diataxis` skill](https://github.com/alexherrero/agentic-harness/blob/main/harness/skills/migrate-to-diataxis.md) — one-shot migration skill that `/diataxis migrate` ports + extends. Ships deprecation notice in plan #13 part 4.
-- **Sibling sub-agent**: [`diataxis-evaluator`](https://github.com/alexherrero/agent-toolkit/blob/main/agents/diataxis-evaluator.md) — read-only sub-agent for ambiguous mode classification. Dispatched from `/diataxis classify` (operational from part 2) + `/diataxis repair` mode-mixed splits (operational from part 3).
-- **Sibling skill (orchestration pattern)**: [`memory`](https://github.com/alexherrero/agent-toolkit/blob/main/skills/memory/SKILL.md) — `/memory adapt-skills` + `adapt-evaluator` is the orchestration-skill + worker-sub-agent pattern this skill mirrors.
-- **External worker**: [`documenter` sub-agent (harness-side)](https://github.com/alexherrero/agentic-harness/blob/main/harness/agents/documenter.md) — Diátaxis-aware mechanical-write worker. Repurposed: dispatched from `/diataxis repair` mode-mixed splits (part 3) + existing harness `/release` direct dispatch (part 5 transitions via skill-presence check).
-- **Validator complement**: [`scripts/check-wiki.py`](https://github.com/alexherrero/agentic-harness/blob/main/scripts/check-wiki.py) — strict-mode validator the skill wraps for `/diataxis check`.
+- **Parent design**: [diataxis-author](https://github.com/alexherrero/crickets/blob/main/wiki/explanation/designs/diataxis-author.md) — the canonical "Why we built this" entry point per the locked design call from plan #6.
+- **Diátaxis spec source**: [agentm ADR 0004 — Diátaxis Documentation Spec](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0004-diataxis-documentation-spec.md) — the canonical convention this skill enforces.
+- **Predecessor (being subsumed)**: [agentm `migrate-to-diataxis` skill](https://github.com/alexherrero/agentm/blob/main/harness/skills/migrate-to-diataxis.md) — one-shot migration skill that `/diataxis migrate` ports + extends. Ships deprecation notice in plan #13 part 4.
+- **Sibling sub-agent**: [`diataxis-evaluator`](https://github.com/alexherrero/crickets/blob/main/agents/diataxis-evaluator.md) — read-only sub-agent for ambiguous mode classification. Dispatched from `/diataxis classify` (operational from part 2) + `/diataxis repair` mode-mixed splits (operational from part 3).
+- **Sibling skill (orchestration pattern)**: [`memory`](https://github.com/alexherrero/crickets/blob/main/skills/memory/SKILL.md) — `/memory adapt-skills` + `adapt-evaluator` is the orchestration-skill + worker-sub-agent pattern this skill mirrors.
+- **External worker**: [`documenter` sub-agent (harness-side)](https://github.com/alexherrero/agentm/blob/main/harness/agents/documenter.md) — Diátaxis-aware mechanical-write worker. Repurposed: dispatched from `/diataxis repair` mode-mixed splits (part 3) + existing harness `/release` direct dispatch (part 5 transitions via skill-presence check).
+- **Validator complement**: [`scripts/check-wiki.py`](https://github.com/alexherrero/agentm/blob/main/scripts/check-wiki.py) — strict-mode validator the skill wraps for `/diataxis check`.
 
 ## Status
 

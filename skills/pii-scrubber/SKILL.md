@@ -17,7 +17,7 @@ Agent-facing PII guardrail. Companion to `scripts/check-no-pii.sh` (the detector
 - **Before any `git push`** that touches commits the user might not have seen redact-passes on (mandatory if you intend to push).
 - **When the pre-push hook blocks a push** — the hook's error message will direct you here.
 
-If you're an agent about to run `git push`, invoke this skill first. If the pre-push hook is installed and the agent-toolkit script is reachable, the hook will catch you anyway — but using the skill first means you fix the PII once, instead of fighting the hook in a loop.
+If you're an agent about to run `git push`, invoke this skill first. If the pre-push hook is installed and the crickets script is reachable, the hook will catch you anyway — but using the skill first means you fix the PII once, instead of fighting the hook in a loop.
 
 ## Workflow
 
@@ -32,17 +32,17 @@ If you're an agent about to run `git push`, invoke this skill first. If the pre-
 
 ### 2. Locate and run the scanner
 
-The script lives at `<agent-toolkit-root>/scripts/check-no-pii.sh`. Locate it via:
+The script lives at `<crickets-root>/scripts/check-no-pii.sh`. Locate it via:
 
 - `$AGENT_TOOLKIT_PATH/scripts/check-no-pii.sh` if the env var is set
-- Sibling convention: `../agent-toolkit/scripts/check-no-pii.sh`
-- Common dev-machine paths: `~/Antigravity/agent-toolkit/`, `~/dev/agent-toolkit/`
+- Sibling convention: `../crickets/scripts/check-no-pii.sh`
+- Common dev-machine paths: `~/Antigravity/crickets/`, `~/dev/crickets/`
 
 ```bash
 bash <path>/scripts/check-no-pii.sh <mode>
 ```
 
-If the script isn't found, **stop and tell the user** — don't silently skip the check. Suggest: set `AGENT_TOOLKIT_PATH` or re-run `agent-toolkit/install.sh` on the target project.
+If the script isn't found, **stop and tell the user** — don't silently skip the check. Suggest: set `AGENT_TOOLKIT_PATH` or re-run `crickets/install.sh` on the target project.
 
 ### 3. Interpret exit code
 

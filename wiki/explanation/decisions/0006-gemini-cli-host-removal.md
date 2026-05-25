@@ -3,11 +3,11 @@
 > [!NOTE]
 > **Status:** accepted
 > **Date:** 2026-05-17
-> **Related:** [ADR 0001 — agent-toolkit purpose](0001-agent-toolkit-purpose) (amended 2026-05-17) · [ADR 0002 — evaluator design](0002-evaluator-design) (amended 2026-05-17) · [ADR 0004 — design skill](0004-design-skill) (amended 2026-05-17 for the external-review-handoff option; this ADR is the parallel host-scope amendment) · [ROADMAP item #15](https://github.com/alexherrero/agentic-harness/blob/main/.harness/ROADMAP.md) · [Plan #15](https://github.com/alexherrero/agentic-harness/blob/main/.harness/PLAN.archive.20260517-gemini-cli-removal.md) (post-completion)
+> **Related:** [ADR 0001 — crickets purpose](0001-crickets-purpose) (amended 2026-05-17) · [ADR 0002 — evaluator design](0002-evaluator-design) (amended 2026-05-17) · [ADR 0004 — design skill](0004-design-skill) (amended 2026-05-17 for the external-review-handoff option; this ADR is the parallel host-scope amendment) · [ROADMAP item #15](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md) · [Plan #15](https://github.com/alexherrero/agentm/blob/main/.harness/PLAN.archive.20260517-gemini-cli-removal.md) (post-completion)
 
 ## Context
 
-The agent-toolkit shipped from v0.1.0 with three supported hosts: Claude Code, Antigravity, Gemini CLI. The host scope was chosen on the principle that the toolkit ships *user-portable* customizations to any agent surface the user runs.
+The crickets shipped from v0.1.0 with three supported hosts: Claude Code, Antigravity, Gemini CLI. The host scope was chosen on the principle that the toolkit ships *user-portable* customizations to any agent surface the user runs.
 
 By v0.8.x (early 2026-05), four things had become true:
 
@@ -27,7 +27,7 @@ Concretely:
 - **Manifests**: `supported_hosts: [claude-code, antigravity, gemini-cli]` → `[claude-code, antigravity]` across every shipped customization (skills, agents, hooks, bundles). The schema's allowed values tighten to `{claude-code, antigravity}`.
 - **Installer**: the `gemini-cli` dispatch arms in `install_skill` / `install_hook` / `install_agent` are removed. `.agents/skills/<name>/` (the legacy gemini-cli skill destination) and `.gemini/agents/<name>.md` (the legacy gemini-cli agent destination) are no longer created.
 - **Validator**: `validate-manifests.py` tightens `HOST_ENUM` to `{claude-code, antigravity}`. A new `REMOVED_HOSTS` dict provides an actionable error message pointing operators at the v0.9.0 CHANGELOG and clarifying that Antigravity (Gemini-in-IDE) stays supported.
-- **Legacy auto-cleanup with operator confirmation**: at install time, the installer detects pre-existing `.agents/skills/<known-name>/` and `.gemini/agents/<known-name>.md` from prior installs, prompts operator with N default (`"Move to backup .agents/skills.agent-toolkit-bak.<ts>/ and remove from active install path? [y/N]"`); on opt-in moves (not hard-deletes) to timestamped backups per the pre-push hook backup convention. New `--no-legacy-cleanup` / `-NoLegacyCleanup` flag suppresses the prompt for CI / scripted installs. Non-interactive stdin auto-defaults to N with explanatory notice.
+- **Legacy auto-cleanup with operator confirmation**: at install time, the installer detects pre-existing `.agents/skills/<known-name>/` and `.gemini/agents/<known-name>.md` from prior installs, prompts operator with N default (`"Move to backup .agents/skills.crickets-bak.<ts>/ and remove from active install path? [y/N]"`); on opt-in moves (not hard-deletes) to timestamped backups per the pre-push hook backup convention. New `--no-legacy-cleanup` / `-NoLegacyCleanup` flag suppresses the prompt for CI / scripted installs. Non-interactive stdin auto-defaults to N with explanatory notice.
 - **Tests**: smoke install scripts gain negative-existence assertions (`.agents/` + `.gemini/` MUST NOT exist after install) + new automated tests for `--no-legacy-cleanup` suppression + validator-rejects-gemini-cli with v0.9.0 message.
 - **ADRs 0001 + 0002 + 0004**: get amendments (not rewrites — audit trail preserved) noting the host-scope reduction.
 - **Wiki sweep**: `Per-Host-Paths.md` drops the 3rd column; `Manifest-Schema.md` drops gemini-cli from allowed values; `Customization-Types.md`, `Installer-CLI.md`, the how-tos, and the tutorial drop forward-looking gemini-cli + `.agents/` + `.gemini/` references. Historical content (CHANGELOG entries from prior versions, prior ADR text) is preserved as audit trail.
@@ -58,7 +58,7 @@ Concretely:
 ### Negative
 
 - **Pre-existing user installs see a one-time prompt.** Operators who installed v0.5.0-v0.8.x and populated `.agents/skills/` see the cleanup prompt at next install. Single-prompt cost; backup-then-remove flow is safe; `--no-legacy-cleanup` suppresses for those who want.
-- **Backup directory accumulates if operator runs install many times + opts in repeatedly.** Each opt-in creates a timestamped backup; over many installs, multiple `.agents/skills.agent-toolkit-bak.<ts>/` dirs accumulate. Mitigation: timestamps make GC trivial (`find .agents/ -name 'skills.agent-toolkit-bak.*' -mtime +30 -exec rm -rf {} \;`); documented in CHANGELOG. Accepted as low-priority since operators typically run install rarely.
+- **Backup directory accumulates if operator runs install many times + opts in repeatedly.** Each opt-in creates a timestamped backup; over many installs, multiple `.agents/skills.crickets-bak.<ts>/` dirs accumulate. Mitigation: timestamps make GC trivial (`find .agents/ -name 'skills.crickets-bak.*' -mtime +30 -exec rm -rf {} \;`); documented in CHANGELOG. Accepted as low-priority since operators typically run install rarely.
 - **Loss of future optionality.** If a Gemini-CLI successor ships and turns out to be a primary workflow surface, re-adding it requires undoing #15's sweep + restoring the third column / dispatch arms / manifests. Mitigation: the historical 3-host scope is preserved in prior CHANGELOG entries + ADR original text; the install path skeleton is still understandable from those references. Cost of re-add ≈ cost of #15 ≈ ~1 week's worth of plan work.
 - **Wiki cross-references explode.** The sweep touches ~12 wiki pages + 3 ADR amendments + this new ADR. Lots of small edits; risk of missed gemini-cli mention somewhere. Mitigation: grep across `wiki/` + `README.md` + `skills/memory/SKILL.md` after sweep returns only audit-trail mentions ("removed in v0.9.0" pointers); validator + smoke install enforce the manifest + installer side.
 
@@ -73,13 +73,13 @@ Concretely:
 
 ## Related
 
-- [ROADMAP item #15](https://github.com/alexherrero/agentic-harness/blob/main/.harness/ROADMAP.md) — the roadmap entry that triggered this plan
-- [ADR 0001 — agent-toolkit purpose](0001-agent-toolkit-purpose) — amended 2026-05-17 to note the host-scope reduction
+- [ROADMAP item #15](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md) — the roadmap entry that triggered this plan
+- [ADR 0001 — crickets purpose](0001-crickets-purpose) — amended 2026-05-17 to note the host-scope reduction
 - [ADR 0002 — evaluator design](0002-evaluator-design) — amended 2026-05-17 to note the evaluator's host-scope change
 - [ADR 0004 — design skill](0004-design-skill) — amended 2026-05-16 for external-review-handoff option; the v0.9.0 host-scope reduction applies to the design skill too (the manifest sweep in task 2 dropped gemini-cli from `skills/design/SKILL.md`)
 - [Per-Host Paths reference](../../reference/Per-Host-Paths) — destination table now 2-column
 - [Customization Types reference](../../reference/Customization-Types) — kind × host matrix updated
 - [Manifest Schema reference](../../reference/Manifest-Schema) — `supported_hosts` allowed values tightened
 - [Installer CLI reference](../../reference/Installer-CLI) — `--no-legacy-cleanup` flag documented + legacy cleanup section
-- [agent-toolkit CHANGELOG.md](https://github.com/alexherrero/agent-toolkit/blob/main/CHANGELOG.md) — v0.9.0 entry (lands in task 6)
-- [agentic-harness CHANGELOG.md](https://github.com/alexherrero/agentic-harness/blob/main/CHANGELOG.md) — paired v2.4.0 entry (lands in task 6)
+- [crickets CHANGELOG.md](https://github.com/alexherrero/crickets/blob/main/CHANGELOG.md) — v0.9.0 entry (lands in task 6)
+- [agentm CHANGELOG.md](https://github.com/alexherrero/agentm/blob/main/CHANGELOG.md) — paired v2.4.0 entry (lands in task 6)

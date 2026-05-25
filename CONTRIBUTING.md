@@ -1,4 +1,4 @@
-# Contributing to agent-toolkit
+# Contributing to crickets
 
 ## PII guardrails
 
@@ -17,7 +17,7 @@ This is a public repo. The customizations and configuration kept here are person
 
 | Layer | What | When it fires |
 |---|---|---|
-| **Pre-push git hook** | `templates/hooks/pre-push` installed into `.git/hooks/pre-push` by `agent-toolkit/install.sh` | On every `git push`. Runs `check-no-pii.sh --diff <range>`; non-zero exit blocks the push. **Mandatory enforcer.** |
+| **Pre-push git hook** | `templates/hooks/pre-push` installed into `.git/hooks/pre-push` by `crickets/install.sh` | On every `git push`. Runs `check-no-pii.sh --diff <range>`; non-zero exit blocks the push. **Mandatory enforcer.** |
 | **`pii-scrubber` skill** | `skills/pii-scrubber/SKILL.md` — interactive agent-facing layer | Invoked by an agent before commit / push. Presents findings, offers redactions, loops until clean. |
 | **CI gate** | GitHub Actions workflow (lands in task 4 of v0.1.0 plan) | On every push to GitHub. Runs the same script + gitleaks. Final safety net. |
 
@@ -81,7 +81,7 @@ The script renders both PNG sizes (1600×430 + 3200×860 retina) and writes them
 
 Requirements: a Google Chrome install (macOS auto-detected; Linux `google-chrome`/`chromium` on `PATH`; Windows Chrome in default Program Files). If Chrome isn't found the script prints the install paths it checked.
 
-The banner is a **static brand asset** — it does not carry release-version data (live version + CI status live in shields.io badges in the README), so regeneration is NOT tied to releases. Mirrors the equivalent setup in the sibling [`agentic-harness`](https://github.com/alexherrero/agentic-harness/blob/main/CONTRIBUTING.md#regenerating-the-brand-banner) repo.
+The banner is a **static brand asset** — it does not carry release-version data (live version + CI status live in shields.io badges in the README), so regeneration is NOT tied to releases. Mirrors the equivalent setup in the sibling [`agentm`](https://github.com/alexherrero/agentm/blob/main/CONTRIBUTING.md#regenerating-the-brand-banner) repo.
 
 ## Commit messages
 

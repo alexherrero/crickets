@@ -3,17 +3,17 @@
 > [!NOTE]
 > **Status:** accepted
 > **Date:** 2026-05-22
-> **Related:** [ADR 0003 — base operator-control hooks](0003-base-operator-hooks) (precedent for the `kind: hook` installer pattern + Claude-Code-only scope) · [ADR 0001 — agent-toolkit purpose](0001-agent-toolkit-purpose) (stdlib-only / no-new-third-party-deps convention D7) · [ADR 0007 — MemoryVault Discovery + Mining](0007-memoryvault-discovery) (precedent for the architectural-enforcement-via-write-allowlist pattern this hook mirrors at the tool-input gate level) · [Use The Evidence-Tracker Hook how-to](../../how-to/Use-The-Evidence-Tracker-Hook.md) · [agentic-harness `/work` §5b spec amendment](https://github.com/alexherrero/agentic-harness/blob/main/harness/phases/03-work.md) · [agentic-harness ROADMAP item #9](https://github.com/alexherrero/agentic-harness/blob/main/.harness/ROADMAP.md) · [cwc-long-running-agents](https://github.com/anthropics/cwc-long-running-agents) (upstream pattern source — "The only evidence that counts is a file matching the patterns")
+> **Related:** [ADR 0003 — base operator-control hooks](0003-base-operator-hooks) (precedent for the `kind: hook` installer pattern + Claude-Code-only scope) · [ADR 0001 — crickets purpose](0001-crickets-purpose) (stdlib-only / no-new-third-party-deps convention D7) · [ADR 0007 — MemoryVault Discovery + Mining](0007-memoryvault-discovery) (precedent for the architectural-enforcement-via-write-allowlist pattern this hook mirrors at the tool-input gate level) · [Use The Evidence-Tracker Hook how-to](../../how-to/Use-The-Evidence-Tracker-Hook.md) · [agentm `/work` §5b spec amendment](https://github.com/alexherrero/agentm/blob/main/harness/phases/03-work.md) · [agentm ROADMAP item #9](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md) · [cwc-long-running-agents](https://github.com/anthropics/cwc-long-running-agents) (upstream pattern source — "The only evidence that counts is a file matching the patterns")
 
 ## Context
 
-ROADMAP item #9 (agentic-harness) shipped as a follow-on to plans #4 + #5 (the three base operator-control hooks: kill-switch / steer / commit-on-stop) and complementary to plan #6's `/design` skill + plan #7a/7b's MemoryVault. The locked execution-order placed it after the MemoryVault parent design finished (#7a + #7b ✅ 2026-05-22) and ROADMAP #8's auto-context-into-harness-phases shipped (toolkit v0.11.1 + harness v2.5.0).
+ROADMAP item #9 (agentm) shipped as a follow-on to plans #4 + #5 (the three base operator-control hooks: kill-switch / steer / commit-on-stop) and complementary to plan #6's `/design` skill + plan #7a/7b's MemoryVault. The locked execution-order placed it after the MemoryVault parent design finished (#7a + #7b ✅ 2026-05-22) and ROADMAP #8's auto-context-into-harness-phases shipped (toolkit v0.11.1 + harness v2.5.0).
 
 **The gap this addresses.** Today's `/work` phase trusts the agent to *verify* before flipping a PLAN.md task `[x]`. The verification criterion lives in the task body (`**Verification:** <executable check>`), but there's no enforcement that the agent actually opened the relevant files before claiming the task is done. In practice: agents sometimes flip tasks `[x]` based on partial signals (a passing test run that didn't actually cover the new code; a "looks good" judgment on a diff they didn't read against the spec). The verification step exists in the contract but isn't *observable*.
 
 The cwc-long-running-agents pattern, paraphrased: *"The only evidence that counts is a file matching the patterns."* Translated to the harness: every task starts with `evidence-met=false`; the agent must demonstrably *read* (via the `Read` tool, which the hook observes) a spec/test/evidence file matching the task's requirement *before* a `Write`/`Edit` that flips the task `[ ]` → `[x]` is allowed. Hook blocks otherwise.
 
-This is the 4th base hook in `agent-toolkit/hooks/` after kill-switch, steer, and commit-on-stop (ADR 0003). Same Claude-Code-only scope, same graceful-skip discipline, same PreToolUse event surface — but where the prior three are *operator-precision controls* (halt / redirect / safety-net), evidence-tracker is *enforced discipline* (default-FAIL contract on a specific tool-input pattern).
+This is the 4th base hook in `crickets/hooks/` after kill-switch, steer, and commit-on-stop (ADR 0003). Same Claude-Code-only scope, same graceful-skip discipline, same PreToolUse event surface — but where the prior three are *operator-precision controls* (halt / redirect / safety-net), evidence-tracker is *enforced discipline* (default-FAIL contract on a specific tool-input pattern).
 
 **Three open design questions surfaced at plan time** (#9 PLAN.md):
 1. What counts as evidence?
@@ -24,7 +24,7 @@ This ADR captures the operator-confirmed resolutions + 4 load-bearing assumption
 
 ## Decision
 
-**Ship `evidence-tracker` as a single base hook** in `agent-toolkit/hooks/evidence-tracker/`: PreToolUse on Claude Code's `Read|Write|Edit` matcher; Python helper (`evidence_tracker.py`, ~720 lines, stdlib-only, 61 unit tests) does the substantive work; thin `.sh` + `.ps1` entry scripts shell out to the helper via stdin pipe-through. **Default-FAIL contract** enforced by exit code: 2 to block, 0 to allow. Graceful-skip in every direction (Python missing, helper missing, project has no `.harness/`, malformed input) — the hook *never* prevents `/work` from running, only specific `[ ]` → `[x]` flips with unmet evidence.
+**Ship `evidence-tracker` as a single base hook** in `crickets/hooks/evidence-tracker/`: PreToolUse on Claude Code's `Read|Write|Edit` matcher; Python helper (`evidence_tracker.py`, ~720 lines, stdlib-only, 61 unit tests) does the substantive work; thin `.sh` + `.ps1` entry scripts shell out to the helper via stdin pipe-through. **Default-FAIL contract** enforced by exit code: 2 to block, 0 to allow. Graceful-skip in every direction (Python missing, helper missing, project has no `.harness/`, malformed input) — the hook *never* prevents `/work` from running, only specific `[ ]` → `[x]` flips with unmet evidence.
 
 Three locked design calls Q1–Q3 (operator-confirmed at /plan time, 2026-05-22):
 
@@ -74,7 +74,7 @@ Task body declares opt-out with a mandatory rationale. No silent bypasses.
 - **Hook latency on every Read/Write/Edit.** Adds Python-process invocation + PLAN.md parse + state-file I/O on every relevant tool call. Mitigation: fast-path early-exit when `would_flip_checkbox` detects the Write/Edit target isn't PLAN.md (no parse + no diff cost). Read recording is cheap (single JSON append).
 - **Heuristic-vs-override calibration risk.** First weeks of dogfood will surface whether the heuristic's code-extension set is right, whether the test-dir list is complete, whether literal-verification-path match catches the operator's actual conventions. Mitigation: ship-instrumented + tune-from-real-use pattern (same precedent as `recall.py` rank-merge weights from plan #7a + `adapt_skills.py` 6-rule rubric from plan #7b). The 61 unit tests anchor the current behavior so changes are deliberate.
 - **Block messages are the operator-facing surface.** If the message is unclear, operators will reflex-disable the hook rather than understand why it fired. Mitigation: block message includes the expected requirement + the recorded reads + the 3 recovery paths (read evidence / add opt-out / reset state). Tested locally + in CI smoke tests (the [f] sub-test verifies the message contains both "evidence-tracker: default-FAIL" + the expected path).
-- **Self-hosting awkwardness.** This repo (agent-toolkit) doesn't itself have a harness install — so the hook can't dogfood against this repo's own development. First real dogfood happens when an operator installs both `agent-toolkit` + `agentic-harness` into a target project + the next `/work` task there. The harness repo (agentic-harness) is the natural first dogfood target.
+- **Self-hosting awkwardness.** This repo (crickets) doesn't itself have a harness install — so the hook can't dogfood against this repo's own development. First real dogfood happens when an operator installs both `crickets` + `agentm` into a target project + the next `/work` task there. The harness repo (agentm) is the natural first dogfood target.
 
 ### Load-bearing assumptions (re-audit triggers)
 
@@ -89,11 +89,11 @@ Task body declares opt-out with a mandatory rationale. No silent bypasses.
 ## Related
 
 - [ADR 0003 — base operator-control hooks](0003-base-operator-hooks) — precedent for `kind: hook` installer pattern + Claude-Code-only scope + graceful-skip discipline.
-- [ADR 0001 — agent-toolkit purpose](0001-agent-toolkit-purpose) — D7 stdlib-only convention (no new third-party deps; the 720-line helper uses only `argparse` / `fnmatch` / `json` / `os` / `pathlib` / `re` / `tempfile`).
+- [ADR 0001 — crickets purpose](0001-crickets-purpose) — D7 stdlib-only convention (no new third-party deps; the 720-line helper uses only `argparse` / `fnmatch` / `json` / `os` / `pathlib` / `re` / `tempfile`).
 - [ADR 0007 — MemoryVault Discovery + Mining](0007-memoryvault-discovery) — precedent for the architectural-enforcement-via-write-allowlist pattern (adapt-evaluator's scoped write boundary mirrors evidence-tracker's tool-input gate — both physically prevent a class of failure rather than relying on operator vigilance).
 - [Use The Evidence-Tracker Hook how-to](../../how-to/Use-The-Evidence-Tracker-Hook.md) — operator-facing guide with 3 worked scenarios + troubleshooting + dogfood test.
-- [evidence-tracker hook manifest](https://github.com/alexherrero/agent-toolkit/blob/main/hooks/evidence-tracker/hook.md) — technical reference (manifest + entry-point docs).
-- [`evidence_tracker.py`](https://github.com/alexherrero/agent-toolkit/blob/main/hooks/evidence-tracker/evidence_tracker.py) — implementation (~720 lines, stdlib-only, 61 unit tests).
-- [agentic-harness `/work` §5b](https://github.com/alexherrero/agentic-harness/blob/main/harness/phases/03-work.md) — the harness-side contract this hook enforces.
-- [agentic-harness ROADMAP item #9](https://github.com/alexherrero/agentic-harness/blob/main/.harness/ROADMAP.md) — the roadmap entry that triggered this work.
+- [evidence-tracker hook manifest](https://github.com/alexherrero/crickets/blob/main/hooks/evidence-tracker/hook.md) — technical reference (manifest + entry-point docs).
+- [`evidence_tracker.py`](https://github.com/alexherrero/crickets/blob/main/hooks/evidence-tracker/evidence_tracker.py) — implementation (~720 lines, stdlib-only, 61 unit tests).
+- [agentm `/work` §5b](https://github.com/alexherrero/agentm/blob/main/harness/phases/03-work.md) — the harness-side contract this hook enforces.
+- [agentm ROADMAP item #9](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md) — the roadmap entry that triggered this work.
 - [cwc-long-running-agents](https://github.com/anthropics/cwc-long-running-agents) — upstream pattern source for the default-FAIL philosophy.

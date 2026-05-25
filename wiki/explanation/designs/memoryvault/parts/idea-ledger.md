@@ -79,7 +79,7 @@ Never silent deletion. Archive option moves to `_idea-incubator/_archive/<slug>/
 ## Notes for the implementing /work session
 
 - This is the first real test of the A3 permeable write boundary. The implementation needs a clear `ask_user_to_confirm_write_outside_memoryvault(target_path, content_preview, rationale) -> bool` primitive that the reflection sidecar (and future write-outside-MemoryVault consumers) all call. Build that as a shared helper, not inline per call site.
-- The deep-research sub-agent is a new pattern. Reuse the evaluator sub-agent shape from plan #3 (`agent-toolkit/agents/evaluator/`) as the template — same allowlist (Read, Glob, Grep + maybe WebFetch for the web-fetch research files), same caller-supplies-inline-rubric pattern.
+- The deep-research sub-agent is a new pattern. Reuse the evaluator sub-agent shape from plan #3 (`crickets/agents/evaluator/`) as the template — same allowlist (Read, Glob, Grep + maybe WebFetch for the web-fetch research files), same caller-supplies-inline-rubric pattern.
 - WebFetch in the research sub-agent needs careful sandboxing. The 3-fetch cap is a hard limit; the sub-agent shouldn't be able to chain fetches arbitrarily.
 - Title-slug generation for ideas: the reflection sidecar emits a title from the surfaced candidate; the slug is `kebab-case(title)` truncated to 40 chars + collision-suffix (`-2`, `-3`, etc.) if a slug already exists. Defer fancy NLP for slug generation to a follow-up if simple suffix works in practice.
 - `Ideas.md` should not be vec-indexed — it lives outside `MemoryVault/` and is for human reading, not agent recall. The `_idea-incubator/<slug>/` entries ARE vec-indexed (they're inside MemoryVault).

@@ -1,4 +1,4 @@
-# smoke-install-pwsh.ps1 — install agent-toolkit into a scratch dir and assert
+# smoke-install-pwsh.ps1 — install crickets into a scratch dir and assert
 # the expected tree under pwsh.
 #
 # Used by tests-windows.yml. Invoked from repo root:
@@ -866,8 +866,8 @@ except ValueError as e:
     Remove-Item -LiteralPath $embedOutFile -ErrorAction SilentlyContinue
     # Test C: cache dir constant
     $cacheDir = (python3 -c "import sys; sys.path.insert(0, r'$($scratch -replace '\\','/')/.claude/skills/memory/scripts'); from embed import _LOCAL_CACHE_DIR; print(_LOCAL_CACHE_DIR)").Trim()
-    if ($cacheDir -notmatch 'agent-toolkit') {
-        throw "_LOCAL_CACHE_DIR should contain 'agent-toolkit', got '$cacheDir'"
+    if ($cacheDir -notmatch 'crickets') {
+        throw "_LOCAL_CACHE_DIR should contain 'crickets', got '$cacheDir'"
     }
     if ($cacheDir -notmatch 'sentence-transformers') {
         throw "_LOCAL_CACHE_DIR should contain 'sentence-transformers', got '$cacheDir'"

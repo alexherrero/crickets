@@ -1,9 +1,9 @@
 # Tutorial 1 — Your first customization
 
 > [!NOTE]
-> **Goal:** Add a hello-world skill to `agent-toolkit`, install it into a scratch project, and verify it lands at the right host paths. End state: a working customization you wrote, dispatched across all three supported hosts.
+> **Goal:** Add a hello-world skill to `crickets`, install it into a scratch project, and verify it lands at the right host paths. End state: a working customization you wrote, dispatched across all three supported hosts.
 > **Time:** ~10 minutes.
-> **Prereqs:** `agent-toolkit` cloned locally; `python3` + `pyyaml` installed (`pip install pyyaml`); `git` on PATH.
+> **Prereqs:** `crickets` cloned locally; `python3` + `pyyaml` installed (`pip install pyyaml`); `git` on PATH.
 
 Walks through the full lifecycle of adding a customization. You'll create a skill, validate the manifest, run the installer into a scratch dir, and inspect the result.
 
@@ -12,7 +12,7 @@ Walks through the full lifecycle of adding a customization. You'll create a skil
 Open a terminal at your toolkit checkout:
 
 ```bash
-cd ~/Antigravity/agent-toolkit
+cd ~/Antigravity/crickets
 ```
 
 Confirm the repo is clean:
@@ -45,11 +45,11 @@ install_scope: project
 
 # hello-world
 
-A reference skill that demonstrates the agent-toolkit's customization shape.
+A reference skill that demonstrates the crickets's customization shape.
 
 ## When invoked
 
-Return: *"Hello from agent-toolkit! This is a placeholder skill — feel free to delete it."*
+Return: *"Hello from crickets! This is a placeholder skill — feel free to delete it."*
 
 Do not attempt to do anything else. The skill exists for installer-dispatch testing, not real workflow help.
 
@@ -80,7 +80,7 @@ Create a scratch git repo:
 
 ```bash
 SCRATCH=$(mktemp -d)
-cd $SCRATCH && git init -q && cd ~/Antigravity/agent-toolkit
+cd $SCRATCH && git init -q && cd ~/Antigravity/crickets
 ```
 
 Run the installer against the scratch:
@@ -92,7 +92,7 @@ bash install.sh $SCRATCH
 You should see lines like:
 
 ```
-==> agent-toolkit install: /var/folders/.../tmp.xxx
+==> crickets install: /var/folders/.../tmp.xxx
 ==> installing bundle: example-bundle
     created .claude/skills/example-skill
     created .agent/skills/example-skill
@@ -105,7 +105,7 @@ You should see lines like:
 ==> pre-push hook
     installed .git/hooks/pre-push
 
-agent-toolkit install: complete.
+crickets install: complete.
 ```
 
 (v0.9.0 removed standalone Gemini CLI host support per ROADMAP item #15 — `.agents/skills/*` no longer populated. See [ADR 0006](../explanation/decisions/0006-gemini-cli-host-removal).)
@@ -130,7 +130,7 @@ cat $SCRATCH/.claude/skills/hello-world/SKILL.md
 Edit your skill's description (any small change):
 
 ```bash
-cd ~/Antigravity/agent-toolkit
+cd ~/Antigravity/crickets
 # (edit skills/hello-world/SKILL.md — change the description to something different)
 ```
 
@@ -167,7 +167,7 @@ rm -rf $SCRATCH
 If you want to keep the `hello-world` skill in your toolkit: commit it (the pre-push hook will scan for PII before push). If you don't:
 
 ```bash
-cd ~/Antigravity/agent-toolkit
+cd ~/Antigravity/crickets
 rm -rf skills/hello-world
 ```
 

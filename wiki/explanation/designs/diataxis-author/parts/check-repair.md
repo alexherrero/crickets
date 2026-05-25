@@ -53,8 +53,8 @@ project:
 
 ## Scripts shipped
 
-- `agent-toolkit/skills/diataxis-author/scripts/check.py` (~200 lines — wraps check-wiki.py subprocess; adds skill-side drift heuristics; structured-report output).
-- `agent-toolkit/skills/diataxis-author/scripts/repair.py` (~250 lines — interactive repair loop; preview-first per finding; documenter dispatch for splits).
+- `crickets/skills/diataxis-author/scripts/check.py` (~200 lines — wraps check-wiki.py subprocess; adds skill-side drift heuristics; structured-report output).
+- `crickets/skills/diataxis-author/scripts/repair.py` (~250 lines — interactive repair loop; preview-first per finding; documenter dispatch for splits).
 - SKILL.md `## /diataxis check` + `## /diataxis repair` sub-command bodies (from stub to full).
 - `documenter` sub-agent body updated harness-side: dispatch contract now includes diataxis-author invocations (not just /release).
 

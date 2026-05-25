@@ -6,7 +6,7 @@
 
 ## Context
 
-The agentic-harness `/review` phase has shipped with the `adversarial-reviewer` sub-agent since v0.8.0. Its framing is `"the code under review likely contains bugs. Find them."` and its output contract is one of: a failing test, a `file:line` defect with minimal reproducer, or `NO ISSUES FOUND` with categories checked. This works well for **defect surfacing** — find what's broken — but doesn't provide a binary judgment against an explicit rubric.
+The agentm `/review` phase has shipped with the `adversarial-reviewer` sub-agent since v0.8.0. Its framing is `"the code under review likely contains bugs. Find them."` and its output contract is one of: a failing test, a `file:line` defect with minimal reproducer, or `NO ISSUES FOUND` with categories checked. This works well for **defect surfacing** — find what's broken — but doesn't provide a binary judgment against an explicit rubric.
 
 Three forces argued for a complementary primitive:
 
@@ -19,14 +19,14 @@ Open design questions to resolve before shipping:
 - **How does the caller supply the rubric?** Inline prompt arg, sidecar `rubric.md` file, or manifest field?
 - **What tools should the evaluator have?** Read-only minimum, or `Bash` for running tests?
 - **Replace `adversarial-reviewer`, or coexist?** Both grade code; one could subsume the other.
-- **Where does it live — `agent-toolkit` or `agentic-harness`?**
+- **Where does it live — `crickets` or `agentm`?**
 - **Output contract shape — what does PASS / NEEDS_WORK look like on the wire?**
 
 This ADR resolves all five.
 
 ## Decision
 
-**Ship `evaluator` as a standalone agent customization in `agent-toolkit/agents/evaluator.md`.**
+**Ship `evaluator` as a standalone agent customization in `crickets/agents/evaluator.md`.**
 
 - `kind: agent`, `supported_hosts: [claude-code, antigravity, gemini-cli]`, `install_scope: either`.
 - Per the locked per-host paths table, the toolkit installer dispatches to `.claude/agents/evaluator.md` (Claude Code), `.agent/skills/evaluator/SKILL.md` (Antigravity, sub-agent-as-skill wrap), and `.gemini/agents/evaluator.md` (Gemini CLI).
@@ -47,7 +47,7 @@ This ADR resolves all five.
 **Coexist with `adversarial-reviewer`, do not replace.**
 
 - Different framings serve different decision points. `adversarial-reviewer` is for defect surfacing ("contains bugs"); `evaluator` is for rubric grading ("did this satisfy claims 1-5?").
-- The harness `/review` phase spec ([§3b in 04-review.md, added v2.1.0](https://github.com/alexherrero/agentic-harness/blob/main/harness/phases/04-review.md)) documents how to dispatch both in the same session — adversarial first, evaluator second when the Verification clause is precise enough to express as a rubric.
+- The harness `/review` phase spec ([§3b in 04-review.md, added v2.1.0](https://github.com/alexherrero/agentm/blob/main/harness/phases/04-review.md)) documents how to dispatch both in the same session — adversarial first, evaluator second when the Verification clause is precise enough to express as a rubric.
 - Output shapes differ, so the outputs don't collide.
 
 **Output contract: structured, scannable, greppable.**
@@ -95,7 +95,7 @@ Verdict: <PASS or NEEDS_WORK> — <one-sentence framing>
 **v0.9.0 — Gemini CLI host removed.**
 
 > [!NOTE]
-> **Status:** accepted · **Date:** 2026-05-17 · **Source:** [ROADMAP item #15](https://github.com/alexherrero/agentic-harness/blob/main/.harness/ROADMAP.md). Implemented in plan #15. See [ADR 0006](0006-gemini-cli-host-removal) for the host-scope-reduction rationale.
+> **Status:** accepted · **Date:** 2026-05-17 · **Source:** [ROADMAP item #15](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md). Implemented in plan #15. See [ADR 0006](0006-gemini-cli-host-removal) for the host-scope-reduction rationale.
 
 The original ADR 0002 (2026-05-13) cited `evaluator` shipping with `supported_hosts: [claude-code, antigravity, gemini-cli]` and dispatching to `.gemini/agents/evaluator.md` for Gemini CLI. In v0.9.0 (2026-05-17), the toolkit dropped standalone Gemini CLI from supported hosts; `evaluator` now ships with `supported_hosts: [claude-code, antigravity]` only. The `.gemini/agents/evaluator.md` destination is no longer populated by the installer; pre-existing entries from prior installs trigger the legacy-cleanup-with-confirmation flow (see [ADR 0006](0006-gemini-cli-host-removal) + the [Installer CLI reference](../../reference/Installer-CLI)).
 
@@ -106,6 +106,6 @@ The evaluator's design (read-only fresh-context grader, allowlist `[Read, Glob, 
 - [Use the evaluator](Use-The-Evaluator) — practical how-to with three worked rubrics.
 - [Customization Types](Customization-Types) — what `kind: agent` means and the v0.6.0 installer support.
 - [Per-Host Paths](Per-Host-Paths) — where the evaluator lands per host.
-- [evaluator agent spec](https://github.com/alexherrero/agent-toolkit/blob/main/agents/evaluator.md) — the canonical body.
-- [agentic-harness `/review` §3b](https://github.com/alexherrero/agentic-harness/blob/main/harness/phases/04-review.md) — the harness-side dispatch documentation.
-- [ADR 0001 — agent-toolkit purpose](0001-agent-toolkit-purpose) — the sibling-repo decision that put this customization here vs. in the harness.
+- [evaluator agent spec](https://github.com/alexherrero/crickets/blob/main/agents/evaluator.md) — the canonical body.
+- [agentm `/review` §3b](https://github.com/alexherrero/agentm/blob/main/harness/phases/04-review.md) — the harness-side dispatch documentation.
+- [ADR 0001 — crickets purpose](0001-crickets-purpose) — the sibling-repo decision that put this customization here vs. in the harness.

@@ -41,7 +41,7 @@ git checkout --quiet "${safety_branch}"
 git stash pop --quiet
 git add -A
 git -c commit.gpgsign=false \
-    -c user.email="commit-on-stop@agent-toolkit.local" \
+    -c user.email="commit-on-stop@crickets.local" \
     -c user.name="commit-on-stop hook" \
     commit --quiet -m "${msg}"
 git checkout --quiet "${orig_branch}"

@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > **Goal:** Dispatch the `evaluator` sub-agent from your skill, command, slash workflow, or `/review` session to get a PASS / NEEDS_WORK verdict against an explicit rubric.
-> **Prereqs:** `agent-toolkit` installed into the target project (so `evaluator` is wired into the host); you have an artifact on disk and a precise rubric you can express as numbered claims.
+> **Prereqs:** `crickets` installed into the target project (so `evaluator` is wired into the host); you have an artifact on disk and a precise rubric you can express as numbered claims.
 
 ## When to reach for it (and when not to)
 
@@ -192,11 +192,11 @@ This is intentional. The "fresh context that never saw the build" framing only h
 
 ## Pair with `/review` (harness)
 
-The harness's `/review` phase ([`harness/phases/04-review.md` §3b](https://github.com/alexherrero/agentic-harness/blob/main/harness/phases/04-review.md)) documents how to dispatch the evaluator alongside the existing `adversarial-reviewer` flow. Both can run in the same session — adversarial-reviewer for "find bugs", evaluator for "grade against the PLAN.md Verification clause". Their outputs combine into a richer finding set.
+The harness's `/review` phase ([`harness/phases/04-review.md` §3b](https://github.com/alexherrero/agentm/blob/main/harness/phases/04-review.md)) documents how to dispatch the evaluator alongside the existing `adversarial-reviewer` flow. Both can run in the same session — adversarial-reviewer for "find bugs", evaluator for "grade against the PLAN.md Verification clause". Their outputs combine into a richer finding set.
 
 ## Related
 
-- [evaluator agent spec](https://github.com/alexherrero/agent-toolkit/blob/main/agents/evaluator.md) — the canonical body (frontmatter, input contract, output contract, full failure modes, worked examples).
+- [evaluator agent spec](https://github.com/alexherrero/crickets/blob/main/agents/evaluator.md) — the canonical body (frontmatter, input contract, output contract, full failure modes, worked examples).
 - [ADR 0002 — evaluator design](0002-evaluator-design) — why the allowlist is tight, why caller-supplied rubric, why coexist with adversarial-reviewer.
 - [Customization Types](Customization-Types) — what `kind: agent` means and where it lands per host.
 - [Per-Host Paths](Per-Host-Paths) — the destination paths the toolkit installer dispatches to.

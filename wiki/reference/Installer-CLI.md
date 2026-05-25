@@ -57,12 +57,12 @@ What lands where on a default `--all` install:
 | `.claude/hooks/<name>.sh` (POSIX) | `hooks/<name>/<name>.sh` (claude-code in `supported_hosts`) | Wipe-and-recreate (v0.7.0+) |
 | `.claude/hooks/<name>.ps1` (Windows) | `hooks/<name>/<name>.ps1` (claude-code in `supported_hosts`) | Wipe-and-recreate (v0.7.0+) |
 | `.claude/settings.json` (`.hooks.<event>` arrays only) | `hooks/<name>/settings-fragment-{bash,pwsh}.json` | **Idempotent deep-merge** (preserves user keys); NOT wiped on `--update`; re-running is a no-op if entries already present (v0.7.0+) |
-| `.git/hooks/pre-push` | `templates/hooks/pre-push` | Always refreshed; existing non-matching hook backed up to `.agent-toolkit-bak.<timestamp>` |
+| `.git/hooks/pre-push` | `templates/hooks/pre-push` | Always refreshed; existing non-matching hook backed up to `.crickets-bak.<timestamp>` |
 
 > [!NOTE]
-> **`.agents/skills/<name>/` + `.gemini/agents/<name>.md` removed in v0.9.0** along with standalone Gemini CLI host support per [ROADMAP item #15](https://github.com/alexherrero/agentic-harness/blob/main/.harness/ROADMAP.md). Pre-existing legacy entries from prior installs trigger an interactive cleanup prompt at install time (move to `.agents/skills.agent-toolkit-bak.<ts>/` + `.gemini/agents.agent-toolkit-bak.<ts>/`); `--no-legacy-cleanup` / `-NoLegacyCleanup` flag suppresses for CI. See [ADR 0006](decisions/0006-gemini-cli-host-removal).
+> **`.agents/skills/<name>/` + `.gemini/agents/<name>.md` removed in v0.9.0** along with standalone Gemini CLI host support per [ROADMAP item #15](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md). Pre-existing legacy entries from prior installs trigger an interactive cleanup prompt at install time (move to `.agents/skills.crickets-bak.<ts>/` + `.gemini/agents.crickets-bak.<ts>/`); `--no-legacy-cleanup` / `-NoLegacyCleanup` flag suppresses for CI. See [ADR 0006](decisions/0006-gemini-cli-host-removal).
 
-**Sibling-tool collision note (v0.6.0+):** `.claude/agents/` and `.claude/hooks/` are also written to by the sibling [`agentic-harness`](https://github.com/alexherrero/agentic-harness) installer (for `explorer` / `adversarial-reviewer` / `documenter`, and harness-shipped hooks under `--hooks` mode). When both repos are installed into the same target, the **later-run** installer's `--update` wipes the parent before recreating from its own source. Run both installers (in either order) to land the full set. The same caveat already applies to `.claude/skills/` and `.agent/skills/`. `.claude/settings.json` is shared but never wiped — both installers merge their fragments in idempotently.
+**Sibling-tool collision note (v0.6.0+):** `.claude/agents/` and `.claude/hooks/` are also written to by the sibling [`agentm`](https://github.com/alexherrero/agentm) installer (for `explorer` / `adversarial-reviewer` / `documenter`, and harness-shipped hooks under `--hooks` mode). When both repos are installed into the same target, the **later-run** installer's `--update` wipes the parent before recreating from its own source. Run both installers (in either order) to land the full set. The same caveat already applies to `.claude/skills/` and `.agent/skills/`. `.claude/settings.json` is shared but never wiped — both installers merge their fragments in idempotently.
 
 User-state paths (NEVER touched by `--update`):
 
@@ -76,14 +76,14 @@ User-state paths (NEVER touched by `--update`):
 By default, the installer copies `templates/hooks/pre-push` → `<target>/.git/hooks/pre-push` and `chmod +x` it. The hook:
 
 - Runs on every `git push`.
-- Searches for `agent-toolkit/scripts/check-no-pii.sh` via `$AGENT_TOOLKIT_PATH`, then common dev-machine paths (`~/Antigravity/agent-toolkit/`, `~/dev/agent-toolkit/`, `../agent-toolkit/`).
+- Searches for `crickets/scripts/check-no-pii.sh` via `$AGENT_TOOLKIT_PATH`, then common dev-machine paths (`~/Antigravity/crickets/`, `~/dev/crickets/`, `../crickets/`).
 - If found: scans the push range; blocks push on any PII finding.
 - If not found: prints a warning and exits 0 (degraded-gracefully — the hook never blocks a push without being able to verify).
 
 **Existing-hook handling:**
 
 - If the target already has a `.git/hooks/pre-push` byte-identical to `templates/hooks/pre-push`: no-op (`kept` message).
-- If different: existing hook is backed up to `.git/hooks/pre-push.agent-toolkit-bak.<unix-timestamp>` before overwrite.
+- If different: existing hook is backed up to `.git/hooks/pre-push.crickets-bak.<unix-timestamp>` before overwrite.
 - The toolkit installer **never silently clobbers** a non-matching hook.
 
 ## Exit codes

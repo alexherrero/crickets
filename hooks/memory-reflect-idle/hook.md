@@ -1,6 +1,6 @@
 ---
 name: memory-reflect-idle
-description: "Idle-time / orphan-recovery hook that scans .harness/session-id-*.start markers for crashed sessions where the Stop hook never fired + runs reflection retroactively. Also GCs .reflected markers older than 30 days. Registered on SessionStart to fire on every session boot/resume (catches operator returning after a break); also invokable manually or via cron for periodic orphan sweeps. Plan #7a part 3 task 4 — new agent-toolkit primitive."
+description: "Idle-time / orphan-recovery hook that scans .harness/session-id-*.start markers for crashed sessions where the Stop hook never fired + runs reflection retroactively. Also GCs .reflected markers older than 30 days. Registered on SessionStart to fire on every session boot/resume (catches operator returning after a break); also invokable manually or via cron for periodic orphan sweeps. Plan #7a part 3 task 4 — new crickets primitive."
 kind: hook
 supported_hosts: [claude-code]
 version: 0.1.0
@@ -15,7 +15,7 @@ A standalone hook script that scans for **orphan session markers** in `.harness/
 
 Claude Code doesn't expose a native "idle" hook event. The lifecycle events are `SessionStart` / `UserPromptSubmit` / `PreToolUse` / `PostToolUse` / `Stop` / etc. — all driven by agent activity. There's no "agent has been silent for N minutes" event.
 
-The agent-toolkit's idle-time primitive works around this by:
+The crickets's idle-time primitive works around this by:
 
 1. **Crash-recovery markers** (lands in plan #7a part 3 task 6) — SessionStart writes `.harness/session-id-<uuid>.start`; Stop renames to `.reflected` on success. A `.start` marker that's still `.start` past the idle threshold = orphan = crashed session.
 2. **Sweep on SessionStart resume/clear/compact** — this hook registers on `SessionStart` event so it fires whenever an operator comes back to a session. Catches the common case: "operator returns after a coffee break, session was idle, orphans from a previous crashed session get reflected retroactively."

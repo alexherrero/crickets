@@ -39,7 +39,7 @@ git checkout --quiet $safetyBranch | Out-Null
 git stash pop --quiet | Out-Null
 git add -A | Out-Null
 git -c commit.gpgsign=false `
-    -c user.email='commit-on-stop@agent-toolkit.local' `
+    -c user.email='commit-on-stop@crickets.local' `
     -c user.name='commit-on-stop hook' `
     commit --quiet -m $msg | Out-Null
 git checkout --quiet $origBranch | Out-Null

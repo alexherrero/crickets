@@ -3,9 +3,9 @@
 > [!NOTE]
 > **Status:** historical record, closed
 > **Period:** 2026-04-19 → 2026-05-23
-> **Paired with releases:** `agentic-harness` v3.0.0 + `agent-toolkit` v1.0.0
+> **Paired with releases:** `agentm` v3.0.0 + `crickets` v1.0.0
 
-This document is the focused-survey retrospective of the V3 arc — the work that took `agentic-harness` from v1.0.0 (Codex-removal sweep) to v3.0.0 (V3 close-out), and `agent-toolkit` from inception (v0.5.0 split-out) to v1.0.0 (public-API commitment).
+This document is the focused-survey retrospective of the V3 arc — the work that took `agentm` from v1.0.0 (Codex-removal sweep) to v3.0.0 (V3 close-out), and `crickets` from inception (v0.5.0 split-out) to v1.0.0 (public-API commitment).
 
 It exists for posterity (when the next arc starts, this is the source-of-truth for "what V3 was"), for future maintainers (so the design themes are read once not re-derived), and for the operator's later vault archive of V3 material.
 
@@ -23,7 +23,7 @@ Pre-V3 work (harness v0.x) is out of scope. So is anything in the AgentMemoryV4 
 
 | Harness | Toolkit | Date | Theme | Substantive side |
 |---|---|---|---|---|
-| v2.0.0 | v0.5.0 | 2026-05-12 | agent-toolkit repo split (BREAKING migration) | both |
+| v2.0.0 | v0.5.0 | 2026-05-12 | crickets repo split (BREAKING migration) | both |
 | v2.1.0 | v0.6.0 | 2026-05-13 | `evaluator` sub-agent + `/review` §3b | both |
 | v2.2.0 | v0.7.0 | 2026-05-14 | base hooks: kill-switch / steer / commit-on-stop | both |
 | v2.3.0 | v0.8.0 | 2026-05-15 | `/design` skill v1 + `/release` §1b | both |
@@ -122,5 +122,5 @@ Non-V4 frontiers: #17 Antigravity 2.0 + CLI host support; #19 Ideas.md format re
 
 - [`agent-memory-evolution`](agent-memory-evolution) — the AgentMemory evolution HLD (V1 → V4), shipped alongside this retrospective in plan #14
 - [`memoryvault`](memoryvault) — the parent MemoryVault design (V3 implementation)
-- [`agentic-harness/.harness/ROADMAP-AgentMemoryV4.md`](https://github.com/alexherrero/agentic-harness/blob/main/.harness/ROADMAP-AgentMemoryV4.md) — V4 roadmap (lands in plan #14 task 3)
-- `agentic-harness/.harness/ROADMAP.archive.20260523-v3-complete.md` — full V3-era ROADMAP snapshot (operator-local; `.harness/` is gitignored — archive preserved for eventual vault migration)
+- [`agentm/.harness/ROADMAP-AgentMemoryV4.md`](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP-AgentMemoryV4.md) — V4 roadmap (lands in plan #14 task 3)
+- `agentm/.harness/ROADMAP.archive.20260523-v3-complete.md` — full V3-era ROADMAP snapshot (operator-local; `.harness/` is gitignored — archive preserved for eventual vault migration)

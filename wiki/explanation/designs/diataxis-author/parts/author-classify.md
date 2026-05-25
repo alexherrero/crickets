@@ -46,9 +46,9 @@ project:
 
 ## Scripts shipped
 
-- `agent-toolkit/skills/diataxis-author/scripts/classify.py` (~250 lines — heuristic mode-classification engine; deterministic; ADR 0004 rules + operator-convention overrides; sub-agent dispatch for ambiguous cases).
-- `agent-toolkit/skills/diataxis-author/scripts/author.py` (~180 lines — invocation entry for `/diataxis author`; calls into classify.py for mode-selection + template loading + skeleton emit).
-- 4 template files at `agent-toolkit/skills/diataxis-author/templates/{tutorial.md,how-to.md,reference.md,explanation.md}` — the Diátaxis-mode-aware skeleton each `/diataxis author` invocation populates.
+- `crickets/skills/diataxis-author/scripts/classify.py` (~250 lines — heuristic mode-classification engine; deterministic; ADR 0004 rules + operator-convention overrides; sub-agent dispatch for ambiguous cases).
+- `crickets/skills/diataxis-author/scripts/author.py` (~180 lines — invocation entry for `/diataxis author`; calls into classify.py for mode-selection + template loading + skeleton emit).
+- 4 template files at `crickets/skills/diataxis-author/templates/{tutorial.md,how-to.md,reference.md,explanation.md}` — the Diátaxis-mode-aware skeleton each `/diataxis author` invocation populates.
 - `diataxis-evaluator` sub-agent body filled in (stub from part 1 → operational with caller-supplies-inline-rubric contract).
 
 ## Tasks (DRAFT — refine via `/plan` when promoted)

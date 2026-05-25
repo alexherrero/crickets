@@ -13,4 +13,4 @@ The skill does nothing. Acknowledge the invocation and return.
 
 ## Why it exists
 
-To dogfood the `agent-toolkit` directory structure and prove the installer's bundle-dispatch logic works end-to-end (validated in task 3 of the v0.1.0 plan). Replace this content with real skill behavior in your fork, or delete the whole bundle.
+To dogfood the `crickets` directory structure and prove the installer's bundle-dispatch logic works end-to-end (validated in task 3 of the v0.1.0 plan). Replace this content with real skill behavior in your fork, or delete the whole bundle.

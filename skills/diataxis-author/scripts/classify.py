@@ -15,7 +15,7 @@
 # reads only at startup; part 5 wires that read fully).
 #
 # Locked design calls (parent §1 + §5):
-#   - Heuristic rules mirror agentic-harness/scripts/check-wiki.py:
+#   - Heuristic rules mirror agentm/scripts/check-wiki.py:
 #       Tutorial: ## Step N — heading + ## What you learned + ## Next.
 #       How-to: ## Steps section OR ≥3 numbered imperative steps in
 #               first 40 lines; NO ## Rationale / Why / Background.

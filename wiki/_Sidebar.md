@@ -29,7 +29,7 @@
 - [Agent Memory Evolution V1→V4](agent-memory-evolution)
 
 **Decisions**
-- [0001 — agent-toolkit purpose](0001-agent-toolkit-purpose)
+- [0001 — crickets purpose](0001-crickets-purpose)
 - [0002 — evaluator design](0002-evaluator-design)
 - [0003 — base operator hooks](0003-base-operator-hooks)
 - [0004 — design skill](0004-design-skill)

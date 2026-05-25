@@ -1,4 +1,4 @@
-# agent-toolkit Python dependencies.
+# crickets Python dependencies.
 #
 # Installed by install.sh / install.ps1 by default; opt out with
 # --no-python-deps if you prefer to manage Python deps yourself

@@ -83,7 +83,7 @@ _DEFAULT_SOURCES = [
 
 _DEFAULT_CADENCE_DAYS = 7
 _FETCH_TIMEOUT_SEC = 10
-_USER_AGENT = "agent-toolkit-skill-discovery/0.1 (+local; stdlib-urllib)"
+_USER_AGENT = "crickets-skill-discovery/0.1 (+local; stdlib-urllib)"
 
 
 def _resolve_vault_path(arg_path: str | None) -> Path:

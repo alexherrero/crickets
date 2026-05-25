@@ -27,7 +27,7 @@ This part ships the **write loop** — the reflection logic that mines conversat
 
 - **Manual `/memory reflect [--session <path>]`** — user-initiated; runs against the current session transcript by default or a specified transcript path. Validates the reflection logic against arbitrary input.
 - **Stop-event hook** — fires automatically on Claude Code session Stop. Scoped to the just-ended session's transcript.
-- **Idle-time hook** (new agent-toolkit primitive added by this part) — fires when Claude Code has been idle > N minutes (N TBD, default 30); also scans `.harness/session-id-*.start` marker files for orphans (crashed sessions where Stop didn't fire) and runs reflection retroactively on those transcripts.
+- **Idle-time hook** (new crickets primitive added by this part) — fires when Claude Code has been idle > N minutes (N TBD, default 30); also scans `.harness/session-id-*.start` marker files for orphans (crashed sessions where Stop didn't fire) and runs reflection retroactively on those transcripts.
 
 **Reflection logic** (shared across all three triggers):
 
@@ -71,7 +71,7 @@ All markers live in `.harness/` (gitignored, runtime-only).
 
 ## Notes for the implementing /work session
 
-- The idle-time hook is the new agent-toolkit primitive. The existing Stop-event hook pattern from plan #4+#5 (`commit-on-stop`) is the reference shape; idle is similar but with a different trigger condition. The hook needs to know "how long has the agent been idle?" — Claude Code's hook lifecycle doesn't expose this directly, so the hook likely polls a heartbeat file the SessionStart writes + updates on every UserPromptSubmit.
+- The idle-time hook is the new crickets primitive. The existing Stop-event hook pattern from plan #4+#5 (`commit-on-stop`) is the reference shape; idle is similar but with a different trigger condition. The hook needs to know "how long has the agent been idle?" — Claude Code's hook lifecycle doesn't expose this directly, so the hook likely polls a heartbeat file the SessionStart writes + updates on every UserPromptSubmit.
 - The 3-category extraction heuristic is the load-bearing-but-uncertain piece. Ship instrumented — every mined candidate logs its category + confidence + rationale so the user can validate via the interactive review + manually inspect via `/memory inspect`.
 - The "user said 'always X'" pattern detection is straightforward (keyword scan + nearby user-turn). The "user manually corrected the agent" pattern is harder — requires looking at agent turn → user reverts/corrects → agent applies correction. Defer fancy detection to a follow-up if the simple heuristic is too noisy.
 - Idea-candidate mining lives in this part but the **idea-ledger writes** (Ideas.md + `_idea-incubator/`) are the next part's scope. This part's reflection logic just emits idea candidates as in-memory objects; the idea-ledger part subscribes to those.

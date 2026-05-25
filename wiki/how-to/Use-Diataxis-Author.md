@@ -2,13 +2,13 @@
 
 > [!NOTE]
 > **Goal:** Author + maintain a Diátaxis-style wiki for any repo via the 5-sub-command `/diataxis` skill — live authoring (`author`), drift detection (`check`), interactive repair (`repair`), one-shot legacy migration (`migrate`), and mode classification (`classify`).
-> **Prereqs:** `agent-toolkit` installed (see [Manifest-Schema](Manifest-Schema) for the `kind: skill` shape); for `check`/`repair`: `scripts/check-wiki.py` from `agentic-harness` available via sibling clone (graceful-skip if absent); for `migrate`: clean working tree + a legacy audience-based wiki layout to migrate from.
+> **Prereqs:** `crickets` installed (see [Manifest-Schema](Manifest-Schema) for the `kind: skill` shape); for `check`/`repair`: `scripts/check-wiki.py` from `agentm` available via sibling clone (graceful-skip if absent); for `migrate`: clean working tree + a legacy audience-based wiki layout to migrate from.
 
-The `diataxis-author` skill encodes the operator's preferred conventions from [agentic-harness ADR 0004](https://github.com/alexherrero/agentic-harness/blob/main/wiki/explanation/decisions/0004-diataxis-documentation-spec.md) into proactive authoring guidance + ongoing drift detection + repair + one-shot migration. One skill, five sub-commands (matches `/memory`'s shape).
+The `diataxis-author` skill encodes the operator's preferred conventions from [agentm ADR 0004](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0004-diataxis-documentation-spec.md) into proactive authoring guidance + ongoing drift detection + repair + one-shot migration. One skill, five sub-commands (matches `/memory`'s shape).
 
 ## Prerequisites
 
-- agent-toolkit installed in your project (per [Tutorial 1](../tutorials/01-First-Customization.md)).
+- crickets installed in your project (per [Tutorial 1](../tutorials/01-First-Customization.md)).
 - For drift detection: `scripts/check-wiki.py` from the harness (auto-detected at sibling-clone locations; graceful-skip if absent).
 - For migration: working tree must be clean (`git status --porcelain` empty); legacy audience-based wiki layout (`development/`, `operational/`, `design/`, `architecture/`) for `/diataxis migrate` to have anything to do.
 
@@ -37,8 +37,8 @@ The `diataxis-author` skill encodes the operator's preferred conventions from [a
 You want to write a new how-to page. Let the skill pick the template + apply filename style + drop a pre-filled skeleton you edit in your editor.
 
 ```bash
-python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/author.py \
-  "Install agent-toolkit into a project" --mode how-to
+python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/author.py \
+  "Install crickets into a project" --mode how-to
 ```
 
 Output:
@@ -61,7 +61,7 @@ Skill writes the how-to template skeleton (mode-appropriate sections per ADR 000
 Don't know whether your page should be a tutorial / how-to / reference / explanation? Describe the intent + let the classifier pick.
 
 ```bash
-python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/author.py \
+python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/author.py \
   "MCP server lookup tables" --intent "quick-reference page listing every MCP server we use with their default ports + configs"
 ```
 
@@ -74,7 +74,7 @@ If the intent is ambiguous (heuristic confidence below threshold, default 0.7), 
 You've been editing the wiki for a while; want to see what's drifted.
 
 ```bash
-python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/check.py --wiki-root wiki/
+python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/check.py --wiki-root wiki/
 ```
 
 Outputs structured JSON listing all findings — mode-mixed pages, stale cross-references, template-shape drift, and (when check-wiki.py is available) the strict validator's rules too.
@@ -86,7 +86,7 @@ For each finding, a one-line suggested fix is included so you can grep for "need
 After running `check`, walk through each finding interactively.
 
 ```bash
-python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/repair.py
+python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/repair.py
 ```
 
 For each finding, the skill displays the file + rule + msg + suggested fix in a `──`-separated card and prompts:
@@ -108,9 +108,9 @@ Your project has the old harness layout (`development/`, `operational/`, `design
 
 ```bash
 # Preview only — see what would happen, no filesystem changes
-python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/migrate.py --preview
+python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/migrate.py --preview
 # Apply
-python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/migrate.py --execute
+python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/migrate.py --execute
 ```
 
 The skill:
@@ -143,7 +143,7 @@ Recognized convention keys (case-insensitive; with or without `**bold**` wrappin
 Inspect current effective conventions:
 
 ```bash
-python3 ~/Antigravity/agent-toolkit/skills/diataxis-author/scripts/agentmemory_conventions.py \
+python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/agentmemory_conventions.py \
   --vault-path "$MEMORY_VAULT_PATH" \
   --wiki-root /path/to/your/project/wiki
 ```
@@ -180,7 +180,7 @@ When the skill runs in this repo, kebab-case + 0.85 threshold apply; in your oth
 
 **`/diataxis classify` keeps flagging pages as `needs_subagent: true`** — confidence threshold may be too high for your wiki's writing style. Tune via `<repo>/wiki/.diataxis-conventions.md` `Confidence threshold:` line OR via a global vault `_always-load/diataxis-threshold.md` entry.
 
-**`/diataxis check` reports `check_wiki_status: skipped-absent`** — `scripts/check-wiki.py` from the harness isn't where the skill auto-detects (sibling clone at `<toolkit>/../agentic-harness/scripts/` or `~/Antigravity/agentic-harness/scripts/`). Pass `--check-wiki-py <path>` explicitly, or skip and use only the in-skill heuristics.
+**`/diataxis check` reports `check_wiki_status: skipped-absent`** — `scripts/check-wiki.py` from the harness isn't where the skill auto-detects (sibling clone at `<toolkit>/../agentm/scripts/` or `~/Antigravity/agentm/scripts/`). Pass `--check-wiki-py <path>` explicitly, or skip and use only the in-skill heuristics.
 
 **`/diataxis repair` says all findings skipped** — non-TTY stdin defaults all prompts to skip (never-silent-action contract). Run from an interactive terminal OR use the specific-slug subcommands (`/diataxis repair` flow doesn't support batch — by design).
 
@@ -193,6 +193,6 @@ When the skill runs in this repo, kebab-case + 0.85 threshold apply; in your oth
 - [Parent design — diataxis-author](../explanation/designs/diataxis-author.md) — the canonical "Why we built this" entry point per the locked design call from plan #6 (same convention as MemoryVault parent design).
 - [ADR 0008 — diataxis-author](../explanation/decisions/0008-diataxis-author.md) — 4 locked design calls (Q1-Q4) + load-bearing assumptions with re-audit triggers.
 - [Sibling sub-agent — diataxis-evaluator](../../agents/diataxis-evaluator.md) — read-only Tier-2 worker for ambiguous mode-classification.
-- [agentic-harness ADR 0004 — Diátaxis Documentation Spec](https://github.com/alexherrero/agentic-harness/blob/main/wiki/explanation/decisions/0004-diataxis-documentation-spec.md) — canonical Diátaxis convention this skill enforces.
-- [Predecessor (deprecated 2026-05-22) — migrate-to-diataxis](https://github.com/alexherrero/agentic-harness/blob/main/harness/skills/migrate-to-diataxis.md) — superseded by `/diataxis migrate`.
+- [agentm ADR 0004 — Diátaxis Documentation Spec](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0004-diataxis-documentation-spec.md) — canonical Diátaxis convention this skill enforces.
+- [Predecessor (deprecated 2026-05-22) — migrate-to-diataxis](https://github.com/alexherrero/agentm/blob/main/harness/skills/migrate-to-diataxis.md) — superseded by `/diataxis migrate`.
 - [Use the Memory Skill](Use-The-Memory-Skill.md) — sibling skill; same multi-sub-command shape; first AgentMemory consumer.

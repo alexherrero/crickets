@@ -59,7 +59,7 @@ Per-repo only: `<project-root>/.harness/STOP`. Device-scope (`~/.harness/STOP` h
 
 ## Failure modes
 
-- **Hook script missing or not executable:** Claude Code logs the hook-call error but does not block the tool call. The agent proceeds normally. Re-run `bash agent-toolkit/install.sh --update <project>` to restore.
+- **Hook script missing or not executable:** Claude Code logs the hook-call error but does not block the tool call. The agent proceeds normally. Re-run `bash crickets/install.sh --update <project>` to restore.
 - **`.claude/settings.json` malformed:** Claude Code refuses to load any hooks. Validate JSON with `python3 -m json.tool .claude/settings.json`.
 - **`.harness/STOP` is a directory or symlink:** `[[ -f ... ]]` only matches regular files. A directory or symlink at that path causes the hook to behave as if STOP is absent. Don't create non-file entries at `.harness/STOP`.
 

@@ -1,6 +1,6 @@
 # Manifest schema reference
 
-YAML frontmatter contract for every customization in `agent-toolkit`. Validated by `scripts/validate-manifests.py` on every commit.
+YAML frontmatter contract for every customization in `crickets`. Validated by `scripts/validate-manifests.py` on every commit.
 
 ## ⚡ Quick Reference
 
@@ -9,7 +9,7 @@ YAML frontmatter contract for every customization in `agent-toolkit`. Validated 
 | `name` | string | yes | Matches dirname (or `bundle` for `bundle.md`). |
 | `description` | string | yes | Non-empty; one or two sentences. |
 | `kind` | enum string | yes | `bundle` \| `skill` \| `command` \| `agent` \| `hook` \| `mcp-server` \| `status-line` \| `output-style` \| `workflow` \| `rule` \| `snippet` \| `settings-fragment` |
-| `supported_hosts` | list of strings | yes | Non-empty subset of `[claude-code, antigravity]`. (Gemini CLI host removed in v0.9.0 per [ROADMAP item #15](https://github.com/alexherrero/agentic-harness/blob/main/.harness/ROADMAP.md); see [ADR 0006](decisions/0006-gemini-cli-host-removal). Validator emits a `removed host` error with v0.9.0 CHANGELOG pointer if `gemini-cli` is still present.) |
+| `supported_hosts` | list of strings | yes | Non-empty subset of `[claude-code, antigravity]`. (Gemini CLI host removed in v0.9.0 per [ROADMAP item #15](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md); see [ADR 0006](decisions/0006-gemini-cli-host-removal). Validator emits a `removed host` error with v0.9.0 CHANGELOG pointer if `gemini-cli` is still present.) |
 | `version` | string | yes | Semver-shape `MAJOR.MINOR.PATCH` with optional `-prerelease` suffix |
 | `contents` | list of mappings | bundles only | Non-empty list of `{<kind>: <name>}` items; each resolves to a file/dir within the bundle |
 | `install_scope` | enum string | optional | `user` \| `project` \| `either` (default: `either`) |
@@ -97,4 +97,4 @@ v0.1.0 of the toolkit always installs into project paths (the installer takes a 
 - [Per-Host Paths](Per-Host-Paths) — destination paths per kind per host.
 - [Installer CLI](Installer-CLI) — flags and modes.
 - [Add a Skill](Add-A-Skill) — practical recipe.
-- [ADR 0001](0001-agent-toolkit-purpose) — why the schema looks like this.
+- [ADR 0001](0001-crickets-purpose) — why the schema looks like this.

@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This repo is [`agent-toolkit`](https://github.com/alexherrero/agent-toolkit). Universal instructions live in [AGENTS.md](AGENTS.md) — read that first.
+This repo is [`crickets`](https://github.com/alexherrero/crickets). Universal instructions live in [AGENTS.md](AGENTS.md) — read that first.
 
 ## Claude Code specifics
 

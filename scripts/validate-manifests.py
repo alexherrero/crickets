@@ -55,7 +55,7 @@ HOST_ENUM = {"claude-code", "antigravity"}
 REMOVED_HOSTS = {
     "gemini-cli": "v0.9.0 removed standalone Gemini CLI host support per ROADMAP item #15. "
                   "Drop 'gemini-cli' from supported_hosts. See "
-                  "https://github.com/alexherrero/agent-toolkit/blob/main/CHANGELOG.md "
+                  "https://github.com/alexherrero/crickets/blob/main/CHANGELOG.md "
                   "for the v0.9.0 entry. Antigravity (Gemini-in-IDE) stays as a supported host.",
 }
 SCOPE_ENUM = {"user", "project", "either"}

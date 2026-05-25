@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > **Goal:** capture durable preferences / workflows / fixes to MemoryVault so the agent's behavior compounds across sessions. Evolve entries when preferences change without losing the audit trail.
-> **Prereqs:** `agent-toolkit` installed (skill lands at `.claude/skills/memory/` + `.agent/skills/memory/`); an Obsidian vault folder set up as your `MemoryVault/` root + the path exported as `MEMORY_VAULT_PATH` (or passed via `--vault-path` on each invocation). Python deps (`pyyaml`, `sqlite-vec`, `sentence-transformers`) install by default when you run `bash install.sh ~/your-project` — opt out with `--no-python-deps` if you manage Python deps yourself. Without `sentence-transformers` the skill still works (file writes always succeed; embedding queues for later; recall degrades to grep+frontmatter-only). **v0.9.2 (2026-05-20): local `sentence-transformers` is now the only embedding mode** — see [ADR 0001's 2026-05-20 amendment](../explanation/decisions/0001-agent-toolkit-purpose.md#amendment-2026-05-20). The previous Voyage/Anthropic API mode + `MEMORY_USE_API_EMBEDDINGS` env var were removed.
+> **Prereqs:** `crickets` installed (skill lands at `.claude/skills/memory/` + `.agent/skills/memory/`); an Obsidian vault folder set up as your `MemoryVault/` root + the path exported as `MEMORY_VAULT_PATH` (or passed via `--vault-path` on each invocation). Python deps (`pyyaml`, `sqlite-vec`, `sentence-transformers`) install by default when you run `bash install.sh ~/your-project` — opt out with `--no-python-deps` if you manage Python deps yourself. Without `sentence-transformers` the skill still works (file writes always succeed; embedding queues for later; recall degrades to grep+frontmatter-only). **v0.9.2 (2026-05-20): local `sentence-transformers` is now the only embedding mode** — see [ADR 0001's 2026-05-20 amendment](../explanation/decisions/0001-crickets-purpose.md#amendment-2026-05-20). The previous Voyage/Anthropic API mode + `MEMORY_USE_API_EMBEDDINGS` env var were removed.
 
 The `memory` skill ships as plan #7a parts 1 + 2 + 3 + 4 of [MemoryVault — Permanent agent memory via Obsidian-vault-folder + reflection sidecar](../explanation/designs/memoryvault.md). This page covers the **two write primitives** (`/memory save` + `/memory evolve`), the **two recall hooks** (SessionStart + UserPromptSubmit), the **`/memory reflect` skill + Stop / idle reflection hooks** (the write loop), **crash-recovery markers**, and the **two-tier idea ledger** (`Ideas.md` surface + `_idea-incubator/` deep research + `/memory promote` graduation + GC). Discovery-mining + seed-pass come in subsequent parts.
 
@@ -35,7 +35,7 @@ The `memory` skill ships as plan #7a parts 1 + 2 + 3 + 4 of [MemoryVault — Per
 | Replace an existing entry with a corrected version, preserving the old one as audit trail | `/memory evolve` |
 | Rename an entry's slug while evolving content | `/memory evolve --new-slug <new>` |
 | Have relevant entries automatically injected on every prompt | Recall is automatic — see [Auto-recall via the two-hook pattern](#auto-recall-via-the-two-hook-pattern) below |
-| Manually search the vault from the shell | `python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/recall.py query "<text>"` |
+| Manually search the vault from the shell | `python3 ~/Antigravity/crickets/skills/memory/scripts/recall.py query "<text>"` |
 | Run reflection on the current session to mine durable entries | `/memory reflect` (manual) — see [Reflection sidecar — Stop + idle + manual](#reflection-sidecar--stop--idle--manual) below |
 | Have crashed sessions recovered automatically when you next start Claude Code | Crash-recovery markers are automatic — see [Crash-recovery markers](#crash-recovery-markers) below |
 | Capture an idea / follow-up surfaced by the reflection sidecar | Auto — surfaces in `~/Obsidian/Ideas.md` after operator confirmation; see [Idea ledger — two-tier capture](#idea-ledger--two-tier-capture) |
@@ -57,7 +57,7 @@ not just checkmarks. The next session's context is whatever the closeout
 captures — so capture everything that matters: files changed, design calls,
 scope adjustments, CI per-OS times, manual verification scenarios, negative
 test results when relevant." \
-| python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/save.py \
+| python3 ~/Antigravity/crickets/skills/memory/scripts/save.py \
   preferences paragraph-long-status-narratives \
   --vault-path ~/Library/CloudStorage/GoogleDrive-<account>/My\ Drive/Obsidian/MemoryVault \
   --tags dev-flow,status-reports,locked-design-call \
@@ -103,7 +103,7 @@ echo "Status:[x] task closeouts in PLAN.md use bulleted lists per task:
 - manual verification scenarios (if applicable)
 - negative-test results (if applicable)
 Each bullet 1-2 sentences max." \
-| python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/evolve.py \
+| python3 ~/Antigravity/crickets/skills/memory/scripts/evolve.py \
   personal-private/_always-load/paragraph-long-status-narratives.md \
   "Switched preference: bulleted lists scale better; paragraph format was hard to scan when reviewing PLAN archives" \
   --vault-path ~/Library/CloudStorage/GoogleDrive-<account>/My\ Drive/Obsidian/MemoryVault
@@ -122,7 +122,7 @@ The slug `paragraph-long-status-narratives` no longer fits the new preference. U
 
 ```bash
 echo "New content for renamed entry..." \
-| python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/evolve.py \
+| python3 ~/Antigravity/crickets/skills/memory/scripts/evolve.py \
   personal-private/preferences/paragraph-long-status-narratives.md \
   "Renamed to reflect new bulleted format" \
   --new-slug bulleted-status-narratives \
@@ -176,7 +176,7 @@ Fires on every user prompt. Takes the prompt as a recall query, runs the **5-ste
 Run the engine directly from the shell. JSON-Lines output is pipeable for scripting:
 
 ```bash
-python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/recall.py \
+python3 ~/Antigravity/crickets/skills/memory/scripts/recall.py \
   --vault-path ~/Library/CloudStorage/GoogleDrive-<account>/My\ Drive/Obsidian/MemoryVault \
   query "how do I evolve a memory entry" -k 3
 ```
@@ -194,7 +194,7 @@ Flags:
 - `-k N` — top-K (default 5).
 - `--budget-ms N` — time budget override (default 300ms).
 - `--include-inbox` — surface `_inbox/` entries too (default excluded — those are raw, unfiltered candidates).
-- `--mode local|stub` — embedding mode override (default: `local`; `stub` is testing-only). `--mode api` was removed in v0.9.2 — see [ADR 0001 amendment](../explanation/decisions/0001-agent-toolkit-purpose.md#amendment-2026-05-20).
+- `--mode local|stub` — embedding mode override (default: `local`; `stub` is testing-only). `--mode api` was removed in v0.9.2 — see [ADR 0001 amendment](../explanation/decisions/0001-crickets-purpose.md#amendment-2026-05-20).
 
 ### Antigravity equivalent
 
@@ -230,7 +230,7 @@ Mode resolution: `--route-mode` CLI flag → `MEMORY_REVIEW_MODE` env var → de
 User-invokable; runs against the current Claude Code session by default or an arbitrary transcript path via `--session`. Useful for dogfooding new patterns, re-running over an old session, or doing on-demand triage:
 
 ```bash
-python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/reflect.py \
+python3 ~/Antigravity/crickets/skills/memory/scripts/reflect.py \
   ~/.claude/projects/<cwd-slug>/<session-id>.jsonl \
   --summary --route --route-mode interactive
 ```
@@ -249,7 +249,7 @@ Coexists with `commit-on-stop` (both register on the Stop event). Hook context h
 
 ### Trigger 3: idle-time hook (`memory-reflect-idle`)
 
-Auto-installed at `.claude/hooks/memory-reflect-idle.sh`. **First new agent-toolkit hook primitive** — Claude Code has no native "idle" event, so this hook fires on `SessionStart` instead (alongside `memory-recall-session-start`) and scans `.harness/session-id-*.start` markers for orphans (markers older than 1 hour = sessions where Stop didn't fire — Claude Code crashed / kill -9 / force-quit). For each orphan, it invokes `reflect.py --route` retroactively, renames `.start` → `.reflected` on success. Also GCs `.reflected` markers older than 30 days.
+Auto-installed at `.claude/hooks/memory-reflect-idle.sh`. **First new crickets hook primitive** — Claude Code has no native "idle" event, so this hook fires on `SessionStart` instead (alongside `memory-recall-session-start`) and scans `.harness/session-id-*.start` markers for orphans (markers older than 1 hour = sessions where Stop didn't fire — Claude Code crashed / kill -9 / force-quit). For each orphan, it invokes `reflect.py --route` retroactively, renames `.start` → `.reflected` on success. Also GCs `.reflected` markers older than 30 days.
 
 Three convergent trigger surfaces give layered coverage:
 
@@ -345,7 +345,7 @@ When an idea is worth investing in:
 ```bash
 /memory promote idea <slug>
 # OR
-python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/ideas_promote.py promote <slug> \
+python3 ~/Antigravity/crickets/skills/memory/scripts/ideas_promote.py promote <slug> \
   --vault-path ~/Library/CloudStorage/GoogleDrive-<account>/My\ Drive/Obsidian/MemoryVault \
   --mode silent
 ```
@@ -386,15 +386,15 @@ The skill resolves the MemoryVault root in this order:
 
 1. **`--vault-path <path>`** CLI arg (highest priority; overrides everything)
 2. **`MEMORY_VAULT_PATH`** environment variable
-3. **Config file** at `~/.config/agent-toolkit/memory.yml` (`vault_path:` key) — **documented but not yet implemented as of v0.9.0**; tracked for a future task
+3. **Config file** at `~/.config/crickets/memory.yml` (`vault_path:` key) — **documented but not yet implemented as of v0.9.0**; tracked for a future task
 
 If none resolve, both `save.py` and `evolve.py` error out with a clear next-step message. No implicit fallback to `cwd` or `~` (prevents accidental writes to wrong directories).
 
 ## Embedding mode (v0.9.2+: local-only)
 
-**As of v0.9.2 (2026-05-20)**, the skill embeds entries via local `sentence-transformers` only — see [ADR 0001's 2026-05-20 amendment](../explanation/decisions/0001-agent-toolkit-purpose.md#amendment-2026-05-20) for the rationale (dual-mode API + local was the v1 design; collapsed to local-only since the primary operator is a Claude Ultra subscriber without a separate API key, and modern small-to-mid local models deliver near-SOTA quality on desktop-class hardware).
+**As of v0.9.2 (2026-05-20)**, the skill embeds entries via local `sentence-transformers` only — see [ADR 0001's 2026-05-20 amendment](../explanation/decisions/0001-crickets-purpose.md#amendment-2026-05-20) for the rationale (dual-mode API + local was the v1 design; collapsed to local-only since the primary operator is a Claude Ultra subscriber without a separate API key, and modern small-to-mid local models deliver near-SOTA quality on desktop-class hardware).
 
-Default model: **`BAAI/bge-large-en-v1.5`** (1024-d native; ~1.3GB on disk + ~1.5GB RAM at runtime; downloads lazily on first invocation; PyTorch MPS on Apple Silicon for acceleration). The model cache lives at `~/.cache/agent-toolkit/sentence-transformers/` — override with `AGENT_TOOLKIT_SENTENCE_TRANSFORMERS_CACHE` env var if you need a different location.
+Default model: **`BAAI/bge-large-en-v1.5`** (1024-d native; ~1.3GB on disk + ~1.5GB RAM at runtime; downloads lazily on first invocation; PyTorch MPS on Apple Silicon for acceleration). The model cache lives at `~/.cache/crickets/sentence-transformers/` — override with `AGENT_TOOLKIT_SENTENCE_TRANSFORMERS_CACHE` env var if you need a different location.
 
 **Model swap escape hatch:** set `AGENT_TOOLKIT_EMBEDDING_MODEL=<huggingface-model-name>` to use a different local model. Useful on low-spec hosts (e.g. `AGENT_TOOLKIT_EMBEDDING_MODEL=all-MiniLM-L6-v2` for the lightweight ~80MB option). The model must produce 1024-d native output to match the vec-index schema; mismatches trigger a graceful-skip with a clear stderr message + `python3 vec_index.py rebuild` migration command.
 
@@ -433,7 +433,7 @@ Check the hook's stderr line — Claude Code shows hook output in its logs. If i
 The vault has grown large enough that the walk + frontmatter parse + read overrun the 500ms (SessionStart) or 300ms (UserPromptSubmit) budgets. Partial results were emitted; the hook didn't block. Mitigation: prune `_always-load/` (those are read on every session boot — keep them lean), or move stale entries to `_archive/` via `/memory evolve`.
 
 **Recall returns "embedding unavailable" stderr but still surfaces results**
-This is the graceful-skip path firing — `sentence-transformers` isn't available, so vec search short-circuits and recall falls back to grep+frontmatter-only. Results are still returned; semantic-paraphrase matches won't surface but exact-keyword matches will. Run `pip install sentence-transformers` (or `bash install.sh` without `--no-python-deps`) to restore the full pipeline. As of v0.9.2 there is no API mode to fall back to — local `sentence-transformers` is the only production path; see [ADR 0001 amendment](../explanation/decisions/0001-agent-toolkit-purpose.md#amendment-2026-05-20).
+This is the graceful-skip path firing — `sentence-transformers` isn't available, so vec search short-circuits and recall falls back to grep+frontmatter-only. Results are still returned; semantic-paraphrase matches won't surface but exact-keyword matches will. Run `pip install sentence-transformers` (or `bash install.sh` without `--no-python-deps`) to restore the full pipeline. As of v0.9.2 there is no API mode to fall back to — local `sentence-transformers` is the only production path; see [ADR 0001 amendment](../explanation/decisions/0001-crickets-purpose.md#amendment-2026-05-20).
 
 **Stop hook fired but no entries appear in MemoryVault**
 Check the hook's stderr line in Claude Code logs. If it says `saved 0, inboxed N`, no HIGH-confidence patterns were detected — all candidates went to `_inbox/` for triage. Check `<vault>/personal-private/_inbox/` for the mined candidates; review + promote via `/memory save` (or `/memory evolve` to supersede an existing entry). If stderr says `MEMORY_VAULT_PATH set?`, the hook's environment didn't inherit the vault env var — set it globally in your shell config (`.bashrc` / `.zshrc`) so Claude Code's hook child processes see it.
@@ -470,13 +470,13 @@ Plan #7b shipped four new sub-commands that turn the vault from a static curated
 
 Walks `SKILL.md` files across configured skill paths and writes one `kind: skill-pointer` entry per skill to `<vault>/personal-skills/<repo>/<skill-name>.md`. The agent picks these up via the normal recall hooks — surfacing *"we have a `/design author` skill"* without you re-mentioning it.
 
-Auto-fires from the installer's post-install step (against toolkit's own `skills/` + sibling `agentic-harness/.claude/skills/`); manual re-run via:
+Auto-fires from the installer's post-install step (against toolkit's own `skills/` + sibling `agentm/.claude/skills/`); manual re-run via:
 
 ```bash
-python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/index_skills.py \
+python3 ~/Antigravity/crickets/skills/memory/scripts/index_skills.py \
   --vault-path "$MEMORY_VAULT_PATH" \
-  --skill-path ~/Antigravity/agent-toolkit/skills \
-  --skill-path ~/Antigravity/agentic-harness/.claude/skills
+  --skill-path ~/Antigravity/crickets/skills \
+  --skill-path ~/Antigravity/agentm/.claude/skills
 ```
 
 Idempotent: unchanged entries skip; version/description shifts trigger rewrite. Repo-name auto-detection walks up for `.git/` or `AGENTS.md` ancestor; override with `--repo-name <slug>` for non-git sources.
@@ -487,10 +487,10 @@ Batched paced walk over `~/.claude/projects/*/<session>.jsonl` with skip-resume 
 
 ```bash
 # Dry-run first to see scope
-python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/reflect.py corpus \
+python3 ~/Antigravity/crickets/skills/memory/scripts/reflect.py corpus \
   --vault-path "$MEMORY_VAULT_PATH"
 # Then commit to the real run
-python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/reflect.py corpus \
+python3 ~/Antigravity/crickets/skills/memory/scripts/reflect.py corpus \
   --vault-path "$MEMORY_VAULT_PATH" --execute --max-batches 5
 ```
 
@@ -502,11 +502,11 @@ Periodically (default weekly) fetches curated "skill-shaped pattern" sources fro
 
 ```bash
 # Manual scan
-python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/discover_skills.py \
+python3 ~/Antigravity/crickets/skills/memory/scripts/discover_skills.py \
   --vault-path "$MEMORY_VAULT_PATH"
 # Idle-hook cadence-checked variant (fires automatically; --cadence-check
 # skips fetch if last_scan was within --cadence-days N — default 7)
-python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/discover_skills.py \
+python3 ~/Antigravity/crickets/skills/memory/scripts/discover_skills.py \
   --vault-path "$MEMORY_VAULT_PATH" --cadence-check
 ```
 
@@ -514,11 +514,11 @@ Cache layout: per-source dated snapshots + diff files under `<vault>/_meta/skill
 
 ### `/memory adapt-skills` — adapt-don't-import workflow
 
-Two-pass architecture: Pass 1 (Python — `adapt_skills.py`) walks discover_skills's diff files, applies a 6-rule rubric, enriches with GitHub metadata + trustworthiness signals; Pass 2 (LLM sub-agent — `adapt-evaluator`) reads each enriched JSON, cross-references vault context, renders final HIGH/MEDIUM/LOW classification + writes watchlist entry. **Never writes to `agent-toolkit/skills/`** — adapt-don't-import is architectural (only the operator manually authors real skills).
+Two-pass architecture: Pass 1 (Python — `adapt_skills.py`) walks discover_skills's diff files, applies a 6-rule rubric, enriches with GitHub metadata + trustworthiness signals; Pass 2 (LLM sub-agent — `adapt-evaluator`) reads each enriched JSON, cross-references vault context, renders final HIGH/MEDIUM/LOW classification + writes watchlist entry. **Never writes to `crickets/skills/`** — adapt-don't-import is architectural (only the operator manually authors real skills).
 
 ```bash
 # Pass 1: walk diffs + enrich (deterministic)
-python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/adapt_skills.py \
+python3 ~/Antigravity/crickets/skills/memory/scripts/adapt_skills.py \
   --vault-path "$MEMORY_VAULT_PATH"
 # Pass 2: sub-agent dispatch (interactive — operator-gated)
 # Caller dispatches the adapt-evaluator sub-agent per its caller-supplies-
@@ -535,22 +535,22 @@ List + interactive review + specific-slug actions on `_skill-watchlist/` entries
 
 ```bash
 # List all pending entries as JSON
-python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/watchlist_review.py \
+python3 ~/Antigravity/crickets/skills/memory/scripts/watchlist_review.py \
   list --vault-path "$MEMORY_VAULT_PATH"
 # Interactive review (defaults to skip in non-TTY)
-python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/watchlist_review.py \
+python3 ~/Antigravity/crickets/skills/memory/scripts/watchlist_review.py \
   review --vault-path "$MEMORY_VAULT_PATH"
 # Specific-slug actions for scripting
-python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/watchlist_review.py \
+python3 ~/Antigravity/crickets/skills/memory/scripts/watchlist_review.py \
   promote anthropics-anthropic-cookbook some-pattern --vault-path "$MEMORY_VAULT_PATH"
-python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/watchlist_review.py \
+python3 ~/Antigravity/crickets/skills/memory/scripts/watchlist_review.py \
   dismiss some-source some-pattern --vault-path "$MEMORY_VAULT_PATH"
-python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/watchlist_review.py \
+python3 ~/Antigravity/crickets/skills/memory/scripts/watchlist_review.py \
   defer some-source some-pattern --until 2026-09-01 --reason "wait-for-stable" \
   --vault-path "$MEMORY_VAULT_PATH"
 ```
 
-**Promote is annotation-only** — adds `status: promoted` + `promoted_at`; entry stays in place. The actual fork to `agent-toolkit/skills/<x>/` is your manual work outside this script (adapt-don't-import architectural rule). **Dismiss archives**, not deletes — moves to `_skill-watchlist/_archive/<source-slug>/` with collision-safe naming, preserves audit trail. **Defer snoozes** with `--until YYYY-MM-DD` + optional `--reason`; future passes can filter `deferred_until` to re-surface eligible entries.
+**Promote is annotation-only** — adds `status: promoted` + `promoted_at`; entry stays in place. The actual fork to `crickets/skills/<x>/` is your manual work outside this script (adapt-don't-import architectural rule). **Dismiss archives**, not deletes — moves to `_skill-watchlist/_archive/<source-slug>/` with collision-safe naming, preserves audit trail. **Defer snoozes** with `--until YYYY-MM-DD` + optional `--reason`; future passes can filter `deferred_until` to re-surface eligible entries.
 
 ### Cadence + automation
 

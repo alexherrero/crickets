@@ -9,7 +9,7 @@
 # Action semantics:
 #   - promote → frontmatter `status: promoted` + `promoted_at` timestamp.
 #     Entry stays in place but is marked "ready for operator's manual
-#     authoring of agent-toolkit/skills/<x>/" (the adapt-don't-import
+#     authoring of crickets/skills/<x>/" (the adapt-don't-import
 #     contract: only the operator forks, never the agent).
 #   - dismiss → entry moves to `_skill-watchlist/_archive/<source-slug>/`
 #     with collision-safe naming; `dismissed_at` timestamp added.
@@ -24,7 +24,7 @@
 #   - Non-TTY stdin → default to skip (no action taken; entry stays in
 #     watchlist). Batch dismissals require explicit --batch-action.
 #   - Promote is an annotation-only operation. The actual fork to
-#     `agent-toolkit/skills/<x>/` is the operator's manual work outside
+#     `crickets/skills/<x>/` is the operator's manual work outside
 #     this script (adapt-don't-import architectural rule).
 
 from __future__ import annotations
@@ -358,7 +358,7 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
         prog="memory-watchlist",
         description=(
             "Review pending entries in _skill-watchlist/ — promote (mark "
-            "ready for operator's manual fork to agent-toolkit/skills/), "
+            "ready for operator's manual fork to crickets/skills/), "
             "dismiss (archive), defer (snooze for N days). Non-TTY stdin "
             "defaults to skip (never silent action; same contract as "
             "ideas_promote.py gc)."

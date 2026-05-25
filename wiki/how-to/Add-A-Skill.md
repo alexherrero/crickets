@@ -1,8 +1,8 @@
 # How to add a new skill
 
 > [!NOTE]
-> **Goal:** Add a new standalone skill to `agent-toolkit` and ship it via the installer.
-> **Prereqs:** You know what the skill does and which hosts it targets; `agent-toolkit` cloned locally.
+> **Goal:** Add a new standalone skill to `crickets` and ship it via the installer.
+> **Prereqs:** You know what the skill does and which hosts it targets; `crickets` cloned locally.
 
 ## Steps
 
@@ -15,7 +15,7 @@
 2. Create the directory:
 
    ```bash
-   cd ~/Antigravity/agent-toolkit
+   cd ~/Antigravity/crickets
    mkdir -p skills/$SKILL_NAME
    ```
 
@@ -51,7 +51,7 @@
    ```bash
    TARGET=$(mktemp -d)
    cd $TARGET && git init -q
-   bash ~/Antigravity/agent-toolkit/install.sh $TARGET
+   bash ~/Antigravity/crickets/install.sh $TARGET
    ls $TARGET/.claude/skills/$SKILL_NAME/    # should contain SKILL.md
    ls $TARGET/.agent/skills/$SKILL_NAME/     # same
    # Note: .agents/skills/ removed in v0.9.0 (Gemini CLI host dropped per ROADMAP #15).

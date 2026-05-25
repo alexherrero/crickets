@@ -1,4 +1,4 @@
-# <Replace with subject — noun-phrase; e.g. "Why we use Diátaxis" or "The agent-toolkit split">
+# <Replace with subject — noun-phrase; e.g. "Why we use Diátaxis" or "The crickets split">
 
 <!--
   Explanation mode (per ADR 0004):

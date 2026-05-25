@@ -1,13 +1,13 @@
-title = "agent-toolkit gitleaks config"
+title = "crickets gitleaks config"
 
 # Inherit gitleaks's default ruleset for common credential shapes
 # (AWS keys, GitHub tokens, generic API keys, JWT, etc.)
 [extend]
 useDefault = true
 
-# Allowlist patterns known-safe in agent-toolkit
+# Allowlist patterns known-safe in crickets
 [allowlist]
-description = "Patterns that are known-safe in agent-toolkit (public repo, owned by alexherrero)"
+description = "Patterns that are known-safe in crickets (public repo, owned by alexherrero)"
 
 regexes = [
     # The public GitHub handle appears in URLs, README, AGENTS.md
@@ -21,7 +21,7 @@ regexes = [
     '''<TOKEN>''',
     '''sk-abc123def456ghi789jkl''',          # documentation example in CONTRIBUTING / scrubber skill
     # Synthetic identity used by the commit-on-stop hook for namespaced commits
-    '''@agent-toolkit\.local''',
+    '''@crickets\.local''',
 ]
 
 paths = [

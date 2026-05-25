@@ -52,7 +52,7 @@ _DEFAULT_LOCAL_MODEL = "BAAI/bge-large-en-v1.5"
 
 # Local model cache directory. sentence-transformers respects the
 # SENTENCE_TRANSFORMERS_HOME env var for its model cache location. We pin
-# it to ~/.cache/agent-toolkit/sentence-transformers/ so:
+# it to ~/.cache/crickets/sentence-transformers/ so:
 #   1. The download stays under a single toolkit-owned directory (operators
 #      can rm -rf the cache cleanly to free disk space).
 #   2. It doesn't conflict with other tools that use sentence-transformers
@@ -66,7 +66,7 @@ _DEFAULT_LOCAL_MODEL = "BAAI/bge-large-en-v1.5"
 _LOCAL_CACHE_DIR = Path(
     os.environ.get(
         "AGENT_TOOLKIT_SENTENCE_TRANSFORMERS_CACHE",
-        str(Path.home() / ".cache" / "agent-toolkit" / "sentence-transformers"),
+        str(Path.home() / ".cache" / "crickets" / "sentence-transformers"),
     )
 ).expanduser()
 
@@ -97,7 +97,7 @@ def _resolve_mode(arg_mode: str | None) -> str:
     if arg_mode:
         if arg_mode == "api":
             raise ValueError(
-                "API embedding mode was removed in agent-toolkit v0.9.2. "
+                "API embedding mode was removed in crickets v0.9.2. "
                 "Use --mode local (default) for sentence-transformers, or "
                 "--mode stub for tests. See ADR 0001's 2026-05-20 "
                 "amendment + plan #18 for rationale."
@@ -131,7 +131,7 @@ def _embed_local(text: str) -> list[float]:
 
     Sets SENTENCE_TRANSFORMERS_HOME to _LOCAL_CACHE_DIR before importing
     so the model checkpoint lands under
-    ~/.cache/agent-toolkit/sentence-transformers/ (plan #7a part 2 task 4
+    ~/.cache/crickets/sentence-transformers/ (plan #7a part 2 task 4
     locked path; durable across toolkit reinstalls).
     """
     # Pin the cache directory before sentence-transformers imports + reads

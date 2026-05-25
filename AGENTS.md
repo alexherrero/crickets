@@ -1,8 +1,8 @@
 # AGENTS.md
 
-Universal instructions for AI coding agents working in `agent-toolkit`.
+Universal instructions for AI coding agents working in `crickets`.
 
-This repo is a sibling to [`agentic-harness`](https://github.com/alexherrero/agentic-harness). The harness owns the phase-gated workflow; this toolkit owns the agent customizations (skills, sub-agents, hooks, MCP servers, slash commands, status lines, output styles, workflows, rules, snippets, settings fragments) that ride on top.
+This repo is a sibling to [`agentm`](https://github.com/alexherrero/agentm). The harness owns the phase-gated workflow; this toolkit owns the agent customizations (skills, sub-agents, hooks, MCP servers, slash commands, status lines, output styles, workflows, rules, snippets, settings fragments) that ride on top.
 
 ## What this repo holds
 
@@ -18,7 +18,7 @@ This repo is a sibling to [`agentic-harness`](https://github.com/alexherrero/age
 | `workflows/`, `rules/` | Antigravity-specific primitives |
 | `snippets/` | Fragments appended to `AGENTS.md` / `CLAUDE.md` at install time |
 | `settings-fragments/` | JSON fragments merged into host `settings.json` files |
-| `lib/install/` | Shared install plumbing (byte-identical to `agentic-harness/lib/install/`) |
+| `lib/install/` | Shared install plumbing (byte-identical to `agentm/lib/install/`) |
 | `scripts/` | Validators, CI helpers, the PII detector |
 | `templates/hooks/` | Hook templates installed into target projects (e.g. `pre-push`) |
 | `wiki/` | Diátaxis-shaped dogfood docs |
@@ -28,7 +28,7 @@ This repo is a sibling to [`agentic-harness`](https://github.com/alexherrero/age
 Customizations install into a target project's host-specific paths (`.claude/`, `.agent/`, `.gemini/`) via:
 
 ```bash
-bash /path/to/agent-toolkit/install.sh <target-project>
+bash /path/to/crickets/install.sh <target-project>
 ```
 
 The installer reads each customization's YAML frontmatter manifest, dispatches each primitive to the right host path based on `supported_hosts`, and (unless `--no-pre-push-hook` is passed) installs the PII pre-push hook into the target's `.git/hooks/pre-push`.
@@ -39,7 +39,7 @@ The installer reads each customization's YAML frontmatter manifest, dispatches e
 
 Three enforcement layers protect against personal information leaking into public commits:
 
-1. **Pre-push git hook** (`templates/hooks/pre-push`) — mandatory enforcer. Runs the PII detector against every push; blocks non-zero. Installed by `agent-toolkit/install.sh` into target projects' `.git/hooks/pre-push`.
+1. **Pre-push git hook** (`templates/hooks/pre-push`) — mandatory enforcer. Runs the PII detector against every push; blocks non-zero. Installed by `crickets/install.sh` into target projects' `.git/hooks/pre-push`.
 2. **`pii-scrubber` skill** (`skills/pii-scrubber/`) — agent-facing interactive layer. Scans the current diff before commit, presents findings, offers redactions. Loops until clean (or user explicitly logs an override).
 3. **CI gate** (lands in task 4 of v0.1.0 plan) — defense in depth. Same script + gitleaks run on every push to GitHub.
 
@@ -74,5 +74,5 @@ Required fields: `name`, `description`, `kind`, `supported_hosts`, `version`. Bu
 
 ## Cross-references
 
-- [`agentic-harness`](https://github.com/alexherrero/agentic-harness) — sibling repo; phase-gated workflow + canonical phase specs. See [agentic-harness ADR 0006](https://github.com/alexherrero/agentic-harness/blob/main/wiki/explanation/decisions/0006-agent-toolkit-split.md) for the split decision.
+- [`agentm`](https://github.com/alexherrero/agentm) — sibling repo; phase-gated workflow + canonical phase specs. See [agentm ADR 0006](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0006-crickets-split.md) for the split decision.
 - This repo's [Diátaxis-shaped wiki](wiki/Home.md) — start at `wiki/Home.md` for navigation; key entry points include [Purpose and scope](wiki/explanation/Purpose-And-Scope.md), [Manifest Schema](wiki/reference/Manifest-Schema.md), and [Tutorial 1](wiki/tutorials/01-First-Customization.md).

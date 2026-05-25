@@ -19,7 +19,7 @@ Where each `kind` lands in each host at install time. The installer reads each c
 | `settings-fragment` | merge into `.claude/settings.json` | **TBD** |
 
 > [!NOTE]
-> **Gemini CLI host removed in v0.9.0** per [ROADMAP item #15](https://github.com/alexherrero/agentic-harness/blob/main/.harness/ROADMAP.md). Standalone Gemini CLI is no longer a supported host; the legacy 3-column table is preserved in the v0.8.x and earlier wiki history. Antigravity (Gemini-in-IDE) stays as a supported host — different surface. See [ADR 0006](decisions/0006-gemini-cli-host-removal) for the host-scope-reduction rationale.
+> **Gemini CLI host removed in v0.9.0** per [ROADMAP item #15](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md). Standalone Gemini CLI is no longer a supported host; the legacy 3-column table is preserved in the v0.8.x and earlier wiki history. Antigravity (Gemini-in-IDE) stays as a supported host — different surface. See [ADR 0006](decisions/0006-gemini-cli-host-removal) for the host-scope-reduction rationale.
 
 ## What's locked vs. TBD
 
@@ -28,7 +28,7 @@ Where each `kind` lands in each host at install time. The installer reads each c
 
 When a TBD path is encountered, the installer logs a warning and skips that host for that customization. The manifest still validates — `supported_hosts: [antigravity]` for a `mcp-server` is allowed; the installer just can't deliver yet.
 
-**Revisit triggers** (tracked in `agentic-harness/.harness/FOLLOWUPS.md`):
+**Revisit triggers** (tracked in `agentm/.harness/FOLLOWUPS.md`):
 
 1. Antigravity publishes formal docs on MCP server conventions and/or `settings.json` merge semantics.
 2. Google ships a Gemini-CLI successor that's worth re-adding (would require new ROADMAP item revisiting #15's decision).
@@ -48,8 +48,8 @@ For each customization the installer encounters:
 
 Both follow the same dispatch table. Source paths differ:
 
-- **Standalone primitive:** `agent-toolkit/<kind-subdir>/<name>/` → destination per table.
-- **Inside a bundle:** `agent-toolkit/bundles/<bundle>/<kind-subdir>/<name>/` → same destination per table (the bundle structure is invisible at the destination — the inner primitive lands at the same path it would as a standalone).
+- **Standalone primitive:** `crickets/<kind-subdir>/<name>/` → destination per table.
+- **Inside a bundle:** `crickets/bundles/<bundle>/<kind-subdir>/<name>/` → same destination per table (the bundle structure is invisible at the destination — the inner primitive lands at the same path it would as a standalone).
 
 This means a bundle's primitives can collide at the destination with standalone primitives of the same name. v0.1.0 has no such collision (one bundle with one inner skill, three standalone skills with unique names); future versions may need a collision policy. Tracked as an open question.
 

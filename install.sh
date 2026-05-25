@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# install.sh — agent-toolkit installer.
+# install.sh — crickets installer.
 #
 # Installs personal agent customizations (skills, sub-agents, hooks, MCP
 # servers, slash commands, etc.) into a target project under host-specific
@@ -139,7 +139,7 @@ BOUNDARY_ROOTS=(
 # ── operate from inside target dir ────────────────────────────────────────
 cd "$TARGET"
 
-echo "==> agent-toolkit install: $TARGET"
+echo "==> crickets install: $TARGET"
 
 # ── --update sync ─────────────────────────────────────────────────────────
 # Managed parents the toolkit creates in a target. Each installed
@@ -147,12 +147,12 @@ echo "==> agent-toolkit install: $TARGET"
 # true-sync semantics.
 #
 # Note on .claude/agents, .gemini/agents, .claude/hooks: these parents are
-# also written to by the sibling agentic-harness installer (for explorer /
+# also written to by the sibling agentm installer (for explorer /
 # adversarial-reviewer / documenter; and harness-shipped hooks under --hooks
 # mode). When both repos are installed into the same target, users must run
 # BOTH installers (in either order) to land the full set; the LATER-run
 # installer's --update wipes the parent before recreating from its own
-# source. Documented in agent-toolkit/wiki/reference/Installer-CLI.md.
+# source. Documented in crickets/wiki/reference/Installer-CLI.md.
 #
 # Note: .claude/settings.json is NOT wiped on --update — it's user-state-merged
 # (settings.json carries user-edits + hook event registrations from multiple
@@ -176,7 +176,7 @@ EMPTY_PARENT_CANDIDATES=()
 # to N (no-op unless operator opts in). --no-legacy-cleanup suppresses the
 # prompt entirely (useful for CI / scripted installs). Non-interactive stdin
 # also skips the prompt with a one-line notice. Never hard-deletes — moves
-# to timestamped backups at <path>.agent-toolkit-bak.<ts>/ per the
+# to timestamped backups at <path>.crickets-bak.<ts>/ per the
 # pre-push-hook backup convention. Only touches entries the installer
 # recognizes as toolkit-managed (matches manifest names); leaves any
 # unmanaged user files alone.
@@ -241,7 +241,7 @@ legacy_cleanup_gemini_cli() {
     fi
     echo ""
     echo "==> legacy gemini-cli cleanup"
-    echo "agent-toolkit v0.9.0+ removed standalone Gemini CLI host support."
+    echo "crickets v0.9.0+ removed standalone Gemini CLI host support."
     echo "Found legacy toolkit-managed entries from a prior install:"
     local m
     if [[ ${#matched_skills[@]} -gt 0 ]]; then
@@ -269,7 +269,7 @@ legacy_cleanup_gemini_cli() {
         local ts
         ts="$(date +%Y%m%d%H%M%S)"
         if [[ ${#matched_skills[@]} -gt 0 ]]; then
-            local bak=".agents/skills.agent-toolkit-bak.$ts"
+            local bak=".agents/skills.crickets-bak.$ts"
             mv .agents/skills "$bak"
             echo "    moved .agents/skills/ → $bak/"
             if [[ -d .agents ]] && [[ -z "$(ls -A .agents 2>/dev/null)" ]]; then
@@ -278,7 +278,7 @@ legacy_cleanup_gemini_cli() {
             fi
         fi
         if [[ ${#matched_agents[@]} -gt 0 ]]; then
-            local bak=".gemini/agents.agent-toolkit-bak.$ts"
+            local bak=".gemini/agents.crickets-bak.$ts"
             mv .gemini/agents "$bak"
             echo "    moved .gemini/agents/ → $bak/"
             if [[ -d .gemini ]] && [[ -z "$(ls -A .gemini 2>/dev/null)" ]]; then
@@ -429,7 +429,7 @@ install_agent() {
 # install_pre_push_hook
 # Copies templates/hooks/pre-push → <target>/.git/hooks/pre-push.
 # Skips if --no-pre-push-hook or target isn't a git repo.
-# Backs up any existing non-matching hook to .agent-toolkit-bak.<timestamp>.
+# Backs up any existing non-matching hook to .crickets-bak.<timestamp>.
 install_pre_push_hook() {
     if [[ $NO_PRE_PUSH_HOOK -eq 1 ]]; then
         echo "  skipping pre-push hook (--no-pre-push-hook)"
@@ -447,10 +447,10 @@ install_pre_push_hook() {
     fi
     if [[ -e "$hook_dst" ]]; then
         if cmp -s "$hook_src" "$hook_dst"; then
-            echo "    kept    $hook_dst (already managed by agent-toolkit)"
+            echo "    kept    $hook_dst (already managed by crickets)"
             return 0
         fi
-        local bak="${hook_dst}.agent-toolkit-bak.$(date +%s)"
+        local bak="${hook_dst}.crickets-bak.$(date +%s)"
         cp "$hook_dst" "$bak"
         echo "    backed up existing $hook_dst → $bak"
     fi
@@ -461,7 +461,7 @@ install_pre_push_hook() {
 
 # warn_unsupported_kind <kind>
 warn_unsupported_kind() {
-    echo "    warning: kind '$1' is not yet supported in agent-toolkit v0.1.0 — skipped" >&2
+    echo "    warning: kind '$1' is not yet supported in crickets v0.1.0 — skipped" >&2
 }
 
 # ── install bundles ───────────────────────────────────────────────────────
@@ -727,7 +727,7 @@ install_python_deps
 
 index_personal_skills() {
     # Best-effort: run the personal-skills auto-indexer against the
-    # toolkit's own skills/ + the sibling agentic-harness/.claude/skills/
+    # toolkit's own skills/ + the sibling agentm/.claude/skills/
     # if discoverable. Pointers land in MemoryVault/personal-skills/<repo>/.
     # Requires MEMORY_VAULT_PATH to be set (we don't guess the vault path —
     # operators without a vault configured silently skip this).
@@ -751,10 +751,10 @@ index_personal_skills() {
     echo "==> personal-skills index"
     local toolkit_skills="$TOOLKIT_ROOT/skills"
     local args=("--vault-path" "$MEMORY_VAULT_PATH" "--skill-path" "$toolkit_skills")
-    # Also index the sibling agentic-harness skills if present (canonical
-    # clone is ~/Antigravity/agentic-harness, sibling to ~/Antigravity/
-    # agent-toolkit). The toolkit + harness are deliberately co-located.
-    local harness_sibling="$TOOLKIT_ROOT/../agentic-harness/.claude/skills"
+    # Also index the sibling agentm skills if present (canonical
+    # clone is ~/Antigravity/agentm, sibling to ~/Antigravity/
+    # crickets). The toolkit + harness are deliberately co-located.
+    local harness_sibling="$TOOLKIT_ROOT/../agentm/.claude/skills"
     if [[ -d "$harness_sibling" ]]; then
         args+=("--skill-path" "$harness_sibling")
     fi
@@ -767,4 +767,4 @@ index_personal_skills() {
 index_personal_skills
 
 echo ""
-echo "agent-toolkit install: complete."
+echo "crickets install: complete."

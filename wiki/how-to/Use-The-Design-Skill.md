@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > **Goal:** Walk a human through a 10-section design doc, split the approved design into structural parts, generate one PLAN.md per part for the harness `/work` + `/release` flow to execute, and surface published designs as the canonical "Why we built X" entry point in `wiki/`.
-> **Prereqs:** `agent-toolkit` installed into the target project (the `/design` skill ships there); `agentic-harness` v2.3.0+ installed alongside (the `/release` flow's §1b hook handles plan promotion + the `final → launched` Status transition); a git repo (per-part PLAN.md files live in `.harness/`, which is gitignored).
+> **Prereqs:** `crickets` installed into the target project (the `/design` skill ships there); `agentm` v2.3.0+ installed alongside (the `/release` flow's §1b hook handles plan promotion + the `final → launched` Status transition); a git repo (per-part PLAN.md files live in `.harness/`, which is gitignored).
 
 The `/design` skill runs the **front** of a project: the human-facing design phase that produces a structured doc, splits it into structural parts, and hands off to the harness's existing `/work` + `/review` flow as one `PLAN.md` per part. The original human-authored design doc is positioned as the canonical "Why we built X" entry point in `wiki/`.
 
@@ -16,7 +16,7 @@ This how-to walks through when to reach for `/design`, the three sub-commands at
 | `/design translate <slug>` | A `Status: final` design doc | N structural-part files at `<doc-dir>/parts/<part-slug>.md` | Requires `Status: final` (hard gate) |
 | `/design sequence <slug>` | A populated `<doc-dir>/parts/` directory | One `PLAN.md` per part: first activated at `<project>/.harness/PLAN.md`; rest queued at `<project>/.harness/designs/<doc-slug>/queued-plans/<part-slug>.PLAN.md` | Requires `Status: final` |
 
-`Status: launched` is set by the harness `/release` flow (not the skill) when the design's last queued part's `PLAN.md` completes. See [§1b of `/release`](https://github.com/alexherrero/agentic-harness/blob/main/harness/phases/05-release.md) for the lifecycle hook.
+`Status: launched` is set by the harness `/release` flow (not the skill) when the design's last queued part's `PLAN.md` completes. See [§1b of `/release`](https://github.com/alexherrero/agentm/blob/main/harness/phases/05-release.md) for the lifecycle hook.
 
 ## When to reach for `/design` vs. `/plan`
 
@@ -215,7 +215,7 @@ Pick `"Hand off for external review"` when prompted.
 The skill writes:
 
 - **Pre-handoff snapshot**: `<target-doc>.pre-handoff-<YYYYMMDDhhmmss>.md` — used by Claude on resume to diff against the revised version.
-- **Transfer-context file**: `.harness/transfer/<doc-slug>-<YYYYMMDDhhmmss>.md` — inlines operator intent + recent decisions to honor + dev-flow conventions + doc-type guardrails + explicit MUST-NOT rules. Gives Antigravity-Gemini everything it needs without requiring access to the Claude Code conversation. Template at `agent-toolkit/skills/design/templates/transfer-context.md`.
+- **Transfer-context file**: `.harness/transfer/<doc-slug>-<YYYYMMDDhhmmss>.md` — inlines operator intent + recent decisions to honor + dev-flow conventions + doc-type guardrails + explicit MUST-NOT rules. Gives Antigravity-Gemini everything it needs without requiring access to the Claude Code conversation. Template at `crickets/skills/design/templates/transfer-context.md`.
 
 The skill outputs a **handoff prompt** for you to take to Antigravity:
 
@@ -311,7 +311,7 @@ The `/design` skill ships for both supported hosts (`claude-code`, `antigravity`
 - **Claude Code**: native — slash commands trigger the skill body; `Read` / `Write` / `Edit` tools handle file ops. The flow described above is the canonical user experience.
 - **Antigravity**: install an always-on rule that says *"between steps, check `wiki/explanation/designs/` and `.harness/designs/` for any Status: review or Status: final docs awaiting next-stage skill invocation. Surface them to the operator as next-action candidates."* The skill body is still readable but invocation is operator-driven not slash-command-triggered.
 
-(Standalone Gemini CLI was removed as a supported host in v0.9.0 per [ROADMAP item #15](https://github.com/alexherrero/agentic-harness/blob/main/.harness/ROADMAP.md). Antigravity's IDE-level Gemini integration is a different surface and stays supported.)
+(Standalone Gemini CLI was removed as a supported host in v0.9.0 per [ROADMAP item #15](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md). Antigravity's IDE-level Gemini integration is a different surface and stays supported.)
 
 Manual-equivalent flows are best-effort (operator drives invocation) and don't have the precision of Claude Code's native slash commands. Use Claude Code for the strongest end-to-end experience.
 
@@ -346,4 +346,4 @@ Re-running `/design translate` after manually editing the parent design diffs th
 - [`/design` skill spec](../../skills/design/SKILL.md) — full body documentation for all three sub-commands.
 - [`templates/design-doc.md`](../../skills/design/templates/design-doc.md) — the locked 10-section template.
 - [ADR 0004 — Design skill design](../explanation/decisions/0004-design-skill.md) — design rationale + locked design calls + consequences.
-- [agentic-harness `/release` §1b](https://github.com/alexherrero/agentic-harness/blob/main/harness/phases/05-release.md) — the harness-side plan-promotion + Status transition hook.
+- [agentm `/release` §1b](https://github.com/alexherrero/agentm/blob/main/harness/phases/05-release.md) — the harness-side plan-promotion + Status transition hook.

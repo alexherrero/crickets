@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > **Goal:** Enforce a default-FAIL evidence contract on `/work` task closeouts — the agent must demonstrably READ relevant spec/test files before flipping a PLAN.md task's `[ ]` → `[x]`.
-> **Prereqs:** `agent-toolkit` installed into the target project (so `.claude/hooks/evidence-tracker.sh` + `evidence_tracker.py` land + their PreToolUse registration lands in `.claude/settings.json`); the target has a `.harness/PLAN.md` (i.e. the harness has at least run `/plan`). See [Manifest-Schema](Manifest-Schema) for the `kind: hook` fields.
+> **Prereqs:** `crickets` installed into the target project (so `.claude/hooks/evidence-tracker.sh` + `evidence_tracker.py` land + their PreToolUse registration lands in `.claude/settings.json`); the target has a `.harness/PLAN.md` (i.e. the harness has at least run `/plan`). See [Manifest-Schema](Manifest-Schema) for the `kind: hook` fields.
 
 Length justification: this how-to documents 1 hook with 3 task-body conventions × 3 worked scenarios + a 6-row troubleshooting table + dogfood walkthrough. The 1000-word length is acceptable because operators read this end-to-end the first time they adopt the hook + return to specific sections later. Splitting per-scenario would force cross-link chasing for related behavior.
 
@@ -95,7 +95,7 @@ Stderr explains exactly which paths satisfy the requirement + what's already bee
 
 The hook is **never** the reason `/work` doesn't run. Silent exit 0 in all these cases:
 
-- `agent-toolkit` not installed; hook absent.
+- `crickets` not installed; hook absent.
 - `evidence_tracker.py` helper missing.
 - `python3` not on PATH.
 - Project has no `.harness/` directory (hook isn't a no-op outside a harness install).
@@ -126,7 +126,7 @@ python3 .claude/hooks/evidence_tracker.py --mode reset
 ## See also
 
 - [Manifest Schema](../reference/Manifest-Schema.md) — `kind: hook` fields.
-- [evidence-tracker hook manifest](https://github.com/alexherrero/agent-toolkit/blob/main/hooks/evidence-tracker/hook.md) — fuller technical reference.
+- [evidence-tracker hook manifest](https://github.com/alexherrero/crickets/blob/main/hooks/evidence-tracker/hook.md) — fuller technical reference.
 - [ADR 0009 — Evidence-tracker hook](../explanation/decisions/0009-evidence-tracker-hook.md) — design rationale + 3 locked design calls.
 - [Use The Base Hooks](Use-The-Base-Hooks.md) — sibling hooks (kill-switch, steer, commit-on-stop) from plans #4 + #5.
-- [harness `/work` §5b](https://github.com/alexherrero/agentic-harness/blob/main/harness/phases/03-work.md) — the harness-side contract this hook enforces.
+- [harness `/work` §5b](https://github.com/alexherrero/agentm/blob/main/harness/phases/03-work.md) — the harness-side contract this hook enforces.

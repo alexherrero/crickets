@@ -34,7 +34,7 @@
 #
 # Skill-path defaults are deliberately empty — the indexer requires at
 # least one --skill-path or MEMORY_SKILL_PATHS env entry. Operators in
-# practice will configure this in `~/.config/agent-toolkit/memory.yml` or
+# practice will configure this in `~/.config/crickets/memory.yml` or
 # via the installer (which knows the toolkit's own skill paths).
 
 from __future__ import annotations

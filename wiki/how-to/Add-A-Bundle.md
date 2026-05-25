@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > **Goal:** Package multiple primitive customizations (skill + hook + agent + ...) into a single installable unit.
-> **Prereqs:** You have at least two primitives that work together and should ship as one; `agent-toolkit` cloned locally.
+> **Prereqs:** You have at least two primitives that work together and should ship as one; `crickets` cloned locally.
 
 Use a bundle when primitives **depend on each other** — the design breaks if you install one without the others. If the primitives are independently useful, ship them standalone via [Add a Skill](Add-A-Skill) instead.
 
@@ -17,7 +17,7 @@ Use a bundle when primitives **depend on each other** — the design breaks if y
 2. Create the bundle directory:
 
    ```bash
-   cd ~/Antigravity/agent-toolkit
+   cd ~/Antigravity/crickets
    mkdir -p bundles/$BUNDLE_NAME
    ```
 
@@ -69,7 +69,7 @@ Use a bundle when primitives **depend on each other** — the design breaks if y
    ```bash
    TARGET=$(mktemp -d)
    cd $TARGET && git init -q
-   bash ~/Antigravity/agent-toolkit/install.sh --bundle $BUNDLE_NAME $TARGET
+   bash ~/Antigravity/crickets/install.sh --bundle $BUNDLE_NAME $TARGET
    ls $TARGET/.claude/skills/   # should contain each inner skill at the host path
    rm -rf $TARGET
    ```

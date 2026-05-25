@@ -1,6 +1,6 @@
 ---
 name: quality-gates
-description: One-command install for the 4 base operator-control + verification primitives that ride alongside agentic-harness `/work`. Bundles the evaluator sub-agent (fresh-context rubric grading) + 3 operator-control hooks (kill-switch, steer, commit-on-stop) + the evidence-tracker hook (default-FAIL enforcement on PLAN.md `[x]` flips). Most projects using harness `/work` want all 5; bundling reduces "I forgot to install commit-on-stop" footguns.
+description: One-command install for the 4 base operator-control + verification primitives that ride alongside agentm `/work`. Bundles the evaluator sub-agent (fresh-context rubric grading) + 3 operator-control hooks (kill-switch, steer, commit-on-stop) + the evidence-tracker hook (default-FAIL enforcement on PLAN.md `[x]` flips). Most projects using harness `/work` want all 5; bundling reduces "I forgot to install commit-on-stop" footguns.
 kind: bundle
 supported_hosts: [claude-code]
 version: 0.1.0
@@ -34,12 +34,12 @@ Each primitive earns its keep individually, but the **set is what makes `/work` 
 - `evidence-tracker` makes the verification step in `/work`'s contract observable + enforced.
 - `evaluator` augments `/review` with fresh-context rubric grading alongside `adversarial-reviewer`.
 
-Operators installing one primitive almost always want the others soon after. Bundling reduces the "I forgot to install commit-on-stop and lost an hour of work" failure mode + validates the bundle pattern from `agent-toolkit`'s original design ([ADR 0001](../../wiki/explanation/decisions/0001-agent-toolkit-purpose.md)).
+Operators installing one primitive almost always want the others soon after. Bundling reduces the "I forgot to install commit-on-stop and lost an hour of work" failure mode + validates the bundle pattern from `crickets`'s original design ([ADR 0001](../../wiki/explanation/decisions/0001-crickets-purpose.md)).
 
 ## Install
 
 ```bash
-bash agent-toolkit/install.sh <target-project> --bundle quality-gates
+bash crickets/install.sh <target-project> --bundle quality-gates
 ```
 
 Post-install, the target project has:
@@ -63,10 +63,10 @@ Plus the matching `.ps1` entries for Windows hosts.
 
 ## How this bundle works
 
-**Sibling-reference, not copies.** The bundle is a *manifest pointing at standalone primitives* — `contents:` lists `- agent: evaluator` / `- hook: kill-switch` / etc., and the installer resolves each entry against the toolkit's standalone primitive locations (`agent-toolkit/agents/evaluator.md`, `agent-toolkit/hooks/kill-switch/`, etc.). The bundle directory contains only `bundle.md`; the primitives themselves live at their canonical standalone paths.
+**Sibling-reference, not copies.** The bundle is a *manifest pointing at standalone primitives* — `contents:` lists `- agent: evaluator` / `- hook: kill-switch` / etc., and the installer resolves each entry against the toolkit's standalone primitive locations (`crickets/agents/evaluator.md`, `crickets/hooks/kill-switch/`, etc.). The bundle directory contains only `bundle.md`; the primitives themselves live at their canonical standalone paths.
 
 This means:
-- **Single source of truth** — editing `agent-toolkit/hooks/kill-switch/kill-switch.sh` updates the bundle automatically.
+- **Single source of truth** — editing `crickets/hooks/kill-switch/kill-switch.sh` updates the bundle automatically.
 - **No drift possible** — the bundle physically can't diverge from the standalone primitive, because there's nothing to diverge.
 - **No maintenance burden** — no parity gate needed; no sync script needed; no operator-must-remember step.
 - **Bundle-local fallback preserved** for stubs that exist only inside a bundle (see `example-bundle` for the reference-skeleton case).

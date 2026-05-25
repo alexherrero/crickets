@@ -3,7 +3,7 @@
 > [!NOTE]
 > **Status:** accepted
 > **Date:** 2026-05-22
-> **Related:** [ADR 0001 — agent-toolkit purpose](0001-agent-toolkit-purpose) · [Parent design — MemoryVault](../designs/memoryvault.md) · [Plan #7b discovery-mining part](../designs/memoryvault/parts/discovery-mining.md) · [ROADMAP item #7b](https://github.com/alexherrero/agentic-harness/blob/main/.harness/ROADMAP.md)
+> **Related:** [ADR 0001 — crickets purpose](0001-crickets-purpose) · [Parent design — MemoryVault](../designs/memoryvault.md) · [Plan #7b discovery-mining part](../designs/memoryvault/parts/discovery-mining.md) · [ROADMAP item #7b](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md)
 
 ## Context
 
@@ -26,9 +26,9 @@ Concretely, the seven locked design calls:
 
 ### D1 — Personal-skills indexer auto-detects repo names
 
-`index_skills.py` walks SKILL.md files across configured paths (`--skill-path` repeatable + `MEMORY_SKILL_PATHS` env). For each, derives the `<repo>` slug by walking up the ancestor tree until it finds `.git/` or `AGENTS.md`, then kebab-normalizing the basename. Operator can override via `--repo-name <slug>` for sources that don't sit under a git repo or have a non-kebab dir name. The auto-detect is the common path (works for the toolkit's own `skills/` + sibling `agentic-harness/.claude/skills/` without configuration); explicit override is the escape hatch.
+`index_skills.py` walks SKILL.md files across configured paths (`--skill-path` repeatable + `MEMORY_SKILL_PATHS` env). For each, derives the `<repo>` slug by walking up the ancestor tree until it finds `.git/` or `AGENTS.md`, then kebab-normalizing the basename. Operator can override via `--repo-name <slug>` for sources that don't sit under a git repo or have a non-kebab dir name. The auto-detect is the common path (works for the toolkit's own `skills/` + sibling `agentm/.claude/skills/` without configuration); explicit override is the escape hatch.
 
-**Why not require explicit operator config**: the canonical clone layout (`~/Antigravity/agent-toolkit` + `~/Antigravity/agentic-harness` as siblings) is well-known to the installer, and the auto-detect walks up to find the repo root with high precision. Forcing operator config for the common case adds friction.
+**Why not require explicit operator config**: the canonical clone layout (`~/Antigravity/crickets` + `~/Antigravity/agentm` as siblings) is well-known to the installer, and the auto-detect walks up to find the repo root with high precision. Forcing operator config for the common case adds friction.
 
 ### D2 — Transcript corpus mode is dry-run by default
 
@@ -62,7 +62,7 @@ Locked architecture:
 
 **Why two-pass split**: heuristic rubrics are testable + deterministic but blind to semantic nuance (a "workflow" word match doesn't mean it's actually a *workflow worth adopting*). LLM judgment is semantically sharp but expensive + non-deterministic. Pass 1 narrows the surface (drops LOW outright; gates the enrichment + sub-agent dispatch); Pass 2 makes the final decision. Operators can inspect Pass 1's JSON output to verify the rubric is scoring sensibly before paying the LLM cost.
 
-**Why no auto-fork to `agent-toolkit/skills/`**: the adapt-don't-import contract is architectural, not advisory. The sub-agent has no write access to skill directories; promotion to a real skill requires the operator's manual authoring outside the script. Watchlist entries are review artifacts, not auto-adopt triggers.
+**Why no auto-fork to `crickets/skills/`**: the adapt-don't-import contract is architectural, not advisory. The sub-agent has no write access to skill directories; promotion to a real skill requires the operator's manual authoring outside the script. Watchlist entries are review artifacts, not auto-adopt triggers.
 
 ### D6 — Watchlist review uses promote / dismiss / defer (mirroring ideas_promote.py gc)
 
@@ -83,7 +83,7 @@ All three new scripts (`index_skills.py`, `discover_skills.py`, `adapt_skills.py
 ### Positive
 
 - **Four discovery sub-commands ship with consistent shape** — same CLI flag conventions (`--vault-path` / `--dry-run` / `--skip-network` / etc.), same atomic state-file pattern, same graceful-skip contracts. Operator learns one pattern, applies it across all four.
-- **Adapt-don't-import is architecturally enforced**, not advisory. The sub-agent's write allowlist physically prevents skill-folder pollution; the operator's manual fork step is the only way new skills enter `agent-toolkit/skills/`.
+- **Adapt-don't-import is architecturally enforced**, not advisory. The sub-agent's write allowlist physically prevents skill-folder pollution; the operator's manual fork step is the only way new skills enter `crickets/skills/`.
 - **Pass-1-Python + Pass-2-LLM split** balances determinism + semantic judgment. Operators can tune the rubric in code (testable, fast); LLM only fires for HIGH+MEDIUM (cost-bounded).
 - **Operator-editable whitelists** for both discovery sources + trusted orgs mean the system adapts without code change as the operator's tastes evolve.
 - **Cadence-check pattern** lets the idle hook fire frequently without hammering URLs — the same self-throttle approach generalizes to any future scheduled-discovery use.
@@ -107,7 +107,7 @@ All three new scripts (`index_skills.py`, `discover_skills.py`, `adapt_skills.py
 
 - Parent design: [MemoryVault — permanent agent memory](../designs/memoryvault.md)
 - Plan #7b part: [discovery-mining](../designs/memoryvault/parts/discovery-mining.md)
-- ROADMAP: [#7b MemoryVault Discovery + Mining](https://github.com/alexherrero/agentic-harness/blob/main/.harness/ROADMAP.md)
-- Sibling discovery follow-up: [ROADMAP #21 Harness self-audit skill](https://github.com/alexherrero/agentic-harness/blob/main/.harness/ROADMAP.md) — reuses discover_skills.py + adapt-evaluator infrastructure against harness's own conventions
-- Sibling discovery follow-up: [ROADMAP #22 Cross-surface AgentMemory protocol](https://github.com/alexherrero/agentic-harness/blob/main/.harness/ROADMAP.md) — configure-don't-build vault access across surfaces; uses the same operator-editable-whitelist pattern locked here
-- Companion ADR: [0001 — agent-toolkit purpose](0001-agent-toolkit-purpose) (amended 2026-05-20 for local-only embeddings; this ADR extends the local-first design to discovery + adoption)
+- ROADMAP: [#7b MemoryVault Discovery + Mining](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md)
+- Sibling discovery follow-up: [ROADMAP #21 Harness self-audit skill](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md) — reuses discover_skills.py + adapt-evaluator infrastructure against harness's own conventions
+- Sibling discovery follow-up: [ROADMAP #22 Cross-surface AgentMemory protocol](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md) — configure-don't-build vault access across surfaces; uses the same operator-editable-whitelist pattern locked here
+- Companion ADR: [0001 — crickets purpose](0001-crickets-purpose) (amended 2026-05-20 for local-only embeddings; this ADR extends the local-first design to discovery + adoption)

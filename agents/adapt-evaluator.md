@@ -1,6 +1,6 @@
 ---
 name: adapt-evaluator
-description: Read-only adapt-don't-import judge for skill-discovery candidates. Takes the enriched candidate JSON produced by `adapt_skills.py` Pass 1 (6-rule rubric + GitHub metadata + trustworthiness signals) and renders a final HIGH / MEDIUM / LOW classification + adaptation_notes + recommendation_summary. Writes the final watchlist entry to `<vault>/personal-private/_skill-watchlist/<source-slug>/<pattern-slug>.md` for operator review via `/memory watchlist` (plan #7b task 5). Never forks into `agent-toolkit/skills/` — adapt-don't-import is the architectural rule. Plan #7b task 4.
+description: Read-only adapt-don't-import judge for skill-discovery candidates. Takes the enriched candidate JSON produced by `adapt_skills.py` Pass 1 (6-rule rubric + GitHub metadata + trustworthiness signals) and renders a final HIGH / MEDIUM / LOW classification + adaptation_notes + recommendation_summary. Writes the final watchlist entry to `<vault>/personal-private/_skill-watchlist/<source-slug>/<pattern-slug>.md` for operator review via `/memory watchlist` (plan #7b task 5). Never forks into `crickets/skills/` — adapt-don't-import is the architectural rule. Plan #7b task 4.
 kind: agent
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
@@ -63,7 +63,7 @@ For each JSON:
    with the frontmatter + body shape locked below.
 
 6. NEVER write to <vault>/personal-projects/ or any directory outside
-   _skill-watchlist/. NEVER write to agent-toolkit/skills/. The
+   _skill-watchlist/. NEVER write to crickets/skills/. The
    adapt-don't-import contract is architectural: only the operator
    authors real skills, after reviewing watchlist entries via
    `/memory watchlist` (plan #7b task 5).
@@ -134,7 +134,7 @@ Writes outside this allowlist are bugs in the sub-agent's dispatch + should be c
 
 ## What it never does
 
-- **Never writes to `agent-toolkit/skills/<x>/SKILL.md`.** Adapt-don't-import is architectural — only the operator authors real skills.
+- **Never writes to `crickets/skills/<x>/SKILL.md`.** Adapt-don't-import is architectural — only the operator authors real skills.
 - **Never writes to `personal-projects/`, `personal-skills/`, `_idea-incubator/`, `_always-load/`.** Watchlist is the only sink.
 - **Never modifies the enriched candidate JSONs.** Those are Pass 1 artifacts; this sub-agent reads them, never writes them.
 - **Never invokes `/memory save` or `/memory evolve`.** The operator graduates a watchlist entry to a real skill via `/memory watchlist promote` (plan #7b task 5).

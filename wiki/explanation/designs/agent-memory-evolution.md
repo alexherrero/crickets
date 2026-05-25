@@ -4,7 +4,7 @@
 > **Status:** Evolving — includes V1 through V3 history + V4 look-ahead
 > **Date:** 2026-05-23
 > **Author:** Alex Herrero
-> **Packaged as:** `agentic-harness` v3.0.0 + `agent-toolkit` v1.0.0
+> **Packaged as:** `agentm` v3.0.0 + `crickets` v1.0.0
 
 This document is the high-level design for Agent M — An agentic memory impementation that combines a persistent knowledge layer with personally curated content (i.e. your own notes in markdown format) through a combination of skills, sidecars and vectorized indexing. Imagine those workflows you saw in the movies. You're talking to your agent, "Lets open a new file for project M" and off you go. It remembers your projects and files together, can talk to you about them, and it learns and grows with you as you work. The context it builds is self-maintaining and it improves automatically as you go. No need to spend time maintaining your own knowledge graphs, and it can help you with your personal notes too, when **you** want it to. Agent M has grown over time, for more on what it is and how it's grown, keep reading.
 
@@ -39,8 +39,8 @@ Each version solved something the previous one exposed:
 
 - **V1 — ContextVault (local, manual).** `~/ContextVault/` of hand-written markdown. No agent integration; you pasted relevant excerpts into prompts. Limit: every session required your action.
 - **V2 — Harness workflow state.** `.harness/PLAN.md` + `progress.md` + `features.json` per project; the agent reads at phase entry and writes at phase exit. Limit: per-project only; cross-project knowledge had no home.
-- **V3 — Vault + auto-recall + controlled write (current).** A folder at `<your-Obsidian-vault>/AgentMemory/` (Google Drive synced across your machines). The `/memory` skill writes; `harness_memory.py` reads; every harness phase recalls relevant entries at start and offers to save at end. **Ships with `agentic-harness` v3.0.0 + `agent-toolkit` v1.0.0.**
-- **V4 — Vault as true knowledge database (deferred).** V3's markdown-and-frontmatter layout is the *durable input* — your content stays human-readable. On top of that, V4 builds a fully indexed and vectorized recall layer so the agent pulls just the right context dynamically during conversation — not too much, not too little. The surface gets conversational: *"open a project file for M"*, *"list my active projects"*, *"pull everything we've discussed about the home server"*. Think filing cabinet you can talk to — a competent assistant who already knows where everything lives. The roles sharpen too: **raw inputs are yours** (brain dumps, fetched articles, conversation excerpts), **the compiled wiki is the agent's** (summaries, cross-references, synthesis it maintains for you), **the schema is jointly maintained** (your AGENTS.md is the contract both sides operate against). V4 is also when Agent M stops being just a coding tool — same vault, same backlinks, same recall, but the projects in it span coding, research, vacation planning, sourdough notebooks, workshop builds, learning a new subject. What varies is the content density per bucket, not the bucket vocabulary. Folder structure and storage patterns evolve to support this; the agent gains tighter guardrails around touching your personal docs (only when **you** ask). Detail in `agentic-harness/.harness/ROADMAP-AgentMemoryV4.md`.
+- **V3 — Vault + auto-recall + controlled write (current).** A folder at `<your-Obsidian-vault>/AgentMemory/` (Google Drive synced across your machines). The `/memory` skill writes; `harness_memory.py` reads; every harness phase recalls relevant entries at start and offers to save at end. **Ships with `agentm` v3.0.0 + `crickets` v1.0.0.**
+- **V4 — Vault as true knowledge database (deferred).** V3's markdown-and-frontmatter layout is the *durable input* — your content stays human-readable. On top of that, V4 builds a fully indexed and vectorized recall layer so the agent pulls just the right context dynamically during conversation — not too much, not too little. The surface gets conversational: *"open a project file for M"*, *"list my active projects"*, *"pull everything we've discussed about the home server"*. Think filing cabinet you can talk to — a competent assistant who already knows where everything lives. The roles sharpen too: **raw inputs are yours** (brain dumps, fetched articles, conversation excerpts), **the compiled wiki is the agent's** (summaries, cross-references, synthesis it maintains for you), **the schema is jointly maintained** (your AGENTS.md is the contract both sides operate against). V4 is also when Agent M stops being just a coding tool — same vault, same backlinks, same recall, but the projects in it span coding, research, vacation planning, sourdough notebooks, workshop builds, learning a new subject. What varies is the content density per bucket, not the bucket vocabulary. Folder structure and storage patterns evolve to support this; the agent gains tighter guardrails around touching your personal docs (only when **you** ask). Detail in `agentm/.harness/ROADMAP-AgentMemoryV4.md`.
 
 ## Architecture
 
@@ -99,7 +99,7 @@ Three coordinated systems on top of an Obsidian markdown folder synced via Googl
 | `release` | 6000 | `decisions/` |
 | `bugfix` | 6000 | `known-issues/` |
 
-Detail: [harness ADR 0007](https://github.com/alexherrero/agentic-harness/blob/main/wiki/explanation/decisions/0007-auto-context-into-harness-phases.md).
+Detail: [harness ADR 0007](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0007-auto-context-into-harness-phases.md).
 
 **Write layer.** `/memory save` is the primary write surface; saves are collision-checked, no overwrite. `/memory evolve` archives the old and writes the new with a `supersedes:` cross-link. `harness_memory.py offer-save` is the harness-side dispatcher at phase exit, routed by confidence (see [Constitutional Schema](#constitutional-schema)).
 
@@ -117,7 +117,7 @@ The folder structure and storage patterns evolve to make this work — V3's `per
 
 Per-project structure becomes universal. Every project gets `_index.md`, `decisions/`, `open-questions/`, `notes/`, `references/`, `assets/`, and `log.md` — same buckets for a vacation as for an API. The content density per bucket varies by domain; the bucket vocabulary doesn't. The project's `_index.md` declares its domain (`vacation` | `cooking` | `dev` | `research` | `crafting` | `learning` | …) as a tag, not a folder — projects sit peer-to-peer under `personal-projects/`. Binary assets — diagrams, photos, PDFs, spreadsheets — are first-class, referenced from entry frontmatter so recall can surface them alongside markdown. Cross-project layers (`people/`, `tools/`, `patterns/`) hold what spans projects: your framing carpenter and your senior eng peer are both `people`; your Festool router and your IDE are both `tools`.
 
-The design space lives in `agentic-harness/.harness/ROADMAP-AgentMemoryV4.md`. Migration from V3 is a first-class deliverable: your existing entries move forward, not get rewritten by hand. The harness itself stays dev-coded in V4 — its phase commands (`/setup` `/plan` `/work` …) are software lifecycle vocabulary, and Agent M serves both harness-driven dev work and vault-only non-dev work in parallel. A future **V4.5** revisits the harness so it handles any kind of work the same way — that's a separate design once V4 ships.
+The design space lives in `agentm/.harness/ROADMAP-AgentMemoryV4.md`. Migration from V3 is a first-class deliverable: your existing entries move forward, not get rewritten by hand. The harness itself stays dev-coded in V4 — its phase commands (`/setup` `/plan` `/work` …) are software lifecycle vocabulary, and Agent M serves both harness-driven dev work and vault-only non-dev work in parallel. A future **V4.5** revisits the harness so it handles any kind of work the same way — that's a separate design once V4 ships.
 
 ## Constitutional Schema
 
@@ -167,7 +167,7 @@ The `/memory` skill exposes these sub-commands; full bodies in [`memory/SKILL.md
 **Discover + adapt**
 - `/memory index-skills` — walk `SKILL.md` paths; write `kind: skill-pointer` entries.
 - `/memory discover-skills` — cadence-checked scan over a 4-URL whitelist; dated snapshots + diffs cached.
-- `/memory adapt-skills` — two-pass adapt-don't-import. Python rubric (6 rules) → enriched JSON → `adapt-evaluator` sub-agent writes a watchlist entry. The sub-agent's write tool is allowlisted to `_skill-watchlist/` only; it **cannot** fork into `agent-toolkit/skills/`. Promotion is your call, in a separate session.
+- `/memory adapt-skills` — two-pass adapt-don't-import. Python rubric (6 rules) → enriched JSON → `adapt-evaluator` sub-agent writes a watchlist entry. The sub-agent's write tool is allowlisted to `_skill-watchlist/` only; it **cannot** fork into `crickets/skills/`. Promotion is your call, in a separate session.
 - `/memory watchlist` — review queued entries with `list` / `review` / `promote` / `dismiss` / `defer`.
 
 ## Background Automations
@@ -218,7 +218,7 @@ V4 commands are deliberately under-specified here. Each gets its own design doc 
 - [`v3-retrospective`](v3-retrospective) — what the V3 arc shipped, learned, and left for V4
 - [`memoryvault`](memoryvault) — the parent design doc that drove V3 implementation
 - [Use the memory skill](Use-The-Memory-Skill) — operator-facing how-to for `/memory`
-- [harness ADR 0007](https://github.com/alexherrero/agentic-harness/blob/main/wiki/explanation/decisions/0007-auto-context-into-harness-phases.md) — per-phase recall integration
+- [harness ADR 0007](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0007-auto-context-into-harness-phases.md) — per-phase recall integration
 - [toolkit ADR 0007](0007-memoryvault-discovery) — discovery + mining + adapt-don't-import
-- `agentic-harness/.harness/ROADMAP-AgentMemoryV4.md` — V4 roadmap (operator-local; `.harness/` is gitignored)
-- `agentic-harness/.harness/ROADMAP.archive.20260523-v3-complete.md` — full V3-era ROADMAP snapshot (operator-local; preserved for eventual vault migration)
+- `agentm/.harness/ROADMAP-AgentMemoryV4.md` — V4 roadmap (operator-local; `.harness/` is gitignored)
+- `agentm/.harness/ROADMAP.archive.20260523-v3-complete.md` — full V3-era ROADMAP snapshot (operator-local; preserved for eventual vault migration)

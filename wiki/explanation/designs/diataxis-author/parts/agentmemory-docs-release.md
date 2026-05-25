@@ -35,14 +35,14 @@ Final part of plan #13. Lands the AgentMemory integration (read + write conventi
 **2. `documenter` dispatch transition** (Migrations §2):
 
 - Harness `/release` phase spec amendment: `documenter` dispatch becomes `/diataxis check` invocation if `diataxis-author` is installed (detect via skill-presence check); graceful-skip to current direct dispatch if not. Backward-compatible.
-- Updates `agentic-harness/harness/phases/05-release.md` (canonical) + adapter files.
+- Updates `agentm/harness/phases/05-release.md` (canonical) + adapter files.
 
-**3. New how-to** at `agent-toolkit/wiki/how-to/Use-Diataxis-Author.md`:
+**3. New how-to** at `crickets/wiki/how-to/Use-Diataxis-Author.md`:
 
 - Comprehensive page covering 5 sub-commands + worked scenarios (author new page / detect drift / repair / migrate legacy wiki / classify ambiguous page) + AgentMemory integration walkthrough + per-repo override pattern + troubleshooting (mode-mixed false positives / check-wiki.py version mismatch / documenter dispatch transition).
 - Same shape + depth as `Use-The-Memory-Skill.md`.
 
-**4. New ADR** at `agent-toolkit/wiki/explanation/decisions/0008-diataxis-author.md`:
+**4. New ADR** at `crickets/wiki/explanation/decisions/0008-diataxis-author.md`:
 
 - Locked design calls from this design (Q1-Q4 + key Tech Debt items + load-bearing assumptions).
 - Distinct from harness-side ADR 0004 (which is the *Diátaxis spec*; this ADR is the *skill design*).

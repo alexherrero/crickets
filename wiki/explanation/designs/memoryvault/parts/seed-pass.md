@@ -27,13 +27,13 @@ The vault is empty when the prior #7a parts ship. This part populates it with cu
 
 1. **Seed `MemoryVault/personal-private/_always-load/`** (~10-20 entries) by distilling existing user state:
    - `~/.claude/CLAUDE.md` dev-flow conventions (status reports with ✅/⬜ charts, link blocks, handoff phrases, paragraph-long task narratives, wake-on-CI pattern, locked design calls section, CHANGELOG + ADR shapes, coordinated cross-repo releases).
-   - `~/Antigravity/agentic-harness/AGENTS.md` sibling-repo conventions.
-   - `~/Antigravity/agent-toolkit/AGENTS.md` toolkit conventions (PII guardrails, manifest schema, commit-no-coauthor rule).
+   - `~/Antigravity/agentm/AGENTS.md` sibling-repo conventions.
+   - `~/Antigravity/crickets/AGENTS.md` toolkit conventions (PII guardrails, manifest schema, commit-no-coauthor rule).
    - Locked design calls from plans #3-#6 (evaluator allowlist; base hooks alphabetical-install-order invariant; design skill 10-section template lock; etc.). Each entry hand-written with the `always_load: true` frontmatter flag.
 
 2. **Seed `MemoryVault/personal-projects/<slug>/`** for in-flight projects:
-   - `agentic-harness` — repo purpose, conventions, current state, key ADRs, ROADMAP execution order.
-   - `agent-toolkit` — repo purpose, customization shape, key ADRs (0001-0004), shipping cadence.
+   - `agentm` — repo purpose, conventions, current state, key ADRs, ROADMAP execution order.
+   - `crickets` — repo purpose, customization shape, key ADRs (0001-0004), shipping cadence.
    - `dev-setup` — device-config-symlinks repo, `~/.claude/CLAUDE.md` symlink convention, sibling-repo bootstrap.
    - Each project gets a `_index.md` load-cheap entry plus `decisions/` + `conventions.md` files lifted from the repo's existing state.
 
@@ -49,7 +49,7 @@ The vault is empty when the prior #7a parts ship. This part populates it with cu
 5. **Inventory + decide on 3 additional source paths** (flagged in the parent design's Migrations §1 for follow-up at this task):
    - The user's own Obsidian vault — existing notes that may overlap with what MemoryVault would otherwise auto-capture. **Decision per source-note**: pull into MemoryVault (duplicate) / link to from MemoryVault but leave in place (reference) / leave entirely in user vault (not relevant to agent).
    - A GitHub experimental repo with a README + supporting files describing prior context-system / memory-related explorations. **Decision per file**: distill key ideas into `_always-load/` or `personal-projects/memoryvault/decisions/` / archive whole-cloth into `personal-projects/memoryvault/historical/` / leave in place.
-   - Scattered synced-GitHub-repo content: CLAUDE.md fragments, AGENTS.md sections, PLAN.archive narratives, ADRs, ROADMAP locked design calls. **Decision per source**: most CLAUDE.md / AGENTS.md content already gets distilled in sub-task 1; PLAN.archive narratives are mineable for "what I've learned from past plans" → write to `personal-projects/agentic-harness/decisions/` or similar; ADRs are reference material → link from `personal-projects/<repo>/decisions/`; locked design calls are gold-tier capture material.
+   - Scattered synced-GitHub-repo content: CLAUDE.md fragments, AGENTS.md sections, PLAN.archive narratives, ADRs, ROADMAP locked design calls. **Decision per source**: most CLAUDE.md / AGENTS.md content already gets distilled in sub-task 1; PLAN.archive narratives are mineable for "what I've learned from past plans" → write to `personal-projects/agentm/decisions/` or similar; ADRs are reference material → link from `personal-projects/<repo>/decisions/`; locked design calls are gold-tier capture material.
 
 6. **Validate by running sample recalls**:
    - Pose 5-10 sample queries that should match seeded content.
@@ -70,7 +70,7 @@ The vault is empty when the prior #7a parts ship. This part populates it with cu
 
 1. **`~/ContextVault/` fully migrated** — every `.md` file in the source path has a corresponding entry in MemoryVault at the expected path; no source files left un-migrated; `~/ContextVault/` can be deleted (verify by `ls -la` showing only `.git` or empty after).
 2. **`_always-load/` has 10-20 entries** — count + spot-check entries are substantive (not stub placeholders); each has correct frontmatter (`always_load: true`, `kind`, `tags`, `status: active`).
-3. **`personal-projects/` has at least 3 project trees** — agentic-harness, agent-toolkit, dev-setup; each has `_index.md` + `decisions/` + `conventions.md` populated.
+3. **`personal-projects/` has at least 3 project trees** — agentm, crickets, dev-setup; each has `_index.md` + `decisions/` + `conventions.md` populated.
 4. **`Ideas.md` populated** — at least 5 ideas (user-provided + agent-extracted); each has a 2-sentence summary + wikilink to `_idea-incubator/<slug>/_index.md`.
 5. **`_idea-incubator/` has matching dirs** — one per `Ideas.md` entry; each has `_index.md` + deep-research files.
 6. **3 additional source paths inventoried** — co-decision-doc captured at `MemoryVault/_meta/seed-additional-sources-decisions.md` recording the per-source decision (pull / link / leave).

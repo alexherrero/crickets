@@ -12,7 +12,7 @@ project: <GitHub Project URL or leave empty>
 ---
 
 <!--
-  agent-toolkit design-doc template (v0.1.0). Implements the locked
+  crickets design-doc template (v0.1.0). Implements the locked
   10-section structure from PLAN.archive (plan #6 / locked design call #2).
 
   Each section below has:

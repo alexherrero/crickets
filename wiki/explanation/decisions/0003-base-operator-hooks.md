@@ -12,7 +12,7 @@ The cwc-long-running-agents pattern (`~/ContextVault/domains/anthropic-patterns/
 2. **Mid-run redirect** — today, the only way to redirect an agent that's heading the wrong direction is to interrupt-and-restart. Same cost as above. The operator-typed correction is unreliable mid-stream because the agent has to acknowledge + apply it in the same response that may be already mid-action.
 3. **Crash recovery** — today, a crashed Claude Code session (or one closed mid-task) loses any uncommitted work. Recovery is "hope you committed recently."
 
-The harness's existing hook surface (`PostToolUse` for verify, `PreCompact` for compact, `SessionStart` for state-load) is harness-shape-specific. The three operator-control primitives are host-cross-cutting and consumer-cross-cutting: they're useful for the harness's `/work` + `/release` phases, the future design skill (#6), the quality-gates bundle (#10), and any long-running custom skill. The natural home is `agent-toolkit`.
+The harness's existing hook surface (`PostToolUse` for verify, `PreCompact` for compact, `SessionStart` for state-load) is harness-shape-specific. The three operator-control primitives are host-cross-cutting and consumer-cross-cutting: they're useful for the harness's `/work` + `/release` phases, the future design skill (#6), the quality-gates bundle (#10), and any long-running custom skill. The natural home is `crickets`.
 
 Open design questions at planning time:
 
@@ -133,7 +133,7 @@ Rationale for Python (not jq, which the harness uses): python3 is already a hard
 - **Safety-branch sprawl.** Without cleanup, `auto-save/*` branches accumulate. Mitigation: how-to documents cleanup patterns; auto-cleanup is a future improvement.
 - **Two grader-style mechanisms in PreToolUse.** kill-switch and steer share the event, and their interaction (halt-wins-over-steer) is alphabetically-enforced — a load-bearing invariant that could break if Claude Code's hook semantics change. Mitigation: documented in the how-to + here as a re-audit trigger.
 - **commit-on-stop runs on every Stop event with a dirty tree.** Active development sessions can accumulate many safety branches per session (one per turn that leaves a dirty tree). Operators get to clean them up.
-- **Synthetic commit identity.** commit-on-stop commits as `commit-on-stop@agent-toolkit.local` (scoped to the single commit via `git -c user.email=...`). The identity is fake but obvious in `git log`. Mitigation: the identity is documented in the hook body + this ADR; intentional choice to keep auto-saves visually distinct from operator commits in history.
+- **Synthetic commit identity.** commit-on-stop commits as `commit-on-stop@crickets.local` (scoped to the single commit via `git -c user.email=...`). The identity is fake but obvious in `git log`. Mitigation: the identity is documented in the hook body + this ADR; intentional choice to keep auto-saves visually distinct from operator commits in history.
 
 **Load-bearing assumptions** (re-audit on every Claude Code release + every toolkit installer change)
 
@@ -146,14 +146,14 @@ Rationale for Python (not jq, which the harness uses): python3 is already a hard
 ## Related
 
 - [How to use the base operator-control hooks](Use-The-Base-Hooks) — practical recipes with three worked scenarios + manual equivalents for other hosts.
-- [kill-switch hook spec](https://github.com/alexherrero/agent-toolkit/blob/main/hooks/kill-switch/hook.md)
-- [steer hook spec](https://github.com/alexherrero/agent-toolkit/blob/main/hooks/steer/hook.md)
-- [commit-on-stop hook spec](https://github.com/alexherrero/agent-toolkit/blob/main/hooks/commit-on-stop/hook.md)
+- [kill-switch hook spec](https://github.com/alexherrero/crickets/blob/main/hooks/kill-switch/hook.md)
+- [steer hook spec](https://github.com/alexherrero/crickets/blob/main/hooks/steer/hook.md)
+- [commit-on-stop hook spec](https://github.com/alexherrero/crickets/blob/main/hooks/commit-on-stop/hook.md)
 - [Customization Types](Customization-Types) — what `kind: hook` means + v0.7.0 installer support.
 - [Per-Host Paths](Per-Host-Paths) — where the hook scripts + settings fragments land.
 - [Installer CLI](Installer-CLI) — `--hook` flag + `.claude/settings.json` deep-merge semantics.
-- [ADR 0001 — agent-toolkit purpose](0001-agent-toolkit-purpose) — the sibling-repo decision that put these customizations here.
+- [ADR 0001 — crickets purpose](0001-crickets-purpose) — the sibling-repo decision that put these customizations here.
 - [ADR 0002 — evaluator design](0002-evaluator-design) — same kind=X-first-consumer pattern at one earlier turn (`kind: agent`).
-- [agentic-harness `/work` § Long-running operator-control hooks](https://github.com/alexherrero/agentic-harness/blob/main/harness/phases/03-work.md) — harness-side dispatch.
-- [agentic-harness `/release` § commit-on-stop safety net](https://github.com/alexherrero/agentic-harness/blob/main/harness/phases/05-release.md) — harness-side dispatch.
+- [agentm `/work` § Long-running operator-control hooks](https://github.com/alexherrero/agentm/blob/main/harness/phases/03-work.md) — harness-side dispatch.
+- [agentm `/release` § commit-on-stop safety net](https://github.com/alexherrero/agentm/blob/main/harness/phases/05-release.md) — harness-side dispatch.
 - [cwc-long-running-agents](https://www.anthropic.com/engineering/claude-code-best-practices) — the source pattern (Anthropic's coding-with-Claude best practices).

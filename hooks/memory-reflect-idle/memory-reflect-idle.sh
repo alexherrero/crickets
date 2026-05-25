@@ -7,7 +7,7 @@
 # reflection retroactively on each orphan's transcript; renames .start →
 # .reflected on success. GCs .reflected markers older than 30 days.
 #
-# Plan #7a part 3 task 4 — new agent-toolkit primitive. Markers themselves
+# Plan #7a part 3 task 4 — new crickets primitive. Markers themselves
 # are written by task 6 (SessionStart + Stop extensions).
 #
 # See hook.md in this directory for full documentation.

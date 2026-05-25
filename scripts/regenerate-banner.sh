@@ -9,7 +9,7 @@
 #   assets/crickets/banner-3200.png (3200×860, retina/2x)
 #
 # The banner is a static brand asset — no release-version dependency.
-# Mirrors agentic-harness/scripts/regenerate-banner.sh exactly (plan #15 task 7).
+# Mirrors agentm/scripts/regenerate-banner.sh exactly (plan #15 task 7).
 # Reqs: a Chrome install (macOS, Linux apt, or Windows in Git Bash / MSYS).
 
 set -euo pipefail

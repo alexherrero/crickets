@@ -2,15 +2,15 @@
 
 > [!NOTE]
 > **Goal:** Use `kill-switch`, `steer`, and `commit-on-stop` to keep precise control over a long-running Claude Code session — halt at a tool call, redirect mid-run, recover from a crash.
-> **Prereqs:** `agent-toolkit` installed into the target project (so the three hook scripts land at `.claude/hooks/` and their event registrations land in `.claude/settings.json`); the target is a git repo.
+> **Prereqs:** `crickets` installed into the target project (so the three hook scripts land at `.claude/hooks/` and their event registrations land in `.claude/settings.json`); the target is a git repo.
 
 ## The three hooks at a glance
 
 | Hook | Event | Trigger file / signal | Effect |
 |---|---|---|---|
-| [`kill-switch`](https://github.com/alexherrero/agent-toolkit/blob/main/hooks/kill-switch/hook.md) | `PreToolUse` (every tool call) | `<repo>/.harness/STOP` exists | Block the tool call (exit 2 + halt-message stderr) |
-| [`steer`](https://github.com/alexherrero/agent-toolkit/blob/main/hooks/steer/hook.md) | `PreToolUse` (every tool call) | `<repo>/.harness/STEER.md` exists | Print contents to stdout (Claude Code injects into agent context); rename file to `STEER.consumed-<iso-ts>.md` |
-| [`commit-on-stop`](https://github.com/alexherrero/agent-toolkit/blob/main/hooks/commit-on-stop/hook.md) | `Stop` event (end of each turn) | working tree is dirty | Create `auto-save/<iso-ts>` branch and commit all changes there; return HEAD to original branch with clean tree |
+| [`kill-switch`](https://github.com/alexherrero/crickets/blob/main/hooks/kill-switch/hook.md) | `PreToolUse` (every tool call) | `<repo>/.harness/STOP` exists | Block the tool call (exit 2 + halt-message stderr) |
+| [`steer`](https://github.com/alexherrero/crickets/blob/main/hooks/steer/hook.md) | `PreToolUse` (every tool call) | `<repo>/.harness/STEER.md` exists | Print contents to stdout (Claude Code injects into agent context); rename file to `STEER.consumed-<iso-ts>.md` |
+| [`commit-on-stop`](https://github.com/alexherrero/crickets/blob/main/hooks/commit-on-stop/hook.md) | `Stop` event (end of each turn) | working tree is dirty | Create `auto-save/<iso-ts>` branch and commit all changes there; return HEAD to original branch with clean tree |
 
 All three are **Claude-Code-only** for v0.7.0. Manual equivalents for Antigravity and Gemini CLI are below.
 
@@ -214,10 +214,10 @@ This requires the agent to remember + execute correctly, which is less reliable 
 
 ### Hook didn't fire
 
-1. Check that `agent-toolkit` is installed into the target: `ls .claude/hooks/` should show `kill-switch.sh`, `steer.sh`, `commit-on-stop.sh` (POSIX) or the `.ps1` variants on Windows.
+1. Check that `crickets` is installed into the target: `ls .claude/hooks/` should show `kill-switch.sh`, `steer.sh`, `commit-on-stop.sh` (POSIX) or the `.ps1` variants on Windows.
 2. Check `.claude/settings.json` has the event registrations: `cat .claude/settings.json | python3 -m json.tool` and look for `hooks.PreToolUse` (containing kill-switch + steer) and `hooks.Stop` (containing commit-on-stop).
 3. Verify scripts are executable (POSIX): `ls -la .claude/hooks/*.sh` should show `-rwxr-xr-x`.
-4. Re-install with `bash agent-toolkit/install.sh --update <project>` to refresh.
+4. Re-install with `bash crickets/install.sh --update <project>` to refresh.
 
 ### STOP file ignored
 
@@ -240,14 +240,14 @@ The timestamp is UTC-resolution-to-the-second. Two Stop events firing in the sam
 
 ### `.claude/settings.json` malformed
 
-Hooks won't load. Validate with `python3 -m json.tool .claude/settings.json`. If it's broken, the toolkit installer's idempotent re-merge will fix it: `bash agent-toolkit/install.sh --update <project>`.
+Hooks won't load. Validate with `python3 -m json.tool .claude/settings.json`. If it's broken, the toolkit installer's idempotent re-merge will fix it: `bash crickets/install.sh --update <project>`.
 
 ## Related
 
-- [`kill-switch` hook spec](https://github.com/alexherrero/agent-toolkit/blob/main/hooks/kill-switch/hook.md)
-- [`steer` hook spec](https://github.com/alexherrero/agent-toolkit/blob/main/hooks/steer/hook.md)
-- [`commit-on-stop` hook spec](https://github.com/alexherrero/agent-toolkit/blob/main/hooks/commit-on-stop/hook.md)
+- [`kill-switch` hook spec](https://github.com/alexherrero/crickets/blob/main/hooks/kill-switch/hook.md)
+- [`steer` hook spec](https://github.com/alexherrero/crickets/blob/main/hooks/steer/hook.md)
+- [`commit-on-stop` hook spec](https://github.com/alexherrero/crickets/blob/main/hooks/commit-on-stop/hook.md)
 - [ADR 0003 — base operator hooks](0003-base-operator-hooks) — design rationale.
 - [Customization Types](Customization-Types) — what `kind: hook` means + v0.7.0 installer support.
 - [Per-Host Paths](Per-Host-Paths) — where the hook scripts + settings fragments land.
-- [agentic-harness `/work` § long-running operator-control hooks](https://github.com/alexherrero/agentic-harness/blob/main/harness/phases/03-work.md) — harness-side dispatch documentation.
+- [agentm `/work` § long-running operator-control hooks](https://github.com/alexherrero/agentm/blob/main/harness/phases/03-work.md) — harness-side dispatch documentation.

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# smoke-install-bash.sh — install agent-toolkit into a scratch dir and assert
+# smoke-install-bash.sh — install crickets into a scratch dir and assert
 # the expected tree, then re-run for idempotence and --update semantics.
 #
 # Used by tests-linux.yml and tests-mac.yml. Invoked from repo root:
@@ -1093,15 +1093,15 @@ if ! echo "$EMBED_LOCAL_OUT" | grep -qE "sentence-transformers"; then
   echo "    output: $EMBED_LOCAL_OUT" >&2
   exit 1
 fi
-# Test C: cache dir constant points at ~/.cache/agent-toolkit/sentence-transformers/
+# Test C: cache dir constant points at ~/.cache/crickets/sentence-transformers/
 CACHE_DIR="$(python3 -c "
 import sys
 sys.path.insert(0, '$SCRATCH/.claude/skills/memory/scripts')
 from embed import _LOCAL_CACHE_DIR
 print(_LOCAL_CACHE_DIR)
 ")"
-if [[ "$CACHE_DIR" != *"agent-toolkit/sentence-transformers"* ]]; then
-  echo "FAIL: _LOCAL_CACHE_DIR should contain 'agent-toolkit/sentence-transformers', got '$CACHE_DIR'" >&2
+if [[ "$CACHE_DIR" != *"crickets/sentence-transformers"* ]]; then
+  echo "FAIL: _LOCAL_CACHE_DIR should contain 'crickets/sentence-transformers', got '$CACHE_DIR'" >&2
   exit 1
 fi
 # Test D: AGENT_TOOLKIT_SENTENCE_TRANSFORMERS_CACHE env var override works

@@ -78,11 +78,11 @@ def _resolve_check_wiki_py(arg_path: str | None) -> Path | None:
     """Resolve path to check-wiki.py. Returns None if absent."""
     if arg_path:
         return Path(arg_path).expanduser()
-    # Common sibling-clone locations: <toolkit>/../agentic-harness/scripts/check-wiki.py
+    # Common sibling-clone locations: <toolkit>/../agentm/scripts/check-wiki.py
     me = Path(__file__).resolve()
     candidates = [
-        me.parents[5] / "agentic-harness" / "scripts" / "check-wiki.py",
-        Path.home() / "Antigravity" / "agentic-harness" / "scripts" / "check-wiki.py",
+        me.parents[5] / "agentm" / "scripts" / "check-wiki.py",
+        Path.home() / "Antigravity" / "agentm" / "scripts" / "check-wiki.py",
     ]
     for c in candidates:
         if c.exists():

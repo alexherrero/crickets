@@ -240,7 +240,7 @@ def _resolve_vault_path(arg_vault_path: str | None) -> Path:
     """Resolve vault path per the documented chain.
 
     Order: --vault-path arg > MEMORY_VAULT_PATH env > error.
-    (The third level — ~/.config/agent-toolkit/memory.yml — is deferred to a
+    (The third level — ~/.config/crickets/memory.yml — is deferred to a
     future task; documented in SKILL.md.)
     """
     if arg_vault_path:
@@ -251,7 +251,7 @@ def _resolve_vault_path(arg_vault_path: str | None) -> Path:
     raise FileNotFoundError(
         "No vault path resolved. Set --vault-path or the MEMORY_VAULT_PATH "
         "environment variable. (Config-file resolution path "
-        "~/.config/agent-toolkit/memory.yml is documented but not yet "
+        "~/.config/crickets/memory.yml is documented but not yet "
         "implemented as of v0.9.0; tracked for a future task.)"
     )
 

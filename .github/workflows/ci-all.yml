@@ -9,7 +9,7 @@ name: "[T] CI All"
 # check suites on a ref, including ones from apps we don't control. Badging
 # this single workflow gives us a clean aggregate that we DO control.
 #
-# Mirrors the same workflow in the sibling agentic-harness repo (plan #15 task 7).
+# Mirrors the same workflow in the sibling agentm repo (plan #15 task 7).
 
 on:
   push:

@@ -7,7 +7,7 @@ version: 1.0.0
 install_scope: project
 ---
 
-You are running the `dependabot-fixer` skill. Migrated from `agentic-harness` to `agent-toolkit` in toolkit v0.1.0. The body below is the operational version.
+You are running the `dependabot-fixer` skill. Migrated from `agentm` to `crickets` in toolkit v0.1.0. The body below is the operational version.
 
 ## Preconditions (check first, abort if not met)
 
@@ -87,4 +87,4 @@ This skill exists for the **major-version Dependabot PR where CI failed** case. 
 
 ## Migration history
 
-Originally shipped in `agentic-harness v0.8.x` as a harness-bundled skill. Migrated to `agent-toolkit v0.1.0` (paired with `agentic-harness v2.0.0`) because the skill is host-cross-cutting and not phase-shaped — it earns its keep in any repo with Dependabot + CI, not just harness-installed projects. The `.harness/`-aware paths (`.harness/verify.sh`, `.harness/known-migrations.md`, `.harness/progress.md`) remain because they're soft references — the skill graceful-falls back to language defaults when those files are absent.
+Originally shipped in `agentm v0.8.x` as a harness-bundled skill. Migrated to `crickets v0.1.0` (paired with `agentm v2.0.0`) because the skill is host-cross-cutting and not phase-shaped — it earns its keep in any repo with Dependabot + CI, not just harness-installed projects. The `.harness/`-aware paths (`.harness/verify.sh`, `.harness/known-migrations.md`, `.harness/progress.md`) remain because they're soft references — the skill graceful-falls back to language defaults when those files are absent.

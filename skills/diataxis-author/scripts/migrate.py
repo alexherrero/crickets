@@ -389,8 +389,8 @@ External GitHub repo links use full URLs.
 
 ## See also
 
-- [agentic-harness ADR 0004 — Diátaxis Documentation Spec](../../../agentic-harness/wiki/explanation/decisions/0004-diataxis-documentation-spec.md) — canonical spec
-- [agent-toolkit diataxis-author design doc](../wiki/explanation/designs/diataxis-author.md) — skill design
+- [agentm ADR 0004 — Diátaxis Documentation Spec](../../../agentm/wiki/explanation/decisions/0004-diataxis-documentation-spec.md) — canonical spec
+- [crickets diataxis-author design doc](../wiki/explanation/designs/diataxis-author.md) — skill design
 """
         conv_path.write_bytes(conv_content.encode("utf-8"))
         stats["conventions_seeded"] = True

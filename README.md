@@ -18,19 +18,19 @@
 -->
 
 <p align="center">
-  <a href="https://github.com/alexherrero/agent-toolkit/actions/workflows/ci-all.yml"><img src="https://img.shields.io/github/actions/workflow/status/alexherrero/agent-toolkit/ci-all.yml?branch=main&style=for-the-badge&label=CI&labelColor=0a0a0a&logo=github&logoColor=f4efe6" alt="CI"></a>
-  <a href="https://github.com/alexherrero/agent-toolkit/releases/latest"><img src="https://img.shields.io/github/v/release/alexherrero/agent-toolkit?label=LATEST&labelColor=0a0a0a&logo=github&logoColor=f4efe6&style=for-the-badge" alt="Latest release"></a>
+  <a href="https://github.com/alexherrero/crickets/actions/workflows/ci-all.yml"><img src="https://img.shields.io/github/actions/workflow/status/alexherrero/crickets/ci-all.yml?branch=main&style=for-the-badge&label=CI&labelColor=0a0a0a&logo=github&logoColor=f4efe6" alt="CI"></a>
+  <a href="https://github.com/alexherrero/crickets/releases/latest"><img src="https://img.shields.io/github/v/release/alexherrero/crickets?label=LATEST&labelColor=0a0a0a&logo=github&logoColor=f4efe6&style=for-the-badge" alt="Latest release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/LICENSE-MIT-f4efe6?labelColor=0a0a0a&style=for-the-badge" alt="License: MIT"></a>
 </p>
 
-<p align="center"><sub>Works with Claude Code + Antigravity — <a href="https://github.com/alexherrero/agent-toolkit/wiki/Compatibility">see compatibility</a></sub></p>
+<p align="center"><sub>Works with Claude Code + Antigravity — <a href="https://github.com/alexherrero/crickets/wiki/Compatibility">see compatibility</a></sub></p>
 
-Inspired by the iconic noisy cricket from Men in Black, **Crickets** is a tactical suite of agent primitives engineered to punch far above their weight. Skills, hooks, sub-agents, bundles, MCP servers, slash commands, status lines, output styles, workflows, rules, snippets, settings-fragments. The execution engine behind [**Agent M**](https://github.com/alexherrero/agentic-harness) — the primitives **you** carry into any project to make the system work.
+Inspired by the iconic noisy cricket from Men in Black, **Crickets** is a tactical suite of agent primitives engineered to punch far above their weight. Skills, hooks, sub-agents, bundles, MCP servers, slash commands, status lines, output styles, workflows, rules, snippets, settings-fragments. The execution engine behind [**Agent M**](https://github.com/alexherrero/agentm) — the primitives **you** carry into any project to make the system work.
 
-[**Agent M**](https://github.com/alexherrero/agentic-harness) holds the phase-gated workflow, auto-recall, and on-disk state — the structural backend. Crickets holds everything that rides on top.
+[**Agent M**](https://github.com/alexherrero/agentm) holds the phase-gated workflow, auto-recall, and on-disk state — the structural backend. Crickets holds everything that rides on top.
 
 > **Latest:** v1.0.2 (2026-05-24) — Crickets 1.0 + transparent-variant asset hotfix.  
-> [Release notes](https://github.com/alexherrero/agent-toolkit/releases/latest) · [Agent M Evolution HLD](wiki/explanation/designs/agent-memory-evolution.md) · [CHANGELOG](CHANGELOG.md)
+> [Release notes](https://github.com/alexherrero/crickets/releases/latest) · [Agent M Evolution HLD](wiki/explanation/designs/agent-memory-evolution.md) · [CHANGELOG](CHANGELOG.md)
 
 ## What's inside
 
@@ -77,7 +77,7 @@ The current shipped catalog (see [wiki/reference/Customization-Types.md](wiki/re
 | **Per-host dispatch** | Manual per-project copying into `.claude/` / `.agent/` paths; you maintain the mapping yourself | One install command reads each manifest's `supported_hosts` and writes to the right host-specific paths automatically |
 | **Sibling-reference bundles** | No bundle concept — pieces install individually; you remember the set | `--bundle quality-gates` installs `evaluator` + 4 base hooks in one shot; bundles point at standalone primitives so the source-of-truth stays in one place |
 | **PII guardrails** | Per-author rigor; no enforcement layer | Three layers: pre-push hook (blocks commits), `pii-scrubber` skill (interactive scrub), CI gate (`check-no-pii.sh --all` + `gitleaks-action`) |
-| **Paired-release coordination with Agent M** | Standalone repos; independent release cycles | Lockstep paired releases with `agentic-harness`; release notes cross-link the sibling; CI green on both repos required at release commits |
+| **Paired-release coordination with Agent M** | Standalone repos; independent release cycles | Lockstep paired releases with `agentm`; release notes cross-link the sibling; CI green on both repos required at release commits |
 
 Crickets isn't a curated list of other people's primitives — it's a single repo with one schema, one installer, one PII policy, and one coordinated release cycle paired with Agent M.
 
@@ -101,16 +101,16 @@ One manifest, two host destinations (`claude-code` + `antigravity`). The install
 
 ## Get started
 
-Crickets is one half of [Agent M](https://github.com/alexherrero/agentic-harness). Install the harness alongside for the full system; Crickets also works standalone if you only want the customizations.
+Crickets is one half of [Agent M](https://github.com/alexherrero/agentm). Install the harness alongside for the full system; Crickets also works standalone if you only want the customizations.
 
 ```bash
-# Clone as a sibling of agentic-harness (recommended layout)
+# Clone as a sibling of agentm (recommended layout)
 cd ~/Antigravity
-git clone https://github.com/alexherrero/agent-toolkit.git
-git clone https://github.com/alexherrero/agentic-harness.git   # the harness
+git clone https://github.com/alexherrero/crickets.git
+git clone https://github.com/alexherrero/agentm.git   # the harness
 
 # Drop everything Crickets ships into a target project
-bash ~/Antigravity/agent-toolkit/install.sh /path/to/your-project
+bash ~/Antigravity/crickets/install.sh /path/to/your-project
 ```
 
 <details>
@@ -118,18 +118,18 @@ bash ~/Antigravity/agent-toolkit/install.sh /path/to/your-project
 
 ```bash
 # Or pull just one bundle / skill / hook
-bash ~/Antigravity/agent-toolkit/install.sh /path/to/your-project --bundle quality-gates
-bash ~/Antigravity/agent-toolkit/install.sh /path/to/your-project --skill memory
-bash ~/Antigravity/agent-toolkit/install.sh /path/to/your-project --hook kill-switch
+bash ~/Antigravity/crickets/install.sh /path/to/your-project --bundle quality-gates
+bash ~/Antigravity/crickets/install.sh /path/to/your-project --skill memory
+bash ~/Antigravity/crickets/install.sh /path/to/your-project --hook kill-switch
 
 # Refresh (true-sync — wipe + recreate managed dirs)
-bash ~/Antigravity/agent-toolkit/install.sh --update /path/to/your-project
+bash ~/Antigravity/crickets/install.sh --update /path/to/your-project
 ```
 
 On Windows / PowerShell 7+:
 
 ```powershell
-pwsh -NoProfile -File C:\path\to\agent-toolkit\install.ps1 C:\path\to\your-project
+pwsh -NoProfile -File C:\path\to\crickets\install.ps1 C:\path\to\your-project
 ```
 
 </details>
@@ -165,7 +165,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the override protocol.
 <summary>Top-level layout</summary>
 
 ```text
-agent-toolkit/
+crickets/
 ├── skills/             # standalone skills — pii-scrubber, dependabot-fixer, ship-release, design, memory, diataxis-author
 ├── agents/             # standalone sub-agents — evaluator
 ├── hooks/              # hooks — kill-switch, steer, commit-on-stop, evidence-tracker
@@ -197,7 +197,7 @@ Crickets grew across paired releases with Agent M. The full V1→V4 evolution of
 
 ## Status
 
-Currently shipping **v1.0.2** — Crickets commits to a stable public API surface: bundle/manifest schema, installer flags, the `bundles/` namespace, and the 11 customization kinds. Internal surface (`scripts/`, `lib/install/`) remains pre-1.0 in spirit. See [CHANGELOG.md](CHANGELOG.md) and the [latest release](https://github.com/alexherrero/agent-toolkit/releases/latest). Crickets ships in lockstep with Agent M as paired releases.
+Currently shipping **v1.0.2** — Crickets commits to a stable public API surface: bundle/manifest schema, installer flags, the `bundles/` namespace, and the 11 customization kinds. Internal surface (`scripts/`, `lib/install/`) remains pre-1.0 in spirit. See [CHANGELOG.md](CHANGELOG.md) and the [latest release](https://github.com/alexherrero/crickets/releases/latest). Crickets ships in lockstep with Agent M as paired releases.
 
 ## Contributing
 

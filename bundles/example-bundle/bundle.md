@@ -10,7 +10,7 @@ version: 0.1.0
 
 # Example Bundle
 
-This is a **reference skeleton** demonstrating how an `agent-toolkit` bundle is structured. It is intentionally a no-op — the included `example-skill` does nothing useful. Keep it for new-contributor onboarding, or delete it in your fork.
+This is a **reference skeleton** demonstrating how an `crickets` bundle is structured. It is intentionally a no-op — the included `example-skill` does nothing useful. Keep it for new-contributor onboarding, or delete it in your fork.
 
 ## Why bundles?
 

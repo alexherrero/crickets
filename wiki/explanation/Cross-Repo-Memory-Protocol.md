@@ -1,12 +1,12 @@
 # Cross-Repo Memory Protocol
 
-How [agentic-harness](https://github.com/alexherrero/agentic-harness) reads from + writes to the toolkit-side `/memory` skill at phase boundaries.
+How [agentm](https://github.com/alexherrero/agentm) reads from + writes to the toolkit-side `/memory` skill at phase boundaries.
 
 ## Position in the toolkit
 
 The `memory` skill in this repo provides the **vault-side primitives**: `save.py` writes entries, `recall.py` queries them, `reflect.py` periodically mines transcripts, `index_skills.py` keeps the personal-skills index fresh. These run from inside Claude Code via the `/memory` skill or directly as Python CLIs.
 
-The **harness** in [`agentic-harness`](https://github.com/alexherrero/agentic-harness) is a separate repo that shells out to these scripts at deliberate phase boundaries (`/setup`, `/plan`, `/work`, `/review`, `/release`, `/bugfix`). The harness owns the *when*; the toolkit owns the *how*.
+The **harness** in [`agentm`](https://github.com/alexherrero/agentm) is a separate repo that shells out to these scripts at deliberate phase boundaries (`/setup`, `/plan`, `/work`, `/review`, `/release`, `/bugfix`). The harness owns the *when*; the toolkit owns the *how*.
 
 This page documents the contract between the two — what the harness expects from the toolkit's scripts, what guarantees the toolkit makes, and how the protocol degrades gracefully when one side isn't installed.
 
@@ -14,7 +14,7 @@ This page documents the contract between the two — what the harness expects fr
 
 ### What the harness expects
 
-The harness's dispatcher (`scripts/harness_memory.py` in agentic-harness) calls two toolkit scripts:
+The harness's dispatcher (`scripts/harness_memory.py` in agentm) calls two toolkit scripts:
 
 | Harness sub-command | Toolkit script | Args passed |
 |---|---|---|
@@ -23,8 +23,8 @@ The harness's dispatcher (`scripts/harness_memory.py` in agentic-harness) calls 
 
 Discovery happens in this priority order:
 1. `HARNESS_MEMORY_TOOLKIT_PATH` env (test override + non-standard installs).
-2. `<harness-repo>/../agent-toolkit/skills/memory/scripts/` (sibling clone — the canonical setup).
-3. `~/Antigravity/agent-toolkit/skills/memory/scripts/` (operator's default install location).
+2. `<harness-repo>/../crickets/skills/memory/scripts/` (sibling clone — the canonical setup).
+3. `~/Antigravity/crickets/skills/memory/scripts/` (operator's default install location).
 
 If none resolve, the harness logs `[harness_memory] toolkit not installed — recorded intent only` to stderr + continues. The phase doesn't error.
 
@@ -70,7 +70,7 @@ Either side can be absent and the other continues to work:
 
 ## Versioning + compatibility
 
-This contract is **soft** — neither repo's CI verifies the cross-repo integration. The harness ships smoke tests against a fixture toolkit stub (see `scripts/test_harness_memory.py` in agentic-harness, `TestOfferSaveBehavior` + `TestOfferSaveToolkitAbsent`). The toolkit's `save.py` interface stability is implicit: it's documented in `SKILL.md`, exercised by `test_save.py`, and changes infrequently.
+This contract is **soft** — neither repo's CI verifies the cross-repo integration. The harness ships smoke tests against a fixture toolkit stub (see `scripts/test_harness_memory.py` in agentm, `TestOfferSaveBehavior` + `TestOfferSaveToolkitAbsent`). The toolkit's `save.py` interface stability is implicit: it's documented in `SKILL.md`, exercised by `test_save.py`, and changes infrequently.
 
 If you change `save.py`'s CLI flags, body input format, or exit code semantics, the harness's `_invoke_toolkit_save()` function (in `scripts/harness_memory.py`) needs a matching update. The contract is small — 7 flags, one stdin stream, exit-0-on-success — so drift risk is low. But check this page when amending either side.
 
@@ -78,6 +78,6 @@ If you change `save.py`'s CLI flags, body input format, or exit code semantics, 
 
 - [Memory skill SKILL.md](../../skills/memory/SKILL.md) — the canonical surface this contract calls into.
 - [ADR 0007 — MemoryVault Discovery + Mining](decisions/0007-memoryvault-discovery.md) — vault layout + the operator-confirmed save pattern.
-- [agentic-harness ADR 0007 — Auto-context into harness phases](https://github.com/alexherrero/agentic-harness/blob/main/wiki/explanation/decisions/0007-auto-context-into-harness-phases.md) — harness-side ADR with all 5 design calls (Q1–Q5).
-- [agentic-harness Use Auto-Context how-to](https://github.com/alexherrero/agentic-harness/blob/main/wiki/how-to/Use-Auto-Context-In-Harness-Phases.md) — operator-facing per-phase walkthrough.
-- [`scripts/harness_memory.py`](https://github.com/alexherrero/agentic-harness/blob/main/scripts/harness_memory.py) — the harness-side dispatcher implementation.
+- [agentm ADR 0007 — Auto-context into harness phases](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0007-auto-context-into-harness-phases.md) — harness-side ADR with all 5 design calls (Q1–Q5).
+- [agentm Use Auto-Context how-to](https://github.com/alexherrero/agentm/blob/main/wiki/how-to/Use-Auto-Context-In-Harness-Phases.md) — operator-facing per-phase walkthrough.
+- [`scripts/harness_memory.py`](https://github.com/alexherrero/agentm/blob/main/scripts/harness_memory.py) — the harness-side dispatcher implementation.

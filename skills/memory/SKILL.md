@@ -9,7 +9,7 @@ install_scope: project
 
 # memory — permanent agent memory via Obsidian-vault-folder + reflection sidecar
 
-The first toolkit skill that integrates with the user's own personal note-taking surface (Obsidian) rather than maintaining a separate agent-only vault. The skill exposes four sub-commands (`save` / `evolve` / `reflect` / `search`); recall is hook-driven rather than user-invoked (SessionStart + UserPromptSubmit hooks shipped alongside in the [recall-loop part](https://github.com/alexherrero/agent-toolkit/blob/main/wiki/explanation/designs/memoryvault/parts/recall-loop.md)).
+The first toolkit skill that integrates with the user's own personal note-taking surface (Obsidian) rather than maintaining a separate agent-only vault. The skill exposes four sub-commands (`save` / `evolve` / `reflect` / `search`); recall is hook-driven rather than user-invoked (SessionStart + UserPromptSubmit hooks shipped alongside in the [recall-loop part](https://github.com/alexherrero/crickets/blob/main/wiki/explanation/designs/memoryvault/parts/recall-loop.md)).
 
 **Position vs. built-in agent memory** (Claude memories, vendor-specific context features): built-in memory is per-platform, opaque, lossy, and not composable across tools. MemoryVault is file-based + version-control-friendly + human-inspectable. The user can open Obsidian + read or edit any captured entry directly; the agent's memory + the user's notes coexist in the same place.
 
@@ -29,7 +29,7 @@ The first toolkit skill that integrates with the user's own personal note-taking
 | Run the adapt-don't-import workflow over discovered patterns (Python rubric → enriched JSONs → LLM sub-agent judgment → watchlist entries) | `/memory adapt-skills` |
 | Review pending entries in `_skill-watchlist/` — promote / dismiss / defer | `/memory watchlist` |
 
-Auto-recall happens via the [SessionStart + UserPromptSubmit hooks](https://github.com/alexherrero/agent-toolkit/blob/main/wiki/explanation/designs/memoryvault/parts/recall-loop.md) — operators don't invoke a recall command directly. Reflection happens automatically via Stop + idle hooks too; the manual `/memory reflect` is for one-off runs against arbitrary transcripts.
+Auto-recall happens via the [SessionStart + UserPromptSubmit hooks](https://github.com/alexherrero/crickets/blob/main/wiki/explanation/designs/memoryvault/parts/recall-loop.md) — operators don't invoke a recall command directly. Reflection happens automatically via Stop + idle hooks too; the manual `/memory reflect` is for one-off runs against arbitrary transcripts.
 
 ## Sub-commands
 
@@ -50,7 +50,7 @@ Synchronously writes a markdown entry to MemoryVault. File write returns immedia
 | `<slug>` | yes | — | Kebab-case identifier; filename stem. Validated as `^[a-z0-9-]+$`. |
 | `--group <group>` | no | `personal-private` | Memory group: `personal-private` / `personal-skills` / `personal-projects/<project-slug>`. |
 | `--always-load` | no | false | Routes to `MemoryVault/personal-private/_always-load/<slug>.md` and sets `always_load: true` frontmatter — entry gets injected at SessionStart per the recall-loop part. Overrides `--group` (always lands in `_always-load`). |
-| `--vault-path <path>` | no | from config | Absolute path to the MemoryVault folder. Resolution order: `--vault-path` arg > `MEMORY_VAULT_PATH` env var > `~/.config/agent-toolkit/memory.yml` `vault_path:` key > error. |
+| `--vault-path <path>` | no | from config | Absolute path to the MemoryVault folder. Resolution order: `--vault-path` arg > `MEMORY_VAULT_PATH` env var > `~/.config/crickets/memory.yml` `vault_path:` key > error. |
 | `--tags <tag1,tag2>` | no | empty list | Comma-separated tags; written to `tags:` frontmatter list. |
 | `--supersedes <old-path>` | no | empty | Path to an existing entry this new entry supersedes. Sets `supersedes:` frontmatter; **does NOT archive the old entry** — that's `/memory evolve`'s job (task 3). `--supersedes` is for cross-link-without-archive cases. |
 
@@ -58,7 +58,7 @@ The entry body (free-form markdown after the YAML frontmatter) comes from stdin 
 
 #### Step-by-step flow
 
-**Step 1 — Resolve vault path.** Walk the resolution order: `--vault-path` arg → `MEMORY_VAULT_PATH` env var → `~/.config/agent-toolkit/memory.yml` (`vault_path:` key). If none found, halt with `"No vault path resolved. Set --vault-path, MEMORY_VAULT_PATH, or ~/.config/agent-toolkit/memory.yml vault_path: <path>."`. Verify the resolved path exists and is a directory; halt otherwise with a clear error.
+**Step 1 — Resolve vault path.** Walk the resolution order: `--vault-path` arg → `MEMORY_VAULT_PATH` env var → `~/.config/crickets/memory.yml` (`vault_path:` key). If none found, halt with `"No vault path resolved. Set --vault-path, MEMORY_VAULT_PATH, or ~/.config/crickets/memory.yml vault_path: <path>."`. Verify the resolved path exists and is a directory; halt otherwise with a clear error.
 
 **Step 2 — Validate inputs.** `<kind>` and `<slug>` must match `^[a-z0-9-]+$` (kebab-case). `--group` (if provided) must match `^[a-z0-9-]+(/[a-z0-9-]+)?$` (kebab-case; one optional `/<project-slug>` segment for `personal-projects/<slug>`). Tags (if provided) each must match `^[a-z0-9-]+$`. Halt on any validation failure with a clear error pointing at the offending arg.
 
@@ -214,7 +214,7 @@ Saved entry to personal-private/_always-load/paragraph-long-status-narratives.md
 
 #### Python-side script (`scripts/save.py`)
 
-In parallel with the agent-driven skill body, this part also ships a standalone Python script at `agent-toolkit/skills/memory/scripts/save.py` that implements the same save logic for **hooks** (which run as standalone Python scripts, not as skill bodies) + **operator-debug** (manual `python3 ...` invocation) + **testing** (deterministic fixture tests that don't require an agent).
+In parallel with the agent-driven skill body, this part also ships a standalone Python script at `crickets/skills/memory/scripts/save.py` that implements the same save logic for **hooks** (which run as standalone Python scripts, not as skill bodies) + **operator-debug** (manual `python3 ...` invocation) + **testing** (deterministic fixture tests that don't require an agent).
 
 The script exposes:
 
@@ -413,7 +413,7 @@ Evolved entry:
 
 #### Python-side script (`scripts/evolve.py`)
 
-Canonical implementation at `agent-toolkit/skills/memory/scripts/evolve.py`. Same patterns as `save.py`:
+Canonical implementation at `crickets/skills/memory/scripts/evolve.py`. Same patterns as `save.py`:
 
 - **Function**: `evolve_entry(vault_path, old_path, new_body, reason, *, new_slug=None) -> tuple[Path, Path]` — returns `(new_entry_path, archive_path)`. Raises `FileNotFoundError` (old missing), `ValueError` (validation, status≠active, frontmatter unparseable), `FileExistsError` (archive collision after max retries).
 - **CLI entry point**: `python3 evolve.py <old-path> <reason> [--new-slug <slug>] [--body-file <p-or-->] [--vault-path <p>]`.
@@ -501,7 +501,7 @@ Batched paced walk over **all historical transcripts** at `~/.claude/projects/*/
 #### Invocation shape
 
 ```
-python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/reflect.py corpus \
+python3 ~/Antigravity/crickets/skills/memory/scripts/reflect.py corpus \
   [--projects-root <dir>] [--vault-path <path>] \
   [--batch-size N] [--max-batches M] \
   [--execute] [--reset] [--route-mode auto|silent|interactive]
@@ -560,7 +560,7 @@ Atomic writes via tempfile + rename — Ctrl-C mid-write can't leave a half-writ
 The agent's in-context mining (steps 3-4 above) follows the same heuristic as `skills/memory/scripts/reflect.py`. Operators can invoke the Python script directly for scripting / dogfooding / hook execution:
 
 ```bash
-python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/reflect.py \
+python3 ~/Antigravity/crickets/skills/memory/scripts/reflect.py \
   ~/.claude/projects/<repo>/<session-id>.jsonl \
   --summary
 ```
@@ -629,7 +629,7 @@ If section_not_found: the operator can manually annotate (the auto-search assume
 Variant subcommand for the 6-month GC sweep:
 
 ```
-python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/ideas_promote.py gc \
+python3 ~/Antigravity/crickets/skills/memory/scripts/ideas_promote.py gc \
   --vault-path <vault> [--gc-months 6]
 ```
 
@@ -663,7 +663,7 @@ Action: [k]eep (defer) / [a]rchive / [d]elete (default: k):
 
 ### `/memory index-skills`
 
-Walks `SKILL.md` files across configured source paths (`agent-toolkit/skills/`, `agentic-harness/.claude/skills/`, any extra repos the operator adds) and writes one `kind: skill-pointer` entry per skill to `MemoryVault/personal-skills/<repo>/<skill-name>.md`. The agent then picks these up via the normal recall hooks — surfacing *"we have a `/design author` skill"* without the operator re-mentioning it. Plan #7b task 1 ships this body + the canonical Python implementation at `skills/memory/scripts/index_skills.py`.
+Walks `SKILL.md` files across configured source paths (`crickets/skills/`, `agentm/.claude/skills/`, any extra repos the operator adds) and writes one `kind: skill-pointer` entry per skill to `MemoryVault/personal-skills/<repo>/<skill-name>.md`. The agent then picks these up via the normal recall hooks — surfacing *"we have a `/design author` skill"* without the operator re-mentioning it. Plan #7b task 1 ships this body + the canonical Python implementation at `skills/memory/scripts/index_skills.py`.
 
 #### Invocation shape
 
@@ -733,8 +733,8 @@ The CLI prints a JSON summary to stdout (suitable for piping into `jq`):
   "skipped": 5,
   "errors": 0,
   "results": [
-    {"action": "written", "target": "...", "repo": "agent-toolkit", "skill": "memory", "reason": ""},
-    {"action": "skipped", "target": "...", "repo": "agent-toolkit", "skill": "design", "reason": "unchanged (same skill_version + description)"}
+    {"action": "written", "target": "...", "repo": "crickets", "skill": "memory", "reason": ""},
+    {"action": "skipped", "target": "...", "repo": "crickets", "skill": "design", "reason": "unchanged (same skill_version + description)"}
   ]
 }
 ```
@@ -747,14 +747,14 @@ The CLI prints a JSON summary to stdout (suitable for piping into `jq`):
 
 ### `/memory discover-skills`
 
-Internet skill-discovery scan (plan #7b task 3). Fetches a curated set of "skill-shaped pattern" sources from the internet on a configurable cadence; caches each fetch as a dated snapshot; diffs against the previous snapshot; emits "new content since last scan" candidate signals for the adapt-don't-import workflow (task 4) to evaluate. **Never writes to `agent-toolkit/skills/`** — adoption decisions are gated by the watchlist review pattern in task 5.
+Internet skill-discovery scan (plan #7b task 3). Fetches a curated set of "skill-shaped pattern" sources from the internet on a configurable cadence; caches each fetch as a dated snapshot; diffs against the previous snapshot; emits "new content since last scan" candidate signals for the adapt-don't-import workflow (task 4) to evaluate. **Never writes to `crickets/skills/`** — adoption decisions are gated by the watchlist review pattern in task 5.
 
 Auto-fires from the idle-time hook (`memory-reflect-idle`) with `--cadence-check` so the scan self-throttles to the configured cadence (default 7 days). Manual invocation is also supported.
 
 #### Invocation shape
 
 ```
-python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/discover_skills.py \
+python3 ~/Antigravity/crickets/skills/memory/scripts/discover_skills.py \
   [--vault-path <path>] [--cadence-days N] [--cadence-check] \
   [--dry-run] [--max-sources N]
 ```
@@ -807,7 +807,7 @@ Per-source cache lives under `<vault>/_meta/skill-discovery-cache/`:
 
 **Step 5 — Per-source fetch loop.** For each URL (in whitelist file order, truncated to `--max-sources` if given):
 
-  a. `urllib.request` GET with 10s timeout + `User-Agent: agent-toolkit-skill-discovery/0.1`.
+  a. `urllib.request` GET with 10s timeout + `User-Agent: crickets-skill-discovery/0.1`.
   b. On 200: write `<source-slug>/<YYYY-MM-DD>.md` snapshot; compute diff against most-recent prior-day snapshot; write `diff-<YYYY-MM-DD>.md` if diff non-empty; update state.json with `{url, last_fetch, last_status: 200, last_snapshot, last_diff_chars}`.
   c. On 4xx/5xx/timeout/DNS-failure: log to state.json (`{last_attempt, last_status, last_error}`) but don't overwrite snapshot/diff. Continue to next source.
   d. First-ever fetch of a source: prev snapshot doesn't exist, so diff = full content (everything is "new").
@@ -839,14 +839,14 @@ Per-source cache lives under `<vault>/_meta/skill-discovery-cache/`:
 
 ### `/memory adapt-skills`
 
-Adapt-don't-import workflow (plan #7b task 4). **Two-pass architecture**: Pass 1 (deterministic Python) walks the diff files from `/memory discover-skills`, parses candidate patterns, applies a 6-rule rubric, enriches with GitHub metadata + trustworthiness signals; Pass 2 (LLM sub-agent — `adapt-evaluator`) reads each enriched candidate + cross-references the operator's vault + renders the final HIGH/MEDIUM/LOW judgment + writes the watchlist entry. **Never forks** into `agent-toolkit/skills/`. Operator reviews via `/memory watchlist` (task 5).
+Adapt-don't-import workflow (plan #7b task 4). **Two-pass architecture**: Pass 1 (deterministic Python) walks the diff files from `/memory discover-skills`, parses candidate patterns, applies a 6-rule rubric, enriches with GitHub metadata + trustworthiness signals; Pass 2 (LLM sub-agent — `adapt-evaluator`) reads each enriched candidate + cross-references the operator's vault + renders the final HIGH/MEDIUM/LOW judgment + writes the watchlist entry. **Never forks** into `crickets/skills/`. Operator reviews via `/memory watchlist` (task 5).
 
 #### Two-pass invocation shape
 
 **Pass 1 — Python pipeline** (deterministic; safe to run repeatedly):
 
 ```
-python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/adapt_skills.py \
+python3 ~/Antigravity/crickets/skills/memory/scripts/adapt_skills.py \
   [--vault-path <path>] [--source <slug>] [--skip-network] [--dry-run]
 ```
 
@@ -916,7 +916,7 @@ Watchlist entry shape locked in [`agents/adapt-evaluator.md`](../../agents/adapt
 #### Anti-patterns
 
 - **Don't run Pass 2 (sub-agent) without first inspecting Pass 1's JSON output** in unfamiliar territory. The JSON is the operator's verification surface for "is the rubric scoring sensibly?" — if R1/R5/R6 are firing on the wrong candidates, tune the rule constants in `adapt_skills.py` before paying the LLM cost.
-- **Don't promote a watchlist entry directly to `agent-toolkit/skills/`.** Use `/memory watchlist promote` (task 5) → operator decides; the workflow's whole point is that adoption is operator-explicit, not agent-driven.
+- **Don't promote a watchlist entry directly to `crickets/skills/`.** Use `/memory watchlist promote` (task 5) → operator decides; the workflow's whole point is that adoption is operator-explicit, not agent-driven.
 - **Don't bypass the rubric** by setting `--include-low` or hand-editing the evaluated.json state — the rubric is the deterministic gate that bounds the surface the sub-agent has to judge. Bypassing it makes Pass 2 expensive without value.
 
 > [!NOTE]
@@ -924,14 +924,14 @@ Watchlist entry shape locked in [`agents/adapt-evaluator.md`](../../agents/adapt
 
 ### `/memory watchlist`
 
-Review pending entries in `<vault>/personal-private/_skill-watchlist/` — the output of `/memory adapt-skills`. Three actions per entry: **promote** (mark ready for operator's manual fork to `agent-toolkit/skills/<x>/`), **dismiss** (archive to `_skill-watchlist/_archive/`), **defer** (snooze with a `deferred_until` date). Plan #7b task 5 ships the body + the canonical Python implementation at `skills/memory/scripts/watchlist_review.py`.
+Review pending entries in `<vault>/personal-private/_skill-watchlist/` — the output of `/memory adapt-skills`. Three actions per entry: **promote** (mark ready for operator's manual fork to `crickets/skills/<x>/`), **dismiss** (archive to `_skill-watchlist/_archive/`), **defer** (snooze with a `deferred_until` date). Plan #7b task 5 ships the body + the canonical Python implementation at `skills/memory/scripts/watchlist_review.py`.
 
-**Adapt-don't-import contract enforcement**: this sub-command **never writes** to `agent-toolkit/skills/<x>/`. Promote is annotation-only — it marks the entry `status: promoted` + adds a `promoted_at` timestamp; the operator then manually authors the actual skill in a separate session. Adoption-by-agent is architecturally prevented.
+**Adapt-don't-import contract enforcement**: this sub-command **never writes** to `crickets/skills/<x>/`. Promote is annotation-only — it marks the entry `status: promoted` + adds a `promoted_at` timestamp; the operator then manually authors the actual skill in a separate session. Adoption-by-agent is architecturally prevented.
 
 #### Invocation shape
 
 ```
-python3 ~/Antigravity/agent-toolkit/skills/memory/scripts/watchlist_review.py \
+python3 ~/Antigravity/crickets/skills/memory/scripts/watchlist_review.py \
   [list | review | promote <source-slug> <pattern-slug> | \
    dismiss <source-slug> <pattern-slug> | \
    defer <source-slug> <pattern-slug> --until YYYY-MM-DD [--reason "<text>"]] \
@@ -1009,17 +1009,17 @@ Python-side scripts can use whatever they need (network for embedding API, files
 
 ## Host scope
 
-`supported_hosts: [claude-code, antigravity]` — `gemini-cli` excluded per [ROADMAP item #15](https://github.com/alexherrero/agentic-harness/blob/main/.harness/ROADMAP.md) (Gemini-CLI host removal, shipped in toolkit v0.9.0). The memory skill was the first new skill to ship post-#15-decision (in v0.8.x scaffold) with the two-host scope from day 1; v0.9.0 then swept all other customizations to match. See [ADR 0006](../../wiki/explanation/decisions/0006-gemini-cli-host-removal.md) for the host-scope-reduction rationale.
+`supported_hosts: [claude-code, antigravity]` — `gemini-cli` excluded per [ROADMAP item #15](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md) (Gemini-CLI host removal, shipped in toolkit v0.9.0). The memory skill was the first new skill to ship post-#15-decision (in v0.8.x scaffold) with the two-host scope from day 1; v0.9.0 then swept all other customizations to match. See [ADR 0006](../../wiki/explanation/decisions/0006-gemini-cli-host-removal.md) for the host-scope-reduction rationale.
 
-See the [parent design's 2026-05-16 Document History row](https://github.com/alexherrero/agent-toolkit/blob/main/wiki/explanation/designs/memoryvault.md#document-history) for the host-scope correction rationale that triggered this.
+See the [parent design's 2026-05-16 Document History row](https://github.com/alexherrero/crickets/blob/main/wiki/explanation/designs/memoryvault.md#document-history) for the host-scope correction rationale that triggered this.
 
 ## Cross-references
 
-- **Parent design**: [MemoryVault — permanent agent memory](https://github.com/alexherrero/agent-toolkit/blob/main/wiki/explanation/designs/memoryvault.md) — the canonical "Why we built this" wiki entry point per the locked design call from plan #6
+- **Parent design**: [MemoryVault — permanent agent memory](https://github.com/alexherrero/crickets/blob/main/wiki/explanation/designs/memoryvault.md) — the canonical "Why we built this" wiki entry point per the locked design call from plan #6
 - **Part 1 plan**: `write-primitives` (active at `.harness/PLAN.md`) — ships `save` + `evolve` bodies (tasks 2 + 3) + embedding integration (task 4) + partial how-to (task 5)
 - **Queued parts**: `recall-loop` (part 2) / `reflection-and-recovery` (part 3) / `idea-ledger` (part 4) / `seed-pass` (part 5) / `discovery-mining` (part 6 = plan #7b)
-- **Conventions**: shipping pattern follows [`design` skill's multi-sub-command body shape](https://github.com/alexherrero/agent-toolkit/blob/main/skills/design/SKILL.md) — the first toolkit skill with multiple sub-commands handing off between each other
-- **External-review handoff**: applies to design + plan refinement passes; lands via [agent-toolkit v0.8.1](https://github.com/alexherrero/agent-toolkit/releases/tag/v0.8.1) + [agentic-harness v2.3.1](https://github.com/alexherrero/agentic-harness/releases/tag/v2.3.1) shipped 2026-05-16
+- **Conventions**: shipping pattern follows [`design` skill's multi-sub-command body shape](https://github.com/alexherrero/crickets/blob/main/skills/design/SKILL.md) — the first toolkit skill with multiple sub-commands handing off between each other
+- **External-review handoff**: applies to design + plan refinement passes; lands via [crickets v0.8.1](https://github.com/alexherrero/crickets/releases/tag/v0.8.1) + [agentm v2.3.1](https://github.com/alexherrero/agentm/releases/tag/v2.3.1) shipped 2026-05-16
 
 ## Status
 
