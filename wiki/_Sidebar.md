@@ -20,6 +20,7 @@
 - [Manifest Schema](Manifest-Schema)
 - [Per-Host Paths](Per-Host-Paths)
 - [Installer CLI](Installer-CLI)
+- [Compatibility](Compatibility)
 
 ### 💡 Explanation
 - [Purpose and scope](Purpose-And-Scope)

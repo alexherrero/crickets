@@ -1,4 +1,16 @@
-# Crickets — `agent-toolkit`
+<p align="center">
+  <img src="https://raw.githubusercontent.com/alexherrero/agent-toolkit/main/assets/crickets/banner-1600.png" alt="Crickets — Inspired by the noisy cricket from Men in Black">
+</p>
+
+<p align="center"><em>Inspired by the noisy cricket from Men in Black — agent primitives that punch far above their weight.</em></p>
+
+<p align="center">
+  <a href="https://github.com/alexherrero/agent-toolkit/actions/workflows/ci-all.yml"><img src="https://img.shields.io/github/actions/workflow/status/alexherrero/agent-toolkit/ci-all.yml?branch=main&style=for-the-badge&label=CI&labelColor=0a0a0a&logo=github&logoColor=f4efe6" alt="CI"></a>
+  <a href="https://github.com/alexherrero/agent-toolkit/releases/latest"><img src="https://img.shields.io/github/v/release/alexherrero/agent-toolkit?label=LATEST&labelColor=0a0a0a&logo=github&logoColor=f4efe6&style=for-the-badge" alt="Latest release"></a>
+  <a href="https://github.com/alexherrero/agent-toolkit/blob/main/LICENSE"><img src="https://img.shields.io/badge/LICENSE-MIT-f4efe6?labelColor=0a0a0a&style=for-the-badge" alt="License: MIT"></a>
+</p>
+
+<p align="center"><sub>Works with Claude Code + Antigravity — <a href="https://github.com/alexherrero/agent-toolkit/wiki/Compatibility">see compatibility</a></sub></p>
 
 **Crickets** is the noisy cricket — small, focused agent customizations that punch above their weight. Skills, hooks, sub-agents, bundles, MCP servers, slash commands, status lines, output styles, workflows, rules, snippets, settings-fragments. The primitives **you** carry into any project to make [Agent M (`agentic-harness`)](https://github.com/alexherrero/agentic-harness) effective.
 
@@ -30,6 +42,7 @@ This wiki is the contributor-facing documentation for Crickets itself. Every pag
 - [Manifest Schema](Manifest-Schema) — YAML frontmatter contract.
 - [Per-Host Paths](Per-Host-Paths) — destination paths per kind per host.
 - [Installer CLI](Installer-CLI) — flags, prereqs, exit codes.
+- [Compatibility](Compatibility) — supported hosts (Claude Code, Antigravity) + OS matrix + per-manifest `supported_hosts` contract.
 
 ## 💡 Want to know why?
 

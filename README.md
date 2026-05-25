@@ -1,23 +1,29 @@
 <p align="center">
-  <img src="assets/crickets/crickets-transparent-512.png" alt="Crickets" width="256">
+  <img src="assets/crickets/banner-1600.png" alt="Crickets — Inspired by the noisy cricket from Men in Black">
 </p>
-
-<h1 align="center">Crickets</h1>
 
 <p align="center"><em>Inspired by the noisy cricket from Men in Black — agent primitives that punch far above their weight.</em></p>
 
-<p align="center">
-  <a href="https://github.com/alexherrero/agent-toolkit/actions/workflows/tests-linux.yml"><img src="https://github.com/alexherrero/agent-toolkit/actions/workflows/tests-linux.yml/badge.svg?branch=main" alt="Linux Tests"></a>
-  <a href="https://github.com/alexherrero/agent-toolkit/actions/workflows/tests-mac.yml"><img src="https://github.com/alexherrero/agent-toolkit/actions/workflows/tests-mac.yml/badge.svg?branch=main" alt="Mac Tests"></a>
-  <a href="https://github.com/alexherrero/agent-toolkit/actions/workflows/tests-windows.yml"><img src="https://github.com/alexherrero/agent-toolkit/actions/workflows/tests-windows.yml/badge.svg?branch=main" alt="Windows Tests"></a>
-  <a href="https://github.com/alexherrero/agent-toolkit/releases/latest"><img src="https://img.shields.io/github/v/release/alexherrero/agent-toolkit?label=latest&color=blue" alt="Latest release"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License: MIT"></a>
-</p>
+<!--
+  Badge convention (plan #15 task 7) — mirrors the harness side (task 6 v2):
+    labelColor = 0a0a0a (ink, brand)
+    color      = auto (semantic green/red on CI; semver-colored on release)
+                 OR f4efe6 (paper) for state-less metadata (e.g. LICENSE)
+    style      = for-the-badge (brutalist, ALL CAPS, sharp corners — matches banner motif)
+    logo       = github (logoColor f4efe6) on CI + release badges
+  CI badge points at the dedicated `ci-all.yml` aggregator workflow which waits
+  for the 3 per-OS workflows on the same commit and reports a combined status —
+  insulates the badge from any other apps' check suites.
+  Compatibility (hosts that run Crickets) lives at wiki/reference/Compatibility.md.
+-->
 
 <p align="center">
-  <a href="#"><img src="https://img.shields.io/badge/works%20with-Claude%20Code-D97706?style=flat" alt="Works with Claude Code"></a>
-  <a href="#"><img src="https://img.shields.io/badge/works%20with-Antigravity-7C3AED?style=flat" alt="Works with Antigravity"></a>
+  <a href="https://github.com/alexherrero/agent-toolkit/actions/workflows/ci-all.yml"><img src="https://img.shields.io/github/actions/workflow/status/alexherrero/agent-toolkit/ci-all.yml?branch=main&style=for-the-badge&label=CI&labelColor=0a0a0a&logo=github&logoColor=f4efe6" alt="CI"></a>
+  <a href="https://github.com/alexherrero/agent-toolkit/releases/latest"><img src="https://img.shields.io/github/v/release/alexherrero/agent-toolkit?label=LATEST&labelColor=0a0a0a&logo=github&logoColor=f4efe6&style=for-the-badge" alt="Latest release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/LICENSE-MIT-f4efe6?labelColor=0a0a0a&style=for-the-badge" alt="License: MIT"></a>
 </p>
+
+<p align="center"><sub>Works with Claude Code + Antigravity — <a href="https://github.com/alexherrero/agent-toolkit/wiki/Compatibility">see compatibility</a></sub></p>
 
 Inspired by the iconic noisy cricket from Men in Black, **Crickets** is a tactical suite of agent primitives engineered to punch far above their weight. Skills, hooks, sub-agents, bundles, MCP servers, slash commands, status lines, output styles, workflows, rules, snippets, settings-fragments. The execution engine behind [**Agent M**](https://github.com/alexherrero/agentic-harness) — the primitives **you** carry into any project to make the system work.
 
