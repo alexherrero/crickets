@@ -5,6 +5,23 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.0.2] — 2026-05-24 — Fix Crickets transparent-variant assets (toolkit-only PATCH)
+
+Patch — **hotfix for the v1.0.1 Crickets logo hero**. The 6 `crickets-transparent-{64 / 128 / 256 / 512 / 1024 / 2048}.png` files shipped in v1.0.1 had the design-tool's transparency-indicator checker pattern **baked into the PNG itself** (visible by inspecting the asset directly; visible on the live GitHub README hero as a grey checker around the disc). Operator flagged the mismatch with Agent M's clean visual after v1.0.1 shipped.
+
+**Fix:** regenerated all 6 transparent variants from the clean `crickets-disc-2048.png` source via PIL high-quality resize. New transparent set has real transparent surround (bbox padding matches Agent M's `clean-transparent` ratio at ~10%). README hero reference stays `crickets-transparent-512.png` — file content replaced in place; live render auto-corrects on push.
+
+### Changed
+
+- **`assets/crickets/crickets-transparent-{64 / 128 / 256 / 512 / 1024 / 2048}.png`** — regenerated. File sizes shrunk ~3× (e.g. 512px went from 282KB → 96KB; no more checker overlay inflating the file). Visual now matches Agent M's clean-silhouette-on-transparent-surround pattern.
+
+### Internal
+
+- 1 commit on this side: this v1.0.2 release commit (combined: regenerated PNGs + CHANGELOG entry).
+- **Source for regeneration**: `crickets-disc-2048.png` (the largest clean disc variant). PIL `Image.LANCZOS` resampling for each target size.
+- **Not regenerated** (intentionally left alone): the 9 `crickets-{16 / 32 / 48 / 64 / 128 / 256 / 512 / 1024 / 2048}.png` standard variants have the same checker-baked-in issue, but no README currently references them. Operator can re-export from Claude design at their convenience; not blocking.
+- **Diagnosis trail**: live GitHub render still showed checker artifact → PIL bbox analysis confirmed content reached all canvas edges (bbox = (0,0,512,512)) → contrast with clean disc variant (bbox = (75,75,437,436)) confirmed the checker was baked into the broken files, not a rendering artifact. Fix regenerates from the clean source.
+
 ## [v1.0.1] — 2026-05-24 — Crickets logo hero + brand-name clarification (toolkit-only PATCH)
 
 Patch — **first visual brand iteration on the Crickets side**, mirroring the [`agentic-harness v3.0.1`](https://github.com/alexherrero/agentic-harness/releases/tag/v3.0.1) Agent M logo pass from earlier today. Adds the Crickets logo asset set and refreshes `README.md` + `wiki/Home.md` with the brand-aligned visual hero. Toolkit-only PATCH (no paired harness release this round — harness already shipped v3.0.1 with the Agent M hero; this matches it on the Crickets side).
