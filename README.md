@@ -23,6 +23,9 @@ Inspired by the iconic noisy cricket from Men in Black, **Crickets** is a tactic
 
 [**Agent M**](https://github.com/alexherrero/agentic-harness) holds the phase-gated workflow, auto-recall, and on-disk state — the structural backend. Crickets holds everything that rides on top.
 
+> **Latest:** v1.0.2 (2026-05-24) — Crickets 1.0 + transparent-variant asset hotfix.  
+> [Release notes](https://github.com/alexherrero/agent-toolkit/releases/latest) · [Agent M Evolution HLD](wiki/explanation/designs/agent-memory-evolution.md) · [CHANGELOG](CHANGELOG.md)
+
 ## What's inside
 
 The current shipped catalog (see [wiki/reference/Customization-Types.md](wiki/reference/Customization-Types.md) for what each kind is):
@@ -102,7 +105,12 @@ git clone https://github.com/alexherrero/agentic-harness.git   # the harness
 
 # Drop everything Crickets ships into a target project
 bash ~/Antigravity/agent-toolkit/install.sh /path/to/your-project
+```
 
+<details>
+<summary>More install detail — bundles, individual skills/hooks, refresh, Windows</summary>
+
+```bash
 # Or pull just one bundle / skill / hook
 bash ~/Antigravity/agent-toolkit/install.sh /path/to/your-project --bundle quality-gates
 bash ~/Antigravity/agent-toolkit/install.sh /path/to/your-project --skill memory
@@ -117,6 +125,8 @@ On Windows / PowerShell 7+:
 ```powershell
 pwsh -NoProfile -File C:\path\to\agent-toolkit\install.ps1 C:\path\to\your-project
 ```
+
+</details>
 
 Full install detail: [wiki/how-to/Install-Into-Project.md](wiki/how-to/Install-Into-Project.md). Flag reference: [wiki/reference/Installer-CLI.md](wiki/reference/Installer-CLI.md).
 
