@@ -27,8 +27,8 @@ The 12 primitive types `crickets` recognizes via its `kind` field. Each maps to 
 | Kind | Installer support | Notes |
 |---|---|---|
 | `bundle` | ✅ (dispatches to inner primitives) | `skill`, `agent`, and `hook` kinds inside bundles are wired as of v0.7.0 |
-| `skill` | ✅ (v0.5.0; gemini-cli destination removed in v0.9.0) | Full dispatch to `.claude/skills/<name>/`, `.agent/skills/<name>/` |
-| `agent` | ✅ (v0.6.0; gemini-cli destination removed in v0.9.0) | Full dispatch to `.claude/agents/<name>.md`, `.agent/skills/<name>/SKILL.md` (sub-agent-as-skill wrap for Antigravity) |
+| `skill` | ✅ (v0.5.0; gemini-cli destination removed in v0.9.0) | Full dispatch to `.claude/skills/<name>/`, `.agents/skills/<name>/` |
+| `agent` | ✅ (v0.6.0; gemini-cli destination removed in v0.9.0) | Full dispatch to `.claude/agents/<name>.md`, `.agents/skills/<name>/SKILL.md` (sub-agent-as-skill wrap for Antigravity) |
 | `hook` | ✅ (v0.7.0, claude-code only) | Full dispatch to `.claude/hooks/<name>.{sh,ps1}` **plus** idempotent deep-merge of the hook's `settings-fragment-{bash,pwsh}.json` into `.claude/settings.json` via `scripts/merge-settings-fragment.py`. Other hosts have no first-class hook surface today. |
 | All others | ⚠️ Warning "not yet supported — skipped" | Future toolkit versions add them as the catalog grows |
 

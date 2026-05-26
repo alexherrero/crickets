@@ -46,7 +46,7 @@ except ModuleNotFoundError:
 KIND_ENUM = {
     "bundle", "skill", "command", "agent", "hook", "mcp-server",
     "status-line", "output-style", "workflow", "rule", "snippet",
-    "settings-fragment",
+    "settings-fragment", "plugin",
 }
 HOST_ENUM = {"claude-code", "antigravity"}
 # Hosts deprecated and removed in this version. Surfaced separately from

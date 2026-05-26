@@ -8,7 +8,7 @@ YAML frontmatter contract for every customization in `crickets`. Validated by `s
 |---|---|---|---|
 | `name` | string | yes | Matches dirname (or `bundle` for `bundle.md`). |
 | `description` | string | yes | Non-empty; one or two sentences. |
-| `kind` | enum string | yes | `bundle` \| `skill` \| `command` \| `agent` \| `hook` \| `mcp-server` \| `status-line` \| `output-style` \| `workflow` \| `rule` \| `snippet` \| `settings-fragment` |
+| `kind` | enum string | yes | `bundle` \| `skill` \| `command` \| `agent` \| `hook` \| `mcp-server` \| `status-line` \| `output-style` \| `workflow` \| `rule` \| `snippet` \| `settings-fragment` \| `plugin` |
 | `supported_hosts` | list of strings | yes | Non-empty subset of `[claude-code, antigravity]`. (Gemini CLI host removed in v0.9.0 per [ROADMAP item #15](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md); see [ADR 0006](decisions/0006-gemini-cli-host-removal). Validator emits a `removed host` error with v0.9.0 CHANGELOG pointer if `gemini-cli` is still present.) |
 | `version` | string | yes | Semver-shape `MAJOR.MINOR.PATCH` with optional `-prerelease` suffix |
 | `contents` | list of mappings | bundles only | Non-empty list of `{<kind>: <name>}` items; each resolves to a file/dir within the bundle |
@@ -31,6 +31,32 @@ install_scope: project
 
 <skill body — operational instructions for the agent>
 ```
+
+## Plugin (Antigravity 2.0 bundle-shaped package)
+
+**Added v1.2.0 per [ADR 0011](decisions/0011-antigravity-2-host-support).** A `kind: plugin` customization is an Antigravity-2.0-style bundle: a directory containing a JSON `plugin.json` manifest at root + 1-N nested skills under `skills/<name>/SKILL.md`. Closest analogue to `kind: bundle` but with JSON manifest at root instead of YAML frontmatter on a `bundle.md`. Distributed via `agy plugin install <url-or-marketplace>` on the Antigravity side; user-global delivery path is `~/.gemini/config/plugins/<plugin-name>/`.
+
+File path: `plugins/<name>/plugin.md` (toolkit-side YAML manifest) + `plugins/<name>/skills/<skill-name>/SKILL.md` per nested skill. The installer generates the `plugin.json` JSON manifest at install time for delivery into Antigravity's plugins directory.
+
+```yaml
+---
+name: example-plugin
+description: Reference plugin showing how to package crickets skills for Antigravity 2.0 / agy CLI.
+kind: plugin
+supported_hosts: [antigravity]
+version: 0.1.0
+author: Crickets toolkit
+repository: https://github.com/alexherrero/crickets
+license: Apache-2.0
+keywords: [example, reference]
+contents:
+  - skill: example-plugin-skill   # nested at plugins/example-plugin/skills/example-plugin-skill/SKILL.md
+---
+
+<plugin body — what this plugin does as a whole>
+```
+
+The frontmatter fields `name`, `description`, `version`, `author`, `repository`, `license`, `keywords` map 1:1 to the generated `plugin.json` at install time. `supported_hosts: [antigravity]` is the typical case — plugins are Antigravity-specific since Claude Code's customization surface doesn't have a peer concept. A multi-host plugin can declare `supported_hosts: [antigravity, claude-code]`; the Claude Code dispatch then delivers the nested skills as standalone Claude Code skills (not as a plugin).
 
 ## Bundle
 
@@ -60,7 +86,7 @@ The `scripts/validate-manifests.py` script asserts every manifest in the repo:
 1. Has YAML frontmatter delimited by `---` lines.
 2. Frontmatter is a mapping (not a list, not a scalar).
 3. Required fields present and non-empty.
-4. `kind` is in the 12-entry enum.
+4. `kind` is in the 13-entry enum.
 5. `supported_hosts` is a non-empty subset of the canonical 3 hosts.
 6. `version` matches semver shape (regex: `^\d+\.\d+\.\d+(-[0-9A-Za-z-.]+)?$`).
 7. `install_scope`, if present, is in `{user, project, either}`.

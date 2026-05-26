@@ -93,7 +93,7 @@ ARTIFACT:
 - CHANGELOG.md
 
 RUBRIC:
-1. wiki/reference/Per-Host-Paths.md's "agent" row destination column lists both supported host paths (.claude/agents/<name>.md, .agent/skills/<name>/SKILL.md). The Gemini CLI host was removed in v0.9.0 per ROADMAP item #15.
+1. wiki/reference/Per-Host-Paths.md's "agent" row destination column lists both supported host paths (.claude/agents/<name>.md, .agents/skills/<name>/SKILL.md). The Gemini CLI host was removed in v0.9.0 per ROADMAP item #15.
 2. The CHANGELOG.md v0.6.0 entry's "Added" section names `evaluator` agent explicitly with a one-line description.
 3. No section of Per-Host-Paths.md still says "kind=agent: not yet supported" (the v0.5.0 placeholder text).
 ```

@@ -16,7 +16,7 @@
 #   -All                     install everything (default)
 #   -Update                  true-sync; wipe and recreate managed dirs
 #   -NoPrePushHook           skip pre-push hook installation
-#   -NoLegacyCleanup         suppress the legacy .agents/skills/ + .gemini/agents/
+#   -NoLegacyCleanup         suppress the legacy .agent/skills/ + .gemini/agents/
 #                            cleanup prompt (v0.9.0+ removed gemini-cli host;
 #                            the installer detects pre-existing legacy
 #                            destinations from a prior install and offers
@@ -113,7 +113,7 @@ Write-Host "==> crickets install: $Target"
 # scripts/merge-settings-fragment.py.
 $ManagedParents = @(
     '.claude/skills',
-    '.agent/skills',
+    '.agents/skills',
     '.claude/agents',
     '.claude/hooks'
 )
@@ -122,7 +122,8 @@ $EmptyParentCandidates = @()
 # ── legacy gemini-cli cleanup (v0.9.0+) ───────────────────────────────────
 # v0.9.0 removed standalone Gemini CLI host support. Prior installs may have
 # populated either:
-#   - .agents/skills/<name>/ (skills installed with gemini-cli host)
+#   - .agent/skills/<name>/ (Antigravity 1.x skill destination — v1.0.x crickets;
+#                            v1.2.0 migrated to .agents/ plural per ADR 0011)
 #   - .gemini/agents/<name>.md (agents installed with gemini-cli host)
 # Detect pre-existing entries that match currently-managed customization
 # names; offer a backup-then-remove flow with operator confirmation. Defaults
@@ -135,7 +136,7 @@ $EmptyParentCandidates = @()
 # unmanaged user files alone.
 function Invoke-LegacyCleanupGeminiCli {
     if ($NoLegacyCleanup) { return }
-    $hasLegacySkills = Test-Path -LiteralPath '.agents/skills' -PathType Container
+    $hasLegacySkills = Test-Path -LiteralPath '.agent/skills' -PathType Container
     $hasLegacyAgents = Test-Path -LiteralPath '.gemini/agents' -PathType Container
     if (-not $hasLegacySkills -and -not $hasLegacyAgents) { return }
 
@@ -162,10 +163,10 @@ function Invoke-LegacyCleanupGeminiCli {
             ForEach-Object { $knownAgentNames += $_.BaseName }
     }
 
-    # Match .agents/skills/ against known skill names.
+    # Match .agent/skills/ (singular — Antigravity 1.x legacy) against known skill names.
     $matchedSkills = @()
     if ($hasLegacySkills) {
-        Get-ChildItem -LiteralPath '.agents/skills' -Directory -ErrorAction SilentlyContinue |
+        Get-ChildItem -LiteralPath '.agent/skills' -Directory -ErrorAction SilentlyContinue |
             ForEach-Object {
                 if ($knownSkillNames -contains $_.Name) { $matchedSkills += $_.FullName }
             }
@@ -199,12 +200,12 @@ function Invoke-LegacyCleanupGeminiCli {
     if ($response -match '^[Yy]$') {
         $ts = Get-Date -Format 'yyyyMMddHHmmss'
         if ($matchedSkills.Count -gt 0) {
-            $bak = ".agents/skills.crickets-bak.$ts"
-            Move-Item -LiteralPath '.agents/skills' -Destination $bak
-            Write-Host "    moved .agents/skills/ -> $bak/"
-            if ((Test-Path -LiteralPath '.agents') -and -not (Get-ChildItem -LiteralPath '.agents' -Force -ErrorAction SilentlyContinue)) {
-                Remove-Item -LiteralPath '.agents' -Force
-                Write-Host '    removed empty .agents/ directory'
+            $bak = ".agent/skills.crickets-bak.$ts"
+            Move-Item -LiteralPath '.agent/skills' -Destination $bak
+            Write-Host "    moved .agent/skills/ -> $bak/"
+            if ((Test-Path -LiteralPath '.agent') -and -not (Get-ChildItem -LiteralPath '.agent' -Force -ErrorAction SilentlyContinue)) {
+                Remove-Item -LiteralPath '.agent' -Force
+                Write-Host '    removed empty .agent/ directory'
             }
         }
         if ($matchedAgents.Count -gt 0) {
@@ -218,7 +219,7 @@ function Invoke-LegacyCleanupGeminiCli {
         }
     } else {
         Write-Host '    cleanup skipped — to remove manually later:'
-        if ($hasLegacySkills) { Write-Host '        Remove-Item -Recurse .agents/skills/' }
+        if ($hasLegacySkills) { Write-Host '        Remove-Item -Recurse .agent/skills/' }
         if ($hasLegacyAgents) { Write-Host '        Remove-Item -Recurse .gemini/agents/' }
         Write-Host '    (or re-run with -NoLegacyCleanup to suppress this prompt)'
     }
@@ -250,8 +251,11 @@ function Install-Skill([string]$srcDir, [string]$name, [string]$hosts) {
                 Copy-ManagedDir $srcDir (Join-Path '.claude/skills' $name)
             }
             'antigravity' {
-                New-Item -ItemType Directory -Path '.agent/skills' -Force | Out-Null
-                Copy-ManagedDir $srcDir (Join-Path '.agent/skills' $name)
+                # agy v1.0.2+ / Antigravity 2.0 uses .agents/ (plural) per
+                # ADR 0011. v1.0.x crickets used .agent/ (singular) for
+                # Antigravity 1.x; legacy_cleanup handles migration on /update.
+                New-Item -ItemType Directory -Path '.agents/skills' -Force | Out-Null
+                Copy-ManagedDir $srcDir (Join-Path '.agents/skills' $name)
             }
             default {
                 Write-Warning "unknown host '$hostName' for skill '$name' - skipped"
@@ -302,8 +306,11 @@ function Install-Hook([string]$hookDir, [string]$name, [string]$hosts) {
 
 function Install-Agent([string]$srcFile, [string]$name, [string]$hosts) {
     # Agents are file-level for claude-code (.claude/agents/<name>.md).
-    # Antigravity has no first-class sub-agent surface — agents get wrapped
-    # as skills at .agent/skills/<name>/SKILL.md per the locked per-host paths.
+    # Antigravity 2.0 / agy v1.0.2+ has no first-class sub-agent slot (subagents
+    # are SDK runtime constructs spawned via the built-in start_subagent tool
+    # per Wave 1 task 3 research) — agents get wrapped as skills at
+    # .agents/skills/<name>/SKILL.md (sub-agent-as-skill pattern). Path changed
+    # from .agent/ to .agents/ in v1.2.0 per ADR 0011 — agy uses plural.
     # $hostName not $host — see note above.
     foreach ($hostName in ($hosts -split ',')) {
         $hostName = $hostName.Trim()
@@ -314,7 +321,7 @@ function Install-Agent([string]$srcFile, [string]$name, [string]$hosts) {
                 Copy-ManagedFile $srcFile (Join-Path '.claude/agents' "$name.md")
             }
             'antigravity' {
-                $wrap = Join-Path '.agent/skills' $name
+                $wrap = Join-Path '.agents/skills' $name
                 New-Item -ItemType Directory -Path $wrap -Force | Out-Null
                 Copy-ManagedFile $srcFile (Join-Path $wrap 'SKILL.md')
             }

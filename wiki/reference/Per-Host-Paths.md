@@ -6,32 +6,37 @@ Where each `kind` lands in each host at install time. The installer reads each c
 
 | Kind | Claude Code | Antigravity |
 |---|---|---|
-| `skill` | `.claude/skills/<name>/SKILL.md` | `.agent/skills/<name>/SKILL.md` |
+| `skill` | `.claude/skills/<name>/SKILL.md` | `.agents/skills/<name>/SKILL.md` |
 | `command` | `.claude/commands/<name>.md` | (n/a — use `workflow` instead) |
-| `agent` | `.claude/agents/<name>.md` | `.agent/skills/<name>/SKILL.md` (sub-agent-as-skill) |
-| `hook` | `.claude/hooks/<name>` + `.claude/settings.json` merge | (n/a today) |
+| `agent` | `.claude/agents/<name>.md` | `.agents/skills/<name>/SKILL.md` (sub-agent-as-skill) |
+| `hook` | `.claude/hooks/<name>` + `.claude/settings.json` merge | (n/a — Antigravity hooks are SDK Python decorators, no file-based surface; see Known gaps in [Compatibility](Compatibility)) |
 | `mcp-server` | `.claude/settings.json` merge OR `.claude/mcp-servers/` | **TBD** |
 | `status-line` | `.claude/settings.json` merge | (n/a) |
 | `output-style` | `.claude/output-styles/<name>.md` | (n/a) |
-| `workflow` | (n/a) | `.agent/workflows/<name>.md` |
-| `rule` | (n/a) | `.agent/rules/<name>.md` |
+| `workflow` | (n/a) | `.agents/workflows/<name>.md` |
+| `rule` | (n/a) | `.agents/rules/<name>.md` |
 | `snippet` | append to repo-root `CLAUDE.md` | append to repo-root `AGENTS.md` |
 | `settings-fragment` | merge into `.claude/settings.json` | **TBD** |
+| `plugin` | (n/a — Antigravity-specific bundle format) | `~/.gemini/config/plugins/<name>/plugin.json` + `<name>/skills/<skill>/SKILL.md` (user-global) |
+
+> [!IMPORTANT]
+> **Antigravity 2.0 / agy uses `.agents/` (plural)** for project-local discovery, NOT `.agent/` (singular like Antigravity 1.x). Confirmed via `agy` v1.0.2 binary inspection: `{workspace}/.agents/skills/{skill_name}/SKILL.md`. Crickets v1.2.0 (paired with agentm v3.2.0) updates the installer dispatch from `.agent/` → `.agents/` for the `antigravity` host slug. **This is a breaking change for users with crickets v1.0.x installed against Antigravity 1.x's `.agent/` convention** — re-run `bash install.sh --update <target-project>` to migrate; the installer wipes the old `.agent/` dir on update (or operators can manually `mv .agent .agents` in their target project). See [ADR 0011](decisions/0011-antigravity-2-host-support) for the host-evolution rationale + the 2026-06-18 Gemini-CLI sunset context.
 
 > [!NOTE]
-> **Gemini CLI host removed in v0.9.0** per [ROADMAP item #15](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md). Standalone Gemini CLI is no longer a supported host; the legacy 3-column table is preserved in the v0.8.x and earlier wiki history. Antigravity (Gemini-in-IDE) stays as a supported host — different surface. See [ADR 0006](decisions/0006-gemini-cli-host-removal) for the host-scope-reduction rationale.
+> **Gemini CLI host removed in v0.9.0** per [ROADMAP item #15](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md). Standalone Gemini CLI is no longer a supported host; the legacy 3-column table is preserved in the v0.8.x and earlier wiki history. **Antigravity 2.0 + Antigravity CLI** (which replaced Gemini CLI on 2026-05-19) stay as a single first-class host under the `antigravity` slug. See [ADR 0006](decisions/0006-gemini-cli-host-removal) for the original host-scope-reduction rationale + [ADR 0011](decisions/0011-antigravity-2-host-support) for the 2.0 host support decision.
 
 ## What's locked vs. TBD
 
-- **Locked** rows reflect the host's documented or de-facto convention as of toolkit v0.9.0.
-- **TBD** entries are paths the installer doesn't dispatch to yet because the host's surface isn't formalized in public docs (Antigravity's `mcp-server` + `settings-fragment` conventions).
+- **Locked** rows reflect the host's documented or de-facto convention as of toolkit v1.2.0.
+- **TBD** entries are paths the installer doesn't dispatch to yet because the host's surface isn't formalized in public docs (Antigravity's `mcp-server` + `settings-fragment` conventions). The Antigravity hook row is **(n/a) not TBD** — confirmed in v1.2.0 research that Antigravity has no file-based hook surface; see Known gaps in [Compatibility](Compatibility).
 
 When a TBD path is encountered, the installer logs a warning and skips that host for that customization. The manifest still validates — `supported_hosts: [antigravity]` for a `mcp-server` is allowed; the installer just can't deliver yet.
 
 **Revisit triggers** (tracked in `agentm/.harness/FOLLOWUPS.md`):
 
 1. Antigravity publishes formal docs on MCP server conventions and/or `settings.json` merge semantics.
-2. Google ships a Gemini-CLI successor that's worth re-adding (would require new ROADMAP item revisiting #15's decision).
+2. Google ships a comparable file-based hook surface in agy / Antigravity 2.x (today: Python SDK decorators only).
+3. The `kind: workflow` + `kind: rule` Antigravity path conventions get explicit documentation (currently inferred from Antigravity 1.x `.agent/` + agy 2.0 `.agents/` plural pattern; not directly confirmed in agy binary strings for workflows/rules specifically).
 
 ## How dispatch works at install time
 

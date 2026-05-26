@@ -9,7 +9,7 @@ Crickets customizations declare host compatibility per-manifest via the YAML `su
 | Host | Path convention | Status |
 |---|---|---|
 | **Claude Code** (Anthropic CLI / IDE extension) | `.claude/{skills,agents,hooks,commands}/<name>/` | ✅ first-class — primary development surface, CI-verified on every push |
-| **Antigravity** (Google IDE + Antigravity CLI) | `.agent/{skills,agents,hooks,commands}/<name>/` | ✅ first-class — CI-verified on every push |
+| **Antigravity 2.0** (Google IDE) + **Antigravity CLI (`agy`)** | `.agents/{skills,workflows,rules}/<name>/` (project) + `~/.gemini/config/plugins/<name>/` (user-global, plugin-wrapped) | ✅ first-class as of v1.2.0 — CI-verified on every push. **Migrated from `.agent/` (singular) to `.agents/` (plural) in v1.2.0** per [ADR 0011](decisions/0011-antigravity-2-host-support). Antigravity CLI replaced Gemini CLI 2026-05-19; consumer Gemini CLI sunsets 2026-06-18. |
 
 See [Per-Host-Paths](Per-Host-Paths) for the full per-kind destination matrix.
 
@@ -29,12 +29,39 @@ Each customization in the shipped catalog declares its own `supported_hosts` in 
 
 | Kind | Customization | Hosts |
 |---|---|---|
-| skill | `pii-scrubber`, `dependabot-fixer`, `ship-release`, `design`, `memory`, `diataxis-author` | `[claude-code, antigravity]` |
-| agent | `evaluator` | `[claude-code]` |
-| hook | `kill-switch`, `steer`, `commit-on-stop`, `evidence-tracker` | `[claude-code]` |
-| bundle | `quality-gates`, `example-bundle` | inherits from contents |
+| skill (6) | `pii-scrubber`, `dependabot-fixer`, `ship-release`, `design`, `memory`, `diataxis-author` | `[claude-code, antigravity]` |
+| agent (4) | `evaluator`, `adapt-evaluator`, `diataxis-evaluator`, `memory-idea-researcher` | `[claude-code, antigravity]` (sub-agent-as-skill on Antigravity) |
+| hook (8) | `kill-switch`, `steer`, `commit-on-stop`, `evidence-tracker`, `memory-recall-prompt-submit`, `memory-recall-session-start`, `memory-reflect-idle`, `memory-reflect-stop` | `[claude-code]` (Antigravity has no file-based hook surface — see Known gaps below) |
+| bundle (2) | `quality-gates` (claude-code-only because contents include hooks), `example-bundle` (`[claude-code, antigravity]`) | inherits from contents |
+| plugin (1) | `example-plugin` (reference; Antigravity 2.0 + agy) | `[antigravity]` |
 
 The installer respects each manifest's `supported_hosts` — installing into a target project only writes the customizations declared for the host(s) you're targeting.
+
+## Known gaps — Antigravity 2.0 surface
+
+Three Antigravity 2.0 primitive surfaces have **no file-based authoring path** as of crickets v1.2.0. Customizations targeting these surfaces are out of scope for the crickets installer; users must hand-author them in a Python SDK environment if they want to use them.
+
+### Hooks gap
+
+Antigravity 2.0 / agy hooks are **Python decorators** registered at agent-creation time via `LocalAgentConfig(hooks=[...])` (from `google.antigravity.hooks`). The 9 hook types (`on_session_start`, `on_session_end`, `pre_turn`, `post_turn`, `pre_tool_call_decide`, `post_tool_call`, `on_tool_error`, `on_compaction`, `on_interaction`) cover most use cases that Claude Code's file-based hooks cover, but they require Python SDK integration to register — no `.agents/hooks/` directory or `hooks.json` config file exists.
+
+**Crickets's 8 hooks** (`kill-switch`, `steer`, `commit-on-stop`, `evidence-tracker`, `memory-recall-prompt-submit`, `memory-recall-session-start`, `memory-reflect-idle`, `memory-reflect-stop`) ship `supported_hosts: [claude-code]`-only. See [ADR 0009 § Antigravity re-audit outcome](decisions/0009-evidence-tracker-hook) for the rationale.
+
+**Future direction (deferred, FOLLOWUP candidate)**: a separate Python sidecar package (`crickets-hooks-py`?) could translate crickets's file-based hook scripts to SDK decorator registration at agent-author boot time. Out of scope for v1.2.0.
+
+### Scheduled tasks (triggers) gap
+
+Antigravity 2.0 / agy triggers — the host's scheduled-task primitive — are **Python registration patterns**: `every(seconds, callback)`, `on_file_change(path, callback)`, custom async functions. Registered via `LocalAgentConfig(triggers=[...])`. No file-based config; trigger callbacks are Python code running in the agent process.
+
+**Crickets doesn't ship trigger primitives** in v1.2.0. The Agent M V6 roadmap (`agentm/.harness/ROADMAP-AgentMemoryV6.md`) contemplates a scheduled-sidecar framework as a future cross-host primitive; if/when that lands, it may also provide an Antigravity-trigger integration path. See agentm V6 for forward-looking context.
+
+### Multi-agent orchestration gap
+
+Antigravity 2.0's multi-agent orchestration is **operator-facing**: the parent agent decides when to spawn subagents via the built-in `start_subagent` tool, enabled by default via `CapabilitiesConfig(enable_subagents=True)`. No plugin-author surface for orchestration policy (which subagents to spawn, when, with what context).
+
+**Crickets's contribution to orchestration** is the sub-agent-as-skill pattern: ship SKILL.md files (via `kind: agent` or `kind: plugin`); the parent agent treats them as callable sub-agents via `start_subagent`. The agents-available-for-spawning surface is what crickets controls; the spawning decisions are the parent agent's.
+
+Deeper orchestration design (e.g. specifying spawn policy via manifest fields) would require a customization kind we don't yet have — and unclear value vs. letting the parent agent reason about it dynamically. Out of scope.
 
 ## Sibling repo
 
@@ -44,7 +71,7 @@ Crickets pairs with **[Agent M (`agentm`)](https://github.com/alexherrero/agentm
 
 Hosts that previously had adapters or were considered but are not supported now:
 
-- **Gemini CLI** — dropped in v0.9.0 (2026-05-17). Google replaced Gemini CLI with the new Antigravity CLI; we follow the upstream consolidation. Antigravity CLI adapter work is on the harness roadmap (item #17).
+- **Gemini CLI** — dropped in v0.9.0 (2026-05-17). Google replaced Gemini CLI with the new Antigravity CLI (`agy`) on 2026-05-19; consumer Gemini CLI sunsets 2026-06-18 ([transition blog](https://developers.googleblog.com/an-important-update-transitioning-gemini-cli-to-antigravity-cli/)). Enterprise tier keeps Gemini CLI indefinitely (out of scope for crickets). **Antigravity CLI IS supported as of crickets v1.2.0** (shares the agent harness with Antigravity 2.0 desktop; single `antigravity` slug).
 - **Codex** — never had a Crickets adapter; was dropped from the harness in v1.0.0 per harness ADR 0005.
 
 ## When a host stops working

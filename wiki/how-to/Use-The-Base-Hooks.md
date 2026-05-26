@@ -173,7 +173,7 @@ Antigravity and Gemini CLI have no first-class hook surface today (v0.7.0). The 
 
 ### Antigravity
 
-Add an always-on rule (`.agent/rules/operator-control.md` or equivalent):
+Add an always-on rule (`.agents/rules/operator-control.md` or equivalent):
 
 ```markdown
 Before each step, check the project root for these files:

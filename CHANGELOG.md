@@ -5,6 +5,56 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.2.0] — 2026-05-25 — Antigravity 2.0 + Antigravity CLI (agy) host support + `kind: plugin`
+
+Minor — **Antigravity 2.0 + Antigravity CLI host support**. Google launched Antigravity 2.0 (desktop) + Antigravity CLI (`agy`, Go-built) on 2026-05-19 at I/O. Antigravity CLI replaces Gemini CLI (which we removed in v0.9.0); consumer Gemini CLI sunsets 2026-06-18. Paired with `agentm` v3.2.0 (harness-side doctor probes for new primitives) — see [agentm v3.2.0 release notes](https://github.com/alexherrero/agentm/releases/tag/v3.2.0).
+
+The new CLI and 2.0 desktop **share the same agent harness** — single `antigravity` slug in crickets manifests, but the dispatch path and primitive surface have evolved.
+
+### Added
+
+- **New `kind: plugin` customization type** — Antigravity-2.0-style bundle (JSON `plugin.json` manifest at root + 1-N nested `SKILL.md` skills). Adds the 13th customization kind to the toolkit catalog.
+- **Reference plugin** at `plugins/example-plugin/` showing the manifest format + nested skill layout.
+- **New `scripts/install-plugin.sh`** — installs crickets plugins to Antigravity's user-global plugins directory (`~/.gemini/config/plugins/<name>/`). Generates `plugin.json` from the toolkit-side YAML frontmatter at install time. Modes: install (default), `--uninstall <name>`, `--list`.
+- **New wiki how-to**: `Add-A-Plugin.md` — full plugin authoring walkthrough.
+- **New ADR 0011** — Antigravity 2.0 + Antigravity CLI host support (the umbrella decision record).
+- **Compatibility.md "Known gaps" section** — documents the 3 Antigravity 2.0 surfaces (hooks / scheduled-tasks / multi-agent orchestration) that have no file-based authoring path; FOLLOWUP candidates captured for future Python sidecar integration.
+
+### Changed
+
+- **Antigravity dispatch path moved from `.agent/` (singular) to `.agents/` (plural)** — agy v1.0.2 binary scans `{workspace}/.agents/skills/<skill_name>/SKILL.md`. **Breaking change for v1.0.x users** with Antigravity 1.x installs: re-run `bash install.sh --update <target-project>` to migrate. The installer's `legacy_cleanup` detects pre-existing `.agent/skills/` from Antigravity 1.x installs and offers backup-then-remove with operator confirmation; new install populates `.agents/skills/`. Same path applies to `kind: agent` dispatch (sub-agent-as-skill).
+- **Sub-agent-as-skill pattern preserved** — Antigravity 2.0 still has no `.subagents/` first-class slot; subagents remain SDK runtime constructs spawned via the built-in `start_subagent` tool. `kind: agent` continues to dispatch to `.agents/skills/<name>/SKILL.md` on Antigravity (path updated; pattern unchanged). See ADR 0002 v1.2.0 amendment.
+- **Updated `Per-Host-Paths.md`** with the new `.agents/` convention + new `kind: plugin` row.
+- **Updated `Manifest-Schema.md`** with `kind: plugin` in the enum (now 13 entries) + plugin frontmatter schema section.
+- **Updated `Compatibility.md`** with Antigravity 2.0 + Antigravity CLI as first-class hosts; out-of-scope hosts section notes Gemini CLI consumer sunset 2026-06-18; per-customization compatibility table refreshed (6 skills + 4 agents + 8 hooks + 2 bundles + 1 plugin).
+- **Updated wiki tutorials, how-tos, and references** (`Use-The-Evaluator.md`, `Add-A-Skill.md`, `Use-The-Base-Hooks.md`, `Use-The-Memory-Skill.md`, `Customization-Types.md`, `Installer-CLI.md`, `01-First-Customization.md`) to reflect the new `.agents/` path convention.
+- **ADR 0002 (evaluator-design)** amended with v1.2.0 confirmation: sub-agent-as-skill pattern still correct; only the install destination path moved.
+- **ADR 0009 (evidence-tracker-hook)** re-audit trigger met; outcome captured: hooks stay `[claude-code]`-only because Antigravity hooks are Python SDK decorators with no file-based surface. Python sidecar adapter tracked as FOLLOWUP candidate.
+
+### Internal
+
+- `validate-manifests.py` accepts `kind: plugin` (added to `KIND_ENUM`).
+- `install.sh` + `install.ps1` updated: skill / agent dispatch for Antigravity host moved from `.agent/skills/` to `.agents/skills/`; `legacy_cleanup_gemini_cli` detection switched from `.agents/skills/` (the v0.8.x Gemini-CLI path that coincidentally matches the new agy path) to `.agent/skills/` (the Antigravity 1.x path). `MANAGED_PARENTS` updated.
+- `install-plugin.sh` reads YAML frontmatter from `plugins/<name>/plugin.md` (via pyyaml), generates `plugin.json`, copies nested `skills/` + optional `references/` / `examples/` / `policies/` dirs. Writes `installed_version.json` for parity with agy-installed plugins.
+- Smoke install verified: fresh install to `/tmp/crickets-smoke` populates `.agents/skills/` (plural) for 11 skills + 4 sub-agents-as-skill; `.agent/` (singular) NOT created (correctly absent post-migration).
+
+### Cross-references
+
+- Paired sibling release: [agentm v3.2.0](https://github.com/alexherrero/agentm/releases/tag/v3.2.0) — harness-side doctor probes for new primitives.
+- Plan #16 (operator-local; `agentm/.harness/PLAN.md`) — the implementation plan.
+- [Gemini CLI → Antigravity CLI transition](https://developers.googleblog.com/an-important-update-transitioning-gemini-cli-to-antigravity-cli/) — upstream announcement. Consumer Gemini CLI sunsets 2026-06-18.
+
+### Migration for v1.0.x users with Antigravity 1.x installs
+
+If you have crickets v1.0.x installed against an Antigravity project with `.agent/` (singular) layout:
+
+```bash
+cd <your-target-project>
+bash /path/to/crickets/install.sh . --update
+```
+
+The installer prompts to back up the old `.agent/skills/` directory (move to `.agent/skills.crickets-bak.<timestamp>/`) and populates the new `.agents/skills/` path. Pass `--no-legacy-cleanup` to skip the prompt; the new path gets populated either way.
+
 ## [v1.1.0] — 2026-05-25 — Repo rename agent-toolkit → crickets + cross-ref sweep
 
 Minor — **repo rename release**. The GitHub repo for this project is now `alexherrero/crickets` (was `alexherrero/agent-toolkit`). Brand name (Crickets) was always the operator-facing label; the rename brings the URL slug + clone path in line with the brand. Paired with `alexherrero/agentm` v3.1.0 (the harness, was agentic-harness) — see [agentm v3.1.0 release notes](https://github.com/alexherrero/agentm/releases/tag/v3.1.0).

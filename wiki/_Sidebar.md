@@ -7,6 +7,7 @@
 - [Install into a project](Install-Into-Project)
 - [Add a skill](Add-A-Skill)
 - [Add a bundle](Add-A-Bundle)
+- [Add a plugin (Antigravity)](Add-A-Plugin)
 - [Use the evaluator](Use-The-Evaluator)
 - [Use the base hooks](Use-The-Base-Hooks)
 - [Use the evidence-tracker hook](Use-The-Evidence-Tracker-Hook)
@@ -38,6 +39,7 @@
 - [0008 — diataxis-author skill](0008-diataxis-author)
 - [0009 — evidence-tracker hook](0009-evidence-tracker-hook)
 - [0010 — quality-gates bundle](0010-quality-gates-bundle)
+- [0011 — Antigravity 2.0 host support](0011-antigravity-2-host-support)
 
 **Designs**
 - [MemoryVault — permanent agent memory](memoryvault)

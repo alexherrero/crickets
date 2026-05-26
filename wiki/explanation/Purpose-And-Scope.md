@@ -45,7 +45,7 @@ Sibling repos, designed to be cloned as siblings (`~/Antigravity/agentm/`, `~/An
                   │  crickets                              │
                   │    customizations + install plumbing        │
                   │    skills/ commands/ agents/ hooks/ ...     │
-                  │    bundles/ + 11 primitive-type subdirs     │
+                  │    bundles/ + 12 primitive-type subdirs     │
                   └────────────────────────────────────────────┘
 ```
 
@@ -71,7 +71,7 @@ Two paths:
 ## Related
 
 - [ADR 0001 — crickets purpose, scope, public-with-PII-guardrails](0001-crickets-purpose) — the architectural decision with full context + consequences.
-- [Customization Types](Customization-Types) — the 11 primitive types this repo holds.
+- [Customization Types](Customization-Types) — the 12 primitive types this repo holds.
 - [Manifest Schema](Manifest-Schema) — the YAML frontmatter contract.
 - [Per-Host Paths](Per-Host-Paths) — how each kind maps to a host destination.
 - [Install Into Project](Install-Into-Project) — the install recipe.

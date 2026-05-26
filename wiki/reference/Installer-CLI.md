@@ -31,7 +31,7 @@ install.ps1 [-Bundle <name>] [-Skill <name>] [-Agent <name>] [-Hook <name>] [-Al
 | `--agent <name>` | `-Agent <name>` | Install only the named standalone agent. Skips bundles + other primitives. (Available since v0.6.0.) |
 | `--hook <name>` | `-Hook <name>` | Install only the named standalone hook. Skips bundles + other primitives. (Available since v0.7.0; claude-code only.) |
 | `--all` | `-All` | Install everything (default). Equivalent to omitting `--bundle` / `--skill` / `--agent` / `--hook`. |
-| `--update` | `-Update` | True-sync: wipe toolkit-managed dirs in target (`.claude/skills/`, `.agent/skills/`, `.claude/agents/`, `.claude/hooks/`) and recreate from source. Orphan paths from previous versions are auto-removed. **Note:** `.claude/settings.json` is NOT wiped — it's user-state-merged; the toolkit re-merges its hook fragments idempotently via `scripts/merge-settings-fragment.py`. |
+| `--update` | `-Update` | True-sync: wipe toolkit-managed dirs in target (`.claude/skills/`, `.agents/skills/`, `.claude/agents/`, `.claude/hooks/`) and recreate from source. Orphan paths from previous versions are auto-removed. **Note:** `.claude/settings.json` is NOT wiped — it's user-state-merged; the toolkit re-merges its hook fragments idempotently via `scripts/merge-settings-fragment.py`. |
 | `--no-pre-push-hook` | `-NoPrePushHook` | Skip installing `templates/hooks/pre-push` into target's `.git/hooks/pre-push`. By default the hook installs; this opts out. |
 | `--no-legacy-cleanup` | `-NoLegacyCleanup` | Suppress the v0.9.0 legacy `.agents/skills/` + `.gemini/agents/` cleanup prompt entirely. The installer otherwise detects pre-existing legacy entries from a prior install and offers backup+remove with operator confirmation (N default). Useful for CI / scripted installs that want no interactive prompts. |
 | `--help`, `-h` | `-Help` | Print the header comment block and exit. |
@@ -52,7 +52,7 @@ What lands where on a default `--all` install:
 | Target path | Source | Behavior on `--update` |
 |---|---|---|
 | `.claude/skills/<name>/` | `skills/<name>/` or `bundles/<b>/skills/<name>/` (claude-code in `supported_hosts`) | Wipe-and-recreate |
-| `.agent/skills/<name>/` | same (antigravity in `supported_hosts`) — also receives agents wrapped as sub-agent-as-skill | Wipe-and-recreate |
+| `.agents/skills/<name>/` | same (antigravity in `supported_hosts`) — also receives agents wrapped as sub-agent-as-skill | Wipe-and-recreate |
 | `.claude/agents/<name>.md` | `agents/<name>.md` or `bundles/<b>/agents/<name>.md` (claude-code in `supported_hosts`) | Wipe-and-recreate (v0.6.0+) |
 | `.claude/hooks/<name>.sh` (POSIX) | `hooks/<name>/<name>.sh` (claude-code in `supported_hosts`) | Wipe-and-recreate (v0.7.0+) |
 | `.claude/hooks/<name>.ps1` (Windows) | `hooks/<name>/<name>.ps1` (claude-code in `supported_hosts`) | Wipe-and-recreate (v0.7.0+) |
@@ -62,7 +62,7 @@ What lands where on a default `--all` install:
 > [!NOTE]
 > **`.agents/skills/<name>/` + `.gemini/agents/<name>.md` removed in v0.9.0** along with standalone Gemini CLI host support per [ROADMAP item #15](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md). Pre-existing legacy entries from prior installs trigger an interactive cleanup prompt at install time (move to `.agents/skills.crickets-bak.<ts>/` + `.gemini/agents.crickets-bak.<ts>/`); `--no-legacy-cleanup` / `-NoLegacyCleanup` flag suppresses for CI. See [ADR 0006](decisions/0006-gemini-cli-host-removal).
 
-**Sibling-tool collision note (v0.6.0+):** `.claude/agents/` and `.claude/hooks/` are also written to by the sibling [`agentm`](https://github.com/alexherrero/agentm) installer (for `explorer` / `adversarial-reviewer` / `documenter`, and harness-shipped hooks under `--hooks` mode). When both repos are installed into the same target, the **later-run** installer's `--update` wipes the parent before recreating from its own source. Run both installers (in either order) to land the full set. The same caveat already applies to `.claude/skills/` and `.agent/skills/`. `.claude/settings.json` is shared but never wiped — both installers merge their fragments in idempotently.
+**Sibling-tool collision note (v0.6.0+):** `.claude/agents/` and `.claude/hooks/` are also written to by the sibling [`agentm`](https://github.com/alexherrero/agentm) installer (for `explorer` / `adversarial-reviewer` / `documenter`, and harness-shipped hooks under `--hooks` mode). When both repos are installed into the same target, the **later-run** installer's `--update` wipes the parent before recreating from its own source. Run both installers (in either order) to land the full set. The same caveat already applies to `.claude/skills/` and `.agents/skills/`. `.claude/settings.json` is shared but never wiped — both installers merge their fragments in idempotently.
 
 User-state paths (NEVER touched by `--update`):
 

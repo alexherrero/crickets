@@ -101,6 +101,17 @@ The original ADR 0002 (2026-05-13) cited `evaluator` shipping with `supported_ho
 
 The evaluator's design (read-only fresh-context grader, allowlist `[Read, Glob, Grep]`, PASS / NEEDS_WORK output contract, caller-supplied inline rubric) is unchanged. Antigravity (Gemini-in-IDE) stays as a supported host — the wrap as `.agent/skills/evaluator/SKILL.md` (sub-agent-as-skill) is preserved.
 
+**v1.2.0 — Antigravity 2.0 + Antigravity CLI host confirmation.**
+
+> [!NOTE]
+> **Status:** accepted · **Date:** 2026-05-25 · **Source:** [ROADMAP item #17](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md). Implemented in plan #16. See [ADR 0011](0011-antigravity-2-host-support) for the umbrella decision.
+
+Per ADR 0011, the sub-agent-as-skill pattern remains the correct dispatch for `kind: agent` on Antigravity. Wave 1 research for plan #16 confirmed there is **no `.subagents/` first-class directory slot** in agy v1.0.2 — subagents are SDK runtime constructs spawned dynamically via the built-in `start_subagent` tool, enabled by default via `CapabilitiesConfig(enable_subagents=True)`. The evaluator (and the 3 sibling sub-agents: `adapt-evaluator`, `diataxis-evaluator`, `memory-idea-researcher`) continue to ship as SKILL.md files under the host's skill directory — the host treats them as callable sub-agents.
+
+**Path change in v1.2.0**: the install destination on Antigravity moved from `.agent/skills/evaluator/SKILL.md` (singular `.agent/` — Antigravity 1.x convention) to `.agents/skills/evaluator/SKILL.md` (plural `.agents/` — agy v1.0.2+ / Antigravity 2.0 convention). One-letter rename confirmed by `agy` binary string `{workspace}/.agents/skills/{skill_name}/SKILL.md`. See [ADR 0011](0011-antigravity-2-host-support) Decision section + the v1.2.0 CHANGELOG entry for the breaking-change migration callout.
+
+**Pattern unchanged**: the evaluator's SKILL.md authoring shape (YAML frontmatter with `name` + `description`, markdown body) is unchanged. Only the install destination path moved. Sub-agent-as-skill remains the dispatch model on Antigravity through v1.2.0 and beyond.
+
 ## Related
 
 - [Use the evaluator](Use-The-Evaluator) — practical how-to with three worked rubrics.

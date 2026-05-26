@@ -95,10 +95,10 @@ You should see lines like:
 ==> crickets install: /var/folders/.../tmp.xxx
 ==> installing bundle: example-bundle
     created .claude/skills/example-skill
-    created .agent/skills/example-skill
+    created .agents/skills/example-skill
 ==> installing skill: hello-world
     created .claude/skills/hello-world
-    created .agent/skills/hello-world
+    created .agents/skills/hello-world
 ==> installing skill: pii-scrubber
     created .claude/skills/pii-scrubber
     ...
@@ -116,7 +116,7 @@ Confirm your skill installed at both supported host paths:
 
 ```bash
 ls $SCRATCH/.claude/skills/hello-world/
-ls $SCRATCH/.agent/skills/hello-world/
+ls $SCRATCH/.agents/skills/hello-world/
 ```
 
 Each should show `SKILL.md`. Open one of them — it should be byte-identical to what you wrote in step 2.
@@ -145,7 +145,7 @@ You should see:
 ```
 ==> sync mode: wiping toolkit-managed dirs before recreate from source
     removed .claude/skills/
-    removed .agent/skills/
+    removed .agents/skills/
     wiped N managed dir(s); rebuilding from source
 ==> installing bundle: example-bundle
     created .claude/skills/example-skill
@@ -174,7 +174,7 @@ rm -rf skills/hello-world
 ## What you learned
 
 - **Skills live at `skills/<name>/SKILL.md`** with YAML frontmatter declaring `name`, `description`, `kind`, `supported_hosts`, and `version`.
-- **The installer dispatches per `supported_hosts`** — one source manifest lands at host-native paths (`.claude/skills/`, `.agent/skills/`) at install time.
+- **The installer dispatches per `supported_hosts`** — one source manifest lands at host-native paths (`.claude/skills/`, `.agents/skills/`) at install time.
 - **`--update` is a true-sync** — managed parent dirs get wiped and recreated, picking up edits without needing manual cleanup.
 - **`validate-manifests.py` catches schema errors** before the installer runs them — typos in frontmatter surface as `file:line` errors with clear remediation hints.
 - **The pre-push hook is the PII guardrail** — every push to the toolkit gets scanned; you'd fail the push if `hello-world` accidentally contained an email or API key.

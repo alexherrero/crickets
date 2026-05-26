@@ -3,7 +3,7 @@
 #
 # Installs personal agent customizations (skills, sub-agents, hooks, MCP
 # servers, slash commands, etc.) into a target project under host-specific
-# paths (.claude/, .agent/). Also installs a pre-push git hook that runs
+# paths (.claude/, .agents/). Also installs a pre-push git hook that runs
 # check-no-pii.sh against every push.
 #
 # Usage:
@@ -160,17 +160,23 @@ echo "==> crickets install: $TARGET"
 # Python helper scripts/merge-settings-fragment.py.
 MANAGED_PARENTS=(
     .claude/skills
-    .agent/skills
+    .agents/skills
     .claude/agents
     .claude/hooks
 )
 EMPTY_PARENT_CANDIDATES=()
 
-# ── legacy gemini-cli cleanup (v0.9.0+) ───────────────────────────────────
-# v0.9.0 removed standalone Gemini CLI host support. Prior installs may have
-# populated either:
-#   - .agents/skills/<name>/ (skills installed with gemini-cli host)
-#   - .gemini/agents/<name>.md (agents installed with gemini-cli host)
+# ── legacy cleanup (v0.9.0 gemini-cli + v1.2.0 antigravity-1.x) ──────────
+# v0.9.0 removed standalone Gemini CLI host support. v1.2.0 (per ADR 0011)
+# updated the Antigravity dispatch path from .agent/ (singular, 1.x convention)
+# to .agents/ (plural, agy v1.0.2+ / Antigravity 2.0 convention). Prior installs
+# may have populated:
+#   - .agent/skills/<name>/ (Antigravity 1.x skill destination — v1.0.x crickets)
+#   - .gemini/agents/<name>.md (gemini-cli agent destination — v0.8.x and earlier)
+# Note: .agents/skills/ (plural) is the NEW canonical path as of v1.2.0; it was
+# also the legacy gemini-cli skill path in v0.8.x. The v0.9.0 cleanup that
+# treated .agents/skills/ as legacy was correct for that release; in v1.2.0
+# the same path is reclaimed for Antigravity 2.0 — NOT a legacy path.
 # Detect pre-existing entries that match currently-managed customization
 # names; offer a backup-then-remove flow with operator confirmation. Defaults
 # to N (no-op unless operator opts in). --no-legacy-cleanup suppresses the
@@ -185,7 +191,7 @@ legacy_cleanup_gemini_cli() {
         return 0
     fi
     local has_legacy_skills=0 has_legacy_agents=0
-    [[ -d .agents/skills ]] && has_legacy_skills=1
+    [[ -d .agent/skills ]] && has_legacy_skills=1
     [[ -d .gemini/agents ]] && has_legacy_agents=1
     if [[ $has_legacy_skills -eq 0 && $has_legacy_agents -eq 0 ]]; then
         return 0
@@ -208,10 +214,11 @@ legacy_cleanup_gemini_cli() {
         [[ -f "$md" ]] || continue
         known_agent_names+=("$(basename "$md" .md)")
     done
-    # Match .agents/skills/ entries against known SKILL names.
+    # Match .agent/skills/ entries against known SKILL names (Antigravity 1.x
+    # legacy path; v1.2.0 migrated to .agents/ plural per ADR 0011).
     local matched_skills=() entry name known
     if [[ $has_legacy_skills -eq 1 ]]; then
-        for entry in .agents/skills/*; do
+        for entry in .agent/skills/*; do
             [[ -d "$entry" ]] || continue
             name="$(basename "$entry")"
             for known in "${known_skill_names[@]}"; do
@@ -269,12 +276,12 @@ legacy_cleanup_gemini_cli() {
         local ts
         ts="$(date +%Y%m%d%H%M%S)"
         if [[ ${#matched_skills[@]} -gt 0 ]]; then
-            local bak=".agents/skills.crickets-bak.$ts"
-            mv .agents/skills "$bak"
-            echo "    moved .agents/skills/ → $bak/"
-            if [[ -d .agents ]] && [[ -z "$(ls -A .agents 2>/dev/null)" ]]; then
-                rmdir .agents
-                echo "    removed empty .agents/ directory"
+            local bak=".agent/skills.crickets-bak.$ts"
+            mv .agent/skills "$bak"
+            echo "    moved .agent/skills/ → $bak/"
+            if [[ -d .agent ]] && [[ -z "$(ls -A .agent 2>/dev/null)" ]]; then
+                rmdir .agent
+                echo "    removed empty .agent/ directory"
             fi
         fi
         if [[ ${#matched_agents[@]} -gt 0 ]]; then
@@ -288,7 +295,7 @@ legacy_cleanup_gemini_cli() {
         fi
     else
         echo "    cleanup skipped — to remove manually later:"
-        [[ $has_legacy_skills -eq 1 ]] && echo "        rm -rf .agents/skills/"
+        [[ $has_legacy_skills -eq 1 ]] && echo "        rm -rf .agent/skills/"
         [[ $has_legacy_agents -eq 1 ]] && echo "        rm -rf .gemini/agents/"
         echo "    (or re-run with --no-legacy-cleanup to suppress this prompt)"
     fi
@@ -336,8 +343,12 @@ install_skill() {
                 cp_managed_dir "$src_dir" ".claude/skills/$name"
                 ;;
             antigravity)
-                mkdir -p .agent/skills
-                cp_managed_dir "$src_dir" ".agent/skills/$name"
+                # Antigravity 2.0 / agy v1.0.2+ uses .agents/ (plural) per
+                # ADR 0011 + smoke-test confirmation. v1.0.x of crickets used
+                # .agent/ (singular) for Antigravity 1.x; legacy_cleanup
+                # handles the migration on /update.
+                mkdir -p .agents/skills
+                cp_managed_dir "$src_dir" ".agents/skills/$name"
                 ;;
             *)
                 echo "    warning: unknown host '$host' for skill '$name' — skipped" >&2
@@ -401,8 +412,12 @@ install_hook() {
 # install_agent <source-file> <agent-name> <comma-separated-hosts>
 # Dispatches an agent to per-host destinations. Source is a single .md file.
 # Claude Code: file-level at .claude/agents/<name>.md.
-# Antigravity: no first-class sub-agent surface — agent gets wrapped as a
-# skill at .agent/skills/<name>/SKILL.md per the locked per-host paths table.
+# Antigravity 2.0 / agy: no first-class sub-agent slot (subagents are SDK
+# runtime constructs spawned via the built-in start_subagent tool per Wave 1
+# task 3 research) — agent gets wrapped as a skill at
+# .agents/skills/<name>/SKILL.md (sub-agent-as-skill pattern; the host treats
+# the SKILL.md as a callable subagent). Path changed from .agent/ to .agents/
+# in v1.2.0 per ADR 0011 — agy uses plural.
 install_agent() {
     local src_file="$1" name="$2" hosts="$3"
     IFS=',' read -ra host_array <<< "$hosts"
@@ -416,8 +431,8 @@ install_agent() {
                 cp_managed "$src_file" ".claude/agents/$name.md"
                 ;;
             antigravity)
-                mkdir -p ".agent/skills/$name"
-                cp_managed "$src_file" ".agent/skills/$name/SKILL.md"
+                mkdir -p ".agents/skills/$name"
+                cp_managed "$src_file" ".agents/skills/$name/SKILL.md"
                 ;;
             *)
                 echo "    warning: unknown host '$host' for agent '$name' — skipped" >&2

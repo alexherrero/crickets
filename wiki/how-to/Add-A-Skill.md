@@ -53,7 +53,7 @@
    cd $TARGET && git init -q
    bash ~/Antigravity/crickets/install.sh $TARGET
    ls $TARGET/.claude/skills/$SKILL_NAME/    # should contain SKILL.md
-   ls $TARGET/.agent/skills/$SKILL_NAME/     # same
+   ls $TARGET/.agents/skills/$SKILL_NAME/     # same
    # Note: .agents/skills/ removed in v0.9.0 (Gemini CLI host dropped per ROADMAP #15).
    rm -rf $TARGET
    ```
