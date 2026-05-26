@@ -24,14 +24,14 @@ try {
         # Bundle: example-bundle -> example-skill across 2 hosts (claude-code + antigravity).
         # gemini-cli host removed in v0.9.0 (ROADMAP #15).
         '.claude/skills/example-skill/SKILL.md',
-        '.agent/skills/example-skill/SKILL.md',
+        '.agents/skills/example-skill/SKILL.md',
         '.claude/skills/pii-scrubber/SKILL.md',
-        '.agent/skills/pii-scrubber/SKILL.md',
+        '.agents/skills/pii-scrubber/SKILL.md',
         # Standalone skill: design (scaffold only in v0.7.0+; bodies in tasks 2-4 of plan #6).
         '.claude/skills/design/SKILL.md',
         '.claude/skills/design/templates/design-doc.md',
-        '.agent/skills/design/SKILL.md',
-        '.agent/skills/design/templates/design-doc.md',
+        '.agents/skills/design/SKILL.md',
+        '.agents/skills/design/templates/design-doc.md',
         # Standalone skill: memory (plan #7a part 1 task 1 ships scaffold;
         # task 2 of part 1 ships /memory save body + scripts/save.py;
         # task 3 of part 1 ships /memory evolve body + scripts/evolve.py;
@@ -51,30 +51,30 @@ try {
         '.claude/skills/memory/scripts/discover_skills.py',
         '.claude/skills/memory/scripts/adapt_skills.py',
         '.claude/skills/memory/scripts/watchlist_review.py',
-        '.agent/skills/memory/SKILL.md',
-        '.agent/skills/memory/scripts/save.py',
-        '.agent/skills/memory/scripts/evolve.py',
-        '.agent/skills/memory/scripts/embed.py',
-        '.agent/skills/memory/scripts/vec_index.py',
-        '.agent/skills/memory/scripts/recall.py',
-        '.agent/skills/memory/scripts/reflect.py',
-        '.agent/skills/memory/scripts/permeable_boundary.py',
-        '.agent/skills/memory/scripts/ideas_surface.py',
-        '.agent/skills/memory/scripts/ideas_incubator.py',
-        '.agent/skills/memory/scripts/ideas_promote.py',
-        '.agent/skills/memory/scripts/index_skills.py',
-        '.agent/skills/memory/scripts/discover_skills.py',
-        '.agent/skills/memory/scripts/adapt_skills.py',
-        '.agent/skills/memory/scripts/watchlist_review.py',
+        '.agents/skills/memory/SKILL.md',
+        '.agents/skills/memory/scripts/save.py',
+        '.agents/skills/memory/scripts/evolve.py',
+        '.agents/skills/memory/scripts/embed.py',
+        '.agents/skills/memory/scripts/vec_index.py',
+        '.agents/skills/memory/scripts/recall.py',
+        '.agents/skills/memory/scripts/reflect.py',
+        '.agents/skills/memory/scripts/permeable_boundary.py',
+        '.agents/skills/memory/scripts/ideas_surface.py',
+        '.agents/skills/memory/scripts/ideas_incubator.py',
+        '.agents/skills/memory/scripts/ideas_promote.py',
+        '.agents/skills/memory/scripts/index_skills.py',
+        '.agents/skills/memory/scripts/discover_skills.py',
+        '.agents/skills/memory/scripts/adapt_skills.py',
+        '.agents/skills/memory/scripts/watchlist_review.py',
         # Standalone agent: evaluator. claude-code is single-file;
         # antigravity wraps the agent as a skill. (gemini-cli destination
         # .gemini/agents/evaluator.md removed in v0.9.0.)
         '.claude/agents/evaluator.md',
-        '.agent/skills/evaluator/SKILL.md',
+        '.agents/skills/evaluator/SKILL.md',
         '.claude/agents/memory-idea-researcher.md',
-        '.agent/skills/memory-idea-researcher/SKILL.md',
+        '.agents/skills/memory-idea-researcher/SKILL.md',
         '.claude/agents/adapt-evaluator.md',
-        '.agent/skills/adapt-evaluator/SKILL.md',
+        '.agents/skills/adapt-evaluator/SKILL.md',
         # Standalone skill: diataxis-author (plan #13 part 1 ships scaffold;
         # part 2 adds /diataxis author + /diataxis classify + 4 templates +
         # 2 scripts; parts 3-5 fill in remaining sub-commands).
@@ -88,19 +88,19 @@ try {
         '.claude/skills/diataxis-author/templates/how-to.md',
         '.claude/skills/diataxis-author/templates/reference.md',
         '.claude/skills/diataxis-author/templates/explanation.md',
-        '.agent/skills/diataxis-author/SKILL.md',
-        '.agent/skills/diataxis-author/scripts/classify.py',
-        '.agent/skills/diataxis-author/scripts/author.py',
-        '.agent/skills/diataxis-author/scripts/check.py',
-        '.agent/skills/diataxis-author/scripts/repair.py',
-        '.agent/skills/diataxis-author/scripts/migrate.py',
-        '.agent/skills/diataxis-author/templates/tutorial.md',
-        '.agent/skills/diataxis-author/templates/how-to.md',
-        '.agent/skills/diataxis-author/templates/reference.md',
-        '.agent/skills/diataxis-author/templates/explanation.md',
+        '.agents/skills/diataxis-author/SKILL.md',
+        '.agents/skills/diataxis-author/scripts/classify.py',
+        '.agents/skills/diataxis-author/scripts/author.py',
+        '.agents/skills/diataxis-author/scripts/check.py',
+        '.agents/skills/diataxis-author/scripts/repair.py',
+        '.agents/skills/diataxis-author/scripts/migrate.py',
+        '.agents/skills/diataxis-author/templates/tutorial.md',
+        '.agents/skills/diataxis-author/templates/how-to.md',
+        '.agents/skills/diataxis-author/templates/reference.md',
+        '.agents/skills/diataxis-author/templates/explanation.md',
         # Standalone agent: diataxis-evaluator (plan #13 part 1 ships stub).
         '.claude/agents/diataxis-evaluator.md',
-        '.agent/skills/diataxis-evaluator/SKILL.md',
+        '.agents/skills/diataxis-evaluator/SKILL.md',
         # Standalone hooks (claude-code only, v0.7.0); memory-recall hooks
         # added in plan #7a part 2; memory-reflect-{stop,idle} added in
         # plan #7a part 3.
@@ -123,14 +123,16 @@ try {
         }
     }
 
-    # ── negative-existence assertions (v0.9.0+ — gemini-cli removed) ───────────
+    # ── negative-existence assertions (v0.9.0 gemini-cli + v1.2.0 path migration) ──
     # These paths MUST NOT exist after install. Catches regressions if the
-    # gemini-cli dispatch arms ever come back.
-    $notExpected = @('.agents', '.gemini')
+    # gemini-cli dispatch arms come back OR the .agent/ singular path
+    # (Antigravity 1.x, pre-v1.2.0) is repopulated by mistake (v1.2.0
+    # migrated to .agents/ plural per ADR 0011).
+    $notExpected = @('.agent', '.gemini')
     foreach ($p in $notExpected) {
         $full = Join-Path $scratch $p
         if (Test-Path -LiteralPath $full) {
-            Write-Error "UNEXPECTED (v0.9.0+ removed gemini-cli): $p exists at $full"
+            Write-Error "UNEXPECTED ($p should not exist: v0.9.0 removed gemini-cli + v1.2.0 migrated .agent/ -> .agents/ per ADR 0011): $p exists at $full"
             $fail = $true
         }
     }
@@ -208,21 +210,25 @@ try {
         Remove-Item -LiteralPath $nohook -Recurse -Force -ErrorAction SilentlyContinue
     }
 
-    # ── -NoLegacyCleanup: suppresses the v0.9.0 legacy-cleanup prompt ──────
-    Write-Host '==> -NoLegacyCleanup (v0.9.0)'
+    # ── -NoLegacyCleanup: suppresses the legacy-cleanup prompt (v1.2.0) ──
+    # v1.2.0 migrated Antigravity dispatch from .agent/ singular → .agents/
+    # plural per ADR 0011. Installer detects pre-existing .agent/skills/
+    # from v1.0.x crickets (Antigravity 1.x convention); -NoLegacyCleanup
+    # suppresses the prompt.
+    Write-Host '==> -NoLegacyCleanup (v1.2.0 .agent/ singular legacy detection)'
     $legacy = Join-Path ([System.IO.Path]::GetTempPath()) ("toolkit-legacy-" + [System.Guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $legacy -Force | Out-Null
     try {
         git -C $legacy init -q -b main | Out-Null
-        New-Item -ItemType Directory -Path (Join-Path $legacy '.agents/skills/design') -Force | Out-Null
-        'fake legacy skill' | Out-File -FilePath (Join-Path $legacy '.agents/skills/design/SKILL.md')
+        New-Item -ItemType Directory -Path (Join-Path $legacy '.agent/skills/design') -Force | Out-Null
+        'fake legacy skill' | Out-File -FilePath (Join-Path $legacy '.agent/skills/design/SKILL.md')
         pwsh -NoProfile -File (Join-Path $ToolkitRoot 'install.ps1') -NoLegacyCleanup -NoPythonDeps -NoSkillIndex $legacy | Out-File (Join-Path $legacy '.install.log')
         $log = Get-Content (Join-Path $legacy '.install.log') -Raw
         if ($log -match 'legacy gemini-cli cleanup') {
             throw '-NoLegacyCleanup did not suppress the cleanup prompt'
         }
-        if (-not (Test-Path -LiteralPath (Join-Path $legacy '.agents/skills/design/SKILL.md'))) {
-            throw '-NoLegacyCleanup deleted/moved legacy .agents/skills/design/ (should leave untouched)'
+        if (-not (Test-Path -LiteralPath (Join-Path $legacy '.agent/skills/design/SKILL.md'))) {
+            throw '-NoLegacyCleanup deleted/moved legacy .agent/skills/design/ (should leave untouched)'
         }
     } finally {
         Remove-Item -LiteralPath $legacy -Recurse -Force -ErrorAction SilentlyContinue
@@ -1671,7 +1677,7 @@ print('OK')
         if (-not (Test-Path -LiteralPath $researcherMd)) {
             throw "memory-idea-researcher.md not installed at $researcherMd"
         }
-        $researcherAnti = Join-Path $scratch '.agent/skills/memory-idea-researcher/SKILL.md'
+        $researcherAnti = Join-Path $scratch '.agents/skills/memory-idea-researcher/SKILL.md'
         if (-not (Test-Path -LiteralPath $researcherAnti)) {
             throw "memory-idea-researcher antigravity skill-wrap missing at $researcherAnti"
         }

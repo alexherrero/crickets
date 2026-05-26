@@ -22,19 +22,20 @@ bash "$TOOLKIT_ROOT/install.sh" --no-python-deps --no-skill-index "$SCRATCH" > "
 # ── expected files (every supported_host × every shipped primitive) ─────────
 expected=(
   # Bundle: example-bundle → example-skill across 2 hosts (claude-code + antigravity).
-  # gemini-cli host removed in v0.9.0 (ROADMAP #15) — .agents/skills/* no longer
-  # populated.
+  # gemini-cli host removed in v0.9.0 (ROADMAP #15). Antigravity dispatch path
+  # migrated from .agent/ singular → .agents/ plural in v1.2.0 per ADR 0011
+  # (agy v1.0.2+ scans {workspace}/.agents/skills/<name>/SKILL.md).
   .claude/skills/example-skill/SKILL.md
-  .agent/skills/example-skill/SKILL.md
+  .agents/skills/example-skill/SKILL.md
   # Standalone skill: pii-scrubber across 2 hosts
   .claude/skills/pii-scrubber/SKILL.md
-  .agent/skills/pii-scrubber/SKILL.md
+  .agents/skills/pii-scrubber/SKILL.md
   # Standalone skill: design (scaffold only in v0.7.0+; bodies in tasks 2-4 of plan #6).
   # Skill dir includes templates/design-doc.md which ships alongside SKILL.md.
   .claude/skills/design/SKILL.md
   .claude/skills/design/templates/design-doc.md
-  .agent/skills/design/SKILL.md
-  .agent/skills/design/templates/design-doc.md
+  .agents/skills/design/SKILL.md
+  .agents/skills/design/templates/design-doc.md
   # Standalone skill: memory (plan #7a part 1 task 1 ships scaffold;
   # task 2 of part 1 ships /memory save body + scripts/save.py;
   # task 3 of part 1 ships /memory evolve body + scripts/evolve.py;
@@ -56,31 +57,31 @@ expected=(
   .claude/skills/memory/scripts/discover_skills.py
   .claude/skills/memory/scripts/adapt_skills.py
   .claude/skills/memory/scripts/watchlist_review.py
-  .agent/skills/memory/SKILL.md
-  .agent/skills/memory/scripts/save.py
-  .agent/skills/memory/scripts/evolve.py
-  .agent/skills/memory/scripts/embed.py
-  .agent/skills/memory/scripts/vec_index.py
-  .agent/skills/memory/scripts/recall.py
-  .agent/skills/memory/scripts/reflect.py
-  .agent/skills/memory/scripts/permeable_boundary.py
-  .agent/skills/memory/scripts/ideas_surface.py
-  .agent/skills/memory/scripts/ideas_incubator.py
-  .agent/skills/memory/scripts/ideas_promote.py
-  .agent/skills/memory/scripts/index_skills.py
-  .agent/skills/memory/scripts/discover_skills.py
-  .agent/skills/memory/scripts/adapt_skills.py
-  .agent/skills/memory/scripts/watchlist_review.py
+  .agents/skills/memory/SKILL.md
+  .agents/skills/memory/scripts/save.py
+  .agents/skills/memory/scripts/evolve.py
+  .agents/skills/memory/scripts/embed.py
+  .agents/skills/memory/scripts/vec_index.py
+  .agents/skills/memory/scripts/recall.py
+  .agents/skills/memory/scripts/reflect.py
+  .agents/skills/memory/scripts/permeable_boundary.py
+  .agents/skills/memory/scripts/ideas_surface.py
+  .agents/skills/memory/scripts/ideas_incubator.py
+  .agents/skills/memory/scripts/ideas_promote.py
+  .agents/skills/memory/scripts/index_skills.py
+  .agents/skills/memory/scripts/discover_skills.py
+  .agents/skills/memory/scripts/adapt_skills.py
+  .agents/skills/memory/scripts/watchlist_review.py
   # Standalone agent: evaluator — claude-code is single-file destination;
   # antigravity wraps the agent as a skill. (gemini-cli destination
   # .gemini/agents/evaluator.md removed in v0.9.0.) memory-idea-researcher
   # added in plan #7a part 4 task 3 (deep-research worker for idea-incubator).
   .claude/agents/evaluator.md
-  .agent/skills/evaluator/SKILL.md
+  .agents/skills/evaluator/SKILL.md
   .claude/agents/memory-idea-researcher.md
-  .agent/skills/memory-idea-researcher/SKILL.md
+  .agents/skills/memory-idea-researcher/SKILL.md
   .claude/agents/adapt-evaluator.md
-  .agent/skills/adapt-evaluator/SKILL.md
+  .agents/skills/adapt-evaluator/SKILL.md
   # Standalone skill: diataxis-author (plan #13 part 1 ships scaffold;
   # part 2 adds /diataxis author + /diataxis classify + 4 templates +
   # 2 scripts; parts 3-5 fill in the remaining sub-commands).
@@ -94,20 +95,20 @@ expected=(
   .claude/skills/diataxis-author/templates/how-to.md
   .claude/skills/diataxis-author/templates/reference.md
   .claude/skills/diataxis-author/templates/explanation.md
-  .agent/skills/diataxis-author/SKILL.md
-  .agent/skills/diataxis-author/scripts/classify.py
-  .agent/skills/diataxis-author/scripts/author.py
-  .agent/skills/diataxis-author/scripts/check.py
-  .agent/skills/diataxis-author/scripts/repair.py
-  .agent/skills/diataxis-author/scripts/migrate.py
-  .agent/skills/diataxis-author/templates/tutorial.md
-  .agent/skills/diataxis-author/templates/how-to.md
-  .agent/skills/diataxis-author/templates/reference.md
-  .agent/skills/diataxis-author/templates/explanation.md
+  .agents/skills/diataxis-author/SKILL.md
+  .agents/skills/diataxis-author/scripts/classify.py
+  .agents/skills/diataxis-author/scripts/author.py
+  .agents/skills/diataxis-author/scripts/check.py
+  .agents/skills/diataxis-author/scripts/repair.py
+  .agents/skills/diataxis-author/scripts/migrate.py
+  .agents/skills/diataxis-author/templates/tutorial.md
+  .agents/skills/diataxis-author/templates/how-to.md
+  .agents/skills/diataxis-author/templates/reference.md
+  .agents/skills/diataxis-author/templates/explanation.md
   # Standalone agent: diataxis-evaluator (plan #13 part 1 ships stub;
   # operational flow in part 2 - author-classify).
   .claude/agents/diataxis-evaluator.md
-  .agent/skills/diataxis-evaluator/SKILL.md
+  .agents/skills/diataxis-evaluator/SKILL.md
   # Standalone hooks — claude-code only (v0.7.0); memory-recall hooks
   # added in plan #7a part 2; memory-reflect-{stop,idle} added in plan
   # #7a part 3.
@@ -135,12 +136,12 @@ done
 # These paths MUST NOT exist after install. Catches regressions if the
 # gemini-cli dispatch arms ever come back to install.sh / install.ps1.
 not_expected=(
-  .agents
+  .agent
   .gemini
 )
 for p in "${not_expected[@]}"; do
   if [[ -e "$SCRATCH/$p" ]]; then
-    echo "UNEXPECTED (v0.9.0+ removed gemini-cli): $p exists at $SCRATCH/$p" >&2
+    echo "UNEXPECTED ($p should not exist: v0.9.0 removed gemini-cli + v1.2.0 migrated .agent/ → .agents/ per ADR 0011): $p exists at $SCRATCH/$p" >&2
     fail=1
   fi
 done
@@ -261,26 +262,27 @@ if ! grep -qF "skipping pre-push hook (--no-pre-push-hook)" "$NOHOOK/.install.lo
 fi
 rm -rf "$NOHOOK"
 
-# ── --no-legacy-cleanup: suppresses the v0.9.0 legacy-cleanup prompt ────────
-# v0.9.0 removed gemini-cli host; the installer detects pre-existing
-# .agents/skills/<name>/ from a prior install and offers backup+remove with
+# ── --no-legacy-cleanup: suppresses the legacy-cleanup prompt ──────────────
+# v1.2.0 migrated Antigravity dispatch from .agent/ singular → .agents/ plural
+# per ADR 0011. The installer detects pre-existing .agent/skills/<name>/ from
+# v1.0.x crickets (Antigravity 1.x convention) and offers backup+remove with
 # operator confirmation. The --no-legacy-cleanup flag suppresses the prompt
-# entirely for CI / scripted installs. Test: seed .agents/skills/<known>/,
+# entirely for CI / scripted installs. Test: seed .agent/skills/<known>/,
 # run installer with --no-legacy-cleanup, confirm prompt suppressed +
 # legacy dir left as-is.
-echo "==> --no-legacy-cleanup (v0.9.0)"
+echo "==> --no-legacy-cleanup (v1.2.0 .agent/ singular legacy detection)"
 LEGACY="$(mktemp -d)"
 git -C "$LEGACY" init -q -b main
-mkdir -p "$LEGACY/.agents/skills/design"
-echo "fake legacy skill" > "$LEGACY/.agents/skills/design/SKILL.md"
+mkdir -p "$LEGACY/.agent/skills/design"
+echo "fake legacy skill" > "$LEGACY/.agent/skills/design/SKILL.md"
 bash "$TOOLKIT_ROOT/install.sh" --no-legacy-cleanup --no-python-deps --no-skill-index "$LEGACY" > "$LEGACY/.install.log"
 if grep -qF "legacy gemini-cli cleanup" "$LEGACY/.install.log"; then
   echo "FAIL: --no-legacy-cleanup did not suppress the cleanup prompt" >&2
   rm -rf "$LEGACY"
   exit 1
 fi
-if [[ ! -e "$LEGACY/.agents/skills/design/SKILL.md" ]]; then
-  echo "FAIL: --no-legacy-cleanup deleted/moved legacy .agents/skills/design/ (should leave untouched)" >&2
+if [[ ! -e "$LEGACY/.agent/skills/design/SKILL.md" ]]; then
+  echo "FAIL: --no-legacy-cleanup deleted/moved legacy .agent/skills/design/ (should leave untouched)" >&2
   rm -rf "$LEGACY"
   exit 1
 fi
@@ -2118,7 +2120,7 @@ if [[ ! -f "$RESEARCHER_MD" ]]; then
   rm -rf "$MIINCUB"
   exit 1
 fi
-RESEARCHER_ANTI="$SCRATCH/.agent/skills/memory-idea-researcher/SKILL.md"
+RESEARCHER_ANTI="$SCRATCH/.agents/skills/memory-idea-researcher/SKILL.md"
 if [[ ! -f "$RESEARCHER_ANTI" ]]; then
   echo "FAIL: memory-idea-researcher antigravity skill-wrap missing at $RESEARCHER_ANTI" >&2
   rm -rf "$MIINCUB"
