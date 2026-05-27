@@ -80,4 +80,4 @@ The installer resolves each entry by walking the bundle's matching subdir and di
 
 - [Manifest Schema](Manifest-Schema) — the YAML frontmatter contract.
 - [Per-Host Paths](Per-Host-Paths) — destination paths per kind per host.
-- [Add a Skill](Add-A-Skill) / [Add a Bundle](Add-A-Bundle) — practical recipes.
+- [Add a Skill](Add-A-Skill) / [Add a Plugin](Add-A-Plugin) — practical recipes. (`kind: bundle` is reserved-future in v2.0.0; no bundles ship.)

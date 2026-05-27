@@ -182,6 +182,6 @@ rm -rf skills/hello-world
 ## Next
 
 - [Add a Skill](Add-A-Skill) — the recipe form (shorter; assumes you've done this tutorial).
-- [Add a Bundle](Add-A-Bundle) — when you have multiple primitives that ship together.
+- [Quality-Gates-Recipe](Quality-Gates-Recipe) — docs-only recipe pattern that replaces the v1.x quality-gates bundle (`kind: bundle` reserved-future in v2.0.0; no bundles ship).
 - [Manifest Schema](Manifest-Schema) — every frontmatter field, with edge cases.
 - [Per-Host Paths](Per-Host-Paths) — destination paths for kinds beyond `skill`.

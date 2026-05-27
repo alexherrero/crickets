@@ -322,9 +322,11 @@ Per the operator's [[hld-evolution-update-on-major-release]] convention, this HL
 
 **Update history:**
 
+- **v0.2 — 2026-05-27 — V4.2 — crickets v2.0.0 + agentm v4.0.0 (paired pair #11) — Reorganization.** ROADMAP-V4 item #36 — the first BUILD plan after #31 (this HLD's design pass) locked the architecture. Compound skills (`memory`, `design`, `diataxis-author`, `ship-release`), the four memory hooks, the `evidence-tracker` hook, the `memory-idea-researcher` sub-agent, the `plugins/` tree (with `install-plugin.sh`), and the `bundles/` namespace (with `quality-gates`) all moved from crickets to Agent M. The split now reflects the device-wide-by-default rationale: crickets owns universal base primitives; Agent M owns the agentic memory + compound flows that turn the harness into a learning environment. crickets v2.0.0 narrows to base primitives only (2 skills + 3 sub-agents + 3 hooks); Agent M v4.0.0 absorbs the compound surface + memory stack and dispatches it via a new manifest-walking installer block. The reorg deliberately does NOT ship state migration (the `<vault>/projects/<slug>/_harness/` move) — that's V4 #26, next on the queue. v4.0.0 keeps the legacy `<project>/.harness/` paths intact with deprecation warning until #26 lands. No vault-side migration required; operators run `agentm/install.sh` after `crickets/install.sh` and the compound skills + memory hooks land at the same `.claude/skills/`, `.claude/hooks/`, `.agents/skills/` destinations crickets v1.x used.
+
 - **v0.1 — 2026-05-26**: initial publication, paired with plan #18 close.
 
-Future updates land here as the V4 build phases (#36, #26, #30, #35, #32) ship + as V5/V6 work touches the architecture. A heavy operator-edit + reflection pass on the broader Agent Memory HLD set is scheduled for post-V5 close.
+Future updates land here as the V4 build phases (#26, #30, #35, #32) ship + as V5/V6 work touches the architecture. A heavy operator-edit + reflection pass on the broader Agent Memory HLD set is scheduled for post-V5 close.
 
 ## See also
 

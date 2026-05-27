@@ -27,18 +27,17 @@ This wiki is the contributor-facing documentation for Crickets itself. Every pag
 
 - [Install crickets into a project](Install-Into-Project) — drop the shipped customizations into a target project.
 - [Add a skill](Add-A-Skill) — add a new standalone skill.
-- [Add a bundle](Add-A-Bundle) — package multiple primitives that ship together.
+- [Quality-Gates-Recipe](Quality-Gates-Recipe) — operator-facing recipe for the 5-primitive quality-gates set (replaces the v1.x `quality-gates` bundle; `kind: bundle` reserved-future in v2.0.0).
 - [Use the evaluator](Use-The-Evaluator) — dispatch the `evaluator` sub-agent for PASS / NEEDS_WORK grading against a precise rubric.
 - [Use the base hooks](Use-The-Base-Hooks) — kill-switch, steer, commit-on-stop. Operator-precision control for long-running Claude Code sessions.
 - [Use the evidence-tracker hook](Use-The-Evidence-Tracker-Hook) — default-FAIL evidence enforcement on `/work` task closeouts (4th base hook; agent must Read evidence files before flipping PLAN.md `[x]`).
 - [Use the design skill](Use-The-Design-Skill) — `/design author` walks the 10-section template, `/design translate` splits into parts, `/design sequence` generates a PLAN.md per part. Hand-off to harness `/work` + `/review` for execution.
 - [Use the memory skill](Use-The-Memory-Skill) — `/memory save` captures durable preferences / workflows / fixes; `/memory evolve` supersedes existing entries (preserves audit trail). Recall (auto-injection at SessionStart + UserPromptSubmit), reflection sidecar, idea ledger, discovery come in subsequent parts of [the MemoryVault design](memoryvault).
 - [Use the diataxis-author skill](Use-Diataxis-Author) — `/diataxis author` / `check` / `repair` / `migrate` / `classify` covering the full Diátaxis-wiki lifecycle. See [the diataxis-author design](diataxis-author).
-- [Use the quality-gates bundle](Use-The-Quality-Gates-Bundle) — one-command install of the 4 base primitives (`evaluator` + `kill-switch` + `steer` + `commit-on-stop` + `evidence-tracker`) most harness `/work` sessions want.
 
 ## 📖 Looking up a detail?
 
-- [Customization Types](Customization-Types) — what each of the 11 kinds means and where to put them.
+- [Customization Types](Customization-Types) — what each of the 13 kinds means and where to put them (`kind: bundle` + `kind: plugin` reserved-future in v2.0.0).
 - [Manifest Schema](Manifest-Schema) — YAML frontmatter contract.
 - [Per-Host Paths](Per-Host-Paths) — destination paths per kind per host.
 - [Installer CLI](Installer-CLI) — flags, prereqs, exit codes.
@@ -61,7 +60,8 @@ This wiki is the contributor-facing documentation for Crickets itself. Every pag
 - [ADR 0007 — MemoryVault Discovery + Mining](0007-memoryvault-discovery)
 - [ADR 0008 — diataxis-author skill](0008-diataxis-author)
 - [ADR 0009 — evidence-tracker hook](0009-evidence-tracker-hook)
-- [ADR 0010 — quality-gates bundle + sibling-reference dispatch](0010-quality-gates-bundle)
+- [ADR 0011 — Antigravity 2.0 host support](0011-antigravity-2-host-support)
+- [ADR 0012 — device-wide-by-default](0012-device-wide-by-default)
 
 ### Designs
 

@@ -5,6 +5,62 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.0.0] — 2026-05-27 — V4 #36 reorg: catalog narrowed to base primitives
+
+**MAJOR — BREAKING.** V4 #36 reorganization. Compound skills (`memory`, `design`, `diataxis-author`, `ship-release`), memory hooks (`memory-recall-session-start`, `memory-recall-prompt-submit`, `memory-reflect-stop`, `memory-reflect-idle`), the `evidence-tracker` hook, the `memory-idea-researcher` sub-agent, the `plugins/` tree (including `example-plugin` and the `install-plugin.sh` user-global plugin installer), and the `bundles/` namespace (including `quality-gates` + `example-bundle`) **all moved to [Agent M](https://github.com/alexherrero/agentm) v4.0.0**. Crickets v2.0.0 is base primitives only — the toolkit-cricket split now mirrors the design call locked in ADR 0012 (device-wide-by-default): Crickets owns universal primitives any project can use; Agent M owns the agentic memory + compound flows + plugins that make the harness a full agentic learning environment. Paired with **agentm v4.0.0** — see the [Agent M v4.0.0 release notes](https://github.com/alexherrero/agentm/releases/tag/v4.0.0) for the full V4 device-wide context.
+
+### Added
+
+- **`wiki/how-to/Quality-Gates-Recipe.md`** — operator-facing recipe documenting which primitives form the quality-gates set (`evaluator` + `kill-switch` + `steer` + `commit-on-stop` + `evidence-tracker`, the last sourced from Agent M post-reorg). `bash install.sh <target>` default install gives all of Crickets's contribution to that set.
+
+### Changed [BREAKING]
+
+- **Catalog narrowed to base primitives.** Public surface shrinks from 6 skills / 1 sub-agent / 4 hooks / 2 bundles (v1.x) to **2 skills + 3 sub-agents + 3 hooks** (v2.0.0):
+  - **Skills (2):** `pii-scrubber`, `dependabot-fixer`.
+  - **Sub-agents (3):** `evaluator`, `adapt-evaluator`, `diataxis-evaluator`.
+  - **Hooks (3):** `kill-switch`, `steer`, `commit-on-stop`.
+- **`kind: bundle` + `kind: plugin` reserved-future.** Both kinds remain in the manifest enum (manifest schema unchanged from v1.2.0; still 13 kinds total) but no bundles or plugins ship in v2.0.0. The `quality-gates` bundle pattern moved to a docs-only how-to recipe per design call Q of plan #19. The `--bundle <name>` installer flag still parses but no-ops when no bundles are present.
+- **`install.sh` + `install.ps1` python-deps section slimmed.** `requirements.txt` is now `pyyaml` only. `sqlite-vec` + `sentence-transformers` (with their transitive `torch`/`transformers`/`tokenizers` chain — the ~1.3GB BGE-large download nag in the v1.x install log) moved to Agent M's `requirements.txt` since they were memory-skill deps.
+- **`install.sh` + `install.ps1` `index_personal_skills` removed.** The personal-skills auto-indexer's script (`skills/memory/scripts/index_skills.py`) moved with the memory skill to Agent M. Agent M's installer owns this step post-reorg. The `--no-skill-index` / `-NoSkillIndex` flag is preserved as a backward-compat no-op so existing CI invocations don't break.
+- **Smoke install tests rewritten.** `scripts/smoke-install-bash.sh` + `scripts/smoke-install-pwsh.ps1` were ~95% memory-skill functional tests (`/memory save`, `/memory evolve`, recall engine, embedding queue, reflection mining, ideas surfacing, permeable boundary, Diátaxis classify/author/check/repair/migrate, etc.) — all of which moved to Agent M with the skill. New shape covers only what Crickets still ships; expected-files arrays, idempotent re-run, `--update` wipe + recreate, `--no-pre-push-hook`, `--no-legacy-cleanup`, kill-switch sentinel end-to-end, validate-manifests gemini-cli rejection, and post-install integrity all preserved.
+
+### Internal
+
+- **`bundles/` namespace removed.** `bundles/quality-gates/` + `bundles/example-bundle/` both deleted. The `install_bundles` function in both installer scripts is retained (no-ops over an empty `bundles/*` glob); kept for forward-compat if the catalog ever grows enough to warrant bundles again.
+- **`plugins/` namespace + `scripts/install-plugin.sh` moved to Agent M** (now at `agentm/harness/plugins/` + `agentm/scripts/install-plugin.sh`). The Crickets-side plugin documentation cross-links to Agent M's location.
+- **ADR 0010 (quality-gates-bundle) deleted.** Per design call Q of plan #19, no supersession marker — the decision was project-internal and the recipe replaces it. ADR audit confirmed no other ADRs reference 0010 inbound.
+- **HLD V4.2 subsections added** to both `wiki/explanation/designs/agent-memory-evolution.md` (Architecture section) and `wiki/explanation/designs/device-wide-architecture.md` (Lifecycle section). The V4.x evolution chain so far: V4.1 was crickets v1.2.0 (Antigravity 2.0 host support); V4.2 is this reorg; V4.3+ will be Agent M's continuing state migration + auto-detect work.
+
+### Migration
+
+**For v1.x users with compound skills installed (`memory`, `design`, `diataxis-author`, `ship-release`) or memory hooks running:**
+
+The compound surface moved to Agent M. The simplest upgrade path:
+
+1. Install Agent M (if you don't already have it):
+   ```bash
+   git clone https://github.com/alexherrero/agentm.git ~/Antigravity/agentm
+   bash ~/Antigravity/agentm/install.sh <target-project>
+   ```
+2. Re-install Crickets at v2.0.0:
+   ```bash
+   cd ~/Antigravity/crickets && git pull && git checkout v2.0.0
+   bash install.sh --update <target-project>
+   ```
+
+Agent M's installer dispatches the compound skills + memory hooks to your target's `.claude/skills/`, `.claude/hooks/`, and `.agents/skills/` paths — the same destinations Crickets v1.x used. Your vault content (`<vault>/personal-private/`, `<vault>/_meta/embedding-queue.jsonl`, the vec-index database) is untouched; the skill scripts that read/write it just live at a different on-disk source path now. Re-running the SessionStart hook on first invocation under v4.0.0 re-anchors the recall loop without any vault-side migration.
+
+**For v1.x users with `--bundle quality-gates`:** the bundle is gone but the recipe lives on. See [Quality-Gates-Recipe.md](https://github.com/alexherrero/crickets/blob/main/wiki/how-to/Quality-Gates-Recipe.md). Default `bash install.sh <target>` installs Crickets's contribution to the set (evaluator + kill-switch + steer + commit-on-stop); pair with `bash agentm/install.sh <target>` to add the evidence-tracker hook that completes the set.
+
+### Cross-references
+
+- **Paired sibling release:** [Agent M v4.0.0](https://github.com/alexherrero/agentm/releases/tag/v4.0.0) — the "device-wide era" opens.
+- **HLD updates:** `agent-memory-evolution.md` (Architecture § V4.2), `device-wide-architecture.md` (Lifecycle § V4.2).
+- **ADRs referenced:** ADR 0012 (device-wide-by-default — locked the decision; this release implements it on the Crickets side).
+- **Plan:** `agentm` `.harness/PLAN.md` plan #19 — coordinated paired release pair #11.
+
+---
+
 ## [v1.2.0] — 2026-05-25 — Antigravity 2.0 + Antigravity CLI (agy) host support + `kind: plugin`
 
 Minor — **Antigravity 2.0 + Antigravity CLI host support**. Google launched Antigravity 2.0 (desktop) + Antigravity CLI (`agy`, Go-built) on 2026-05-19 at I/O. Antigravity CLI replaces Gemini CLI (which we removed in v0.9.0); consumer Gemini CLI sunsets 2026-06-18. Paired with `agentm` v3.2.0 (harness-side doctor probes for new primitives) — see [agentm v3.2.0 release notes](https://github.com/alexherrero/agentm/releases/tag/v3.2.0).

@@ -29,45 +29,39 @@ Inspired by the iconic noisy cricket from Men in Black, **Crickets** is a tactic
 
 [**Agent M**](https://github.com/alexherrero/agentm) holds the phase-gated workflow, auto-recall, and on-disk state — the structural backend. Crickets holds everything that rides on top.
 
-> **Latest:** v1.0.2 (2026-05-24) — Crickets 1.0 + transparent-variant asset hotfix.  
-> [Release notes](https://github.com/alexherrero/crickets/releases/latest) · [Agent M Evolution HLD](wiki/explanation/designs/agent-memory-evolution.md) · [CHANGELOG](CHANGELOG.md)
+> **Latest:** v2.0.0 (2026-05-27) — V4 #36 reorg. Compound skills (memory, design, diataxis-author, ship-release), memory hooks, evidence-tracker, the memory-idea-researcher sub-agent, plugins, and bundles all moved to [Agent M](https://github.com/alexherrero/agentm). Crickets v2.0.0 ships base primitives only. **Breaking change for v1.x users** — see CHANGELOG migration notes. Paired with Agent M v4.0.0 (the "device-wide era" opens).  
+> [Release notes](https://github.com/alexherrero/crickets/releases/latest) · [Agent M Evolution HLD](wiki/explanation/designs/agent-memory-evolution.md) · [Device-Wide Architecture HLD](wiki/explanation/designs/device-wide-architecture.md) · [CHANGELOG](CHANGELOG.md)
 
 ## What's inside
 
-The current shipped catalog (see [wiki/reference/Customization-Types.md](wiki/reference/Customization-Types.md) for what each kind is):
+The current shipped catalog (see [wiki/reference/Customization-Types.md](wiki/reference/Customization-Types.md) for what each kind is). v2.0.0 narrows Crickets to base primitives — compound skills + memory hooks + the memory-idea-researcher sub-agent + plugins + bundles all moved to [Agent M](https://github.com/alexherrero/agentm) in the V4 #36 reorg.
 
-### Skills (6)
+### Skills (2)
 
 | Skill | What it does |
 |---|---|
 | [`pii-scrubber`](skills/pii-scrubber/SKILL.md) | Agent-facing PII guardrail — scans the current git diff before commit/push, presents findings, offers redactions. Companion to the pre-push hook. |
 | [`dependabot-fixer`](skills/dependabot-fixer/SKILL.md) | Fix breakage on a Dependabot PR. Reads failing CI logs, applies a bounded fix loop, pushes commits to the Dependabot branch, comments residual risks. Never merges. |
-| [`ship-release`](skills/ship-release/SKILL.md) | Cut a tagged GitHub release with semver-driven version bumps from conventional commits. Writes CHANGELOG, tags, pushes, creates the release. |
-| [`design`](skills/design/SKILL.md) | Human-facing design pipeline → agent execution handoff. `/design author` walks a locked 10-section template; `/design translate` splits the approved design into structural parts; `/design sequence` generates a `PLAN.md` per part for Agent M's `/work` + `/review` flow. |
-| [`memory`](skills/memory/SKILL.md) | The Agent M memory skill itself. `/memory save` / `evolve` / `reflect` / `search` / `index-skills` / `discover-skills` / `adapt-skills` / `watchlist` / `promote`. Permeable A3 write boundary; collision-checked; supersession-not-deletion. |
-| [`diataxis-author`](skills/diataxis-author/SKILL.md) | Author + maintain a Diátaxis-style wiki for any repo. `/diataxis author` / `check` / `repair` / `migrate` / `classify`. Subsumes the harness's `migrate-to-diataxis` predecessor. |
 
-### Sub-agents (1)
+### Sub-agents (3)
 
 | Sub-agent | What it does |
 |---|---|
-| [`evaluator`](agents/evaluator.md) | Read-only fresh-context grader. Caller supplies ARTIFACT + RUBRIC; evaluator returns PASS / NEEDS_WORK + per-rubric-item reasoning. Augments Agent M's `adversarial-reviewer` at `/review`. |
+| [`evaluator`](agents/evaluator.md) | Read-only fresh-context grader. Caller supplies ARTIFACT + RUBRIC; returns PASS / NEEDS_WORK + per-rubric-item reasoning. Augments Agent M's `adversarial-reviewer` at `/review`. |
+| [`adapt-evaluator`](agents/adapt-evaluator.md) | Read-only grader for skill-adaptation candidates (Agent M's `/memory adapt` flow). Scores fit + risk; recommends adopt / skip / amend. |
+| [`diataxis-evaluator`](agents/diataxis-evaluator.md) | Read-only grader for Diátaxis classification proposals. Caller supplies a candidate doc + proposed mode; returns PASS / NEEDS_WORK with per-criterion reasoning. Pairs with Agent M's `diataxis-author` skill. |
 
-### Hooks (4)
+### Hooks (3)
 
 | Hook | What it does |
 |---|---|
 | [`kill-switch`](hooks/kill-switch/hook.md) | Operator emergency halt for long-running Claude Code sessions. `touch .harness/STOP` → next `PreToolUse` halts the tool call; `rm` to resume. |
 | [`steer`](hooks/steer/hook.md) | Mid-run redirect without restart. Write `.harness/STEER.md` with a "do it this way instead" instruction → next `PreToolUse` injects the contents into agent context + renames to `STEER.consumed-<iso-ts>.md` for audit trail. |
 | [`commit-on-stop`](hooks/commit-on-stop/hook.md) | Safety-branch commit at session end. Fires on `Stop` event; dirty tree → `auto-save/<iso-ts>` branch with commit. Recovery via `git checkout auto-save/<ts>`. Never modifies the current branch; never pushes. |
-| [`evidence-tracker`](hooks/evidence-tracker/hook.md) | Default-FAIL evidence enforcement on `/work` task closeouts. Blocks `[ ]` → `[x]` flips in `PLAN.md` unless the agent demonstrably `Read` the spec/test files first. Hybrid resolver (heuristic + per-task override + explicit opt-out with mandatory rationale). |
 
-### Bundles (2)
+### Quality-Gates recipe
 
-| Bundle | What it does |
-|---|---|
-| [`quality-gates`](bundles/quality-gates/bundle.md) | One-shot install of `evaluator` + the four base hooks (kill-switch, steer, commit-on-stop, evidence-tracker). What most Agent M `/work` sessions want. Sibling-reference dispatch — primitives stay single-source-of-truth in their standalone locations. |
-| [`example-bundle`](bundles/example-bundle/bundle.md) | Reference skeleton showing how to package a multi-primitive customization. Safe to delete in your fork. |
+The four-primitive set most Agent M `/work` sessions want — `evaluator` + `kill-switch` + `steer` + `commit-on-stop` — is the default install (`bash install.sh <target>`). See [wiki/how-to/Quality-Gates-Recipe.md](wiki/how-to/Quality-Gates-Recipe.md) for the operator-facing recipe. The `evidence-tracker` hook that previously rounded out this set moved to Agent M in v2.0.0; it's still part of the recommended quality-gates configuration when installed via `agentm`.
 
 ## Why Crickets?
 
@@ -197,7 +191,7 @@ Crickets grew across paired releases with Agent M. The full V1→V4 evolution of
 
 ## Status
 
-Currently shipping **v1.0.2** — Crickets commits to a stable public API surface: bundle/manifest schema, installer flags, the `bundles/` namespace, and the 11 customization kinds. Internal surface (`scripts/`, `lib/install/`) remains pre-1.0 in spirit. See [CHANGELOG.md](CHANGELOG.md) and the [latest release](https://github.com/alexherrero/crickets/releases/latest). Crickets ships in lockstep with Agent M as paired releases.
+Currently shipping **v2.0.0** — V4 #36 reorg. Public surface narrowed to base primitives (2 skills + 3 sub-agents + 3 hooks). Compound skills + memory hooks + the memory-idea-researcher sub-agent + plugins + bundles moved to [Agent M](https://github.com/alexherrero/agentm) v4.0.0 — see CHANGELOG migration notes for the upgrade path. Manifest schema, installer flags, and the 13-kind `kind:` enum remain stable (`kind: bundle` + `kind: plugin` are reserved-future in v2.0.0; no bundles or plugins ship). Internal surface (`scripts/`, `lib/install/`) remains pre-1.0 in spirit. See [CHANGELOG.md](CHANGELOG.md) and the [latest release](https://github.com/alexherrero/crickets/releases/latest). Crickets ships in lockstep with Agent M as paired releases.
 
 ## Contributing
 
