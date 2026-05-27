@@ -24,17 +24,13 @@
 #                            switch skips the prompt entirely — useful for CI
 #                            / scripted installs.)
 #   -NoPythonDeps            skip the pip-install step for the toolkit's
-#                            Python deps (pyyaml, sqlite-vec, sentence-
-#                            transformers). Use if you manage Python deps
-#                            via virtualenv / conda / system packages, or
-#                            in CI to avoid the ~1.3GB sentence-transformers
-#                            download per workflow run.
-#   -NoSkillIndex            skip the personal-skills auto-indexer step
-#                            (plan #7b task 1). Best-effort post-install
-#                            run that walks SKILL.md across the toolkit +
-#                            harness sibling and writes pointer entries to
-#                            MemoryVault/personal-skills/. Requires
-#                            MEMORY_VAULT_PATH; silently skipped if unset.
+#                            Python deps (v2.0.0+: pyyaml only). Use if you
+#                            manage Python deps via virtualenv / conda /
+#                            system packages.
+#   -NoSkillIndex            (no-op as of v2.0.0; memory skill moved to
+#                            agentm; agentm's installer owns personal-skills
+#                            indexing now). Flag kept as backward-compat
+#                            no-op.
 #   -Help                    print this help and exit
 
 [CmdletBinding()]
@@ -540,10 +536,12 @@ Install-PrePushHook
 function Install-PythonDeps {
     # Best-effort install of the toolkit's Python deps from requirements.txt.
     # Failure is logged but does NOT fail the toolkit install — the graceful-
-    # skip contracts (memory skill falls back to grep+frontmatter without
-    # sentence-transformers; vec-index ops no-op without sqlite-vec) mean
-    # operators can still use most functionality. The pip-install is
-    # opportunistic.
+    # v2.0.0+: pyyaml only (memory skill moved to agentm; sqlite-vec +
+    # sentence-transformers are agentm's deps now). The pip-install is
+    # opportunistic; the toolkit's contract is "tries to set you up but
+    # never blocks the install on Python dep state." validate-manifests.py
+    # gracefully skips when pyyaml is unavailable (falls back to frontmatter
+    # regex parsing).
     if ($script:NoPythonDeps) {
         Write-Host '==> python deps: skipped (-NoPythonDeps)'
         return
@@ -571,22 +569,21 @@ function Install-PythonDeps {
         return
     }
     Write-Host '==> python deps'
-    # Idempotent quick-path: skip if all three are already importable.
-    $importCheck = & $pythonExe -c "import yaml, sqlite_vec, sentence_transformers" 2>&1
+    # Idempotent quick-path: skip if pyyaml is already importable.
+    $importCheck = & $pythonExe -c "import yaml" 2>&1
     if ($LASTEXITCODE -eq 0) {
-        Write-Host '    pyyaml + sqlite-vec + sentence-transformers already installed'
+        Write-Host '    pyyaml already installed'
         return
     }
-    Write-Host '    installing pyyaml + sqlite-vec + sentence-transformers from requirements.txt'
-    Write-Host '    (sentence-transformers pulls torch + transformers + tokenizers; first install can take 2-5min)'
+    Write-Host '    installing pyyaml from requirements.txt (v2.0.0+: only pyyaml needed; memory skill moved to agentm)'
     # Try --user; failure is logged + non-fatal.
     & $pythonExe -m pip install --user --quiet -r $reqFile 2>&1 | Out-Null
     if ($LASTEXITCODE -eq 0) {
-        Write-Host "    installed (note: sentence-transformers' default BGE-large model — ~1.3GB — downloads lazily on first /memory save or embed.py --mode local)"
+        Write-Host '    installed'
     } else {
         Write-Warning 'pip install failed.'
-        Write-Warning '   The toolkit will graceful-skip embedding + vec-index operations until'
-        Write-Warning '   Python deps are installed. To install manually:'
+        Write-Warning '   The toolkit will graceful-skip pyyaml-dependent ops (validate-manifests.py)'
+        Write-Warning '   until installed. To install manually:'
         Write-Warning "     $pythonExe -m pip install --user -r $reqFile"
         Write-Warning '   Or rerun install.ps1 with -NoPythonDeps to suppress this attempt.'
     }
@@ -594,52 +591,10 @@ function Install-PythonDeps {
 
 Install-PythonDeps
 
-function Install-PersonalSkillsIndex {
-    # Best-effort: run the personal-skills auto-indexer against the
-    # toolkit's own skills/ + the sibling agentm/.claude/skills/
-    # if discoverable. Pointers land in MemoryVault/personal-skills/<repo>/.
-    # Requires MEMORY_VAULT_PATH to be set (we don't guess the vault path —
-    # operators without a vault configured silently skip this).
-    if ($script:NoSkillIndex) {
-        Write-Host '==> personal-skills index: skipped (-NoSkillIndex)'
-        return
-    }
-    $indexer = Join-Path $script:ToolkitRoot 'skills/memory/scripts/index_skills.py'
-    if (-not (Test-Path -LiteralPath $indexer)) {
-        # Memory skill not yet shipped to this toolkit checkout (pre-#7b).
-        return
-    }
-    $vaultPath = $env:MEMORY_VAULT_PATH
-    if (-not $vaultPath) {
-        Write-Host '==> personal-skills index: skipped (MEMORY_VAULT_PATH unset)'
-        return
-    }
-    # Resolve python executable: prefer python3 then python.
-    $pythonExe = $null
-    foreach ($candidate in @('python3', 'python')) {
-        $cmd = Get-Command $candidate -ErrorAction SilentlyContinue
-        if ($cmd) { $pythonExe = $cmd.Source; break }
-    }
-    if (-not $pythonExe) {
-        return
-    }
-    Write-Host '==> personal-skills index'
-    $toolkitSkills = Join-Path $script:ToolkitRoot 'skills'
-    $argList = @('--vault-path', $vaultPath, '--skill-path', $toolkitSkills)
-    # Also index sibling agentm skills if present (canonical clone:
-    # ~/Antigravity/agentm next to ~/Antigravity/crickets).
-    $harnessSibling = Join-Path $script:ToolkitRoot '../agentm/.claude/skills'
-    if (Test-Path -LiteralPath $harnessSibling) {
-        $argList += @('--skill-path', $harnessSibling)
-    }
-    & $pythonExe $indexer @argList 2>&1 | Out-Null
-    if ($LASTEXITCODE -ne 0) {
-        Write-Warning 'personal-skills indexer exited non-zero — pointers may be incomplete'
-        # Non-fatal: skill-pointer entries are nice-to-have.
-    }
-}
-
-Install-PersonalSkillsIndex
+# Note: Install-PersonalSkillsIndex was removed in v2.0.0 (V4 #36). The
+# personal-skills auto-indexer referenced skills/memory/scripts/index_skills.py
+# which moved to agentm. agentm's installer owns this step post-reorg.
+# The -NoSkillIndex switch is preserved as a no-op for backward-compat.
 
 Write-Host ''
 Write-Host 'crickets install: complete.'

@@ -24,17 +24,13 @@
 #                             confirmation. This flag skips the prompt entirely
 #                             — useful for CI / scripted installs.)
 #   --no-python-deps         skip the pip-install step for the toolkit's
-#                            Python deps (pyyaml, sqlite-vec, sentence-
-#                            transformers). Use if you manage Python deps
-#                            via virtualenv / conda / system packages, or
-#                            in CI to avoid the ~1.3GB sentence-transformers
-#                            download per workflow run.
-#   --no-skill-index         skip the personal-skills auto-indexer step
-#                            (plan #7b task 1). Best-effort post-install
-#                            run that walks SKILL.md across the toolkit +
-#                            harness sibling and writes pointer entries to
-#                            MemoryVault/personal-skills/. Requires
-#                            MEMORY_VAULT_PATH; silently skipped if unset.
+#                            Python deps (v2.0.0+: pyyaml only). Use if you
+#                            manage Python deps via virtualenv / conda /
+#                            system packages.
+#   --no-skill-index         (no-op as of v2.0.0; memory skill moved to
+#                            agentm; agentm's installer owns personal-skills
+#                            indexing now). Flag kept as backward-compat
+#                            no-op.
 #   --help, -h               print this help and exit
 
 set -euo pipefail
@@ -500,7 +496,7 @@ install_bundles() {
         # For each `- kind: name` in the manifest's contents:, prefer the
         # standalone toolkit location (<TOOLKIT_ROOT>/<kind>s/<name>/) over
         # the bundle-local copy (<bundle_dir>/<kind>s/<name>/). Bundle-local
-        # is the legacy fallback (example-bundle uses it for its stub skill).
+        # is the legacy fallback (was example-bundle's pattern in v1.x).
         # Single source of truth: each primitive lives once at the standalone
         # location; the bundle is just a manifest referencing the set.
         local contents_pairs
@@ -689,11 +685,12 @@ install_pre_push_hook
 install_python_deps() {
     # Best-effort install of the toolkit's Python deps from requirements.txt.
     # Failure is logged but does NOT fail the toolkit install — the graceful-
-    # skip contracts (memory skill falls back to grep+frontmatter without
-    # sentence-transformers; vec-index ops no-op without sqlite-vec) mean
-    # operators can still use most functionality. The pip-install is
+    # v2.0.0+: pyyaml only (memory skill moved to agentm; sqlite-vec +
+    # sentence-transformers are agentm's deps now). The pip-install is
     # opportunistic; the toolkit's contract is "tries to set you up but
-    # never blocks the install on Python dep state."
+    # never blocks the install on Python dep state." validate-manifests.py
+    # gracefully skips when pyyaml is unavailable (falls back to frontmatter
+    # regex parsing).
     if [[ "$NO_PYTHON_DEPS" -eq 1 ]]; then
         echo "==> python deps: skipped (--no-python-deps)"
         return 0
@@ -712,24 +709,23 @@ install_python_deps() {
         return 0
     fi
     echo "==> python deps"
-    # Idempotent quick-path: skip if all three are already importable.
-    if python3 -c "import yaml, sqlite_vec, sentence_transformers" >/dev/null 2>&1; then
-        echo "    pyyaml + sqlite-vec + sentence-transformers already installed"
+    # Idempotent quick-path: skip if pyyaml is already importable.
+    if python3 -c "import yaml" >/dev/null 2>&1; then
+        echo "    pyyaml already installed"
         return 0
     fi
-    echo "    installing pyyaml + sqlite-vec + sentence-transformers from requirements.txt"
-    echo "    (sentence-transformers pulls torch + transformers + tokenizers; first install can take 2-5min)"
+    echo "    installing pyyaml from requirements.txt (v2.0.0+: only pyyaml needed; memory skill moved to agentm)"
     # Try --user first (works on Homebrew Python, conda, most distros).
     # On PEP 668 systems (Debian 12+, recent macOS system Python), operator
     # may need --break-system-packages — surfaced as a manual fallback hint
     # if pip install fails.
     if python3 -m pip install --user --quiet -r "$TOOLKIT_ROOT/requirements.txt" 2>&1; then
-        echo "    installed (note: sentence-transformers' default BGE-large model — ~1.3GB — downloads lazily on first /memory save or embed.py --mode local)"
+        echo "    installed"
     else
         cat >&2 << EOF
 WARN: pip install failed.
-      The toolkit will graceful-skip embedding + vec-index operations until
-      Python deps are installed. To install manually:
+      The toolkit will graceful-skip pyyaml-dependent ops (validate-manifests.py)
+      until installed. To install manually:
         python3 -m pip install --user -r $TOOLKIT_ROOT/requirements.txt
       If on a PEP 668 system (Debian 12+, recent macOS system Python):
         python3 -m pip install --user --break-system-packages -r $TOOLKIT_ROOT/requirements.txt
@@ -740,46 +736,10 @@ EOF
 
 install_python_deps
 
-index_personal_skills() {
-    # Best-effort: run the personal-skills auto-indexer against the
-    # toolkit's own skills/ + the sibling agentm/.claude/skills/
-    # if discoverable. Pointers land in MemoryVault/personal-skills/<repo>/.
-    # Requires MEMORY_VAULT_PATH to be set (we don't guess the vault path —
-    # operators without a vault configured silently skip this).
-    if [[ "$NO_SKILL_INDEX" -eq 1 ]]; then
-        echo "==> personal-skills index: skipped (--no-skill-index)"
-        return 0
-    fi
-    local indexer="$TOOLKIT_ROOT/skills/memory/scripts/index_skills.py"
-    if [[ ! -f "$indexer" ]]; then
-        # Memory skill not yet shipped to this toolkit checkout (would only
-        # happen on a pre-#7b checkout). Nothing to do.
-        return 0
-    fi
-    if [[ -z "${MEMORY_VAULT_PATH:-}" ]]; then
-        echo "==> personal-skills index: skipped (MEMORY_VAULT_PATH unset)"
-        return 0
-    fi
-    if ! command -v python3 >/dev/null 2>&1; then
-        return 0
-    fi
-    echo "==> personal-skills index"
-    local toolkit_skills="$TOOLKIT_ROOT/skills"
-    local args=("--vault-path" "$MEMORY_VAULT_PATH" "--skill-path" "$toolkit_skills")
-    # Also index the sibling agentm skills if present (canonical
-    # clone is ~/Antigravity/agentm, sibling to ~/Antigravity/
-    # crickets). The toolkit + harness are deliberately co-located.
-    local harness_sibling="$TOOLKIT_ROOT/../agentm/.claude/skills"
-    if [[ -d "$harness_sibling" ]]; then
-        args+=("--skill-path" "$harness_sibling")
-    fi
-    if ! python3 "$indexer" "${args[@]}" 2>&1; then
-        echo "WARN: personal-skills indexer exited non-zero — pointers may be incomplete" >&2
-        # Non-fatal: skill-pointer entries are nice-to-have, not load-bearing.
-    fi
-}
-
-index_personal_skills
+# Note: index_personal_skills() was removed in v2.0.0 (V4 #36). The
+# personal-skills auto-indexer referenced skills/memory/scripts/index_skills.py
+# which moved to agentm. agentm's installer owns this step post-reorg.
+# The --no-skill-index flag is preserved as a no-op for backward-compat.
 
 echo ""
 echo "crickets install: complete."

@@ -14,11 +14,9 @@
 #   python3 -m venv .venv && source .venv/bin/activate
 #   python3 -m pip install -r requirements.txt
 
-pyyaml>=6.0           # scripts/validate-manifests.py, scripts/manifest-info.py,
-                      # skills/memory/scripts/evolve.py
-sqlite-vec>=0.1.0     # skills/memory/scripts/vec_index.py — sqlite-vec SQLite
-                      # extension for vec-index storage + similarity search
-sentence-transformers>=2.0  # skills/memory/scripts/embed.py — local embedding
-                            # (BGE-large default; ~1.3GB BGE-large model
-                            # downloads lazily on first invocation; PyTorch +
-                            # transformers + tokenizers are transitive deps)
+pyyaml>=6.0           # scripts/validate-manifests.py, scripts/manifest-info.py
+
+# Note: as of v2.0.0, sqlite-vec + sentence-transformers are NO LONGER
+# crickets dependencies. The memory skill moved to agentm in V4 #36;
+# embed + vec-index requirements (sqlite-vec, sentence-transformers,
+# torch, transformers, tokenizers) live in agentm's requirements.txt.
