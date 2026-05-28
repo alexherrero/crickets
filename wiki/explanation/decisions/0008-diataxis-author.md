@@ -7,7 +7,7 @@
 
 ## Context
 
-ROADMAP item #13 shipped as the natural follow-on to the MemoryVault parent design (#7a + #7b closed 2026-05-20 + 2026-05-22). The operator maintains three Diátaxis-shaped wikis (`agentm`, `crickets`, `dev-setup`) plus the just-shipped MemoryVault parent design documents — Diátaxis discipline is real, ongoing, and previously supported only by:
+ROADMAP item #13 shipped as the natural follow-on to the MemoryVault parent design (#7a + #7b closed 2026-05-20 + 2026-05-22). The operator maintains multiple Diátaxis-shaped wikis (`agentm`, `crickets`, plus operator-private siblings) plus the just-shipped MemoryVault parent design documents — Diátaxis discipline is real, ongoing, and previously supported only by:
 
 - **`scripts/check-wiki.py`** (harness-side) — strict validator; catches violations at commit time + in CI.
 - **`documenter` sub-agent** (harness-side) — fires at `/release` boundaries; periodic sweep, not live authoring guidance.

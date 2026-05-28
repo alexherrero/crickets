@@ -32,7 +32,7 @@ Three sub-components, all in plan #7b:
 
 **2. Personal-skills auto-indexer**:
 
-- Walks every `SKILL.md` in `crickets/skills/` + `agentm/.claude/skills/` (plus any other sibling-installed repos with skill directories — `dev-setup` etc.).
+- Walks every `SKILL.md` in `crickets/skills/` + `agentm/.claude/skills/` (plus any other sibling-installed repos with skill directories).
 - Writes one MemoryVault entry per SKILL.md to `MemoryVault/personal-skills/<repo>/<skill-name>.md` with frontmatter (`kind: skill-pointer`, `source_path`, `source_repo`, `last_indexed`, `skill_version`).
 - Entry body = skill manifest summary + the skill's `description` + key sub-commands + tool allowlist.
 - Runs at toolkit install time + on `/release` events + on-demand via `/memory index-skills`.

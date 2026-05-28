@@ -34,7 +34,7 @@ The vault is empty when the prior #7a parts ship. This part populates it with cu
 2. **Seed `MemoryVault/personal-projects/<slug>/`** for in-flight projects:
    - `agentm` — repo purpose, conventions, current state, key ADRs, ROADMAP execution order.
    - `crickets` — repo purpose, customization shape, key ADRs (0001-0004), shipping cadence.
-   - `dev-setup` — device-config-symlinks repo, `~/.claude/CLAUDE.md` symlink convention, sibling-repo bootstrap.
+   - operator-private siblings — device-config-symlinks, `~/.claude/CLAUDE.md` symlink convention, sibling-repo bootstrap (optional).
    - Each project gets a `_index.md` load-cheap entry plus `decisions/` + `conventions.md` files lifted from the repo's existing state.
 
 3. **Seed `~/Obsidian/Ideas.md` + `MemoryVault/personal-private/_idea-incubator/`** from two sources:
@@ -70,7 +70,7 @@ The vault is empty when the prior #7a parts ship. This part populates it with cu
 
 1. **`~/ContextVault/` fully migrated** — every `.md` file in the source path has a corresponding entry in MemoryVault at the expected path; no source files left un-migrated; `~/ContextVault/` can be deleted (verify by `ls -la` showing only `.git` or empty after).
 2. **`_always-load/` has 10-20 entries** — count + spot-check entries are substantive (not stub placeholders); each has correct frontmatter (`always_load: true`, `kind`, `tags`, `status: active`).
-3. **`personal-projects/` has at least 3 project trees** — agentm, crickets, dev-setup; each has `_index.md` + `decisions/` + `conventions.md` populated.
+3. **`personal-projects/` has at least 3 project trees** — agentm, crickets, plus operator-private siblings; each has `_index.md` + `decisions/` + `conventions.md` populated.
 4. **`Ideas.md` populated** — at least 5 ideas (user-provided + agent-extracted); each has a 2-sentence summary + wikilink to `_idea-incubator/<slug>/_index.md`.
 5. **`_idea-incubator/` has matching dirs** — one per `Ideas.md` entry; each has `_index.md` + deep-research files.
 6. **3 additional source paths inventoried** — co-decision-doc captured at `MemoryVault/_meta/seed-additional-sources-decisions.md` recording the per-source decision (pull / link / leave).

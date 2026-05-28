@@ -180,7 +180,7 @@ All markers in `.harness/` (gitignored, runtime-only).
 The user provides additional context + ideas during this task to seed both MemoryVault AND the user-vault idea ledger before the reflection sidecar's first autonomous run. Task flow:
 
 1. **Seed MemoryVault `_always-load/` core** (~10-20 entries): distill from `~/.claude/CLAUDE.md` (dev-flow conventions) + AGENTS.md sibling-repo imports + locked design calls from plans #3-#6. Each entry hand-written, validated, vec-embedded.
-2. **Seed `personal-projects/` for in-flight projects**: agentm, crickets, dev-setup. Each gets a project-index entry referencing the locked decisions from each repo's prior plans.
+2. **Seed `personal-projects/` for in-flight projects**: agentm, crickets, plus operator-private siblings. Each gets a project-index entry referencing the locked decisions from each repo's prior plans.
 3. **Seed `Ideas.md` and `_idea-incubator/`** (user-provided + agent-extracted): user provides loose ideas; agent extracts from recent Claude Code transcripts; co-curated.
 4. **Validate by running a sample recall**: pose a sample query, confirm the SessionStart + UserPromptSubmit hooks return sensible matches.
 5. **Initial migration of `~/ContextVault/`** contents (domains/ and projects/ subdirs) into the new MemoryVault structure: this happens here, as part of the seed pass.
@@ -257,7 +257,7 @@ Three sub-components, all shipped in plan #7b after #7a has been dogfooded for 1
 
 5. **Vault bloat**. Aggressive sweep + `_inbox/` could accumulate cruft if user doesn't do weekly inbox review. Mitigation: `/memory inbox` command shows inbox count + age; `/memory reflect` end-of-session output reminds user when inbox > N entries; incubator GC at 6 months gives a soft cleanup deadline.
 
-6. **Cross-machine config sanitization** (the follow-up added 2026-05-15 — see `.harness/ROADMAP.md` §7 Still open). MemoryVault skill config + hooks + crickets settings ought to be backed up to the public `dev-setup` repo, but the **vault contents are private**. Need a redaction boundary — what's safe to commit (skill source, hook source, schema, templates) vs. device-local (real vault paths on disk, sync-provider identifiers, account emails, any project-specific overrides). Three candidate shapes flagged in the ROADMAP follow-up; decision deferred to a small follow-up plan.
+6. **Cross-machine config sanitization** (the follow-up added 2026-05-15 — see `.harness/ROADMAP.md` §7 Still open). MemoryVault skill config + hooks + crickets settings ought to be backed up to an operator-private sibling repo, but the **vault contents are private**. Need a redaction boundary — what's safe to commit (skill source, hook source, schema, templates) vs. device-local (real vault paths on disk, sync-provider identifiers, account emails, any project-specific overrides). Three candidate shapes flagged in the ROADMAP follow-up; decision deferred to a small follow-up plan.
 
 7. **Recall-quality uncertainty**. We've never run this loop personally. The relevance heuristic (vec_similarity * 0.7 + keyword_match_count * 0.3) is a guess. Mitigation: ship instrumented — every recall logs which entries were injected + the user can manually inspect via `/memory inspect` to validate; tune weights based on real use.
 
