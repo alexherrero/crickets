@@ -5,6 +5,55 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.1.0] — 2026-05-27 — Global install + `--scope user` (paired with agentm v4.3.0)
+
+**MINOR.** ROADMAP-V4 item #30 (plan 1 of 3). Paired pair #12 with [agentm v4.3.0](https://github.com/alexherrero/agentm/releases/tag/v4.3.0). Toolkit-first ordering per `[[paired-pair-toolkit-first-ordering]]`. The first install-model overhaul: `--scope user` flag added to `install.sh` (pwsh dispatch deferred). When `--scope user` is passed, customizations install into `~/.claude/` once, drawn by every operator-repo on the device — no more per-project `<project>/.claude/{skills,hooks,agents,commands}/` footprint. Default scope stays `--scope project` for v2.1.0 backward compat; flips to `--scope user` in a future release once real-use validates. The locked operator insight from 2026-05-24: "the only thing repos need is to be aware of them and how to interact/write/read plans from them" — anything else lives globally. See [HLD § V4.4 release milestones](https://github.com/alexherrero/crickets/blob/main/wiki/explanation/designs/agent-memory-evolution.md#v4-release-milestones) + [device-wide-architecture v0.4](https://github.com/alexherrero/crickets/blob/main/wiki/explanation/designs/device-wide-architecture.md#lifecycle) for the architectural arc.
+
+### Added
+
+- **`lib/install/python/` subdir** — 3 new cross-repo Python helpers byte-identical between agentm + crickets (sync via `scripts/sync-lib.sh`; parity enforced via `lib/install/.checksums.txt`):
+  - `install_state.py` — probe canonical source-clone paths; persist `{mode, source_clones, installed_at, harness_version, installer_source}` to `<install-prefix>/.agentm-install-state.json`. CLI: `detect`/`persist`/`read`.
+  - `install_symlinks.py` — source-mode primitive. Symlinks the customizations subset per locked DC-7 (skill dirs + agent .md + command .md + hook bundles). Cross-platform: `os.symlink` with Windows junction fallback (`cmd /c mklink /J`). Idempotent + `--force` for conflict replacement.
+  - `install_copy.py` — release-mode primitive. SHA256-aware copy with conservative divergence detection — never silently overwrites operator-edited content.
+
+- **`install.sh` `--scope user` dispatch** — install prefix = `$AGENTM_INSTALL_PREFIX` or `$HOME/.claude`; probes mode; source mode → symlinks; release mode → copies from crickets's own source tree; persists install-state with `installer_source` recorded. Pwsh `-Scope` parameter dispatch deferred to follow-up.
+
+- **`lib/install/CONTRACT.md`** updated with `python/` subdir entries.
+
+### Changed
+
+- **`install.sh` + `install.ps1`** invoke `lib/install/python/install_state.py persist` at end-of-install. Silent best-effort.
+
+- **`scripts/check-no-pii.sh`** SELF_SKIP_PATHS includes `lib/install/.checksums.txt` (generated SHA256 file; hex substrings false-positive on phone-us regex).
+
+- **Wiki sweep — dev-setup mentions** — 5 wiki design + ADR files rephrased to remove explicit `dev-setup` references from new-user-facing surfaces. ADR 0012 (the policy doc itself) preserved per FOLLOWUPS exemption.
+
+### Internal
+
+- **Cross-repo lib parity** — `sync-lib.sh` now propagates `lib/install/python/` byte-identically; `check-lib-parity.sh` verifies 6 files (was 3): bash + pwsh primitives + 3 new Python helpers + CONTRACT.md.
+
+- **Mid-build dogfood findings from paired agentm plan #22 task 11**: install_symlinks bundle-walk gap (agentm harness/skills + harness/hooks missing); Windows path-handling fixes (POSIX-normalize + samefile compare); bash-only tests Windows-skipped.
+
+### Backward-compat
+
+- **Default scope = `project`** for v2.1.0. Existing per-project install unchanged; the default flip is queued for a future release once real-use confirms the new path.
+
+### Cross-references
+
+- Paired with [agentm v4.3.0](https://github.com/alexherrero/agentm/releases/tag/v4.3.0) (toolkit-first ordering).
+- [HLD V4.4 subsection](https://github.com/alexherrero/crickets/blob/main/wiki/explanation/designs/agent-memory-evolution.md#v4-release-milestones).
+- [device-wide-architecture v0.4](https://github.com/alexherrero/crickets/blob/main/wiki/explanation/designs/device-wide-architecture.md#lifecycle).
+- ADR 0012 § 6 (dev-setup invisibility policy — preserved).
+- FOLLOWUPS 2026-05-27 (auto-stay-in-sync default-on; no `--dev` flag).
+
+### Deferred
+
+- Full `--scope user` default flip — future release.
+- `install.ps1` `-Scope user` dispatch in crickets — minimal scaffold only.
+- Settings.json hook-registration migration to user-scope — per-repo `.harness/hooks/` references intact so safe to defer.
+- Pwsh launcher + hook test coverage.
+- Bundle-walk unit test fixture (mapping gap surfaced only at real-vault smoke).
+
 ## [v2.0.0] — 2026-05-27 — V4 #36 reorg: catalog narrowed to base primitives
 
 **MAJOR — BREAKING.** V4 #36 reorganization. Compound skills (`memory`, `design`, `diataxis-author`, `ship-release`), memory hooks (`memory-recall-session-start`, `memory-recall-prompt-submit`, `memory-reflect-stop`, `memory-reflect-idle`), the `evidence-tracker` hook, the `memory-idea-researcher` sub-agent, the `plugins/` tree (including `example-plugin` and the `install-plugin.sh` user-global plugin installer), and the `bundles/` namespace (including `quality-gates` + `example-bundle`) **all moved to [Agent M](https://github.com/alexherrero/agentm) v4.0.0**. Crickets v2.0.0 is base primitives only — the toolkit-cricket split now mirrors the design call locked in ADR 0012 (device-wide-by-default): Crickets owns universal primitives any project can use; Agent M owns the agentic memory + compound flows + plugins that make the harness a full agentic learning environment. Paired with **agentm v4.0.0** — see the [Agent M v4.0.0 release notes](https://github.com/alexherrero/agentm/releases/tag/v4.0.0) for the full V4 device-wide context.
