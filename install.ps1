@@ -591,6 +591,30 @@ function Install-PythonDeps {
 
 Install-PythonDeps
 
+# ── probe + persist install state (V4 #30 task 8) ──────────────────────────
+# Mirrors agentm: detect source-clone canonical paths; persist decision to
+# <target>/.claude/.agentm-install-state.json for downstream dispatch.
+# Silent; best-effort.
+try {
+    $ToolkitVersion = (git -C $ToolkitRoot describe --tags --abbrev=0 2>$null)
+    if (-not $ToolkitVersion) { $ToolkitVersion = 'dev' }
+} catch {
+    $ToolkitVersion = 'dev'
+}
+$pythonCmd = Get-Command python3 -ErrorAction SilentlyContinue
+if (-not $pythonCmd) { $pythonCmd = Get-Command python -ErrorAction SilentlyContinue }
+$installStatePy = Join-Path $ToolkitRoot 'lib/install/python/install_state.py'
+if ($pythonCmd -and (Test-Path $installStatePy)) {
+    try {
+        & $pythonCmd.Source $installStatePy 'persist' `
+            (Join-Path $Target '.claude') `
+            '--harness-version' $ToolkitVersion `
+            '--installer-source' (Join-Path $ToolkitRoot 'install.ps1') *>$null
+    } catch {
+        # Silent failure — install proceeds; install-state.json is best-effort
+    }
+}
+
 # Note: Install-PersonalSkillsIndex was removed in v2.0.0 (V4 #36). The
 # personal-skills auto-indexer referenced skills/memory/scripts/index_skills.py
 # which moved to agentm. agentm's installer owns this step post-reorg.

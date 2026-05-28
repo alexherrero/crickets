@@ -47,6 +47,9 @@ NO_PRE_PUSH_HOOK=0
 NO_LEGACY_CLEANUP=0
 NO_PYTHON_DEPS=0
 NO_SKILL_INDEX=0
+SCOPE="project"  # V4 #30 task 8: --scope user|project. Default 'project' for
+                  # v2.1.0 backward compat; default flips to 'user' in a future
+                  # release once dogfood (agentm task 11) confirms the new path.
 
 print_help() {
     sed -n '/^# install.sh/,/^[^#]/p' "$0" | sed 's|^# \?||' | head -n -1
@@ -80,6 +83,21 @@ while [[ $# -gt 0 ]]; do
         --no-legacy-cleanup) NO_LEGACY_CLEANUP=1; shift ;;
         --no-python-deps) NO_PYTHON_DEPS=1; shift ;;
         --no-skill-index) NO_SKILL_INDEX=1; shift ;;
+        --scope)
+            if [[ -z "${2:-}" ]]; then echo "--scope requires a value (user|project)" >&2; exit 2; fi
+            SCOPE="$2"
+            if [[ "$SCOPE" != "user" && "$SCOPE" != "project" ]]; then
+                echo "--scope must be 'user' or 'project', got: $SCOPE" >&2; exit 2
+            fi
+            shift 2
+            ;;
+        --scope=*)
+            SCOPE="${1#--scope=}"
+            if [[ "$SCOPE" != "user" && "$SCOPE" != "project" ]]; then
+                echo "--scope must be 'user' or 'project', got: $SCOPE" >&2; exit 2
+            fi
+            shift
+            ;;
         --help|-h) print_help; exit 0 ;;
         --*) echo "Unknown option: $1" >&2; echo "" >&2; print_help >&2; exit 2 ;;
         *)
@@ -93,8 +111,61 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# ── locate toolkit root (needed for --scope user dispatch too) ────────────
+TOOLKIT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# ── --scope user dispatch (V4 #30 task 8) ─────────────────────────────────
+# Install customizations to ~/.claude/ via symlinks (source mode) or copies
+# (release mode). Skip per-project install. Mirror of agentm/install.sh.
+if [[ "$SCOPE" == "user" ]]; then
+    USER_INSTALL_PREFIX="${AGENTM_INSTALL_PREFIX:-$HOME/.claude}"
+    mkdir -p "$USER_INSTALL_PREFIX"
+    TOOLKIT_VERSION="$(git -C "$TOOLKIT_ROOT" describe --tags --abbrev=0 2>/dev/null || echo "dev")"
+    echo "==> crickets install (--scope user) into: $USER_INSTALL_PREFIX (version $TOOLKIT_VERSION)"
+
+    if ! command -v python3 >/dev/null 2>&1; then
+        echo "Error: --scope user requires python3 on PATH" >&2
+        exit 1
+    fi
+
+    INSTALL_STATE_PY="$TOOLKIT_ROOT/lib/install/python/install_state.py"
+    INSTALL_SYMLINKS_PY="$TOOLKIT_ROOT/lib/install/python/install_symlinks.py"
+    INSTALL_COPY_PY="$TOOLKIT_ROOT/lib/install/python/install_copy.py"
+
+    DETECT_JSON="$(python3 "$INSTALL_STATE_PY" detect 2>/dev/null || echo '{"mode":"release","source_clones":{}}')"
+    MODE="$(echo "$DETECT_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin).get('mode', 'release'))")"
+    echo "    install mode: $MODE"
+
+    if [[ "$MODE" == "source" ]]; then
+        SOURCE_FLAGS=()
+        [[ -d "$HOME/Antigravity/agentm" ]] && SOURCE_FLAGS+=(--agentm "$HOME/Antigravity/agentm")
+        [[ -d "$HOME/Antigravity/crickets" ]] && SOURCE_FLAGS+=(--crickets "$HOME/Antigravity/crickets")
+        if [[ ${#SOURCE_FLAGS[@]} -gt 0 ]]; then
+            python3 "$INSTALL_SYMLINKS_PY" "$USER_INSTALL_PREFIX" "${SOURCE_FLAGS[@]}" >/dev/null
+            echo "    symlinks: created"
+        fi
+    else
+        # Release mode: copy crickets's own customizations
+        for src_subdir in skills hooks agents commands; do
+            if [[ -d "$TOOLKIT_ROOT/$src_subdir" ]]; then
+                python3 "$INSTALL_COPY_PY" "$TOOLKIT_ROOT/$src_subdir" "$USER_INSTALL_PREFIX" >/dev/null 2>&1 || true
+            fi
+        done
+        echo "    customizations: copied"
+    fi
+
+    python3 "$INSTALL_STATE_PY" persist \
+        "$USER_INSTALL_PREFIX" \
+        --harness-version "$TOOLKIT_VERSION" \
+        --installer-source "$TOOLKIT_ROOT/install.sh" >/dev/null
+
+    echo "==> done (--scope user)"
+    exit 0
+fi
+
+# ── --scope project (default; legacy per-project install) ─────────────────
 if [[ -z "$TARGET" ]]; then
-    echo "Error: <target-project-path> is required" >&2
+    echo "Error: <target-project-path> is required (use --scope user to install to ~/.claude/)" >&2
     echo "" >&2
     print_help >&2
     exit 2
@@ -105,9 +176,6 @@ if [[ ! -d "$TARGET" ]]; then
     exit 1
 fi
 TARGET="$(cd "$TARGET" && pwd)"
-
-# ── locate toolkit root ───────────────────────────────────────────────────
-TOOLKIT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ── source shared install plumbing ────────────────────────────────────────
 # The lib reads two caller-set variables:
@@ -735,6 +803,18 @@ EOF
 }
 
 install_python_deps
+
+# ── probe + persist install state (V4 #30 task 8) ──────────────────────────
+# Mirrors agentm's pattern: detect source-clone canonical paths; persist
+# decision to <target>/.claude/.agentm-install-state.json for downstream
+# dispatch (source-mode symlinks vs release-mode copies). Silent; best-effort.
+TOOLKIT_VERSION="$(git -C "$TOOLKIT_ROOT" describe --tags --abbrev=0 2>/dev/null || echo "dev")"
+if command -v python3 >/dev/null 2>&1 && [[ -f "$TOOLKIT_ROOT/lib/install/python/install_state.py" ]]; then
+    python3 "$TOOLKIT_ROOT/lib/install/python/install_state.py" persist \
+        "$TARGET/.claude" \
+        --harness-version "$TOOLKIT_VERSION" \
+        --installer-source "$TOOLKIT_ROOT/install.sh" >/dev/null 2>&1 || true
+fi
 
 # Note: index_personal_skills() was removed in v2.0.0 (V4 #36). The
 # personal-skills auto-indexer referenced skills/memory/scripts/index_skills.py
