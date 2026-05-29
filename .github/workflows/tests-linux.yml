@@ -68,6 +68,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        # gitleaks scans the commit range with `git log <parent>^..<HEAD>` and
+        # needs the parent commit reachable in the local clone. The default
+        # actions/checkout shallow clone (fetch-depth: 1) only has HEAD, so
+        # multi-commit pushes fail with "unknown revision" on the range arg.
+        # Pull full history so the incremental scan can resolve the range
+        # regardless of how many commits land in one push.
+        with:
+          fetch-depth: 0
       - name: Run check-no-pii.sh (regex scanner)
         run: bash scripts/check-no-pii.sh --all
       - name: Run gitleaks (industry-standard secret scanner)
