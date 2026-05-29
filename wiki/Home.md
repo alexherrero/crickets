@@ -30,10 +30,8 @@ This wiki is the contributor-facing documentation for Crickets itself. Every pag
 - [Quality-Gates-Recipe](Quality-Gates-Recipe) — operator-facing recipe for the 5-primitive quality-gates set (replaces the v1.x `quality-gates` bundle; `kind: bundle` reserved-future in v2.0.0).
 - [Use the evaluator](Use-The-Evaluator) — dispatch the `evaluator` sub-agent for PASS / NEEDS_WORK grading against a precise rubric.
 - [Use the base hooks](Use-The-Base-Hooks) — kill-switch, steer, commit-on-stop. Operator-precision control for long-running Claude Code sessions.
-- [Use the evidence-tracker hook](Use-The-Evidence-Tracker-Hook) — default-FAIL evidence enforcement on `/work` task closeouts (4th base hook; agent must Read evidence files before flipping PLAN.md `[x]`).
-- [Use the design skill](Use-The-Design-Skill) — `/design author` walks the 10-section template, `/design translate` splits into parts, `/design sequence` generates a PLAN.md per part. Hand-off to harness `/work` + `/review` for execution.
-- [Use the memory skill](Use-The-Memory-Skill) — `/memory save` captures durable preferences / workflows / fixes; `/memory evolve` supersedes existing entries (preserves audit trail). Recall (auto-injection at SessionStart + UserPromptSubmit), reflection sidecar, idea ledger, discovery come in subsequent parts of [the MemoryVault design](memoryvault).
-- [Use the diataxis-author skill](Use-Diataxis-Author) — `/diataxis author` / `check` / `repair` / `migrate` / `classify` covering the full Diátaxis-wiki lifecycle. See [the diataxis-author design](diataxis-author).
+
+> The `evidence-tracker` hook and the `design`, `memory`, and `diataxis-author` skills, along with Antigravity plugin authoring, moved to [Agent M](https://github.com/alexherrero/agentm) in v2.0.0 (V4 #36 reorg). See the [Agent M wiki](https://github.com/alexherrero/agentm/wiki) for their operational docs.
 
 ## 📖 Looking up a detail?
 
@@ -49,6 +47,7 @@ This wiki is the contributor-facing documentation for Crickets itself. Every pag
 - [Cross-Repo Memory Protocol](Cross-Repo-Memory-Protocol) — how agentm reads from + writes to the toolkit-side `/memory` skill at phase boundaries.
 - [V3 Retrospective](v3-retrospective) — what shipped, what we learned, what's next (closes the V3 arc; ships with harness v3.0.0 + toolkit v1.0.0).
 - [Agent Memory Evolution: From ContextVault to V4](agent-memory-evolution) — V1→V4 HLD of the AgentMemory architecture (V3 ships with this release; V4 is roadmap-deferred).
+- [Device-Wide Architecture](device-wide-architecture) — V4 architectural shift from per-repo harness to device-wide agentic OS; rationale for the agentm/crickets split + which primitives live where.
 
 ### Architecture decisions
 

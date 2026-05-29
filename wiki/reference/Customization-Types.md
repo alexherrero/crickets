@@ -40,7 +40,7 @@ When a customization with an unsupported kind is encountered, the installer logs
 
 | You want… | Use |
 |---|---|
-| An agent-triggered helper that runs on a keyword or context match (e.g. [`design`](Use-The-Design-Skill), [`memory`](Use-The-Memory-Skill), [`pii-scrubber`](https://github.com/alexherrero/crickets/blob/main/skills/pii-scrubber/SKILL.md)) | `skill` |
+| An agent-triggered helper that runs on a keyword or context match (e.g. [`pii-scrubber`](https://github.com/alexherrero/crickets/blob/main/skills/pii-scrubber/SKILL.md); `design` and `memory` skills live in [Agent M](https://github.com/alexherrero/agentm) since v2.0.0) | `skill` |
 | A user-typed `/something` slash command | `command` |
 | A specialized agent for a specific kind of task (e.g. [`evaluator`](Use-The-Evaluator), `explorer`) | `agent` |
 
@@ -80,4 +80,4 @@ The installer resolves each entry by walking the bundle's matching subdir and di
 
 - [Manifest Schema](Manifest-Schema) — the YAML frontmatter contract.
 - [Per-Host Paths](Per-Host-Paths) — destination paths per kind per host.
-- [Add a Skill](Add-A-Skill) / [Add a Plugin](Add-A-Plugin) — practical recipes. (`kind: bundle` is reserved-future in v2.0.0; no bundles ship.)
+- [Add a Skill](Add-A-Skill) — practical recipe. Plugin authoring lives in [Agent M](https://github.com/alexherrero/agentm) since v2.0.0. (`kind: bundle` is reserved-future in v2.0.0; no bundles ship.)

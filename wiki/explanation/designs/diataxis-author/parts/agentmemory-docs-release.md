@@ -37,10 +37,10 @@ Final part of plan #13. Lands the AgentMemory integration (read + write conventi
 - Harness `/release` phase spec amendment: `documenter` dispatch becomes `/diataxis check` invocation if `diataxis-author` is installed (detect via skill-presence check); graceful-skip to current direct dispatch if not. Backward-compatible.
 - Updates `agentm/harness/phases/05-release.md` (canonical) + adapter files.
 
-**3. New how-to** at `crickets/wiki/how-to/Use-Diataxis-Author.md`:
+**3. New how-to** at `crickets/wiki/how-to/Use-Diataxis-Author.md` *(moved to [Agent M wiki](https://github.com/alexherrero/agentm/wiki/Use-Diataxis-Author) in v2.0.0 per V4 #36)*:
 
 - Comprehensive page covering 5 sub-commands + worked scenarios (author new page / detect drift / repair / migrate legacy wiki / classify ambiguous page) + AgentMemory integration walkthrough + per-repo override pattern + troubleshooting (mode-mixed false positives / check-wiki.py version mismatch / documenter dispatch transition).
-- Same shape + depth as `Use-The-Memory-Skill.md`.
+- Same shape + depth as the `Use-The-Memory-Skill` page (also in [Agent M wiki](https://github.com/alexherrero/agentm/wiki/Use-The-Memory-Skill) since v2.0.0).
 
 **4. New ADR** at `crickets/wiki/explanation/decisions/0008-diataxis-author.md`:
 
@@ -68,7 +68,7 @@ Final part of plan #13. Lands the AgentMemory integration (read + write conventi
 2. Wire AgentMemory write-side: `confirm_diataxis_convention_save()` helper (reuses permeable_boundary contract); offer-to-save during author / repair / classify.
 3. Write initial seed for `_always-load/diataxis-*.md` (3 entries: filename-style, mode-mixed-split, ADR 0004 cross-ref).
 4. Harness `/release` phase spec amendment + adapter files updated.
-5. Write `wiki/how-to/Use-Diataxis-Author.md`.
+5. Write `wiki/how-to/Use-Diataxis-Author.md`. *(Later moved to [Agent M wiki](https://github.com/alexherrero/agentm/wiki/Use-Diataxis-Author) in v2.0.0 per V4 #36.)*
 6. Write `wiki/explanation/decisions/0008-diataxis-author.md`.
 7. Toolkit CHANGELOG `v0.11.0` entry + harness CHANGELOG `v2.4.3` entry + harness Completed-Features.md row + narrative.
 8. Tag v0.11.0 (toolkit) + v2.4.3 (harness); `gh release create` both with cross-links.

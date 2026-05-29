@@ -247,7 +247,7 @@ Three sub-components, all shipped in plan #7b after #7a has been dogfooded for 1
 
 ## Technical Debt & Risks
 
-1. **Python becomes an explicit toolkit dependency**. Today crickets uses Python informally (validate-manifests, check-wiki, check-no-pii) — Python 3.10+ is an *implicit* requirement we haven't called out in the README. MemoryVault formalizes this + adds `sqlite-vec` + `sentence-transformers` pip deps. Mitigation: document Python as a first-class requirement in the toolkit README + `Use-The-Memory-Skill.md`; graceful-skip if pip deps are missing — vault stays read-via-grep + write-via-file (no embeddings, no semantic recall) until user installs the deps. **Future optimization**: if Python hook latency becomes a problem, swap the caller layer to Rust or Go (sqlite-vec is C-extension, language-agnostic on disk — non-breaking swap). Captured as a deferred follow-up.
+1. **Python becomes an explicit toolkit dependency**. Today crickets uses Python informally (validate-manifests, check-wiki, check-no-pii) — Python 3.10+ is an *implicit* requirement we haven't called out in the README. MemoryVault formalizes this + adds `sqlite-vec` + `sentence-transformers` pip deps. Mitigation: document Python as a first-class requirement in the toolkit README + Agent M's [Use-The-Memory-Skill](https://github.com/alexherrero/agentm/wiki/Use-The-Memory-Skill) page (skill moved to Agent M in v2.0.0); graceful-skip if pip deps are missing — vault stays read-via-grep + write-via-file (no embeddings, no semantic recall) until user installs the deps. **Future optimization**: if Python hook latency becomes a problem, swap the caller layer to Rust or Go (sqlite-vec is C-extension, language-agnostic on disk — non-breaking swap). Captured as a deferred follow-up.
 
 2. **First-run model download cost (~1.3GB)**. v0.9.2 ships BGE-large as the default local model (see [ADR 0001's 2026-05-20 amendment](../decisions/0001-crickets-purpose.md#amendment-2026-05-20)). On first `/memory save` or `embed.py --mode local` invocation, sentence-transformers downloads the BGE-large checkpoint (~1.3GB) into `~/.cache/crickets/sentence-transformers/`. Subsequent invocations are offline + fast. Risk: operators on slow / metered connections feel the first-run cost; operators on low-spec hosts may not have disk + RAM headroom. Mitigation: `AGENT_TOOLKIT_EMBEDDING_MODEL` env var lets operators swap to a smaller model (e.g. `all-MiniLM-L6-v2` at 80MB) without code changes; `--no-python-deps` install flag defers the install entirely; graceful-skip path (no sentence-transformers installed → grep+frontmatter recall only) keeps the toolkit usable until the operator decides to pay the download.
 
@@ -376,13 +376,13 @@ N/A: personal tooling, user-owned data, no regulatory framework applies. GDPR-st
 ### Documentation Plan
 
 **Agent-toolkit wiki additions** (#7a):
-- **New how-to**: `crickets/wiki/how-to/Use-The-Memory-Skill.md` — comprehensive page covering 4 sub-commands + worked scenarios (capture flow / recall flow / idea promotion / supersede flow) + tri-modal routing explanation + interactive-review mode setting + troubleshooting (sqlite-vec install / cloud sync issues / API embedding fallback / vault bloat).
+- **New how-to**: `crickets/wiki/how-to/Use-The-Memory-Skill.md` — comprehensive page covering 4 sub-commands + worked scenarios (capture flow / recall flow / idea promotion / supersede flow) + tri-modal routing explanation + interactive-review mode setting + troubleshooting (sqlite-vec install / cloud sync issues / API embedding fallback / vault bloat). *(Moved to [Agent M wiki — Use-The-Memory-Skill](https://github.com/alexherrero/agentm/wiki/Use-The-Memory-Skill) in v2.0.0 per V4 #36.)*
 - **New ADR**: `crickets/wiki/explanation/decisions/0005-memoryvault.md` — locked design calls from the 4 groups × 13 questions, alternatives considered, consequences (positive / negative / assumptions to re-audit).
 - **Updated**: `Home.md` + `_Sidebar.md` (add memory skill to reader-intent sections); `README.md` "What's inside" table (bump version + add memory skill row); `Customization-Types.md` (add memory as concrete example link in skill row).
 - **This design doc itself** (`memoryvault.md`) becomes the canonical "Why we built this" wiki entry point per the locked design call from plan #6.
 
 **Agent-toolkit wiki additions** (#7b):
-- **Update**: `Use-The-Memory-Skill.md` — add transcript-reflection + skill-discovery sections.
+- **Update**: `Use-The-Memory-Skill.md` — add transcript-reflection + skill-discovery sections. *(Skill page moved to [Agent M wiki](https://github.com/alexherrero/agentm/wiki/Use-The-Memory-Skill) in v2.0.0.)*
 - **New ADR**: `0006-memoryvault-discovery.md` — design calls specific to #7b (adapt-don't-import, source whitelist).
 
 **Harness wiki additions**: None for #7a (toolkit-only). #7b: same. Plan #8 (auto context integration into harness phases) is when harness wiki adds memory references.

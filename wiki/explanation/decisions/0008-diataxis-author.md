@@ -91,7 +91,7 @@ Matches `/memory`'s established pattern (save / evolve / reflect / promote / sea
 - [agentm ADR 0004 — Diátaxis Documentation Spec](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0004-diataxis-documentation-spec.md) — canonical Diátaxis spec this skill enforces (upstream).
 - [ADR 0007 — MemoryVault Discovery + Mining](0007-memoryvault-discovery) — precedent for the orchestration-skill + worker-sub-agent + scoped-write-allowlist architectural pattern this skill mirrors.
 - [ADR 0001 — crickets purpose](0001-crickets-purpose) — upstream for the stdlib-only / no-new-third-party-deps convention all skill scripts follow.
-- [Use Diataxis Author how-to](../../how-to/Use-Diataxis-Author.md) — operator-facing how-to with worked scenarios for all 5 sub-commands + AgentMemory integration walkthrough.
+- [Use Diataxis Author how-to (Agent M wiki)](https://github.com/alexherrero/agentm/wiki/Use-Diataxis-Author) — operator-facing how-to. The skill moved to Agent M in v2.0.0 (V4 #36 reorg) along with the operational docs.
 - [`diataxis-evaluator` sub-agent](../../../agents/diataxis-evaluator.md) — read-only Tier-2 worker; zero-write-scope architectural enforcement.
 - [ROADMAP item #13](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md) — the roadmap entry that triggered this design.
 - [Predecessor `migrate-to-diataxis`](https://github.com/alexherrero/agentm/blob/main/harness/skills/migrate-to-diataxis.md) — deprecated 2026-05-22; subsumed by `/diataxis migrate` (Migrations §1 in parent design).

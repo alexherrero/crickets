@@ -205,7 +205,7 @@ Detail: [toolkit ADR 0007](0007-memoryvault-discovery).
 
 ## Autonomous Workflows
 
-The `/memory` skill exposes these sub-commands; full bodies in [`memory/SKILL.md`](Use-The-Memory-Skill).
+The `/memory` skill exposes these sub-commands; full bodies in [`memory/SKILL.md`](https://github.com/alexherrero/agentm/blob/main/skills/memory/SKILL.md) (skill moved to Agent M in v2.0.0 per V4 #36).
 
 **Capture**
 - `/memory save` — write one entry to the vault (collision-checked).
@@ -273,7 +273,7 @@ V4 commands are deliberately under-specified here. Each gets its own design doc 
 
 - [`v3-retrospective`](v3-retrospective) — what the V3 arc shipped, learned, and left for V4
 - [`memoryvault`](memoryvault) — the parent design doc that drove V3 implementation
-- [Use the memory skill](Use-The-Memory-Skill) — operator-facing how-to for `/memory`
+- [Use the memory skill (Agent M wiki)](https://github.com/alexherrero/agentm/wiki/Use-The-Memory-Skill) — operator-facing how-to for `/memory` (skill moved to Agent M in v2.0.0)
 - [harness ADR 0007](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0007-auto-context-into-harness-phases.md) — per-phase recall integration
 - [toolkit ADR 0007](0007-memoryvault-discovery) — discovery + mining + adapt-don't-import
 - `agentm/.harness/ROADMAP-AgentMemoryV4.md` — V4 roadmap (operator-local; `.harness/` is gitignored)

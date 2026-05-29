@@ -245,7 +245,7 @@ This amendment ships in toolkit v0.8.1 + paired harness v2.3.1 (the harness adds
 - [`/design` skill spec](../../skills/design/SKILL.md) — full body documentation for all three sub-commands (now includes the external-review-handoff flow in `#### External-review handoff` section under `/design author`)
 - [Transfer-context template](../../skills/design/templates/transfer-context.md) — new in v0.8.1; the handoff artifact's structural shape
 - [10-section design-doc template](../../skills/design/templates/design-doc.md) — locked verbatim 2026-05-14
-- [How to use the design skill](../how-to/Use-The-Design-Skill.md) — practical recipe with three worked scenarios
+- [How to use the design skill (Agent M wiki)](https://github.com/alexherrero/agentm/wiki/Use-The-Design-Skill) — practical recipe. The skill moved to Agent M in v2.0.0 (V4 #36 reorg).
 - [agentm `/release` §1b](https://github.com/alexherrero/agentm/blob/main/harness/phases/05-release.md) — harness-side plan promotion + Status transition hook (v2.3.0)
 - [ADR 0001 — crickets purpose](0001-crickets-purpose.md) — sibling-repo + customization-vs-phase split decision
 - [ADR 0002 — evaluator design](0002-evaluator-design.md) — fresh-context grader consumed by `/review` during stage 5 execution

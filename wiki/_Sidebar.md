@@ -6,13 +6,8 @@
 ### 🔧 How-to
 - [Install into a project](Install-Into-Project)
 - [Add a skill](Add-A-Skill)
-- [Add a plugin (Antigravity, in agentm)](Add-A-Plugin)
 - [Use the evaluator](Use-The-Evaluator)
 - [Use the base hooks](Use-The-Base-Hooks)
-- [Use the evidence-tracker hook (in agentm)](Use-The-Evidence-Tracker-Hook)
-- [Use the design skill (in agentm)](Use-The-Design-Skill)
-- [Use the memory skill (in agentm)](Use-The-Memory-Skill)
-- [Use the diataxis-author skill (in agentm)](Use-Diataxis-Author)
 - [Quality-Gates-Recipe](Quality-Gates-Recipe)
 
 ### 📖 Reference
@@ -27,6 +22,7 @@
 - [Cross-Repo Memory Protocol](Cross-Repo-Memory-Protocol)
 - [V3 Retrospective](v3-retrospective)
 - [Agent Memory Evolution V1→V4](agent-memory-evolution)
+- [Device-Wide Architecture](device-wide-architecture)
 
 **Decisions**
 - [0001 — crickets purpose](0001-crickets-purpose)

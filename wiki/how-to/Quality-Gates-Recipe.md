@@ -148,7 +148,7 @@ Together: operator-controllable (kill-switch + steer), recoverable (commit-on-st
 
 - [Use-The-Evaluator](Use-The-Evaluator) — caller patterns for the evaluator sub-agent.
 - [Use-The-Base-Hooks](Use-The-Base-Hooks) — individual install + tuning for the three Crickets hooks.
-- [Use-The-Evidence-Tracker-Hook](Use-The-Evidence-Tracker-Hook) — Agent M's evidence-tracker config + override patterns.
-- [Add-A-Skill](Add-A-Skill), [Add-A-Plugin](Add-A-Plugin) — authoring new primitives.
+- [Add-A-Skill](Add-A-Skill) — authoring new primitives.
 - [Installer-CLI](Installer-CLI) — full flag reference for `install.sh` / `install.ps1`.
 - [Compatibility](Compatibility) — host coverage per primitive.
+- [Agent M wiki — evidence-tracker hook + Antigravity plugins](https://github.com/alexherrero/agentm/wiki) — the evidence-tracker hook and plugin-authoring docs live in Agent M since v2.0.0.
