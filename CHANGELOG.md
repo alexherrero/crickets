@@ -5,6 +5,19 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.1.2] — 2026-05-29 — gitignore `.harness/` ephemeral state
+
+**PATCH.** Single-line `.gitignore` fix surfaced during a `/doctor` dogfood audit. The `memory-recall-session-start` hook writes a `.harness/session-id-<uuid>.start` marker on every session boot, and that marker carries a personal transcript path (`/Users/<name>/.claude/projects/…`). agentm already gitignores `.harness/`; crickets didn't — so in this **public** repo the marker showed up as untracked and was sweepable into `git add -A`. Mirrors agentm's `.gitignore`; the pre-push PII hook stays the enforcing backstop. No code changes.
+
+### Fixed
+
+- **`.gitignore` now excludes `.harness/`** — closes the one path by which a SessionStart hook could leak a personal home path into the public repo. Matches the agentm `.gitignore` entry.
+
+### Cross-references
+
+- [agentm v4.7.0](https://github.com/alexherrero/agentm/releases/tag/v4.7.0) — companion release from the same `/doctor` audit; among other installer hardening it stops symlinking the loose `harness/skills/*.md` specs that surfaced the cruft alongside this marker.
+- **lib-parity follow-up** — agentm v4.7.0's `install_symlinks.py` loose-`.md` fix is not yet mirrored into crickets's byte-identical `lib/install/`; a `sync-lib.sh` pass is the separate follow-up (no functional impact on crickets-as-toolkit, which installs *from* agentm).
+
 ## [v2.1.1] — 2026-05-29 — Catch-up + wiki hygiene + CI gate
 
 **PATCH.** Cross-repo lib-parity catch-up (5 `sync-lib.sh` passes since v2.1.0 carrying agentm's installer evolution into crickets, including the Windows-symlink normalization fix surfaced during dev-machine-setup dogfood), CI hygiene (`check-wiki --strict` gate now runs in crickets's `validate` job, mirroring agentm; gitleaks shallow-checkout fragility on multi-commit pushes fixed), wiki cleanup (5 stub how-tos for skills that moved to Agent M in v2.0.0 deleted with inbound refs cleaned), and multi-subsection HLD updates tracking agentm's V4.5 → V4.7 arc. No public-API changes — entirely catch-up work bringing crickets to parity with the agentm-side primitive evolution that's been landing since v2.1.0.
