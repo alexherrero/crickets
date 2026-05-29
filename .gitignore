@@ -21,3 +21,8 @@ __pycache__/
 # Local override / scratch
 .pii-overrides-local.log
 .pii-scrubber-pending.txt
+
+# Harness ephemeral state — session markers written by the
+# memory-recall-session-start hook carry a personal transcript path.
+# Mirrors agentm/.gitignore; this repo is public, so never commit it.
+.harness/
