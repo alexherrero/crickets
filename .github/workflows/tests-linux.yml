@@ -37,6 +37,12 @@ jobs:
         run: pip install pyyaml
       - name: Validate manifests (frontmatter + schema)
         run: python3 scripts/validate-manifests.py
+      - name: Lint wiki (Diátaxis)
+        # Mirrors agentm's tests-linux.yml step. Linux-only (Diátaxis lint is
+        # deterministic; no need to run per OS). Added 2026-05-29 to close
+        # the pre-existing check-wiki gap that let 23 structural errors
+        # accumulate in the crickets wiki unnoticed before this gate landed.
+        run: python3 scripts/check-wiki.py --strict
 
   syntax:
     name: syntax
