@@ -5,6 +5,42 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.1.1] — 2026-05-29 — Catch-up + wiki hygiene + CI gate
+
+**PATCH.** Cross-repo lib-parity catch-up (5 `sync-lib.sh` passes since v2.1.0 carrying agentm's installer evolution into crickets, including the Windows-symlink normalization fix surfaced during dev-machine-setup dogfood), CI hygiene (`check-wiki --strict` gate now runs in crickets's `validate` job, mirroring agentm; gitleaks shallow-checkout fragility on multi-commit pushes fixed), wiki cleanup (5 stub how-tos for skills that moved to Agent M in v2.0.0 deleted with inbound refs cleaned), and multi-subsection HLD updates tracking agentm's V4.5 → V4.7 arc. No public-API changes — entirely catch-up work bringing crickets to parity with the agentm-side primitive evolution that's been landing since v2.1.0.
+
+### Added
+
+- **`check-wiki --strict` CI gate** — new `Lint wiki (Diátaxis)` step in `.github/workflows/tests-linux.yml`'s `validate` job, mirroring agentm's pattern. Linux-only (the lint is deterministic; no per-OS variance). Closes the pre-existing crickets-side gap that let 23 structural errors accumulate in the wiki unnoticed before this gate landed.
+
+- **`install_migrate` primitive** (via `sync-lib.sh` from agentm V4 #30 plan 3 tasks 2+3) — `lib/install/python/install_migrate.py` now ships byte-identical between agentm + crickets; covers the install-mode migration recipe operators run when promoting a release-mode install to source-mode (or vice-versa).
+
+- **Orphan-symlink reaping** in `install_symlinks.symlink_customizations()` (via sync from agentm `8c5af42`) — when a skill / agent / command / hook is deleted upstream from a source clone, the prior install's dangling symlink under `<install-prefix>/` is now reaped on the next run. The result dict gains a `reaped: []` key alongside the existing `created` / `repointed` / `skipped` / `conflicts`. Operator-placed real files and external symlinks left untouched (DC-8 preserved).
+
+### Changed
+
+- **5 wiki stub how-tos removed** (`wiki/how-to/Add-A-Plugin.md`, `Use-Diataxis-Author.md`, `Use-The-Design-Skill.md`, `Use-The-Evidence-Tracker-Hook.md`, `Use-The-Memory-Skill.md`). Each was a "moved-to-Agent-M" pointer note for a skill / hook / authoring flow that relocated to Agent M in v2.0.0 (V4 #36 reorg). The pages were genuinely explanation-mode content — move rationale + cross-refs, not step-by-step recipes — so adding placeholder Steps would have either duplicated Agent M's docs (drift risk) or been degenerate. Deletion + inbound-reference cleanup (~23 refs across 11 files) was the right shape; ADR/HLD narrative references replaced with Agent M wiki URLs so cross-references still resolve to canonical operational docs.
+
+- **`Home.md` + `_Sidebar.md` nav** — added `device-wide-architecture` to the Explanation sections. `Home.md`'s How-to section gained a generic "moved to Agent M" pointer block covering plugin authoring + the 3 skills + the hook, replacing per-page redirect entries.
+
+- **HLD subsections published**: V4.5 (`agentm v4.4.0` wiki I/O foundation), V4.6 (`agentm v4.5.0` migration tooling), V4.7 (`agentm v4.6.0` documenter vault-context resolution). Each subsection tracks a paired-pair release arc that materially extended the device-wide-architecture model.
+
+- **`install_state.py` schema v2** + filename rename (via sync from agentm) + persisted `--fragments-file` CLI flag for hook-fragment-tracking install state.
+
+- **Windows-path normalization** in `_reap_orphan_symlinks` (via sync from agentm) — the orphan-reap path-comparison logic now handles `\\?\` extended-path prefix asymmetry, Windows case-insensitivity, and separator mixing via a new `_normalize_path_str` helper. Closes a silent failure where dead symlinks were never reaped on Windows even though the symlink-creation side worked correctly.
+
+### Internal
+
+- **`gitleaks` shallow-checkout fragility fixed** in `tests-linux.yml`'s `pii-guardrails` job — `actions/checkout@v4`'s default `fetch-depth: 1` couldn't resolve the parent commit needed for gitleaks's `git log <parent>^..<HEAD>` range scan; multi-commit pushes failed deterministically. Job now uses `fetch-depth: 0`. Other jobs keep their fast shallow clones.
+
+- **Cross-repo lib parity** — `lib/install/python/install_symlinks.py` + `install_state.py` + `install_migrate.py` synced byte-identically with agentm (5 `sync-lib.sh` passes this release cycle); `lib/install/.checksums.txt` regenerated on each pass.
+
+### Cross-references
+
+- Paired with agentm v4.4 → v4.6.x (multiple agentm releases since crickets v2.1.0; sync-lib.sh passes track each).
+- Wiki cleanup driven by plan `<vault>/projects/crickets/_harness/PLAN.md` ("crickets wiki cleanup — close the check-wiki gap"), planned 2026-05-28, executed + closed 2026-05-29.
+- [HLD V4.5/V4.6/V4.7 subsections](https://github.com/alexherrero/crickets/blob/main/wiki/explanation/designs/agent-memory-evolution.md#v4-release-milestones).
+
 ## [v2.1.0] — 2026-05-27 — Global install + `--scope user` (paired with agentm v4.3.0)
 
 **MINOR.** ROADMAP-V4 item #30 (plan 1 of 3). Paired pair #12 with [agentm v4.3.0](https://github.com/alexherrero/agentm/releases/tag/v4.3.0). Toolkit-first ordering per `[[paired-pair-toolkit-first-ordering]]`. The first install-model overhaul: `--scope user` flag added to `install.sh` (pwsh dispatch deferred). When `--scope user` is passed, customizations install into `~/.claude/` once, drawn by every operator-repo on the device — no more per-project `<project>/.claude/{skills,hooks,agents,commands}/` footprint. Default scope stays `--scope project` for v2.1.0 backward compat; flips to `--scope user` in a future release once real-use validates. The locked operator insight from 2026-05-24: "the only thing repos need is to be aware of them and how to interact/write/read plans from them" — anything else lives globally. See [HLD § V4.4 release milestones](https://github.com/alexherrero/crickets/blob/main/wiki/explanation/designs/agent-memory-evolution.md#v4-release-milestones) + [device-wide-architecture v0.4](https://github.com/alexherrero/crickets/blob/main/wiki/explanation/designs/device-wide-architecture.md#lifecycle) for the architectural arc.
