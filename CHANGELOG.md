@@ -5,6 +5,25 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.2.0] — 2026-05-30 — commit-on-stop: non-disruptive snapshot model
+
+**MINOR.** Behavior change (not a bug fix) to the `commit-on-stop` Stop hook: it no longer mutates the working tree or switches branches to record a safety commit. The v0.7.0 design stashed the dirty tree, created an `auto-save/<ts>` **branch**, checked out to it, committed, then checked back — which parked in-flight edits off the current branch on every Stop (multi-turn agents saw it as "my edits got reverted") and switched the branch for the *whole* working tree, making it unsafe the instant two agents — or an orchestrator and its sub-agents — share one tree. It could also abort mid-checkout when two Stop events collided in the same second. The rewrite records a **snapshot** instead: it builds a tree from the full dirty state (tracked + untracked, `.gitignore` honored) in a temporary index, `commit-tree`s it parented on HEAD, and publishes to the hidden side ref `refs/auto-save/<iso-ts>` via `update-ref` — never touching HEAD, the current branch, the index, or the working tree. Snapshots are concurrency-safe (independent Stop events write independent refs, even in a shared tree), stay out of `git branch`, auto-prune to the most recent 10, and recover via `git checkout refs/auto-save/<ts> -- .`. The fix is already live on source-mode installs (the hook is symlinked from this clone), so this release is distribution + release hygiene rather than an urgent functional change.
+
+### Changed
+
+- **`commit-on-stop` hook rewritten to a non-disruptive snapshot model** (manifest `0.1.0 → 0.2.0`; `commit-on-stop.sh`, `commit-on-stop.ps1`, `hook.md`). Drops the stash → branch → checkout → commit → checkout-back flow for a temporary-index + `commit-tree` + `update-ref` flow that writes a snapshot to `refs/auto-save/<ts>` and leaves HEAD, the current branch, the real index, and the working tree byte-identical. Fixes three problems with the old design at once: **working-tree mutation** (in-flight edits now survive across turns — no park-and-clean surprise), **branch switching** (a ref write can't yank the tree out from under a concurrent agent), and **same-second collision** (independent refs instead of a branch-name race that aborted the hook). Also removes a possible gpg-signing hang — `commit-tree` ignores `commit.gpgsign`, unlike `commit`. Verified in a temp repo: tree byte-identical after the hook, snapshot captures tracked+untracked while honoring `.gitignore`, clean-tree no-op, prune-to-10.
+
+- **ADR 0003 amended** ([`0003-base-operator-hooks.md`](https://github.com/alexherrero/crickets/blob/main/wiki/explanation/decisions/0003-base-operator-hooks.md)) — decision §3 (commit-on-stop safety-branch strategy) is now superseded by a dated **branch → snapshot redesign** amendment carrying the three-problem rationale, the multi-agent-safety motivation, "why not the alternative" for each call (side refs vs branches, temp-index vs stash, `commit-tree` vs `commit`), and re-audit triggers. The original v0.7.0 decision is preserved as rationale-of-record. This also resolves the original ADR's open "safety-branch sprawl / auto-cleanup is a future improvement" question (now auto-pruned to 10).
+
+### Migration
+
+- **Old installs keep their `auto-save/*` branches.** Sessions that ran the v0.1.0 hook left real branches under `refs/heads/auto-save/`; they are not migrated automatically. Delete them with `git branch | grep auto-save/ | xargs git branch -D`. New snapshots live under the hidden `refs/auto-save/` namespace and never appear in `git branch`. The hook.md carries the same migration note.
+
+### Cross-references
+
+- Local source commit [`eb86e90`](https://github.com/alexherrero/crickets/commit/eb86e90) (`feat(commit-on-stop): non-disruptive snapshot model for multi-agent safety`).
+- The paired `agentm`-local cleanup deletes the 4 stale `auto-save/*` **branches** that the old hook design left in that repo — purely local housekeeping, no `agentm` release.
+
 ## [v2.1.2] — 2026-05-29 — gitignore `.harness/` ephemeral state
 
 **PATCH.** Single-line `.gitignore` fix surfaced during a `/doctor` dogfood audit. The `memory-recall-session-start` hook writes a `.harness/session-id-<uuid>.start` marker on every session boot, and that marker carries a personal transcript path (`/Users/<name>/.claude/projects/…`). agentm already gitignores `.harness/`; crickets didn't — so in this **public** repo the marker showed up as untracked and was sweepable into `git add -A`. Mirrors agentm's `.gitignore`; the pre-push PII hook stays the enforcing backstop. No code changes.

@@ -3,6 +3,7 @@
 > [!NOTE]
 > **Status:** accepted
 > **Date:** 2026-05-14
+> **Amended:** 2026-05-30 — decision §3 (commit-on-stop branch strategy) superseded by the **branch → snapshot redesign** ([crickets v2.2.0](https://github.com/alexherrero/crickets/releases/tag/v2.2.0)). See the [Amendment](#amendment-2026-05-30) at the bottom.
 
 ## Context
 
@@ -49,6 +50,9 @@ After the hook reads `.harness/STEER.md`'s contents, it renames the file to `.ha
 - **Cost of accumulation is low.** STEER.consumed files are tiny (the original instruction) and operator can `rm` them whenever.
 
 ### 3. commit-on-stop branch strategy: safety branch, not current branch
+
+> [!WARNING]
+> **Superseded 2026-05-30** by the [branch → snapshot redesign](#amendment-2026-05-30) (crickets v2.2.0). The hook no longer creates a branch, switches HEAD, or touches the working tree — it records a snapshot on the hidden side ref `refs/auto-save/<ts>` via `commit-tree` + `update-ref`. The decision below is preserved as the v0.7.0 rationale-of-record; read the Amendment for what the hook does now and why the branch model was unsafe under multi-agent use.
 
 The hook creates `auto-save/<iso-timestamp>` and commits dirty-tree changes there, then returns HEAD to the original branch with a clean working tree. The current branch is **never** modified.
 
@@ -142,6 +146,67 @@ Rationale for Python (not jq, which the harness uses): python3 is already a hard
 - **`Stop` event fires at agent turn-end with the working tree intact at that moment.** commit-on-stop's safety-branch timing depends on this. If Stop fires after Claude Code wipes the working tree (e.g. for cleanup), commit-on-stop's snapshot is wrong.
 - **`PreToolUse` hook stdout is captured and injected into agent context.** Steer's redirect mechanism depends on this.
 - **The toolkit installer registers hooks in alphabetical filesystem order.** Hook ordering invariant depends on this.
+
+## Amendment 2026-05-30
+
+**commit-on-stop branch → snapshot redesign (v0.2.0).**
+
+> [!NOTE]
+> **Status:** accepted
+> **Date:** 2026-05-30
+> **Supersedes:** decision §3 (and recasts the "safety-branch sprawl" / "many branches per session" consequences). Shipped in [crickets v2.2.0](https://github.com/alexherrero/crickets/releases/tag/v2.2.0); hook manifest `0.1.0 → 0.2.0`.
+
+### Context
+
+Decision §3 (v0.7.0) had commit-on-stop **stash → branch → checkout → commit → checkout-back**: it parked the dirty tree on a fresh `auto-save/<ts>` branch (under `refs/heads/`), committed there, then returned HEAD to the original branch leaving the working tree *clean*. That made three assumptions that real use broke:
+
+1. **The operator notices the work moved.** They didn't — it looked like a reset.
+2. **One agent owns the working tree.** Increasingly false: orchestrator + sub-agents (and plain two-session) runs now routinely share one tree.
+3. **One Stop per second.** Branch creation keys on a second-resolution timestamp; two Stop events in the same second collide.
+
+The open question the original ADR couldn't yet answer ("safety branches accumulate; auto-cleanup is a future improvement") is also resolved here.
+
+### Decision
+
+commit-on-stop is rewritten to a **non-disruptive snapshot** model. On a dirty tree at Stop it:
+
+1. Builds a tree from the **full** working state (tracked + untracked, `.gitignore` honored) in a **temporary index** (`GIT_INDEX_FILE`), seeded from HEAD then `git add -A`. The real index is never staged into.
+2. `git commit-tree`s that tree, parented on HEAD, into a commit object.
+3. `git update-ref refs/auto-save/<YYYYMMDDTHHMMSSZ>` publishes the snapshot atomically.
+4. Prunes to the most recent 10 snapshots.
+
+HEAD, the current branch, the real index, and the working tree are **never** touched. Recovery is `git checkout refs/auto-save/<ts> -- .` (or `git switch -c recovered refs/auto-save/<ts>`).
+
+This fixes the three problems directly: **(1) no working-tree mutation** — in-flight edits survive across turns, so there's no park-and-clean surprise; **(2) no branch switch** — a snapshot is just a ref write, so concurrent agents sharing one tree can't have the tree yanked out from under them; **(3) no same-second collision** — independent Stop events write independent refs (and even an identical timestamp is a benign `update-ref` overwrite of an identical-or-newer snapshot, never a hard abort mid-checkout).
+
+**Why not the alternatives:**
+
+- **Why not keep the branch design and only fix the collision (e.g. append a counter / nanoseconds to the ref name)?** The collision was the least of the three problems. Working-tree mutation and branch switching are inherent to a stash+checkout design — a uniquely-named branch still parks the work and still moves HEAD for the whole shared tree. The redesign had to drop checkout entirely, not harden it.
+- **Why hidden refs under `refs/auto-save/` and not `refs/heads/` (branches)?** Snapshots are recovery artifacts, not workstreams. Branches pollute `git branch`, tab-completion, and `git push --all`; a hidden ref namespace keeps the safety net invisible until you ask for it, while staying fully reachable by SHA/ref.
+- **Why a temporary `GIT_INDEX_FILE` + `commit-tree` and not `git stash create` (which also doesn't touch the tree)?** `stash create` records a stash commit but its tree-shape and untracked-file handling are awkward to control, and the stash reflog is operator-visible state we don't want to grow. The temp-index path gives exact control over what's captured (full dirty state, gitignore honored) with zero footprint on the real index or stash list.
+- **Why `commit-tree` and not `git commit`?** `commit` would require touching the index/HEAD and, critically, honors `commit.gpgsign` — a signing prompt would hang the non-interactive hook. `commit-tree` ignores gpgsign and writes a commit object directly.
+
+### Consequences
+
+**Positive**
+
+- **Multi-agent-safe by construction.** The hook only ever appends a ref. Two agents in one tree, an orchestrator and its sub-agents, or two sessions — each Stop is an independent, idempotent ref write that mutates nothing shared.
+- **Edits survive across turns.** The most-reported v0.7.0 surprise ("my uncommitted work disappeared") is gone — the working tree is byte-identical before and after the hook.
+- **No branch clutter; sprawl is bounded.** Snapshots don't appear in `git branch`, and auto-prune-to-10 closes the "safety-branch sprawl" / "many branches per session" negatives from the original Consequences — those are now resolved, not just documented.
+- **No signing hang.** `commit-tree` can't trigger a gpg prompt, removing a way the non-interactive hook could stall.
+
+**Negative**
+
+- **Old `auto-save/*` branches linger.** Installs that ran v0.1.0 keep their `refs/heads/auto-save/*` branches until manually deleted (`git branch | grep auto-save/ | xargs git branch -D`). The hook.md carries a migration note; there is no automatic migration. (This is the agentm-local cleanup that paired with this release.)
+- **Recovery is one indirection less obvious.** `git checkout <branch>` was familiar; `git checkout refs/auto-save/<ts> -- .` is not. Mitigation: the hook prints the exact recovery command on its stderr line, and the how-to documents listing/inspecting/restoring.
+- **Snapshots are unreachable by default porcelain.** `refs/auto-save/` won't show in `git log` / `git branch` without an explicit ref or `--all`; an operator who forgets the namespace could think nothing was saved. Mitigation: documented in hook.md + the how-to; the stderr line names the ref each time.
+
+**Load-bearing assumptions** (re-audit triggers)
+
+- **`commit-tree`, `update-ref`, and `GIT_INDEX_FILE` semantics stay stable.** These are git plumbing (very stable), but re-audit if the repo's minimum git version moves or if a future git changes temp-index / hidden-ref behavior.
+- **"The working tree" is well-defined at Stop.** Re-audit if a future Claude Code or git feature changes what a single working tree means at Stop time — e.g. shared-worktree, sparse-checkout, or a multi-tree orchestration model where one Stop's snapshot would not capture another agent's concurrently-changing files coherently.
+- **`refs/auto-save/` stays a private namespace.** Re-audit if any tooling (the harness, another hook, a CI step) starts writing or relying on `refs/auto-save/` — the prune-to-10 logic assumes the hook is the sole writer.
+- The v0.7.0 §3 assumption "**Stop fires with the working tree intact**" is *relaxed*: even if the tree changes between turns, the snapshot model never mutates it, so a stale-snapshot is the worst case (re-captured on the next Stop) rather than a corrupted tree.
 
 ## Related
 
