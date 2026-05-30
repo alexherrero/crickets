@@ -1,15 +1,15 @@
 ---
 name: commit-on-stop
-description: Safety-branch commit at session end. Fires on Claude Code's Stop event; if the working tree has uncommitted changes, creates `auto-save/<iso-timestamp>` branch and commits all changes there with a greppable message. Never modifies the current branch; never pushes to remote.
+description: Non-disruptive safety snapshot at Stop. Fires on Claude Code's Stop event; if the working tree has uncommitted changes, records a full snapshot (tracked + untracked) as a commit object on the side ref `refs/auto-save/<iso-timestamp>` without switching branches, moving HEAD, or touching the working tree. Concurrency-safe; never pushes to remote.
 kind: hook
 supported_hosts: [claude-code]
-version: 0.1.0
+version: 0.2.0
 install_scope: project
 ---
 
-# commit-on-stop — safety-branch commit at session end
+# commit-on-stop — non-disruptive safety snapshot at Stop
 
-A Stop-event hook that creates a safety branch with the agent's uncommitted work at the end of each turn. Crashed or interrupted sessions stop losing in-flight work; the worst case becomes a stale branch you can recover from.
+A Stop-event hook that snapshots the agent's uncommitted work at the end of each turn so crashed or interrupted sessions stop losing in-flight work. Unlike the original design, it **never touches your working tree or current branch** — it records the snapshot on a hidden side ref and leaves everything exactly as the agent left it.
 
 ## How it works
 
@@ -17,82 +17,81 @@ A Stop-event hook that creates a safety branch with the agent's uncommitted work
 - **Check:** is the working tree dirty (uncommitted changes per `git status --porcelain`)?
 - **If clean:** exit 0 (no-op). Nothing to save.
 - **If dirty:**
-  1. Capture UTC timestamp: `auto-save/<YYYYMMDDTHHMMSSZ>`.
-  2. Stash all changes (including untracked).
-  3. Create the safety branch from current HEAD: `git branch auto-save/<ts>`.
-  4. Switch to the safety branch.
-  5. Pop the stash (restores the changes on the safety branch).
-  6. Commit all changes with message `auto-save: stop at <ts> on branch <original-branch>`.
-  7. Switch back to the original branch (working tree is now clean there — the changes are committed on the safety branch).
-- **Exit 0** with stderr message naming the safety branch.
+  1. Capture UTC timestamp → ref `refs/auto-save/<YYYYMMDDTHHMMSSZ>`.
+  2. Build a tree from the full working state in a **temporary index** (`GIT_INDEX_FILE`), seeded from HEAD then `git add -A` (tracked + untracked; `.gitignore` is honored, so build junk stays out). The real index is never touched.
+  3. `git commit-tree` that tree (parented on HEAD) into a commit object.
+  4. `git update-ref refs/auto-save/<ts>` to publish the snapshot atomically.
+  5. Prune to the most recent 10 snapshots.
+- **Exit 0** with a stderr line naming the ref + recovery command.
 
 After the hook fires:
 
-- HEAD is back on the original branch with a clean working tree.
-- The work is preserved as a commit on `auto-save/<ts>`.
-- Recovery: `git checkout auto-save/<ts>` (or `git diff <orig-branch>` to see what was saved).
+- HEAD, the current branch, the index, and the working tree are **all unchanged** — your in-flight edits are still right there.
+- A full snapshot is preserved as a commit on `refs/auto-save/<ts>` (a hidden ref — it does **not** show up in `git branch`).
+
+## Why the snapshot model (vs the old stash + branch design)
+
+The previous version stashed the changes, created an `auto-save/<ts>` **branch**, checked out to it, committed, and checked back to the original branch — leaving the working tree *clean*. That had three problems this version fixes:
+
+- **Surprise data movement.** It parked your uncommitted work off the current branch every turn, so multi-turn agent work kept "losing" its in-flight edits (they were recoverable, but it looked like a reset).
+- **Branch switching.** `git checkout` changes the branch for the *whole* working tree — unsafe the moment two agents (or an orchestrator + sub-agents) share one tree.
+- **Same-second collisions.** Creating a branch could fail if two Stop events fired in the same second, aborting the hook mid-checkout.
+
+The snapshot model is **concurrency-safe**: it only ever writes a ref and never mutates the working tree, so independent Stop events (multiple agents, even in one tree) don't collide, and an agent's edits survive across turns.
 
 ## Operator usage — recovery
 
 ```bash
-# See all safety branches
-git branch -a | grep auto-save
+# List snapshots (newest first)
+git for-each-ref --sort=-refname --format='%(refname) %(committerdate:iso8601)' refs/auto-save
 
-# Inspect one
-git checkout auto-save/20260513T230400Z
-git diff main
+# Inspect what a snapshot captured
+git show refs/auto-save/20260530T154401Z
 
-# Or cherry-pick the saved commit back onto your working branch
-git checkout main
-git cherry-pick auto-save/20260513T230400Z
+# Restore a snapshot's files into your working tree
+git checkout refs/auto-save/20260530T154401Z -- .
+
+# Or branch off it to work from there
+git switch -c recovered refs/auto-save/20260530T154401Z
 ```
 
 ## Operator usage — cleanup
 
-`auto-save/*` branches accumulate. Periodically:
+Snapshots are **auto-pruned to the most recent 10**, so they don't accumulate. To prune further or clear them all:
 
 ```bash
-# List safety branches older than a week (manual cleanup)
-git for-each-ref --format='%(refname:short) %(committerdate:iso8601)' refs/heads/auto-save/
+# Delete one
+git update-ref -d refs/auto-save/20260530T154401Z
 
-# Delete a specific one
-git branch -D auto-save/20260513T230400Z
-
-# Or nuke all of them at once (if you're sure you don't need any)
-git branch | grep auto-save/ | xargs git branch -D
+# Delete all of them
+git for-each-ref --format='%(refname)' refs/auto-save | xargs -n1 git update-ref -d
 ```
 
-Auto-cleanup is **not** part of v0.7.0 — operators manage their own safety-branch hygiene. A future plan may add an opt-in cleanup script.
+> **Migration note (v0.2.0):** older installs created `auto-save/<ts>` **branches** (under `refs/heads/`). Those remain until you delete them — `git branch | grep auto-save/ | xargs git branch -D`. New snapshots live under `refs/auto-save/` (hidden refs) instead.
 
 ## What it never does
 
-- **Never pushes to remote.** Local-only safety net. Pushing is an operator decision.
-- **Never modifies the current branch.** All changes go on `auto-save/<ts>`; original branch points where it did before.
-- **Never silently amends history.** Each invocation creates a new safety branch with a new commit.
+- **Never mutates the working tree or index.** Your uncommitted edits are left exactly in place.
+- **Never switches branches or moves HEAD.** The snapshot goes on a side ref; the current branch points where it did.
+- **Never pushes to remote.** Local-only safety net.
+- **Never signs or prompts.** `commit-tree` (unlike `commit`) ignores `commit.gpgsign`, so a signing prompt can't hang the non-interactive hook.
 - **Never runs in a non-git directory.** Exit 0 if `git rev-parse --is-inside-work-tree` fails.
 
 ## Commit identity
 
-The hook commits as:
-
-- `user.name = "commit-on-stop hook"`
-- `user.email = "commit-on-stop@crickets.local"`
-
-These are scoped to the single commit via `git -c user.email=... -c user.name=...` — they don't pollute `git config`. The commits are also unsigned (`commit.gpgsign=false`) since the hook runs non-interactively and signing prompts would hang.
-
-## Triggers (v0.7.0)
-
-- **Stop event only.** Fires at the end of each agent turn.
-
-A future enhancement may add a `PostToolUse` trigger that fires after N consecutive tool errors (configurable via `COMMIT_ON_STOP_ERROR_THRESHOLD` env var). v0.7.0 ships the `Stop` trigger only; the N-errors variant is deferred to a follow-up plan.
+Snapshots are authored as `commit-on-stop hook <commit-on-stop@crickets.local>`, set via `GIT_AUTHOR_*` / `GIT_COMMITTER_*` env vars scoped to the hook process — they never pollute `git config`.
 
 ## Failure modes
 
-- **git missing:** silently exits 0. Hook is a no-op.
-- **Not a git work tree:** silently exits 0.
-- **`git stash pop` conflict** (e.g. partial-stash edge case): the hook leaves the operator on the safety branch with the conflict to resolve, and the stderr message names the safety branch. Operator resolves the conflict manually.
-- **`git branch auto-save/<ts>` collides** (two Stop events in the same second): exit non-zero with a stderr message. The earlier branch is preserved; the second turn's changes remain uncommitted. Rare in practice (Stop events don't fire that fast).
+- **git missing / not a git work tree:** silently exits 0 (no-op).
+- **Unborn branch (no commits yet):** snapshots against an empty tree (no parent) — still captures untracked files.
+- **commit-tree / update-ref fails:** the hook may not record a snapshot, but the working tree is **never** left in a bad state (it was never touched). Re-runs on the next Stop.
+- **Prune failure:** best-effort and non-fatal — the snapshot is already saved.
 - **`.claude/settings.json` malformed:** hooks won't load. Validate JSON.
+
+## Triggers
+
+- **Stop event only.** Fires at the end of each agent turn.
 
 ## See also
 
