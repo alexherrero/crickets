@@ -1,0 +1,73 @@
+name: 🐛 Bug Report
+description: A defect in a crickets plugin / bundle / installer / sub-agent / hook.
+title: "<short summary — what's broken>"
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This template auto-applies the `bug` label so the Issues tab filter `label:bug` surfaces it cleanly (separated from roadmap-tracked work via `label:roadmap`).
+
+        Mirrors the `/bugfix` pipeline's Report stage — Report → Analyze → Fix → Verify.
+
+  - type: textarea
+    id: report
+    attributes:
+      label: Report (operator's voice)
+      description: Verbatim observation. What you saw, in your words. Don't pre-diagnose.
+      placeholder: |
+        e.g. "After /plugin install ship-release, /release dispatches the skill but the changelog write step silently no-ops."
+    validations:
+      required: true
+
+  - type: input
+    id: plugin
+    attributes:
+      label: Which plugin / bundle?
+      description: e.g. `ship-release`, `pii-scrubber`, `dependabot-fixer`, `design`, or `<bundle-name>` for bundle-level defects.
+      placeholder: ship-release
+    validations:
+      required: false
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      placeholder: |
+        1. ...
+        2. ...
+        3. Observe: ...
+    validations:
+      required: false
+
+  - type: textarea
+    id: expected-vs-actual
+    attributes:
+      label: Expected vs actual behavior
+      placeholder: |
+        Expected: ...
+        Actual: ...
+    validations:
+      required: false
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: crickets version + agentm version (if installed) + OS + Claude Code version + install mode
+      placeholder: "crickets v2.1.0 · agentm v4.10.0 · macOS 14.6 · Claude Code 1.x · --scope user"
+    validations:
+      required: false
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Workaround (if any)
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        **Next step:** the operator runs `/bugfix <this issue url>` (against either crickets or agentm depending on where the defect lives) and the harness drives Analyze → Fix → Verify.

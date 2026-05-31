@@ -1,0 +1,96 @@
+name: 🗺️ Roadmap Item (Crickets plugin or bundle)
+description: A new crickets plugin, bundle, sub-plan, or task. Pre-split, lives in the agentm Project under bucket ③ Crickets v3.0 or ④ Crickets v3.x; post-split, will live in its own crickets Project.
+title: "<short noun phrase — the bundle or plugin name>"
+labels: ["roadmap"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This template auto-applies the `roadmap` label so the Issues tab filter `label:roadmap` surfaces it cleanly.
+
+        **Project enrollment** depends on whether the project surface split has fired:
+        - **Pre-split** (today): the agent enrolls this in the agentm Project (https://github.com/users/alexherrero/projects/2) under bucket ③ or ④.
+        - **Post-split** (when V4 closes + #40 ships): enrollment moves to the new crickets Project. See `ROADMAP-MASTER.md § Project surface split` in the vault.
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Type
+      options:
+        - Roadmap-entry (a bundle or plugin)
+        - Plan (concrete plan within a bundle)
+        - Task (sub-task within a Plan)
+        - Backlog-item (queued, not yet scheduled)
+        - Idea (unscheduled idea)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: track
+    attributes:
+      label: Track
+      options:
+        - Crickets v3.0 — Plugins that stand on their own
+        - Crickets v3.x — My opinionated bundles
+        - Backlog
+        - Ideas
+    validations:
+      required: true
+
+  - type: dropdown
+    id: bundle-wave
+    attributes:
+      label: Wave (Crickets v3.x only)
+      description: Per the crickets bundle catalog in `ROADMAP-MASTER.md § ④`.
+      options:
+        - "1 — Build-workflow (Developer · Testing · Releasing · Wiki · Design-docs · GitHub-CI · PII)"
+        - "2 — Project/roadmap (github-projects · non-code projects)"
+        - "3 — Knowledge/personal (Ideating · Personal-notes · Comms/brand)"
+        - N/A (this is v3.0 plugin model work, not a v3.x bundle)
+    validations:
+      required: false
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: What does this bundle ship? Skills + hooks + sub-agents + config + always-load entries. Plus `requires:` / `standalone:` declaration (per V4 #42).
+      placeholder: |
+        - Skills: ...
+        - Hooks: ...
+        - Sub-agents: ...
+        - Always-load entries the bundle's install writes: ...
+        - requires: agentm | standalone: true | degraded mode: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: composition-contract
+    attributes:
+      label: Composition + auto-activation contract
+      description: How does this bundle declare its trigger phrases? How does it compose with the Developer base bundle if it's a v3.x bundle? (Per V4 #38's auto-activation contract.)
+      placeholder: |
+        - Trigger phrases: "..." / "..." / "..."
+        - Non-triggers: "..." / "..." (to guard against false fires)
+        - Requires: <base bundle> | Standalone
+        - Definition of done: dogfooded on <repo(s)>
+    validations:
+      required: false
+
+  - type: textarea
+    id: cross-impacts
+    attributes:
+      label: Cross-impacts
+      description: Affects which agentm items? Affects which other crickets bundles?
+      placeholder: |
+        - Depends on: alexherrero/agentm#<n> (...)
+        - Unlocks: alexherrero/agentm#<n> (...)
+        - Cross-bundle: ...
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        **After filing:** the agent enrolls this in the active Project per the split-status note above and sets Track + Type + Status (Todo) + the relevant parent sub-issue link.

@@ -1,0 +1,20 @@
+# Issue template config — controls the "New Issue" picker UX.
+#
+# blank_issues_enabled: false forces users through one of the structured templates above
+# so every new Issue lands with the right label (bug | roadmap) and the Project Track
+# filters / Issues tab label filters work cleanly out of the box.
+
+blank_issues_enabled: false
+
+contact_links:
+  - name: 🗺️ View the agentm Project (pre-split)
+    url: https://github.com/users/alexherrero/projects/2
+    about: Today, crickets-track items (Crickets v3.0 + v3.x bundles) live in the agentm Project under buckets ③ and ④. Post project surface split (when V4 closes + #40 ships), this will move to a dedicated crickets Project.
+
+  - name: 📖 Read ROADMAP-MASTER (governance + bucket order)
+    url: https://github.com/alexherrero/crickets/blob/main/wiki/Home.md
+    about: Master roadmap lives in the operator's vault (`<vault>/projects/agentm/_harness/ROADMAP-MASTER.md`); the crickets wiki Home points at the published-side docs.
+
+  - name: 💬 General questions — open a Discussion
+    url: https://github.com/alexherrero/crickets/discussions
+    about: Open-ended questions, design conversations, "is this even the right bundle shape?" — Discussions, not Issues.
