@@ -5,6 +5,9 @@ Validates every `group.yaml` + primitive frontmatter under `src/` against the
 schema documented in `src/SCHEMA.md`. Exits 1 with `file:line: reason` per
 violation, 0 with a summary when clean.
 
+Shares parsing (frontmatter reader, kind/host enums, primitive globs) with the
+generator via `scripts/src_model.py`.
+
 Checks
 ------
 group.yaml:
@@ -22,9 +25,12 @@ Requires PyYAML (CI installs it; mirrors scripts/validate-manifests.py).
 """
 from __future__ import annotations
 
-import re
 import sys
 from pathlib import Path
+
+# Make the sibling shared module importable regardless of how this file is
+# loaded (direct run or importlib in the test).
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 try:
     import yaml
@@ -32,26 +38,20 @@ except ImportError:  # graceful-skip — mirrors validate-manifests.py
     print("lint_src: PyYAML not installed — skipping (pip install pyyaml)", file=sys.stderr)
     sys.exit(0)
 
+from src_model import (  # noqa: E402  (after the yaml guard by design)
+    HOST_ENUM,
+    KIND_ENUM,
+    KNOWN_KIND_DIRS,
+    PRIMITIVE_KINDS,
+    read_frontmatter,
+)
+
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "src"
 
-KIND_ENUM = {
-    "skill", "agent", "hook", "command", "mcp-server", "status-line",
-    "output-style", "workflow", "rule", "snippet", "settings-fragment",
-}
-HOST_ENUM = {"claude-code", "antigravity"}
-
-# (kind, glob relative to a group dir, how to derive the expected primitive name).
-# Only the kinds that ship today; add globs as new kinds appear under src/.
-PRIMITIVE_KINDS = {
-    "skill": ("skills/*/SKILL.md", lambda p: p.parent.name),
-    "hook": ("hooks/*/hook.md", lambda p: p.parent.name),
-    "agent": ("agents/*.md", lambda p: p.stem),
-}
-_KNOWN_KIND_DIRS = {"skills", "hooks", "agents", "commands", "mcp", "rules"}
-
 
 def _line_of(path: Path, key: str) -> int:
+    import re
     try:
         for i, ln in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
             if re.match(rf"^\s*{re.escape(key)}\s*:", ln):
@@ -59,14 +59,6 @@ def _line_of(path: Path, key: str) -> int:
     except OSError:
         pass
     return 1
-
-
-def _frontmatter(path: Path):
-    t = path.read_text(encoding="utf-8")
-    m = re.match(r"^---\n(.*?)\n---", t, re.S)
-    if not m:
-        return None
-    return yaml.safe_load(m.group(1)) or {}
 
 
 def lint_tree(src: Path) -> list[str]:
@@ -115,16 +107,13 @@ def lint_tree(src: Path) -> list[str]:
             err(gy, f"invariant violated: standalone={d['standalone']} with requires={requires} "
                     f"(must be: standalone ⟺ requires:[])", _line_of(gy, "standalone"))
 
-        # flag unexpected kind dirs (typo guard)
         for sub in gd.iterdir():
-            if sub.is_dir() and sub.name not in _KNOWN_KIND_DIRS:
-                err(sub, f"unexpected kind folder '{sub.name}' (known: {sorted(_KNOWN_KIND_DIRS)})")
+            if sub.is_dir() and sub.name not in KNOWN_KIND_DIRS:
+                err(sub, f"unexpected kind folder '{sub.name}' (known: {sorted(KNOWN_KIND_DIRS)})")
 
-    n_prim = 0
     for kind, (glb, name_of) in PRIMITIVE_KINDS.items():
         for path in sorted(src.glob(f"*/{glb}")):
-            n_prim += 1
-            fm = _frontmatter(path)
+            fm = read_frontmatter(path)
             if fm is None:
                 err(path, "missing YAML frontmatter")
                 continue

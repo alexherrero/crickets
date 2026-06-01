@@ -39,8 +39,8 @@ jobs:
         run: python3 scripts/validate-manifests.py
       - name: Lint src/ source-of-truth tree (group.yaml + primitive frontmatter)
         run: python3 scripts/lint_src.py
-      - name: Test the src/ lint
-        run: python3 scripts/test_lint_src.py
+      - name: Unit tests (scripts/ — lint_src, src_model, generate, …)
+        run: cd scripts && python3 -m unittest discover -p 'test_*.py'
       - name: Lint wiki (Diátaxis)
         # Mirrors agentm's tests-linux.yml step. Linux-only (Diátaxis lint is
         # deterministic; no need to run per OS). Added 2026-05-29 to close
