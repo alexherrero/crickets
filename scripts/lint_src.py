@@ -1,0 +1,173 @@
+#!/usr/bin/env python3
+"""Lint the crickets `src/` source-of-truth tree (crickets v3.0 #40, part 1).
+
+Validates every `group.yaml` + primitive frontmatter under `src/` against the
+schema documented in `src/SCHEMA.md`. Exits 1 with `file:line: reason` per
+violation, 0 with a summary when clean.
+
+Checks
+------
+group.yaml:
+  - required: `name`, `description`, `standalone`.
+  - `standalone` is a bool; `requires` (default []) is a list of existing group slugs.
+  - invariant: `standalone: true` ⟺ `requires: []`.
+primitive frontmatter:
+  - required: `name`, `description`, `kind`, `supported_hosts`.
+  - `kind` in the enum and matches the primitive's `<kind>/` folder.
+  - `supported_hosts` a non-empty subset of {claude-code, antigravity}.
+  - `name` matches the primitive's dir (skill/hook) or file stem (agent).
+
+Run: `python3 scripts/lint_src.py`
+Requires PyYAML (CI installs it; mirrors scripts/validate-manifests.py).
+"""
+from __future__ import annotations
+
+import re
+import sys
+from pathlib import Path
+
+try:
+    import yaml
+except ImportError:  # graceful-skip — mirrors validate-manifests.py
+    print("lint_src: PyYAML not installed — skipping (pip install pyyaml)", file=sys.stderr)
+    sys.exit(0)
+
+ROOT = Path(__file__).resolve().parent.parent
+SRC = ROOT / "src"
+
+KIND_ENUM = {
+    "skill", "agent", "hook", "command", "mcp-server", "status-line",
+    "output-style", "workflow", "rule", "snippet", "settings-fragment",
+}
+HOST_ENUM = {"claude-code", "antigravity"}
+
+# (kind, glob relative to a group dir, how to derive the expected primitive name).
+# Only the kinds that ship today; add globs as new kinds appear under src/.
+PRIMITIVE_KINDS = {
+    "skill": ("skills/*/SKILL.md", lambda p: p.parent.name),
+    "hook": ("hooks/*/hook.md", lambda p: p.parent.name),
+    "agent": ("agents/*.md", lambda p: p.stem),
+}
+_KNOWN_KIND_DIRS = {"skills", "hooks", "agents", "commands", "mcp", "rules"}
+
+
+def _line_of(path: Path, key: str) -> int:
+    try:
+        for i, ln in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            if re.match(rf"^\s*{re.escape(key)}\s*:", ln):
+                return i
+    except OSError:
+        pass
+    return 1
+
+
+def _frontmatter(path: Path):
+    t = path.read_text(encoding="utf-8")
+    m = re.match(r"^---\n(.*?)\n---", t, re.S)
+    if not m:
+        return None
+    return yaml.safe_load(m.group(1)) or {}
+
+
+def lint_tree(src: Path) -> list[str]:
+    """Return a list of `file:line: reason` violation strings (empty == clean)."""
+    errors: list[str] = []
+
+    def err(path: Path, msg: str, line: int = 1) -> None:
+        try:
+            rel = path.relative_to(src.parent)
+        except ValueError:
+            rel = path
+        errors.append(f"{rel}:{line}: {msg}")
+
+    if not src.is_dir():
+        return errors
+
+    group_dirs = sorted(p for p in src.iterdir() if p.is_dir())
+    group_slugs = {p.name for p in group_dirs}
+
+    for gd in group_dirs:
+        gy = gd / "group.yaml"
+        if not gy.exists():
+            err(gd, "group folder has no group.yaml")
+            continue
+        try:
+            d = yaml.safe_load(gy.read_text(encoding="utf-8")) or {}
+        except yaml.YAMLError as e:
+            err(gy, f"invalid YAML: {e}")
+            continue
+        if not isinstance(d, dict):
+            err(gy, "group.yaml must be a mapping")
+            continue
+        for f in ("name", "description", "standalone"):
+            if f not in d:
+                err(gy, f"missing required field '{f}'")
+        if "standalone" in d and not isinstance(d["standalone"], bool):
+            err(gy, f"'standalone' must be a bool (got {d['standalone']!r})", _line_of(gy, "standalone"))
+        requires = d.get("requires") or []
+        if not isinstance(requires, list):
+            err(gy, f"'requires' must be a list (got {requires!r})", _line_of(gy, "requires"))
+            requires = []
+        for r in requires:
+            if r not in group_slugs:
+                err(gy, f"requires '{r}' is not an existing group under src/", _line_of(gy, "requires"))
+        if isinstance(d.get("standalone"), bool) and d["standalone"] == bool(requires):
+            err(gy, f"invariant violated: standalone={d['standalone']} with requires={requires} "
+                    f"(must be: standalone ⟺ requires:[])", _line_of(gy, "standalone"))
+
+        # flag unexpected kind dirs (typo guard)
+        for sub in gd.iterdir():
+            if sub.is_dir() and sub.name not in _KNOWN_KIND_DIRS:
+                err(sub, f"unexpected kind folder '{sub.name}' (known: {sorted(_KNOWN_KIND_DIRS)})")
+
+    n_prim = 0
+    for kind, (glb, name_of) in PRIMITIVE_KINDS.items():
+        for path in sorted(src.glob(f"*/{glb}")):
+            n_prim += 1
+            fm = _frontmatter(path)
+            if fm is None:
+                err(path, "missing YAML frontmatter")
+                continue
+            if not isinstance(fm, dict):
+                err(path, "frontmatter must be a mapping")
+                continue
+            for f in ("name", "description", "kind", "supported_hosts"):
+                if f not in fm:
+                    err(path, f"missing required field '{f}'", _line_of(path, f))
+            if "kind" in fm and fm["kind"] not in KIND_ENUM:
+                err(path, f"'kind' must be one of {sorted(KIND_ENUM)} (got {fm['kind']!r})", _line_of(path, "kind"))
+            if fm.get("kind") and fm["kind"] != kind:
+                err(path, f"'kind' is {fm['kind']!r} but the primitive sits under a '{kind}' folder", _line_of(path, "kind"))
+            hosts = fm.get("supported_hosts")
+            if hosts is not None:
+                if not isinstance(hosts, list) or not hosts:
+                    err(path, "'supported_hosts' must be a non-empty list", _line_of(path, "supported_hosts"))
+                else:
+                    bad = set(hosts) - HOST_ENUM
+                    if bad:
+                        err(path, f"'supported_hosts' has unknown host(s) {sorted(bad)}", _line_of(path, "supported_hosts"))
+            expected = name_of(path)
+            if fm.get("name") and fm["name"] != expected:
+                err(path, f"'name' is {fm['name']!r} but the primitive is named {expected!r}", _line_of(path, "name"))
+
+    return errors
+
+
+def main() -> int:
+    if not SRC.is_dir():
+        print("lint_src: no src/ directory — nothing to lint")
+        return 0
+    errors = lint_tree(SRC)
+    if errors:
+        for e in errors:
+            print(e, file=sys.stderr)
+        print(f"\nlint_src: {len(errors)} error(s)", file=sys.stderr)
+        return 1
+    n_groups = len([p for p in SRC.iterdir() if p.is_dir()])
+    n_prim = sum(len(list(SRC.glob(f"*/{glb}"))) for _, (glb, _) in PRIMITIVE_KINDS.items())
+    print(f"lint_src: clean ({n_groups} group(s), {n_prim} primitive(s))")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
