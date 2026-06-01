@@ -266,3 +266,4 @@ Reversible by git: reverting the v3.0 release commit restores the v2 `install.sh
 | 2026-06-01 | Approved as final via /design author review pass. | final |
 | 2026-06-01 | Published to wiki/explanation/designs/ (visibility: confidential → published). | final |
 | 2026-06-01 | Translated to 6 parts via /design translate: foundations, generator-claude, antigravity-emitter, ci-gate, distribution-clean-break, dogfood-proof-docs. | final |
+| 2026-06-01 | Sequenced into 6 plans via /design sequence; foundations active at the crickets vault PLAN.md, 5 queued at _harness/designs/crickets-v3-native-plugins/queued-plans/. | final |
