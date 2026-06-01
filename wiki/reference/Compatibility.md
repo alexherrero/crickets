@@ -29,9 +29,9 @@ Each customization in the shipped catalog declares its own `supported_hosts` in 
 
 | Kind | Customization | Hosts |
 |---|---|---|
-| skill (6) | `pii-scrubber`, `dependabot-fixer`, `ship-release`, `design`, `memory`, `diataxis-author` | `[claude-code, antigravity]` |
-| agent (4) | `evaluator`, `adapt-evaluator`, `diataxis-evaluator`, `memory-idea-researcher` | `[claude-code, antigravity]` (sub-agent-as-skill on Antigravity) |
-| hook (8) | `kill-switch`, `steer`, `commit-on-stop`, `evidence-tracker`, `memory-recall-prompt-submit`, `memory-recall-session-start`, `memory-reflect-idle`, `memory-reflect-stop` | `[claude-code]` (Antigravity has no file-based hook surface — see Known gaps below) |
+| skill (2) | `pii-scrubber`, `dependabot-fixer` | `[claude-code, antigravity]` |
+| agent (2) | `evaluator`, `diataxis-evaluator` | `[claude-code, antigravity]` (sub-agent-as-skill on Antigravity) |
+| hook (3) | `kill-switch`, `steer`, `commit-on-stop` | `[claude-code]` (Antigravity hook-surface support tracked separately — see Known gaps below) |
 | bundle (2) | `quality-gates` (claude-code-only because contents include hooks), `example-bundle` (`[claude-code, antigravity]`) | inherits from contents |
 | plugin (1) | `example-plugin` (reference; Antigravity 2.0 + agy) | `[antigravity]` |
 
@@ -45,7 +45,7 @@ Three Antigravity 2.0 primitive surfaces have **no file-based authoring path** a
 
 Antigravity 2.0 / agy hooks are **Python decorators** registered at agent-creation time via `LocalAgentConfig(hooks=[...])` (from `google.antigravity.hooks`). The 9 hook types (`on_session_start`, `on_session_end`, `pre_turn`, `post_turn`, `pre_tool_call_decide`, `post_tool_call`, `on_tool_error`, `on_compaction`, `on_interaction`) cover most use cases that Claude Code's file-based hooks cover, but they require Python SDK integration to register — no `.agents/hooks/` directory or `hooks.json` config file exists.
 
-**Crickets's 8 hooks** (`kill-switch`, `steer`, `commit-on-stop`, `evidence-tracker`, `memory-recall-prompt-submit`, `memory-recall-session-start`, `memory-reflect-idle`, `memory-reflect-stop`) ship `supported_hosts: [claude-code]`-only. See [ADR 0009 § Antigravity re-audit outcome](decisions/0009-evidence-tracker-hook) for the rationale.
+**Crickets's 3 hooks** (`kill-switch`, `steer`, `commit-on-stop`) ship `supported_hosts: [claude-code]`-only. (The memory hooks + `evidence-tracker` are agentm-native, not crickets.) See [ADR 0009 § Antigravity re-audit outcome](decisions/0009-evidence-tracker-hook) for the rationale — note its "no Antigravity file-based hook surface" finding is superseded by Antigravity 2.0 (tracked in the crickets-ADR-overhaul follow-up).
 
 **Future direction (deferred, FOLLOWUP candidate)**: a separate Python sidecar package (`crickets-hooks-py`?) could translate crickets's file-based hook scripts to SDK decorator registration at agent-author boot time. Out of scope for v1.2.0.
 

@@ -34,7 +34,7 @@ Inspired by the iconic noisy cricket from Men in Black, **Crickets** is a tactic
 
 ## What's inside
 
-The current shipped catalog (see [wiki/reference/Customization-Types.md](wiki/reference/Customization-Types.md) for what each kind is). v2.0.0 narrows Crickets to base primitives — compound skills + memory hooks + the memory-idea-researcher sub-agent + plugins + bundles all moved to [Agent M](https://github.com/alexherrero/agentm) in the V4 #36 reorg.
+The current shipped catalog (see [wiki/reference/Customization-Types.md](wiki/reference/Customization-Types.md) for what each kind is). v2.0.0 narrows Crickets to base primitives — compound skills + memory hooks + the memory-idea-researcher + adapt-evaluator sub-agents + plugins + bundles all moved to [Agent M](https://github.com/alexherrero/agentm) (the bulk in the V4 #36 reorg; the memory-flow `adapt-evaluator` in V4 #23).
 
 ### Skills (2)
 
@@ -48,7 +48,6 @@ The current shipped catalog (see [wiki/reference/Customization-Types.md](wiki/re
 | Sub-agent | What it does |
 |---|---|
 | [`evaluator`](agents/evaluator.md) | Read-only fresh-context grader. Caller supplies ARTIFACT + RUBRIC; returns PASS / NEEDS_WORK + per-rubric-item reasoning. Augments Agent M's `adversarial-reviewer` at `/review`. |
-| [`adapt-evaluator`](agents/adapt-evaluator.md) | Read-only grader for skill-adaptation candidates (Agent M's `/memory adapt` flow). Scores fit + risk; recommends adopt / skip / amend. |
 | [`diataxis-evaluator`](agents/diataxis-evaluator.md) | Read-only grader for Diátaxis classification proposals. Caller supplies a candidate doc + proposed mode; returns PASS / NEEDS_WORK with per-criterion reasoning. Pairs with Agent M's `diataxis-author` skill. |
 
 ### Hooks (3)
@@ -191,7 +190,7 @@ Crickets grew across paired releases with Agent M. The full V1→V4 evolution of
 
 ## Status
 
-Currently shipping **v2.0.0** — V4 #36 reorg. Public surface narrowed to base primitives (2 skills + 3 sub-agents + 3 hooks). Compound skills + memory hooks + the memory-idea-researcher sub-agent + plugins + bundles moved to [Agent M](https://github.com/alexherrero/agentm) v4.0.0 — see CHANGELOG migration notes for the upgrade path. Manifest schema, installer flags, and the 13-kind `kind:` enum remain stable (`kind: bundle` + `kind: plugin` are reserved-future in v2.0.0; no bundles or plugins ship). Internal surface (`scripts/`, `lib/install/`) remains pre-1.0 in spirit. See [CHANGELOG.md](CHANGELOG.md) and the [latest release](https://github.com/alexherrero/crickets/releases/latest). Crickets ships in lockstep with Agent M as paired releases.
+Currently shipping **v2.0.0** — V4 #36 reorg. Public surface narrowed to base primitives (2 skills + 2 sub-agents + 3 hooks). Compound skills + memory hooks + the memory-idea-researcher + adapt-evaluator sub-agents + plugins + bundles moved to [Agent M](https://github.com/alexherrero/agentm) (most in v4.0.0; the memory-flow `adapt-evaluator` in V4 #23) — see CHANGELOG migration notes for the upgrade path. Manifest schema, installer flags, and the 13-kind `kind:` enum remain stable (`kind: bundle` + `kind: plugin` are reserved-future in v2.0.0; no bundles or plugins ship). Internal surface (`scripts/`, `lib/install/`) remains pre-1.0 in spirit. See [CHANGELOG.md](CHANGELOG.md) and the [latest release](https://github.com/alexherrero/crickets/releases/latest). Crickets ships in lockstep with Agent M as paired releases.
 
 ## Contributing
 

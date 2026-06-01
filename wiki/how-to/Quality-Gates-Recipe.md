@@ -72,7 +72,6 @@ After running both installers (default mode):
 ├── .claude/
 │   ├── agents/
 │   │   ├── evaluator.md                  # Crickets
-│   │   ├── adapt-evaluator.md            # Crickets
 │   │   └── diataxis-evaluator.md         # Crickets
 │   ├── hooks/
 │   │   ├── kill-switch.sh                # Crickets

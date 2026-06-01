@@ -27,8 +27,8 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "install.ps1 returned non-zero ($LASTEXITCODE)" }
 
     # ── expected files ─────────────────────────────────────────────────────
-    # v2.0.0 catalog: 2 skills (pii-scrubber, dependabot-fixer), 3 agents
-    # (evaluator, adapt-evaluator, diataxis-evaluator), 3 hooks (kill-switch,
+    # Catalog: 2 skills (pii-scrubber, dependabot-fixer), 2 agents
+    # (evaluator, diataxis-evaluator; adapt-evaluator moved to agentm in V4 #23), 3 hooks (kill-switch,
     # steer, commit-on-stop). gemini-cli host removed in v0.9.0; .agent/
     # singular → .agents/ plural in v1.2.0 per ADR 0011.
     $expected = @(
@@ -38,11 +38,9 @@ try {
         # Standalone skill: dependabot-fixer across 2 hosts
         '.claude/skills/dependabot-fixer/SKILL.md',
         '.agents/skills/dependabot-fixer/SKILL.md',
-        # Standalone agents: evaluator + adapt-evaluator + diataxis-evaluator
+        # Standalone agents: evaluator + diataxis-evaluator
         '.claude/agents/evaluator.md',
         '.agents/skills/evaluator/SKILL.md',
-        '.claude/agents/adapt-evaluator.md',
-        '.agents/skills/adapt-evaluator/SKILL.md',
         '.claude/agents/diataxis-evaluator.md',
         '.agents/skills/diataxis-evaluator/SKILL.md',
         # Standalone hooks (claude-code only per ADR 0009)
@@ -135,7 +133,7 @@ try {
     if ($rerun -match 'created .claude/skills/(pii-scrubber|dependabot-fixer)') {
         throw 're-run recreated a skill (should be kept)'
     }
-    if ($rerun -match 'created .claude/agents/(evaluator|adapt-evaluator|diataxis-evaluator)') {
+    if ($rerun -match 'created .claude/agents/(evaluator|diataxis-evaluator)') {
         throw 're-run recreated an agent (should be kept)'
     }
     if ($rerun -match 'created .claude/hooks/(kill-switch|steer|commit-on-stop)') {

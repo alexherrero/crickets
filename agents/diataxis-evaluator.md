@@ -9,7 +9,7 @@ install_scope: either
 
 # diataxis-evaluator — read-only sub-agent for Diátaxis mode-classification ambiguity
 
-A read-only sub-agent dispatched by the [diataxis-author skill](../skills/diataxis-author/SKILL.md) when its heuristic mode-classification engine (`scripts/classify.py`, lands part 2) returns an ambiguous result for a wiki page. Mirrors the [`adapt-evaluator` sub-agent](adapt-evaluator.md) (plan #7b task 4) — same caller-supplies-inline-rubric pattern + same read-only-with-no-write architectural shape.
+A read-only sub-agent dispatched by the [diataxis-author skill](../skills/diataxis-author/SKILL.md) when its heuristic mode-classification engine (`scripts/classify.py`, lands part 2) returns an ambiguous result for a wiki page. Mirrors the [`adapt-evaluator` sub-agent](https://github.com/alexherrero/agentm/blob/main/harness/agents/adapt-evaluator.md) (agentm; plan #7b task 4) — same caller-supplies-inline-rubric pattern + same read-only-with-no-write architectural shape.
 
 ## Two-tier classification (locked design from plan #13 part 1)
 
@@ -69,6 +69,6 @@ Writes attempted by this sub-agent are bugs in dispatch + should be caught at PR
 - [`scripts/classify.py`](../skills/diataxis-author/scripts/classify.py) — Tier-1 heuristic engine. Returns `needs_subagent: true` when its confidence is below threshold (default 0.7) or when the page is mode-mixed. Caller (the skill body) sees that flag + dispatches this sub-agent with the heuristic's output included in the rubric for context.
 - [`scripts/author.py`](../skills/diataxis-author/scripts/author.py) — uses classify.py's mode inference when `--intent <sentence>` is passed; if classify says `needs_subagent: true`, the operator is prompted to disambiguate explicitly via `--mode`.
 - [agentm ADR 0004 — Diátaxis Documentation Spec](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0004-diataxis-documentation-spec.md) — the four-mode definitions + machine-enforceable rules this sub-agent applies.
-- [`adapt-evaluator` sub-agent](adapt-evaluator.md) — sibling sub-agent; established the read-only-with-scoped-write pattern this one mirrors (this sub-agent has **zero** write scope; adapt-evaluator has `_skill-watchlist/<source-slug>/<pattern-slug>.md` only).
-- [`memory-idea-researcher` sub-agent](memory-idea-researcher.md) — reference shape for the caller-supplies-inline-rubric pattern.
+- [`adapt-evaluator` sub-agent](https://github.com/alexherrero/agentm/blob/main/harness/agents/adapt-evaluator.md) (agentm) — sibling sub-agent; established the read-only-with-scoped-write pattern this one mirrors (this sub-agent has **zero** write scope; adapt-evaluator has `_skill-watchlist/<source-slug>/<pattern-slug>.md` only).
+- [`memory-idea-researcher` sub-agent](https://github.com/alexherrero/agentm/blob/main/harness/agents/memory-idea-researcher.md) (agentm) — reference shape for the caller-supplies-inline-rubric pattern.
 - [Parent design](../wiki/explanation/designs/diataxis-author.md) — Detailed Design §5 (`/diataxis classify <file>`) + §6 (mode-classification ambiguity in Tech Debt §1).

@@ -27,8 +27,8 @@ echo "==> fresh install into $SCRATCH"
 bash "$TOOLKIT_ROOT/install.sh" --no-python-deps --no-skill-index "$SCRATCH" > "$SCRATCH/.install.log"
 
 # ── expected files (every supported_host × every shipped primitive) ─────────
-# v2.0.0 catalog: 2 skills (pii-scrubber, dependabot-fixer), 3 agents
-# (evaluator, adapt-evaluator, diataxis-evaluator), 3 hooks (kill-switch,
+# Catalog: 2 skills (pii-scrubber, dependabot-fixer), 2 agents
+# (evaluator, diataxis-evaluator; adapt-evaluator moved to agentm in V4 #23), 3 hooks (kill-switch,
 # steer, commit-on-stop). gemini-cli host removed in v0.9.0 (ROADMAP #15).
 # Antigravity dispatch path migrated from .agent/ singular → .agents/ plural
 # in v1.2.0 per ADR 0011 (agy v1.0.2+ scans {workspace}/.agents/skills/<n>/
@@ -40,13 +40,11 @@ expected=(
   # Standalone skill: dependabot-fixer across 2 hosts
   .claude/skills/dependabot-fixer/SKILL.md
   .agents/skills/dependabot-fixer/SKILL.md
-  # Standalone agents: evaluator + adapt-evaluator + diataxis-evaluator —
+  # Standalone agents: evaluator + diataxis-evaluator —
   # claude-code is single-file destination; antigravity wraps the agent as
   # a skill. (gemini-cli destination .gemini/agents/*.md removed in v0.9.0.)
   .claude/agents/evaluator.md
   .agents/skills/evaluator/SKILL.md
-  .claude/agents/adapt-evaluator.md
-  .agents/skills/adapt-evaluator/SKILL.md
   .claude/agents/diataxis-evaluator.md
   .agents/skills/diataxis-evaluator/SKILL.md
   # Standalone hooks — claude-code only (Antigravity has no first-class hook
@@ -160,7 +158,7 @@ if grep -qE "created .claude/skills/(pii-scrubber|dependabot-fixer)" "$SCRATCH/.
   echo "FAIL: re-run recreated a skill that already existed (should be 'kept')" >&2
   exit 1
 fi
-if grep -qE "created .claude/agents/(evaluator|adapt-evaluator|diataxis-evaluator)" "$SCRATCH/.rerun.log"; then
+if grep -qE "created .claude/agents/(evaluator|diataxis-evaluator)" "$SCRATCH/.rerun.log"; then
   echo "FAIL: re-run recreated an agent that already existed (should be 'kept')" >&2
   exit 1
 fi
