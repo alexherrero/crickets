@@ -79,7 +79,10 @@ class TestClaudeEmitter(unittest.TestCase):
             self.assertTrue((self.dist / "plugins" / p["name"]).is_dir())
 
     def test_hooks_emitted_on_correct_events(self):
-        hj = json.loads((self.dist / "plugins" / "developer" / "hooks" / "hooks.json").read_text(encoding="utf-8"))
+        raw = json.loads((self.dist / "plugins" / "developer" / "hooks" / "hooks.json").read_text(encoding="utf-8"))
+        # Claude plugin hooks.json is wrapped in a top-level "hooks" record.
+        self.assertIn("hooks", raw)
+        hj = raw["hooks"]
         self.assertIn("Stop", hj)
         self.assertIn("PreToolUse", hj)
         stop_cmds = [h["command"] for e in hj["Stop"] for h in e.get("hooks", [])]

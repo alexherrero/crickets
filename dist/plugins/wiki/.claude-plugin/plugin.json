@@ -1,0 +1,12 @@
+{
+  "author": {
+    "name": "alexherrero",
+    "url": "https://github.com/alexherrero/crickets"
+  },
+  "dependencies": [
+    "developer"
+  ],
+  "description": "Diátaxis wiki authoring support — the diataxis-evaluator agent that classifies pages by documentation mode.",
+  "name": "wiki",
+  "version": "0.1.0"
+}

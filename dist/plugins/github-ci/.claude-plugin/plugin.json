@@ -1,0 +1,12 @@
+{
+  "author": {
+    "name": "alexherrero",
+    "url": "https://github.com/alexherrero/crickets"
+  },
+  "dependencies": [
+    "developer"
+  ],
+  "description": "CI workflows + dependency-update tooling — the dependabot-fixer skill that repairs breakage on Dependabot PRs.",
+  "name": "github-ci",
+  "version": "0.1.0"
+}

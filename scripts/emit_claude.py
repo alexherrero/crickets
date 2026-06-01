@@ -51,9 +51,9 @@ class ClaudeEmitter(HostEmitter):
 
         manifest = {
             "name": group.slug,
-            "displayName": group.name,
             "version": PLUGIN_VERSION,
             "description": group.description,
+            "author": {"name": "alexherrero", "url": "https://github.com/alexherrero/crickets"},
         }
         if group.requires:
             manifest["dependencies"] = sorted(group.requires)
@@ -88,7 +88,9 @@ class ClaudeEmitter(HostEmitter):
         if hooks:
             hd = plugin_dir / "hooks"
             hd.mkdir(parents=True, exist_ok=True)
-            (hd / "hooks.json").write_text(dump_json(hooks), encoding="utf-8")
+            # Claude expects hooks.json wrapped in a top-level "hooks" record
+            # (confirmed via `claude plugin validate`, v2.1.112).
+            (hd / "hooks.json").write_text(dump_json({"hooks": hooks}), encoding="utf-8")
         if mcp_servers:
             (plugin_dir / ".mcp.json").write_text(
                 dump_json({"mcpServers": mcp_servers}), encoding="utf-8")
@@ -147,6 +149,10 @@ class ClaudeEmitter(HostEmitter):
         marketplace = {
             "name": "crickets",
             "owner": {"name": "alexherrero"},
+            "metadata": {
+                "description": "Opinionated developer-workflow plugins for Claude Code "
+                               "and Antigravity, generated from a single source of truth.",
+            },
             "plugins": sorted(entries, key=lambda e: e["name"]),
         }
         cp = dist_root / ".claude-plugin"
