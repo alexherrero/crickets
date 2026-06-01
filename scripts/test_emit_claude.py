@@ -78,6 +78,51 @@ class TestClaudeEmitter(unittest.TestCase):
             self.assertEqual(p["source"], f"./plugins/{p['name']}")
             self.assertTrue((self.dist / "plugins" / p["name"]).is_dir())
 
+    def test_hooks_emitted_on_correct_events(self):
+        hj = json.loads((self.dist / "plugins" / "developer" / "hooks" / "hooks.json").read_text(encoding="utf-8"))
+        self.assertIn("Stop", hj)
+        self.assertIn("PreToolUse", hj)
+        stop_cmds = [h["command"] for e in hj["Stop"] for h in e.get("hooks", [])]
+        self.assertTrue(any("${CLAUDE_PLUGIN_ROOT}/hooks/commit-on-stop/commit-on-stop.sh" in c
+                            for c in stop_cmds), stop_cmds)
+        pre_cmds = [h["command"] for e in hj["PreToolUse"] for h in e.get("hooks", [])]
+        self.assertTrue(any("kill-switch/kill-switch.sh" in c for c in pre_cmds), pre_cmds)
+        self.assertTrue(any("steer/steer.sh" in c for c in pre_cmds), pre_cmds)
+        # no raw .claude/hooks path leaks through
+        self.assertFalse(any(".claude/hooks" in c for c in stop_cmds + pre_cmds))
+        # scripts bundled under the plugin
+        self.assertTrue((self.dist / "plugins" / "developer" / "hooks" / "commit-on-stop" / "commit-on-stop.sh").exists())
+
+    def test_synthetic_mcp_output_style_snippet(self):
+        Primitive = emit_claude.Primitive
+        Group = emit_claude.Group
+        with tempfile.TemporaryDirectory() as t:
+            base = Path(t)
+            os_md = base / "terse.md"
+            os_md.write_text("---\nname: terse\nkind: output-style\nsupported_hosts: [claude-code]\n---\n# terse\n", encoding="utf-8")
+            sn_md = base / "note.md"
+            sn_md.write_text("---\nname: note\nkind: snippet\nsupported_hosts: [claude-code]\n---\nbe terse\n", encoding="utf-8")
+            mcp_dir = base / "srv"
+            mcp_dir.mkdir()
+            (mcp_dir / "mcp.json").write_text('{"mcpServers": {"srv": {"command": "x"}}}', encoding="utf-8")
+            prims = [
+                Primitive("terse", "output-style", ["claude-code"], os_md, os_md, {}),
+                Primitive("note", "snippet", ["claude-code"], sn_md, sn_md, {}),
+                Primitive("srv", "mcp-server", ["claude-code"], mcp_dir / "mcp.json", mcp_dir, {}),
+            ]
+            group = Group("extras", "Extras", "d", "Coding", [], True, prims)
+            dist = base / "dist"
+            emit_claude.ClaudeEmitter().emit_group(group, dist)
+            pd = dist / "plugins" / "extras"
+            # output-style copied
+            self.assertTrue((pd / "output-styles" / "terse.md").exists())
+            # mcp merged into .mcp.json
+            mcp = json.loads((pd / ".mcp.json").read_text(encoding="utf-8"))
+            self.assertIn("srv", mcp["mcpServers"])
+            # snippet dropped (no native Claude home)
+            self.assertFalse((pd / "snippets").exists())
+            self.assertFalse((pd / "note.md").exists())
+
     def test_deterministic_rebuild(self):
         tmp2 = tempfile.TemporaryDirectory()
         try:
