@@ -97,14 +97,23 @@ def clean(dist: Path = DIST) -> int:
     return 0
 
 
+# host-emitter module -> emitter class name. Each lands in its own part:
+# emit_claude (part 2), emit_antigravity (part 3).
+_EMITTER_MODULES = {"emit_claude": "ClaudeEmitter", "emit_antigravity": "AntigravityEmitter"}
+
+
 def _load_emitters() -> None:
-    """Import host-emitter modules so they self-register. Each lands in its own
-    part: emit_claude (part 2), emit_antigravity (part 3)."""
-    for mod in ("emit_claude", "emit_antigravity"):
+    """Import host-emitter modules + register their emitter on THIS module's
+    registry (avoids the __main__-vs-import dual-instance trap if the emitter
+    self-registered)."""
+    for mod_name, cls_name in _EMITTER_MODULES.items():
         try:
-            __import__(mod)
+            mod = __import__(mod_name)
         except ImportError:
-            pass
+            continue
+        cls = getattr(mod, cls_name, None)
+        if cls is not None and cls.host not in EMITTERS:
+            register(cls())
 
 
 def main(argv=None) -> int:
