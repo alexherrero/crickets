@@ -1,0 +1,5 @@
+name: Developer
+description: The base crickets plugin — phase/work conventions, control hooks (commit-on-stop, kill-switch, steer), and the fresh-context evaluator agent. Other plugins build on it.
+category: Coding
+requires: []
+standalone: true

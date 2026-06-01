@@ -104,6 +104,7 @@ SELF_SKIP_PATHS=(
     'scripts/check-no-pii.sh'
     '.gitleaks.toml'
     'skills/pii-scrubber/SKILL.md'
+    'src/pii/skills/pii-scrubber/SKILL.md'   # v3.0 SoT copy of the above (same example-PII docs)
     'templates/hooks/pre-push'
     'CONTRIBUTING.md'
     'lib/install/.checksums.txt'   # generated SHA256 file; hex substrings false-positive on phone-us regex
