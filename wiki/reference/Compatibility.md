@@ -49,6 +49,13 @@ Antigravity 2.0 / agy hooks are **Python decorators** registered at agent-creati
 
 **Future direction (deferred, FOLLOWUP candidate)**: a separate Python sidecar package (`crickets-hooks-py`?) could translate crickets's file-based hook scripts to SDK decorator registration at agent-author boot time. Out of scope for v1.2.0.
 
+> [!NOTE]
+> **Gotcha for hook authors — resolve the workspace from the host's hook-input contract, never from `cwd`.** A bash hook that checks `.harness/…` (or any project-relative path) relative to `cwd` works on Claude Code but is silently inert on Antigravity, because the two hosts invoke plugin hooks differently:
+> - **Claude Code** — runs hooks with `cwd` = the project root, and also supplies it on stdin (`cwd`) and via `$CLAUDE_PROJECT_DIR`.
+> - **Antigravity / agy** — runs plugin hooks with `cwd` = the *plugin dir* (not the workspace), and supplies the workspace **only** on stdin as JSON `{"workspacePaths":["<root>"]}` (no env var).
+>
+> A host-portable hook reads stdin, parses it with a real JSON parser (`python3 json.load`, top-level keys only — a `sed`/regex parser mismatches nested or pretty-printed payloads), and resolves the root as `workspacePaths[0]` (Antigravity) → stdin `cwd` (Claude) → `$CLAUDE_PROJECT_DIR` → `cwd` (fallback), then `cd`s into it before any relative logic. The shipped `kill-switch`, `steer`, and `commit-on-stop` hooks do this; see `scripts/test_developer_hooks_workspace.py` for the contract cases. (Fixed crickets v3.0 #40 part 6 T2; full plugin-authoring treatment lands in the upcoming "Develop a crickets plugin locally" how-to + ADR 0013/0014.)
+
 ### Scheduled tasks (triggers) gap
 
 Antigravity 2.0 / agy triggers — the host's scheduled-task primitive — are **Python registration patterns**: `every(seconds, callback)`, `on_file_change(path, callback)`, custom async functions. Registered via `LocalAgentConfig(triggers=[...])`. No file-based config; trigger callbacks are Python code running in the agent process.
