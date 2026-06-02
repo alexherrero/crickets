@@ -109,7 +109,6 @@ SELF_SKIP_PATHS=(
     'dist/antigravity/plugins/pii/skills/pii-scrubber/SKILL.md'   # v3.0 AG generated copy (same example-PII docs)
     'templates/hooks/pre-push'
     'CONTRIBUTING.md'
-    'lib/install/.checksums.txt'   # generated SHA256 file; hex substrings false-positive on phone-us regex
 )
 
 is_self_skip() {

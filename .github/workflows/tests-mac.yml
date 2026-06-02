@@ -6,22 +6,14 @@ on:
   pull_request:
 
 jobs:
-  install-smoke:
-    name: install-smoke
+  checks:
+    name: checks
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       # macos-latest ships python3 and pwsh 7+ preinstalled.
       - name: Install Python deps
         run: python3 -m pip install --break-system-packages pyyaml
-      - name: Run smoke-install (bash) + post-install integrity
-        run: bash scripts/smoke-install-bash.sh
-        env:
-          # Skip the local-mode integration test in CI (avoids the
-          # ~1.3GB BGE-large model download per workflow run). Operators
-          # validate local mode on their own machine after `pip install
-          # sentence-transformers` per plan #18 task 3.
-          SKIP_LOCAL_MODE_INTEGRATION: '1'
       - name: Validate manifests
         run: python3 scripts/validate-manifests.py
       - name: bash -n on every .sh
@@ -29,7 +21,5 @@ jobs:
       - name: AST-parse every .ps1
         shell: pwsh
         run: pwsh -NoProfile -File scripts/check-syntax.ps1
-      - name: Verify lib/install/ checksums
-        run: bash scripts/check-lib-parity.sh
       - name: Run check-no-pii.sh
         run: bash scripts/check-no-pii.sh --all

@@ -6,23 +6,14 @@ on:
   pull_request:
 
 jobs:
-  install-smoke:
-    name: install-smoke
+  checks:
+    name: checks
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       # windows-latest ships pwsh 7+ and Python preinstalled.
       - name: Install Python deps
         run: python -m pip install pyyaml
-      - name: Run smoke-install (pwsh) + post-install integrity
-        shell: pwsh
-        run: pwsh -NoProfile -File scripts/smoke-install-pwsh.ps1
-        env:
-          # Skip the local-mode integration test in CI (avoids the
-          # ~1.3GB BGE-large model download per workflow run). Operators
-          # validate local mode on their own machine after `pip install
-          # sentence-transformers` per plan #18 task 3.
-          SKIP_LOCAL_MODE_INTEGRATION: '1'
       - name: Validate manifests
         run: python scripts/validate-manifests.py
       - name: AST-parse every .ps1
@@ -30,9 +21,6 @@ jobs:
         run: pwsh -NoProfile -File scripts/check-syntax.ps1
       # bash -n skipped on Windows (git-bash is present but path-mangling makes
       # find(1) unreliable; Linux + Mac cover .sh parse).
-      - name: Verify lib/install/ checksums
-        shell: bash
-        run: bash scripts/check-lib-parity.sh
       - name: Run check-no-pii.sh
         shell: bash
         run: bash scripts/check-no-pii.sh --all
