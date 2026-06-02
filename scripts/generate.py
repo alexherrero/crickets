@@ -89,6 +89,10 @@ def _emit(src: Path, dist: Path) -> bool:
             if entry is not None:
                 entries.append(entry)
         emitter.write_marketplace(entries, host_root)
+    # host-agnostic default-set manifest (the recommended install list) — read
+    # by the one-line installer; data-driven so it can't drift from the catalog.
+    (dist / "default-set.json").write_text(
+        dump_json({"plugins": sorted(g.slug for g in groups)}), encoding="utf-8")
     return True
 
 

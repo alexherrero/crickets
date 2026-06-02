@@ -116,6 +116,10 @@ class TestCheck(unittest.TestCase):
     def test_in_sync_passes(self):
         self.assertEqual(generate.check(src=_ROOT / "src", dist=self.dist), 0)
 
+    def test_default_set_emitted(self):
+        ds = json.loads((self.dist / "default-set.json").read_text(encoding="utf-8"))
+        self.assertEqual(ds["plugins"], ["developer", "github-ci", "pii", "wiki"])
+
     def test_changed_file_fails(self):
         f = next(self.dist.rglob("plugin.json"))
         f.write_text(f.read_text(encoding="utf-8") + "\n", encoding="utf-8")
