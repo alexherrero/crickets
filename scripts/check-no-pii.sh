@@ -103,8 +103,7 @@ get_files() {
 SELF_SKIP_PATHS=(
     'scripts/check-no-pii.sh'
     '.gitleaks.toml'
-    'skills/pii-scrubber/SKILL.md'
-    'src/pii/skills/pii-scrubber/SKILL.md'   # v3.0 SoT copy of the above (same example-PII docs)
+    'src/pii/skills/pii-scrubber/SKILL.md'   # v3.0 SoT copy (example-PII docs)
     'dist/claude-code/plugins/pii/skills/pii-scrubber/SKILL.md'   # v3.0 generated copy (same example-PII docs)
     'dist/antigravity/plugins/pii/skills/pii-scrubber/SKILL.md'   # v3.0 AG generated copy (same example-PII docs)
     'templates/hooks/pre-push'
