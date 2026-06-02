@@ -25,6 +25,41 @@
 
 set -euo pipefail
 
+# ── resolve the workspace root (host-portable) ──────────────────────────────
+# Claude Code runs hooks from the project root + passes JSON on stdin with
+# "cwd" (and sets $CLAUDE_PROJECT_DIR). Antigravity runs plugin hooks from the
+# PLUGIN dir + passes the workspace on stdin as {"workspacePaths":["<root>"]}.
+# Resolve an explicit workspace signal, then cd into it so the git snapshot
+# below operates on the workspace repo on both hosts; fall back to cwd.
+_resolve_workspace() {
+    local payload="" ws=""
+    if [ ! -t 0 ]; then
+        IFS= read -r -d '' -t 2 payload <&0 2>/dev/null || true
+    fi
+    if [ -n "$payload" ] && command -v python3 >/dev/null 2>&1; then
+        # Parse with a real JSON parser (only TOP-LEVEL keys) — robust against
+        # nested/decoy "cwd" tokens and pretty-printed payloads that sed can't.
+        ws="$(printf '%s' "$payload" | python3 -c 'import sys, json
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+if not isinstance(d, dict):
+    sys.exit(0)
+wp = d.get("workspacePaths")
+if isinstance(wp, list) and wp and isinstance(wp[0], str):
+    print(wp[0]); sys.exit(0)
+c = d.get("cwd")
+if isinstance(c, str):
+    print(c)' 2>/dev/null)"
+    fi
+    if [ -z "$ws" ]; then ws="${CLAUDE_PROJECT_DIR:-}"; fi
+    if [ -z "$ws" ]; then ws="."; fi
+    printf '%s' "$ws"
+}
+_ws="$(_resolve_workspace)"
+cd "$_ws" 2>/dev/null || true
+
 # Skip if git unavailable or not in a git work tree.
 command -v git >/dev/null 2>&1 || exit 0
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
