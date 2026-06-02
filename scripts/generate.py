@@ -76,14 +76,18 @@ def build(src: Path = SRC, dist: Path = DIST) -> int:
         return 0
     dist.mkdir(parents=True, exist_ok=True)
     for host, emitter in sorted(EMITTERS.items()):
+        # per-host namespace: each emitter writes under dist/<host>/ so the
+        # hosts' divergent plugin contents never collide.
+        host_root = dist / host
+        host_root.mkdir(parents=True, exist_ok=True)
         entries: list[dict] = []
         for group in groups:
             if not group.supports(host):
                 continue
-            entry = emitter.emit_group(group, dist)
+            entry = emitter.emit_group(group, host_root)
             if entry is not None:
                 entries.append(entry)
-        emitter.write_marketplace(entries, dist)
+        emitter.write_marketplace(entries, host_root)
     print(f"generate: built dist/ for host(s): {sorted(EMITTERS)}")
     return 0
 

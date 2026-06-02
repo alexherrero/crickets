@@ -80,7 +80,7 @@ class TestBuildClean(unittest.TestCase):
             rc = generate.build(src=_ROOT / "src", dist=dist)
             self.assertEqual(rc, 0)
             self.assertEqual(sorted(seen), ["developer", "github-ci", "pii", "wiki"])
-            mk = json.loads((dist / "marketplace.json").read_text())
+            mk = json.loads((dist / "claude-code" / "marketplace.json").read_text())
             self.assertEqual({e["name"] for e in mk["plugins"]},
                              {"developer", "github-ci", "pii", "wiki"})
 

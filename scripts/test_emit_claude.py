@@ -41,6 +41,7 @@ class TestClaudeEmitter(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.dist = Path(self.tmp.name) / "dist"
         generate.build(src=_ROOT / "src", dist=self.dist)
+        self.cdist = self.dist / "claude-code"  # per-host namespace
 
     def tearDown(self):
         generate.EMITTERS.clear()
@@ -48,7 +49,7 @@ class TestClaudeEmitter(unittest.TestCase):
         self.tmp.cleanup()
 
     def _plugin_json(self, slug):
-        p = self.dist / "plugins" / slug / ".claude-plugin" / "plugin.json"
+        p = self.cdist / "plugins" / slug / ".claude-plugin" / "plugin.json"
         return json.loads(p.read_text(encoding="utf-8"))
 
     def test_plugin_json_per_group(self):
@@ -65,21 +66,21 @@ class TestClaudeEmitter(unittest.TestCase):
         self.assertNotIn("dependencies", self._plugin_json("developer"))
 
     def test_components_copied(self):
-        d = self.dist / "plugins"
+        d = self.cdist / "plugins"
         self.assertTrue((d / "pii" / "skills" / "pii-scrubber" / "SKILL.md").exists())
         self.assertTrue((d / "github-ci" / "skills" / "dependabot-fixer" / "SKILL.md").exists())
         self.assertTrue((d / "developer" / "agents" / "evaluator.md").exists())
         self.assertTrue((d / "wiki" / "agents" / "diataxis-evaluator.md").exists())
 
     def test_marketplace_lists_all_with_resolving_sources(self):
-        mk = json.loads((self.dist / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
+        mk = json.loads((self.cdist / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
         self.assertEqual({p["name"] for p in mk["plugins"]}, {"developer", "pii", "github-ci", "wiki"})
         for p in mk["plugins"]:
             self.assertEqual(p["source"], f"./plugins/{p['name']}")
-            self.assertTrue((self.dist / "plugins" / p["name"]).is_dir())
+            self.assertTrue((self.cdist / "plugins" / p["name"]).is_dir())
 
     def test_hooks_emitted_on_correct_events(self):
-        raw = json.loads((self.dist / "plugins" / "developer" / "hooks" / "hooks.json").read_text(encoding="utf-8"))
+        raw = json.loads((self.cdist / "plugins" / "developer" / "hooks" / "hooks.json").read_text(encoding="utf-8"))
         # Claude plugin hooks.json is wrapped in a top-level "hooks" record.
         self.assertIn("hooks", raw)
         hj = raw["hooks"]
@@ -94,7 +95,7 @@ class TestClaudeEmitter(unittest.TestCase):
         # no raw .claude/hooks path leaks through
         self.assertFalse(any(".claude/hooks" in c for c in stop_cmds + pre_cmds))
         # scripts bundled under the plugin
-        self.assertTrue((self.dist / "plugins" / "developer" / "hooks" / "commit-on-stop" / "commit-on-stop.sh").exists())
+        self.assertTrue((self.cdist / "plugins" / "developer" / "hooks" / "commit-on-stop" / "commit-on-stop.sh").exists())
 
     def test_synthetic_mcp_output_style_snippet(self):
         Primitive = emit_claude.Primitive
