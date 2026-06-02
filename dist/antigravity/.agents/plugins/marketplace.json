@@ -1,0 +1,62 @@
+{
+  "interface": {
+    "displayName": "Crickets"
+  },
+  "name": "crickets",
+  "plugins": [
+    {
+      "category": "Coding",
+      "name": "developer",
+      "policy": {
+        "authentication": "ON_INSTALL",
+        "installation": "AVAILABLE"
+      },
+      "source": {
+        "path": "./plugins/developer",
+        "source": "local"
+      }
+    },
+    {
+      "category": "Coding",
+      "name": "github-ci",
+      "policy": {
+        "authentication": "ON_INSTALL",
+        "installation": "AVAILABLE"
+      },
+      "requires": [
+        "developer"
+      ],
+      "source": {
+        "path": "./plugins/github-ci",
+        "source": "local"
+      }
+    },
+    {
+      "category": "Coding",
+      "name": "pii",
+      "policy": {
+        "authentication": "ON_INSTALL",
+        "installation": "AVAILABLE"
+      },
+      "source": {
+        "path": "./plugins/pii",
+        "source": "local"
+      }
+    },
+    {
+      "category": "Coding",
+      "name": "wiki",
+      "policy": {
+        "authentication": "ON_INSTALL",
+        "installation": "AVAILABLE"
+      },
+      "requires": [
+        "developer"
+      ],
+      "source": {
+        "path": "./plugins/wiki",
+        "source": "local"
+      }
+    }
+  ]
+}

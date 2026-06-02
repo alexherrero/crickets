@@ -1,0 +1,47 @@
+{
+  "commit-on-stop": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "command": "bash ./hooks/commit-on-stop/commit-on-stop.sh",
+            "timeout": 30,
+            "type": "command"
+          }
+        ],
+        "matcher": ".*"
+      }
+    ],
+    "enabled": true
+  },
+  "kill-switch": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "bash ./hooks/kill-switch/kill-switch.sh",
+            "timeout": 5,
+            "type": "command"
+          }
+        ],
+        "matcher": ".*"
+      }
+    ],
+    "enabled": true
+  },
+  "steer": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "bash ./hooks/steer/steer.sh",
+            "timeout": 5,
+            "type": "command"
+          }
+        ],
+        "matcher": ".*"
+      }
+    ],
+    "enabled": true
+  }
+}

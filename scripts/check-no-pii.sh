@@ -106,6 +106,7 @@ SELF_SKIP_PATHS=(
     'skills/pii-scrubber/SKILL.md'
     'src/pii/skills/pii-scrubber/SKILL.md'   # v3.0 SoT copy of the above (same example-PII docs)
     'dist/claude-code/plugins/pii/skills/pii-scrubber/SKILL.md'   # v3.0 generated copy (same example-PII docs)
+    'dist/antigravity/plugins/pii/skills/pii-scrubber/SKILL.md'   # v3.0 AG generated copy (same example-PII docs)
     'templates/hooks/pre-push'
     'CONTRIBUTING.md'
     'lib/install/.checksums.txt'   # generated SHA256 file; hex substrings false-positive on phone-us regex
