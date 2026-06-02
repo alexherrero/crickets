@@ -41,6 +41,8 @@ jobs:
         run: python3 scripts/lint_src.py
       - name: Unit tests (scripts/ — lint_src, src_model, generate, …)
         run: cd scripts && python3 -m unittest discover -p 'test_*.py'
+      - name: Generated dist/ in sync with src/ (generate.py check)
+        run: python3 scripts/generate.py check
       - name: Lint wiki (Diátaxis)
         # Mirrors agentm's tests-linux.yml step. Linux-only (Diátaxis lint is
         # deterministic; no need to run per OS). Added 2026-05-29 to close
