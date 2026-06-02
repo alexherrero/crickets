@@ -28,6 +28,9 @@ except ImportError:
     HAVE_YAML = False
 
 generate = _load("generate") if HAVE_YAML else None
+if HAVE_YAML:
+    emit_claude = _load("emit_claude")
+    emit_antigravity = _load("emit_antigravity")
 
 
 @unittest.skipUnless(HAVE_YAML, "PyYAML required")
@@ -92,6 +95,39 @@ class TestBuildClean(unittest.TestCase):
             rc = generate.clean(dist=dist)
             self.assertEqual(rc, 0)
             self.assertFalse(dist.exists())
+
+
+@unittest.skipUnless(HAVE_YAML, "PyYAML required")
+class TestCheck(unittest.TestCase):
+    def setUp(self):
+        self._saved = dict(generate.EMITTERS)
+        generate.EMITTERS.clear()
+        generate.register(emit_claude.ClaudeEmitter())
+        generate.register(emit_antigravity.AntigravityEmitter())
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dist = Path(self.tmp.name) / "dist"
+        generate.build(src=_ROOT / "src", dist=self.dist)
+
+    def tearDown(self):
+        generate.EMITTERS.clear()
+        generate.EMITTERS.update(self._saved)
+        self.tmp.cleanup()
+
+    def test_in_sync_passes(self):
+        self.assertEqual(generate.check(src=_ROOT / "src", dist=self.dist), 0)
+
+    def test_changed_file_fails(self):
+        f = next(self.dist.rglob("plugin.json"))
+        f.write_text(f.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+        self.assertEqual(generate.check(src=_ROOT / "src", dist=self.dist), 1)
+
+    def test_missing_file_fails(self):
+        next(self.dist.rglob("plugin.json")).unlink()
+        self.assertEqual(generate.check(src=_ROOT / "src", dist=self.dist), 1)
+
+    def test_extra_file_fails(self):
+        (self.dist / "claude-code" / "STRAY.txt").write_text("x", encoding="utf-8")
+        self.assertEqual(generate.check(src=_ROOT / "src", dist=self.dist), 1)
 
 
 if __name__ == "__main__":

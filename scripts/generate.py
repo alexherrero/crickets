@@ -69,11 +69,12 @@ def register(emitter: HostEmitter) -> None:
     EMITTERS[emitter.host] = emitter
 
 
-def build(src: Path = SRC, dist: Path = DIST) -> int:
+def _emit(src: Path, dist: Path) -> bool:
+    """Run every registered emitter into `dist/<host>/`. Returns False (no-op)
+    when no emitters are registered. Shared by build() + check()."""
     groups = load_groups(src)
     if not EMITTERS:
-        print("generate: no host emitters registered — nothing to emit", file=sys.stderr)
-        return 0
+        return False
     dist.mkdir(parents=True, exist_ok=True)
     for host, emitter in sorted(EMITTERS.items()):
         # per-host namespace: each emitter writes under dist/<host>/ so the
@@ -88,7 +89,50 @@ def build(src: Path = SRC, dist: Path = DIST) -> int:
             if entry is not None:
                 entries.append(entry)
         emitter.write_marketplace(entries, host_root)
+    return True
+
+
+def build(src: Path = SRC, dist: Path = DIST) -> int:
+    if not _emit(src, dist):
+        print("generate: no host emitters registered — nothing to emit", file=sys.stderr)
+        return 0
     print(f"generate: built dist/ for host(s): {sorted(EMITTERS)}")
+    return 0
+
+
+def _diff_trees(committed: Path, fresh: Path) -> list[str]:
+    """Compare the committed dist/ against a freshly-generated one. Returns a
+    list of human-readable drift descriptions (empty == in sync)."""
+    fa = {p.relative_to(committed) for p in committed.rglob("*") if p.is_file()} if committed.exists() else set()
+    fb = {p.relative_to(fresh) for p in fresh.rglob("*") if p.is_file()}
+    diffs: list[str] = []
+    for rel in sorted(str(r) for r in fb - fa):
+        diffs.append(f"missing from dist/ (run build): {rel}")
+    for rel in sorted(str(r) for r in fa - fb):
+        diffs.append(f"stale in dist/ (no longer generated): {rel}")
+    for rel in sorted(fa & fb, key=str):
+        if (committed / rel).read_bytes() != (fresh / rel).read_bytes():
+            diffs.append(f"out of date in dist/: {rel}")
+    return diffs
+
+
+def check(src: Path = SRC, dist: Path = DIST) -> int:
+    """Fail (exit 1) if the committed dist/ differs from a fresh generation —
+    the generated-in-sync CI gate."""
+    import tempfile
+    with tempfile.TemporaryDirectory() as t:
+        fresh = Path(t) / "dist"
+        if not _emit(src, fresh):
+            print("generate: no host emitters registered — nothing to check", file=sys.stderr)
+            return 0
+        diffs = _diff_trees(dist, fresh)
+    if diffs:
+        print("generate: dist/ is OUT OF SYNC with src/ — run "
+              "`python3 scripts/generate.py build` and commit:", file=sys.stderr)
+        for d in diffs:
+            print(f"  - {d}", file=sys.stderr)
+        return 1
+    print("generate: dist/ in sync with src/")
     return 0
 
 
@@ -124,11 +168,14 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="generate.py")
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("build", help="write dist/ from src/")
+    sub.add_parser("check", help="exit non-zero if dist/ is out of sync with src/")
     sub.add_parser("clean", help="remove dist/")
     args = ap.parse_args(argv)
     _load_emitters()
     if args.cmd == "build":
         return build()
+    if args.cmd == "check":
+        return check()
     if args.cmd == "clean":
         return clean()
     return 2
