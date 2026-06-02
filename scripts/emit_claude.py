@@ -45,6 +45,7 @@ def _rewrite_hook_command(command: str, name: str) -> str:
 
 class ClaudeEmitter(HostEmitter):
     host = HOST
+    root_marketplace_rel = ".claude-plugin/marketplace.json"
 
     def emit_group(self, group: Group, dist_root: Path) -> dict | None:
         plugin_dir = dist_root / "plugins" / group.slug
@@ -145,8 +146,8 @@ class ClaudeEmitter(HostEmitter):
         cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
         mcp_servers.update(cfg.get("mcpServers", cfg))
 
-    def write_marketplace(self, entries: list[dict], dist_root: Path) -> None:
-        marketplace = {
+    def _marketplace(self, entries: list[dict]) -> dict:
+        return {
             "name": "crickets",
             "owner": {"name": "alexherrero"},
             "metadata": {
@@ -155,6 +156,16 @@ class ClaudeEmitter(HostEmitter):
             },
             "plugins": sorted(entries, key=lambda e: e["name"]),
         }
+
+    def write_marketplace(self, entries: list[dict], dist_root: Path) -> None:
         cp = dist_root / ".claude-plugin"
         cp.mkdir(parents=True, exist_ok=True)
-        (cp / "marketplace.json").write_text(dump_json(marketplace), encoding="utf-8")
+        (cp / "marketplace.json").write_text(dump_json(self._marketplace(entries)), encoding="utf-8")
+
+    def write_root_marketplace(self, entries: list[dict], repo_root: Path) -> None:
+        # Same manifest, but each plugin source points at its committed dist/
+        # location relative to the repo root (Claude source is a path string).
+        rooted = [{**e, "source": f"./dist/{self.host}/plugins/{e['name']}"} for e in entries]
+        dest = repo_root / self.root_marketplace_rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(dump_json(self._marketplace(rooted)), encoding="utf-8")

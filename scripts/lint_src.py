@@ -21,7 +21,7 @@ primitive frontmatter:
   - `name` matches the primitive's dir (skill/hook) or file stem (agent).
 
 Run: `python3 scripts/lint_src.py`
-Requires PyYAML (CI installs it; mirrors scripts/validate-manifests.py).
+Requires PyYAML (CI installs it).
 """
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 try:
     import yaml
-except ImportError:  # graceful-skip — mirrors validate-manifests.py
+except ImportError:  # graceful-skip when PyYAML is absent
     print("lint_src: PyYAML not installed — skipping (pip install pyyaml)", file=sys.stderr)
     sys.exit(0)
 

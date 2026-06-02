@@ -16,8 +16,6 @@ jobs:
           python-version: '3.11'
       - name: Install Python deps
         run: pip install pyyaml
-      - name: Validate manifests (frontmatter + schema)
-        run: python3 scripts/validate-manifests.py
       - name: Lint src/ source-of-truth tree (group.yaml + primitive frontmatter)
         run: python3 scripts/lint_src.py
       - name: Unit tests (scripts/ — lint_src, src_model, generate, …)

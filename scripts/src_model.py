@@ -2,8 +2,7 @@
 """Shared model + parsing for the crickets `src/` source-of-truth tree.
 
 Used by `scripts/lint_src.py` (validation) and `scripts/generate.py` (emission)
-so the two share one parser. Requires PyYAML (CI installs it; mirrors
-validate-manifests.py / lint_src.py).
+so the two share one parser. Requires PyYAML (CI installs it).
 """
 from __future__ import annotations
 

@@ -106,7 +106,9 @@ class TestCheck(unittest.TestCase):
         generate.register(emit_antigravity.AntigravityEmitter())
         self.tmp = tempfile.TemporaryDirectory()
         self.dist = Path(self.tmp.name) / "dist"
-        generate.build(src=_ROOT / "src", dist=self.dist)
+        # temp repo-root so the real repo's root pointers aren't touched by tests
+        self.root = Path(self.tmp.name) / "root"
+        generate.build(src=_ROOT / "src", dist=self.dist, root=self.root)
 
     def tearDown(self):
         generate.EMITTERS.clear()
@@ -114,7 +116,7 @@ class TestCheck(unittest.TestCase):
         self.tmp.cleanup()
 
     def test_in_sync_passes(self):
-        self.assertEqual(generate.check(src=_ROOT / "src", dist=self.dist), 0)
+        self.assertEqual(generate.check(src=_ROOT / "src", dist=self.dist, root=self.root), 0)
 
     def test_default_set_emitted(self):
         ds = json.loads((self.dist / "default-set.json").read_text(encoding="utf-8"))
@@ -123,15 +125,34 @@ class TestCheck(unittest.TestCase):
     def test_changed_file_fails(self):
         f = next(self.dist.rglob("plugin.json"))
         f.write_text(f.read_text(encoding="utf-8") + "\n", encoding="utf-8")
-        self.assertEqual(generate.check(src=_ROOT / "src", dist=self.dist), 1)
+        self.assertEqual(generate.check(src=_ROOT / "src", dist=self.dist, root=self.root), 1)
 
     def test_missing_file_fails(self):
         next(self.dist.rglob("plugin.json")).unlink()
-        self.assertEqual(generate.check(src=_ROOT / "src", dist=self.dist), 1)
+        self.assertEqual(generate.check(src=_ROOT / "src", dist=self.dist, root=self.root), 1)
 
     def test_extra_file_fails(self):
         (self.dist / "claude-code" / "STRAY.txt").write_text("x", encoding="utf-8")
-        self.assertEqual(generate.check(src=_ROOT / "src", dist=self.dist), 1)
+        self.assertEqual(generate.check(src=_ROOT / "src", dist=self.dist, root=self.root), 1)
+
+    # ── repo-root marketplace pointer (one-word GitHub install) ──────────────
+    def test_root_pointers_emitted_with_dist_sources(self):
+        cl = json.loads((self.root / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
+        self.assertEqual(cl["name"], "crickets")
+        srcs = {p["name"]: p["source"] for p in cl["plugins"]}
+        self.assertEqual(srcs["developer"], "./dist/claude-code/plugins/developer")
+        ag = json.loads((self.root / ".agents" / "plugins" / "marketplace.json").read_text(encoding="utf-8"))
+        ag_srcs = {p["name"]: p["source"]["path"] for p in ag["plugins"]}
+        self.assertEqual(ag_srcs["developer"], "./dist/antigravity/plugins/developer")
+
+    def test_root_pointer_drift_fails(self):
+        rp = self.root / ".claude-plugin" / "marketplace.json"
+        rp.write_text(rp.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+        self.assertEqual(generate.check(src=_ROOT / "src", dist=self.dist, root=self.root), 1)
+
+    def test_root_pointer_missing_fails(self):
+        (self.root / ".agents" / "plugins" / "marketplace.json").unlink()
+        self.assertEqual(generate.check(src=_ROOT / "src", dist=self.dist, root=self.root), 1)
 
 
 if __name__ == "__main__":

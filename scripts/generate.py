@@ -10,10 +10,11 @@ Deterministic: sorted iteration + stable JSON, so part 4's
 `generate.py check` (generated-in-sync) gate is meaningful.
 
 CLI:
-  build   write dist/ from src/
-  clean   remove dist/
+  build   write dist/ + repo-root marketplace pointer(s) from src/
+  check   exit non-zero if dist/ or the root pointer(s) drift from src/
+  clean   remove dist/ + the root pointer(s)
 
-Requires PyYAML. crickets v3.0 #40, part 2.
+Requires PyYAML. crickets v3.0 #40, part 2 (root pointers: part 6).
 """
 from __future__ import annotations
 
@@ -50,6 +51,11 @@ class HostEmitter:
     entries and asks the emitter to write the host marketplace manifest."""
 
     host: str = ""
+    # Repo-ROOT marketplace pointer path (relative to repo root), e.g.
+    # ".claude-plugin/marketplace.json". None ⇒ this host emits no root pointer.
+    # When set, the file is generator-emitted + covered by `check`, so the
+    # one-word `<host> plugin marketplace add <owner/repo>` install can't drift.
+    root_marketplace_rel: str | None = None
 
     def emit_group(self, group: Group, dist_root: Path) -> dict | None:
         """Write `group`'s plugin dir under `dist_root`; return a marketplace
@@ -60,6 +66,13 @@ class HostEmitter:
         """Write the host marketplace manifest from the collected entries."""
         raise NotImplementedError
 
+    def write_root_marketplace(self, entries: list[dict], repo_root: Path) -> None:
+        """Write the repo-ROOT marketplace pointer (sources rewritten to the
+        committed `dist/<host>/` locations) so `<host> plugin marketplace add
+        <owner/repo>` resolves one-word from GitHub. Only called when
+        `root_marketplace_rel` is set; default no-op."""
+        return
+
 
 # Emitter registry — populated by host-emitter modules at load time.
 EMITTERS: dict[str, HostEmitter] = {}
@@ -69,9 +82,10 @@ def register(emitter: HostEmitter) -> None:
     EMITTERS[emitter.host] = emitter
 
 
-def _emit(src: Path, dist: Path) -> bool:
-    """Run every registered emitter into `dist/<host>/`. Returns False (no-op)
-    when no emitters are registered. Shared by build() + check()."""
+def _emit(src: Path, dist: Path, root: Path) -> bool:
+    """Run every registered emitter into `dist/<host>/`, and write each host's
+    repo-ROOT marketplace pointer under `root/`. Returns False (no-op) when no
+    emitters are registered. Shared by build() + check()."""
     groups = load_groups(src)
     if not EMITTERS:
         return False
@@ -89,6 +103,10 @@ def _emit(src: Path, dist: Path) -> bool:
             if entry is not None:
                 entries.append(entry)
         emitter.write_marketplace(entries, host_root)
+        # Repo-root pointer (one-word GitHub install) — outside dist/, but
+        # generator-emitted + check-covered so it can't drift.
+        if emitter.root_marketplace_rel:
+            emitter.write_root_marketplace(entries, root)
     # host-agnostic default-set manifest (the recommended install list) — read
     # by the one-line installer; data-driven so it can't drift from the catalog.
     (dist / "default-set.json").write_text(
@@ -96,11 +114,11 @@ def _emit(src: Path, dist: Path) -> bool:
     return True
 
 
-def build(src: Path = SRC, dist: Path = DIST) -> int:
-    if not _emit(src, dist):
+def build(src: Path = SRC, dist: Path = DIST, root: Path = ROOT) -> int:
+    if not _emit(src, dist, root):
         print("generate: no host emitters registered — nothing to emit", file=sys.stderr)
         return 0
-    print(f"generate: built dist/ for host(s): {sorted(EMITTERS)}")
+    print(f"generate: built dist/ + root marketplace pointer(s) for host(s): {sorted(EMITTERS)}")
     return 0
 
 
@@ -120,32 +138,68 @@ def _diff_trees(committed: Path, fresh: Path) -> list[str]:
     return diffs
 
 
-def check(src: Path = SRC, dist: Path = DIST) -> int:
-    """Fail (exit 1) if the committed dist/ differs from a fresh generation —
-    the generated-in-sync CI gate."""
+def _diff_root_pointers(committed_root: Path, fresh_root: Path) -> list[str]:
+    """Compare ONLY each registered emitter's declared root-pointer file
+    (a bounded set — never tree-diff the repo root, which would compare the
+    whole working tree). Returns drift descriptions (empty == in sync)."""
+    diffs: list[str] = []
+    for _host, emitter in sorted(EMITTERS.items()):
+        rel = emitter.root_marketplace_rel
+        if not rel:
+            continue
+        cb = (committed_root / rel).read_bytes() if (committed_root / rel).exists() else None
+        fb = (fresh_root / rel).read_bytes() if (fresh_root / rel).exists() else None
+        if cb == fb:
+            continue
+        if cb is None:
+            diffs.append(f"missing from repo root (run build): {rel}")
+        elif fb is None:
+            diffs.append(f"stale root pointer (no longer generated): {rel}")
+        else:
+            diffs.append(f"out of date root pointer: {rel}")
+    return diffs
+
+
+def check(src: Path = SRC, dist: Path = DIST, root: Path = ROOT) -> int:
+    """Fail (exit 1) if the committed dist/ OR the repo-root marketplace
+    pointer(s) differ from a fresh generation — the generated-in-sync CI gate."""
     import tempfile
     with tempfile.TemporaryDirectory() as t:
         fresh = Path(t) / "dist"
-        if not _emit(src, fresh):
+        fresh_root = Path(t) / "root"
+        if not _emit(src, fresh, fresh_root):
             print("generate: no host emitters registered — nothing to check", file=sys.stderr)
             return 0
-        diffs = _diff_trees(dist, fresh)
+        diffs = _diff_trees(dist, fresh) + _diff_root_pointers(root, fresh_root)
     if diffs:
-        print("generate: dist/ is OUT OF SYNC with src/ — run "
+        print("generate: generated output is OUT OF SYNC with src/ — run "
               "`python3 scripts/generate.py build` and commit:", file=sys.stderr)
         for d in diffs:
             print(f"  - {d}", file=sys.stderr)
         return 1
-    print("generate: dist/ in sync with src/")
+    print("generate: dist/ + root marketplace pointer(s) in sync with src/")
     return 0
 
 
-def clean(dist: Path = DIST) -> int:
+def clean(dist: Path = DIST, root: Path = ROOT) -> int:
+    removed = []
     if dist.exists():
         shutil.rmtree(dist)
-        print(f"generate: removed {dist.name}/")
-    else:
-        print("generate: dist/ already absent")
+        removed.append(f"{dist.name}/")
+    for emitter in EMITTERS.values():
+        rel = emitter.root_marketplace_rel
+        if not rel:
+            continue
+        f = root / rel
+        if f.exists():
+            f.unlink()
+            removed.append(rel)
+            # tidy now-empty parent dirs (up to, but not including, repo root)
+            p = f.parent
+            while p != root and p.exists() and not any(p.iterdir()):
+                p.rmdir()
+                p = p.parent
+    print(f"generate: removed {', '.join(removed)}" if removed else "generate: nothing to clean")
     return 0
 
 
