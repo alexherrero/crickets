@@ -2,7 +2,7 @@
 name: commit-on-stop
 description: Non-disruptive safety snapshot at Stop. Fires on Claude Code's Stop event; if the working tree has uncommitted changes, records a full snapshot (tracked + untracked) as a commit object on the side ref `refs/auto-save/<iso-timestamp>` without switching branches, moving HEAD, or touching the working tree. Concurrency-safe; never pushes to remote.
 kind: hook
-supported_hosts: [claude-code]
+supported_hosts: [claude-code, antigravity]
 version: 0.2.0
 install_scope: project
 ---

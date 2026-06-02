@@ -2,7 +2,7 @@
 name: kill-switch
 description: Operator emergency halt for long-running agent sessions. Fires on PreToolUse (matcher `.*`); if `.harness/STOP` exists in the project root, blocks the tool call with a stderr message. Touch the file to halt, remove it to resume.
 kind: hook
-supported_hosts: [claude-code]
+supported_hosts: [claude-code, antigravity]
 version: 0.1.0
 install_scope: project
 ---

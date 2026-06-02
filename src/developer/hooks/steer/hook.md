@@ -2,7 +2,7 @@
 name: steer
 description: Mid-run redirect — write `.harness/STEER.md` with a "do it this way instead" instruction and the next tool call picks it up. The hook reads STEER.md's contents (which Claude Code injects into the agent's context) then renames the file to STEER.consumed-<iso-ts>.md for audit trail.
 kind: hook
-supported_hosts: [claude-code]
+supported_hosts: [claude-code, antigravity]
 version: 0.1.0
 install_scope: project
 ---

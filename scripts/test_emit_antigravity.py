@@ -49,7 +49,8 @@ class TestAntigravityEmitter(unittest.TestCase):
         self.tmp.cleanup()
 
     def _plugin_json(self, slug):
-        return json.loads((self.agdist / "plugins" / slug / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+        # Antigravity expects plugin.json at the plugin root (not .claude-plugin/).
+        return json.loads((self.agdist / "plugins" / slug / "plugin.json").read_text(encoding="utf-8"))
 
     def test_plugin_json_no_native_dependencies(self):
         # AG composition is thin — plugin.json never carries dependencies.
@@ -87,6 +88,62 @@ class TestAntigravityEmitter(unittest.TestCase):
         self.assertEqual(by["wiki"]["requires"], ["developer"])
         self.assertNotIn("requires", by["pii"])
         self.assertNotIn("requires", by["developer"])
+
+    def test_ag_hooks_named_with_relative_paths(self):
+        hj = json.loads((self.agdist / "plugins" / "developer" / "hooks.json").read_text(encoding="utf-8"))
+        self.assertEqual(set(hj), {"commit-on-stop", "kill-switch", "steer"})
+        self.assertTrue(hj["commit-on-stop"]["enabled"])
+        self.assertIn("Stop", hj["commit-on-stop"])
+        self.assertIn("PreToolUse", hj["kill-switch"])
+        self.assertIn("PreToolUse", hj["steer"])
+        cmds = []
+        for h in hj.values():
+            for ev, entries in h.items():
+                if ev == "enabled":
+                    continue
+                for e in entries:
+                    cmds += [x["command"] for x in e.get("hooks", [])]
+        self.assertTrue(all(c.startswith("bash ./hooks/") for c in cmds), cmds)
+        self.assertFalse(any("CLAUDE_PLUGIN_ROOT" in c or ".claude/hooks" in c for c in cmds))
+        self.assertTrue((self.agdist / "plugins" / "developer" / "hooks" / "kill-switch" / "kill-switch.sh").exists())
+
+    def test_synthetic_sessionstart_gap_snippet_mcp(self):
+        Primitive = emit_antigravity.Primitive
+        Group = emit_antigravity.Group
+        with tempfile.TemporaryDirectory() as t:
+            base = Path(t)
+            hook_dir = base / "boot"
+            hook_dir.mkdir()
+            (hook_dir / "boot.sh").write_text("#!/bin/bash\n", encoding="utf-8")
+            (hook_dir / "settings-fragment-bash.json").write_text(json.dumps({
+                "hooks": {
+                    "SessionStart": [{"matcher": ".*", "hooks": [{"type": "command", "command": "bash .claude/hooks/boot.sh"}]}],
+                    "PreToolUse": [{"matcher": ".*", "hooks": [{"type": "command", "command": "bash .claude/hooks/boot.sh"}]}],
+                }
+            }), encoding="utf-8")
+            sn = base / "note.md"
+            sn.write_text("---\nname: note\nkind: snippet\nsupported_hosts: [antigravity]\n---\nbe terse\n", encoding="utf-8")
+            mcp_dir = base / "srv"
+            mcp_dir.mkdir()
+            (mcp_dir / "mcp.json").write_text('{"mcpServers": {"srv": {"command": "x"}}}', encoding="utf-8")
+            prims = [
+                Primitive("boot", "hook", ["antigravity"], hook_dir / "hook.md", hook_dir, {}),
+                Primitive("note", "snippet", ["antigravity"], sn, sn, {}),
+                Primitive("srv", "mcp-server", ["antigravity"], mcp_dir / "mcp.json", mcp_dir, {}),
+            ]
+            group = Group("extras", "Extras", "d", "Coding", [], True, prims)
+            dist = base / "dist"
+            emit_antigravity.AntigravityEmitter().emit_group(group, dist)
+            pd = dist / "plugins" / "extras"
+            hj = json.loads((pd / "hooks.json").read_text(encoding="utf-8"))
+            # SessionStart has no AG equivalent → skipped; PreToolUse kept
+            self.assertIn("PreToolUse", hj["boot"])
+            self.assertNotIn("SessionStart", hj["boot"])
+            # snippet → rules/ (AG ships instruction files)
+            self.assertTrue((pd / "rules" / "note.md").exists())
+            # mcp → mcp_config.json
+            mcp = json.loads((pd / "mcp_config.json").read_text(encoding="utf-8"))
+            self.assertIn("srv", mcp["mcpServers"])
 
     def test_deterministic_rebuild(self):
         tmp2 = tempfile.TemporaryDirectory()
