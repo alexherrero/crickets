@@ -53,6 +53,33 @@ class Primitive:
 
 
 @dataclass
+class Enhance:
+    """A soft-composition edge: this plugin augments `group` (optionally its
+    `capability`) when both are installed. Declarative metadata — the runtime
+    engages via a capability probe, not a host primitive. Does NOT imply a hard
+    dependency (that is `requires`)."""
+    group: str
+    capability: str | None
+    effect: str
+
+
+def parse_enhance(entry) -> "Enhance":
+    """Normalize one `group.yaml` `enhances:` entry. Accepts the string shorthand
+    (`enhances: [other-group]`) or the dict form (`{group, capability?, effect}`).
+    Lenient — `lint_src.py` validates the result."""
+    if isinstance(entry, str):
+        return Enhance(group=entry, capability=None, effect="")
+    if isinstance(entry, dict):
+        cap = entry.get("capability")
+        return Enhance(
+            group=str(entry.get("group", "")),
+            capability=str(cap) if cap is not None else None,
+            effect=str(entry.get("effect", "")),
+        )
+    return Enhance(group="", capability=None, effect="")  # malformed → lint flags
+
+
+@dataclass
 class Group:
     slug: str
     name: str
@@ -62,6 +89,10 @@ class Group:
     standalone: bool
     primitives: list[Primitive] = field(default_factory=list)
     manifest: Path | None = None
+    # soft-composition fields appended (keep positional order stable for callers
+    # that build Group(..., primitives) positionally — e.g. the emit tests)
+    enhances: list[Enhance] = field(default_factory=list)
+    capabilities: list[str] = field(default_factory=list)
 
     def supports(self, host: str) -> bool:
         """A group targets a host if any of its primitives do."""
@@ -80,6 +111,8 @@ def load_groups(src: Path) -> list[Group]:
         gy = gd / "group.yaml"
         meta = yaml.safe_load(gy.read_text(encoding="utf-8")) or {} if gy.exists() else {}
         requires = list(meta.get("requires") or [])
+        enhances = [parse_enhance(e) for e in (meta.get("enhances") or [])]
+        capabilities = [str(c) for c in (meta.get("capabilities") or [])]
         group = Group(
             slug=gd.name,
             name=meta.get("name", gd.name),
@@ -87,6 +120,8 @@ def load_groups(src: Path) -> list[Group]:
             category=meta.get("category", "Coding"),
             requires=requires,
             standalone=bool(meta.get("standalone", not requires)),
+            enhances=enhances,
+            capabilities=capabilities,
             manifest=gy if gy.exists() else None,
         )
         for kind, (glb, name_of) in PRIMITIVE_KINDS.items():

@@ -16,10 +16,14 @@ One per `src/<group>/`. The group **slug** is the folder name (not a field).
 | `name` | **yes** | string | Human-readable plugin name (marketplace `displayName`). |
 | `description` | **yes** | string | One-line plugin description. |
 | `category` | no | string | Marketplace category (e.g. `Coding`). Default: `Coding`. |
-| `requires` | no | list of group slugs | Other groups this plugin depends on. Default: `[]`. Each entry must be an existing `src/<slug>/`. |
+| `requires` | no | list of group slugs | Other groups this plugin depends on (**hard** dependency). Default: `[]`. Each entry must be an existing `src/<slug>/`. |
 | `standalone` | **yes** | bool | Whether the plugin is independently installable (#42 dual-mode). |
+| `capabilities` | no | list of strings | The capabilities this plugin offers (e.g. `[setup, plan, work, review, release, bugfix]`), so other plugins' `enhances:` can target one by name. Default: `[]`. |
+| `enhances` | no | list | **Soft** composition: groups this plugin augments when both are installed. Each entry is either a group slug (shorthand) or `{group, capability?, effect}`. Default: `[]`. Declarative metadata — the runtime engages via a capability probe, not a host primitive. |
 
 **Invariant (lint-enforced):** `standalone: true` ⟺ `requires: []`. A plugin that requires another is *integrated*, not standalone; one that requires nothing is standalone. (`requires` non-empty ⇒ `standalone: false`.)
+
+**`enhances` is orthogonal to `requires`/`standalone`.** It is a *soft* relationship — the plugin works without the target and merely augments it when present — so a `standalone: true` plugin may carry `enhances:` without violating the invariant. `enhances` never implies a hard dependency. (Validation lands in `lint_src.py` — task 2.)
 
 ### Example — `src/github-ci/group.yaml`
 
@@ -39,6 +43,29 @@ description: Scan diffs/working tree for personal information before commit or p
 category: Coding
 requires: []
 standalone: true
+```
+
+### Example — soft composition (`enhances` + `capabilities`)
+
+The enhancee declares what it offers; the enhancer declares what it augments. Both stay `standalone: true` — no hard dependency.
+
+```yaml
+# src/developer-workflows/group.yaml — declares its capabilities
+name: Developer Workflows
+requires: []
+standalone: true
+capabilities: [setup, plan, work, review, release, bugfix]
+```
+
+```yaml
+# src/code-review/group.yaml — augments developer-workflows' `review` capability
+name: Code Review
+requires: []
+standalone: true
+enhances:
+  - group: developer-workflows
+    capability: review
+    effect: "/review dispatches the adversarial reviewers"
 ```
 
 ## Primitive frontmatter

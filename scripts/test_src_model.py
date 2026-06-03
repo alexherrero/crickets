@@ -64,6 +64,48 @@ class TestSrcModel(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             self.assertEqual(src_model.load_groups(Path(t) / "nope"), [])
 
+    def test_backcompat_no_enhances_capabilities(self):
+        # existing groups carry neither field → both default to empty lists
+        by = {g.slug: g for g in src_model.load_groups(_ROOT / "src")}
+        for slug in ("developer", "pii", "wiki", "github-ci"):
+            self.assertEqual(by[slug].enhances, [])
+            self.assertEqual(by[slug].capabilities, [])
+
+    def test_enhances_and_capabilities_roundtrip(self):
+        with tempfile.TemporaryDirectory() as t:
+            src = Path(t) / "src"
+            (src / "wf").mkdir(parents=True)
+            (src / "wf" / "group.yaml").write_text(
+                "name: WF\nrequires: []\nstandalone: true\n"
+                "capabilities: [review, work]\n", encoding="utf-8")
+            # enhancer A — dict form, capability-targeted
+            (src / "cr").mkdir(parents=True)
+            (src / "cr" / "group.yaml").write_text(
+                "name: CR\nrequires: []\nstandalone: true\n"
+                "enhances:\n  - group: wf\n    capability: review\n"
+                "    effect: dispatches reviewers\n", encoding="utf-8")
+            # enhancer B — string shorthand
+            (src / "sf").mkdir(parents=True)
+            (src / "sf" / "group.yaml").write_text(
+                "name: SF\nrequires: []\nstandalone: true\n"
+                "enhances: [wf]\n", encoding="utf-8")
+            by = {g.slug: g for g in src_model.load_groups(src)}
+            # the enhancee's declared capabilities
+            self.assertEqual(by["wf"].capabilities, ["review", "work"])
+            self.assertEqual(by["wf"].enhances, [])
+            # dict-form enhance round-trips group + capability + effect
+            self.assertEqual(len(by["cr"].enhances), 1)
+            e = by["cr"].enhances[0]
+            self.assertEqual((e.group, e.capability, e.effect),
+                             ("wf", "review", "dispatches reviewers"))
+            # string-shorthand enhance: group only, capability None
+            self.assertEqual(len(by["sf"].enhances), 1)
+            self.assertEqual(by["sf"].enhances[0].group, "wf")
+            self.assertIsNone(by["sf"].enhances[0].capability)
+            # standalone + enhances coexist (invariant untouched)
+            self.assertTrue(by["cr"].standalone)
+            self.assertEqual(by["cr"].requires, [])
+
 
 if __name__ == "__main__":
     unittest.main()
