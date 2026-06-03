@@ -8,9 +8,7 @@ body:
       value: |
         This template auto-applies the `roadmap` label so the Issues tab filter `label:roadmap` surfaces it cleanly.
 
-        **Project enrollment** depends on whether the project surface split has fired:
-        - **Pre-split** (today): the agent enrolls this in the agentm Project (https://github.com/users/alexherrero/projects/2) under bucket ③ or ④.
-        - **Post-split** (when V4 closes + #40 ships): enrollment moves to the new crickets Project. See `ROADMAP-MASTER.md § Project surface split` in the vault.
+        **Project enrollment:** the agent enrolls this in the [crickets Project](https://github.com/users/alexherrero/projects/5) (Crickets v3.0 plugin architecture + Crickets v3.x bundle catalog). Cross-project dependencies wire to the sister [agentm Project](https://github.com/users/alexherrero/projects/2) via cross-repo sub-issues per ROADMAP-MASTER § Project surface split.
 
   - type: dropdown
     id: type

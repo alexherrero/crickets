@@ -7,9 +7,13 @@
 blank_issues_enabled: false
 
 contact_links:
-  - name: 🗺️ View the agentm Project (pre-split)
+  - name: 🗺️ View the crickets Project
+    url: https://github.com/users/alexherrero/projects/5
+    about: Roadmap-tracked crickets work (Crickets v3.0 plugin architecture + Crickets v3.x bundle catalog + Backlog + Ideas) lives here. Use the Roadmap Item template above to file a new entry.
+
+  - name: 🛣️ View the agentm Project (memory/harness engine arc)
     url: https://github.com/users/alexherrero/projects/2
-    about: Today, crickets-track items (Crickets v3.0 + v3.x bundles) live in the agentm Project under buckets ③ and ④. Post project surface split (when V4 closes + #40 ships), this will move to a dedicated crickets Project.
+    about: Sister project tracking V0 → V7 + FRIDAY + Hardening + Operator-personal. Cross-project dependencies wire up via cross-repo sub-issues.
 
   - name: 📖 Read ROADMAP-MASTER (governance + bucket order)
     url: https://github.com/alexherrero/crickets/blob/main/wiki/Home.md
