@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > **Status:** initial publication (v0.1) — 2026-05-26. Paired with plan #18 close.
-> **Position in arc:** companion to [`agent-memory-evolution.md`](agent-memory-evolution.md). That doc covers the V1 → V6 evolution of Agent Memory; this doc covers the V4 architectural shift — from per-repo harness to **device-wide agentic OS**.
+> **Position in arc:** companion to [`agent-memory-evolution.md`](agent-memory-evolution.md). That doc covers the V1 → V8 evolution of Agent Memory; this doc covers the V4 architectural shift — from per-repo harness to **device-wide agentic OS**.
 > **Lifecycle:** updated on every qualifying release per the operator's HLD-update convention. See **Lifecycle** at the bottom.
 
 ## Goals
@@ -13,12 +13,12 @@ This design locks the V4 shape:
 
 1. Customizations install device-wide to `~/.claude/` (skills, sub-agents, hooks, slash commands). One install per machine; available in every project.
 2. Harness state moves from `<project>/.harness/` to `<vault>/projects/<slug>/_harness/`. Repos stay clean — no gitignored harness clutter; multi-device access via Obsidian sync.
-3. Project resolution defaults to cwd → vault slug, with a future-ready resolver chain so V5/V6 can add non-coding anchors (house projects, vacation planning, research) without breaking V4 code.
+3. Project resolution defaults to cwd → vault slug, with a future-ready resolver chain so V6/V7 can add non-coding anchors (house projects, vacation planning, research) without breaking V4 code.
 4. First conversation in a new project auto-detects what the project is + proposes a configuration. No separate `setup-project.sh` script.
 5. Vault is canonical for context, state, drafts; only final published outputs leave the vault.
-6. The vault holds context for **any subject the operator cares about** — not just projects. Cross-cutting content (people, conversations, ad-hoc captures, web snippets, correspondence) gets a first-class home alongside `projects/`. V4 sets the device-wide foundation + vault-as-canonical-context principle; V5 builds the explicit content shapes (project type taxonomy + non-project content layers).
+6. The vault holds context for **any subject the operator cares about** — not just projects. Cross-cutting content (people, conversations, ad-hoc captures, web snippets, correspondence) gets a first-class home alongside `projects/`. V4 sets the device-wide foundation + vault-as-canonical-context principle; V6 builds the explicit content shapes (project type taxonomy + non-project content layers).
 
-Build work for #1–#5 falls out into V4 #26 (vault-backed state), V4 #30 (global-install + first-run vault detection), V4 #32 (auto-detect + auto-configure), V4 #35 (documenter vault-context resolution), and V4 #36 (agentm/crickets reorganization) — all sequenced after this design pass (V4 #31) locks. Goal #6 lands in V5 (non-project content shapes + project type taxonomy together).
+Build work for #1–#5 falls out into V4 #26 (vault-backed state), V4 #30 (global-install + first-run vault detection), V4 #32 (auto-detect + auto-configure), V4 #35 (documenter vault-context resolution), and V4 #36 (agentm/crickets reorganization) — all sequenced after this design pass (V4 #31) locks. Goal #6 lands in V6 (non-project content shapes + project type taxonomy together).
 
 ## Background
 
@@ -38,6 +38,9 @@ The architectural principle that makes this work is **vault-as-canonical-context
 
 ### Vault-as-canonical-context
 
+> [!NOTE]
+> **Amended 2026-06-03 (V5 — the unbundling).** This principle is **generalized, not retired.** The memory engine becomes *storage-agnostic*: its default backing is **device-local** (`~/.agentm/memory/`); the Obsidian vault becomes a *backing plugin* (`obsidian-vault`). For the operator the vault stays canonical — they install that plugin, and the existing vault is conserved through a live expand→parallel-run→contract cutover, never a flag day. The general form is **"your *configured* storage backing is canonical."** The `[[vault-as-canonical-context]]` always-load convention is amended in lockstep. Full architecture: [`memory-os-architecture.md`](memory-os-architecture.md). *(Arc note: V5 now denotes this shift; the former V5 (indexed retrieval) → V6 and former V6 (dreaming) → V7. References below that predate this entry use the old numbering, pending the renumber sweep.)*
+
 Per [[vault-as-canonical-context]] (an always-load convention as of 2026-05-26):
 
 The Agent Memory vault is the canonical home for all context, state, drafts, knowledge, and working artifacts. Outputs leave the vault only for final published consumption — repository READMEs, wiki published pages, GitHub release notes, source code in repos. The act of publishing is **promote from vault → repo**, not "create directly in repo." The vault retains the context + a copy/reference of its outputs for later retrieval.
@@ -46,8 +49,8 @@ This principle drives the rest of the architecture:
 
 - State migration (V4 #26) moves harness state INTO the vault because state is context the agent needs.
 - Documenter vault-context resolution (V4 #35) reads context from the vault when generating outputs.
-- V5 indexed retrieval relies on EVERYTHING being in one canonical place — without that, no useful index.
-- V6 dreaming consolidates over the vault contents; same prerequisite.
+- V6 indexed retrieval relies on EVERYTHING being in one canonical place — without that, no useful index.
+- V7 dreaming consolidates over the vault contents; same prerequisite.
 
 ### Operator-in-the-loop preserved
 
@@ -55,7 +58,7 @@ Device-wide ≠ autonomous. The A3 permeable boundary — operator confirms vaul
 
 ### Markdown-canonical + filesystem-only
 
-State in vault is markdown files in directories. No database (V5 adds an index ON TOP of markdown, never replacing it). The vault stays human-readable, scriptable, GDrive-syncable, Obsidian-browsable.
+State in vault is markdown files in directories. No database (V6 adds an index ON TOP of markdown, never replacing it). The vault stays human-readable, scriptable, GDrive-syncable, Obsidian-browsable.
 
 ### Per-cwd runtime ephemeral stays per-cwd
 
@@ -108,12 +111,12 @@ DEVICE-WIDE (one install per machine)              VAULT-BACKED (per-project sta
 ├── ... other Google-shipped plugins ...
 └── example-plugin/   ← from agentm post-V4 #36
 
-VAULT NON-PROJECT CONTENT — V4 has hints; V5 designs concretely
+VAULT NON-PROJECT CONTENT — V4 has hints; V6 designs concretely
 <AgentMemory>/personal-private/
 ├── _always-load/        ← operator conventions
-├── _inbox/              ← reflection candidates today; V5+ extends to web-clips, email, ad-hoc captures
+├── _inbox/              ← reflection candidates today; V6+ extends to web-clips, email, ad-hoc captures
 ├── domains/             ← domain knowledge (current: homelab/)
-└── (V5+ additions:)
+└── (V6+ additions:)
     ├── people/          ← per-person context: notes, correspondence refs, conversation archives
     ├── conversations/   ← cross-project conversation archives (chat exports, meeting notes)
     └── topics/          ← cross-cutting themes (alternative or complement to domains/)
@@ -141,7 +144,7 @@ Per design call #7 + the resolver-chain abstraction in task 4 prep:
 6. `git remote get-url origin` → basename → same vault lookup.
 7. `None` — no signal. Callers either graceful-skip OR trigger auto-detect bootstrap (V4 #32).
 
-**v1 always returns `type: "coding"`.** V5 reads `type:` from `_index.md` frontmatter and supports `build | vacation | research | ...` per the project type taxonomy (a V5 ROADMAP item).
+**v1 always returns `type: "coding"`.** V6 reads `type:` from `_index.md` frontmatter and supports `build | vacation | research | ...` per the project type taxonomy (a V6 ROADMAP item).
 
 When resolution returns `None`, the agent in a session triggers auto-detect bootstrap (next section). When it succeeds, every downstream skill/hook/command gets a stable `{slug, type, vault_path}` to operate against.
 
@@ -216,7 +219,7 @@ When `MEMORY_VAULT_PATH` is unset OR points at a non-existent path, the installe
 
 If found, propose to operator. If not found, prompt: *"Where's your vault? Or do you not have one yet?"* If no vault, suggest a recommended path + link to `Set-Up-AgentMemory-Vault.md`. Operator can also defer with graceful-skip mode (memory-coupled features dormant until vault is configured later).
 
-Full iCloud Drive sync semantics (conflict-file naming, offline behavior) finalize in V6; v1 stubs detection.
+Full iCloud Drive sync semantics (conflict-file naming, offline behavior) finalize in V7; v1 stubs detection.
 
 ### Auto-detect bootstrap on first session in unconfigured project
 
@@ -232,7 +235,7 @@ Flow on SessionStart:
 
 **Default-all-enabled** per operator preference. Detection rules surface RATIONALE for why each skill is on; operator opts out per skill if desired.
 
-10 initial detection rules ship: `R-wiki` (enables diataxis-author), `R-changelog`+`R-pkg-manifest` (enables ship-release), `R-dependabot` (enables dependabot-fixer), `R-pii` (enables pii-scrubber), `R-tests` (ensures evidence-tracker), `R-harness` (bypass), `R-pkg-scripts` (informs kill-switch + steer), `R-vault-content` (memory-* hooks), `R-design` (enables design skill), `R-non-coding` (V5 type-aware enablement).
+10 initial detection rules ship: `R-wiki` (enables diataxis-author), `R-changelog`+`R-pkg-manifest` (enables ship-release), `R-dependabot` (enables dependabot-fixer), `R-pii` (enables pii-scrubber), `R-tests` (ensures evidence-tracker), `R-harness` (bypass), `R-pkg-scripts` (informs kill-switch + steer), `R-vault-content` (memory-* hooks), `R-design` (enables design skill), `R-non-coding` (V6 type-aware enablement).
 
 Detection rules extensible — operator can drop custom rules at `~/.config/agentm/detection-rules.d/<name>.py`.
 
@@ -307,21 +310,23 @@ This design unlocks the rest of the V4 line:
 - **V4 #32** auto-detect builds on #30 (skills available device-wide) + #35 (documenter generates propose-config text).
 - **V4 #33** (cleanup) + **V4 #34** (operator aesthetic pass) follow once foundations are solid.
 - **V4 #25** audit reframes as post-build — audits external sources against the new model, not the per-repo predecessor.
-- **V4 #28** (FRIDAY-style) gets its full payoff after V5 retrieval + V6 multi-surface land.
+- **V4 #28** (FRIDAY-style) gets its full payoff after V6 retrieval + V7 multi-surface land.
 
-V5 prepares for indexed retrieval — vault-as-canonical-context (this design's principle) is what makes V5 work. V6 prepares for dreaming + multi-surface — same dependency chain.
+V6 prepares for indexed retrieval — vault-as-canonical-context (this design's principle) is what makes V6 work. V7 prepares for dreaming + multi-surface — same dependency chain.
 
-**Non-project vault content (V5 item).** Project content lives in `<vault>/projects/<slug>/` per V4. Non-project content — people, conversations, web-clips, email correspondence, ad-hoc captures — lands in `<vault>/personal-private/` under sub-folders to be designed in a new V5 ROADMAP item (*Non-project vault content shapes*). The V4 architecture supports this without modification: vault-as-canonical-context covers ALL content; the V5 retrieval index works over the whole vault, not just projects; V6 dreaming consolidates across everything; V6 multi-surface enables ingestion via web-hosted agents (send a snippet from a browser → vault inbox → agent triages). V4 builds the foundation; V5 builds the explicit content shapes (project type taxonomy + non-project layers); V6 enables cross-surface access + ingestion.
+**Non-project vault content (V6 item).** Project content lives in `<vault>/projects/<slug>/` per V4. Non-project content — people, conversations, web-clips, email correspondence, ad-hoc captures — lands in `<vault>/personal-private/` under sub-folders to be designed in a new V6 ROADMAP item (*Non-project vault content shapes*). The V4 architecture supports this without modification: vault-as-canonical-context covers ALL content; the V6 retrieval index works over the whole vault, not just projects; V7 dreaming consolidates across everything; V7 multi-surface enables ingestion via web-hosted agents (send a snippet from a browser → vault inbox → agent triages). V4 builds the foundation; V6 builds the explicit content shapes (project type taxonomy + non-project layers); V7 enables cross-surface access + ingestion.
 
 ## Open questions
 
-Tracked in [`agentm/.harness/designs/v4-device-wide/12-open-questions.md`](https://github.com/alexherrero/agentm/blob/main/.harness/designs/v4-device-wide/12-open-questions.md) (operator-local). Each question has an explicit deferral target — V4 build plan, V5 plan time, V6 plan time, or operator preference. The list is not load-bearing for this HLD; build plans inherit it.
+Tracked in [`agentm/.harness/designs/v4-device-wide/12-open-questions.md`](https://github.com/alexherrero/agentm/blob/main/.harness/designs/v4-device-wide/12-open-questions.md) (operator-local). Each question has an explicit deferral target — V4 build plan, V6 plan time, V7 plan time, or operator preference. The list is not load-bearing for this HLD; build plans inherit it.
 
 ## Lifecycle
 
 Per the operator's [[hld-evolution-update-on-major-release]] convention, this HLD gets a new dated subsection added whenever a release introduces, changes, or locks a relevant design call.
 
 **Update history:**
+
+- **v0.8 — 2026-06-03 — V5 — the unbundling (agentm as Memory OS + plugin host).** Opens the V5 arc shift (design pass; no release tagged yet). agentm is repositioned as a **storage-agnostic memory engine + plugin host**; the engineering workflow, documentation, project-management, and storage backings unbundle into crickets native plugins that agentm dogfoods to develop itself. **Amends this HLD's vault-as-canonical-context principle** (see the §Vault-as-canonical-context NOTE): memory becomes storage-agnostic with a **device-local default** (`~/.agentm/memory/`); the Obsidian vault becomes a backing plugin (`obsidian-vault`); the operator's vault is conserved via an expand→parallel-run→contract cutover, never a flag day. Introduces a **second seam** (`memory↔storage`) alongside `memory↔process`. **Arc renumber (applied)**: former V5 (indexed) → **V6**, V6 (dreaming) → **V7**, V7 (collective memory) → **V8**; new **V5** = this shift. The arc HLD, this doc's body, and the `ROADMAP-AgentMemory*` files are renumbered; the GitHub Project (projects/2) version issues renumber alongside. Full architecture: the new companion HLD [`memory-os-architecture.md`](memory-os-architecture.md).
 
 - **v0.7 — 2026-05-28 — V4.7 — agentm v4.6.0 (single-repo) — Documenter vault-context resolution (V4 #35).** The documenter-side closure of V4 #26's state migration (this HLD's "State migration" section): with project state at `<vault>/projects/<slug>/`, the doc-touching customizations now read conventions + decisions from the vault instead of re-deriving. `harness_memory.py` gains a `documenter` recall pseudo-phase + `resolve_documenter_context(slug)` + a `documenter-context` CLI (rc `0`/`1`/`2`; `--format text|json`); the `documenter` sub-agent, `wiki-author` skill, and `diataxis-author` skill consume the bundle (pre-flight / preview-surface / convention-read respectively), graceful-skipping on vault-unreachable per the soft-dependency contract. Single-repo agentm v4.6.0 MINOR; crickets stays at v2.1.0 (HLD touchpoint only). **Dogfood + two fixes**: the documenter authored ADR 0007's Amendment 2026-05-28 via the resolver; the run surfaced a bug in this HLD's **"First-run vault detection"** design — the v4.5.1 probe matched the `.obsidian` marker at the parent Obsidian app-vault rather than the nested `AgentMemory/` MemoryVault (which carries the `_meta/repos.json` marker), splitting harness state across two roots. Fixed: `vault_path` corrected + state reconciled, plus a **v4.5.2-folded probe bugfix** (`scripts/vault_probe.py` rank+refine — prefer `_meta/repos.json` over `.obsidian`, and descend one level into a nested vault) so first-run detection now resolves a subfolder-nested vault correctly. Also tuned the documenter recall budget (4k→10k + `project_first` ordering so project decisions survive truncation). Commits: `da63046`, `fbb5b89`, `6090fc4`, `2dccf31`, `158e02b`+`2aac617`.
 
@@ -337,12 +342,14 @@ Per the operator's [[hld-evolution-update-on-major-release]] convention, this HL
 
 - **v0.1 — 2026-05-26**: initial publication, paired with plan #18 close.
 
-Future updates land here as the V4 build phases (#26, #30, #35, #32) ship + as V5/V6 work touches the architecture. A heavy operator-edit + reflection pass on the broader Agent Memory HLD set is scheduled for post-V5 close.
+Future updates land here as the V4 build phases (#26, #30, #35, #32) ship + as V6/V7 work touches the architecture. A heavy operator-edit + reflection pass on the broader Agent Memory HLD set is scheduled for post-V6 close.
 
 ## See also
 
-- [`agent-memory-evolution.md`](agent-memory-evolution.md) — the V1 → V6 evolution of Agent Memory (Agent M)
+- [`agent-memory-evolution.md`](agent-memory-evolution.md) — the V1 → V8 evolution of Agent Memory (Agent M)
 - [`agentm/.harness/ROADMAP-AgentMemoryV4.md`](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP-AgentMemoryV4.md) — V4 build sequencing
-- [`agentm/.harness/ROADMAP-AgentMemoryV5.md`](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP-AgentMemoryV5.md) — V5 indexed retrieval + lifecycle + types
-- [`agentm/.harness/ROADMAP-AgentMemoryV6.md`](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP-AgentMemoryV6.md) — V6 dreaming + multi-surface + extensible sidecars
+- [`agentm/.harness/ROADMAP-AgentMemoryV5.md`](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP-AgentMemoryV5.md) — V5 the unbundling (memory OS + plugin host; storage-agnostic; the two seams)
+- [`agentm/.harness/ROADMAP-AgentMemoryV6.md`](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP-AgentMemoryV6.md) — V6 indexed retrieval + lifecycle + types
+- [`agentm/.harness/ROADMAP-AgentMemoryV7.md`](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP-AgentMemoryV7.md) — V7 dreaming + multi-surface + extensible sidecars
+- [`agentm/.harness/ROADMAP-AgentMemoryV8.md`](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP-AgentMemoryV8.md) — V8 collective memory / multi-agent concurrency
 - crickets ADR 0012 (lands with plan #18 close) — locks the device-wide-by-default decision

@@ -47,8 +47,9 @@ This wiki is the contributor-facing documentation for Crickets itself. Every pag
 - [Purpose and scope](Purpose-And-Scope) — what this repo is for, what it's not.
 - [Cross-Repo Memory Protocol](Cross-Repo-Memory-Protocol) — how agentm reads from + writes to the toolkit-side `/memory` skill at phase boundaries.
 - [V3 Retrospective](v3-retrospective) — what shipped, what we learned, what's next (closes the V3 arc; ships with harness v3.0.0 + toolkit v1.0.0).
-- [Agent Memory Evolution: From ContextVault to V4](agent-memory-evolution) — V1→V4 HLD of the AgentMemory architecture (V3 ships with this release; V4 is roadmap-deferred).
+- [Agent Memory Evolution: From ContextVault to V7](agent-memory-evolution) — V1→V7 HLD of the AgentMemory architecture (V3 ships with this release; V4+ is roadmap-deferred).
 - [Device-Wide Architecture](device-wide-architecture) — V4 architectural shift from per-repo harness to device-wide agentic OS; rationale for the agentm/crickets split + which primitives live where.
+- [Memory-OS Architecture](memory-os-architecture) — **V5, the unbundling**: agentm becomes a storage-agnostic memory OS + plugin host; the workflow/docs/PM/storage capabilities unbundle into crickets plugins. The `memory↔process` + `memory↔storage` seams, the device-local default, and the vault-conserving cutover.
 
 ### Architecture decisions
 

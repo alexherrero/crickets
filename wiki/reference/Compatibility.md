@@ -60,7 +60,7 @@ Antigravity 2.0 / agy hooks are **Python decorators** registered at agent-creati
 
 Antigravity 2.0 / agy triggers — the host's scheduled-task primitive — are **Python registration patterns**: `every(seconds, callback)`, `on_file_change(path, callback)`, custom async functions. Registered via `LocalAgentConfig(triggers=[...])`. No file-based config; trigger callbacks are Python code running in the agent process.
 
-**Crickets doesn't ship trigger primitives** in v1.2.0. The Agent M V6 roadmap (`agentm/.harness/ROADMAP-AgentMemoryV6.md`) contemplates a scheduled-sidecar framework as a future cross-host primitive; if/when that lands, it may also provide an Antigravity-trigger integration path. See agentm V6 for forward-looking context.
+**Crickets doesn't ship trigger primitives** in v1.2.0. The Agent M V7 roadmap (`agentm/.harness/ROADMAP-AgentMemoryV7.md`) contemplates a scheduled-sidecar framework as a future cross-host primitive; if/when that lands, it may also provide an Antigravity-trigger integration path. See agentm V7 for forward-looking context. *(This was the V6/dream-mode roadmap before the 2026-06-03 V5-unbundling arc renumber.)*
 
 ### Multi-agent orchestration gap
 
