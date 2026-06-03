@@ -25,6 +25,7 @@
 - [Agent Memory Evolution V1→V7](agent-memory-evolution)
 - [Device-Wide Architecture](device-wide-architecture)
 - [Memory-OS Architecture (V5)](memory-os-architecture)
+- [Developer Plugin Suite (V5 ④)](developer-plugin-suite)
 
 **Decisions**
 - [0001 — crickets purpose](0001-crickets-purpose)
