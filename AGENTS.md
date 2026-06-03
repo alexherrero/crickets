@@ -23,15 +23,17 @@ This repo is a sibling to [`agentm`](https://github.com/alexherrero/agentm). The
 | `templates/hooks/` | Hook templates installed into target projects (e.g. `pre-push`) |
 | `wiki/` | Diátaxis-shaped dogfood docs |
 
-## How to use it (when installer lands)
+## How to install
 
-Customizations install into a target project's host-specific paths (`.claude/`, `.agent/`, `.gemini/`) via:
+Crickets ships as **native host plugins** generated from `src/` into committed `dist/`. Install with the one-liner, the marketplace, or a manual `--plugin-dir`:
 
 ```bash
-bash /path/to/crickets/install.sh <target-project>
+curl -fsSL https://raw.githubusercontent.com/alexherrero/crickets/main/bootstrap.sh | bash
+# or one word from GitHub on Claude Code:
+claude plugin marketplace add alexherrero/crickets && claude plugin install developer@crickets
 ```
 
-The installer reads each customization's YAML frontmatter manifest, dispatches each primitive to the right host path based on `supported_hosts`, and (unless `--no-pre-push-hook` is passed) installs the PII pre-push hook into the target's `.git/hooks/pre-push`.
+Full detail (three modes × both hosts): [Install crickets plugins](https://github.com/alexherrero/crickets/wiki/Install-Into-Project). The v2.x `install.sh` dispatcher was retired in v3.0 ([ADR 0014](https://github.com/alexherrero/crickets/wiki/0014-install-decoupling)).
 
 ## Conventions
 
@@ -39,7 +41,7 @@ The installer reads each customization's YAML frontmatter manifest, dispatches e
 
 Three enforcement layers protect against personal information leaking into public commits:
 
-1. **Pre-push git hook** (`templates/hooks/pre-push`) — mandatory enforcer. Runs the PII detector against every push; blocks non-zero. Installed by `crickets/install.sh` into target projects' `.git/hooks/pre-push`.
+1. **Pre-push git hook** (`templates/hooks/pre-push`) — mandatory enforcer. Runs the PII detector against every push; blocks non-zero. Copy it into this repo's `.git/hooks/pre-push` (`cp templates/hooks/pre-push .git/hooks/ && chmod +x .git/hooks/pre-push`).
 2. **`pii-scrubber` skill** (`skills/pii-scrubber/`) — agent-facing interactive layer. Scans the current diff before commit, presents findings, offers redactions. Loops until clean (or user explicitly logs an override).
 3. **CI gate** (lands in task 4 of v0.1.0 plan) — defense in depth. Same script + gitleaks run on every push to GitHub.
 

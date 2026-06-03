@@ -1,11 +1,11 @@
 ---
 title: Crickets v3.0 — Native Host Plugins from a Single Source of Truth
-status: final
+status: launched
 visibility: published
 author: Alex Herrero
 contributors: []
 created: 2026-06-01
-updated: 2026-06-01
+updated: 2026-06-02
 last_major_revision: 2026-06-01
 prd:
 project:

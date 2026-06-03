@@ -25,132 +25,71 @@
 
 <p align="center"><sub>Works with Claude Code + Antigravity — <a href="https://github.com/alexherrero/crickets/wiki/Compatibility">see compatibility</a></sub></p>
 
-Inspired by the iconic noisy cricket from Men in Black, **Crickets** is a tactical suite of agent primitives engineered to punch far above their weight. Skills, hooks, sub-agents, bundles, MCP servers, slash commands, status lines, output styles, workflows, rules, snippets, settings-fragments. The execution engine behind [**Agent M**](https://github.com/alexherrero/agentm) — the primitives **you** carry into any project to make the system work.
+Inspired by the iconic noisy cricket from Men in Black, **Crickets** is a tactical suite of agent primitives engineered to punch far above their weight. Skills, sub-agents, hooks — grouped into **native plugins** for Claude Code and Antigravity, generated from a single source of truth. The execution engine behind [**Agent M**](https://github.com/alexherrero/agentm) — the primitives **you** carry into any project to make the system work.
 
 [**Agent M**](https://github.com/alexherrero/agentm) holds the phase-gated workflow, auto-recall, and on-disk state — the structural backend. Crickets holds everything that rides on top.
 
-> **Latest:** v2.1.0 (2026-05-27) — **Global install + `--scope user`** (paired pair #12 with [agentm v4.3.0](https://github.com/alexherrero/agentm/releases/tag/v4.3.0)). The first install-model overhaul per ROADMAP-V4 #30: `--scope user` flag added to `install.sh`; when passed, customizations install once into `~/.claude/` and every operator-repo on the device draws from there. Three new cross-repo Python helpers at `lib/install/python/` (byte-identical with agentm via `sync-lib.sh`): probe + source-mode symlinks + release-mode SHA256-aware copies. Default scope stays `project` for v2.x backward compat; flips to `user` in a future release once real-use validates. See [HLD V4.4](wiki/explanation/designs/agent-memory-evolution.md#v4-release-milestones) for the architectural arc.  
-> [Release notes](https://github.com/alexherrero/crickets/releases/latest) · [Agent M Evolution HLD](wiki/explanation/designs/agent-memory-evolution.md) · [Device-Wide Architecture HLD](wiki/explanation/designs/device-wide-architecture.md) · [CHANGELOG](CHANGELOG.md)
+> **Latest:** v3.0 — **Native host plugins from a single source of truth** ([#40](https://github.com/alexherrero/crickets/issues/40)). The bespoke `install.sh` dispatcher is gone: customizations are authored once under `src/<group>/`, and `scripts/generate.py` emits committed native plugins under `dist/` for both hosts, served via each host's marketplace. Install with one line, the marketplace, or a manual `--plugin-dir` — see [the install how-to](wiki/how-to/Install-Into-Project.md). The architecture + decisions live in [ADR 0013](wiki/explanation/decisions/0013-bundles-native-plugins.md) / [0014](wiki/explanation/decisions/0014-install-decoupling.md) / [0015](wiki/explanation/decisions/0015-partial-revision-36.md).
+> [Release notes](https://github.com/alexherrero/crickets/releases/latest) · [Native-plugins HLD](wiki/explanation/designs/crickets-v3-native-plugins.md) · [CHANGELOG](CHANGELOG.md)
 
 ## What's inside
 
-The current shipped catalog (see [wiki/reference/Customization-Types.md](wiki/reference/Customization-Types.md) for what each kind is). v2.0.0 narrows Crickets to base primitives — compound skills + memory hooks + the memory-idea-researcher + adapt-evaluator sub-agents + plugins + bundles all moved to [Agent M](https://github.com/alexherrero/agentm) (the bulk in the V4 #36 reorg; the memory-flow `adapt-evaluator` in V4 #23).
+Four functional **plugins** (groups), seven primitives — each authored once in `src/<group>/` and emitted as a native plugin per host.
 
-### Skills (2)
-
-| Skill | What it does |
+| Plugin | Primitives |
 |---|---|
-| [`pii-scrubber`](skills/pii-scrubber/SKILL.md) | Agent-facing PII guardrail — scans the current git diff before commit/push, presents findings, offers redactions. Companion to the pre-push hook. |
-| [`dependabot-fixer`](skills/dependabot-fixer/SKILL.md) | Fix breakage on a Dependabot PR. Reads failing CI logs, applies a bounded fix loop, pushes commits to the Dependabot branch, comments residual risks. Never merges. |
+| **developer** (base) | [`kill-switch`](src/developer/hooks/kill-switch/hook.md) + [`steer`](src/developer/hooks/steer/hook.md) + [`commit-on-stop`](src/developer/hooks/commit-on-stop/hook.md) hooks · [`evaluator`](src/developer/agents/evaluator.md) sub-agent |
+| **github-ci** | [`dependabot-fixer`](src/github-ci/skills/dependabot-fixer/SKILL.md) skill |
+| **pii** | [`pii-scrubber`](src/pii/skills/pii-scrubber/SKILL.md) skill |
+| **wiki** | [`diataxis-evaluator`](src/wiki/agents/diataxis-evaluator.md) sub-agent |
 
-### Sub-agents (3)
-
-| Sub-agent | What it does |
-|---|---|
-| [`evaluator`](agents/evaluator.md) | Read-only fresh-context grader. Caller supplies ARTIFACT + RUBRIC; returns PASS / NEEDS_WORK + per-rubric-item reasoning. Augments Agent M's `adversarial-reviewer` at `/review`. |
-| [`diataxis-evaluator`](agents/diataxis-evaluator.md) | Read-only grader for Diátaxis classification proposals. Caller supplies a candidate doc + proposed mode; returns PASS / NEEDS_WORK with per-criterion reasoning. Pairs with Agent M's `diataxis-author` skill. |
-
-### Hooks (3)
-
-| Hook | What it does |
-|---|---|
-| [`kill-switch`](hooks/kill-switch/hook.md) | Operator emergency halt for long-running Claude Code sessions. `touch .harness/STOP` → next `PreToolUse` halts the tool call; `rm` to resume. |
-| [`steer`](hooks/steer/hook.md) | Mid-run redirect without restart. Write `.harness/STEER.md` with a "do it this way instead" instruction → next `PreToolUse` injects the contents into agent context + renames to `STEER.consumed-<iso-ts>.md` for audit trail. |
-| [`commit-on-stop`](hooks/commit-on-stop/hook.md) | Safety-branch commit at session end. Fires on `Stop` event; dirty tree → `auto-save/<iso-ts>` branch with commit. Recovery via `git checkout auto-save/<ts>`. Never modifies the current branch; never pushes. |
-
-### Quality-Gates recipe
-
-The four-primitive set most Agent M `/work` sessions want — `evaluator` + `kill-switch` + `steer` + `commit-on-stop` — is the default install (`bash install.sh <target>`). See [wiki/how-to/Quality-Gates-Recipe.md](wiki/how-to/Quality-Gates-Recipe.md) for the operator-facing recipe. The `evidence-tracker` hook that previously rounded out this set moved to Agent M in v2.0.0; it's still part of the recommended quality-gates configuration when installed via `agentm`.
-
-## Why Crickets?
-
-|  | Cherry-picking from awesome-claude-code | Crickets |
-|---|---|---|
-| **Manifest schema** | None — each repo invents its own conventions; you read the README to figure out what each primitive expects | YAML frontmatter on every customization (`name` / `kind` / `supported_hosts` / `version`) validated by `scripts/validate-manifests.py` so the install layer can dispatch without guessing |
-| **Per-host dispatch** | Manual per-project copying into `.claude/` / `.agent/` paths; you maintain the mapping yourself | One install command reads each manifest's `supported_hosts` and writes to the right host-specific paths automatically |
-| **Sibling-reference bundles** | No bundle concept — pieces install individually; you remember the set | `--bundle quality-gates` installs `evaluator` + 4 base hooks in one shot; bundles point at standalone primitives so the source-of-truth stays in one place |
-| **PII guardrails** | Per-author rigor; no enforcement layer | Three layers: pre-push hook (blocks commits), `pii-scrubber` skill (interactive scrub), CI gate (`check-no-pii.sh --all` + `gitleaks-action`) |
-| **Paired-release coordination with Agent M** | Standalone repos; independent release cycles | Lockstep paired releases with `agentm`; release notes cross-link the sibling; CI green on both repos required at release commits |
-
-Crickets isn't a curated list of other people's primitives — it's a single repo with one schema, one installer, one PII policy, and one coordinated release cycle paired with Agent M.
+- **`kill-switch`** — operator emergency halt: `touch .harness/STOP` → next `PreToolUse` halts the tool call (Claude Code; advisory-only on Antigravity — see [Compatibility](wiki/reference/Compatibility.md)).
+- **`steer`** — mid-run redirect: write `.harness/STEER.md` → injected into context, then archived.
+- **`commit-on-stop`** — safety snapshot of a dirty tree to a side ref on `Stop`; never touches your branch.
+- **`evaluator`** / **`diataxis-evaluator`** — read-only fresh-context graders (PASS / NEEDS_WORK).
+- **`pii-scrubber`** / **`dependabot-fixer`** — the PII guardrail skill + the Dependabot-PR repair skill.
 
 ## How it works
 
 ```mermaid
 flowchart LR
-    M[Your manifest<br/>YAML frontmatter:<br/>name · kind · supported_hosts]
-    I[install.sh<br/>per-host dispatch]
-    C[.claude/skills/&lt;name&gt;/]
-    A[.agent/skills/&lt;name&gt;/]
-    H[.git/hooks/pre-push<br/>PII guardrail]
-
-    M --> I
-    I --> C
-    I --> A
-    I --> H
+    S[src/&lt;group&gt;/<br/>one source of truth<br/>kind · supported_hosts · requires]
+    G[scripts/generate.py<br/>deterministic emit]
+    CC[dist/claude-code/plugins/&lt;group&gt;]
+    AG[dist/antigravity/plugins/&lt;group&gt;]
+    S --> G
+    G --> CC
+    G --> AG
 ```
 
-One manifest, two host destinations (`claude-code` + `antigravity`). The installer reads each customization's `supported_hosts` and dispatches to the right paths per kind — see [wiki/reference/Per-Host-Paths](wiki/reference/Per-Host-Paths.md). Bundles use sibling-reference dispatch: a bundle is a manifest pointing at standalone primitives, not a copy of them.
+Author a primitive once under its group; the generator emits a native Claude Code plugin **and** a native Antigravity plugin per group, plus each host's marketplace manifest. The committed `dist/` is the distribution surface, and a CI gate (`generate.py check`) fails if it drifts from `src/`. Per-host divergences (hook events, dependency handling, the snippet→`rules/` gap) live in [Per-Host-Paths](wiki/reference/Per-Host-Paths.md) + [Compatibility](wiki/reference/Compatibility.md).
 
 ## Get started
 
-Crickets is one half of [Agent M](https://github.com/alexherrero/agentm). Install the harness alongside for the full system; Crickets also works standalone if you only want the customizations.
+Install the recommended set on whichever host(s) you have:
 
 ```bash
-# Clone as a sibling of agentm (recommended layout)
-cd ~/Antigravity
-git clone https://github.com/alexherrero/crickets.git
-git clone https://github.com/alexherrero/agentm.git   # the harness
-
-# Drop everything Crickets ships into a target project
-bash ~/Antigravity/crickets/install.sh /path/to/your-project
+curl -fsSL https://raw.githubusercontent.com/alexherrero/crickets/main/bootstrap.sh | bash
 ```
 
-<details>
-<summary>More install detail — bundles, individual skills/hooks, refresh, Windows</summary>
+Prefer the marketplace? One word from GitHub on Claude Code:
 
 ```bash
-# Or pull just one bundle / skill / hook
-bash ~/Antigravity/crickets/install.sh /path/to/your-project --bundle quality-gates
-bash ~/Antigravity/crickets/install.sh /path/to/your-project --skill memory
-bash ~/Antigravity/crickets/install.sh /path/to/your-project --hook kill-switch
-
-# Refresh (true-sync — wipe + recreate managed dirs)
-bash ~/Antigravity/crickets/install.sh --update /path/to/your-project
+claude plugin marketplace add alexherrero/crickets
+claude plugin install developer@crickets   # + github-ci@crickets, pii@crickets, wiki@crickets
 ```
 
-On Windows / PowerShell 7+:
-
-```powershell
-pwsh -NoProfile -File C:\path\to\crickets\install.ps1 C:\path\to\your-project
-```
-
-</details>
-
-Full install detail: [wiki/how-to/Install-Into-Project.md](wiki/how-to/Install-Into-Project.md). Flag reference: [wiki/reference/Installer-CLI.md](wiki/reference/Installer-CLI.md).
+All three install modes (one-liner / marketplace / manual `--plugin-dir`) per host: **[Install crickets plugins](wiki/how-to/Install-Into-Project.md)**. Hacking on a plugin? **[Develop a crickets plugin locally](wiki/how-to/Develop-A-Plugin-Locally.md)**.
 
 ## PII guardrails (foundational)
 
 This repo is **public** and holds personal customizations. Three enforcement layers protect against personal information leaking into commits:
 
-1. **Pre-push git hook** (`templates/hooks/pre-push`) — installed by Crickets' installer into target projects' `.git/hooks/pre-push`. Runs `check-no-pii.sh` against every push; blocks non-zero. **Mandatory enforcer.**
-2. **`pii-scrubber` skill** — agent-facing interactive layer. Scans the current diff, presents findings, offers redactions interactively.
-3. **CI gate** — `check-no-pii.sh --all` + the official `gitleaks-action` run on every push to GitHub.
+1. **Pre-push git hook** (`templates/hooks/pre-push`) — copy it into a repo's `.git/hooks/pre-push` (`cp templates/hooks/pre-push .git/hooks/ && chmod +x .git/hooks/pre-push`). Runs `check-no-pii.sh` against every push; blocks non-zero. **Mandatory enforcer** for the crickets repo itself.
+2. **`pii-scrubber` plugin** — agent-facing interactive layer. Scans the current diff, presents findings, offers redactions.
+3. **CI gate** — `check-no-pii.sh --all` + the official `gitleaks-action` run on every push.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the override protocol.
-
-## Adding your own customizations
-
-- [Tutorial 1 — Your first customization](wiki/tutorials/01-First-Customization.md) — 10-minute walkthrough
-- [Add a skill](wiki/how-to/Add-A-Skill.md)
-- [Add a bundle](wiki/how-to/Add-A-Bundle.md)
-- [Use the evaluator](wiki/how-to/Use-The-Evaluator.md)
-- [Use the base hooks](wiki/how-to/Use-The-Base-Hooks.md)
-- [Use the memory skill](wiki/how-to/Use-The-Memory-Skill.md)
-- [Use the design skill](wiki/how-to/Use-The-Design-Skill.md)
-- [Use the diataxis-author skill](wiki/how-to/Use-Diataxis-Author.md)
-- [Use the quality-gates bundle](wiki/how-to/Use-The-Quality-Gates-Bundle.md)
-- [Use the evidence-tracker hook](wiki/how-to/Use-The-Evidence-Tracker-Hook.md)
 
 ## Repo structure
 
@@ -159,49 +98,45 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the override protocol.
 
 ```text
 crickets/
-├── skills/             # standalone skills — pii-scrubber, dependabot-fixer, ship-release, design, memory, diataxis-author
-├── agents/             # standalone sub-agents — evaluator
-├── hooks/              # hooks — kill-switch, steer, commit-on-stop, evidence-tracker
-├── bundles/            # multi-primitive bundles — quality-gates, example-bundle
-├── commands/           # standalone slash commands (Claude Code + Antigravity surface)
-├── mcp-servers/        # MCP server configs + launchers
-├── status-line/        # Claude Code status-line customizations
-├── output-styles/      # Claude Code output-style customizations
-├── workflows/          # Antigravity-specific workflow primitives
-├── rules/              # Antigravity-specific rules
-├── snippets/           # fragments appended to AGENTS.md / CLAUDE.md at install time
-├── settings-fragments/ # JSON fragments merged into host settings.json files
-├── assets/             # Crickets brand assets — logo, banners, brand preview
-├── templates/          # scaffolding (e.g. hooks/pre-push) installed into target projects
-├── scripts/            # manifest validators + smoke tests + PII detector + CI helpers
-├── lib/                # shared install plumbing — byte-identical to Agent M's lib/install/
-├── wiki/               # Diátaxis-shaped docs (tutorials/, how-to/, reference/, explanation/)
+├── src/                # SOURCE OF TRUTH — src/<group>/ (group.yaml + skills/ agents/ hooks/ …)
+├── dist/               # GENERATED native plugins (committed) — dist/<host>/plugins/<group>/
+│   ├── claude-code/    #   + .claude-plugin/marketplace.json
+│   └── antigravity/    #   + .agents/plugins/marketplace.json
+├── .claude-plugin/     # repo-root marketplace pointer (one-word `marketplace add alexherrero/crickets`)
+├── .agents/plugins/    # repo-root Antigravity marketplace pointer
+├── scripts/            # generate.py (+ emit_*), lint_src.py, src_model.py, check-* gates, tests
+├── bootstrap.sh        # one-line installer (curl | bash)
+├── templates/          # scaffolding (e.g. hooks/pre-push)
+├── wiki/               # Diátaxis docs (tutorials/ how-to/ reference/ explanation/)
 ├── AGENTS.md           # universal instructions for any AGENTS.md-aware host
-├── CLAUDE.md           # Claude Code entry point — points back at AGENTS.md
-├── install.sh          # POSIX installer (Linux + Mac)
-└── install.ps1         # Windows installer (PowerShell 7+)
+└── CLAUDE.md           # Claude Code entry point — points back at AGENTS.md
 ```
 
 </details>
 
-## Architecture history
+## Adding + developing customizations
 
-Crickets grew across paired releases with Agent M. The full V1→V4 evolution of the memory system this toolkit feeds into lives in [Agent Memory Evolution](wiki/explanation/designs/agent-memory-evolution.md); the [V3 Retrospective](wiki/explanation/v3-retrospective.md) covers what shipped, what we learned, what's deferred.
+- [Tutorial 1 — Your first customization](wiki/tutorials/01-First-Customization.md)
+- [Develop a crickets plugin locally](wiki/how-to/Develop-A-Plugin-Locally.md) — the `src/` → generate → dogfood loop
+- [Add a skill](wiki/how-to/Add-A-Skill.md)
+- [Use the evaluator](wiki/how-to/Use-The-Evaluator.md) · [Use the base hooks](wiki/how-to/Use-The-Base-Hooks.md)
+- [Manifest Schema](wiki/reference/Manifest-Schema.md) — primitive frontmatter + `group.yaml`
 
 ## Status
 
-Currently shipping **v2.0.0** — V4 #36 reorg. Public surface narrowed to base primitives (2 skills + 2 sub-agents + 3 hooks). Compound skills + memory hooks + the memory-idea-researcher + adapt-evaluator sub-agents + plugins + bundles moved to [Agent M](https://github.com/alexherrero/agentm) (most in v4.0.0; the memory-flow `adapt-evaluator` in V4 #23) — see CHANGELOG migration notes for the upgrade path. Manifest schema, installer flags, and the 13-kind `kind:` enum remain stable (`kind: bundle` + `kind: plugin` are reserved-future in v2.0.0; no bundles or plugins ship). Internal surface (`scripts/`, `lib/install/`) remains pre-1.0 in spirit. See [CHANGELOG.md](CHANGELOG.md) and the [latest release](https://github.com/alexherrero/crickets/releases/latest). Crickets ships in lockstep with Agent M as paired releases.
+Shipping **v3.0** — native host plugins from a single source of truth (#40, [launched](wiki/explanation/designs/crickets-v3-native-plugins.md)). Four plugins / seven primitives prove the model on both hosts. The #36 skill relocations (`design`, `diataxis-author`, `ship-release`) + the full Developer-base composition + new bundles (Testing, Releasing, knowledge) are deferred to the v3.x catalog work ([ADR 0015](wiki/explanation/decisions/0015-partial-revision-36.md)). One known host limitation: Antigravity runs plugin hooks observe/side-effect-only, so `kill-switch`/`steer` are Claude-only-effective there ([ADR 0013](wiki/explanation/decisions/0013-bundles-native-plugins.md)). Ships in lockstep with Agent M. See [CHANGELOG.md](CHANGELOG.md).
 
 ## Contributing
 
-Self-tested on every push by three per-OS workflows (Linux, Mac, Windows). Run the same gates locally:
+Self-tested on every push by three per-OS workflows (Linux, Mac, Windows). Run the gates locally:
 
 ```bash
-bash scripts/smoke-install-bash.sh
-python3 scripts/validate-manifests.py
+python3 scripts/lint_src.py                                 # validate src/ (group.yaml + frontmatter)
+python3 scripts/generate.py check                           # committed dist/ in sync with src/
+( cd scripts && python3 -m unittest discover -p 'test_*.py' )
 bash scripts/check-syntax.sh
-bash scripts/check-lib-parity.sh
 bash scripts/check-no-pii.sh --all
+python3 scripts/check-wiki.py --strict
 ```
 
 Full guidance in [CONTRIBUTING.md](CONTRIBUTING.md).
