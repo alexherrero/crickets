@@ -5,6 +5,46 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.0.0] — 2026-06-02 — Native host plugins from a single source of truth
+
+**MAJOR — breaking.** Crickets stops shipping a bespoke installer. For two years the toolkit dispatched customizations into host paths with a custom `install.sh` that parsed per-primitive YAML and copied files, and it kept its `lib/install/` layer byte-identical with `agentm` via `sync-lib.sh` + a `check-lib-parity` gate. Both target hosts have since shipped native plugin systems that already do dispatch, dependency resolution, and distribution. v3.0 (#40) retires the dispatcher entirely: every customization is authored once under `src/<group>/`, and a deterministic generator emits **committed native plugins** — a Claude Code plugin *and* an Antigravity plugin per functional group — plus each host's marketplace. Installation moves onto the hosts' own machinery in three modes (one-liner / marketplace / manual). This also **decouples `agentm` and `crickets`**: the shared `lib/install/` byte-sync is gone, closing the re-audit [ADR 0006](https://github.com/alexherrero/crickets/blob/main/wiki/explanation/decisions/0006-gemini-cli-host-removal.md) anticipated — the two repos now release independently. Proven by dogfooding the generated plugins on Claude Code + Antigravity across `agentm` / `crickets` / `sherwood`. Architecture + rationale: the [native-plugins HLD](https://github.com/alexherrero/crickets/blob/main/wiki/explanation/designs/crickets-v3-native-plugins.md) (`launched`) + ADRs [0013](https://github.com/alexherrero/crickets/blob/main/wiki/explanation/decisions/0013-bundles-native-plugins.md) / [0014](https://github.com/alexherrero/crickets/blob/main/wiki/explanation/decisions/0014-install-decoupling.md) / [0015](https://github.com/alexherrero/crickets/blob/main/wiki/explanation/decisions/0015-partial-revision-36.md).
+
+### Added
+
+- **Source-of-truth tree (`src/<group>/`)** — folder-per-group layout; each group carries a `group.yaml` (`name` / `description` / `category` / `requires` / `standalone`) and its primitive folders (`skills/`, `agents/`, `hooks/`, …). Four groups, seven primitives: **developer** (evaluator agent + kill-switch / steer / commit-on-stop hooks), **github-ci** (dependabot-fixer), **pii** (pii-scrubber), **wiki** (diataxis-evaluator).
+- **The generator (`scripts/generate.py`)** — deterministic, stdlib-only `src/ → dist/`. Per-host emitters (`emit_claude.py`, `emit_antigravity.py`) write committed native plugins under `dist/<host>/plugins/<group>/` + each host's marketplace. `generate.py check` is a CI drift gate that fails if committed `dist/` diverges from a fresh build (replaces `check-lib-parity.sh`). `lint_src.py` validates the `src/` tree.
+- **Three install modes** — (1) one-line `bootstrap.sh` (`curl … | bash`, detects hosts, installs the generator-emitted default set); (2) marketplace, including the one-word `claude plugin marketplace add alexherrero/crickets` from GitHub, backed by a **repo-root marketplace pointer** that the `check` gate covers so it can't drift; (3) manual `claude --plugin-dir` / `agy plugin install <path>`.
+- **Docs** — ADRs 0013 (bundles = native plugins) / 0014 (#40 install-decoupling) / 0015 (#36 partial-revision); how-tos [Install crickets plugins](https://github.com/alexherrero/crickets/wiki/Install-Into-Project) + [Develop a crickets plugin locally](https://github.com/alexherrero/crickets/wiki/Develop-A-Plugin-Locally).
+
+### Changed
+
+- **Hooks resolve the workspace from the host's hook-input contract, not cwd.** Claude Code runs hooks from the project root; Antigravity runs them from the plugin dir and passes the workspace on stdin as `workspacePaths[]`. The developer hooks (`kill-switch` / `steer` / `commit-on-stop`) now read that contract (stdin JSON via `python3`, falling back to `$CLAUDE_PROJECT_DIR` / cwd) so they operate on the real workspace on both hosts. Regression-tested; fixed mid-release (`5c307a6`).
+- **Antigravity composition is thin-separate** (confirmed at dogfood — `agy` 1.0.2 exposes no native cross-plugin `dependencies`): Claude plugins carry native `dependencies`; AG plugins carry only their own primitives with `requires` documented in the marketplace.
+
+### Removed
+
+- **`install.sh` / `install.ps1`** (the per-host dispatch installer) and its smoke/integrity tests.
+- **`lib/install/`** and the `agentm`↔`crickets` byte-sync — `check-lib-parity.sh` + the CI `lib-parity` job + the `install-smoke` CI job. Parity is now `generate.py check`.
+- **`validate-manifests.py`** (vestigial after the dir migration; `lint_src.py` validates `src/`).
+- **The old top-level `skills/` / `agents/` / `hooks/` / `commands/` dirs** — migrated into `src/<group>/`.
+
+### Known limitations
+
+- **Antigravity plugin hooks are observe/side-effect-only** in this host build (`agy` 1.0.2 ignores a hook's exit code *and* never reads its stdout). So `kill-switch` / `steer` fire but cannot veto/inject on Antigravity — they are Claude-Code-only-effective there; `commit-on-stop` (a side-effect hook) works on both. Shipped + documented ([ADR 0013](https://github.com/alexherrero/crickets/blob/main/wiki/explanation/decisions/0013-bundles-native-plugins.md), [Compatibility](https://github.com/alexherrero/crickets/wiki/Compatibility)). Re-audit if Antigravity ships hook-veto support.
+
+### Migration
+
+- **From a v2.x `install.sh` install →** install the native plugins (`bash ~/Antigravity/crickets/bootstrap.sh`, or `claude plugin marketplace add alexherrero/crickets` + `claude plugin install <group>@crickets`; `agy plugin install <path>` on Antigravity), then remove any old `~/.claude/{skills,agents,hooks}` symlinks that pointed into the crickets clone. The pre-push PII hook is no longer installed by an installer — copy it in (`cp templates/hooks/pre-push .git/hooks/ && chmod +x .git/hooks/pre-push`).
+
+### Deferred (bucket ④, per ADR 0015)
+
+- The #36 skill relocations (`design` / `diataxis-author` / `ship-release`), the full Developer-base composition, and the new bundles (Testing / Releasing / knowledge). #40 proves the architecture on the existing primitives; the catalog build is the next bucket.
+
+### Cross-references
+
+- **`agentm` decoupled independently** (no paired release required — that's the point of this one): the auto-clone+bootstrap block removed from agentm's installer + `sync-lib.sh` patched local-only ([`9dc4189`](https://github.com/alexherrero/agentm/commit/9dc4189)); docs pointed at native install ([`21ab3ea`](https://github.com/alexherrero/agentm/commit/21ab3ea)). agentm keeps its own `lib/install/` and releases on its own cadence.
+- A cwd-portability hook bug found during the both-hosts dogfood was fixed via the full bugfix pipeline (`5c307a6`, two adversarial review passes).
+
 ## [v2.2.0] — 2026-05-30 — commit-on-stop: non-disruptive snapshot model
 
 **MINOR.** Behavior change (not a bug fix) to the `commit-on-stop` Stop hook: it no longer mutates the working tree or switches branches to record a safety commit. The v0.7.0 design stashed the dirty tree, created an `auto-save/<ts>` **branch**, checked out to it, committed, then checked back — which parked in-flight edits off the current branch on every Stop (multi-turn agents saw it as "my edits got reverted") and switched the branch for the *whole* working tree, making it unsafe the instant two agents — or an orchestrator and its sub-agents — share one tree. It could also abort mid-checkout when two Stop events collided in the same second. The rewrite records a **snapshot** instead: it builds a tree from the full dirty state (tracked + untracked, `.gitignore` honored) in a temporary index, `commit-tree`s it parented on HEAD, and publishes to the hidden side ref `refs/auto-save/<iso-ts>` via `update-ref` — never touching HEAD, the current branch, the index, or the working tree. Snapshots are concurrency-safe (independent Stop events write independent refs, even in a shared tree), stay out of `git branch`, auto-prune to the most recent 10, and recover via `git checkout refs/auto-save/<ts> -- .`. The fix is already live on source-mode installs (the hook is symlinked from this clone), so this release is distribution + release hygiene rather than an urgent functional change.
