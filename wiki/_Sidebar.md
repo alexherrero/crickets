@@ -26,6 +26,12 @@
 - [Device-Wide Architecture](device-wide-architecture)
 - [Memory-OS Architecture (V5)](memory-os-architecture)
 - [Developer Plugin Suite (V5 ④)](developer-plugin-suite)
+  - [enhances-schema](enhances-schema)
+  - [developer-workflows](developer-workflows)
+  - [developer-safety](developer-safety)
+  - [code-review](code-review)
+  - [auto-enable-runtime](auto-enable-runtime)
+  - [seed-retirement](seed-retirement)
 
 **Decisions**
 - [0001 — crickets purpose](0001-crickets-purpose)

@@ -50,7 +50,7 @@ This wiki is the contributor-facing documentation for Crickets itself. Every pag
 - [Agent Memory Evolution: From ContextVault to V7](agent-memory-evolution) — V1→V7 HLD of the AgentMemory architecture (V3 ships with this release; V4+ is roadmap-deferred).
 - [Device-Wide Architecture](device-wide-architecture) — V4 architectural shift from per-repo harness to device-wide agentic OS; rationale for the agentm/crickets split + which primitives live where.
 - [Memory-OS Architecture](memory-os-architecture) — **V5, the unbundling**: agentm becomes a storage-agnostic memory OS + plugin host; the workflow/docs/PM/storage capabilities unbundle into crickets plugins. The `memory↔process` + `memory↔storage` seams, the device-local default, and the vault-conserving cutover.
-- [Developer Plugin Suite](developer-plugin-suite) — **V5 bucket ④** (the dev-loop foundation): the `developer-workflows` · `developer-safety` · `code-review` plugins + the new `enhances:` soft-composition schema. Child design of Memory-OS Architecture.
+- [Developer Plugin Suite](developer-plugin-suite) — **V5 bucket ④** (the dev-loop foundation): the `developer-workflows` · `developer-safety` · `code-review` plugins + the new `enhances:` soft-composition schema. Child design of Memory-OS Architecture. `Status: final`, planned in 6 parts. See parts: [enhances-schema](enhances-schema), [developer-workflows](developer-workflows), [developer-safety](developer-safety), [code-review](code-review), [auto-enable-runtime](auto-enable-runtime), [seed-retirement](seed-retirement).
 
 ### Architecture decisions
 

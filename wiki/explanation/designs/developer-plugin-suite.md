@@ -236,3 +236,4 @@ Highly reversible. Each plugin is an additive native plugin — uninstall remove
 | 2026-06-03 | Initial draft created via `/design author`; Context filled (scope locked across the prior discussion: 3 plugins + `enhances:` schema). | draft |
 | 2026-06-03 | All sections drafted (10 sections + 11 QA sub-attrs); author signaled ready for review. | review |
 | 2026-06-03 | Approved as final (reviewed section-by-section during authoring). Unblocks `/design translate`. | final |
+| 2026-06-03 | Translated to 6 parts via `/design translate`: enhances-schema, developer-workflows, developer-safety, code-review, auto-enable-runtime, seed-retirement. | final |
