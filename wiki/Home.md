@@ -25,7 +25,8 @@ This wiki is the contributor-facing documentation for Crickets itself. Every pag
 
 ## 🔧 Trying to do something specific?
 
-- [Install crickets into a project](Install-Into-Project) — drop the shipped customizations into a target project.
+- [Install crickets plugins](Install-Into-Project) — three install modes (one-liner / marketplace / manual) across Claude Code + Antigravity.
+- [Develop a crickets plugin locally](Develop-A-Plugin-Locally) — the source → generate → dogfood → commit loop.
 - [Add a skill](Add-A-Skill) — add a new standalone skill.
 - [Quality-Gates-Recipe](Quality-Gates-Recipe) — operator-facing recipe for the 5-primitive quality-gates set (replaces the v1.x `quality-gates` bundle; `kind: bundle` reserved-future in v2.0.0).
 - [Use the evaluator](Use-The-Evaluator) — dispatch the `evaluator` sub-agent for PASS / NEEDS_WORK grading against a precise rubric.

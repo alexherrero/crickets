@@ -4,7 +4,8 @@
 - [1 — Your first customization](01-First-Customization)
 
 ### 🔧 How-to
-- [Install into a project](Install-Into-Project)
+- [Install plugins](Install-Into-Project)
+- [Develop a plugin locally](Develop-A-Plugin-Locally)
 - [Add a skill](Add-A-Skill)
 - [Use the evaluator](Use-The-Evaluator)
 - [Use the base hooks](Use-The-Base-Hooks)
