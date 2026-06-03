@@ -35,6 +35,9 @@
 - [0009 — evidence-tracker hook](0009-evidence-tracker-hook)
 - [0011 — Antigravity 2.0 host support](0011-antigravity-2-host-support)
 - [0012 — device-wide-by-default](0012-device-wide-by-default)
+- [0013 — bundles = native host plugins](0013-bundles-native-plugins)
+- [0014 — #40 install-decoupling](0014-install-decoupling)
+- [0015 — #36 partial-revision](0015-partial-revision-36)
 
 **Designs**
 - [MemoryVault — permanent agent memory](memoryvault)

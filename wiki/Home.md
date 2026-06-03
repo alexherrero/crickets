@@ -61,6 +61,9 @@ This wiki is the contributor-facing documentation for Crickets itself. Every pag
 - [ADR 0009 — evidence-tracker hook](0009-evidence-tracker-hook)
 - [ADR 0011 — Antigravity 2.0 host support](0011-antigravity-2-host-support)
 - [ADR 0012 — device-wide-by-default](0012-device-wide-by-default)
+- [ADR 0013 — bundles are native host plugins](0013-bundles-native-plugins)
+- [ADR 0014 — #40 install-decoupling](0014-install-decoupling)
+- [ADR 0015 — #36 partial-revision](0015-partial-revision-36)
 
 ### Designs
 
