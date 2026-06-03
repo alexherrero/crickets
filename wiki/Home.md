@@ -65,6 +65,7 @@ This wiki is the contributor-facing documentation for Crickets itself. Every pag
 - [ADR 0013 — bundles are native host plugins](0013-bundles-native-plugins)
 - [ADR 0014 — #40 install-decoupling](0014-install-decoupling)
 - [ADR 0015 — #36 partial-revision](0015-partial-revision-36)
+- [ADR 0016 — Project surface split](0016-project-surface-split)
 
 ### Designs
 
