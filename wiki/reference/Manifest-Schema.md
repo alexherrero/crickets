@@ -15,6 +15,45 @@ YAML frontmatter contract for every customization in `crickets`. Validated by `s
 | `install_scope` | enum string | optional | `user` \| `project` \| `either` (default: `either`) |
 | `deprecated` | string | optional | Lifecycle marker — reason for deprecation |
 
+## `group.yaml` (plugin-level manifest)
+
+One per `src/<group>/` source folder; describes the *plugin* (the group). The group **slug** is the folder name — never a field. Validated by `scripts/lint_src.py`. Source of truth: [`src/SCHEMA.md`](https://github.com/alexherrero/crickets/blob/main/src/SCHEMA.md).
+
+| Field | Required | Type | Meaning |
+|---|---|---|---|
+| `name` | **yes** | string | Human-readable plugin name (marketplace `displayName`). |
+| `description` | **yes** | string | One-line plugin description. |
+| `category` | no | string | Marketplace category (e.g. `Coding`). Default: `Coding`. |
+| `requires` | no | list of group slugs | Other groups this plugin depends on (**hard** dependency). Default: `[]`. Each entry must be an existing `src/<slug>/`. |
+| `standalone` | **yes** | bool | Whether the plugin is independently installable. |
+| `capabilities` | no | list of strings | The capabilities this plugin offers (e.g. `[setup, plan, work, review, release, bugfix]`), so other plugins' `enhances:` can target one by name. Default: `[]`. |
+| `enhances` | no | list | **Soft** composition: groups this plugin augments when both are installed. Each entry is either a group slug (shorthand) or `{group, capability?, effect}`. Default: `[]`. Declarative metadata — the runtime engages via a capability probe, not a host primitive. |
+
+**Invariant (lint-enforced):** `standalone: true` ⟺ `requires: []`. A plugin that requires another is *integrated*, not standalone; one that requires nothing is standalone. (`requires` non-empty ⇒ `standalone: false`.)
+
+**`enhances` is orthogonal to `requires`/`standalone`.** It is a *soft* relationship — the plugin works without the target and merely augments it when present — so a `standalone: true` plugin may carry `enhances:` without violating the invariant. `enhances` never implies a hard dependency.
+
+```yaml
+# src/developer-workflows/group.yaml — declares its capabilities
+name: Developer Workflows
+requires: []
+standalone: true
+capabilities: [setup, plan, work, review, release, bugfix]
+```
+
+```yaml
+# src/code-review/group.yaml — augments developer-workflows' `review` capability
+name: Code Review
+requires: []
+standalone: true
+enhances:
+  - group: developer-workflows
+    capability: review
+    effect: "/review dispatches the adversarial reviewers"
+```
+
+Both stay `standalone: true` — the enhancee declares what it offers, the enhancer declares what it augments, and neither incurs a hard dependency on the other.
+
 ## Standalone primitive (example: skill)
 
 File path: `skills/<name>/SKILL.md` (for skills; other kinds use `<kind>/<name>.<ext>` per [Per-Host Paths](Per-Host-Paths)).

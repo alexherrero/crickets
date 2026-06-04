@@ -24,7 +24,9 @@ Add the soft-composition mechanism to the crickets plugin schema — the foundat
 - **`enhances:`** on the *enhancer* — a list of `{group, capability?, effect}` entries declaring "when installed alongside `<group>`, I augment it (optionally its `<capability>`)." Keeps the enhancee open/extensible.
 - **`capabilities:`** on the *enhancee* — the list of capabilities a plugin offers (e.g. `[setup, plan, work, review, release, bugfix]`), so `enhances` entries can target one by name.
 
-Wire it through the generator chain: `src_model.py` (parse + model the fields), `lint_src.py` (validate), the emitters (carry into `dist/` metadata + the marketplace "works better with" render), and `bootstrap.sh` (suggest installing a declared enhancer). `enhances:` is **orthogonal to `requires:`/`standalone:`** — the `standalone: true ⟺ requires: []` invariant is preserved (it governs hard deps only).
+Wire it through the generator chain: `src_model.py` (parse + model the fields), `lint_src.py` (validate), and the emitters (carry into `dist/` metadata + the marketplace "works better with" render). `enhances:` is **orthogonal to `requires:`/`standalone:`** — the `standalone: true ⟺ requires: []` invariant is preserved (it governs hard deps only).
+
+> **Implemented 2026-06-03** across 4 tasks (`6906cae` model · `0fb654f` lint · `7e38716` emitters · the `Manifest-Schema.md` wiki ref). The `bootstrap.sh` install-time *enhancer suggestion* was **deferred to the `developer-safety` part** — it was premature/untestable here (no group declares `enhances` yet); it lands where the first real `enhances` edge exists. The marketplace already carries `enhances` (the discovery surface), so part 1's discovery story is complete.
 
 ## Dependencies
 
