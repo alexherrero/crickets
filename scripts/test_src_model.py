@@ -106,6 +106,34 @@ class TestSrcModel(unittest.TestCase):
             self.assertTrue(by["cr"].standalone)
             self.assertEqual(by["cr"].requires, [])
 
+    def test_command_discovery(self):
+        # `commands/*.md` are discovered as `command` primitives (the surface
+        # the developer-workflows phase commands ride on). Root is the .md file
+        # itself (like an agent), so the emitter copies the single file.
+        with tempfile.TemporaryDirectory() as t:
+            src = Path(t) / "src"
+            (src / "wf" / "commands").mkdir(parents=True)
+            (src / "wf" / "group.yaml").write_text(
+                "name: WF\nrequires: []\nstandalone: true\n", encoding="utf-8")
+            (src / "wf" / "commands" / "plan.md").write_text(
+                "---\nname: plan\nkind: command\n"
+                "supported_hosts: [claude-code, antigravity]\ndescription: d\n---\n"
+                "# plan\n", encoding="utf-8")
+            by = {g.slug: g for g in src_model.load_groups(src)}
+            prims = {p.name: p for p in by["wf"].primitives}
+            self.assertIn("plan", prims)
+            cmd = prims["plan"]
+            self.assertEqual(cmd.kind, "command")
+            self.assertEqual(cmd.root, src / "wf" / "commands" / "plan.md")
+            self.assertEqual(cmd.supported_hosts, ["claude-code", "antigravity"])
+
+    def test_real_tree_has_no_commands_yet(self):
+        # back-compat: no real group ships a command yet → discovery is a no-op
+        # on the committed tree (keeps `generate.py check` drift-free).
+        groups = src_model.load_groups(_ROOT / "src")
+        cmds = [p for g in groups for p in g.primitives if p.kind == "command"]
+        self.assertEqual(cmds, [])
+
 
 if __name__ == "__main__":
     unittest.main()

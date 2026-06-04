@@ -26,6 +26,7 @@ PRIMITIVE_KINDS = {
     "skill": ("skills/*/SKILL.md", lambda p: p.parent.name),
     "hook": ("hooks/*/hook.md", lambda p: p.parent.name),
     "agent": ("agents/*.md", lambda p: p.stem),
+    "command": ("commands/*.md", lambda p: p.stem),
 }
 KNOWN_KIND_DIRS = {"skills", "hooks", "agents", "commands", "mcp", "rules"}
 

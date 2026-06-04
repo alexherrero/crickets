@@ -177,6 +177,29 @@ class TestAntigravityEmitter(unittest.TestCase):
             self.assertNotIn("enhances", pj)
             self.assertNotIn("capabilities", pj)
 
+    def test_command_emitted(self):
+        # a discovered `command` primitive lands in the native commands/ subdir
+        # on Antigravity too; host-filtered (claude-only commands are skipped).
+        src_model = sys.modules["src_model"]
+        with tempfile.TemporaryDirectory() as t:
+            src = Path(t) / "src"
+            (src / "wf" / "commands").mkdir(parents=True)
+            (src / "wf" / "group.yaml").write_text(
+                "name: WF\ndescription: d\nstandalone: true\nrequires: []\n", encoding="utf-8")
+            (src / "wf" / "commands" / "plan.md").write_text(
+                "---\nname: plan\nkind: command\nsupported_hosts: [antigravity]\n"
+                "description: d\n---\n# plan\n", encoding="utf-8")
+            # a claude-only command must NOT reach the Antigravity plugin
+            (src / "wf" / "commands" / "ccionly.md").write_text(
+                "---\nname: ccionly\nkind: command\nsupported_hosts: [claude-code]\n"
+                "description: d\n---\n# ccionly\n", encoding="utf-8")
+            group = src_model.load_groups(src)[0]
+            dist = Path(t) / "dist"
+            emit_antigravity.AntigravityEmitter().emit_group(group, dist)
+            cmds = dist / "plugins" / "wf" / "commands"
+            self.assertTrue((cmds / "plan.md").exists())
+            self.assertFalse((cmds / "ccionly.md").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

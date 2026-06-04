@@ -163,6 +163,29 @@ class TestClaudeEmitter(unittest.TestCase):
             self.assertEqual(pj["enhances"][0]["group"], "wf")
             self.assertEqual(pj["enhances"][0]["capability"], "review")
 
+    def test_command_emitted(self):
+        # a discovered `command` primitive is copied into the native commands/
+        # subdir (the developer-workflows phase commands); host-filtered.
+        src_model = sys.modules["src_model"]
+        with tempfile.TemporaryDirectory() as t:
+            src = Path(t) / "src"
+            (src / "wf" / "commands").mkdir(parents=True)
+            (src / "wf" / "group.yaml").write_text(
+                "name: WF\ndescription: d\nstandalone: true\nrequires: []\n", encoding="utf-8")
+            (src / "wf" / "commands" / "plan.md").write_text(
+                "---\nname: plan\nkind: command\nsupported_hosts: [claude-code]\n"
+                "description: d\n---\n# plan\n", encoding="utf-8")
+            # an antigravity-only command must NOT reach the Claude plugin
+            (src / "wf" / "commands" / "agonly.md").write_text(
+                "---\nname: agonly\nkind: command\nsupported_hosts: [antigravity]\n"
+                "description: d\n---\n# agonly\n", encoding="utf-8")
+            group = src_model.load_groups(src)[0]
+            dist = Path(t) / "dist"
+            emit_claude.ClaudeEmitter().emit_group(group, dist)
+            cmds = dist / "plugins" / "wf" / "commands"
+            self.assertTrue((cmds / "plan.md").exists())
+            self.assertFalse((cmds / "agonly.md").exists())
+
 
 if __name__ == "__main__":
     unittest.main()
