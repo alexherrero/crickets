@@ -74,7 +74,8 @@ class TestClaudeEmitter(unittest.TestCase):
 
     def test_marketplace_lists_all_with_resolving_sources(self):
         mk = json.loads((self.cdist / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
-        self.assertEqual({p["name"] for p in mk["plugins"]}, {"developer", "pii", "github-ci", "wiki"})
+        self.assertEqual({p["name"] for p in mk["plugins"]},
+                         {"developer", "developer-workflows", "pii", "github-ci", "wiki"})
         for p in mk["plugins"]:
             self.assertEqual(p["source"], f"./plugins/{p['name']}")
             self.assertTrue((self.cdist / "plugins" / p["name"]).is_dir())
@@ -153,15 +154,17 @@ class TestClaudeEmitter(unittest.TestCase):
             group = src_model.load_groups(src)[0]
             dist = Path(t) / "dist"
             entry = emit_claude.ClaudeEmitter().emit_group(group, dist)
-            # marketplace entry carries both
+            # marketplace entry carries both (the discovery surface)
             self.assertEqual(entry["capabilities"], ["x"])
             self.assertEqual(entry["enhances"],
                              [{"group": "wf", "capability": "review", "effect": "dispatches"}])
-            # plugin.json carries them too (mirrors how `requires`→`dependencies` is in both)
+            # plugin.json stays THIN — Claude's plugin.json schema rejects
+            # unrecognized keys (`claude plugin validate`: 'Unrecognized key:
+            # "capabilities"'), so capabilities/enhances live in the marketplace
+            # entry ONLY, like Antigravity. Only `dependencies` is recognized.
             pj = json.loads((dist / "plugins" / "cr" / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
-            self.assertEqual(pj["capabilities"], ["x"])
-            self.assertEqual(pj["enhances"][0]["group"], "wf")
-            self.assertEqual(pj["enhances"][0]["capability"], "review")
+            self.assertNotIn("capabilities", pj)
+            self.assertNotIn("enhances", pj)
 
     def test_command_emitted(self):
         # a discovered `command` primitive is copied into the native commands/

@@ -17,6 +17,26 @@
       }
     },
     {
+      "capabilities": [
+        "setup",
+        "plan",
+        "work",
+        "review",
+        "release",
+        "bugfix"
+      ],
+      "category": "Coding",
+      "name": "developer-workflows",
+      "policy": {
+        "authentication": "ON_INSTALL",
+        "installation": "AVAILABLE"
+      },
+      "source": {
+        "path": "./dist/antigravity/plugins/developer-workflows",
+        "source": "local"
+      }
+    },
+    {
       "category": "Coding",
       "name": "github-ci",
       "policy": {

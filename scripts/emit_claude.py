@@ -58,10 +58,11 @@ class ClaudeEmitter(HostEmitter):
         }
         if group.requires:
             manifest["dependencies"] = sorted(group.requires)
-        if group.capabilities:
-            manifest["capabilities"] = list(group.capabilities)
-        if group.enhances:
-            manifest["enhances"] = enhances_to_json(group.enhances)
+        # NOTE: `capabilities`/`enhances` are NOT written to plugin.json — Claude's
+        # plugin.json schema rejects unrecognized keys (`claude plugin validate`:
+        # `root: Unrecognized key: "capabilities"`). Only `dependencies` (from
+        # `requires`) is a recognized key. The soft-composition metadata lives in
+        # the marketplace entry only (below), mirroring the Antigravity emitter.
         cp = plugin_dir / ".claude-plugin"
         cp.mkdir(parents=True, exist_ok=True)
         (cp / "plugin.json").write_text(dump_json(manifest), encoding="utf-8")

@@ -1,0 +1,6 @@
+name: Developer Workflows
+description: The phase-gated developer loop — /setup /plan /work /review /release /bugfix — extracted from agentm as a standalone native plugin. The base other dev plugins enhance.
+category: Coding
+requires: []
+standalone: true
+capabilities: [setup, plan, work, review, release, bugfix]

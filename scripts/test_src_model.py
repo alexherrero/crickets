@@ -34,8 +34,9 @@ class TestSrcModel(unittest.TestCase):
     def test_real_tree_shape(self):
         groups = src_model.load_groups(_ROOT / "src")
         by = {g.slug: g for g in groups}
-        self.assertEqual(set(by), {"developer", "github-ci", "pii", "wiki"})
-        # composition
+        self.assertEqual(set(by),
+                         {"developer", "developer-workflows", "github-ci", "pii", "wiki"})
+        # composition (the original four, unchanged)
         self.assertEqual(by["github-ci"].requires, ["developer"])
         self.assertEqual(by["wiki"].requires, ["developer"])
         self.assertEqual(by["pii"].requires, [])
@@ -44,7 +45,19 @@ class TestSrcModel(unittest.TestCase):
         # primitive counts: developer = 3 hooks + evaluator agent
         self.assertEqual(len(by["developer"].primitives), 4)
         self.assertEqual(len(by["pii"].primitives), 1)
-        self.assertEqual(sum(len(g.primitives) for g in groups), 7)
+        # the original four groups still hold 7 primitives between them (stable as
+        # developer-workflows grows across its build parts)
+        self.assertEqual(
+            sum(len(by[s].primitives) for s in ("developer", "github-ci", "pii", "wiki")), 7)
+        # developer-workflows (part 2/6): standalone, declares its capabilities,
+        # carries phase commands (setup/plan/work this part; review/release/bugfix next).
+        dw = by["developer-workflows"]
+        self.assertTrue(dw.standalone)
+        self.assertEqual(dw.requires, [])
+        self.assertEqual(dw.capabilities,
+                         ["setup", "plan", "work", "review", "release", "bugfix"])
+        dw_cmds = {p.name for p in dw.primitives if p.kind == "command"}
+        self.assertLessEqual({"setup", "plan", "work"}, dw_cmds)
         # a primitive's shape
         prims = {p.name: p for p in by["developer"].primitives}
         self.assertEqual(prims["commit-on-stop"].kind, "hook")
@@ -127,12 +140,17 @@ class TestSrcModel(unittest.TestCase):
             self.assertEqual(cmd.root, src / "wf" / "commands" / "plan.md")
             self.assertEqual(cmd.supported_hosts, ["claude-code", "antigravity"])
 
-    def test_real_tree_has_no_commands_yet(self):
-        # back-compat: no real group ships a command yet → discovery is a no-op
-        # on the committed tree (keeps `generate.py check` drift-free).
+    def test_real_tree_commands_belong_to_developer_workflows(self):
+        # commands now exist in the real tree (the developer-workflows phase
+        # commands); every discovered command primitive belongs to that group.
         groups = src_model.load_groups(_ROOT / "src")
-        cmds = [p for g in groups for p in g.primitives if p.kind == "command"]
-        self.assertEqual(cmds, [])
+        by = {g.slug: g for g in groups}
+        for g in groups:
+            for p in g.primitives:
+                if p.kind == "command":
+                    self.assertEqual(g.slug, "developer-workflows", p.name)
+        dw_cmds = {p.name for p in by["developer-workflows"].primitives if p.kind == "command"}
+        self.assertIn("plan", dw_cmds)
 
 
 if __name__ == "__main__":

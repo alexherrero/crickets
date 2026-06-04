@@ -1,0 +1,9 @@
+{
+  "author": {
+    "name": "alexherrero",
+    "url": "https://github.com/alexherrero/crickets"
+  },
+  "description": "The phase-gated developer loop — /setup /plan /work /review /release /bugfix — extracted from agentm as a standalone native plugin. The base other dev plugins enhance.",
+  "name": "developer-workflows",
+  "version": "0.1.0"
+}
