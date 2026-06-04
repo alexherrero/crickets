@@ -56,4 +56,17 @@ if [ "$installed_any" -eq 0 ]; then
     echo "bootstrap: neither 'claude' nor 'agy' found on PATH — nothing installed" >&2
     exit 1
 fi
+
+# ── Enhancer suggestions (soft composition) ─────────────────────────────────
+# Surface any enhancer that augments an installed plugin but isn't in the set.
+# Graceful + non-fatal: in the full-default-set flow this prints nothing (every
+# enhancer is installed); it fires for partial / curated sets. The `enhances`
+# metadata is host-agnostic, so the committed Claude marketplace render is the
+# source whichever host(s) were installed.
+SUGGEST="$CRICKETS_REPO/scripts/suggest_enhancers.py"
+MKT="$DIST/claude-code/.claude-plugin/marketplace.json"
+if [ -f "$SUGGEST" ] && [ -f "$MKT" ]; then
+    python3 "$SUGGEST" "$MKT" $DEFAULT_SET 2>/dev/null || true
+fi
+
 echo "==> done. Installed crickets plugins for the detected host(s)."
