@@ -42,11 +42,15 @@ if command -v claude >/dev/null 2>&1; then
 fi
 
 # ── Antigravity ─────────────────────────────────────────────────────────────
+# agy has NO marketplace-registration command — the `name@crickets` syntax is
+# Claude-only (it errors "unknown marketplace: crickets" on agy). So install
+# each plugin by its dist path. default-set.json is alphabetical, which already
+# places `developer-workflows` ahead of its `requires:` dependents (github-ci,
+# wiki). See wiki/how-to/Install-Into-Project.md § Mode 2.
 if command -v agy >/dev/null 2>&1; then
-    echo "==> Antigravity: installing"
+    echo "==> Antigravity: installing (by path — agy has no marketplace)"
     for p in $DEFAULT_SET; do
-        agy plugin install "${p}@crickets" 2>/dev/null \
-            || agy plugin install "$DIST/antigravity/plugins/${p}" \
+        agy plugin install "$DIST/antigravity/plugins/${p}" \
             || echo "    WARN: agy install ${p} failed (continuing)" >&2
     done
     installed_any=1

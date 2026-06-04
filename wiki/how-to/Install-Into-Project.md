@@ -27,9 +27,12 @@ The recommended one-liner — installs the default set on whichever host(s) are 
 curl -fsSL https://raw.githubusercontent.com/alexherrero/crickets/main/bootstrap.sh | bash
 ```
 
-It detects `claude` / `agy`, adds the marketplace, and installs the default set: `developer-workflows`, `developer-safety`, `code-review`, `github-ci`, `pii`, `wiki`.
+It detects `claude` / `agy` and installs the default set: `developer-workflows`, `developer-safety`, `code-review`, `github-ci`, `pii`, `wiki`. On Claude Code it adds the `crickets` marketplace and installs by name; on Antigravity it installs each plugin **by path** (see the asymmetry below).
 
-## Mode 2 — Marketplace (browse + install by name)
+## Mode 2 — Install by name (Claude) / by path (Antigravity)
+
+> [!IMPORTANT]
+> **The `name@crickets` marketplace syntax is Claude-only.** Antigravity's `agy` CLI has **no marketplace-registration command** — `agy plugin install <name>@crickets` fails with `Error: unknown marketplace: crickets`. On Antigravity, install each plugin by its `dist/antigravity/plugins/<group>` path instead. (`agy plugin link` only generates a share link for an *already-known* marketplace; it does not register a local directory.)
 
 **Claude Code** — one word, straight from GitHub:
 
@@ -38,12 +41,16 @@ claude plugin marketplace add alexherrero/crickets
 claude plugin install developer-workflows@crickets   # + developer-safety, code-review, github-ci, pii, wiki @crickets
 ```
 
-**Antigravity** (`agy` 1.0.2) — install by path from a clone:
+**Antigravity** (`agy` 1.0.2) — install each plugin by path from a clone. Install `developer-workflows` **first** (`github-ci` and `wiki` require it):
 
 ```bash
 git clone https://github.com/alexherrero/crickets.git ~/Antigravity/crickets
-agy plugin install ~/Antigravity/crickets/dist/antigravity/plugins/developer-workflows
+for p in developer-workflows developer-safety code-review github-ci pii wiki; do
+  agy plugin install ~/Antigravity/crickets/dist/antigravity/plugins/$p
+done
 ```
+
+Migrating from the v2.x set? Drop the retired seed afterward: `agy plugin uninstall developer`.
 
 ## Mode 3 — Manual (one plugin, no marketplace)
 
