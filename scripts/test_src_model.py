@@ -179,17 +179,17 @@ class TestSrcModel(unittest.TestCase):
             self.assertEqual(sn.kind, "snippet")
             self.assertEqual(sn.root, src / "sf" / "snippets" / "no-coauthor.md")
 
-    def test_real_tree_commands_belong_to_developer_workflows(self):
-        # commands now exist in the real tree (the developer-workflows phase
-        # commands); every discovered command primitive belongs to that group.
+    def test_real_tree_commands_in_expected_groups(self):
+        # command primitives live in developer-workflows (the phase commands) and
+        # code-review (the standalone /code-review). No other group ships commands.
         groups = src_model.load_groups(_ROOT / "src")
         by = {g.slug: g for g in groups}
-        for g in groups:
-            for p in g.primitives:
-                if p.kind == "command":
-                    self.assertEqual(g.slug, "developer-workflows", p.name)
+        cmd_groups = {g.slug for g in groups for p in g.primitives if p.kind == "command"}
+        self.assertEqual(cmd_groups, {"developer-workflows", "code-review"})
         dw_cmds = {p.name for p in by["developer-workflows"].primitives if p.kind == "command"}
         self.assertIn("plan", dw_cmds)
+        cr_cmds = {p.name for p in by["code-review"].primitives if p.kind == "command"}
+        self.assertEqual(cr_cmds, {"code-review"})
 
 
 if __name__ == "__main__":
