@@ -140,6 +140,26 @@ class TestSrcModel(unittest.TestCase):
             self.assertEqual(cmd.root, src / "wf" / "commands" / "plan.md")
             self.assertEqual(cmd.supported_hosts, ["claude-code", "antigravity"])
 
+    def test_snippet_discovery(self):
+        # `snippets/*.md` are discovered as `snippet` primitives (the AGENTS.md /
+        # CLAUDE.md-fragment kind). Root is the .md file itself (like an agent),
+        # so the emitter copies the single file.
+        with tempfile.TemporaryDirectory() as t:
+            src = Path(t) / "src"
+            (src / "sf" / "snippets").mkdir(parents=True)
+            (src / "sf" / "group.yaml").write_text(
+                "name: SF\nrequires: []\nstandalone: true\n", encoding="utf-8")
+            (src / "sf" / "snippets" / "no-coauthor.md").write_text(
+                "---\nname: no-coauthor\nkind: snippet\n"
+                "supported_hosts: [claude-code, antigravity]\ndescription: d\n---\n"
+                "Do not add a Co-Authored-By trailer.\n", encoding="utf-8")
+            by = {g.slug: g for g in src_model.load_groups(src)}
+            prims = {p.name: p for p in by["sf"].primitives}
+            self.assertIn("no-coauthor", prims)
+            sn = prims["no-coauthor"]
+            self.assertEqual(sn.kind, "snippet")
+            self.assertEqual(sn.root, src / "sf" / "snippets" / "no-coauthor.md")
+
     def test_real_tree_commands_belong_to_developer_workflows(self):
         # commands now exist in the real tree (the developer-workflows phase
         # commands); every discovered command primitive belongs to that group.

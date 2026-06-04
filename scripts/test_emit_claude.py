@@ -189,6 +189,27 @@ class TestClaudeEmitter(unittest.TestCase):
             self.assertTrue((cmds / "plan.md").exists())
             self.assertFalse((cmds / "agonly.md").exists())
 
+    def test_snippet_discovered_dropped(self):
+        # a discovered `snippet` primitive is DROPPED on Claude (no instruction-file
+        # primitive) — emit_claude notes it on stderr; nothing lands in dist/.
+        src_model = sys.modules["src_model"]
+        with tempfile.TemporaryDirectory() as t:
+            src = Path(t) / "src"
+            (src / "sf" / "snippets").mkdir(parents=True)
+            (src / "sf" / "group.yaml").write_text(
+                "name: SF\ndescription: d\nstandalone: true\nrequires: []\n", encoding="utf-8")
+            (src / "sf" / "snippets" / "no-coauthor.md").write_text(
+                "---\nname: no-coauthor\nkind: snippet\nsupported_hosts: [claude-code]\n"
+                "description: d\n---\nbody\n", encoding="utf-8")
+            group = src_model.load_groups(src)[0]
+            dist = Path(t) / "dist"
+            emit_claude.ClaudeEmitter().emit_group(group, dist)
+            pd = dist / "plugins" / "sf"
+            # dropped — no snippets/ or rules/ dir, no stray file landed
+            self.assertFalse((pd / "snippets").exists())
+            self.assertFalse((pd / "rules").exists())
+            self.assertFalse((pd / "no-coauthor.md").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

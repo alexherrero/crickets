@@ -27,8 +27,9 @@ PRIMITIVE_KINDS = {
     "hook": ("hooks/*/hook.md", lambda p: p.parent.name),
     "agent": ("agents/*.md", lambda p: p.stem),
     "command": ("commands/*.md", lambda p: p.stem),
+    "snippet": ("snippets/*.md", lambda p: p.stem),
 }
-KNOWN_KIND_DIRS = {"skills", "hooks", "agents", "commands", "mcp", "rules"}
+KNOWN_KIND_DIRS = {"skills", "hooks", "agents", "commands", "snippets", "mcp", "rules"}
 
 
 def read_frontmatter(path: Path):

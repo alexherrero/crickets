@@ -201,6 +201,23 @@ class TestAntigravityEmitter(unittest.TestCase):
             self.assertTrue((cmds / "plan.md").exists())
             self.assertFalse((cmds / "ccionly.md").exists())
 
+    def test_snippet_discovered_to_rules(self):
+        # a discovered `snippet` primitive lands in rules/ on Antigravity (AG ships
+        # instruction files, unlike Claude which drops them).
+        src_model = sys.modules["src_model"]
+        with tempfile.TemporaryDirectory() as t:
+            src = Path(t) / "src"
+            (src / "sf" / "snippets").mkdir(parents=True)
+            (src / "sf" / "group.yaml").write_text(
+                "name: SF\ndescription: d\nstandalone: true\nrequires: []\n", encoding="utf-8")
+            (src / "sf" / "snippets" / "no-coauthor.md").write_text(
+                "---\nname: no-coauthor\nkind: snippet\nsupported_hosts: [antigravity]\n"
+                "description: d\n---\nbody\n", encoding="utf-8")
+            group = src_model.load_groups(src)[0]
+            dist = Path(t) / "dist"
+            emit_antigravity.AntigravityEmitter().emit_group(group, dist)
+            self.assertTrue((dist / "plugins" / "sf" / "rules" / "no-coauthor.md").exists())
+
 
 if __name__ == "__main__":
     unittest.main()
