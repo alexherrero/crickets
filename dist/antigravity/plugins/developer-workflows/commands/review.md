@@ -17,7 +17,7 @@ You are running the **review** phase of the developer-workflows loop. Review is 
 ## Non-negotiable constraints
 
 1. **Gates first.** Run typecheck, lint, tests, build. If any fail, **stop and report** — never review on a broken base.
-2. **Deeper review only if available.** If a `code-review` capability is installed, dispatch its `adversarial-reviewer` (+ cross-model `-cross` if present) in a **fresh context** with the diff + the `PLAN.md` task + `AGENTS.md` — **not** the implementer's reasoning trace. If absent, skip it and note "deterministic gates only; no adversarial reviewer installed."
+2. **Deeper review only if available — deterministic probe.** Check availability with the bundled probe: `bash "${CLAUDE_PLUGIN_ROOT}/scripts/capability_probe.py" code-review`. **Exit 0** (code-review installed + enabled) → dispatch its `adversarial-reviewer` (+ cross-model `adversarial-reviewer-cross` if present) in a **fresh context** with the diff + the `PLAN.md` task + `AGENTS.md` — **not** the implementer's reasoning trace. **Exit 1** (absent, or graceful-skip on a host that doesn't set `CLAUDE_PLUGIN_ROOT`) → skip the adversarial pass and note "deterministic gates only; no adversarial reviewer installed." The probe is a deterministic CLI check, not agent-judgment; any failure resolves to "unavailable" (gates-only) — never a hang.
 3. **Framing is literal** (whenever a reviewer runs): "The code under review likely contains bugs. Find them." Do not soften.
 4. **Executable artifact required** from any reviewer: a failing test, a specific `file:line` defect, or an explicit `NO ISSUES FOUND` with categories. Prose-only critiques are rejected.
 5. **Verify findings reproduce** before reporting — run the failing test, open the line reference.
@@ -29,7 +29,7 @@ You are running the **review** phase of the developer-workflows loop. Review is 
 
 1. **Run the gates** (from `.harness/init.sh` / package scripts / Makefile), in order, short-circuit on failure. A red gate ends the review — report it and stop.
 2. **Identify the artifact** — the commit range / branch / uncommitted diff and its `PLAN.md` task (default: the most recently-completed task).
-3. **Dispatch the deeper pass if available** (constraint 2). The availability check is a **deterministic capability probe** (the actual wiring lands in the `auto-enable-runtime` part) — reproducible, graceful-skip when absent.
+3. **Probe, then dispatch if available** (constraint 2). Run `bash "${CLAUDE_PLUGIN_ROOT}/scripts/capability_probe.py" code-review`; on **exit 0** dispatch `adversarial-reviewer-cross` (if `gemini` is available) then `adversarial-reviewer`; on **exit 1** run gates-only and note the lighter review. The probe is the **interim local fallback** — when agentm's V5-8 capability-discovery API lands, this becomes a host-API query (identical runtime contract: deterministic yes/no + graceful-skip).
 4. **Triage findings** — verify each reproduces; group them; recommend follow-up `/work` tasks. Do not fix.
 5. **Log + report.** Append to `progress.md`; return the outcome and any recommended follow-ups.
 
