@@ -28,7 +28,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from generate import HostEmitter, dump_json  # noqa: E402
-from src_model import Group, Primitive, enhances_to_json  # noqa: E402
+from src_model import Group, Primitive, copy_group_scripts, enhances_to_json  # noqa: E402
 
 HOST = "antigravity"
 PLUGIN_VERSION = "0.1.0"
@@ -87,6 +87,7 @@ class AntigravityEmitter(HostEmitter):
         if mcp_servers:
             (plugin_dir / "mcp_config.json").write_text(
                 dump_json({"mcpServers": mcp_servers}), encoding="utf-8")
+        copy_group_scripts(group, plugin_dir)
 
         entry = {
             "name": group.slug,

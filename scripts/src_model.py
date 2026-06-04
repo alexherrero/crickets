@@ -7,6 +7,7 @@ so the two share one parser. Requires PyYAML (CI installs it).
 from __future__ import annotations
 
 import re
+import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -29,7 +30,10 @@ PRIMITIVE_KINDS = {
     "command": ("commands/*.md", lambda p: p.stem),
     "snippet": ("snippets/*.md", lambda p: p.stem),
 }
-KNOWN_KIND_DIRS = {"skills", "hooks", "agents", "commands", "snippets", "mcp", "rules"}
+KNOWN_KIND_DIRS = {"skills", "hooks", "agents", "commands", "snippets", "mcp", "rules", "scripts"}
+# `scripts/` is NOT a primitive kind — it's a group-level asset dir copied
+# verbatim into the emitted plugin (e.g. code-review's cross-review.sh). Listed
+# here so lint doesn't flag it as an unexpected kind folder.
 
 
 def read_frontmatter(path: Path):
@@ -113,6 +117,20 @@ class Group:
     def supports(self, host: str) -> bool:
         """A group targets a host if any of its primitives do."""
         return any(p.supports(host) for p in self.primitives)
+
+
+def copy_group_scripts(group: "Group", plugin_dir: Path) -> None:
+    """Copy a group's verbatim `scripts/` asset dir (e.g. code-review's
+    `cross-review.sh`) into the emitted plugin at `<plugin_dir>/scripts/`.
+
+    NOT a discovered primitive — a wholesale, host-agnostic asset bundle. No-op
+    when the group has no manifest (synthetic groups built positionally) or no
+    `scripts/` dir. Shared by both host emitters."""
+    if group.manifest is None:
+        return
+    src_scripts = group.manifest.parent / "scripts"
+    if src_scripts.is_dir():
+        shutil.copytree(src_scripts, plugin_dir / "scripts", dirs_exist_ok=True)
 
 
 def load_groups(src: Path) -> list[Group]:

@@ -211,6 +211,24 @@ class TestClaudeEmitter(unittest.TestCase):
             self.assertFalse((pd / "rules").exists())
             self.assertFalse((pd / "no-coauthor.md").exists())
 
+    def test_group_scripts_bundled(self):
+        # a group-level scripts/ asset dir is copied verbatim into the plugin
+        # (e.g. code-review's cross-review.sh) — not a discovered primitive.
+        src_model = sys.modules["src_model"]
+        with tempfile.TemporaryDirectory() as t:
+            src = Path(t) / "src"
+            (src / "cr" / "scripts").mkdir(parents=True)
+            (src / "cr" / "group.yaml").write_text(
+                "name: CR\ndescription: d\nstandalone: true\nrequires: []\n", encoding="utf-8")
+            (src / "cr" / "scripts" / "cross-review.sh").write_text(
+                "#!/usr/bin/env bash\necho hi\n", encoding="utf-8")
+            group = src_model.load_groups(src)[0]
+            dist = Path(t) / "dist"
+            emit_claude.ClaudeEmitter().emit_group(group, dist)
+            f = dist / "plugins" / "cr" / "scripts" / "cross-review.sh"
+            self.assertTrue(f.exists())
+            self.assertIn("echo hi", f.read_text(encoding="utf-8"))
+
 
 if __name__ == "__main__":
     unittest.main()
