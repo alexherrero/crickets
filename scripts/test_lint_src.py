@@ -100,6 +100,48 @@ class TestLintSrc(unittest.TestCase):
         errs = lint_src.lint_tree(self.src)
         self.assertTrue(any("is named 'foo'" in e for e in errs), errs)
 
+    # --- enhances / capabilities (soft composition) ---
+
+    def test_valid_enhances_passes(self):
+        self._group("wf", body="name: WF\ndescription: d\nstandalone: true\n"
+                                "requires: []\ncapabilities: [review, work]\n")
+        self._group("cr", body="name: CR\ndescription: d\nstandalone: true\nrequires: []\n"
+                               "enhances:\n  - group: wf\n    capability: review\n    effect: x\n")
+        self.assertEqual(lint_src.lint_tree(self.src), [])
+
+    def test_enhances_dangling_target_fails(self):
+        self._group("cr", body="name: CR\ndescription: d\nstandalone: true\n"
+                               "requires: []\nenhances: [nonexistent]\n")
+        errs = lint_src.lint_tree(self.src)
+        self.assertTrue(any("enhances target 'nonexistent' is not an existing group" in e for e in errs), errs)
+
+    def test_enhances_self_fails(self):
+        self._group("wf", body="name: WF\ndescription: d\nstandalone: true\n"
+                               "requires: []\ncapabilities: [review]\nenhances: [wf]\n")
+        errs = lint_src.lint_tree(self.src)
+        self.assertTrue(any("no self-enhance" in e for e in errs), errs)
+
+    def test_enhances_intersects_requires_fails(self):
+        self._group("wf", body="name: WF\ndescription: d\nstandalone: true\nrequires: []\n")
+        self._group("x", body="name: X\ndescription: d\nstandalone: false\n"
+                              "requires: [wf]\nenhances: [wf]\n")
+        errs = lint_src.lint_tree(self.src)
+        self.assertTrue(any("hard dependency, not an enhancement" in e for e in errs), errs)
+
+    def test_enhances_undeclared_capability_fails(self):
+        self._group("wf", body="name: WF\ndescription: d\nstandalone: true\n"
+                               "requires: []\ncapabilities: [review]\n")
+        self._group("cr", body="name: CR\ndescription: d\nstandalone: true\nrequires: []\n"
+                               "enhances:\n  - group: wf\n    capability: deploy\n")
+        errs = lint_src.lint_tree(self.src)
+        self.assertTrue(any("capability 'deploy' is not declared in wf's capabilities" in e for e in errs), errs)
+
+    def test_capabilities_must_be_string_list(self):
+        self._group("wf", body="name: WF\ndescription: d\nstandalone: true\n"
+                               "requires: []\ncapabilities: [1, 2]\n")
+        errs = lint_src.lint_tree(self.src)
+        self.assertTrue(any("'capabilities' must be a list of strings" in e for e in errs), errs)
+
 
 if __name__ == "__main__":
     unittest.main()

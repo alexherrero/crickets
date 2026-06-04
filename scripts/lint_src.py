@@ -14,6 +14,11 @@ group.yaml:
   - required: `name`, `description`, `standalone`.
   - `standalone` is a bool; `requires` (default []) is a list of existing group slugs.
   - invariant: `standalone: true` ⟺ `requires: []`.
+  - `capabilities` (default []) is a list of strings.
+  - `enhances` (default []) is a list; each entry (a group slug, or
+    `{group, capability?, effect}`) targets an existing group, is not the plugin
+    itself, is not also in `requires`, and any named `capability` is declared in
+    the target's `capabilities`.
 primitive frontmatter:
   - required: `name`, `description`, `kind`, `supported_hosts`.
   - `kind` in the enum and matches the primitive's `<kind>/` folder.
@@ -78,6 +83,19 @@ def lint_tree(src: Path) -> list[str]:
     group_dirs = sorted(p for p in src.iterdir() if p.is_dir())
     group_slugs = {p.name for p in group_dirs}
 
+    # pre-pass: each group's declared `capabilities` (targets for enhances)
+    group_caps: dict[str, set[str]] = {}
+    for gd in group_dirs:
+        gy = gd / "group.yaml"
+        if not gy.exists():
+            continue
+        try:
+            meta = yaml.safe_load(gy.read_text(encoding="utf-8")) or {}
+        except yaml.YAMLError:
+            meta = {}
+        caps = meta.get("capabilities") if isinstance(meta, dict) else None
+        group_caps[gd.name] = {c for c in caps if isinstance(c, str)} if isinstance(caps, list) else set()
+
     for gd in group_dirs:
         gy = gd / "group.yaml"
         if not gy.exists():
@@ -106,6 +124,37 @@ def lint_tree(src: Path) -> list[str]:
         if isinstance(d.get("standalone"), bool) and d["standalone"] == bool(requires):
             err(gy, f"invariant violated: standalone={d['standalone']} with requires={requires} "
                     f"(must be: standalone ⟺ requires:[])", _line_of(gy, "standalone"))
+
+        # capabilities: a list of strings (the names enhances entries may target)
+        caps = d.get("capabilities")
+        if caps is not None and not (isinstance(caps, list) and all(isinstance(c, str) for c in caps)):
+            err(gy, f"'capabilities' must be a list of strings (got {caps!r})", _line_of(gy, "capabilities"))
+
+        # enhances: soft-composition edges — validated; orthogonal to requires/standalone
+        enhances = d.get("enhances")
+        if enhances is not None and not isinstance(enhances, list):
+            err(gy, f"'enhances' must be a list (got {enhances!r})", _line_of(gy, "enhances"))
+            enhances = []
+        for entry in enhances or []:
+            if isinstance(entry, str):
+                tgt, cap = entry, None
+            elif isinstance(entry, dict):
+                tgt, cap = entry.get("group"), entry.get("capability")
+            else:
+                err(gy, f"'enhances' entry must be a group slug or a mapping (got {entry!r})", _line_of(gy, "enhances"))
+                continue
+            if not tgt:
+                err(gy, "'enhances' entry is missing a target 'group'", _line_of(gy, "enhances"))
+                continue
+            if tgt not in group_slugs:  # (a) target exists
+                err(gy, f"enhances target '{tgt}' is not an existing group under src/", _line_of(gy, "enhances"))
+                continue
+            if tgt == gd.name:  # (b) no self-enhance
+                err(gy, f"enhances target '{tgt}' is the plugin itself (no self-enhance)", _line_of(gy, "enhances"))
+            if tgt in requires:  # (c) enhances ∩ requires == ∅
+                err(gy, f"enhances target '{tgt}' is also in requires — that is a hard dependency, not an enhancement", _line_of(gy, "enhances"))
+            if cap is not None and cap not in group_caps.get(tgt, set()):  # (d) capability declared
+                err(gy, f"enhances capability '{cap}' is not declared in {tgt}'s capabilities:", _line_of(gy, "enhances"))
 
         for sub in gd.iterdir():
             if sub.is_dir() and sub.name not in KNOWN_KIND_DIRS:
