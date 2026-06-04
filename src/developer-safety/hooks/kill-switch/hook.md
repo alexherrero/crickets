@@ -63,14 +63,11 @@ Per-repo only: `<project-root>/.harness/STOP`. Device-scope (`~/.harness/STOP` h
 - **`.claude/settings.json` malformed:** Claude Code refuses to load any hooks. Validate JSON with `python3 -m json.tool .claude/settings.json`.
 - **`.harness/STOP` is a directory or symlink:** `[[ -f ... ]]` only matches regular files. A directory or symlink at that path causes the hook to behave as if STOP is absent. Don't create non-file entries at `.harness/STOP`.
 
-## Manual equivalent for other hosts
+## Host support — Claude-effective, Antigravity observe-only
 
-Antigravity and Gemini CLI have no first-class hook surface today (v0.7.0). The manual equivalent on those hosts:
+`kill-switch` is **fully effective on Claude Code**: the `PreToolUse` hook returns exit 2, which Claude honors by **blocking** the tool call.
 
-- **Antigravity:** add an always-on rule that says *"before each step, check whether `.harness/STOP` exists. If yes, halt and inform the operator."* The agent reads the rule on each step.
-- **Gemini CLI:** include the same instruction in the agent's operator prompt or `AGENTS.md` so the agent self-checks.
-
-These manual equivalents are best-effort (the agent has to remember to check) and don't have the precision of the Claude Code hook (which fires before every tool call). Use Claude Code for the strongest kill-switch guarantee.
+On **Antigravity** the hook **fires but cannot halt** the tool call. Antigravity plugin hooks are observe/side-effect-only — the host ignores the hook's exit code and never reads its stdout — so a `kill-switch` exit-2 is logged as a hook failure but the tool still runs. It ships (it does no harm) but is **Claude-only-effective**; `commit-on-stop` (a pure side-effect) works on both hosts. For an effective halt on Antigravity, use the manual-rule equivalent: add an always-on rule — *"before each step, check whether `.harness/STOP` exists; if yes, halt and inform the operator"* — best-effort (the agent has to remember), without the per-tool-call precision of the Claude hook.
 
 ## See also
 

@@ -75,10 +75,11 @@ Per-repo only: `<project-root>/.harness/STEER.md`. Device-scope is deferred.
 - **Filesystem race:** if you write STEER.md while a tool call is mid-flight, the hook may or may not pick it up on this call — but it WILL pick it up on the next. Single-session, single-operator assumption.
 - **`.claude/settings.json` malformed:** hooks won't load. Validate JSON.
 
-## Manual equivalent for other hosts
+## Host support — Claude-effective, Antigravity observe-only
 
-- **Antigravity:** add an always-on rule: *"before each step, check `.harness/STEER.md`. If it exists, treat its contents as a redirect and rename the file with a timestamp."* Best-effort; agent has to remember.
-- **Gemini CLI:** include the same instruction in the operator prompt or `AGENTS.md`.
+`steer` is **fully effective on Claude Code**: the hook prints to stdout, which Claude injects into the agent's context for the next tool call.
+
+On **Antigravity** the hook **fires but cannot inject**. Antigravity plugin hooks are observe/side-effect-only — the host never reads hook stdout — so the steer text is not delivered. It ships but is **Claude-only-effective** (like `kill-switch`; `commit-on-stop` works on both). For an effective redirect on Antigravity, use the manual-rule equivalent: add an always-on rule — *"before each step, check `.harness/STEER.md`; if it exists, treat its contents as a redirect and rename the file with a timestamp"* — best-effort.
 
 ## See also
 
