@@ -5,6 +5,50 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.1.0] — 2026-06-04 — The developer-plugin suite + `enhances:` soft composition
+
+**MINOR — one breaking removal (the transitional `developer` seed), with migration.** v3.0 stood up the generator and a single seed `developer` plugin; this wave (bucket ④, the first build step of the V5 "unbundling") extracts the operator's opinionated developer process into a **suite of composable native plugins**. Where v3.0 modelled only *hard* dependencies (`requires:` / `standalone:`), v3.1 adds **soft composition** — a new `enhances:` manifest field so a plugin can *augment* another when both are installed while staying fully usable alone. The monolithic `developer` seed splits into three standalone plugins that compose through `enhances:`, and a deterministic capability probe makes the composition engage at runtime. Architecture + rationale: the [Developer Plugin Suite design](https://github.com/alexherrero/crickets/blob/main/wiki/explanation/designs/developer-plugin-suite.md) (`launched`) + [ADR 0017](https://github.com/alexherrero/crickets/blob/main/wiki/explanation/decisions/0017-enhances-soft-composition.md). Dogfood-proven on Claude Code + Antigravity across `agentm` / `crickets` / `sherwood`.
+
+### Added
+
+- **`developer-workflows`** — the phase-gated loop as a standalone plugin: the six phase commands `/setup` `/plan` `/work` `/review` `/release` `/bugfix` (self-contained — the agentm-kernel plumbing is stripped to graceful-skip per the memory↔process seam) + the `explorer` and `evaluator` sub-agents + the `harness-context` SessionStart hook (Claude-only). Declares `capabilities: [setup, plan, work, review, release, bugfix]`.
+- **`developer-safety`** — the universal control layer (usable in any session): the `kill-switch` / `steer` / `commit-on-stop` hooks + the `commit-no-coauthor` / `worktrees-never-auto` conventions; `enhances: [developer-workflows]`.
+- **`code-review`** — standalone adversarial review of any diff/PR: the `adversarial-reviewer` + cross-model `adversarial-reviewer-cross` agents + the `evidence-tracker` hook + a new **`/code-review <diff|PR>`** command; `enhances: [{group: developer-workflows, capability: review}]`.
+- **`enhances:` + `capabilities:`** soft-composition manifest fields (orthogonal to `requires:`/`standalone:`), lint-validated and carried into both hosts' marketplaces; `bootstrap.sh` suggests installing a declared enhancer.
+- **Runtime composition** — a deterministic local capability probe (`capability_probe.py`) wires the thin `/review` to dispatch the adversarial reviewers when `code-review` is installed, else gates-only (the interim fallback for the agentm V5-8 capability-discovery API).
+- **Generator capabilities** — discovery of `command` and `snippet` primitives, and group-level `scripts/` verbatim asset-bundling (e.g. `cross-review.sh`).
+
+### Changed
+
+- **Breaking (only for `developer` adopters): the `#40 developer` seed plugin is retired.** Its contents moved into the new plugins (the `evaluator` agent → `developer-workflows`; the control hooks → `developer-safety`). `github-ci` and `wiki` now `requires: [developer-workflows]`. The recommended set is now **six** plugins: `developer-workflows`, `developer-safety`, `code-review`, `github-ci`, `pii`, `wiki`.
+- `capabilities`/`enhances` are emitted to the **marketplace entry only** on both hosts (Claude's `plugin.json` rejects unrecognized keys); only `requires`→`dependencies` lands in `plugin.json`.
+
+### Migration
+
+If you installed the v3.0 `developer` plugin, migrate to the suite:
+
+```bash
+claude plugin marketplace update crickets
+claude plugin install developer-workflows@crickets --scope user
+claude plugin install developer-safety@crickets --scope user
+claude plugin install code-review@crickets --scope user
+claude plugin uninstall developer@crickets
+```
+
+(`github-ci` / `pii` / `wiki` are unchanged; after installing `developer-workflows` their dependency resolves.) Antigravity: `agy plugin install <plugin>@crickets` for the three new plugins.
+
+### Internal
+
+- Host limitations carried + documented (not worked around): Antigravity plugin hooks are observe/side-effect-only (`kill-switch`/`steer`/`evidence-tracker` are Claude-only-effective; `commit-on-stop` works on both); Claude drops `snippet` instruction files (conventions reach Antigravity `rules/` + the operator-global config).
+- agentm's baked-in workflow/agent/hook copies are **untouched** (parallel-run) — removing the duplicates is the V5 ⑤ slim, gated on this wave's dogfood proof.
+- Two dogfood/CI-caught fixes: the `plugin.json` unrecognized-keys rejection (above); a `__pycache__` leak into bundled `scripts/` assets (the asset copy now excludes it).
+
+### Cross-references
+
+- [Developer Plugin Suite design](https://github.com/alexherrero/crickets/blob/main/wiki/explanation/designs/developer-plugin-suite.md) (`launched`) + its six part files.
+- [ADR 0017](https://github.com/alexherrero/crickets/blob/main/wiki/explanation/decisions/0017-enhances-soft-composition.md) — `enhances:` soft composition + the three-way split + the local-probe→agentm-V5-8 hand-off.
+- agentm `ROADMAP-AgentMemoryV5.md` — **V5-8** (the host capability-discovery API that retires the local probe) + the **⑤ V5 slim** (the dev-loop portion is unblocked by this wave; bucket ④'s Wiki/docs + project-management plugins still precede the full V5 split).
+
 ## [v3.0.0] — 2026-06-02 — Native host plugins from a single source of truth
 
 **MAJOR — breaking.** Crickets stops shipping a bespoke installer. For two years the toolkit dispatched customizations into host paths with a custom `install.sh` that parsed per-primitive YAML and copied files, and it kept its `lib/install/` layer byte-identical with `agentm` via `sync-lib.sh` + a `check-lib-parity` gate. Both target hosts have since shipped native plugin systems that already do dispatch, dependency resolution, and distribution. v3.0 (#40) retires the dispatcher entirely: every customization is authored once under `src/<group>/`, and a deterministic generator emits **committed native plugins** — a Claude Code plugin *and* an Antigravity plugin per functional group — plus each host's marketplace. Installation moves onto the hosts' own machinery in three modes (one-liner / marketplace / manual). This also **decouples `agentm` and `crickets`**: the shared `lib/install/` byte-sync is gone, closing the re-audit [ADR 0006](https://github.com/alexherrero/crickets/blob/main/wiki/explanation/decisions/0006-gemini-cli-host-removal.md) anticipated — the two repos now release independently. Proven by dogfooding the generated plugins on Claude Code + Antigravity across `agentm` / `crickets` / `sherwood`. Architecture + rationale: the [native-plugins HLD](https://github.com/alexherrero/crickets/blob/main/wiki/explanation/designs/crickets-v3-native-plugins.md) (`launched`) + ADRs [0013](https://github.com/alexherrero/crickets/blob/main/wiki/explanation/decisions/0013-bundles-native-plugins.md) / [0014](https://github.com/alexherrero/crickets/blob/main/wiki/explanation/decisions/0014-install-decoupling.md) / [0015](https://github.com/alexherrero/crickets/blob/main/wiki/explanation/decisions/0015-partial-revision-36.md).

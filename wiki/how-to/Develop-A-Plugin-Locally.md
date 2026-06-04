@@ -11,7 +11,7 @@ crickets is a source-of-truth (`src/<group>/`) plus a generator that emits commi
 1. Edit a primitive under its group — e.g. a hook:
 
    ```bash
-   $EDITOR src/developer/hooks/kill-switch/kill-switch.sh
+   $EDITOR src/developer-safety/hooks/kill-switch/kill-switch.sh
    ```
 
 2. Regenerate `dist/` (both hosts) + the repo-root marketplace pointer:
@@ -29,8 +29,8 @@ crickets is a source-of-truth (`src/<group>/`) plus a generator that emits commi
 4. Try it on a host **without installing** — load the generated plugin for one session:
 
    ```bash
-   claude --plugin-dir dist/claude-code/plugins/developer        # Claude Code
-   agy plugin install "$PWD/dist/antigravity/plugins/developer"  # Antigravity
+   claude --plugin-dir dist/claude-code/plugins/developer-safety        # Claude Code
+   agy plugin install "$PWD/dist/antigravity/plugins/developer-safety"  # Antigravity
    ```
 
 5. Run the unit + structural gates before committing:

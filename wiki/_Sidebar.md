@@ -6,6 +6,7 @@
 ### 🔧 How-to
 - [Install plugins](Install-Into-Project)
 - [Develop a plugin locally](Develop-A-Plugin-Locally)
+- [Run a standalone code review](Use-Code-Review)
 - [Add a skill](Add-A-Skill)
 - [Use the evaluator](Use-The-Evaluator)
 - [Use the base hooks](Use-The-Base-Hooks)
@@ -48,6 +49,7 @@
 - [0014 — #40 install-decoupling](0014-install-decoupling)
 - [0015 — #36 partial-revision](0015-partial-revision-36)
 - [0016 — Project surface split](0016-project-surface-split)
+- [0017 — `enhances:` soft composition](0017-enhances-soft-composition)
 
 **Designs**
 - [MemoryVault — permanent agent memory](memoryvault)

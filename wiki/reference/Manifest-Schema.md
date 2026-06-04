@@ -54,6 +54,14 @@ enhances:
 
 Both stay `standalone: true` — the enhancee declares what it offers, the enhancer declares what it augments, and neither incurs a hard dependency on the other.
 
+## Group-level `scripts/` assets
+
+A `src/<group>/scripts/` directory holds **verbatim helper scripts** (e.g. `code-review/scripts/cross-review.sh`, `developer-workflows/scripts/capability_probe.py`). It is **not a discovered primitive** — no frontmatter, no `kind`. The generator copies the whole directory wholesale (excluding `__pycache__`) into the emitted plugin at `dist/<host>/plugins/<group>/scripts/`, on both hosts identically. A primitive references a bundled script via the host plugin-root path (`${CLAUDE_PLUGIN_ROOT}/scripts/<name>` on Claude Code). `generate.py check` drift-gates these copied assets like any other emitted file. Mirrors [`src/SCHEMA.md`](https://github.com/alexherrero/crickets/blob/main/src/SCHEMA.md) § Group-level assets.
+
+## Discoverable primitive kinds
+
+The generator discovers a primitive by walking each group's `<kind>/` subdirs and reading frontmatter. Beyond the `skill` / `agent` / `hook` kinds, the generator now discovers **`command`** primitives (`commands/<name>.md` — e.g. the six phase commands + standalone `/code-review`) and **`snippet`** primitives (`snippets/<name>.md`, emitted to Antigravity `rules/`, dropped on Claude — see [Per-Host Paths](Per-Host-Paths)).
+
 ## Standalone primitive (example: skill)
 
 File path: `skills/<name>/SKILL.md` (for skills; other kinds use `<kind>/<name>.<ext>` per [Per-Host Paths](Per-Host-Paths)).

@@ -15,9 +15,13 @@ Where each `kind` lands in each host at install time. The installer reads each c
 | `output-style` | `.claude/output-styles/<name>.md` | (n/a) |
 | `workflow` | (n/a) | `.agents/workflows/<name>.md` |
 | `rule` | (n/a) | `.agents/rules/<name>.md` |
-| `snippet` | append to repo-root `CLAUDE.md` | append to repo-root `AGENTS.md` |
+| `snippet` | **(dropped)** — Claude Code has no instruction-file primitive in the plugin surface | `<plugin>/rules/<name>.md` (emitted as an Antigravity `rules/` file) |
 | `settings-fragment` | merge into `.claude/settings.json` | **TBD** |
 | `plugin` | (n/a — Antigravity-specific bundle format) | `~/.gemini/config/plugins/<name>/plugin.json` + `<name>/skills/<skill>/SKILL.md` (user-global) |
+| `scripts/` (group asset, *not a `kind`*) | `<plugin>/scripts/` | `<plugin>/scripts/` |
+
+> [!NOTE]
+> **`scripts/` is a group-level asset dir, not a discovered `kind`.** A `src/<group>/scripts/` directory of verbatim helper scripts (e.g. `cross-review.sh`, `capability_probe.py`) is copied **wholesale** (excluding `__pycache__`) into the emitted plugin at `dist/<host>/plugins/<group>/scripts/` — host-agnostic, both hosts identically. Primitives reference a bundled script via the host plugin-root path (`${CLAUDE_PLUGIN_ROOT}/scripts/<name>` on Claude Code). See [`src/SCHEMA.md`](https://github.com/alexherrero/crickets/blob/main/src/SCHEMA.md) § Group-level assets.
 
 > [!IMPORTANT]
 > **Antigravity 2.0 / agy uses `.agents/` (plural)** for project-local discovery, NOT `.agent/` (singular like Antigravity 1.x). Confirmed via `agy` v1.0.2 binary inspection: `{workspace}/.agents/skills/{skill_name}/SKILL.md`. Crickets v1.2.0 (paired with agentm v3.2.0) updates the installer dispatch from `.agent/` → `.agents/` for the `antigravity` host slug. **This is a breaking change for users with crickets v1.0.x installed against Antigravity 1.x's `.agent/` convention** — re-run `bash install.sh --update <target-project>` to migrate; the installer wipes the old `.agent/` dir on update (or operators can manually `mv .agent .agents` in their target project). See [ADR 0011](decisions/0011-antigravity-2-host-support) for the host-evolution rationale + the 2026-06-18 Gemini-CLI sunset context.

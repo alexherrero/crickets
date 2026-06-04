@@ -1,12 +1,12 @@
 ---
 title: Developer Plugin Suite — workflows · safety · code-review + the `enhances:` composition schema
-status: final
+status: launched
 visibility: published
 author: Alex Herrero
 contributors: []
 created: 2026-06-03
-updated: 2026-06-03
-last_major_revision: 2026-06-03
+updated: 2026-06-04
+last_major_revision: 2026-06-04
 prd:
 project: https://github.com/users/alexherrero/projects/5
 ---
@@ -239,3 +239,9 @@ Highly reversible. Each plugin is an additive native plugin — uninstall remove
 | 2026-06-03 | Translated to 6 parts via `/design translate`: enhances-schema, developer-workflows, developer-safety, code-review, auto-enable-runtime, seed-retirement. | final |
 | 2026-06-03 | Sequenced into 6 plans via `/design sequence`; first plan active at the crickets vault `_harness/PLAN.md` (enhances-schema), 5 queued at `_harness/designs/developer-plugin-suite/queued-plans/`. | final |
 | 2026-06-03 | **Part 1 (`enhances-schema`) built** — tasks 1–4 done (`6906cae` model · `0fb654f` lint · `7e38716` emitters · `Manifest-Schema.md` wiki ref). The `bootstrap.sh` install-time *enhancer-suggestion* was **deferred to the `developer-safety` part** (premature here — no group declares `enhances` until then); the marketplace already carries `enhances` so part-1 discovery is complete. | final |
+| 2026-06-03 | **Part 2 (`developer-workflows`) built** — standalone phase-gated loop: 6 self-contained phase commands (`/setup /plan /work /review /release /bugfix`, agentm-kernel plumbing stripped to graceful-skip per the memory↔process seam) + `explorer`/`evaluator` agents + Claude-only `harness-context` SessionStart hook. Generator gained **`command`-primitive discovery**. Dogfood caught + fixed a latent part-1 emitter defect: `capabilities`/`enhances` are emitted to the marketplace entry **only** (Claude's `plugin.json` rejects unrecognized keys). DC7 resolved early — Antigravity reads plugin `commands/`. | final |
+| 2026-06-03 | **Part 3 (`developer-safety`) built** — the universal control layer: kill-switch/steer/commit-on-stop hooks (copied from the seed) + `commit-no-coauthor`/`worktrees-never-auto` **snippet** conventions; `enhances: [developer-workflows]` (the first real edge). Generator gained **`snippet`-primitive discovery** (operator-chosen "faithful" — snippets → Antigravity `rules/`, dropped on Claude). The deferred bootstrap enhancer-suggestion landed here (`suggest_enhancers.py`). AG observe-only caveat documented in the hook docs. | final |
+| 2026-06-03 | **Part 4 (`code-review`) built** — standalone adversarial review of any diff/PR: `adversarial-reviewer` + `adversarial-reviewer-cross` agents + the **`evidence-tracker`** hook (Claude-only) + a new `/code-review <diff\|PR>` command; `enhances: [{group: developer-workflows, capability: review}]` (the first capability-targeted edge). Generator gained **group-level `scripts/` asset-bundling** (operator-chosen option B — `cross-review.sh` kept verbatim). | final |
+| 2026-06-03 | **Part 5 (`auto-enable-runtime`) built** — the runtime half of `enhances:`: a deterministic local capability probe (`capability_probe.py`, host-CLI shell-out + graceful-skip) wiring developer-workflows' thin `/review` to dispatch code-review when present. The composition now engages on both axes (emergent + conditional-dispatch). Local probe is the interim fallback for the agentm **V5-8** capability-discovery API. CI surfaced + fixed a `__pycache__`-leak in the `scripts/` asset copy. | final |
+| 2026-06-03 | **Part 6 (`seed-retirement`) built** — the `#40 developer` seed retired (`src/developer/` deleted; siblings `wiki`/`github-ci` re-pointed `requires:` → `developer-workflows`); the go-forward **6-plugin** world dogfood-proven; agentm's baked-in copies untouched (the slim is V5 ⑤). **Bucket ④ build complete.** | final |
+| 2026-06-04 | **Wave `/release` — launched.** All 6 parts shipped + CI green; the wave-boundary docs landed (Compatibility host-matrix + snippet emission, the `/code-review` how-to, the corrected snippet rows, the go-forward install/develop how-tos); ADR 0017 (the `enhances:` soft-composition + 3-way split + probe→V5-8 hand-off); CHANGELOG v3.1.0. Status `final → launched`. This ships the **Developer base** — the **first** of bucket ④'s three critical plugins (Wiki/docs #4 + project-management #41 remain). The slim of agentm's now-duplicated **dev-loop** baked-in copies (the ⑤ V5 slim's first portion) is unblocked by this wave's dogfood proof. | launched |

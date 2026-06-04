@@ -16,8 +16,11 @@ The 12 primitive types `crickets` recognizes via its `kind` field. Each maps to 
 | `output-style` | `output-styles/` | Output formatting template | claude-code |
 | `workflow` | `workflows/` | Antigravity multi-step workflow | antigravity |
 | `rule` | `rules/` | Antigravity always-on rule | antigravity |
-| `snippet` | `snippets/` | Fragment appended to `AGENTS.md` / `CLAUDE.md` at install time | claude-code, antigravity |
+| `snippet` | `snippets/` | Instruction fragment → emitted as an Antigravity `rules/` file; **dropped on Claude Code** (no instruction-file primitive) | antigravity (effective); claude-code (declared but dropped) |
 | `settings-fragment` | `settings-fragments/` | JSON fragment merged into host `settings.json` | claude-code (Antigravity: TBD) |
+
+> [!NOTE]
+> **Group-level `scripts/` is not a `kind`.** A `src/<group>/scripts/` directory holds **verbatim helper scripts** (e.g. `code-review/scripts/cross-review.sh`, `developer-workflows/scripts/capability_probe.py`) — no frontmatter, no `kind`, not discovered as a primitive. The generator copies the whole directory wholesale (excluding `__pycache__`) into the emitted plugin at `dist/<host>/plugins/<group>/scripts/`, host-agnostic (both hosts). A primitive references a bundled script via the host plugin-root path (`${CLAUDE_PLUGIN_ROOT}/scripts/<name>` on Claude Code). See [`src/SCHEMA.md`](https://github.com/alexherrero/crickets/blob/main/src/SCHEMA.md) § Group-level assets.
 
 > [!NOTE]
 > **Gemini CLI host removed in v0.9.0** per [ROADMAP item #15](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md). Standalone Gemini CLI is no longer a supported host. Antigravity (Gemini-in-IDE) stays as a supported host — different surface. See [ADR 0006](decisions/0006-gemini-cli-host-removal) for the host-scope-reduction rationale.

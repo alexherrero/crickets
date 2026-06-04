@@ -37,6 +37,24 @@ Each customization in the shipped catalog declares its own `supported_hosts` in 
 
 The installer respects each manifest's `supported_hosts` — installing into a target project only writes the customizations declared for the host(s) you're targeting.
 
+## Hook host-effectiveness matrix
+
+A hook can be *emitted* on a host without being *effective* there. Antigravity runs plugin hooks **observe / side-effect-only** — it fires them but ignores their exit codes and never reads their stdout. So a hook that vetoes a tool call or injects steering text is inert on Antigravity even though it runs. The matrix below is the effectiveness contract for the crickets hooks as shipped in v3.0:
+
+| Hook | Plugin | Claude Code | Antigravity | Why |
+|---|---|---|---|---|
+| `commit-on-stop` | `developer-safety` | ✅ effective | ✅ effective | Pure side-effect (it commits) — needs no exit-code/stdout contract, so it works on both hosts. |
+| `kill-switch` | `developer-safety` | ✅ effective | ⚠️ fires but **advisory only** | Vetoes via non-zero exit; Antigravity ignores exit codes, so the veto doesn't block. |
+| `steer` | `developer-safety` | ✅ effective | ⚠️ fires but **advisory only** | Injects via stdout; Antigravity never reads hook stdout, so the steer text is dropped. |
+| `evidence-tracker` | `code-review` | ✅ effective | ❌ not effective | Its enforcement/veto needs the hook-veto contract Antigravity lacks; **Claude-only** (`supported_hosts: [claude-code]`). |
+| `harness-context` | `developer-workflows` | ✅ effective | ❌ not emitted | SessionStart hook; **Claude-only** — Antigravity has no SessionStart hook surface. |
+
+**Rule of thumb:** side-effect-only hooks port to both hosts; any hook whose value depends on its exit code (veto) or stdout (inject) is Claude-only-effective. See [Develop a crickets plugin locally](Develop-A-Plugin-Locally) and [ADR 0009](decisions/0009-evidence-tracker-hook) for the underlying host contracts.
+
+## Snippet emission
+
+The `snippet` kind is an instruction fragment. The generator emits it **as an Antigravity `rules/` file** (`<plugin>/rules/<name>.md`) and **drops it on Claude Code** — Claude Code's plugin surface has no instruction-file primitive to land it in. So `developer-safety`'s `commit-no-coauthor` + `worktrees-never-auto` conventions ship as Antigravity rules but have no Claude-Code emitted form. See [Per-Host Paths](Per-Host-Paths) and [Customization Types](Customization-Types) for the per-kind detail.
+
 ## Known gaps — Antigravity 2.0 surface
 
 Three Antigravity 2.0 primitive surfaces have **no file-based authoring path** as of crickets v1.2.0. Customizations targeting these surfaces are out of scope for the crickets installer; users must hand-author them in a Python SDK environment if they want to use them.
@@ -45,7 +63,7 @@ Three Antigravity 2.0 primitive surfaces have **no file-based authoring path** a
 
 Antigravity 2.0 / agy hooks are **Python decorators** registered at agent-creation time via `LocalAgentConfig(hooks=[...])` (from `google.antigravity.hooks`). The 9 hook types (`on_session_start`, `on_session_end`, `pre_turn`, `post_turn`, `pre_tool_call_decide`, `post_tool_call`, `on_tool_error`, `on_compaction`, `on_interaction`) cover most use cases that Claude Code's file-based hooks cover, but they require Python SDK integration to register — no `.agents/hooks/` directory or `hooks.json` config file exists.
 
-**Crickets's 3 hooks** (`kill-switch`, `steer`, `commit-on-stop`) ship `supported_hosts: [claude-code]`-only. (The memory hooks + `evidence-tracker` are agentm-native, not crickets.) See [ADR 0009 § Antigravity re-audit outcome](decisions/0009-evidence-tracker-hook) for the rationale — note its "no Antigravity file-based hook surface" finding is superseded by Antigravity 2.0 (tracked in the crickets-ADR-overhaul follow-up).
+**Crickets ships four hooks** (`kill-switch` / `steer` / `commit-on-stop` in `developer-safety`; `evidence-tracker` in `code-review`) plus the `harness-context` SessionStart hook in `developer-workflows`. As of crickets v3.0 the `evidence-tracker` hook ships **into crickets** (`code-review` plugin), Claude-only — its enforcement/veto needs the Claude-Code hook-veto contract that Antigravity lacks. (The memory recall hooks remain agentm-native, not crickets.) See the [Hook host-effectiveness matrix](#hook-host-effectiveness-matrix) below for which hooks are *effective* on which host. See [ADR 0009 § Antigravity re-audit outcome](decisions/0009-evidence-tracker-hook) for the original rationale — its "no Antigravity file-based hook surface" finding is superseded by Antigravity 2.0 (tracked in the crickets-ADR-overhaul follow-up).
 
 **Future direction (deferred, FOLLOWUP candidate)**: a separate Python sidecar package (`crickets-hooks-py`?) could translate crickets's file-based hook scripts to SDK decorator registration at agent-author boot time. Out of scope for v1.2.0.
 
