@@ -75,8 +75,8 @@ class TestClaudeEmitter(unittest.TestCase):
     def test_marketplace_lists_all_with_resolving_sources(self):
         mk = json.loads((self.cdist / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
         self.assertEqual({p["name"] for p in mk["plugins"]},
-                         {"developer", "developer-safety", "developer-workflows",
-                          "pii", "github-ci", "wiki"})
+                         {"code-review", "developer", "developer-safety",
+                          "developer-workflows", "pii", "github-ci", "wiki"})
         for p in mk["plugins"]:
             self.assertEqual(p["source"], f"./plugins/{p['name']}")
             self.assertTrue((self.cdist / "plugins" / p["name"]).is_dir())

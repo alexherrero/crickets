@@ -6,6 +6,25 @@
   "plugins": [
     {
       "category": "Coding",
+      "enhances": [
+        {
+          "capability": "review",
+          "effect": "/review dispatches the adversarial reviewers (failing test / DEFECT: file:line / NO ISSUES FOUND)",
+          "group": "developer-workflows"
+        }
+      ],
+      "name": "code-review",
+      "policy": {
+        "authentication": "ON_INSTALL",
+        "installation": "AVAILABLE"
+      },
+      "source": {
+        "path": "./plugins/code-review",
+        "source": "local"
+      }
+    },
+    {
+      "category": "Coding",
       "name": "developer",
       "policy": {
         "authentication": "ON_INSTALL",

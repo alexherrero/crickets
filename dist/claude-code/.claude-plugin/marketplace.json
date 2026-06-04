@@ -8,6 +8,19 @@
   },
   "plugins": [
     {
+      "description": "Standalone adversarial code review of any diff or PR — the adversarial-reviewer (+ cross-model Gemini) agents, the evidence-tracker hook, and a /code-review command. Enhances developer-workflows' review capability when both are installed.",
+      "enhances": [
+        {
+          "capability": "review",
+          "effect": "/review dispatches the adversarial reviewers (failing test / DEFECT: file:line / NO ISSUES FOUND)",
+          "group": "developer-workflows"
+        }
+      ],
+      "name": "code-review",
+      "source": "./plugins/code-review",
+      "version": "0.1.0"
+    },
+    {
       "description": "The base crickets plugin — phase/work conventions, control hooks (commit-on-stop, kill-switch, steer), and the fresh-context evaluator agent. Other plugins build on it.",
       "name": "developer",
       "source": "./plugins/developer",

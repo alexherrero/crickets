@@ -1,0 +1,9 @@
+{
+  "author": {
+    "name": "alexherrero",
+    "url": "https://github.com/alexherrero/crickets"
+  },
+  "description": "Standalone adversarial code review of any diff or PR — the adversarial-reviewer (+ cross-model Gemini) agents, the evidence-tracker hook, and a /code-review command. Enhances developer-workflows' review capability when both are installed.",
+  "name": "code-review",
+  "version": "0.1.0"
+}

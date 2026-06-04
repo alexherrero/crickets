@@ -35,8 +35,8 @@ class TestSrcModel(unittest.TestCase):
         groups = src_model.load_groups(_ROOT / "src")
         by = {g.slug: g for g in groups}
         self.assertEqual(set(by),
-                         {"developer", "developer-safety", "developer-workflows",
-                          "github-ci", "pii", "wiki"})
+                         {"code-review", "developer", "developer-safety",
+                          "developer-workflows", "github-ci", "pii", "wiki"})
         # composition (the original four, unchanged)
         self.assertEqual(by["github-ci"].requires, ["developer"])
         self.assertEqual(by["wiki"].requires, ["developer"])
@@ -67,6 +67,16 @@ class TestSrcModel(unittest.TestCase):
         self.assertEqual([e.group for e in ds.enhances], ["developer-workflows"])
         ds_hooks = {p.name for p in ds.primitives if p.kind == "hook"}
         self.assertLessEqual({"kill-switch", "steer", "commit-on-stop"}, ds_hooks)
+        # code-review (part 4/6): standalone, capability-targeted enhances edge,
+        # carries the adversarial-reviewer agents.
+        cr = by["code-review"]
+        self.assertTrue(cr.standalone)
+        self.assertEqual(cr.requires, [])
+        self.assertEqual(len(cr.enhances), 1)
+        self.assertEqual((cr.enhances[0].group, cr.enhances[0].capability),
+                         ("developer-workflows", "review"))
+        cr_agents = {p.name for p in cr.primitives if p.kind == "agent"}
+        self.assertLessEqual({"adversarial-reviewer", "adversarial-reviewer-cross"}, cr_agents)
         # a primitive's shape
         prims = {p.name: p for p in by["developer"].primitives}
         self.assertEqual(prims["commit-on-stop"].kind, "hook")
