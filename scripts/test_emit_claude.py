@@ -229,6 +229,27 @@ class TestClaudeEmitter(unittest.TestCase):
             self.assertTrue(f.exists())
             self.assertIn("echo hi", f.read_text(encoding="utf-8"))
 
+    def test_group_scripts_excludes_pycache(self):
+        # the asset copy must NOT pull __pycache__/*.pyc (transient, gitignored)
+        # into dist/ — else a fresh build after tests compiled a bundled .py
+        # drifts vs. the committed (clean) dist/. Regression for the CI failure
+        # the developer-workflows capability_probe.py surfaced.
+        src_model = sys.modules["src_model"]
+        with tempfile.TemporaryDirectory() as t:
+            src = Path(t) / "src"
+            (src / "cr" / "scripts" / "__pycache__").mkdir(parents=True)
+            (src / "cr" / "group.yaml").write_text(
+                "name: CR\ndescription: d\nstandalone: true\nrequires: []\n", encoding="utf-8")
+            (src / "cr" / "scripts" / "probe.py").write_text("x = 1\n", encoding="utf-8")
+            (src / "cr" / "scripts" / "__pycache__" / "probe.cpython-311.pyc").write_text(
+                "bytecode", encoding="utf-8")
+            group = src_model.load_groups(src)[0]
+            dist = Path(t) / "dist"
+            emit_claude.ClaudeEmitter().emit_group(group, dist)
+            sd = dist / "plugins" / "cr" / "scripts"
+            self.assertTrue((sd / "probe.py").exists())
+            self.assertFalse((sd / "__pycache__").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

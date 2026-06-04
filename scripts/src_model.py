@@ -130,7 +130,12 @@ def copy_group_scripts(group: "Group", plugin_dir: Path) -> None:
         return
     src_scripts = group.manifest.parent / "scripts"
     if src_scripts.is_dir():
-        shutil.copytree(src_scripts, plugin_dir / "scripts", dirs_exist_ok=True)
+        # Exclude transient/gitignored cruft so the emitted dist/ stays
+        # deterministic + drift-free regardless of whether tests (or anything
+        # else) compiled a bundled .py into __pycache__ before the build runs.
+        shutil.copytree(
+            src_scripts, plugin_dir / "scripts", dirs_exist_ok=True,
+            ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store"))
 
 
 def load_groups(src: Path) -> list[Group]:
