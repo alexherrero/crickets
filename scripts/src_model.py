@@ -79,6 +79,20 @@ def parse_enhance(entry) -> "Enhance":
     return Enhance(group="", capability=None, effect="")  # malformed → lint flags
 
 
+def enhances_to_json(enhances: "list[Enhance]") -> list[dict]:
+    """Serialize `enhances` to JSON-friendly dicts for emitted metadata
+    (`capability`/`effect` omitted when empty)."""
+    out = []
+    for e in enhances:
+        d: dict = {"group": e.group}
+        if e.capability is not None:
+            d["capability"] = e.capability
+        if e.effect:
+            d["effect"] = e.effect
+        out.append(d)
+    return out
+
+
 @dataclass
 class Group:
     slug: str

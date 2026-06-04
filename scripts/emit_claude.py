@@ -25,7 +25,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from generate import HostEmitter, dump_json  # noqa: E402  (registered by generate._load_emitters)
-from src_model import Group, Primitive  # noqa: E402
+from src_model import Group, Primitive, enhances_to_json  # noqa: E402
 
 HOST = "claude-code"
 PLUGIN_VERSION = "0.1.0"
@@ -58,6 +58,10 @@ class ClaudeEmitter(HostEmitter):
         }
         if group.requires:
             manifest["dependencies"] = sorted(group.requires)
+        if group.capabilities:
+            manifest["capabilities"] = list(group.capabilities)
+        if group.enhances:
+            manifest["enhances"] = enhances_to_json(group.enhances)
         cp = plugin_dir / ".claude-plugin"
         cp.mkdir(parents=True, exist_ok=True)
         (cp / "plugin.json").write_text(dump_json(manifest), encoding="utf-8")
@@ -104,6 +108,10 @@ class ClaudeEmitter(HostEmitter):
         }
         if group.requires:
             entry["dependencies"] = sorted(group.requires)
+        if group.capabilities:
+            entry["capabilities"] = list(group.capabilities)
+        if group.enhances:
+            entry["enhances"] = enhances_to_json(group.enhances)
         return entry
 
     # ── component kinds ────────────────────────────────────────────────────

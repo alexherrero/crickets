@@ -158,6 +158,25 @@ class TestAntigravityEmitter(unittest.TestCase):
         finally:
             tmp2.cleanup()
 
+    def test_enhances_capabilities_in_entry_not_plugin_json(self):
+        src_model = sys.modules["src_model"]
+        with tempfile.TemporaryDirectory() as t:
+            src = Path(t) / "src"
+            (src / "cr").mkdir(parents=True)
+            (src / "cr" / "group.yaml").write_text(
+                "name: CR\ndescription: d\nstandalone: true\nrequires: []\n"
+                "capabilities: [x]\nenhances: [wf]\n", encoding="utf-8")
+            group = src_model.load_groups(src)[0]
+            dist = Path(t) / "dist"
+            entry = emit_antigravity.AntigravityEmitter().emit_group(group, dist)
+            # the marketplace entry carries both (like `requires` on AG)
+            self.assertEqual(entry["capabilities"], ["x"])
+            self.assertEqual(entry["enhances"], [{"group": "wf"}])
+            # AG plugin.json stays THIN — no enhances/capabilities leak
+            pj = json.loads((dist / "plugins" / "cr" / "plugin.json").read_text(encoding="utf-8"))
+            self.assertNotIn("enhances", pj)
+            self.assertNotIn("capabilities", pj)
+
 
 if __name__ == "__main__":
     unittest.main()
