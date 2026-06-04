@@ -79,7 +79,8 @@ class TestAntigravityEmitter(unittest.TestCase):
         self.assertEqual(mk["interface"]["displayName"], "Crickets")
         by = {p["name"]: p for p in mk["plugins"]}
         self.assertEqual(set(by),
-                         {"developer", "developer-workflows", "pii", "github-ci", "wiki"})
+                         {"developer", "developer-safety", "developer-workflows",
+                          "pii", "github-ci", "wiki"})
         for p in mk["plugins"]:
             self.assertEqual(p["source"], {"source": "local", "path": f"./plugins/{p['name']}"})
             self.assertEqual(p["policy"]["installation"], "AVAILABLE")

@@ -1,6 +1,7 @@
 {
   "plugins": [
     "developer",
+    "developer-safety",
     "developer-workflows",
     "github-ci",
     "pii",

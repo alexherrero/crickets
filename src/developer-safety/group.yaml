@@ -1,0 +1,6 @@
+name: Developer Safety
+description: Universal control + safety layer — kill-switch, steer, commit-on-stop hooks plus commit-no-coauthor / worktrees-never-auto conventions. Usable in any session; enhances developer-workflows (its hooks engage across the phase loop) when both are installed.
+category: Coding
+requires: []
+standalone: true
+enhances: [developer-workflows]

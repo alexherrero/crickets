@@ -83,10 +83,12 @@ class TestBuildClean(unittest.TestCase):
             rc = generate.build(src=_ROOT / "src", dist=dist)
             self.assertEqual(rc, 0)
             self.assertEqual(sorted(seen),
-                             ["developer", "developer-workflows", "github-ci", "pii", "wiki"])
+                             ["developer", "developer-safety", "developer-workflows",
+                              "github-ci", "pii", "wiki"])
             mk = json.loads((dist / "claude-code" / "marketplace.json").read_text())
             self.assertEqual({e["name"] for e in mk["plugins"]},
-                             {"developer", "developer-workflows", "github-ci", "pii", "wiki"})
+                             {"developer", "developer-safety", "developer-workflows",
+                              "github-ci", "pii", "wiki"})
 
     def test_clean_removes_dist(self):
         with tempfile.TemporaryDirectory() as t:
@@ -122,7 +124,8 @@ class TestCheck(unittest.TestCase):
     def test_default_set_emitted(self):
         ds = json.loads((self.dist / "default-set.json").read_text(encoding="utf-8"))
         self.assertEqual(ds["plugins"],
-                         ["developer", "developer-workflows", "github-ci", "pii", "wiki"])
+                         ["developer", "developer-safety", "developer-workflows",
+                          "github-ci", "pii", "wiki"])
 
     def test_changed_file_fails(self):
         f = next(self.dist.rglob("plugin.json"))

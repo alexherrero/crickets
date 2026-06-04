@@ -35,7 +35,8 @@ class TestSrcModel(unittest.TestCase):
         groups = src_model.load_groups(_ROOT / "src")
         by = {g.slug: g for g in groups}
         self.assertEqual(set(by),
-                         {"developer", "developer-workflows", "github-ci", "pii", "wiki"})
+                         {"developer", "developer-safety", "developer-workflows",
+                          "github-ci", "pii", "wiki"})
         # composition (the original four, unchanged)
         self.assertEqual(by["github-ci"].requires, ["developer"])
         self.assertEqual(by["wiki"].requires, ["developer"])
@@ -58,6 +59,14 @@ class TestSrcModel(unittest.TestCase):
                          ["setup", "plan", "work", "review", "release", "bugfix"])
         dw_cmds = {p.name for p in dw.primitives if p.kind == "command"}
         self.assertLessEqual({"setup", "plan", "work"}, dw_cmds)
+        # developer-safety (part 3/6): standalone, enhances developer-workflows
+        # (the first real enhances edge), carries the 3 control hooks.
+        ds = by["developer-safety"]
+        self.assertTrue(ds.standalone)
+        self.assertEqual(ds.requires, [])
+        self.assertEqual([e.group for e in ds.enhances], ["developer-workflows"])
+        ds_hooks = {p.name for p in ds.primitives if p.kind == "hook"}
+        self.assertLessEqual({"kill-switch", "steer", "commit-on-stop"}, ds_hooks)
         # a primitive's shape
         prims = {p.name: p for p in by["developer"].primitives}
         self.assertEqual(prims["commit-on-stop"].kind, "hook")

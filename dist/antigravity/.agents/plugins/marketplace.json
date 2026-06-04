@@ -17,6 +17,23 @@
       }
     },
     {
+      "category": "Coding",
+      "enhances": [
+        {
+          "group": "developer-workflows"
+        }
+      ],
+      "name": "developer-safety",
+      "policy": {
+        "authentication": "ON_INSTALL",
+        "installation": "AVAILABLE"
+      },
+      "source": {
+        "path": "./plugins/developer-safety",
+        "source": "local"
+      }
+    },
+    {
       "capabilities": [
         "setup",
         "plan",

@@ -14,6 +14,17 @@
       "version": "0.1.0"
     },
     {
+      "description": "Universal control + safety layer — kill-switch, steer, commit-on-stop hooks plus commit-no-coauthor / worktrees-never-auto conventions. Usable in any session; enhances developer-workflows (its hooks engage across the phase loop) when both are installed.",
+      "enhances": [
+        {
+          "group": "developer-workflows"
+        }
+      ],
+      "name": "developer-safety",
+      "source": "./dist/claude-code/plugins/developer-safety",
+      "version": "0.1.0"
+    },
+    {
       "capabilities": [
         "setup",
         "plan",
