@@ -28,7 +28,7 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
-_HOOKS = _ROOT / "src" / "developer" / "hooks"
+_HOOKS = _ROOT / "src" / "developer-safety" / "hooks"  # control hooks' home post-seed-retirement
 KILL_SWITCH = _HOOKS / "kill-switch" / "kill-switch.sh"
 STEER = _HOOKS / "steer" / "steer.sh"
 COMMIT_ON_STOP = _HOOKS / "commit-on-stop" / "commit-on-stop.sh"

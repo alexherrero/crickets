@@ -1,9 +1,0 @@
-{
-  "author": {
-    "name": "alexherrero",
-    "url": "https://github.com/alexherrero/crickets"
-  },
-  "description": "The base crickets plugin — phase/work conventions, control hooks (commit-on-stop, kill-switch, steer), and the fresh-context evaluator agent. Other plugins build on it.",
-  "name": "developer",
-  "version": "0.1.0"
-}

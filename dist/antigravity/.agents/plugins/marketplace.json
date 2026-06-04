@@ -25,18 +25,6 @@
     },
     {
       "category": "Coding",
-      "name": "developer",
-      "policy": {
-        "authentication": "ON_INSTALL",
-        "installation": "AVAILABLE"
-      },
-      "source": {
-        "path": "./plugins/developer",
-        "source": "local"
-      }
-    },
-    {
-      "category": "Coding",
       "enhances": [
         {
           "group": "developer-workflows"
@@ -80,7 +68,7 @@
         "installation": "AVAILABLE"
       },
       "requires": [
-        "developer"
+        "developer-workflows"
       ],
       "source": {
         "path": "./plugins/github-ci",
@@ -107,7 +95,7 @@
         "installation": "AVAILABLE"
       },
       "requires": [
-        "developer"
+        "developer-workflows"
       ],
       "source": {
         "path": "./plugins/wiki",

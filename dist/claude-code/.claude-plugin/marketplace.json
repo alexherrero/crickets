@@ -21,12 +21,6 @@
       "version": "0.1.0"
     },
     {
-      "description": "The base crickets plugin — phase/work conventions, control hooks (commit-on-stop, kill-switch, steer), and the fresh-context evaluator agent. Other plugins build on it.",
-      "name": "developer",
-      "source": "./plugins/developer",
-      "version": "0.1.0"
-    },
-    {
       "description": "Universal control + safety layer — kill-switch, steer, commit-on-stop hooks plus commit-no-coauthor / worktrees-never-auto conventions. Usable in any session; enhances developer-workflows (its hooks engage across the phase loop) when both are installed.",
       "enhances": [
         {
@@ -53,7 +47,7 @@
     },
     {
       "dependencies": [
-        "developer"
+        "developer-workflows"
       ],
       "description": "CI workflows + dependency-update tooling — the dependabot-fixer skill that repairs breakage on Dependabot PRs.",
       "name": "github-ci",
@@ -68,7 +62,7 @@
     },
     {
       "dependencies": [
-        "developer"
+        "developer-workflows"
       ],
       "description": "Diátaxis wiki authoring support — the diataxis-evaluator agent that classifies pages by documentation mode.",
       "name": "wiki",

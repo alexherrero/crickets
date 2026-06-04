@@ -35,21 +35,16 @@ class TestSrcModel(unittest.TestCase):
         groups = src_model.load_groups(_ROOT / "src")
         by = {g.slug: g for g in groups}
         self.assertEqual(set(by),
-                         {"code-review", "developer", "developer-safety",
-                          "developer-workflows", "github-ci", "pii", "wiki"})
-        # composition (the original four, unchanged)
-        self.assertEqual(by["github-ci"].requires, ["developer"])
-        self.assertEqual(by["wiki"].requires, ["developer"])
+                         {"code-review", "developer-safety", "developer-workflows",
+                          "github-ci", "pii", "wiki"})
+        # composition: the developer seed is retired (part 6); siblings now require
+        # developer-workflows.
+        self.assertEqual(by["github-ci"].requires, ["developer-workflows"])
+        self.assertEqual(by["wiki"].requires, ["developer-workflows"])
         self.assertEqual(by["pii"].requires, [])
         self.assertTrue(by["pii"].standalone)
         self.assertFalse(by["github-ci"].standalone)
-        # primitive counts: developer = 3 hooks + evaluator agent
-        self.assertEqual(len(by["developer"].primitives), 4)
         self.assertEqual(len(by["pii"].primitives), 1)
-        # the original four groups still hold 7 primitives between them (stable as
-        # developer-workflows grows across its build parts)
-        self.assertEqual(
-            sum(len(by[s].primitives) for s in ("developer", "github-ci", "pii", "wiki")), 7)
         # developer-workflows (part 2/6): standalone, declares its capabilities,
         # carries phase commands (setup/plan/work this part; review/release/bugfix next).
         dw = by["developer-workflows"]
@@ -77,14 +72,14 @@ class TestSrcModel(unittest.TestCase):
                          ("developer-workflows", "review"))
         cr_agents = {p.name for p in cr.primitives if p.kind == "agent"}
         self.assertLessEqual({"adversarial-reviewer", "adversarial-reviewer-cross"}, cr_agents)
-        # a primitive's shape
-        prims = {p.name: p for p in by["developer"].primitives}
+        # a primitive's shape (commit-on-stop now lives in developer-safety)
+        prims = {p.name: p for p in by["developer-safety"].primitives}
         self.assertEqual(prims["commit-on-stop"].kind, "hook")
         self.assertIn("claude-code", prims["commit-on-stop"].supported_hosts)
 
     def test_supports_host(self):
         by = {g.slug: g for g in src_model.load_groups(_ROOT / "src")}
-        self.assertTrue(by["developer"].supports("claude-code"))
+        self.assertTrue(by["developer-workflows"].supports("claude-code"))
 
     def test_deterministic_order(self):
         a = [g.slug for g in src_model.load_groups(_ROOT / "src")]
@@ -99,7 +94,7 @@ class TestSrcModel(unittest.TestCase):
     def test_backcompat_no_enhances_capabilities(self):
         # existing groups carry neither field → both default to empty lists
         by = {g.slug: g for g in src_model.load_groups(_ROOT / "src")}
-        for slug in ("developer", "pii", "wiki", "github-ci"):
+        for slug in ("pii", "wiki", "github-ci"):
             self.assertEqual(by[slug].enhances, [])
             self.assertEqual(by[slug].capabilities, [])
 

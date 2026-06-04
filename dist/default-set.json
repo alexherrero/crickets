@@ -1,7 +1,6 @@
 {
   "plugins": [
     "code-review",
-    "developer",
     "developer-safety",
     "developer-workflows",
     "github-ci",

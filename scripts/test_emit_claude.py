@@ -53,36 +53,38 @@ class TestClaudeEmitter(unittest.TestCase):
         return json.loads(p.read_text(encoding="utf-8"))
 
     def test_plugin_json_per_group(self):
-        for slug in ("developer", "pii", "github-ci", "wiki"):
+        for slug in ("developer-workflows", "pii", "github-ci", "wiki"):
             d = self._plugin_json(slug)
             self.assertEqual(d["name"], slug)
             self.assertTrue(d.get("description"))
             self.assertEqual(d["version"], "0.1.0")
 
     def test_dependencies_from_requires(self):
-        self.assertEqual(self._plugin_json("github-ci").get("dependencies"), ["developer"])
-        self.assertEqual(self._plugin_json("wiki").get("dependencies"), ["developer"])
+        # post-seed-retirement: siblings depend on developer-workflows
+        self.assertEqual(self._plugin_json("github-ci").get("dependencies"), ["developer-workflows"])
+        self.assertEqual(self._plugin_json("wiki").get("dependencies"), ["developer-workflows"])
         self.assertNotIn("dependencies", self._plugin_json("pii"))
-        self.assertNotIn("dependencies", self._plugin_json("developer"))
+        self.assertNotIn("dependencies", self._plugin_json("developer-workflows"))
 
     def test_components_copied(self):
         d = self.cdist / "plugins"
         self.assertTrue((d / "pii" / "skills" / "pii-scrubber" / "SKILL.md").exists())
         self.assertTrue((d / "github-ci" / "skills" / "dependabot-fixer" / "SKILL.md").exists())
-        self.assertTrue((d / "developer" / "agents" / "evaluator.md").exists())
+        self.assertTrue((d / "developer-workflows" / "agents" / "evaluator.md").exists())
         self.assertTrue((d / "wiki" / "agents" / "diataxis-evaluator.md").exists())
 
     def test_marketplace_lists_all_with_resolving_sources(self):
         mk = json.loads((self.cdist / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
         self.assertEqual({p["name"] for p in mk["plugins"]},
-                         {"code-review", "developer", "developer-safety",
+                         {"code-review", "developer-safety",
                           "developer-workflows", "pii", "github-ci", "wiki"})
         for p in mk["plugins"]:
             self.assertEqual(p["source"], f"./plugins/{p['name']}")
             self.assertTrue((self.cdist / "plugins" / p["name"]).is_dir())
 
     def test_hooks_emitted_on_correct_events(self):
-        raw = json.loads((self.cdist / "plugins" / "developer" / "hooks" / "hooks.json").read_text(encoding="utf-8"))
+        # the control hooks live in developer-safety post-seed-retirement
+        raw = json.loads((self.cdist / "plugins" / "developer-safety" / "hooks" / "hooks.json").read_text(encoding="utf-8"))
         # Claude plugin hooks.json is wrapped in a top-level "hooks" record.
         self.assertIn("hooks", raw)
         hj = raw["hooks"]
@@ -97,7 +99,7 @@ class TestClaudeEmitter(unittest.TestCase):
         # no raw .claude/hooks path leaks through
         self.assertFalse(any(".claude/hooks" in c for c in stop_cmds + pre_cmds))
         # scripts bundled under the plugin
-        self.assertTrue((self.cdist / "plugins" / "developer" / "hooks" / "commit-on-stop" / "commit-on-stop.sh").exists())
+        self.assertTrue((self.cdist / "plugins" / "developer-safety" / "hooks" / "commit-on-stop" / "commit-on-stop.sh").exists())
 
     def test_synthetic_mcp_output_style_snippet(self):
         Primitive = emit_claude.Primitive

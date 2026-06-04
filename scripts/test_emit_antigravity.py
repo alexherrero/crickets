@@ -54,7 +54,7 @@ class TestAntigravityEmitter(unittest.TestCase):
 
     def test_plugin_json_no_native_dependencies(self):
         # AG composition is thin — plugin.json never carries dependencies.
-        for slug in ("developer", "pii", "github-ci", "wiki"):
+        for slug in ("developer-workflows", "pii", "github-ci", "wiki"):
             d = self._plugin_json(slug)
             self.assertEqual(d["name"], slug)
             self.assertNotIn("dependencies", d)
@@ -64,12 +64,12 @@ class TestAntigravityEmitter(unittest.TestCase):
         d = self.agdist / "plugins"
         self.assertTrue((d / "pii" / "skills" / "pii-scrubber" / "SKILL.md").exists())
         self.assertTrue((d / "github-ci" / "skills" / "dependabot-fixer" / "SKILL.md").exists())
-        self.assertTrue((d / "developer" / "agents" / "evaluator.md").exists())
+        self.assertTrue((d / "developer-workflows" / "agents" / "evaluator.md").exists())
         self.assertTrue((d / "wiki" / "agents" / "diataxis-evaluator.md").exists())
 
     def test_thin_composition_no_inlined_base(self):
-        # github-ci requires developer but carries ONLY its own primitive — no
-        # developer components inlined.
+        # github-ci requires developer-workflows but carries ONLY its own
+        # primitive — no required-plugin components inlined.
         gci = self.agdist / "plugins" / "github-ci"
         self.assertFalse((gci / "agents" / "evaluator.md").exists())
         self.assertEqual([p.name for p in (gci / "skills").iterdir()], ["dependabot-fixer"])
@@ -79,20 +79,21 @@ class TestAntigravityEmitter(unittest.TestCase):
         self.assertEqual(mk["interface"]["displayName"], "Crickets")
         by = {p["name"]: p for p in mk["plugins"]}
         self.assertEqual(set(by),
-                         {"code-review", "developer", "developer-safety",
+                         {"code-review", "developer-safety",
                           "developer-workflows", "pii", "github-ci", "wiki"})
         for p in mk["plugins"]:
             self.assertEqual(p["source"], {"source": "local", "path": f"./plugins/{p['name']}"})
             self.assertEqual(p["policy"]["installation"], "AVAILABLE")
             self.assertEqual(p["category"], "Coding")
         # requires documented (thin) on dependents, absent on standalone
-        self.assertEqual(by["github-ci"]["requires"], ["developer"])
-        self.assertEqual(by["wiki"]["requires"], ["developer"])
+        self.assertEqual(by["github-ci"]["requires"], ["developer-workflows"])
+        self.assertEqual(by["wiki"]["requires"], ["developer-workflows"])
         self.assertNotIn("requires", by["pii"])
-        self.assertNotIn("requires", by["developer"])
+        self.assertNotIn("requires", by["developer-workflows"])
 
     def test_ag_hooks_named_with_relative_paths(self):
-        hj = json.loads((self.agdist / "plugins" / "developer" / "hooks.json").read_text(encoding="utf-8"))
+        # the control hooks live in developer-safety post-seed-retirement
+        hj = json.loads((self.agdist / "plugins" / "developer-safety" / "hooks.json").read_text(encoding="utf-8"))
         self.assertEqual(set(hj), {"commit-on-stop", "kill-switch", "steer"})
         self.assertTrue(hj["commit-on-stop"]["enabled"])
         self.assertIn("Stop", hj["commit-on-stop"])
@@ -107,7 +108,7 @@ class TestAntigravityEmitter(unittest.TestCase):
                     cmds += [x["command"] for x in e.get("hooks", [])]
         self.assertTrue(all(c.startswith("bash ./hooks/") for c in cmds), cmds)
         self.assertFalse(any("CLAUDE_PLUGIN_ROOT" in c or ".claude/hooks" in c for c in cmds))
-        self.assertTrue((self.agdist / "plugins" / "developer" / "hooks" / "kill-switch" / "kill-switch.sh").exists())
+        self.assertTrue((self.agdist / "plugins" / "developer-safety" / "hooks" / "kill-switch" / "kill-switch.sh").exists())
 
     def test_synthetic_sessionstart_gap_snippet_mcp(self):
         Primitive = emit_antigravity.Primitive
