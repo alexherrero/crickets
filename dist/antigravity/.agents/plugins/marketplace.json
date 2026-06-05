@@ -88,17 +88,20 @@
       }
     },
     {
-      "category": "Coding",
-      "name": "wiki",
+      "category": "documentation",
+      "enhances": [
+        {
+          "effect": "phase commands dispatch the documenter to author/repair wiki pages at phase boundaries",
+          "group": "developer-workflows"
+        }
+      ],
+      "name": "wiki-maintenance",
       "policy": {
         "authentication": "ON_INSTALL",
         "installation": "AVAILABLE"
       },
-      "requires": [
-        "developer-workflows"
-      ],
       "source": {
-        "path": "./plugins/wiki",
+        "path": "./plugins/wiki-maintenance",
         "source": "local"
       }
     }

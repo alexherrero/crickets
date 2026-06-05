@@ -53,16 +53,17 @@ class TestClaudeEmitter(unittest.TestCase):
         return json.loads(p.read_text(encoding="utf-8"))
 
     def test_plugin_json_per_group(self):
-        for slug in ("developer-workflows", "pii", "github-ci", "wiki"):
+        for slug in ("developer-workflows", "pii", "github-ci", "wiki-maintenance"):
             d = self._plugin_json(slug)
             self.assertEqual(d["name"], slug)
             self.assertTrue(d.get("description"))
             self.assertEqual(d["version"], "0.1.0")
 
     def test_dependencies_from_requires(self):
-        # post-seed-retirement: siblings depend on developer-workflows
+        # post-seed-retirement: github-ci depends on developer-workflows; wiki-maintenance
+        # flipped to standalone (no requires) in the wiki-maintenance scaffold (part 1).
         self.assertEqual(self._plugin_json("github-ci").get("dependencies"), ["developer-workflows"])
-        self.assertEqual(self._plugin_json("wiki").get("dependencies"), ["developer-workflows"])
+        self.assertNotIn("dependencies", self._plugin_json("wiki-maintenance"))
         self.assertNotIn("dependencies", self._plugin_json("pii"))
         self.assertNotIn("dependencies", self._plugin_json("developer-workflows"))
 
@@ -71,13 +72,13 @@ class TestClaudeEmitter(unittest.TestCase):
         self.assertTrue((d / "pii" / "skills" / "pii-scrubber" / "SKILL.md").exists())
         self.assertTrue((d / "github-ci" / "skills" / "dependabot-fixer" / "SKILL.md").exists())
         self.assertTrue((d / "developer-workflows" / "agents" / "evaluator.md").exists())
-        self.assertTrue((d / "wiki" / "agents" / "diataxis-evaluator.md").exists())
+        self.assertTrue((d / "wiki-maintenance" / "agents" / "diataxis-evaluator.md").exists())
 
     def test_marketplace_lists_all_with_resolving_sources(self):
         mk = json.loads((self.cdist / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
         self.assertEqual({p["name"] for p in mk["plugins"]},
                          {"code-review", "developer-safety",
-                          "developer-workflows", "pii", "github-ci", "wiki"})
+                          "developer-workflows", "pii", "github-ci", "wiki-maintenance"})
         for p in mk["plugins"]:
             self.assertEqual(p["source"], f"./plugins/{p['name']}")
             self.assertTrue((self.cdist / "plugins" / p["name"]).is_dir())

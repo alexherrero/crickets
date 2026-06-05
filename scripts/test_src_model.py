@@ -36,11 +36,17 @@ class TestSrcModel(unittest.TestCase):
         by = {g.slug: g for g in groups}
         self.assertEqual(set(by),
                          {"code-review", "developer-safety", "developer-workflows",
-                          "github-ci", "pii", "wiki"})
-        # composition: the developer seed is retired (part 6); siblings now require
-        # developer-workflows.
+                          "github-ci", "pii", "wiki-maintenance"})
+        # composition: the developer seed is retired (part 6); github-ci still requires
+        # developer-workflows. wiki-maintenance flipped to standalone + a capability-less
+        # enhance during the wiki-maintenance scaffold (part 1) — the capability gets
+        # targeted in part 3 (documenter-wiring).
         self.assertEqual(by["github-ci"].requires, ["developer-workflows"])
-        self.assertEqual(by["wiki"].requires, ["developer-workflows"])
+        wm = by["wiki-maintenance"]
+        self.assertEqual(wm.requires, [])
+        self.assertTrue(wm.standalone)
+        self.assertEqual([e.group for e in wm.enhances], ["developer-workflows"])
+        self.assertIsNone(wm.enhances[0].capability)
         self.assertEqual(by["pii"].requires, [])
         self.assertTrue(by["pii"].standalone)
         self.assertFalse(by["github-ci"].standalone)
@@ -92,9 +98,11 @@ class TestSrcModel(unittest.TestCase):
             self.assertEqual(src_model.load_groups(Path(t) / "nope"), [])
 
     def test_backcompat_no_enhances_capabilities(self):
-        # existing groups carry neither field → both default to empty lists
+        # groups that declare neither field → both default to empty lists
+        # (wiki-maintenance now carries a capability-less enhance, so it's no longer
+        # a no-enhances example — its enhance is asserted in test_real_tree_shape)
         by = {g.slug: g for g in src_model.load_groups(_ROOT / "src")}
-        for slug in ("pii", "wiki", "github-ci"):
+        for slug in ("pii", "github-ci"):
             self.assertEqual(by[slug].enhances, [])
             self.assertEqual(by[slug].capabilities, [])
 

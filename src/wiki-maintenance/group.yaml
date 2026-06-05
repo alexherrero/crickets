@@ -1,0 +1,11 @@
+name: Wiki Maintenance
+description: Opinionated, template-driven wiki maintenance — the wiki-author authoring/learning
+  skill, the documenter agent, the diataxis-evaluator, recent-wiki-changes, and the check-wiki.py
+  linter. Maintains a wiki in the operator's voice; enhances developer-workflows' phase-boundary
+  documentation when both are installed.
+category: documentation
+requires: []
+standalone: true
+enhances:
+  - group: developer-workflows
+    effect: "phase commands dispatch the documenter to author/repair wiki pages at phase boundaries"

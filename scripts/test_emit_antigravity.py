@@ -54,7 +54,7 @@ class TestAntigravityEmitter(unittest.TestCase):
 
     def test_plugin_json_no_native_dependencies(self):
         # AG composition is thin — plugin.json never carries dependencies.
-        for slug in ("developer-workflows", "pii", "github-ci", "wiki"):
+        for slug in ("developer-workflows", "pii", "github-ci", "wiki-maintenance"):
             d = self._plugin_json(slug)
             self.assertEqual(d["name"], slug)
             self.assertNotIn("dependencies", d)
@@ -65,7 +65,7 @@ class TestAntigravityEmitter(unittest.TestCase):
         self.assertTrue((d / "pii" / "skills" / "pii-scrubber" / "SKILL.md").exists())
         self.assertTrue((d / "github-ci" / "skills" / "dependabot-fixer" / "SKILL.md").exists())
         self.assertTrue((d / "developer-workflows" / "agents" / "evaluator.md").exists())
-        self.assertTrue((d / "wiki" / "agents" / "diataxis-evaluator.md").exists())
+        self.assertTrue((d / "wiki-maintenance" / "agents" / "diataxis-evaluator.md").exists())
 
     def test_thin_composition_no_inlined_base(self):
         # github-ci requires developer-workflows but carries ONLY its own
@@ -80,14 +80,16 @@ class TestAntigravityEmitter(unittest.TestCase):
         by = {p["name"]: p for p in mk["plugins"]}
         self.assertEqual(set(by),
                          {"code-review", "developer-safety",
-                          "developer-workflows", "pii", "github-ci", "wiki"})
+                          "developer-workflows", "pii", "github-ci", "wiki-maintenance"})
+        # wiki-maintenance re-categorized Coding → documentation in part 1; rest stay Coding
+        expected_category = {"wiki-maintenance": "documentation"}
         for p in mk["plugins"]:
             self.assertEqual(p["source"], {"source": "local", "path": f"./plugins/{p['name']}"})
             self.assertEqual(p["policy"]["installation"], "AVAILABLE")
-            self.assertEqual(p["category"], "Coding")
+            self.assertEqual(p["category"], expected_category.get(p["name"], "Coding"))
         # requires documented (thin) on dependents, absent on standalone
         self.assertEqual(by["github-ci"]["requires"], ["developer-workflows"])
-        self.assertEqual(by["wiki"]["requires"], ["developer-workflows"])
+        self.assertNotIn("requires", by["wiki-maintenance"])
         self.assertNotIn("requires", by["pii"])
         self.assertNotIn("requires", by["developer-workflows"])
 
