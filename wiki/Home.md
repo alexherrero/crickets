@@ -32,6 +32,7 @@ This wiki is the contributor-facing documentation for Crickets itself. Every pag
 - [Quality-Gates-Recipe](Quality-Gates-Recipe) — operator-facing recipe for the 5-primitive quality-gates set (replaces the v1.x `quality-gates` bundle; `kind: bundle` reserved-future in v2.0.0).
 - [Use the evaluator](Use-The-Evaluator) — dispatch the `evaluator` sub-agent for PASS / NEEDS_WORK grading against a precise rubric.
 - [Use the base hooks](Use-The-Base-Hooks) — kill-switch, steer, commit-on-stop. Operator-precision control for long-running Claude Code sessions.
+- [Run the style-learning loop](Run-The-Style-Learning-Loop) — teach `wiki-author` your house voice via the operator-in-the-loop learning loop _(pending — ships with `wiki-maintenance` part 3)_.
 
 > The `evidence-tracker` hook and the `design`, `memory`, and `diataxis-author` skills, along with Antigravity plugin authoring, moved to [Agent M](https://github.com/alexherrero/agentm) in v2.0.0 (V4 #36 reorg). See the [Agent M wiki](https://github.com/alexherrero/agentm/wiki) for their operational docs.
 

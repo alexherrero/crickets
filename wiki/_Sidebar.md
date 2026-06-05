@@ -11,6 +11,7 @@
 - [Use the evaluator](Use-The-Evaluator)
 - [Use the base hooks](Use-The-Base-Hooks)
 - [Quality-Gates-Recipe](Quality-Gates-Recipe)
+- [Run the style-learning loop](Run-The-Style-Learning-Loop)
 
 ### 📖 Reference
 - [Customization Types](Customization-Types)
