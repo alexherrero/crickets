@@ -11,7 +11,7 @@ prd:
 project: https://github.com/users/alexherrero/projects/5
 parent_design: ../../wiki-maintenance.md
 part_slug: dogfood-finale
-dependencies: [style-learning-loop]
+dependencies: [style-learning-loop, wiki-watcher]
 estimated_scope: L
 ---
 
@@ -28,7 +28,8 @@ The operator-paced finale that is simultaneously the plugin's **validation** and
 
 ## Dependencies
 
-- **`style-learning-loop`** — the learning loop, the style overlay, and the scope-capture path must exist to dogfood them. (In practice this part exercises the whole plugin — authoring, capture, and optionally the documenter wiring — but the binding prerequisite is the learning loop.)
+- **`style-learning-loop`** — the learning loop, the style overlay, and the scope-capture path must exist to dogfood them (the load-bearing prerequisite).
+- **`wiki-watcher`** — this is the **finale**: it validates the *complete* plugin (authoring · capture · documenter wiring · watcher) and gates the V5 ⑤ slim, so it sequences after the full build. The dependency on `wiki-watcher` (which transitively pulls in `scaffold-fold-in` + `documenter-wiring`) forces dogfood-finale topologically last.
 
 ## Verification criteria
 
