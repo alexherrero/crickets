@@ -17,7 +17,7 @@
 
 4. For each cluster, confirm the **generality** when prompted. The skill proposes a voice lesson as _"in any X, prefer Y"_ — reply whether that reading is right, narrower, or broader. Nothing is captured without your confirmation. _Filled by human._
 
-5. Confirm the **scope** the `style-scope-evaluator` recommends — `global`, `per-project`, or `per-repo`. The evaluator only recommends (it is read-only); you confirm the final placement. _Filled by human._
+5. Confirm the **scope** the `style-scope-evaluator` recommends — `global`, `per-project`, or `per-repo`. The evaluator only recommends (it is read-only); you confirm the final placement. _(The `style-scope-evaluator` sub-agent now exists — it ships to both hosts and is the loop's gate-2 advisor, cloning the read-only `diataxis-evaluator` mold: tool allowlist `Read, Glob, Grep` only, no Write/Edit/Bash. It recommends one scope; it never writes. Nothing dispatches it yet — the edit-driven capture flow that calls it is part 3's remaining work, so steps 3–6 stay unwired.)_ _Filled by human._
 
 6. The confirmed lesson is written to that scope's on-demand store (not `_always-load`): global `_global` slug · per-project `projects/<slug>/wiki-style/` · per-repo `wiki/.diataxis-conventions.md`. The next draft reads it back automatically. _Filled by human._
 

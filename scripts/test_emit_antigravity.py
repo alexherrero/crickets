@@ -68,6 +68,8 @@ class TestAntigravityEmitter(unittest.TestCase):
         self.assertTrue((d / "wiki-maintenance" / "agents" / "diataxis-evaluator.md").exists())
         # part 2 fold-in: documenter + diataxis-author support AG → present;
         # wiki-author + recent-wiki-changes are claude-only → absent from AG.
+        # part 3 task 2: style-scope-evaluator supports AG (clones the evaluator mold) → present.
+        self.assertTrue((d / "wiki-maintenance" / "agents" / "style-scope-evaluator.md").exists())
         self.assertTrue((d / "wiki-maintenance" / "agents" / "documenter.md").exists())
         self.assertTrue((d / "wiki-maintenance" / "skills" / "diataxis-author" / "SKILL.md").exists())
         self.assertFalse((d / "wiki-maintenance" / "skills" / "wiki-author").exists())

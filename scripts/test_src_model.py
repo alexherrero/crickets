@@ -47,9 +47,12 @@ class TestSrcModel(unittest.TestCase):
         self.assertTrue(wm.standalone)
         self.assertEqual([e.group for e in wm.enhances], ["developer-workflows"])
         self.assertEqual(wm.enhances[0].capability, "documentation")
-        # part 2 folded in the bucket-A primitives (copy-not-move from agentm)
+        # part 2 folded in the bucket-A primitives (copy-not-move from agentm);
+        # part 3 task 2 added the read-only style-scope-evaluator agent (DC-4) →
+        # 6 primitives in wiki-maintenance (the part's prose said "7" — a miscount).
         self.assertEqual({p.name: p.kind for p in wm.primitives}, {
             "diataxis-evaluator": "agent", "documenter": "agent",
+            "style-scope-evaluator": "agent",
             "wiki-author": "skill", "diataxis-author": "skill",
             "recent-wiki-changes": "command"})
         self.assertEqual(by["pii"].requires, [])

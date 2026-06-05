@@ -74,7 +74,9 @@ class TestClaudeEmitter(unittest.TestCase):
         self.assertTrue((d / "developer-workflows" / "agents" / "evaluator.md").exists())
         self.assertTrue((d / "wiki-maintenance" / "agents" / "diataxis-evaluator.md").exists())
         # part 2 fold-in (copy-not-move from agentm): all five primitives + skill
-        # subdirs (generator copytree's the whole skill root) + group scripts
+        # subdirs (generator copytree's the whole skill root) + group scripts.
+        # part 3 task 2 added the read-only style-scope-evaluator agent (both hosts).
+        self.assertTrue((d / "wiki-maintenance" / "agents" / "style-scope-evaluator.md").exists())
         self.assertTrue((d / "wiki-maintenance" / "agents" / "documenter.md").exists())
         self.assertTrue((d / "wiki-maintenance" / "skills" / "wiki-author" / "SKILL.md").exists())
         self.assertTrue((d / "wiki-maintenance" / "skills" / "diataxis-author" / "SKILL.md").exists())
