@@ -146,6 +146,7 @@ agentm carries a parallel **kernel-repositioning track** on its roadmap (the two
 - **The memory→process dependency arrow stays one-way** (memory never imports the process). *Re-audit if any kernel module imports a capability plugin.*
 - **The storage seam is sufficient** for both device-local and vault semantics (incl. sync-conflict handling living plugin-side). *Re-audit if a backend needs an operation the seam doesn't expose.*
 - **crickets-as-dev-dependency is acceptable** — agentm's development requires crickets installed. *Re-audit if agentm ever needs to be developed in an environment that cannot install crickets.*
+- **Shared memory-layer infra (the auto-context resolver `harness_memory.py`, `repo_registry.py`, run-mode config `agentm_config.py`) stays kernel-resident — there is no standalone "memory plugin."** The `wiki-maintenance` design (2026-06-04) leaned on these as a graceful-skip dependency and floated a future "memory plugin" as their owner; V5 keeps the memory *engine as the kernel*, so that framing likely doesn't track. *Re-audit at V5 planning: confirm whether this resolver/registry/config seam stays kernel-resident or splits to the storage plugin — but do not assume a standalone memory plugin. (Operator-flagged 2026-06-04: "not sure that tracks anymore — revisit then, not now.")*
 
 ## Lifecycle
 
