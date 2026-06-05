@@ -9,12 +9,17 @@
 #      conventions or fall-through default 'CamelCase-With-Dashes').
 #   4. Compute target path <wiki-root>/<mode>/<filename>.md.
 #   5. Halt if target already exists (operator picks a different slug).
-#   6. Write the template content to the target.
+#   6. Compose the voice layer (template ⊕ base style-guide ⊕ overlay) via
+#      style_resolver and write the result to the target — no longer verbatim
+#      (wiki-maintenance part 3 task 1). The composed house voice is injected as
+#      an author-facing comment after the H1; the operator deletes it before
+#      publishing. Graceful-degrades to the bare template only if the resolver /
+#      committed base are unavailable.
 #   7. Emit operator-facing summary (path written + template fields to fill in).
 #
 # Stdlib-only. Filename style + mode default are operator-tunable via
-# AgentMemory `_always-load/diataxis-*.md` (read-side wires in part 5;
-# v1 uses constants).
+# AgentMemory `_always-load/diataxis-*.md`; the voice overlay is read on-demand
+# from the three scopes the resolver knows (global / per-project / per-repo).
 
 from __future__ import annotations
 
@@ -82,10 +87,19 @@ def author_page(
     wiki_root: Path,
     filename_style: str = _DEFAULT_FILENAME_STYLE,
     overwrite: bool = False,
+    vault_path: Path | None = None,
+    project_slug: str | None = None,
 ) -> dict:
     """Emit a pre-filled template skeleton to <wiki-root>/<mode>/<filename>.md.
 
-    Returns: {action, target, mode, template, filename_style}.
+    The written page composes ``template ⊕ base style-guide ⊕ overlay`` — the
+    style_resolver injects the house voice (committed floor + on-demand overlay
+    lessons from the global / per-project / per-repo scopes) as an author-facing
+    comment after the H1. Falls back to the bare template only if the resolver /
+    committed base style-guide are unavailable.
+
+    Returns: {action, target, mode, template, filename_style, filename,
+    style_composed, style_scopes}.
     Raises FileExistsError if target exists + overwrite=False.
     """
     if mode not in _VALID_MODES:
@@ -106,10 +120,31 @@ def author_page(
             f"target already exists: {target}; pick a different slug or pass --overwrite"
         )
     target.parent.mkdir(parents=True, exist_ok=True)
-    # Read template + emit verbatim (operator edits in their editor).
+    content = template_path.read_text(encoding="utf-8")
+    # Compose the voice layer (template ⊕ base style-guide ⊕ overlay) — part 3
+    # task 1. Graceful-degrade to the bare template if the resolver or the
+    # committed base style-guide are unavailable (the page is still useful).
+    style_composed = False
+    style_scopes: list = []
+    try:
+        import style_resolver  # type: ignore
+        resolved = style_resolver.resolve_style(
+            wiki_root=wiki_root,
+            vault_path=vault_path,
+            project_slug=project_slug,
+        )
+        if resolved.base_text.strip() or resolved.lessons:
+            content = style_resolver.apply_style_to_page(content, resolved)
+            style_composed = True
+            style_scopes = list(resolved.provenance)
+    except Exception as e:  # noqa: BLE001 — never fail authoring over the voice layer
+        print(
+            f"[diataxis-author] style resolver unavailable ({e}); "
+            "writing template verbatim",
+            file=sys.stderr,
+        )
     # write_bytes for LF-only line endings (Windows portability — same
     # pattern as save.py / ideas_surface.py / adapt_skills.py).
-    content = template_path.read_text(encoding="utf-8")
     target.write_bytes(content.encode("utf-8"))
     return {
         "action": "authored",
@@ -118,6 +153,8 @@ def author_page(
         "template": str(template_path),
         "filename_style": filename_style,
         "filename": f"{base}.md",
+        "style_composed": style_composed,
+        "style_scopes": style_scopes,
     }
 
 
@@ -167,6 +204,16 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
         help="wiki root path (default: ./wiki)",
     )
     parser.add_argument(
+        "--vault-path", default=None,
+        help="AgentMemory vault path for the voice overlay "
+             "(default: MEMORY_VAULT_PATH env; absent → committed base floor only)",
+    )
+    parser.add_argument(
+        "--project-slug", default=None,
+        help="project slug for the per-project voice scope "
+             "(projects/<slug>/wiki-style/; absent → skip the per-project scope)",
+    )
+    parser.add_argument(
         "--overwrite", action="store_true",
         help="overwrite existing target (default: refuse + ask operator to pick a different slug)",
     )
@@ -209,6 +256,16 @@ def main(argv: list[str] | None = None) -> int:
     # Resolve filename style via AgentMemory conventions fallback if not
     # explicitly passed.
     resolved_style = _resolve_filename_style(args.filename_style, wiki_root)
+    # Resolve the vault for the voice overlay: explicit --vault-path, else
+    # MEMORY_VAULT_PATH env (absent → committed base floor only).
+    if args.vault_path:
+        vault_path = Path(args.vault_path).expanduser()
+    else:
+        try:
+            import agentmemory_conventions  # type: ignore
+            vault_path = agentmemory_conventions._resolve_vault_path()
+        except Exception:
+            vault_path = None
     try:
         result = author_page(
             slug=args.slug,
@@ -216,6 +273,8 @@ def main(argv: list[str] | None = None) -> int:
             wiki_root=wiki_root,
             filename_style=resolved_style,
             overwrite=args.overwrite,
+            vault_path=vault_path,
+            project_slug=args.project_slug,
         )
     except (FileNotFoundError, FileExistsError, ValueError) as e:
         print(f"ERROR: {e}", file=sys.stderr)

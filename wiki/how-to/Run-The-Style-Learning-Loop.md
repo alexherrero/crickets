@@ -9,7 +9,7 @@
 
 ## Steps
 
-1. Ask `wiki-author` to draft or rewrite a page. It composes the output from `template ⊕ base style-guide ⊕ overlay` — structure from the template, voice from the base style-guide plus any learned overlay lessons. _Filled by human._
+1. Ask `wiki-author` to draft or rewrite a page. It composes the output from `template ⊕ base style-guide ⊕ overlay` — structure from the template, voice from the committed base style-guide plus any learned overlay lessons. The composed voice arrives as an author-facing comment block after the page H1; delete it before publishing. _(Read/compose side landed: the resolver reads overlay lessons on-demand from the global, per-project, and per-repo scopes — narrower scope wins — and falls back to the base floor alone when no overlay is present. The capture half, steps 3–6, is not yet wired.)_ _Filled by human._
 
 2. Edit the drafted page yourself — tighten word choice, fix rhythm, cut slop or jargon, restructure. Save your edits. _Filled by human._
 
