@@ -28,7 +28,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from generate import HostEmitter, dump_json  # noqa: E402
-from src_model import Group, Primitive, copy_group_scripts, enhances_to_json  # noqa: E402
+from src_model import Group, Primitive, bundle_ignore, copy_group_scripts, enhances_to_json  # noqa: E402
 
 HOST = "antigravity"
 PLUGIN_VERSION = "0.1.0"
@@ -106,7 +106,8 @@ class AntigravityEmitter(HostEmitter):
     def _copy_component(self, prim: Primitive, dest_dir: Path) -> None:
         dest_dir.mkdir(parents=True, exist_ok=True)
         if prim.root.is_dir():
-            shutil.copytree(prim.root, dest_dir / prim.root.name, dirs_exist_ok=True)
+            shutil.copytree(prim.root, dest_dir / prim.root.name, dirs_exist_ok=True,
+                            ignore=bundle_ignore())
         else:
             shutil.copy2(prim.root, dest_dir / prim.root.name)
 
@@ -114,7 +115,8 @@ class AntigravityEmitter(HostEmitter):
         bundled = plugin_dir / "hooks" / prim.name
         bundled.mkdir(parents=True, exist_ok=True)
         if prim.root.is_dir():
-            shutil.copytree(prim.root, bundled, dirs_exist_ok=True)
+            shutil.copytree(prim.root, bundled, dirs_exist_ok=True,
+                            ignore=bundle_ignore())
         frag_path = (prim.root if prim.root.is_dir() else prim.root.parent) / "settings-fragment-bash.json"
         if not frag_path.exists():
             print(f"emit_antigravity: hook '{prim.name}' has no settings-fragment-bash.json "

@@ -119,6 +119,17 @@ class Group:
         return any(p.supports(host) for p in self.primitives)
 
 
+# Transient/gitignored cruft excluded from EVERY bundled-asset copytree (group
+# scripts/ AND primitive roots — skills, hooks) so the emitted dist/ stays
+# deterministic + drift-free regardless of whether tests (or anything else)
+# compiled a bundled .py into __pycache__ before the build runs. The factory
+# returns a fresh ignore callable per call (shutil's is stateless, but keeping
+# it a factory avoids any shared-state surprise).
+def bundle_ignore():
+    """The `ignore=` filter shared by all bundled-asset copytrees."""
+    return shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store")
+
+
 def copy_group_scripts(group: "Group", plugin_dir: Path) -> None:
     """Copy a group's verbatim `scripts/` asset dir (e.g. code-review's
     `cross-review.sh`) into the emitted plugin at `<plugin_dir>/scripts/`.
@@ -130,12 +141,9 @@ def copy_group_scripts(group: "Group", plugin_dir: Path) -> None:
         return
     src_scripts = group.manifest.parent / "scripts"
     if src_scripts.is_dir():
-        # Exclude transient/gitignored cruft so the emitted dist/ stays
-        # deterministic + drift-free regardless of whether tests (or anything
-        # else) compiled a bundled .py into __pycache__ before the build runs.
         shutil.copytree(
             src_scripts, plugin_dir / "scripts", dirs_exist_ok=True,
-            ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store"))
+            ignore=bundle_ignore())
 
 
 def load_groups(src: Path) -> list[Group]:

@@ -263,6 +263,35 @@ class TestClaudeEmitter(unittest.TestCase):
             self.assertTrue((sd / "probe.py").exists())
             self.assertFalse((sd / "__pycache__").exists())
 
+    def test_skill_root_copytree_excludes_pycache(self):
+        # the COMPONENT (skill / agent) root copytree must ALSO exclude
+        # __pycache__/*.pyc — not just the group scripts/ asset path. The
+        # diataxis-author style_resolver/author tests are the first to import a
+        # bundled skill's .py as modules, so CI compiled
+        # src/.../skills/diataxis-author/scripts/__pycache__/*.pyc before
+        # generate.py check, and the unfiltered _copy_component copytree dragged
+        # them into a fresh dist/ → drift vs. the committed (clean) dist/.
+        # Regression for that CI failure (wiki-maintenance part 3 task 1).
+        src_model = sys.modules["src_model"]
+        with tempfile.TemporaryDirectory() as t:
+            src = Path(t) / "src"
+            sk = src / "sk" / "skills" / "foo" / "scripts"
+            (sk / "__pycache__").mkdir(parents=True)
+            (src / "sk" / "group.yaml").write_text(
+                "name: SK\ndescription: d\nstandalone: true\nrequires: []\n", encoding="utf-8")
+            (src / "sk" / "skills" / "foo" / "SKILL.md").write_text(
+                "---\nname: foo\nkind: skill\nsupported_hosts: [claude-code]\n"
+                "description: d\n---\n# foo\n", encoding="utf-8")
+            (sk / "helper.py").write_text("x = 1\n", encoding="utf-8")
+            (sk / "__pycache__" / "helper.cpython-311.pyc").write_text(
+                "bytecode", encoding="utf-8")
+            group = src_model.load_groups(src)[0]
+            dist = Path(t) / "dist"
+            emit_claude.ClaudeEmitter().emit_group(group, dist)
+            sd = dist / "plugins" / "sk" / "skills" / "foo" / "scripts"
+            self.assertTrue((sd / "helper.py").exists())
+            self.assertFalse((sd / "__pycache__").exists())
+
 
 if __name__ == "__main__":
     unittest.main()
