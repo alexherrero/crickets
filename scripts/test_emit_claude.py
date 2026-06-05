@@ -73,6 +73,16 @@ class TestClaudeEmitter(unittest.TestCase):
         self.assertTrue((d / "github-ci" / "skills" / "dependabot-fixer" / "SKILL.md").exists())
         self.assertTrue((d / "developer-workflows" / "agents" / "evaluator.md").exists())
         self.assertTrue((d / "wiki-maintenance" / "agents" / "diataxis-evaluator.md").exists())
+        # part 2 fold-in (copy-not-move from agentm): all five primitives + skill
+        # subdirs (generator copytree's the whole skill root) + group scripts
+        self.assertTrue((d / "wiki-maintenance" / "agents" / "documenter.md").exists())
+        self.assertTrue((d / "wiki-maintenance" / "skills" / "wiki-author" / "SKILL.md").exists())
+        self.assertTrue((d / "wiki-maintenance" / "skills" / "diataxis-author" / "SKILL.md").exists())
+        self.assertTrue((d / "wiki-maintenance" / "skills" / "diataxis-author" / "scripts" / "classify.py").exists())
+        self.assertTrue((d / "wiki-maintenance" / "skills" / "diataxis-author" / "templates" / "how-to.md").exists())
+        self.assertTrue((d / "wiki-maintenance" / "commands" / "recent-wiki-changes.md").exists())
+        self.assertTrue((d / "wiki-maintenance" / "scripts" / "check-wiki.py").exists())
+        self.assertTrue((d / "wiki-maintenance" / "scripts" / "recent-wiki-changes.sh").exists())
 
     def test_marketplace_lists_all_with_resolving_sources(self):
         mk = json.loads((self.cdist / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))

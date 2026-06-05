@@ -66,6 +66,12 @@ class TestAntigravityEmitter(unittest.TestCase):
         self.assertTrue((d / "github-ci" / "skills" / "dependabot-fixer" / "SKILL.md").exists())
         self.assertTrue((d / "developer-workflows" / "agents" / "evaluator.md").exists())
         self.assertTrue((d / "wiki-maintenance" / "agents" / "diataxis-evaluator.md").exists())
+        # part 2 fold-in: documenter + diataxis-author support AG → present;
+        # wiki-author + recent-wiki-changes are claude-only → absent from AG.
+        self.assertTrue((d / "wiki-maintenance" / "agents" / "documenter.md").exists())
+        self.assertTrue((d / "wiki-maintenance" / "skills" / "diataxis-author" / "SKILL.md").exists())
+        self.assertFalse((d / "wiki-maintenance" / "skills" / "wiki-author").exists())
+        self.assertFalse((d / "wiki-maintenance" / "commands" / "recent-wiki-changes.md").exists())
 
     def test_thin_composition_no_inlined_base(self):
         # github-ci requires developer-workflows but carries ONLY its own
