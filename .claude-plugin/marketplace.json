@@ -38,7 +38,8 @@
         "work",
         "review",
         "release",
-        "bugfix"
+        "bugfix",
+        "documentation"
       ],
       "description": "The phase-gated developer loop — /setup /plan /work /review /release /bugfix — extracted from agentm as a standalone native plugin. The base other dev plugins enhance.",
       "name": "developer-workflows",
@@ -64,6 +65,7 @@
       "description": "Opinionated, template-driven wiki maintenance — the wiki-author authoring/learning skill, the documenter agent, the diataxis-evaluator, recent-wiki-changes, and the check-wiki.py linter. Maintains a wiki in the operator's voice; enhances developer-workflows' phase-boundary documentation when both are installed.",
       "enhances": [
         {
+          "capability": "documentation",
           "effect": "phase commands dispatch the documenter to author/repair wiki pages at phase boundaries",
           "group": "developer-workflows"
         }

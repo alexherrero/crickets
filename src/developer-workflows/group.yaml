@@ -3,4 +3,4 @@ description: The phase-gated developer loop — /setup /plan /work /review /rele
 category: Coding
 requires: []
 standalone: true
-capabilities: [setup, plan, work, review, release, bugfix]
+capabilities: [setup, plan, work, review, release, bugfix, documentation]

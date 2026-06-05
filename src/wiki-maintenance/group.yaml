@@ -8,4 +8,5 @@ requires: []
 standalone: true
 enhances:
   - group: developer-workflows
+    capability: documentation
     effect: "phase commands dispatch the documenter to author/repair wiki pages at phase boundaries"

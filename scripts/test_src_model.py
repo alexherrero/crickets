@@ -38,15 +38,15 @@ class TestSrcModel(unittest.TestCase):
                          {"code-review", "developer-safety", "developer-workflows",
                           "github-ci", "pii", "wiki-maintenance"})
         # composition: the developer seed is retired (part 6); github-ci still requires
-        # developer-workflows. wiki-maintenance flipped to standalone + a capability-less
-        # enhance during the wiki-maintenance scaffold (part 1) — the capability gets
-        # targeted in part 3 (documenter-wiring).
+        # developer-workflows. wiki-maintenance flipped to standalone + an enhance during the
+        # scaffold (part 1, capability-less); the documenter-wiring part tightened the enhance
+        # to target the 'documentation' capability now declared on developer-workflows.
         self.assertEqual(by["github-ci"].requires, ["developer-workflows"])
         wm = by["wiki-maintenance"]
         self.assertEqual(wm.requires, [])
         self.assertTrue(wm.standalone)
         self.assertEqual([e.group for e in wm.enhances], ["developer-workflows"])
-        self.assertIsNone(wm.enhances[0].capability)
+        self.assertEqual(wm.enhances[0].capability, "documentation")
         # part 2 folded in the bucket-A primitives (copy-not-move from agentm)
         self.assertEqual({p.name: p.kind for p in wm.primitives}, {
             "diataxis-evaluator": "agent", "documenter": "agent",
@@ -56,13 +56,14 @@ class TestSrcModel(unittest.TestCase):
         self.assertTrue(by["pii"].standalone)
         self.assertFalse(by["github-ci"].standalone)
         self.assertEqual(len(by["pii"].primitives), 1)
-        # developer-workflows (part 2/6): standalone, declares its capabilities,
-        # carries phase commands (setup/plan/work this part; review/release/bugfix next).
+        # developer-workflows: standalone base; the six phase capabilities (setup..bugfix)
+        # plus 'documentation' — added by wiki-maintenance's documenter-wiring part so that
+        # plugin's enhance can target capability: documentation (the deferred half of part-1 DC-1).
         dw = by["developer-workflows"]
         self.assertTrue(dw.standalone)
         self.assertEqual(dw.requires, [])
         self.assertEqual(dw.capabilities,
-                         ["setup", "plan", "work", "review", "release", "bugfix"])
+                         ["setup", "plan", "work", "review", "release", "bugfix", "documentation"])
         dw_cmds = {p.name for p in dw.primitives if p.kind == "command"}
         self.assertLessEqual({"setup", "plan", "work"}, dw_cmds)
         # developer-safety (part 3/6): standalone, enhances developer-workflows

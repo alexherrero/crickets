@@ -47,7 +47,8 @@
         "work",
         "review",
         "release",
-        "bugfix"
+        "bugfix",
+        "documentation"
       ],
       "category": "Coding",
       "name": "developer-workflows",
@@ -91,6 +92,7 @@
       "category": "documentation",
       "enhances": [
         {
+          "capability": "documentation",
           "effect": "phase commands dispatch the documenter to author/repair wiki pages at phase boundaries",
           "group": "developer-workflows"
         }
