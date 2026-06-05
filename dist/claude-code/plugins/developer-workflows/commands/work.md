@@ -23,7 +23,7 @@ You are running the **work** phase of the developer-workflows loop. Implement **
 5. **Cap iterations at 5 per gate.** If not green after 5, stop and report.
 6. **Do not silently expand task scope.** If it turns out bigger than planned, stop and ask.
 7. **Do not touch `wiki/` during implementation.** Documentation updates are phase-boundary-only.
-8. **After gates are green (before committing), dispatch the `documenter` sub-agent** with the task spec + the diff (graceful-skip if no docs/wiki plugin). It flips matching `pending → implemented` pages and adds operational pages if the task introduced one. Resolve `OPEN QUESTIONS` before committing.
+8. **After gates are green (before committing), dispatch the `documenter` sub-agent** with the task spec + the diff (via the `wiki-maintenance` capability probe — exit 0 dispatch, exit 1 skip). It flips matching `pending → implemented` pages and adds operational pages if the task introduced one. Resolve `OPEN QUESTIONS` before committing.
 9. **End by updating `PLAN.md` (mark `[x]`), `progress.md` (append line), and committing.**
 10. **Offer deferred items to the GitHub Project** (optional). If this session surfaced anything *out of task scope* (adjacent bug, refactor opportunity, stale doc elsewhere — not follow-ups to the current task), propose one item per finding via `gh project item-create`, batched into a single preview at phase end. Silent-skip if `.harness/project.json` absent or `gh` unavailable. **No `gh` without confirmation.** Then stop.
 
@@ -72,7 +72,7 @@ Once all gates are green: edit `PLAN.md` to mark the task `[x]` (`planning → i
 
 ### 8. Update the wiki (post-gates, graceful-skip)
 
-If a docs/wiki plugin is installed, dispatch its `documenter` with the task's title + What + Verification and the diff. It flips `pending → implemented` **only if the diff proves it** (speculative flips are worse than missed ones), fills `## Implementation` with real `file:line` refs, and adds how-to pages for new operational concerns. Resolve `OPEN QUESTIONS` before committing; `NO CHANGES` is fine. Not invoked during step 4.
+Probe with `bash "${CLAUDE_PLUGIN_ROOT}/scripts/capability_probe.py" wiki-maintenance`. On **exit 0** dispatch its `documenter` with the task's title + What + Verification and the diff — it flips `pending → implemented` **only if the diff proves it** (speculative flips are worse than missed ones), fills `## Implementation` with real `file:line` refs, and adds how-to pages for new operational concerns. Resolve `OPEN QUESTIONS` before committing; `NO CHANGES` is fine. On **exit 1** (absent, or no `CLAUDE_PLUGIN_ROOT`) skip silently. Not invoked during step 4.
 
 ### 9. Commit
 

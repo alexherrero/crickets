@@ -49,6 +49,21 @@ class TestCapabilityProbe(unittest.TestCase):
         # "review" must NOT match "code-review@crickets" (whole-slug check)
         self.assertFalse(cp.is_available("review", output=_CLAUDE_LIST))
 
+    def test_wiki_maintenance_slug_resolves(self):
+        # documenter-wiring (part 2/5): the developer-workflows phase commands probe
+        # the `wiki-maintenance` slug to dispatch the documenter at phase boundaries
+        # (exit 0 = dispatch, exit 1 = graceful-skip) — same slug-match contract as
+        # the /review → code-review probe; the `documentation` capability is declarative,
+        # the probe resolves the plugin slug.
+        listed = ("  ❯ developer-workflows@crickets\n"
+                  "  ❯ wiki-maintenance@crickets\n")
+        self.assertTrue(cp.is_available("wiki-maintenance", output=listed))
+        # absent → exit 1 (clean no-op, never an error)
+        self.assertFalse(cp.is_available("wiki-maintenance",
+                                         output="  ❯ developer-workflows@crickets\n"))
+        # whole-slug check: "wiki" must NOT match "wiki-maintenance@crickets"
+        self.assertFalse(cp.is_available("wiki", output=listed))
+
     def test_graceful_skip_no_cli(self):
         # no host CLI on PATH → unavailable, never crashes
         saved = cp._host_cli

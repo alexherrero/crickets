@@ -14,7 +14,7 @@ You are running the **release** phase of the developer-workflows loop. This is a
 1. **Preconditions** — `PLAN.md` `Status: done`, all tasks `[x]`, `/review` resolved, working tree clean, branch ahead of base. If any fails, **stop and report**.
 2. **Re-run the full deterministic gate suite** — the *full* test suite (not a subset), a *production* build (not just dev-server).
 3. **Set `features.json` `passes: true` only on verified features** — one feature, one verified test exercise, one clean review, then `true`. Never speculative.
-4. **Dispatch the documenter** (graceful-skip if no docs/wiki plugin) with the full plan-to-HEAD diff for a wiki sweep: flip any missed `pending → implemented`, add ADRs for non-obvious decisions, update `Home.md` / `_Sidebar.md`, append to the completed-features log. **Block the release** on unresolved `OPEN QUESTIONS` — shipping stale docs poisons the wiki.
+4. **Dispatch the documenter** — probe with `bash "${CLAUDE_PLUGIN_ROOT}/scripts/capability_probe.py" wiki-maintenance`; on **exit 0** dispatch the `documenter` with the full plan-to-HEAD diff for a wiki sweep: flip any missed `pending → implemented`, add ADRs for non-obvious decisions, update `Home.md` / `_Sidebar.md`, append to the completed-features log (**block the release** on unresolved `OPEN QUESTIONS` — shipping stale docs poisons the wiki); on **exit 1** (no `wiki-maintenance`, or no `CLAUDE_PLUGIN_ROOT`) skip the sweep silently.
 5. **Do NOT push, merge, tag, or deploy.** These require explicit human confirmation per action. Prepare + summarize; wait for the word.
 6. **If CI is red, stop.** Do not release past failing checks.
 7. **Offer next-release themes to the GitHub Project** (optional) — only a *recurring theme* across sessions (a single deferral is not a theme); batch one preview; **no `gh` without confirmation**; silent-skip if `.harness/project.json` absent, `gh` unavailable, or no theme emerged.
@@ -25,7 +25,7 @@ You are running the **release** phase of the developer-workflows loop. This is a
 2. **Re-run the full gate suite** (constraint 2). Capture results.
 3. **Verify CI** if the repo has it — green across the matrix before proceeding (constraint 6). Honor **wake-on-CI**: push the branch, wait for green, *then* tag/release — never tag ahead of a green CI run.
 4. **Update `features.json`** — set `passes: true` only on features with a verified test exercise + clean review (constraint 3).
-5. **Documenter wiki sweep** (constraint 4, graceful-skip).
+5. **Documenter wiki sweep** (constraint 4 — probe `wiki-maintenance`, dispatch on exit 0).
 6. **Prepare release artifacts** — changelog entry + version bump per the project's convention. If a release skill is installed (e.g. crickets `ship-release`), suggest it; otherwise prepare the steps manually. Do **not** execute push / tag / release.
 7. **Summarize + wait.** List what's ready and the exact commands the user can run (`git push`, `gh release create`, `gh pr merge`). **Wait for explicit confirmation** before running any of them (constraint 5).
 

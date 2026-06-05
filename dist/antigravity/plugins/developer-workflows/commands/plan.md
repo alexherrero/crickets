@@ -21,7 +21,7 @@ You are running the **plan** phase of the developer-workflows loop. Turn a brief
 3. **Interview only if the brief is ambiguous** (≤5 batched questions). Skip if it's clear or derivable from the codebase.
 4. **Write the plan using the PLAN.md shape** below.
 5. **Update `.harness/features.json`** only if this plan introduces net-new user-visible features.
-6. **Dispatch the `documenter` sub-agent** (graceful-skip if no docs/wiki plugin) once `PLAN.md` is written, to create `pending` pages for tasks affecting user-visible behavior or architecture.
+6. **Dispatch the `documenter` sub-agent** (via the `wiki-maintenance` capability probe — exit 0 dispatch, exit 1 skip) once `PLAN.md` is written, to create `pending` pages for tasks affecting user-visible behavior or architecture.
 7. **Offer deferred items to the GitHub Project** (optional) — scan `## Out of scope` for intentionally-deferred items (not hard non-goals); batch a single preview; **no `gh` without confirmation**; silent-skip if `.harness/project.json` absent or `gh` unavailable.
 8. **Append one line to `.harness/progress.md`.**
 9. **End with a ≤5-bullet summary.** Next command is `/work`.
@@ -85,7 +85,7 @@ A feature is a user-visible capability (changelog-worthy); a task is a unit of w
 
 ### 6. Declare future state in the wiki (graceful-skip)
 
-If a docs/wiki plugin is installed, dispatch its `documenter` with the new `PLAN.md` to create/update `pending` pages for tasks affecting user-visible behavior or architecture (Feature/Subsystem pages, how-to skeletons, reference rows). It does not touch `Home.md` / `_Sidebar.md` (release-time concerns). Resolve any `OPEN QUESTIONS` before `/work`. Skip silently if no such plugin.
+Probe with `bash "${CLAUDE_PLUGIN_ROOT}/scripts/capability_probe.py" wiki-maintenance`. On **exit 0** dispatch its `documenter` with the new `PLAN.md` to create/update `pending` pages for tasks affecting user-visible behavior or architecture (Feature/Subsystem pages, how-to skeletons, reference rows). It does not touch `Home.md` / `_Sidebar.md` (release-time concerns). Resolve any `OPEN QUESTIONS` before `/work`. On **exit 1** (absent, or no `CLAUDE_PLUGIN_ROOT`) skip silently.
 
 ### 7. Offer deferred items to the GitHub Project (optional)
 
