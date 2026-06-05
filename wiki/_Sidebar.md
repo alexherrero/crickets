@@ -33,6 +33,12 @@
   - [code-review](code-review)
   - [auto-enable-runtime](auto-enable-runtime)
   - [seed-retirement](seed-retirement)
+- [Wiki Maintenance (V5 ④)](wiki-maintenance)
+  - [scaffold-fold-in](scaffold-fold-in)
+  - [documenter-wiring](documenter-wiring)
+  - [style-learning-loop](style-learning-loop)
+  - [wiki-watcher](wiki-watcher)
+  - [dogfood-finale](dogfood-finale)
 
 **Decisions**
 - [0001 — crickets purpose](0001-crickets-purpose)
