@@ -1,4 +1,4 @@
-<!-- Status: pending — wiki-watcher (W1). Plan: .harness/PLAN.md (The wiki-watcher (W1) — wiki-maintenance part 4/5), task 5 (DC-W5). The scheduling/trigger gap row is seeded here; the documenter authors the final copy at the phase boundary. This is a growing register — append future agy limitations as rows; close a row (strike + "resolved YYYY-MM-DD") when the host ships the missing surface. Cross-link from Compatibility.md is an OPEN QUESTION pending caller confirmation (Compatibility.md is published, not pending). -->
+<!-- Status: implemented — wiki-watcher (W1). Plan: .harness/PLAN.md (The wiki-watcher (W1) — wiki-maintenance part 4/5), task 5 (DC-W5). The scheduling/trigger gap row (#1) shipped with part 4. This is a growing register — append future agy limitations as rows; close a row (strike + "resolved YYYY-MM-DD") when the host ships the missing surface. Reciprocal Compatibility.md → register cross-link deferred to part-5 /release (Compatibility.md is published, not pending). -->
 
 # Antigravity limitations register
 
@@ -7,7 +7,7 @@ A durable, **growing** list of Antigravity (`agy`) host limitations that constra
 This page documents only the seam where an `agy` gap touches a crickets customization. For the host's own primitive surface, link out to the [agy CLI plugin docs](https://antigravity.google/docs/cli-plugins) — we don't re-document Antigravity's API here.
 
 > [!NOTE]
-> **Status:** pending — seeded by `wiki-maintenance` part 4 (task 5, DC-W5) with the wiki-watcher scheduling gap. The `documenter` authors the published copy at the phase boundary. **This register grows:** append a new row whenever an `agy` gap blocks or degrades a crickets customization, and close a row when the host resolves it.
+> **Status:** implemented — shipped by `wiki-maintenance` part 4 (task 5, DC-W5) with the wiki-watcher scheduling gap (#1). **This register grows:** append a new row whenever an `agy` gap blocks or degrades a crickets customization, and close a row when the host resolves it.
 
 ## ⚡ Quick Reference
 
