@@ -11,9 +11,9 @@ The wiki-watcher is an **idempotent single-cycle engine the operator drives**, n
 
 ## Steps
 
-1. _(Filled from task 1's diff at `/work`.)_ Enable the watcher for this host by setting the `wiki_watch_enabled` toggle in `.agentm-config.json`. Confirm the watched repo resolves to a wiki target: it must be registered in `repo_registry` with a `wiki_path` (absent `wiki_path` falls back to `<root>/wiki`; an unregistered repo is skipped). _Filled by human._
+1. **Enable the watcher for this host** (opt-in). In `<install-prefix>/.agentm-config.json` (install-prefix = `$AGENTM_INSTALL_PREFIX`, default `~/.claude`) set either `{"wiki_watch": {"enabled": true}}` (canonical) or `{"wiki_watch_enabled": true}` (alias). Absent / malformed / falsey leaves the watcher off. Then confirm the watched repo resolves to a wiki target: it must be registered in `repo_registry` with a `wiki_path` (absent `wiki_path` falls back to `<root>/wiki` only if that dir exists; an unregistered repo is skipped). See [Wiki-watch config](Wiki-Watch-Config) for the exact shapes and resolver subcommands.
 
-2. _(Filled from task 1's diff at `/work`.)_ Write the per-repo run-config marker under `<repo>/.harness/` — the watch sources (the repo plus the active `PLAN.md` / design / `ROADMAP.md`) and the dispatch mode (`pr` or `direct`). This marker is the on-host run config; nothing is written to the vault (honors DC-8). _Filled by human._
+2. **Write the per-repo run-config marker** at `<repo>/.harness/wiki-watch.json` — its *presence* is the per-repo opt-in. Shape: `{"watch_sources": ["PLAN.md", "designs/", ...], "dispatch_mode": "pr" | "direct"}`. `watch_sources` defaults to `["."]` (whole repo); `dispatch_mode` defaults to `"pr"` and any unrecognized value falls back to `"pr"` (direct-commit is opt-in only). This marker is the on-host run config; nothing is written to the vault (honors DC-8).
 
 3. _(Filled from task 4's diff at `/work`.)_ Run one cycle with the `wiki-watch` invocation. It polls the watched sources since the last cursor, drops noise via the deterministic pre-filter, judges doc-worthiness, dispatches the `documenter` on a candidate, and writes the audit log. The cooldown gate makes a within-window re-run a no-op. _Filled by human._
 
