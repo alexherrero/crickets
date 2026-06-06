@@ -11,9 +11,11 @@
 #   3. template-shape-drift: page authored with template X but body has
 #      evolved toward template Y (requires comparison against template
 #      signatures — heuristic for v1; tunable as patterns emerge).
-#   4. convention-drift: page violates an operator convention stored in
-#      AgentMemory but not yet codified in check-wiki.py rules
-#      (read-side wires in part 5; v1 stubs the check).
+#   4. convention-drift: page violates the operator's house VOICE — it uses a
+#      term the style overlay (base style-guide ⊕ learned lessons) bans via a
+#      `banned:` directive. Findings, not failures — unless --strict (parent
+#      Migration 4, non-breaking). Wired live in part 3 task 5 against the
+#      task-1 style overlay (was a `return None` stub).
 #
 # Outputs structured JSON report grouped by mode. Non-zero exit on findings.
 # Graceful-skip on check-wiki.py subprocess failure → in-skill-heuristic-
@@ -37,6 +39,8 @@ if str(_SCRIPTS_DIR) not in sys.path:
 
 # Reuse classify.py for mode-mixed detection.
 import classify  # type: ignore
+# Reuse the style resolver (part 3 task 1) for the voice overlay → convention-drift.
+import style_resolver  # type: ignore
 
 # Minimum check-wiki.py version we know how to consume (matches contract).
 _MIN_CHECK_WIKI_VERSION = "0.1.0"
@@ -144,8 +148,10 @@ def _walk_wiki_pages(wiki_root: Path) -> list[Path]:
     for p in wiki_root.rglob("*.md"):
         if not p.is_file():
             continue
-        # Skip structural pages (Home.md, _Sidebar.md, READMEs).
-        if p.name in {"Home.md", "_Sidebar.md", "README.md"}:
+        # Skip structural pages (Home.md, _Sidebar.md, READMEs) + dotfiles
+        # (e.g. the `.diataxis-conventions.md` overlay source — a config file, not
+        # a content page; scanning it would flag its own `banned:` declaration).
+        if p.name in {"Home.md", "_Sidebar.md", "README.md"} or p.name.startswith("."):
             continue
         out.append(p)
     return sorted(out)
@@ -252,13 +258,95 @@ def _heuristic_template_drift(p: Path) -> Finding | None:
     return None
 
 
-def _heuristic_convention_drift(p: Path) -> Finding | None:
-    """Drift type 4: convention-drift against AgentMemory conventions.
+# A `banned:` directive line in the style overlay (base style-guide or a learned
+# lesson) declares machine-checkable banned terms: `banned: term, "phrase", ...`.
+_BANNED_RE = re.compile(r"(?im)^\s*banned:\s*(.+?)\s*$")
+# Fenced code blocks are stripped before directive extraction, so a `banned:`
+# line that merely *documents* the format inside a ``` fence isn't read as live.
+_FENCE_RE = re.compile(r"```.*?```", re.DOTALL)
+# One term, anchored to its segment: optional whitespace, then a double/single-
+# quoted span (commas inside it are kept) OR an unquoted segment, then trailing
+# whitespace and a comma-or-end terminator. Quoting is the grouping delimiter,
+# not the comma — so `"ready, set, go"` is one term, in ANY list position.
+_TERM_RE = re.compile(r'''\s*(?:"([^"]*)"|'([^']*)'|([^,]+?))\s*(?:,|$)''')
+# Strip ONLY the author-facing house-style scaffolding block (which embeds the
+# base-guide prose + is deleted before publishing) — keyed on its distinctive
+# markers, NOT all HTML comments (stripping arbitrary comments risks swallowing
+# real body text after a stray `<!--`). See style_resolver.compose_voice_block.
+_STYLE_BLOCK_RE = re.compile(r"<!--.*?house style.*?end house style.*?-->",
+                             re.DOTALL | re.IGNORECASE)
 
-    v1: stub. Always returns None. Part 5 wires AgentMemory read-side +
-    operator-defined conventions to compare against.
-    """
-    return None
+
+def _extract_banned_terms(overlay_text: str) -> list[str]:
+    """Collect banned terms from every `banned:` directive in the overlay text.
+
+    Quote-aware comma split (a quoted phrase may contain commas, in any list
+    position); whitespace stripped; lowercased; de-duplicated (order-preserving).
+    Empty entries dropped. `banned:` lines inside ``` fences are ignored
+    (documentation, not directives)."""
+    terms: list[str] = []
+    seen: set[str] = set()
+    for m in _BANNED_RE.finditer(_FENCE_RE.sub("", overlay_text)):
+        for tm in _TERM_RE.finditer(m.group(1)):
+            raw = next((g for g in tm.groups() if g is not None), "")
+            t = raw.strip().lower()
+            if t and t not in seen:
+                seen.add(t)
+                terms.append(t)
+    return terms
+
+
+def _load_banned_terms(
+    *, wiki_root: Path, vault_path: Path | None, project_slug: str | None,
+) -> list[str]:
+    """Resolve the voice overlay (base ⊕ on-demand lessons) → banned terms.
+
+    Graceful: any failure (resolver import, vault unreachable) → [] + a stderr
+    note, so convention-drift silently no-ops rather than breaking the check."""
+    try:
+        resolved = style_resolver.resolve_style(
+            wiki_root=wiki_root, vault_path=vault_path, project_slug=project_slug)
+    except Exception as e:  # noqa: BLE001 — graceful-skip is the contract
+        print(f"[diataxis-check] style overlay unavailable ({e}); convention-drift skipped",
+              file=sys.stderr)
+        return []
+    overlay_text = resolved.base_text + "\n" + "\n".join(lz.guidance for lz in resolved.lessons)
+    return _extract_banned_terms(overlay_text)
+
+
+def _heuristic_convention_drift(
+    p: Path, banned_terms: list[str], *, strict: bool = False,
+) -> list[Finding]:
+    """Drift type 4 (LIVE — part 3 task 5): VOICE drift against the style overlay.
+
+    Flags every banned term (whole word/phrase, case-insensitive) the page uses.
+    Severity is `info` (findings, not failures) by default and `error` under
+    --strict — so this is non-breaking until the operator opts into strictness
+    (parent Migration 4)."""
+    if not banned_terms:
+        return []
+    try:
+        text = p.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return []
+    # Strip the author-facing house-style scaffolding block before scanning — it
+    # embeds the base-guide prose (which lists banned words) and is deleted before
+    # publishing, so banned words appearing ONLY there are not real drift. Only
+    # this block is stripped, not arbitrary comments (which could hold real prose).
+    text = _STYLE_BLOCK_RE.sub("", text)
+    findings: list[Finding] = []
+    for term in banned_terms:
+        if re.search(r"(?<!\w)" + re.escape(term) + r"(?!\w)", text, re.IGNORECASE):
+            findings.append(
+                Finding(
+                    file=str(p),
+                    rule="diataxis/convention-drift",
+                    severity="error" if strict else "info",
+                    msg=f"voice drift: page uses banned term '{term}' (house style overlay)",
+                    suggested_fix=f"remove or replace '{term}' per the style overlay",
+                )
+            )
+    return findings
 
 
 # ── Top-level orchestration ────────────────────────────────────────────────
@@ -269,6 +357,8 @@ def run_check(
     wiki_root: Path,
     strict: bool = False,
     check_wiki_py: Path | None = None,
+    vault_path: Path | None = None,
+    project_slug: str | None = None,
 ) -> CheckReport:
     """Walk wiki/ + apply check-wiki.py + 4 skill heuristics. Returns CheckReport."""
     report = CheckReport(
@@ -282,7 +372,9 @@ def run_check(
     report.check_wiki_status = status
     report.check_wiki_findings = len(cw_findings)
     report.findings.extend(cw_findings)
-    # Step 2: skill-side heuristics.
+    # Step 2: skill-side heuristics. Resolve the voice overlay once → banned terms.
+    banned_terms = _load_banned_terms(
+        wiki_root=wiki_root, vault_path=vault_path, project_slug=project_slug)
     pages = _walk_wiki_pages(wiki_root)
     all_stems = {p.stem for p in pages}
     for p in pages:
@@ -294,8 +386,7 @@ def run_check(
         f3 = _heuristic_template_drift(p)
         if f3:
             report.findings.append(f3)
-        f4 = _heuristic_convention_drift(p)
-        if f4:
+        for f4 in _heuristic_convention_drift(p, banned_terms, strict=strict):
             report.findings.append(f4)
     skill_findings = len(report.findings) - report.check_wiki_findings
     report.skill_heuristic_findings = skill_findings
@@ -305,6 +396,14 @@ def run_check(
         counts[f.rule] = counts.get(f.rule, 0) + 1
     report.findings_by_rule = counts
     return report
+
+
+def _exit_code(report: CheckReport) -> int:
+    """Fail (1) only on warning/error findings. `info`-severity findings
+    (convention-drift in non-strict mode) are surfaced but do NOT fail the check
+    — non-breaking per parent Migration 4. Under --strict, convention-drift
+    escalates to `error`, so it then fails like the rest."""
+    return 1 if any(f.severity in ("warning", "error") for f in report.findings) else 0
 
 
 def _parse_args(argv: list[str]) -> argparse.Namespace:
@@ -326,6 +425,14 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
         "--check-wiki-py", default=None,
         help="explicit path to check-wiki.py (default: auto-detect sibling clone)",
     )
+    parser.add_argument(
+        "--vault-path", default=None,
+        help="vault root for the voice overlay (default: $MEMORY_VAULT_PATH)",
+    )
+    parser.add_argument(
+        "--project-slug", default=None,
+        help="project slug for the per-project voice overlay scope",
+    )
     return parser.parse_args(argv)
 
 
@@ -337,10 +444,16 @@ def main(argv: list[str] | None = None) -> int:
         print(f"ERROR: {e}", file=sys.stderr)
         return 1
     check_wiki_py = _resolve_check_wiki_py(args.check_wiki_py)
+    vault_path = Path(args.vault_path).expanduser() if args.vault_path else None
+    if vault_path is None:
+        env = os.environ.get("MEMORY_VAULT_PATH", "").strip()
+        vault_path = Path(env).expanduser() if env else None
     report = run_check(
         wiki_root=wiki_root,
         strict=args.strict,
         check_wiki_py=check_wiki_py,
+        vault_path=vault_path,
+        project_slug=args.project_slug,
     )
     print(json.dumps({
         "wiki_root": report.wiki_root,
@@ -351,9 +464,7 @@ def main(argv: list[str] | None = None) -> int:
         "findings_by_rule": report.findings_by_rule,
         "findings": [asdict(f) for f in report.findings],
     }, indent=2))
-    # Exit code: 0 if no findings; 1 if findings (non-strict warnings included).
-    # In strict mode any finding = exit 1.
-    return 0 if not report.findings else 1
+    return _exit_code(report)
 
 
 if __name__ == "__main__":

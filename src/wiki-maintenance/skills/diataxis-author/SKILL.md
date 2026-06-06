@@ -121,7 +121,7 @@ python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/author.py \
 
 ### `/diataxis check [--strict]`
 
-Drift detection — wraps `scripts/check-wiki.py` (harness-side) as a subprocess + adds 3 operational skill-side heuristics (mode-mixed + ambiguous-mode page detection / stale cross-references / template-shape drift) + 1 stub heuristic (convention drift; full wiring lands part 5 alongside AgentMemory). Outputs a structured JSON report grouped by rule. Non-zero exit on findings. Graceful-skip when check-wiki.py absent → in-skill heuristic-only mode + clear stderr warning.
+Drift detection — wraps `scripts/check-wiki.py` (harness-side) as a subprocess + adds 4 operational skill-side heuristics: mode-mixed + ambiguous-mode page detection / stale cross-references / template-shape drift / **convention drift** (VOICE drift against the style overlay — see below). Outputs a structured JSON report grouped by rule. Exit non-zero on `warning`/`error` findings; convention-drift findings are `info` (surfaced, non-failing) unless `--strict` escalates them to `error`. Graceful-skip when check-wiki.py absent → in-skill heuristic-only mode + clear stderr warning.
 
 #### Invocation shape
 
@@ -148,7 +148,7 @@ Drift detection — wraps `scripts/check-wiki.py` (harness-side) as a subprocess
 - `diataxis/mode-mixed` — calls `classify.py`; flags when `mode_mixed: true` OR `needs_subagent: true` (latter catches the penalty-masked case where how-to score drops below 0.5 due to rationale-section penalty but the page is still mode-mixed semantically).
 - `diataxis/stale-xref` — extracts wiki-style markdown links; resolves target stem; flags when no matching page exists.
 - `diataxis/template-drift` — page lives in mode-dir X but classify.py says it's mode Y with confidence ≥0.7. Suggested fix: move file or rewrite body.
-- `diataxis/convention-drift` — v1 stub (always None); part 5 wires AgentMemory read-side to compare against operator-defined conventions (via the `documenter-context` resolver per the *Operator convention read path (V4 #35)* section above — not a direct vault glob).
+- `diataxis/convention-drift` — **live** (part 3 task 5): flags **voice** drift, not just structure. Resolves the style overlay (`base style-guide ⊕ on-demand lessons`, via the part-1 resolver) and scans each page for the machine-checkable terms declared on a `banned:` directive (in the committed base style-guide and/or overlay lessons — `banned: term, "phrase", …`). Each banned term a page uses → a finding. Findings are `info` (non-failing) by default and `error` under `--strict` (non-breaking per parent Migration 4). Graceful-skip (no finding) when the overlay can't resolve. Pass `--vault-path` / `--project-slug` to include the vault overlay scopes.
 
 **Step 5 — Aggregate + emit report.** Findings grouped by rule with counts. JSON output to stdout; non-zero exit on findings.
 
@@ -215,7 +215,7 @@ Interactive fix-application for drift detected by `/diataxis check`. Per finding
 - `diataxis/template-drift` → preview a `git mv` from current path to the suggested mode-dir path. v1 emits the preview ONLY (operator runs git mv manually); v2 may add an `--auto-apply` flag.
 - `diataxis/mode-mixed` → dispatch `documenter` sub-agent for the actual split. CLI emits the dispatch marker; the calling skill body (or operator interactive context) handles the dispatch. In `--stub` mode, returns canned marker without invoking.
 - `diataxis/stale-xref` → record finding only; operator manually rewrites the link target (right target is judgment; no auto-fix in v1).
-- `diataxis/convention-drift` → v1 stub; full handling lands in part 5.
+- `diataxis/convention-drift` → operator removes/replaces the banned term per the house style overlay (or, if the term is legitimately needed, tunes the overlay's `banned:` directive). Findings, not failures, unless `--strict`.
 - `check-wiki/*` → record finding only; operator manually addresses each (check-wiki rules surface known violations from the validator).
 
 **Step 5 — Emit summary.** Per-action counts (applied / edited / rejected / skipped / errors) + per-finding results array. JSON to stdout.

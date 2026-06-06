@@ -36,6 +36,10 @@ house defaults. Keep it tight.
   would read the same anywhere.
 - **Restating instead of linking.** Reference other pages; don't re-derive them.
   The same content at three zoom levels is wrong — pick one, link the rest.
+- **Machine-checkable terms.** The `convention-drift` check (`/diataxis check`)
+  scans pages for the terms on the `banned:` line below; overlay lessons extend
+  it with their own `banned:` line. Findings, not failures (unless `--strict`).
+  banned: groundbreaking, deeply, vital, crucial, truly, delve, transformative, visionary, this journey, it should be noted that, it is worth mentioning, arguably, essentially
 
 ## Structure
 
