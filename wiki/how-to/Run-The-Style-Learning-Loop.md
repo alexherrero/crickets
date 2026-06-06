@@ -25,6 +25,17 @@
 
 8. Check for voice drift. Run `/diataxis check` — alongside the structural rules it now runs `convention-drift`, which resolves the style overlay (base style-guide ⊕ on-demand voice lessons, via step 1's resolver), collects every banned term declared on a `banned:` directive in those sources, and scans each wiki page. Each banned term a page uses emits one finding (`voice drift: page uses banned term …`) with a suggested fix. Findings are `info` severity — surfaced but non-failing — by default; pass `--strict` to escalate them to `error` so they fail the check like structural violations. To extend the banned list, add a `banned:` line to the committed base style-guide or to an overlay lesson; the next `/diataxis check` picks it up. (`banned:` lines inside ``` fences are ignored, and the author-facing house-style scaffolding block is stripped before scanning, so banned words quoted in those places are not flagged.)
 
+## Promote a proven lesson to the base
+
+> [!NOTE]
+> **Status:** pending — lands in the dogfood finale (part 5/5 of the wiki-maintenance arc). The steps below describe the planned `/diataxis promote` sub-command; it is **not shipped yet**. Steps 1–8 above are implemented and usable today.
+
+Steps 1–6 persist a confirmed lesson to an on-demand overlay store. Once a lesson has proven itself across many drafts, you graduate it into the committed repo base so every fresh draft inherits it without an overlay:
+
+1. _(Pending.)_ Preview the promotion: `/diataxis promote --preview <lesson>`. It prints a unified diff of the change against the committed base style-guide (`src/wiki-maintenance/skills/diataxis-author/style/base-style-guide.md`) and writes nothing.
+2. _(Pending.)_ Apply it: `/diataxis promote <lesson>`. The helper edits `src/` only (never `dist/`), leaves the change staged/uncommitted for you, and never auto-commits. Re-running is idempotent — a lesson already in the base is a no-op.
+3. _(Pending.)_ Commit the `src/` edit yourself, then run `generate.py build` to regenerate `dist/` so the promoted base ships in the plugin.
+
 ## Related
 
 - **Related reference:** [Customization types](Customization-Types) — documents the `wiki-maintenance` plugin and its primitives.
