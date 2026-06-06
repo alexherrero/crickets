@@ -5,7 +5,7 @@
 How the `wiki-watch` engine is configured. There is **no new config file** (DC-W2) — the watcher reads config through **three sources**, each owned by a different layer, and config never lives in the vault (DC-8: the vault holds the cross-device *index*; the on-host marker holds *run config*).
 
 > [!NOTE]
-> **Status:** pending — `wiki-maintenance` part 4. The three config **resolvers** landed in task 1 (`wiki_watch_config.py`); their files, shapes, and opt-in semantics below are confirmed against that diff. The engine that *consumes* this config is not end-to-end usable yet: the PR-vs-`direct` dispatch behavior (how `dispatch_mode` is acted on) lands in **task 3**, and the single-cycle driver lands in **task 4**.
+> **Status:** pending — `wiki-maintenance` part 4. The three config **resolvers** landed in task 1 (`wiki_watch_config.py`); their files, shapes, and opt-in semantics below are confirmed against that diff. Task 3 added the **dispatch plumbing that consumes `dispatch_mode`** (`wiki_watch_dispatch.py`), so the PR-vs-`direct` behavior below is now confirmed against that diff too. The engine is still not end-to-end usable: the single-cycle driver that ties poll → detect → dispatch together lands in **task 4**.
 
 ## ⚡ Quick Reference
 
@@ -53,8 +53,15 @@ The marker's **presence is the per-repo opt-in**: an absent, unreadable, empty, 
 | `watch_sources` | list of repo-relative paths / globs | Absent / non-list / empty → `["."]` (the whole repo; the task-2 significance pre-filter drops noise). Non-string entries are dropped. |
 | `dispatch_mode` | `"pr"` \| `"direct"` | Absent or any unrecognized value → `"pr"` (DC-W1: direct-commit is an explicit opt-in only). Value is lowercased before matching. |
 
-> [!NOTE]
-> Task 1 **resolves and normalizes** `dispatch_mode` only. *Acting on* it — opening a PR for `pr` vs. committing straight to the wiki for `direct` — lands in **task 3**. Until then the field is read but not consumed.
+**How `dispatch_mode` is acted on** (task 3, `wiki_watch_dispatch.py`). After the documenter authors its changes on a branch, the cycle commits, runs the **PII guard, then pushes** (the in-engine pre-check; the repo's pre-push hook is the hard enforcer), and dispatches per mode:
+
+| Mode | Dispatch behavior |
+|---|---|
+| `pr` (default) | Opens a pull request via the `gh` CLI for a human to merge — the PR is the async preview boundary (DC-W1). Branch is deterministic (`wiki-watch/<repo-slug>-<short-token>`), so a re-run reuses it (no duplicate PRs). |
+| `direct` | Commits straight to the wiki's **default branch** — explicit per-repo opt-in for a trusted repo. |
+| `pr`, but `gh` unavailable / unauthenticated | **Skips** the dispatch. It does **not** silently downgrade to direct-commit — that would bypass the human-merge boundary. |
+
+Every git/`gh` step graceful-skips on failure (no hard-fail).
 
 The CLI `run-config <repo_root>` subcommand prints the normalized `watch_sources` + `dispatch_mode` (exit `0`), or a `{"skipped": true, ...}` reason (exit `1`) when the marker is absent / unreadable.
 
@@ -79,7 +86,7 @@ State lives under a `wiki-watch/` leaf — resolved by `resolve_state_dir(repo_r
 | `cursors.json` | per-source high-water mark (git SHA, or sha256 content hash for non-git sources) — advances only after a token is fully processed |
 | `pending.json` | the token mid-processing + its `dispatched` paths (no double-dispatch on re-run) + a `failures` map driving exponential backoff |
 
-The audit log lands alongside these with the cycle driver (task 4) and is **local and never committed**. The detection feed reads `watch_sources` as the inclusion filter, then drops noise (generated / vendored / transient trees and the output `wiki/`) via the significance pre-filter before judging doc-worthiness — see [How to run the wiki-watcher](Run-The-Wiki-Watcher) § What gets watched vs. filtered as noise.
+The audit log is a JSONL file, `audit.log`, alongside these under the same `wiki-watch/` leaf (task 3 added `append_audit` / `read_audit`). It records each cycle's `saw → decided → dispatched` trail with PR links, and is **local and never committed**. The detection feed reads `watch_sources` as the inclusion filter, then drops noise (generated / vendored / transient trees and the output `wiki/`) via the significance pre-filter before judging doc-worthiness — see [How to run the wiki-watcher](Run-The-Wiki-Watcher) § What gets watched vs. filtered as noise.
 
 ## Related
 

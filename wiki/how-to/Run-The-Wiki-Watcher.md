@@ -7,7 +7,7 @@
 > **Goal:** Run the `wiki-watch` single-cycle engine over a watched repo, and drive it on a loop so the `documenter` keeps a wiki in sync — PR-default, with direct-commit opt-in per trusted repo.
 > **Prereqs:** the `wiki-maintenance` plugin installed ([Install crickets plugins](Install-Into-Project)); the watched repo registered in `repo_registry` (`<vault>/_meta/repos.json`) with a `wiki_path`; `git` and (for PR-default dispatch) the `gh` CLI authenticated. Optional: a configured durable-memory vault for cross-device cursors and audit log — without one, state falls back to the per-repo `.harness/wiki-watch/`.
 
-The wiki-watcher is an **idempotent single-cycle engine the operator drives**, not a daemon: one invocation runs one `poll → detect → significance → dispatch → audit` cycle and exits. It is cooldown-gated and cursor-backed, so re-running it on the host's loop (`/loop` or cron) never drops a change or double-dispatches. Dispatch is **PR-default** (a human merges); direct-commit is opt-in per trusted repo.
+The wiki-watcher is an **idempotent single-cycle engine the operator drives**, not a daemon: one invocation runs one `poll → detect → significance → dispatch → audit` cycle and exits. It is cooldown-gated and cursor-backed, so re-running it on the host's loop (`/loop` or cron) never drops a change or double-dispatches. Dispatch is **PR-default** (a human merges); direct-commit is opt-in per trusted repo — see step 4.
 
 ## Steps
 
@@ -17,7 +17,10 @@ The wiki-watcher is an **idempotent single-cycle engine the operator drives**, n
 
 3. _(Filled from task 4's diff at `/work`.)_ Run one cycle with the `wiki-watch` invocation. It polls the watched sources since the last cursor, drops noise via the deterministic pre-filter, judges doc-worthiness, dispatches the `documenter` on a candidate, and writes the audit log. The cooldown gate makes a within-window re-run a no-op. _Filled by human._
 
-4. _(Filled from task 3's diff at `/work`.)_ Review the output. In PR mode, open the pull request the engine created and merge it — the PR is the async preview that reconciles the documenter's interactive preview-before-write gate with autonomous mode. In direct mode (opt-in trusted repos only), inspect the commit. The PII guardrails (pre-push hook + `pii-scrubber`) gate anything pushed. _Filled by human._
+4. **Review the dispatch output.** What the cycle does with the documenter's authored changes is set by `dispatch_mode` (from the per-repo marker). The flow is always: branch → documenter authors → commit → **PII guard → push → open PR / land commit**.
+   - **`pr` (default).** Pushes to a deterministic branch `wiki-watch/<repo-slug>-<short-token>` (stable, so a re-run reuses the branch — no duplicate PRs) and opens a pull request via `gh`. **Open that PR and merge it** — the PR *is* the async preview that reconciles the documenter's interactive preview-before-write gate with autonomous mode; a human merges. **`gh` is required for PR mode**: if `gh` is unavailable or unauthenticated the cycle **skips** dispatch — it does **not** downgrade to direct-commit, which would bypass the human-merge boundary.
+   - **`direct` (per-repo opt-in, trusted repos only).** Commits straight to the wiki's default branch; inspect the commit. Used only for a repo explicitly marked `"dispatch_mode": "direct"`.
+   - In both modes the **PII guard runs before any push** (the in-engine pre-check; the repo's pre-push hook is the hard enforcer). Every git/`gh` step graceful-skips on failure — a failed push or PR-create no-ops rather than hard-failing the cycle.
 
 5. _(Filled from task 4's diff at `/work`.)_ Drive it on a loop. On Claude Code, run the cycle under the host's loop (`/loop`) or a cron entry that re-invokes the single-cycle engine — the cooldown and cursors make repeated invocation safe. Antigravity has no installable scheduling path today, so the loop is Claude-first; see [Antigravity limitations](Antigravity-Limitations) for the gap and its re-address trigger. _Filled by human._
 
@@ -32,7 +35,7 @@ State lives under a `wiki-watch/` leaf — in the vault at `<vault>/projects/<sl
 - **`cursors.json`** — the per-source high-water mark (a git SHA for git sources, a content hash for non-git ones like a vault `PLAN.md`). A cursor only advances once its token is *fully* processed, so a change is never dropped.
 - **`pending.json`** — the token currently mid-processing, the `dispatched` paths under it (so a re-run or restart never double-dispatches), and a `failures` map driving exponential retry/backoff (60s · 120s · 240s …, capped at 3600s).
 
-The audit log (`saw → decided → dispatched`, with PR links) lands alongside these with the cycle driver; it is **local and never committed**.
+The audit log is a JSONL file, `audit.log`, alongside these under `_harness/wiki-watch/`. It records each cycle's `saw → decided → dispatched` trail with PR links. It is **local and never committed** — git never touches it.
 
 ## Related
 
