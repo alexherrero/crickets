@@ -12,6 +12,7 @@
 - [Use the base hooks](Use-The-Base-Hooks)
 - [Quality-Gates-Recipe](Quality-Gates-Recipe)
 - [Run the style-learning loop](Run-The-Style-Learning-Loop)
+- [Run the wiki-watcher](Run-The-Wiki-Watcher)
 
 ### 📖 Reference
 - [Customization Types](Customization-Types)
@@ -19,6 +20,8 @@
 - [Per-Host Paths](Per-Host-Paths)
 - [Installer CLI](Installer-CLI)
 - [Compatibility](Compatibility)
+- [Wiki Watch Config](Wiki-Watch-Config)
+- [Antigravity Limitations](Antigravity-Limitations)
 
 ### 💡 Explanation
 - [Purpose and scope](Purpose-And-Scope)

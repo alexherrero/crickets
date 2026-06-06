@@ -33,6 +33,7 @@ This wiki is the contributor-facing documentation for Crickets itself. Every pag
 - [Use the evaluator](Use-The-Evaluator) — dispatch the `evaluator` sub-agent for PASS / NEEDS_WORK grading against a precise rubric.
 - [Use the base hooks](Use-The-Base-Hooks) — kill-switch, steer, commit-on-stop. Operator-precision control for long-running Claude Code sessions.
 - [Run the style-learning loop](Run-The-Style-Learning-Loop) — teach `wiki-author` your house voice via the operator-in-the-loop learning loop. The core capture loop (edit → diff → gates → scope → write → read-back) is live; the relocation migration and voice-drift check land in `wiki-maintenance` part 5.
+- [Run the wiki-watcher](Run-The-Wiki-Watcher) — run the `documenter` on a watch loop: detect doc-worthy changes, gate on significance, dispatch PR-default. The single-cycle engine and operator-driven scheduling are being built across `wiki-maintenance` part 4.
 
 > The `evidence-tracker` hook and the `design`, `memory`, and `diataxis-author` skills, along with Antigravity plugin authoring, moved to [Agent M](https://github.com/alexherrero/agentm) in v2.0.0 (V4 #36 reorg). See the [Agent M wiki](https://github.com/alexherrero/agentm/wiki) for their operational docs.
 
@@ -43,6 +44,8 @@ This wiki is the contributor-facing documentation for Crickets itself. Every pag
 - [Per-Host Paths](Per-Host-Paths) — destination paths per kind per host.
 - [Installer CLI](Installer-CLI) — flags, prereqs, exit codes.
 - [Compatibility](Compatibility) — supported hosts (Claude Code, Antigravity) + OS matrix + per-manifest `supported_hosts` contract.
+- [Wiki-Watch-Config](Wiki-Watch-Config) — the three existing sources the wiki-watcher reads config through (enablement · per-repo run config · wiki target); no new config file. Lands across `wiki-maintenance` part 4.
+- [Antigravity Limitations](Antigravity-Limitations) — running register of Antigravity host gaps (scheduling/triggers first) + the re-address trigger that closes each row. Seeded in `wiki-maintenance` part 4.
 
 ## 💡 Want to know why?
 
