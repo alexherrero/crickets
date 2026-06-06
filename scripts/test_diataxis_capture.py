@@ -145,7 +145,7 @@ class TestWritePathRoundTrip(unittest.TestCase):
             # Correct on-demand store, NOT _always-load.
             self.assertEqual(
                 written,
-                vault / "personal-private" / "projects" / "_global" / "wiki-style"
+                vault / "projects" / "_global" / "wiki-style"
                 / f"{_STAMP}-peacock-words.md")
             self.assertNotIn("_always-load", str(written))
             self.assertFalse((vault / "personal-private" / "_always-load").exists())
@@ -182,7 +182,7 @@ class TestWritePathRoundTrip(unittest.TestCase):
                 mode="silent", datestamp=_STAMP)
             self.assertEqual(
                 written,
-                vault / "personal-private" / "projects" / "crickets" / "wiki-style"
+                vault / "projects" / "crickets" / "wiki-style"
                 / f"{_STAMP}-domain-term.md")
             resolved = sr.resolve_style(
                 vault_path=vault, project_slug="crickets", base_text="")
@@ -236,7 +236,8 @@ class TestNeverAutoCommit(unittest.TestCase):
                     "t", "g", "global", vault_path=vault,
                     mode="auto", stdin=io.StringIO(""), datestamp=_STAMP)
             self.assertIsNone(written)
-            self.assertFalse((vault / "personal-private").exists())
+            # Denied write created nothing under the (now top-level) projects root.
+            self.assertFalse((vault / "projects").exists())
 
     def test_interactive_non_tty_defaults_to_deny(self):
         with tempfile.TemporaryDirectory() as td:

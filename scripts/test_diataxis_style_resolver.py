@@ -73,7 +73,7 @@ class TestResolvePrecedence(unittest.TestCase):
     def test_distinct_triggers_accumulate(self):
         with tempfile.TemporaryDirectory() as td:
             vault = Path(td) / "vault"
-            _lesson_file(vault / "personal-private" / "projects" / "_global" / "wiki-style",
+            _lesson_file(vault / "projects" / "_global" / "wiki-style",
                          "a.md", trigger="word-choice", guidance="prefer plain verbs")
             repo = Path(td) / "repo" / "wiki"
             repo.mkdir(parents=True)
@@ -86,7 +86,7 @@ class TestResolvePrecedence(unittest.TestCase):
     def test_repo_overrides_project_overrides_global(self):
         with tempfile.TemporaryDirectory() as td:
             vault = Path(td) / "vault"
-            pp = vault / "personal-private" / "projects"
+            pp = vault / "projects"
             _lesson_file(pp / "_global" / "wiki-style", "g.md",
                          trigger="headings", guidance="GLOBAL guidance")
             _lesson_file(pp / "demo" / "wiki-style", "p.md",
@@ -105,7 +105,7 @@ class TestResolvePrecedence(unittest.TestCase):
     def test_project_overrides_global_when_no_repo(self):
         with tempfile.TemporaryDirectory() as td:
             vault = Path(td) / "vault"
-            pp = vault / "personal-private" / "projects"
+            pp = vault / "projects"
             _lesson_file(pp / "_global" / "wiki-style", "g.md",
                          trigger="rhythm", guidance="GLOBAL")
             _lesson_file(pp / "demo" / "wiki-style", "p.md",
@@ -118,7 +118,7 @@ class TestResolvePrecedence(unittest.TestCase):
     def test_per_project_skipped_without_slug(self):
         with tempfile.TemporaryDirectory() as td:
             vault = Path(td) / "vault"
-            pp = vault / "personal-private" / "projects"
+            pp = vault / "projects"
             _lesson_file(pp / "demo" / "wiki-style", "p.md",
                          trigger="x", guidance="PROJECT")
             r = sr.resolve_style(wiki_root=None, vault_path=vault, project_slug=None)
@@ -127,7 +127,7 @@ class TestResolvePrecedence(unittest.TestCase):
     def test_recent_wins_within_scope(self):
         with tempfile.TemporaryDirectory() as td:
             vault = Path(td) / "vault"
-            gdir = vault / "personal-private" / "projects" / "_global" / "wiki-style"
+            gdir = vault / "projects" / "_global" / "wiki-style"
             _lesson_file(gdir, "01-x.md", trigger="cuts", guidance="OLD")
             _lesson_file(gdir, "02-x.md", trigger="cuts", guidance="NEW")
             r = sr.resolve_style(wiki_root=None, vault_path=vault, project_slug=None)
@@ -137,7 +137,7 @@ class TestResolvePrecedence(unittest.TestCase):
     def test_trigger_defaults_to_filename_stem(self):
         with tempfile.TemporaryDirectory() as td:
             vault = Path(td) / "vault"
-            gdir = vault / "personal-private" / "projects" / "_global" / "wiki-style"
+            gdir = vault / "projects" / "_global" / "wiki-style"
             _lesson_file(gdir, "no-fm.md", trigger=None, guidance="bare guidance")
             r = sr.resolve_style(wiki_root=None, vault_path=vault, project_slug=None)
             self.assertEqual(r.lessons[0].trigger, "no-fm")
@@ -219,7 +219,7 @@ class TestAuthorPageIntegration(unittest.TestCase):
             tdp = Path(td)
             w = self._wiki(tdp)
             vault = tdp / "vault"
-            gdir = vault / "personal-private" / "projects" / "_global" / "wiki-style"
+            gdir = vault / "projects" / "_global" / "wiki-style"
             _lesson_file(gdir, "lesson.md", trigger="voice",
                          guidance="OVERLAY-LESSON-MARKER")
             res = author.author_page("Install Bar", "how-to", wiki_root=w,

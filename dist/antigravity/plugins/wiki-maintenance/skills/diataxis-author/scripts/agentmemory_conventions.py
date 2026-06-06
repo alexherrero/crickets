@@ -280,9 +280,15 @@ def lesson_target(
 ) -> tuple[Path | None, bool]:
     """Resolve (target_path, writes_outside_vault) for a voice lesson by scope.
 
-      global      -> <vault>/personal-private/projects/_global/wiki-style/<date>-<trigger>.md
-      per-project -> <vault>/personal-private/projects/<slug>/wiki-style/<date>-<trigger>.md
+      global      -> <vault>/projects/_global/wiki-style/<date>-<trigger>.md
+      per-project -> <vault>/projects/<slug>/wiki-style/<date>-<trigger>.md
       per-repo    -> <wiki_root>/.diataxis-conventions.md   (OUTSIDE the vault)
+
+    Project-keyed stores live under the top-level `projects/` root (canonical
+    post-V4#26 layout; see agentm ADR 0010 vault internal taxonomy) — NOT under
+    `personal-private/` (that root is for personal, non-project-keyed data; its
+    `_always-load/` subset is the always-injected globals). `_global` is the
+    reserved cross-project pseudo-project.
 
     The date-prefixed filename gives the directory scopes their recent-wins order
     (the resolver sorts by filename within a scope). Returns (None, False) when
@@ -292,12 +298,12 @@ def lesson_target(
     if scope == "global":
         if vault_path is None:
             return None, False
-        d = Path(vault_path) / "personal-private" / "projects" / "_global" / "wiki-style"
+        d = Path(vault_path) / "projects" / "_global" / "wiki-style"
         return d / f"{datestamp}-{trig}.md", False
     if scope == "per-project":
         if vault_path is None or not project_slug:
             return None, False
-        d = Path(vault_path) / "personal-private" / "projects" / project_slug / "wiki-style"
+        d = Path(vault_path) / "projects" / project_slug / "wiki-style"
         return d / f"{datestamp}-{trig}.md", False
     if scope == "per-repo":
         if wiki_root is None:

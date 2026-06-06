@@ -42,6 +42,7 @@ The full read-side wiring lands with part 5 (`agentmemory-docs-release`); this s
 | One-shot migrate a legacy audience-based wiki to the four-mode Diátaxis layout | `/diataxis migrate` |
 | Classify a single page's mode (operator-debug; sub-agent dispatches here for ambiguous cases) | `/diataxis classify <file>` |
 | Capture a generalizable voice lesson from your own edits to an authored draft | `/diataxis capture <draft> <edited>` |
+| Relocate global wiki conventions out of `_always-load` into the on-demand `_global` store (one-time, operator-run) | `/diataxis relocate --preview` |
 
 ## Sub-commands
 
@@ -460,7 +461,7 @@ python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/capture.py save \
     --vault-path "$MEMORY_VAULT_PATH"
 ```
 
-The store routing mirrors the resolver's read model (part 3 task 1): global → `<vault>/personal-private/projects/_global/wiki-style/<date>-<trigger>.md` · per-project → `<vault>/personal-private/projects/<slug>/wiki-style/<date>-<trigger>.md` · per-repo → `<wiki-root>/.diataxis-conventions.md`. The next `/diataxis author` draft reads it back automatically.
+The store routing mirrors the resolver's read model (part 3 task 1): global → `<vault>/projects/_global/wiki-style/<date>-<trigger>.md` · per-project → `<vault>/projects/<slug>/wiki-style/<date>-<trigger>.md` · per-repo → `<wiki-root>/.diataxis-conventions.md`. Project-keyed stores live under the top-level `projects/` root (canonical layout; see agentm ADR 0010), not under `personal-private/`. The next `/diataxis author` draft reads it back automatically.
 
 **Graceful-degrade (DC-3).** Per-repo writes land *outside* the MemoryVault, so they route through agentm's `permeable_boundary` cross-boundary confirm when the kernel is importable; absent it (crickets-local), the write degrades to the local confirm only and **announces** the degraded mode on stderr (`permeable_boundary unavailable …`) — never silent. The capture still works.
 
@@ -469,6 +470,33 @@ The store routing mirrors the resolver's read model (part 3 task 1): global → 
 - **Don't skip gate 1.** The cluster bucketing is mechanical; the *generalization* is the judgment. Saving a raw before→after as a "lesson" stores a one-off, not voice.
 - **Don't default everything to `global`.** Global re-voices every wiki you author. The evaluator starts narrow for a reason — promote later (the operator-gated `promote` path, part 5) once a lesson proves itself.
 - **Don't run `save` in non-TTY/batch.** The operator-confirm gate denies non-interactive writes by default (no surprise saves); use `--mode silent` only in tests/automation you control.
+
+### `/diataxis relocate [--preview | --cleanup --yes | --rollback]`
+
+A **one-time, operator-run** migration that moves the global wiki/Diátaxis conventions out of the always-load tier (`<vault>/personal-private/_always-load/diataxis-*.md`, injected into **every** session's context) into the on-demand global store the resolver reads (`<vault>/projects/_global/wiki-style/*.md`) — so they load only when authoring. It touches your **live vault**, so it mirrors the [`migrate-harness-to-vault`](https://github.com/alexherrero/agentm/blob/main/scripts/migrate-harness-to-vault.sh) discipline: **preview-first, reversible, conflict-safe, never auto.**
+
+```bash
+# 1. ALWAYS preview first — prints WOULD: lines, mutates nothing:
+python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/relocate.py \
+    --preview --vault-path "$MEMORY_VAULT_PATH"
+# 2. Relocate (copies; leaves the source in place; records a rollback manifest):
+python3 …/relocate.py --vault-path "$MEMORY_VAULT_PATH"
+# 3. (optional) Remove the now-redundant always-load sources, after a byte-identical verify:
+python3 …/relocate.py --cleanup --yes --vault-path "$MEMORY_VAULT_PATH"
+# Reverse a relocation at any point (restores cleaned-up sources from the copies):
+python3 …/relocate.py --rollback --vault-path "$MEMORY_VAULT_PATH"
+```
+
+- **Conflict-safe:** a byte-differing dest is never overwritten (`CONFLICT`, exit 2); a byte-identical dest is a no-op (`SKIP-IDENTICAL`). Idempotent.
+- **Reversible:** relocated filenames are recorded in a manifest (`<dest>/.relocated-from-always-load`); `--rollback` reverses *only* those, restoring any cleaned-up source from its copy and leaving lessons captured directly into `_global` untouched.
+- **`_global` lives under the top-level `projects/` root** (canonical layout; see agentm ADR 0010), not under `personal-private/`.
+
+Today this is typically a **no-op** — no `diataxis-*.md` exist in `_always-load/` yet (the capture loop is what creates global voice lessons, and it writes straight to `_global/`). The script ships the mechanism for when they do; whether your `docs-prose-style` entry itself relocates is an operator call you make by widening `--source-glob` after reviewing the preview.
+
+#### Anti-patterns
+
+- **Don't skip `--preview`.** It's the whole point — see exactly what moves before touching the live vault.
+- **Don't `--cleanup` without first confirming the copy round-trips.** Cleanup only deletes a source whose dest is byte-identical, but verify the preview first.
 
 ## Tool allowlist
 

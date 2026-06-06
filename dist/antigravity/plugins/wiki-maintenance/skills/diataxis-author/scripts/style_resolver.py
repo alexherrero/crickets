@@ -11,8 +11,8 @@
 #                       full personal entry layers on at runtime as a vault overlay.
 #   Overlay           — learned voice lessons read ON-DEMAND (never _always-load)
 #                       from three scopes, narrower + recent wins:
-#                         global      <vault>/personal-private/projects/_global/wiki-style/*.md
-#                         per-project <vault>/personal-private/projects/<slug>/wiki-style/*.md
+#                         global      <vault>/projects/_global/wiki-style/*.md
+#                         per-project <vault>/projects/<slug>/wiki-style/*.md
 #                         per-repo    <wiki-root>/.diataxis-conventions.md
 #                       Precedence (lowest→highest): global → project → repo. On a
 #                       trigger conflict the narrower scope wins.
@@ -162,10 +162,15 @@ def resolve_style(
 
     if vault_path is not None:
         vp = Path(vault_path)
-        gdir = vp / "personal-private" / "projects" / "_global" / "wiki-style"
+        # Project-keyed stores live under the top-level `projects/` root (the
+        # canonical post-V4#26 layout agentm + the live vault use) — NOT under
+        # `personal-private/`, which is for personal, non-project-keyed data.
+        # `_global` is a reserved pseudo-project for cross-project on-demand
+        # conventions. See agentm ADR 0010 (vault internal taxonomy).
+        gdir = vp / "projects" / "_global" / "wiki-style"
         _apply(read_scope_lessons(gdir, "global"))
         if project_slug:
-            pdir = vp / "personal-private" / "projects" / project_slug / "wiki-style"
+            pdir = vp / "projects" / project_slug / "wiki-style"
             _apply(read_scope_lessons(pdir, "per-project"))
     _apply(_read_per_repo_lessons(wiki_root))
 

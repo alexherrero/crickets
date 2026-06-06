@@ -21,8 +21,8 @@ The author-time resolver ([`scripts/style_resolver.py`](../skills/diataxis-autho
 
 | Scope | Store | Applies to | Recommend when the lesson is… |
 |---|---|---|---|
-| **global** | `<vault>/personal-private/projects/_global/wiki-style/*.md` | every repo's wiki the operator authors (the cross-project house voice) | a universal voice rule — register, banned words, sentence rhythm, slop/jargon cuts — that holds regardless of project or repo |
-| **per-project** | `<vault>/personal-private/projects/<slug>/wiki-style/*.md` | one project's wiki across all its repos | tied to a project's domain vocabulary, audience, or conventions — true for *this* project but not a house-wide rule |
+| **global** | `<vault>/projects/_global/wiki-style/*.md` | every repo's wiki the operator authors (the cross-project house voice) | a universal voice rule — register, banned words, sentence rhythm, slop/jargon cuts — that holds regardless of project or repo |
+| **per-project** | `<vault>/projects/<slug>/wiki-style/*.md` | one project's wiki across all its repos | tied to a project's domain vocabulary, audience, or conventions — true for *this* project but not a house-wide rule |
 | **per-repo** | `<wiki-root>/.diataxis-conventions.md` | one repo's wiki only (committed in-repo) | tied to one repo's structure, tooling, file layout, or naming — narrowest; or a convention the operator wants version-controlled alongside the code |
 
 Precedence is **global → project → repo**: a narrower scope overrides a broader one on the same `trigger`. So the scope choice is also a *blast-radius* choice — `global` changes the voice everywhere; `per-repo` changes it in exactly one place. **When genuinely torn, recommend the narrower scope** and say so in the rationale: starting narrow is reversible (promote later via the operator-gated `promote` path); starting broad silently re-voices unrelated wikis. This matches the loop's "start narrow" constraint.
