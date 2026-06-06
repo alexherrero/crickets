@@ -13,9 +13,9 @@ crickets ships as **native host plugins** generated from one source of truth ([A
 | `code-review` | enhances `developer-workflows`' `review` | adversarial-reviewer + cross-model adversarial-reviewer-cross agents + the `evidence-tracker` hook + the standalone `/code-review` command. |
 | `github-ci` | `requires: [developer-workflows]` | CI workflows + dependabot-fixer. |
 | `pii` | standalone | PII guardrail (scrubber skill + pre-push detector). |
-| `wiki` | `requires: [developer-workflows]` | Diátaxis wiki authoring + maintenance. |
+| `wiki-maintenance` | `requires: [developer-workflows]` | Diátaxis wiki authoring + maintenance. |
 
-> The v2.x `developer` seed plugin is **retired** (crickets v3.0). `github-ci` and `wiki` now require `developer-workflows`. Do not install `developer` — it no longer exists.
+> The v2.x `developer` seed plugin is **retired** (crickets v3.0). `github-ci` and `wiki-maintenance` now require `developer-workflows`. Do not install `developer` — it no longer exists.
 
 Pick one of three modes; all land the same plugins.
 
@@ -27,7 +27,7 @@ The recommended one-liner — installs the default set on whichever host(s) are 
 curl -fsSL https://raw.githubusercontent.com/alexherrero/crickets/main/bootstrap.sh | bash
 ```
 
-It detects `claude` / `agy` and installs the default set: `developer-workflows`, `developer-safety`, `code-review`, `github-ci`, `pii`, `wiki`. On Claude Code it adds the `crickets` marketplace and installs by name; on Antigravity it installs each plugin **by path** (see the asymmetry below).
+It detects `claude` / `agy` and installs the default set: `developer-workflows`, `developer-safety`, `code-review`, `github-ci`, `pii`, `wiki-maintenance`. On Claude Code it adds the `crickets` marketplace and installs by name; on Antigravity it installs each plugin **by path** (see the asymmetry below).
 
 ## Mode 2 — Install by name (Claude) / by path (Antigravity)
 
@@ -38,14 +38,14 @@ It detects `claude` / `agy` and installs the default set: `developer-workflows`,
 
 ```bash
 claude plugin marketplace add alexherrero/crickets
-claude plugin install developer-workflows@crickets   # + developer-safety, code-review, github-ci, pii, wiki @crickets
+claude plugin install developer-workflows@crickets   # + developer-safety, code-review, github-ci, pii, wiki-maintenance @crickets
 ```
 
-**Antigravity** (`agy` 1.0.2) — install each plugin by path from a clone. Install `developer-workflows` **first** (`github-ci` and `wiki` require it):
+**Antigravity** (`agy` 1.0.2) — install each plugin by path from a clone. Install `developer-workflows` **first** (`github-ci` and `wiki-maintenance` require it):
 
 ```bash
 git clone https://github.com/alexherrero/crickets.git ~/Antigravity/crickets
-for p in developer-workflows developer-safety code-review github-ci pii wiki; do
+for p in developer-workflows developer-safety code-review github-ci pii wiki-maintenance; do
   agy plugin install ~/Antigravity/crickets/dist/antigravity/plugins/$p
 done
 ```

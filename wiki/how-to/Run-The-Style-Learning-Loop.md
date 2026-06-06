@@ -38,7 +38,7 @@ Steps 1–6 persist a confirmed lesson to an on-demand overlay store. Once a les
 
 ## Related
 
-- **Related reference:** [Customization types](Customization-Types) — documents the `wiki-maintenance` plugin and its primitives.
+- **Related reference:** [Customization types](Customization-Types) — the primitive **kinds** the `wiki-maintenance` plugin is built from.
 - [Compatibility](Compatibility) — supported hosts + per-manifest `supported_hosts` contract.
 - [Wiki-Maintenance design](../explanation/designs/wiki-maintenance.md) — why the voice layer and the operator-in-the-loop learning loop exist.
 - [Add a skill](Add-A-Skill) — how skills are packaged and shipped in crickets.

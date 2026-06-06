@@ -34,6 +34,7 @@ Each customization in the shipped catalog declares its own `supported_hosts` in 
 | hook (3) | `kill-switch`, `steer`, `commit-on-stop` | `[claude-code]` (Antigravity hook-surface support tracked separately — see Known gaps below) |
 | bundle (2) | `quality-gates` (claude-code-only because contents include hooks), `example-bundle` (`[claude-code, antigravity]`) | inherits from contents |
 | plugin (1) | `example-plugin` (reference; Antigravity 2.0 + agy) | `[antigravity]` |
+| plugin | `wiki-maintenance` | `[claude-code, antigravity]` cross-host engine; scheduling/`wiki-author`/`recent-wiki-changes` are Claude-only (see [Antigravity limitations](Antigravity-Limitations) for the scheduling gap) |
 
 The installer respects each manifest's `supported_hosts` — installing into a target project only writes the customizations declared for the host(s) you're targeting.
 
@@ -57,7 +58,7 @@ The `snippet` kind is an instruction fragment. The generator emits it **as an An
 
 ## Known gaps — Antigravity 2.0 surface
 
-Three Antigravity 2.0 primitive surfaces have **no file-based authoring path** as of crickets v1.2.0. Customizations targeting these surfaces are out of scope for the crickets installer; users must hand-author them in a Python SDK environment if they want to use them.
+Three Antigravity 2.0 primitive surfaces have **no file-based authoring path** as of crickets v1.2.0. Customizations targeting these surfaces are out of scope for the crickets installer; users must hand-author them in a Python SDK environment if they want to use them. These three gaps are mirrored — with explicit re-address triggers — in the dedicated, growing [Antigravity limitations](Antigravity-Limitations) register, the canonical place host gaps are tracked as they accumulate.
 
 ### Hooks gap
 
@@ -78,7 +79,7 @@ Antigravity 2.0 / agy hooks are **Python decorators** registered at agent-creati
 
 Antigravity 2.0 / agy triggers — the host's scheduled-task primitive — are **Python registration patterns**: `every(seconds, callback)`, `on_file_change(path, callback)`, custom async functions. Registered via `LocalAgentConfig(triggers=[...])`. No file-based config; trigger callbacks are Python code running in the agent process.
 
-**Crickets doesn't ship trigger primitives** in v1.2.0. The Agent M V7 roadmap (`agentm/.harness/ROADMAP-AgentMemoryV7.md`) contemplates a scheduled-sidecar framework as a future cross-host primitive; if/when that lands, it may also provide an Antigravity-trigger integration path. See agentm V7 for forward-looking context. *(This was the V6/dream-mode roadmap before the 2026-06-03 V5-unbundling arc renumber.)*
+**Crickets doesn't ship trigger primitives** in v1.2.0. The Agent M V7 roadmap (`agentm/.harness/ROADMAP-AgentMemoryV7.md`) contemplates a scheduled-sidecar framework as a future cross-host primitive; if/when that lands, it may also provide an Antigravity-trigger integration path. See agentm V7 for forward-looking context. *(This was the V6/dream-mode roadmap before the 2026-06-03 V5-unbundling arc renumber.)* This gap is entry #1 in the [Antigravity limitations](Antigravity-Limitations) register — it's why the `wiki-maintenance` wiki-watcher's scheduling loop is Claude-first (the engine is cross-host; only the loop wiring is Claude-only today).
 
 ### Multi-agent orchestration gap
 

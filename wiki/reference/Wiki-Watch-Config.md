@@ -86,7 +86,11 @@ State lives under a `wiki-watch/` leaf — resolved by `resolve_state_dir(repo_r
 | `cursors.json` | per-source high-water mark (git SHA, or sha256 content hash for non-git sources) — advances only after a token is fully processed |
 | `pending.json` | the token mid-processing + its `dispatched` paths (no double-dispatch on re-run) + a `failures` map driving exponential backoff |
 
-The audit log is a JSONL file, `audit.log`, alongside these under the same `wiki-watch/` leaf (task 3 added `append_audit` / `read_audit`). It records each cycle's `saw → decided → dispatched` trail with PR links, and is **local and never committed**. The detection feed reads `watch_sources` as the inclusion filter, then drops noise (generated / vendored / transient trees and the output `wiki/`) via the significance pre-filter before judging doc-worthiness — see [How to run the wiki-watcher](Run-The-Wiki-Watcher) § What gets watched vs. filtered as noise.
+The audit log is a JSONL file, `audit.log`, alongside these under the same `wiki-watch/` leaf (task 3 added `append_audit` / `read_audit`). It records each cycle's `saw → decided → dispatched` trail with PR links, and is **local and never committed**. The detection feed reads `watch_sources` as the inclusion filter, then drops noise (generated / vendored / transient trees and the output `wiki/`) via the significance pre-filter before judging doc-worthiness — see [§ What gets watched vs. filtered as noise](#what-gets-watched-vs-filtered-as-noise) below.
+
+## What gets watched vs. filtered as noise
+
+Before any candidate reaches the doc-worthiness judge, a deterministic, coarse **significance pre-filter** drops obvious noise: generated/vendored/transient trees (`.git`, `__pycache__`, `node_modules`, `dist`, `build`, `target`, `.venv`, lockfiles, `*.pyc`, `*.min.js`, `.DS_Store`, …) — **and the output `wiki/` tree**, since watching the documenter's own writes would loop the watcher back onto itself. Everything else is kept (the filter is permissive by design): code, `PLAN.md`/`ROADMAP.md`, and design docs all pass through. This is only the coarse gate — the fine, doc-worthiness judgment runs later in the cycle (see [How to run the wiki-watcher](Run-The-Wiki-Watcher) for the run flow).
 
 ## Related
 
