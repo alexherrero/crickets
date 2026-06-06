@@ -295,6 +295,24 @@ class TestGitProbes(unittest.TestCase):
         changed = det.git_changed_files(self.repo, head, include_uncommitted=True)
         self.assertIn("c.py", changed)
 
+    def test_unreachable_cursor_still_surfaces_changes(self):
+        # A persisted cursor whose commit was orphaned (rebase/amend/force-push/GC)
+        # must NOT silently drop real changes — idempotency invariant #1. The engine
+        # fails safe by re-surfacing the whole tree (the dispatched-set dedups).
+        (self.repo / "PLAN.md").write_text("v1\n", encoding="utf-8")
+        self._commit("init")
+        (self.repo / "PLAN.md").write_text("v1\nv2\n", encoding="utf-8")
+        self._commit("edit")
+        stale_cursor = "deadbeef" * 5  # not a reachable commit in this repo
+        changed = det.git_changed_files(self.repo, stale_cursor, include_uncommitted=False)
+        self.assertIn("PLAN.md", changed)
+
+    def test_is_commit_distinguishes_valid_from_stale(self):
+        (self.repo / "a.py").write_text("1\n", encoding="utf-8")
+        head = self._commit("a")
+        self.assertTrue(det._is_commit(self.repo, head))
+        self.assertFalse(det._is_commit(self.repo, "deadbeef" * 5))
+
     def test_no_cursor_lists_all_tracked(self):
         (self.repo / "a.py").write_text("1\n", encoding="utf-8")
         (self.repo / "dir").mkdir()

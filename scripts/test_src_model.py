@@ -48,13 +48,17 @@ class TestSrcModel(unittest.TestCase):
         self.assertEqual([e.group for e in wm.enhances], ["developer-workflows"])
         self.assertEqual(wm.enhances[0].capability, "documentation")
         # part 2 folded in the bucket-A primitives (copy-not-move from agentm);
-        # part 3 task 2 added the read-only style-scope-evaluator agent (DC-4) →
-        # 6 primitives in wiki-maintenance (the part's prose said "7" — a miscount).
-        self.assertEqual({p.name: p.kind for p in wm.primitives}, {
-            "diataxis-evaluator": "agent", "documenter": "agent",
-            "style-scope-evaluator": "agent",
-            "wiki-author": "skill", "diataxis-author": "skill",
-            "recent-wiki-changes": "command"})
+        # part 3 task 2 added the read-only style-scope-evaluator agent (DC-4);
+        # part 4 task 4 added the wiki-watch skill (cross-host) + the wiki-watch
+        # command (claude-only scheduling entry, DC-W4) → 8 primitives. Keyed by
+        # (name, kind) since wiki-watch is BOTH a skill and a command (same name,
+        # distinct kinds + emit subdirs — no collision).
+        self.assertEqual({(p.name, p.kind) for p in wm.primitives}, {
+            ("diataxis-evaluator", "agent"), ("documenter", "agent"),
+            ("style-scope-evaluator", "agent"),
+            ("wiki-author", "skill"), ("diataxis-author", "skill"),
+            ("wiki-watch", "skill"),
+            ("recent-wiki-changes", "command"), ("wiki-watch", "command")})
         self.assertEqual(by["pii"].requires, [])
         self.assertTrue(by["pii"].standalone)
         self.assertFalse(by["github-ci"].standalone)
@@ -194,7 +198,8 @@ class TestSrcModel(unittest.TestCase):
     def test_real_tree_commands_in_expected_groups(self):
         # command primitives live in developer-workflows (the phase commands),
         # code-review (the standalone /code-review), and wiki-maintenance
-        # (recent-wiki-changes, folded in part 2). No other group ships commands.
+        # (recent-wiki-changes, folded in part 2; + wiki-watch, the part-4
+        # claude-only scheduling entry). No other group ships commands.
         groups = src_model.load_groups(_ROOT / "src")
         by = {g.slug: g for g in groups}
         cmd_groups = {g.slug for g in groups for p in g.primitives if p.kind == "command"}
@@ -204,7 +209,7 @@ class TestSrcModel(unittest.TestCase):
         cr_cmds = {p.name for p in by["code-review"].primitives if p.kind == "command"}
         self.assertEqual(cr_cmds, {"code-review"})
         wm_cmds = {p.name for p in by["wiki-maintenance"].primitives if p.kind == "command"}
-        self.assertEqual(wm_cmds, {"recent-wiki-changes"})
+        self.assertEqual(wm_cmds, {"recent-wiki-changes", "wiki-watch"})
 
 
 if __name__ == "__main__":

@@ -85,6 +85,11 @@ class TestClaudeEmitter(unittest.TestCase):
         self.assertTrue((d / "wiki-maintenance" / "commands" / "recent-wiki-changes.md").exists())
         self.assertTrue((d / "wiki-maintenance" / "scripts" / "check-wiki.py").exists())
         self.assertTrue((d / "wiki-maintenance" / "scripts" / "recent-wiki-changes.sh").exists())
+        # part 4 task 4: the wiki-watch skill (cross-host) + command (claude-only
+        # scheduling entry) + the engine group scripts (bundled both hosts).
+        self.assertTrue((d / "wiki-maintenance" / "skills" / "wiki-watch" / "SKILL.md").exists())
+        self.assertTrue((d / "wiki-maintenance" / "commands" / "wiki-watch.md").exists())
+        self.assertTrue((d / "wiki-maintenance" / "scripts" / "wiki_watch_cycle.py").exists())
 
     def test_marketplace_lists_all_with_resolving_sources(self):
         mk = json.loads((self.cdist / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))

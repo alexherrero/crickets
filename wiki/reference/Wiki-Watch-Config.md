@@ -1,11 +1,11 @@
-<!-- Status: pending — wiki-watcher (W1). Plan: .harness/PLAN.md (The wiki-watcher (W1) — wiki-maintenance part 4/5), tasks 1 + 3. Task 1 landed the three config resolvers (wiki_watch_config.py); the sources, files, JSON shapes, marker filename, resolver entry points, and opt-in / graceful-skip semantics below are filled from that diff. STILL PENDING: the *consumption* of dispatch_mode (PR-vs-direct dispatch) lands in task 3, and the engine is not end-to-end usable until the cycle driver lands (task 4) — keep Status: pending. Honors DC-W2 (no new config file) + DC-8 (vault index vs on-host run config). -->
+<!-- Status: implemented — wiki-watcher (W1). Plan: .harness/PLAN.md (The wiki-watcher (W1) — wiki-maintenance part 4/5), tasks 1 + 3 + 4. Task 1 landed the three config resolvers (wiki_watch_config.py); task 3 the dispatch_mode consumption (wiki_watch_dispatch.py); task 4 the single-cycle driver (wiki_watch_cycle.py) that consumes all three resolvers, making the engine end-to-end usable. Every field/section below is confirmed against those diffs. Honors DC-W2 (no new config file) + DC-8 (vault index vs on-host run config). -->
 
 # Wiki-watch config reference
 
 How the `wiki-watch` engine is configured. There is **no new config file** (DC-W2) — the watcher reads config through **three sources**, each owned by a different layer, and config never lives in the vault (DC-8: the vault holds the cross-device *index*; the on-host marker holds *run config*).
 
 > [!NOTE]
-> **Status:** pending — `wiki-maintenance` part 4. The three config **resolvers** landed in task 1 (`wiki_watch_config.py`); their files, shapes, and opt-in semantics below are confirmed against that diff. Task 3 added the **dispatch plumbing that consumes `dispatch_mode`** (`wiki_watch_dispatch.py`), so the PR-vs-`direct` behavior below is now confirmed against that diff too. The engine is still not end-to-end usable: the single-cycle driver that ties poll → detect → dispatch together lands in **task 4**.
+> **Status:** implemented — `wiki-maintenance` part 4. The three config **resolvers** landed in task 1 (`wiki_watch_config.py`); their files, shapes, and opt-in semantics below are confirmed against that diff. Task 3 added the **dispatch plumbing that consumes `dispatch_mode`** (`wiki_watch_dispatch.py`). Task 4's single-cycle driver (`wiki_watch_cycle.py`) consumes all three resolvers — `read_enablement`, `read_run_config`, `resolve_wiki_target_for_repo` — so the engine is now end-to-end usable. See [How to run the wiki-watcher](Run-The-Wiki-Watcher) for the run flow.
 
 ## ⚡ Quick Reference
 

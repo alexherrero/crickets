@@ -74,6 +74,12 @@ class TestAntigravityEmitter(unittest.TestCase):
         self.assertTrue((d / "wiki-maintenance" / "skills" / "diataxis-author" / "SKILL.md").exists())
         self.assertFalse((d / "wiki-maintenance" / "skills" / "wiki-author").exists())
         self.assertFalse((d / "wiki-maintenance" / "commands" / "recent-wiki-changes.md").exists())
+        # part 4 task 4 (DC-W4: Claude-first scheduling): the wiki-watch SKILL is
+        # cross-host → present on AG; the wiki-watch COMMAND is claude-only → absent.
+        # The engine group scripts are bundled host-agnostically → present.
+        self.assertTrue((d / "wiki-maintenance" / "skills" / "wiki-watch" / "SKILL.md").exists())
+        self.assertFalse((d / "wiki-maintenance" / "commands" / "wiki-watch.md").exists())
+        self.assertTrue((d / "wiki-maintenance" / "scripts" / "wiki_watch_cycle.py").exists())
 
     def test_thin_composition_no_inlined_base(self):
         # github-ci requires developer-workflows but carries ONLY its own

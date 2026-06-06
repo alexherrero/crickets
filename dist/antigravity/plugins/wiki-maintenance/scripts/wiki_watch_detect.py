@@ -305,23 +305,38 @@ def git_current_head(repo_root: Path | str) -> Optional[str]:
     return _git(repo_root, "rev-parse", "HEAD")
 
 
+def _is_commit(repo_root: Path | str, ref: str) -> bool:
+    """True iff `ref` resolves to a reachable commit in the repo. Used to detect a
+    STALE cursor (a SHA orphaned by rebase / amend / force-push / squash / GC /
+    shallow re-fetch) so we never confuse 'diff failed' with 'nothing changed'."""
+    return _git(repo_root, "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}") is not None
+
+
 def git_changed_files(
     repo_root: Path | str, since: str, *, include_uncommitted: bool = True,
 ) -> list[str]:
     """Repo-relative paths changed between `since` (a commit SHA; "" = from the
     repo's first commit) and HEAD. With include_uncommitted, also union the
     working-tree + staged changes so an in-progress edit is seen before it is
-    committed. Returns [] on any git failure (graceful)."""
+    committed. Returns [] on any git failure (graceful).
+
+    FAIL-SAFE on a stale/unreachable `since` (orphaned by a history rewrite): rather
+    than let `git diff <stale>..HEAD` fail silently to [] — which would DROP every
+    change and blind the watcher permanently (idempotency invariant #1) — we treat an
+    unresolvable cursor like an absent one and re-surface the whole tree. A re-dispatch
+    is tolerated (the dispatched-set dedups); a silent drop is not."""
     head = git_current_head(repo_root)
     if head is None:
         return []
     out: set[str] = set()
-    if since and since != head:
+    have_since = bool(since) and _is_commit(repo_root, since)
+    if have_since and since != head:
         diff = _git(repo_root, "diff", "--name-only", f"{since}..{head}")
         if diff:
             out.update(line for line in diff.splitlines() if line.strip())
-    elif not since:
-        # No cursor yet: everything tracked at HEAD is "new" to the watcher.
+    elif not have_since:
+        # No cursor yet OR a stale/unreachable cursor: everything tracked at HEAD is
+        # "new" to the watcher (fail-safe toward re-surfacing, never dropping).
         listing = _git(repo_root, "ls-tree", "-r", "--name-only", head)
         if listing:
             out.update(line for line in listing.splitlines() if line.strip())
