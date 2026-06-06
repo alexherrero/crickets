@@ -1,4 +1,4 @@
-<!-- Status: implemented — style-learning-loop. Core loop (capture → gates → scope → write → read-back, steps 1–6) wired by the part-3 capture diff. Step 7 (the one-time _always-load → _global relocation migration) shipped in part 4 — the `/diataxis relocate` mechanism (preview-first/reversible) is wired; it's operator-run and today a no-op (no diataxis-*.md exist in _always-load yet). Step 8 (voice-drift check via convention-drift) shipped in part 3 task 5: `convention-drift` is live, scanning each page for the banned terms declared on `banned:` directives in the resolved style overlay; findings are info (non-failing) by default, error under --strict. The loop is now wired end-to-end. -->
+<!-- Status: implemented — style-learning-loop. Core loop (capture → gates → scope → write → read-back, steps 1–6) wired by the part-3 capture diff. Step 7 (the one-time _always-load → _global relocation migration) shipped in part 4 — the `/diataxis relocate` mechanism (preview-first/reversible) is wired; it's operator-run and today a no-op (no diataxis-*.md exist in _always-load yet). Step 8 (voice-drift check via convention-drift) shipped in part 3 task 5: `convention-drift` is live, scanning each page for the banned terms declared on `banned:` directives in the resolved style overlay; findings are info (non-failing) by default, error under --strict. The loop is now wired end-to-end. The "Promote a proven lesson to the base" section (the `/diataxis promote` sub-command) shipped in part 5: src/-only, preview-first, operator-gated, never-auto-commits, idempotent. -->
 
 # How to run the style-learning loop
 
@@ -27,14 +27,11 @@
 
 ## Promote a proven lesson to the base
 
-> [!NOTE]
-> **Status:** pending — lands in the dogfood finale (part 5/5 of the wiki-maintenance arc). The steps below describe the planned `/diataxis promote` sub-command; it is **not shipped yet**. Steps 1–8 above are implemented and usable today.
+Steps 1–6 persist a confirmed lesson to an on-demand overlay store. Once a lesson has proven itself across many drafts, graduate it into the committed repo base via the operator-gated `/diataxis promote` sub-command so every fresh draft inherits it without an overlay (maintainer-only — it edits the `src/` tree). See the `/diataxis promote` section of the [`diataxis-author` SKILL.md](https://github.com/alexherrero/crickets/blob/main/src/wiki-maintenance/skills/diataxis-author/SKILL.md) for the full flag reference.
 
-Steps 1–6 persist a confirmed lesson to an on-demand overlay store. Once a lesson has proven itself across many drafts, you graduate it into the committed repo base so every fresh draft inherits it without an overlay:
-
-1. _(Pending.)_ Preview the promotion: `/diataxis promote --preview <lesson>`. It prints a unified diff of the change against the committed base style-guide (`src/wiki-maintenance/skills/diataxis-author/style/base-style-guide.md`) and writes nothing.
-2. _(Pending.)_ Apply it: `/diataxis promote <lesson>`. The helper edits `src/` only (never `dist/`), leaves the change staged/uncommitted for you, and never auto-commits. Re-running is idempotent — a lesson already in the base is a no-op.
-3. _(Pending.)_ Commit the `src/` edit yourself, then run `generate.py build` to regenerate `dist/` so the promoted base ships in the plugin.
+1. Preview: `/diataxis promote --preview <lesson>`. Prints a unified diff against the committed base style-guide (`src/.../style/base-style-guide.md`) and writes nothing.
+2. Apply: `/diataxis promote <lesson>`. Edits the `src/` base only (never `dist/`), leaves it uncommitted, and never auto-commits. Refused (exit `2`) in an installed consumer with no `src/` tree; idempotent — a lesson already in the base is a no-op. The lesson's `banned:` terms merge into the base `banned:` directive (deduped); the guidance becomes a bullet under `## Voice` (or `--section Banned`/`Structure`; `--no-bullet` = banned terms only).
+3. Review the diff, `git commit` the `src/` edit yourself, then run `python3 scripts/generate.py build` to regenerate `dist/` so the promoted base ships in the plugin.
 
 ## Related
 

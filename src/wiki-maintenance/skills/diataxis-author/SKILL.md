@@ -43,6 +43,7 @@ The full read-side wiring lands with part 5 (`agentmemory-docs-release`); this s
 | Classify a single page's mode (operator-debug; sub-agent dispatches here for ambiguous cases) | `/diataxis classify <file>` |
 | Capture a generalizable voice lesson from your own edits to an authored draft | `/diataxis capture <draft> <edited>` |
 | Relocate global wiki conventions out of `_always-load` into the on-demand `_global` store (one-time, operator-run) | `/diataxis relocate --preview` |
+| Promote a proven overlay voice lesson into the committed base style-guide (maintainer; `src/`-only, operator-gated) | `/diataxis promote --preview` |
 
 ## Sub-commands
 
@@ -468,7 +469,7 @@ The store routing mirrors the resolver's read model (part 3 task 1): global → 
 #### Anti-patterns
 
 - **Don't skip gate 1.** The cluster bucketing is mechanical; the *generalization* is the judgment. Saving a raw before→after as a "lesson" stores a one-off, not voice.
-- **Don't default everything to `global`.** Global re-voices every wiki you author. The evaluator starts narrow for a reason — promote later (the operator-gated `promote` path, part 5) once a lesson proves itself.
+- **Don't default everything to `global`.** Global re-voices every wiki you author. The evaluator starts narrow for a reason — promote later via the `/diataxis promote` sub-command (below) once a lesson proves itself across many drafts.
 - **Don't run `save` in non-TTY/batch.** The operator-confirm gate denies non-interactive writes by default (no surprise saves); use `--mode silent` only in tests/automation you control.
 
 ### `/diataxis relocate [--preview | --cleanup --yes | --rollback]`
@@ -497,6 +498,30 @@ Today this is typically a **no-op** — no `diataxis-*.md` exist in `_always-loa
 
 - **Don't skip `--preview`.** It's the whole point — see exactly what moves before touching the live vault.
 - **Don't `--cleanup` without first confirming the copy round-trips.** Cleanup only deletes a source whose dest is byte-identical, but verify the preview first.
+
+### `/diataxis promote [--preview | --section Voice|Banned|Structure | --no-bullet]`
+
+The **operator-gated** path that graduates a *proven* overlay voice lesson into the committed repo base. Once a lesson has earned its place across many drafts (you've stopped re-confirming it), promote it into `style/base-style-guide.md` so every fresh draft inherits it from the committed floor — no overlay needed. This is a **maintainer** operation: it edits the **`src/`** base (never `dist/`), found by walking up to the crickets source tree; an installed plugin with no `src/` tree is refused (exit `2`) — installed consumers get base + local overlay only, never a write path to the shipped base.
+
+```bash
+# 1. ALWAYS preview first — prints the unified diff against the base, writes nothing:
+python3 …/skills/diataxis-author/scripts/promote.py \
+    --lesson "$MEMORY_VAULT_PATH/projects/_global/wiki-style/<date>-<trigger>.md" --preview
+# 2. Apply — writes ONLY the src/ base, leaving it UNCOMMITTED for you to review:
+python3 …/promote.py --lesson "<…>.md"
+# 3. (maintainer) review the diff, commit, then regenerate dist/ so it ships:
+git add src/wiki-maintenance/skills/diataxis-author/style/base-style-guide.md
+git commit -m "style(base): promote <trigger>" && python3 scripts/generate.py build
+```
+
+- **Preview-first, never auto-commits.** `--preview` writes nothing; apply writes only the `src/` base and never runs `git` — you review + commit + `generate.py build` yourself. The non-TTY apply gate denies surprise writes (use `--mode silent` only in tests/automation you control).
+- **What it promotes:** the lesson's `banned:` terms merge into the base `banned:` directive (deduped, case-insensitive); the guidance becomes a bullet under `## Voice` (or `--section Banned`/`Structure`; `--no-bullet` merges banned terms only).
+- **Idempotent:** a lesson already present in the base is a clean no-op — re-running never duplicates a bullet or a banned term.
+
+#### Anti-patterns
+
+- **Don't promote a lesson that hasn't proven out.** The base re-voices *every* wiki you author; promote only what's earned global scope. An over-eager promote is harder to walk back than an overlay tweak — keep it in the overlay until it's stable.
+- **Don't skip `--preview`.** See exactly which bullet and banned terms land before editing the committed floor.
 
 ## Tool allowlist
 
