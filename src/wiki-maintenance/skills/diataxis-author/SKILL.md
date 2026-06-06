@@ -1,6 +1,6 @@
 ---
 name: diataxis-author
-description: Author + maintain a Diátaxis-style wiki for any repo. Live authoring guidance (mode selection + template-fill + filename style), ongoing drift detection + repair, one-shot migration of legacy audience-based wikis to the four-mode (tutorials / how-to / reference / explanation) discipline, and single-page mode classification with sub-agent fallback on ambiguous cases. Reads operator conventions from AgentMemory `_always-load/diataxis-*.md`; offers to capture judgment calls back as new conventions (operator-confirmed via permeable-boundary helper). Dispatches the existing `documenter` sub-agent for mechanical-write work; never auto-forks into wiki/ without preview. Subsumes the predecessor `migrate-to-diataxis` skill (harness-side) per ROADMAP #13. Hosts: Claude Code + Antigravity (`gemini-cli` removed in v0.9.0 per ADR 0006).
+description: Author + maintain a Diátaxis-style wiki for any repo. Live authoring guidance (mode selection + template-fill + filename style), ongoing drift detection + repair, one-shot migration of legacy audience-based wikis to the four-mode (tutorials / how-to / reference / explanation) discipline, and single-page mode classification with sub-agent fallback on ambiguous cases. Reads operator conventions from AgentMemory `_always-load/diataxis-*.md`; composes a base style-guide ⊕ on-demand voice overlay into authored drafts, and learns generalizable voice lessons from the operator's own edits (edit-driven capture, operator-gated for generality + scope); offers to capture judgment calls back as new conventions (operator-confirmed via permeable-boundary helper). Dispatches the existing `documenter` sub-agent for mechanical-write work; never auto-forks into wiki/ without preview. Subsumes the predecessor `migrate-to-diataxis` skill (harness-side) per ROADMAP #13. Hosts: Claude Code + Antigravity (`gemini-cli` removed in v0.9.0 per ADR 0006).
 kind: skill
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
@@ -41,6 +41,7 @@ The full read-side wiring lands with part 5 (`agentmemory-docs-release`); this s
 | Apply suggested fixes for detected drift, interactively | `/diataxis repair` |
 | One-shot migrate a legacy audience-based wiki to the four-mode Diátaxis layout | `/diataxis migrate` |
 | Classify a single page's mode (operator-debug; sub-agent dispatches here for ambiguous cases) | `/diataxis classify <file>` |
+| Capture a generalizable voice lesson from your own edits to an authored draft | `/diataxis capture <draft> <edited>` |
 
 ## Sub-commands
 
@@ -431,6 +432,44 @@ python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/classify.py \
 - **Don't tune `--threshold` per-invocation.** The default 0.7 is tuned to v1 fixtures; operator-level threshold should be set globally via AgentMemory always-load entry (part 5 wires this).
 - **Don't dispatch the sub-agent without passing classify.py's Tier-1 output as rubric context.** The sub-agent's caller-supplies-inline-rubric contract expects the heuristic verdict + per-mode scores so it can validate or override. Bare dispatch wastes the deterministic signal.
 
+### `/diataxis capture <draft> <edited>`
+
+The **edit-driven** half of the style-learning loop. `/diataxis author` writes a draft composed as `template ⊕ base style-guide ⊕ overlay` (part 3 task 1). You then edit that draft in your own voice. This sub-command diffs your edits back into **generalizable voice lessons** and — after two operator gates — stores them so the *next* draft is composed with what you taught it. Where the decision-driven path (the AgentMemory convention read/write below) captures key:value judgment calls, this captures **prose voice**.
+
+It composes the deterministic engine ([`scripts/capture.py`](scripts/capture.py)) with two operator gates and the read-only [`style-scope-evaluator`](https://github.com/alexherrero/crickets/blob/main/agents/style-scope-evaluator.md) sub-agent. **Nothing auto-commits** — both gates are operator-confirmed.
+
+```bash
+# `<draft>` is the originally-authored page (e.g. `git show HEAD:wiki/how-to/Foo.md`
+# saved to a temp file); `<edited>` is your edited version.
+python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/capture.py \
+    propose --draft /tmp/foo.draft.md --edited wiki/how-to/Foo.md
+```
+
+**Step 1 — Propose (deterministic; writes nothing).** `capture.py propose` diffs draft↔edited and clusters the changes by kind — **word-choice · rhythm · structure · cuts** (slop/jargon) **· additions** — emitting one draft lesson proposal `{trigger, guidance, before→after}` per non-empty bucket as JSON. The trigger defaults to the kind and the guidance is a scaffold; both are placeholders for you to generalize.
+
+**Step 2 — Gate 1: generality (operator).** For each proposal, read the `before→after` and decide whether it generalizes. Rewrite the scaffold `guidance` into the real lesson ("in any how-to, cut hedging adverbs") and give it a semantic `trigger` ("hedging-adverbs"). Reject one-offs — a lesson that's true only for this one page is not worth storing. Nothing is captured without your confirmation.
+
+**Step 3 — Gate 2: scope (evaluator recommends, operator confirms).** Dispatch the [`style-scope-evaluator`](https://github.com/alexherrero/crickets/blob/main/agents/style-scope-evaluator.md) sub-agent with the confirmed lesson + the existing overlay stores (its caller-supplies-inline-rubric contract). It recommends exactly **one** scope — `global | per-project | per-repo` — and you confirm or override. When torn, it recommends the narrower (reversible) scope.
+
+**Step 4 — Write.** `capture.py save` writes the confirmed lesson to that scope's **on-demand** store via [`agentmemory_conventions.confirm_save_lesson()`](scripts/agentmemory_conventions.py) — **never** `_always-load`:
+
+```bash
+python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/capture.py save \
+    --trigger hedging-adverbs --scope per-project --project-slug crickets \
+    --guidance "In any how-to, cut hedging adverbs (just, simply, easily)." \
+    --vault-path "$MEMORY_VAULT_PATH"
+```
+
+The store routing mirrors the resolver's read model (part 3 task 1): global → `<vault>/personal-private/projects/_global/wiki-style/<date>-<trigger>.md` · per-project → `<vault>/personal-private/projects/<slug>/wiki-style/<date>-<trigger>.md` · per-repo → `<wiki-root>/.diataxis-conventions.md`. The next `/diataxis author` draft reads it back automatically.
+
+**Graceful-degrade (DC-3).** Per-repo writes land *outside* the MemoryVault, so they route through agentm's `permeable_boundary` cross-boundary confirm when the kernel is importable; absent it (crickets-local), the write degrades to the local confirm only and **announces** the degraded mode on stderr (`permeable_boundary unavailable …`) — never silent. The capture still works.
+
+#### Anti-patterns
+
+- **Don't skip gate 1.** The cluster bucketing is mechanical; the *generalization* is the judgment. Saving a raw before→after as a "lesson" stores a one-off, not voice.
+- **Don't default everything to `global`.** Global re-voices every wiki you author. The evaluator starts narrow for a reason — promote later (the operator-gated `promote` path, part 5) once a lesson proves itself.
+- **Don't run `save` in non-TTY/batch.** The operator-confirm gate denies non-interactive writes by default (no surprise saves); use `--mode silent` only in tests/automation you control.
+
 ## Tool allowlist
 
 **`Read, Write, Edit, Glob, Grep, Bash`** — `Bash` is required for the `check-wiki.py` subprocess invocation in `/diataxis check` (part 3) + `git mv` invocations in `/diataxis migrate` (part 4). Python scripts under `skills/diataxis-author/scripts/` (added in parts 2-5) handle the deterministic heavy lifting (mode classification heuristics, link rewriting, template loading). Sub-agent dispatch happens via the agent's standard task delegation; the skill body itself doesn't shell out to other agents.
@@ -447,6 +486,7 @@ Python-side scripts can use whatever they need (network for ADR 0004 cross-refer
 - **Diátaxis spec source**: [agentm ADR 0004 — Diátaxis Documentation Spec](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0004-diataxis-documentation-spec.md) — the canonical convention this skill enforces.
 - **Predecessor (being subsumed)**: [agentm `migrate-to-diataxis` skill](https://github.com/alexherrero/agentm/blob/main/harness/skills/migrate-to-diataxis.md) — one-shot migration skill that `/diataxis migrate` ports + extends. Ships deprecation notice in plan #13 part 4.
 - **Sibling sub-agent**: [`diataxis-evaluator`](https://github.com/alexherrero/crickets/blob/main/agents/diataxis-evaluator.md) — read-only sub-agent for ambiguous mode classification. Dispatched from `/diataxis classify` (operational from part 2) + `/diataxis repair` mode-mixed splits (operational from part 3).
+- **Sibling sub-agent (style-learning)**: [`style-scope-evaluator`](https://github.com/alexherrero/crickets/blob/main/agents/style-scope-evaluator.md) — read-only sub-agent for voice-lesson scope placement. Dispatched from `/diataxis capture` as gate 2 (recommends one of global / per-project / per-repo; the operator confirms).
 - **Sibling skill (orchestration pattern)**: [`memory`](../memory/SKILL.md) — `/memory adapt-skills` + `adapt-evaluator` is the orchestration-skill + worker-sub-agent pattern this skill mirrors.
 - **External worker**: [`documenter` sub-agent (harness-side)](https://github.com/alexherrero/agentm/blob/main/harness/agents/documenter.md) — Diátaxis-aware mechanical-write worker. Repurposed: dispatched from `/diataxis repair` mode-mixed splits (part 3) + existing harness `/release` direct dispatch (part 5 transitions via skill-presence check).
 - **Validator complement**: [`scripts/check-wiki.py`](https://github.com/alexherrero/agentm/blob/main/scripts/check-wiki.py) — strict-mode validator the skill wraps for `/diataxis check`.
