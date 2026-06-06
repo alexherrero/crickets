@@ -72,7 +72,14 @@ Resolution reaches the registry through a **path-fallback shell-out** to agentm'
 
 ## State and audit (not config, but config-adjacent)
 
-Cursors, the processed-set, and the audit log live under `_harness/wiki-watch/` — resolved via `harness_memory.py vault-state-path wiki-watch/<file>` to `<vault>/projects/<slug>/_harness/wiki-watch/` in vault mode, or `<repo>/.harness/wiki-watch/` in local mode (DC-W6). The audit log is **local and never committed**. _(Drivers for state/audit land with the cycle engine in task 4.)_
+State lives under a `wiki-watch/` leaf — resolved by `resolve_state_dir(repo_root)` via a shell-out to `harness_memory.py vault-state-path wiki-watch` to `<vault>/projects/<slug>/_harness/wiki-watch/` in vault mode, falling back to `<repo>/.harness/wiki-watch/` when agentm is unreachable or the vault is unavailable (DC-W6). Two files back idempotency:
+
+| File | Carries |
+|---|---|
+| `cursors.json` | per-source high-water mark (git SHA, or sha256 content hash for non-git sources) — advances only after a token is fully processed |
+| `pending.json` | the token mid-processing + its `dispatched` paths (no double-dispatch on re-run) + a `failures` map driving exponential backoff |
+
+The audit log lands alongside these with the cycle driver (task 4) and is **local and never committed**. The detection feed reads `watch_sources` as the inclusion filter, then drops noise (generated / vendored / transient trees and the output `wiki/`) via the significance pre-filter before judging doc-worthiness — see [How to run the wiki-watcher](Run-The-Wiki-Watcher) § What gets watched vs. filtered as noise.
 
 ## Related
 

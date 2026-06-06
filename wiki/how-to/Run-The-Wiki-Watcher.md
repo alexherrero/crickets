@@ -21,9 +21,18 @@ The wiki-watcher is an **idempotent single-cycle engine the operator drives**, n
 
 5. _(Filled from task 4's diff at `/work`.)_ Drive it on a loop. On Claude Code, run the cycle under the host's loop (`/loop`) or a cron entry that re-invokes the single-cycle engine — the cooldown and cursors make repeated invocation safe. Antigravity has no installable scheduling path today, so the loop is Claude-first; see [Antigravity limitations](Antigravity-Limitations) for the gap and its re-address trigger. _Filled by human._
 
+## What gets watched vs. filtered as noise
+
+Before any candidate reaches the doc-worthiness judge, a deterministic, coarse **significance pre-filter** drops obvious noise: generated/vendored/transient trees (`.git`, `__pycache__`, `node_modules`, `dist`, `build`, `target`, `.venv`, lockfiles, `*.pyc`, `*.min.js`, `.DS_Store`, …) — **and the output `wiki/` tree**, since watching the documenter's own writes would loop the watcher back onto itself. Everything else is kept (the filter is permissive by design): code, `PLAN.md`/`ROADMAP.md`, and design docs all pass through. This is only the coarse gate — the fine, doc-worthiness judgment runs later in the cycle.
+
 ## Where state and audit live
 
-Cursors, the processed-set, and the audit log (`saw → decided → dispatched`, with PR links) live under `_harness/wiki-watch/` — in the vault under `<vault>/projects/<slug>/_harness/wiki-watch/` when a vault is configured, or `<repo>/.harness/wiki-watch/` in local mode. The audit log is **local and never committed**.
+State lives under a `wiki-watch/` leaf — in the vault at `<vault>/projects/<slug>/_harness/wiki-watch/` when a vault is configured, or repo-local at `<repo>/.harness/wiki-watch/` when agentm is unreachable or no vault is available (DC-W6). Two JSON files back the idempotency guarantee:
+
+- **`cursors.json`** — the per-source high-water mark (a git SHA for git sources, a content hash for non-git ones like a vault `PLAN.md`). A cursor only advances once its token is *fully* processed, so a change is never dropped.
+- **`pending.json`** — the token currently mid-processing, the `dispatched` paths under it (so a re-run or restart never double-dispatches), and a `failures` map driving exponential retry/backoff (60s · 120s · 240s …, capped at 3600s).
+
+The audit log (`saw → decided → dispatched`, with PR links) lands alongside these with the cycle driver; it is **local and never committed**.
 
 ## Related
 

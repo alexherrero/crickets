@@ -273,31 +273,37 @@ def resolve_wiki_target_for_repo(
 # Cross-repo registry locator + shell-out (best-effort; graceful-skip)
 # ----------------------------------------------------------------------------
 
-def find_registry_script() -> Optional[Path]:
-    """Locate agentm's repo_registry.py via path-fallback, or None.
+def find_agentm_script(name: str) -> Optional[Path]:
+    """Locate an agentm kernel script (e.g. repo_registry.py / harness_memory.py)
+    via path-fallback, or None.
 
     Candidates, first hit wins (mirrors recent-wiki-changes.sh:86-94 + an env
     override for separately-installed agentm — the portable cross-repo seam):
 
-      1. $AGENTM_SCRIPTS_DIR/repo_registry.py   (explicit operator override)
-      2. <this-script-dir>/repo_registry.py     (co-located install)
-      3. <this-script-dir>/../lib/install/python/repo_registry.py
+      1. $AGENTM_SCRIPTS_DIR/<name>          (explicit operator override)
+      2. <this-script-dir>/<name>            (co-located install)
+      3. <this-script-dir>/../lib/install/python/<name>
 
     Kernel infra is NOT folded into crickets (bucket B): when none resolve, the
-    caller graceful-skips (the watcher no-ops for unregistered repos rather than
-    hard-failing). The V5 storage slim owns the real seam move.
+    caller graceful-skips (the watcher no-ops / falls back to repo-local state
+    rather than hard-failing). The V5 storage slim owns the real seam move.
     """
     here = Path(__file__).resolve().parent
     candidates = []
     env_dir = os.environ.get("AGENTM_SCRIPTS_DIR", "").strip()
     if env_dir:
-        candidates.append(Path(os.path.expanduser(env_dir)) / "repo_registry.py")
-    candidates.append(here / "repo_registry.py")
-    candidates.append(here / ".." / "lib" / "install" / "python" / "repo_registry.py")
+        candidates.append(Path(os.path.expanduser(env_dir)) / name)
+    candidates.append(here / name)
+    candidates.append(here / ".." / "lib" / "install" / "python" / name)
     for c in candidates:
         if c.is_file():
             return c
     return None
+
+
+def find_registry_script() -> Optional[Path]:
+    """Locate agentm's repo_registry.py (see find_agentm_script)."""
+    return find_agentm_script("repo_registry.py")
 
 
 def list_repos_via_registry(
