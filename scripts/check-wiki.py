@@ -31,13 +31,20 @@ Rules (hard = blocking under --strict; soft = always warn-only):
   (i) Orphan check: tutorials link to ≥1 reference or how-to;
       how-tos link to ≥1 reference; reference pages are linked from
       ≥1 other page (structural pages count).                 [hard]
-  (j) Home.md and _Sidebar.md each reference every non-structural
-      content page at least once.                             [hard]
+  (j) _Sidebar.md references every non-structural content page — it is the
+      complete sitemap (and, being present on every wiki page, the orphan
+      guarantee). Home.md is CURATED: it is NOT required to list every page;
+      completeness lives in the sidebar.                      [hard]
   (k) Word-count ceilings:
         tutorial ≤ 1200 words
         how-to   ≤ 600 words
         explanation ≤ 2000 words
         reference: unbounded                                  [soft]
+  (l) The repo-root README.md, governed as a wiki-adjacent page when
+      include_readme is on (the default): every relative-path markdown
+      link resolves to an existing file under the repo root. Opt out
+      with --no-readme or {"include_readme": false} in
+      <repo-root>/.diataxis.json.                             [hard]
 
 Usage:
   python3 scripts/check-wiki.py               # warn, exit 0
@@ -47,6 +54,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from dataclasses import dataclass
@@ -342,29 +350,28 @@ def rule_i_orphan(modes: dict[Path, str | None],
 
 def rule_j_home_sidebar(wiki_root: Path, modes: dict[Path, str | None],
                         issues: list[Issue]) -> None:
+    """Home.md and _Sidebar.md must exist. `_Sidebar` is the **complete sitemap** —
+    it references every non-structural content page; since the sidebar renders on
+    every wiki page, that is the no-orphan guarantee. `Home` is **curated** — it is
+    not required to list every page (completeness lives in the sidebar), so a
+    landing page is free to surface only what a reader acts on."""
     home = wiki_root / "Home.md"
     sidebar = wiki_root / "_Sidebar.md"
     for p in (home, sidebar):
         if not p.is_file():
             emit(issues, p, 1, "j", f"{p.name} is missing")
-    if not (home.is_file() and sidebar.is_file()):
+    if not sidebar.is_file():
         return
 
-    def referenced_stems(path: Path) -> set[str]:
-        text = path.read_text(encoding="utf-8", errors="replace")
-        return {page for _, _, page in extract_wiki_links(text)}
-
-    home_refs = referenced_stems(home)
-    sidebar_refs = referenced_stems(sidebar)
+    text = sidebar.read_text(encoding="utf-8", errors="replace")
+    sidebar_refs = {page for _, _, page in extract_wiki_links(text)}
     for p, mode in modes.items():
         if mode is None:
             continue
-        if p.stem not in home_refs:
-            emit(issues, home, 1, "j",
-                 f"Home.md does not reference `{p.stem}` (mode: {mode})")
         if p.stem not in sidebar_refs:
             emit(issues, sidebar, 1, "j",
-                 f"_Sidebar.md does not reference `{p.stem}` (mode: {mode})")
+                 f"_Sidebar.md does not reference `{p.stem}` (mode: {mode}); "
+                 f"the sidebar must be the complete sitemap")
 
 
 def rule_k_word_count(p: Path, mode: str | None, text: str,
@@ -377,6 +384,66 @@ def rule_k_word_count(p: Path, mode: str | None, text: str,
         emit(issues, p, 1, "k",
              f"{mode} page is {count} words (soft ceiling {cap}); consider splitting",
              soft=True)
+
+
+# ── repo-root doc governance (rule l) ───────────────────────────────────────
+
+EXTERNAL_LINK_PREFIXES = ("http://", "https://", "mailto:", "tel:", "#")
+
+
+def extract_relative_links(text: str) -> list[tuple[int, str, str]]:
+    """Yield (lineno, label, path) for markdown links that are relative
+    filesystem paths — not external URLs (http/https/mailto/tel) and not
+    pure in-page anchors. A trailing #anchor is stripped from the path."""
+    out: list[tuple[int, str, str]] = []
+    for m in LINK_RE.finditer(text):
+        href = m.group(2).strip()
+        if not href or href.startswith(EXTERNAL_LINK_PREFIXES):
+            continue
+        path_part = href.split("#", 1)[0]
+        if not path_part:
+            continue
+        line_no = text[:m.start()].count("\n") + 1
+        out.append((line_no, m.group(1), path_part))
+    return out
+
+
+def rule_l_root_doc_links(doc_path: Path, repo_root: Path,
+                          issues: list[Issue]) -> None:
+    """Every relative-path markdown link in a governed root doc must resolve
+    to an existing file relative to the repo root (rule l)."""
+    text = doc_path.read_text(encoding="utf-8", errors="replace")
+    for line_no, _label, rel in extract_relative_links(text):
+        if not (repo_root / rel).exists():
+            emit(issues, doc_path, line_no, "l",
+                 f"relative link `{rel}` does not resolve to a file under the repo root")
+
+
+def collect_root_doc_issues(repo_root: Path) -> list[Issue]:
+    """Run the governed-root-doc rules (today: the README, rule l).
+    A missing README is a silent no-op."""
+    issues: list[Issue] = []
+    readme = repo_root / "README.md"
+    if readme.is_file():
+        rule_l_root_doc_links(readme, repo_root, issues)
+    return issues
+
+
+def resolve_include_readme(repo_root: Path, cli_include: bool) -> bool:
+    """Whether to govern the repo-root README. Defaults to True; a CLI
+    --no-readme (cli_include=False) or {"include_readme": false} in
+    <repo-root>/.diataxis.json opts out. A malformed config is ignored."""
+    if not cli_include:
+        return False
+    cfg = repo_root / ".diataxis.json"
+    if cfg.is_file():
+        try:
+            data = json.loads(cfg.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            return True
+        if isinstance(data, dict) and data.get("include_readme") is False:
+            return False
+    return True
 
 
 # ── driver ─────────────────────────────────────────────────────────────────
@@ -433,6 +500,10 @@ def main() -> int:
                     help="Exit 1 if any hard issue is found. Default exits 0 with warnings.")
     ap.add_argument("--root", type=Path, default=DEFAULT_WIKI,
                     help=f"Wiki root to check (default: {DEFAULT_WIKI.relative_to(REPO_ROOT)}).")
+    ap.add_argument("--no-readme", dest="include_readme", action="store_false",
+                    default=True,
+                    help="Skip governing the repo-root README.md (default: governed; "
+                         "rule l checks its relative links resolve).")
     args = ap.parse_args()
 
     if not args.root.is_dir():
@@ -441,6 +512,8 @@ def main() -> int:
 
     wiki_root = args.root.resolve()
     issues = collect_issues(wiki_root)
+    if resolve_include_readme(wiki_root.parent, args.include_readme):
+        issues += collect_root_doc_issues(wiki_root.parent)
 
     hard = [i for i in issues if i.severity == "hard"]
     soft = [i for i in issues if i.severity == "soft"]
