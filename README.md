@@ -2,7 +2,7 @@
   <img src="assets/crickets/banner-1600.png" alt="Crickets — Inspired by the Noisy Cricket">
 </p>
 
-<p align="center"><em>Inspired by the Noisy Cricket — agent primitives that punch far above their weight.</em></p>
+<p align="center"><em>Inspired by the <a href="https://en.wikipedia.org/wiki/Men_in_Black_(1997_film)">Noisy Cricket</a> — agent primitives that punch far above their weight.</em></p>
 
 <!--
   Badge convention (plan #15 task 7) — mirrors the harness side (task 6 v2):
@@ -25,29 +25,31 @@
 
 <p align="center"><sub>Works with Claude Code + Antigravity — <a href="https://github.com/alexherrero/crickets/wiki/Compatibility">see compatibility</a></sub></p>
 
-Inspired by the iconic noisy cricket from Men in Black, **Crickets** is a tactical suite of agent primitives engineered to punch far above their weight. Skills, sub-agents, hooks — grouped into **native plugins** for Claude Code and Antigravity, generated from a single source of truth. The execution engine behind [**Agent M**](https://github.com/alexherrero/agentm) — the primitives **you** carry into any project to make the system work.
+**Crickets** is a set of agent primitives — skills, sub-agents, hooks, commands — grouped into **native plugins** for Claude Code and Antigravity, generated from a single source of truth. It's the execution layer behind [**Agent M**](https://github.com/alexherrero/agentm): the primitives **you** carry into any project.
 
 [**Agent M**](https://github.com/alexherrero/agentm) holds the phase-gated workflow, auto-recall, and on-disk state — the structural backend. Crickets holds everything that rides on top.
 
-> **Latest:** v3.0 — **Native host plugins from a single source of truth** ([#40](https://github.com/alexherrero/crickets/issues/40)). The bespoke `install.sh` dispatcher is gone: customizations are authored once under `src/<group>/`, and `scripts/generate.py` emits committed native plugins under `dist/` for both hosts, served via each host's marketplace. Install with one line, the marketplace, or a manual `--plugin-dir` — see [the install how-to](wiki/how-to/Install-Into-Project.md). The architecture + decisions live in [ADR 0013](wiki/explanation/decisions/0013-bundles-native-plugins.md) / [0014](wiki/explanation/decisions/0014-install-decoupling.md) / [0015](wiki/explanation/decisions/0015-partial-revision-36.md).
+> **Latest:** v3.1 — **the developer-plugin suite**. The old `developer` seed split into `developer-workflows` (the phase loop), `developer-safety` (control hooks), and `code-review` (adversarial review), composed through `enhances:`. Native plugins still emit from one source: author under `src/<group>/`, and `scripts/generate.py` writes committed plugins under `dist/` for both hosts. Install with one line, the marketplace, or a manual `--plugin-dir` — see [the install how-to](wiki/how-to/Install-Into-Project.md).
 > [Release notes](https://github.com/alexherrero/crickets/releases/latest) · [Native-plugins HLD](wiki/explanation/designs/crickets-v3-native-plugins.md) · [CHANGELOG](CHANGELOG.md)
 
 ## What's inside
 
-Four functional **plugins** (groups), seven primitives — each authored once in `src/<group>/` and emitted as a native plugin per host.
+Six **plugins** (groups), 28 primitives — each authored once in `src/<group>/` and emitted as a native plugin per host.
 
-| Plugin | Primitives |
+| Plugin | What it adds |
 |---|---|
-| **developer** (base) | [`kill-switch`](src/developer/hooks/kill-switch/hook.md) + [`steer`](src/developer/hooks/steer/hook.md) + [`commit-on-stop`](src/developer/hooks/commit-on-stop/hook.md) hooks · [`evaluator`](src/developer/agents/evaluator.md) sub-agent |
-| **github-ci** | [`dependabot-fixer`](src/github-ci/skills/dependabot-fixer/SKILL.md) skill |
-| **pii** | [`pii-scrubber`](src/pii/skills/pii-scrubber/SKILL.md) skill |
-| **wiki** | [`diataxis-evaluator`](src/wiki/agents/diataxis-evaluator.md) sub-agent |
+| **developer-workflows** (base) | The six phase commands — `/setup` `/plan` `/work` `/review` `/release` `/bugfix` — plus the `explorer` and `evaluator` sub-agents and a `harness-context` SessionStart hook (Claude Code). |
+| **developer-safety** | The `kill-switch`, `steer`, and `commit-on-stop` hooks, plus the `commit-no-coauthor` and `worktrees-never-auto` conventions. |
+| **code-review** | The `adversarial-reviewer` and cross-model `adversarial-reviewer-cross` agents, an `evidence-tracker` hook, and a standalone `/code-review` command. |
+| **github-ci** | CI workflows plus the `dependabot-fixer` skill. |
+| **pii** | The PII guardrail — a `pii-scrubber` skill and a pre-push detector. |
+| **wiki-maintenance** | Diátaxis authoring and upkeep — the `diataxis-author`, `wiki-author`, and `wiki-watch` skills; the `documenter`, `style-scope-evaluator`, and `diataxis-evaluator` agents; and the `recent-wiki-changes` and `wiki-watch` commands. |
 
-- **`kill-switch`** — operator emergency halt: `touch .harness/STOP` → next `PreToolUse` halts the tool call (Claude Code; advisory-only on Antigravity — see [Compatibility](wiki/reference/Compatibility.md)).
-- **`steer`** — mid-run redirect: write `.harness/STEER.md` → injected into context, then archived.
-- **`commit-on-stop`** — safety snapshot of a dirty tree to a side ref on `Stop`; never touches your branch.
-- **`evaluator`** / **`diataxis-evaluator`** — read-only fresh-context graders (PASS / NEEDS_WORK).
-- **`pii-scrubber`** / **`dependabot-fixer`** — the PII guardrail skill + the Dependabot-PR repair skill.
+`developer-workflows` is the base. `developer-safety` and `code-review` enhance it; `github-ci` and `wiki-maintenance` require it; `pii` stands alone. The three you reach for most:
+
+- **`kill-switch`** — stop the agent now: `touch .harness/STOP`, and the next tool call halts (Claude Code; advisory-only on Antigravity — see [Compatibility](wiki/reference/Compatibility.md)).
+- **`steer`** — redirect mid-run: write `.harness/STEER.md`, and it lands in context, then gets archived.
+- **`commit-on-stop`** — snapshot a dirty tree to a side ref when the agent stops. Your branch is never touched.
 
 ## How it works
 
@@ -62,7 +64,7 @@ flowchart LR
     G --> AG
 ```
 
-Author a primitive once under its group; the generator emits a native Claude Code plugin **and** a native Antigravity plugin per group, plus each host's marketplace manifest. The committed `dist/` is the distribution surface, and a CI gate (`generate.py check`) fails if it drifts from `src/`. Per-host divergences (hook events, dependency handling, the snippet→`rules/` gap) live in [Per-Host-Paths](wiki/reference/Per-Host-Paths.md) + [Compatibility](wiki/reference/Compatibility.md).
+Author a primitive once under its group. The generator emits a native Claude Code plugin **and** a native Antigravity plugin per group, plus each host's marketplace manifest. The committed `dist/` is what ships, and a CI gate (`generate.py check`) fails the build if `dist/` drifts from `src/`. Where the two hosts diverge — hook events, dependency handling, the snippet→`rules/` gap — is spelled out in [Per-Host-Paths](wiki/reference/Per-Host-Paths.md) and [Compatibility](wiki/reference/Compatibility.md).
 
 ## Get started
 
@@ -76,20 +78,20 @@ Prefer the marketplace? One word from GitHub on Claude Code:
 
 ```bash
 claude plugin marketplace add alexherrero/crickets
-claude plugin install developer@crickets   # + github-ci@crickets, pii@crickets, wiki@crickets
+claude plugin install developer-workflows@crickets   # + developer-safety, code-review, github-ci, pii, wiki-maintenance
 ```
 
 All three install modes (one-liner / marketplace / manual `--plugin-dir`) per host: **[Install crickets plugins](wiki/how-to/Install-Into-Project.md)**. Hacking on a plugin? **[Develop a crickets plugin locally](wiki/how-to/Develop-A-Plugin-Locally.md)**.
 
-## PII guardrails (foundational)
+## PII guardrails
 
-This repo is **public** and holds personal customizations. Three enforcement layers protect against personal information leaking into commits:
+This repo is **public** and holds personal customizations. Three layers keep personal information out of commits:
 
-1. **Pre-push git hook** (`templates/hooks/pre-push`) — copy it into a repo's `.git/hooks/pre-push` (`cp templates/hooks/pre-push .git/hooks/ && chmod +x .git/hooks/pre-push`). Runs `check-no-pii.sh` against every push; blocks non-zero. **Mandatory enforcer** for the crickets repo itself.
-2. **`pii-scrubber` plugin** — agent-facing interactive layer. Scans the current diff, presents findings, offers redactions.
-3. **CI gate** — `check-no-pii.sh --all` + the official `gitleaks-action` run on every push.
+1. **Pre-push git hook** (`templates/hooks/pre-push`) — copy it into a repo's `.git/hooks/pre-push` (`cp templates/hooks/pre-push .git/hooks/ && chmod +x .git/hooks/pre-push`). It runs `check-no-pii.sh` on every push and blocks a non-zero result. This is the **mandatory enforcer** for crickets itself.
+2. **`pii-scrubber` plugin** — the agent-facing layer. It scans the current diff, shows you what it found, and offers redactions.
+3. **CI gate** — `check-no-pii.sh --all` plus `gitleaks-action`, on every push.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the override protocol.
+The override protocol is in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Repo structure
 
@@ -124,11 +126,11 @@ crickets/
 
 ## Status
 
-Shipping **v3.0** — native host plugins from a single source of truth (#40, [launched](wiki/explanation/designs/crickets-v3-native-plugins.md)). Four plugins / seven primitives prove the model on both hosts. The #36 skill relocations (`design`, `diataxis-author`, `ship-release`) + the full Developer-base composition + new bundles (Testing, Releasing, knowledge) are deferred to the v3.x catalog work ([ADR 0015](wiki/explanation/decisions/0015-partial-revision-36.md)). One known host limitation: Antigravity runs plugin hooks observe/side-effect-only, so `kill-switch`/`steer` are Claude-only-effective there ([ADR 0013](wiki/explanation/decisions/0013-bundles-native-plugins.md)). Ships in lockstep with Agent M. See [CHANGELOG.md](CHANGELOG.md).
+Six plugins, 28 primitives, live on both hosts. The v3.x line split the old `developer` seed into `developer-workflows`, `developer-safety`, and `code-review`, and is filling out the catalog — `wiki-maintenance` (Diátaxis authoring plus the wiki-watcher) is the current build. One host limit: Antigravity runs plugin hooks observe-only, so `kill-switch` and `steer` are advisory there ([Compatibility](wiki/reference/Compatibility.md)). Ships in lockstep with Agent M. See [CHANGELOG.md](CHANGELOG.md).
 
 ## Contributing
 
-Self-tested on every push by three per-OS workflows (Linux, Mac, Windows). Run the gates locally:
+Three per-OS workflows (Linux, Mac, Windows) test every push. Run the gates locally:
 
 ```bash
 python3 scripts/lint_src.py                                 # validate src/ (group.yaml + frontmatter)
