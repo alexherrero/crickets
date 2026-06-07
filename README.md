@@ -2,7 +2,7 @@
   <img src="assets/crickets/banner-1600.png" alt="Crickets — Inspired by the Noisy Cricket">
 </p>
 
-<p align="center"><em>Inspired by the <a href="https://en.wikipedia.org/wiki/Men_in_Black_(1997_film)">Noisy Cricket</a> — agent primitives that punch far above their weight.</em></p>
+<p align="center"><em>Inspired by the <a href="https://en.wikipedia.org/wiki/Men_in_Black_(1997_film)">Noisy Cricket</a> — compact, composable agent primitives.</em></p>
 
 <!--
   Badge convention (plan #15 task 7) — mirrors the harness side (task 6 v2):

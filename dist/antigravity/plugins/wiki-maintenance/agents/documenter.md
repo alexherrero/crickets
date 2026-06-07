@@ -36,6 +36,8 @@ The `wiki-author` skill (added V4 #30 plan 2) is the operator-facing dispatcher 
 
 ## The four modes (Diátaxis)
 
+> Beyond the four modes, the house **structural + voice conventions** — curated landings (the sidebar carries completeness), scenarios-as-table, long lists behind an index link, user/contributor split, and the section-composition model for landing pages — are specified in the `diataxis-author` skill's [`templates/README.md`](../skills/diataxis-author/templates/README.md). Honor it when creating or restructuring pages.
+
 The wiki follows the Diátaxis convention per [ADR 0004](../../wiki/explanation/decisions/0004-diataxis-documentation-spec.md), which amends [ADR 0002](../../wiki/explanation/decisions/0002-documentation-convention.md). Each page serves exactly one reader intent:
 
 | Mode | Dir | Reader intent | Shape |

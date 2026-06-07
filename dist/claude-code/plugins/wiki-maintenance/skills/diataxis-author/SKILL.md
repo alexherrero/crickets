@@ -51,6 +51,8 @@ The full read-side wiring lands with part 5 (`agentmemory-docs-release`); this s
 
 Live authoring guidance — operator invokes when starting a new wiki page. Skill resolves the mode (explicit `--mode` flag, or inferred from `--intent <sentence>` via `classify.py`, or operator prompt), loads the right Diátaxis template from `templates/<mode>.md`, applies the operator's filename style, computes target path `<wiki-root>/<mode-dir>/<filename>.md`, refuses if target exists (operator picks a different slug), and writes the skeleton. Operator edits in their editor; skill doesn't write further content after the skeleton.
 
+> **Structural + voice standard:** the house wiki conventions (curated landings, scenarios-as-table, long lists behind an index link, user/contributor split, plain prose) and the **section-composition model** for landing pages (page = ordered, reusable sections) are specified authoritatively in [`templates/README.md`](templates/README.md). Honor it when authoring or restructuring; the section composer is forthcoming (pass-2 codification).
+
 #### Invocation shape
 
 ```

@@ -1,35 +1,57 @@
 **[Home](Home)**
 
-### 📚 Tutorials
-- [1 — Your first customization](01-First-Customization)
-
-### 🔧 How-to
+### 🚀 Get started
 - [Install plugins](Install-Into-Project)
-- [Develop a plugin locally](Develop-A-Plugin-Locally)
-- [Run a standalone code review](Use-Code-Review)
-- [Add a skill](Add-A-Skill)
-- [Use the evaluator](Use-The-Evaluator)
-- [Use the base hooks](Use-The-Base-Hooks)
-- [Quality-Gates-Recipe](Quality-Gates-Recipe)
-- [Run the style-learning loop](Run-The-Style-Learning-Loop)
-- [Run the wiki-watcher](Run-The-Wiki-Watcher)
+- [Your first customization](01-First-Customization)
+
+### 🔧 Do something
+- [Maintain a wiki — style-learning loop](Run-The-Style-Learning-Loop)
+- [Maintain a wiki — wiki-watcher](Run-The-Wiki-Watcher)
+- [Review a change — code review](Use-Code-Review)
+- [Dev process — base hooks](Use-The-Base-Hooks)
+- [Dev process — evaluator](Use-The-Evaluator)
+- [Guard quality — quality gates](Quality-Gates-Recipe)
 
 ### 📖 Reference
+- [Compatibility](Compatibility)
+- [Antigravity Limitations](Antigravity-Limitations)
+- [Wiki Watch Config](Wiki-Watch-Config)
+- [Develop a plugin locally](Develop-A-Plugin-Locally)
+- [Add a skill](Add-A-Skill)
 - [Customization Types](Customization-Types)
 - [Manifest Schema](Manifest-Schema)
 - [Per-Host Paths](Per-Host-Paths)
 - [Installer CLI](Installer-CLI)
-- [Compatibility](Compatibility)
-- [Wiki Watch Config](Wiki-Watch-Config)
-- [Antigravity Limitations](Antigravity-Limitations)
 
-### 💡 Explanation
+### 💡 Why it works
 - [Purpose and scope](Purpose-And-Scope)
 - [Cross-Repo Memory Protocol](Cross-Repo-Memory-Protocol)
-- [V3 Retrospective](v3-retrospective)
+- [Why adversarial review](Why-Adversarial-Review)
+- [Why deterministic gates run first](Why-Deterministic-Gates)
+- [Why phase-gating](Why-Phase-Gating)
+
+### 🧩 Designs
+
+**Architecture (Agent M)**
+- [MemoryVault — permanent agent memory](memoryvault)
+  - [write-primitives](write-primitives)
+  - [recall-loop](recall-loop)
+  - [reflection-and-recovery](reflection-and-recovery)
+  - [idea-ledger](idea-ledger)
+  - [seed-pass](seed-pass)
+  - [discovery-mining](discovery-mining)
 - [Agent Memory Evolution V1→V7](agent-memory-evolution)
 - [Device-Wide Architecture](device-wide-architecture)
 - [Memory-OS Architecture (V5)](memory-os-architecture)
+
+**Crickets**
+- [Crickets v3.0 — Native Host Plugins](crickets-v3-native-plugins)
+  - [foundations](foundations)
+  - [generator-claude](generator-claude)
+  - [antigravity-emitter](antigravity-emitter)
+  - [ci-gate](ci-gate)
+  - [distribution-clean-break](distribution-clean-break)
+  - [dogfood-proof-docs](dogfood-proof-docs)
 - [Developer Plugin Suite (V5 ④)](developer-plugin-suite)
   - [enhances-schema](enhances-schema)
   - [developer-workflows](developer-workflows)
@@ -43,8 +65,15 @@
   - [style-learning-loop](style-learning-loop)
   - [wiki-watcher](wiki-watcher)
   - [dogfood-finale](dogfood-finale)
+- [diataxis-author — Diátaxis wiki authoring + maintenance](diataxis-author)
+  - [skill-scaffold](skill-scaffold)
+  - [author-classify](author-classify)
+  - [check-repair](check-repair)
+  - [migrate-subsume](migrate-subsume)
+  - [agentmemory-docs-release](agentmemory-docs-release)
 
-**Decisions**
+### 📐 Decisions — [Browse all](Decisions)
+- [V3 Retrospective](v3-retrospective)
 - [0001 — crickets purpose](0001-crickets-purpose)
 - [0002 — evaluator design](0002-evaluator-design)
 - [0003 — base operator hooks](0003-base-operator-hooks)
@@ -60,25 +89,3 @@
 - [0015 — #36 partial-revision](0015-partial-revision-36)
 - [0016 — Project surface split](0016-project-surface-split)
 - [0017 — `enhances:` soft composition](0017-enhances-soft-composition)
-
-**Designs**
-- [MemoryVault — permanent agent memory](memoryvault)
-  - [write-primitives](write-primitives)
-  - [recall-loop](recall-loop)
-  - [reflection-and-recovery](reflection-and-recovery)
-  - [idea-ledger](idea-ledger)
-  - [seed-pass](seed-pass)
-  - [discovery-mining](discovery-mining)
-- [diataxis-author — Diátaxis wiki authoring + maintenance](diataxis-author)
-  - [skill-scaffold](skill-scaffold)
-  - [author-classify](author-classify)
-  - [check-repair](check-repair)
-  - [migrate-subsume](migrate-subsume)
-  - [agentmemory-docs-release](agentmemory-docs-release)
-- [Crickets v3.0 — Native Host Plugins](crickets-v3-native-plugins)
-  - [foundations](foundations)
-  - [generator-claude](generator-claude)
-  - [antigravity-emitter](antigravity-emitter)
-  - [ci-gate](ci-gate)
-  - [distribution-clean-break](distribution-clean-break)
-  - [dogfood-proof-docs](dogfood-proof-docs)
