@@ -105,4 +105,3 @@ After adding the skill:
 - [Per-Host Paths](Per-Host-Paths) — where the skill lands per host.
 - [Customization Types](Customization-Types) — when a skill is the right kind vs. command/agent/hook.
 - [Quality-Gates-Recipe](Quality-Gates-Recipe) — docs-only recipe pattern that replaces the v1.x quality-gates bundle.
-- [First Customization tutorial](01-First-Customization) — full walkthrough.

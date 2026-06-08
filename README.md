@@ -118,7 +118,7 @@ crickets/
 
 ## Adding + developing customizations
 
-- [Tutorial 1 — Your first customization](wiki/tutorials/01-First-Customization.md)
+- [Tutorial 1 — Your first code review](wiki/tutorials/01-First-Code-Review.md)
 - [Develop a crickets plugin locally](wiki/how-to/Develop-A-Plugin-Locally.md) — the `src/` → generate → dogfood loop
 - [Add a skill](wiki/how-to/Add-A-Skill.md)
 - [Use the evaluator](wiki/how-to/Use-The-Evaluator.md) · [Use the base hooks](wiki/how-to/Use-The-Base-Hooks.md)

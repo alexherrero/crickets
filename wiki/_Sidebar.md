@@ -2,7 +2,7 @@
 
 ### 🚀 Get started
 - [Install plugins](Install-Into-Project)
-- [Your first customization](01-First-Customization)
+- [Using code review](01-First-Code-Review)
 
 ### 🔧 Do something
 - [Maintain a wiki — style-learning loop](Run-The-Style-Learning-Loop)
