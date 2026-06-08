@@ -8,7 +8,6 @@
 - [Maintain a wiki — style-learning loop](Run-The-Style-Learning-Loop)
 - [Maintain a wiki — wiki-watcher](Run-The-Wiki-Watcher)
 - [Review a change — code review](Use-Code-Review)
-- [Dev process — base hooks](Use-The-Base-Hooks)
 - [Dev process — evaluator](Use-The-Evaluator)
 - [Guard quality — quality gates](Quality-Gates-Recipe)
 
@@ -16,6 +15,8 @@
 - [Compatibility](Compatibility)
 - [Antigravity Limitations](Antigravity-Limitations)
 - [Wiki Watch Config](Wiki-Watch-Config)
+- [Hooks](Hooks)
+- [Operator-control hooks](Operator-Control-Hooks)
 - [Modify a plugin](Modify-A-Plugin)
 - [Add a skill](Add-A-Skill)
 - [Customization Types](Customization-Types)

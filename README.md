@@ -121,7 +121,7 @@ crickets/
 - [Tutorial 1 — Your first code review](wiki/tutorials/01-First-Code-Review.md)
 - [Modify a crickets plugin](wiki/how-to/Modify-A-Plugin.md) — the `src/` → generate → dogfood loop
 - [Add a skill](wiki/how-to/Add-A-Skill.md)
-- [Use the evaluator](wiki/how-to/Use-The-Evaluator.md) · [Use the base hooks](wiki/how-to/Use-The-Base-Hooks.md)
+- [Use the evaluator](wiki/how-to/Use-The-Evaluator.md) · [Operator-control hooks](wiki/reference/Operator-Control-Hooks.md)
 - [Manifest Schema](wiki/reference/Manifest-Schema.md) — primitive frontmatter + `group.yaml`
 
 ## Status

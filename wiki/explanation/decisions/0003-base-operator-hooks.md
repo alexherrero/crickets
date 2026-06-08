@@ -210,7 +210,7 @@ This fixes the three problems directly: **(1) no working-tree mutation** — in-
 
 ## Related
 
-- [How to use the base operator-control hooks](Use-The-Base-Hooks) — practical recipes with three worked scenarios + manual equivalents for other hosts.
+- [Operator-control hooks](Operator-Control-Hooks) — the reference: the three hooks, their trigger files, ordering, and troubleshooting.
 - [kill-switch hook spec](https://github.com/alexherrero/crickets/blob/main/hooks/kill-switch/hook.md)
 - [steer hook spec](https://github.com/alexherrero/crickets/blob/main/hooks/steer/hook.md)
 - [commit-on-stop hook spec](https://github.com/alexherrero/crickets/blob/main/hooks/commit-on-stop/hook.md)

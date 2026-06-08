@@ -146,7 +146,7 @@ Together: operator-controllable (kill-switch + steer), recoverable (commit-on-st
 ## Cross-references
 
 - [Use-The-Evaluator](Use-The-Evaluator) — caller patterns for the evaluator sub-agent.
-- [Use-The-Base-Hooks](Use-The-Base-Hooks) — individual install + tuning for the three Crickets hooks.
+- [Operator-control hooks](Operator-Control-Hooks) — the three hooks + their trigger files.
 - [Add-A-Skill](Add-A-Skill) — authoring new primitives.
 - [Installer-CLI](Installer-CLI) — full flag reference for `install.sh` / `install.ps1`.
 - [Compatibility](Compatibility) — host coverage per primitive.

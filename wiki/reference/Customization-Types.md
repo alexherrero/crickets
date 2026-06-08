@@ -10,7 +10,7 @@ The 12 primitive types `crickets` recognizes via its `kind` field. Each maps to 
 | `skill` | `skills/` | Agent-invoked helper (`SKILL.md` body + optional scripts dir) | claude-code, antigravity |
 | `command` | `commands/` | User-invokable slash command | claude-code |
 | `agent` | `agents/` | Specialized sub-agent for fan-out work | claude-code, antigravity |
-| `hook` | `hooks/` | Pre/post tool-call shell script (e.g. [`kill-switch`, `steer`, `commit-on-stop`](Use-The-Base-Hooks)) | claude-code (today) |
+| `hook` | `hooks/` | Pre/post tool-call shell script (e.g. [`kill-switch`, `steer`, `commit-on-stop`](Operator-Control-Hooks)) | claude-code (today) |
 | `mcp-server` | `mcp-servers/` | MCP server config + launcher | claude-code (Antigravity: TBD) |
 | `status-line` | `status-line/` | Custom status line display | claude-code |
 | `output-style` | `output-styles/` | Output formatting template | claude-code |
