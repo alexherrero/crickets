@@ -4,44 +4,44 @@
 > **Goal:** Install the crickets plugins into Claude Code and/or Antigravity as native host plugins.
 > **Prereqs:** `claude` (Claude Code) and/or `agy` (Antigravity) on your PATH; `git`. No clone needed for the one-liner or the Claude marketplace.
 
-crickets ships as **native host plugins** generated from one source of truth ([ADR 0013](0013-bundles-native-plugins)) — the old `install.sh` dispatcher is gone ([ADR 0014](0014-install-decoupling)). The go-forward set is six plugins:
+crickets ships as **native host plugins** generated from one source ([ADR 0013](0013-bundles-native-plugins)); the old `install.sh` dispatcher is gone ([ADR 0014](0014-install-decoupling)). There are six:
 
 | Plugin | Standalone? | What it adds |
 |---|---|---|
-| `developer-workflows` | yes (base) | 6 phase commands (`/setup` `/plan` `/work` `/review` `/release` `/bugfix`) + explorer/evaluator agents + the `harness-context` SessionStart hook (Claude-only). |
-| `developer-safety` | enhances `developer-workflows` | kill-switch / steer / commit-on-stop hooks + commit-no-coauthor / worktrees-never-auto conventions. |
-| `code-review` | enhances `developer-workflows`' `review` | adversarial-reviewer + cross-model adversarial-reviewer-cross agents + the `evidence-tracker` hook + the standalone `/code-review` command. |
-| `github-ci` | `requires: [developer-workflows]` | CI workflows + dependabot-fixer. |
-| `pii` | standalone | PII guardrail (scrubber skill + pre-push detector). |
-| `wiki-maintenance` | `requires: [developer-workflows]` | Diátaxis wiki authoring + maintenance. |
+| `developer-workflows` | yes (base) | the six phase commands (`/setup` `/plan` `/work` `/review` `/release` `/bugfix`) + the explorer/evaluator agents + the `harness-context` SessionStart hook (Claude-only). |
+| `developer-safety` | enhances `developer-workflows` | the kill-switch / steer / commit-on-stop hooks + the commit-no-coauthor / worktrees-never-auto conventions. |
+| `code-review` | enhances `developer-workflows`' `review` | the adversarial-reviewer + cross-model adversarial-reviewer-cross agents, the `evidence-tracker` hook, and the standalone `/code-review` command. |
+| `github-ci` | requires `developer-workflows` | CI workflows + dependabot-fixer. |
+| `pii` | standalone | the PII guardrail — scrubber skill + pre-push detector. |
+| `wiki-maintenance` | requires `developer-workflows` | Diátaxis wiki authoring + maintenance. |
 
-> The v2.x `developer` seed plugin is **retired** (crickets v3.0). `github-ci` and `wiki-maintenance` now require `developer-workflows`. Do not install `developer` — it no longer exists.
-
-Pick one of three modes; all land the same plugins.
+Three ways in; all land the same plugins.
 
 ## Steps
 
-The recommended one-liner — installs the default set on whichever host(s) are present:
+**Option 1 — the one-liner (recommended).** Installs the default set on whichever host(s) are present:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/alexherrero/crickets/main/bootstrap.sh | bash
 ```
 
-It detects `claude` / `agy` and installs the default set: `developer-workflows`, `developer-safety`, `code-review`, `github-ci`, `pii`, `wiki-maintenance`. On Claude Code it adds the `crickets` marketplace and installs by name; on Antigravity it installs each plugin **by path** (see the asymmetry below).
+It detects `claude` / `agy`: on Claude Code it adds the `crickets` marketplace and installs by name; on Antigravity it installs each plugin by path (the asymmetry below).
 
-## Mode 2 — Install by name (Claude) / by path (Antigravity)
+**Option 2 — by name (Claude) or by path (Antigravity).**
 
 > [!IMPORTANT]
-> **The `name@crickets` marketplace syntax is Claude-only.** Antigravity's `agy` CLI has **no marketplace-registration command** — `agy plugin install <name>@crickets` fails with `Error: unknown marketplace: crickets`. On Antigravity, install each plugin by its `dist/antigravity/plugins/<group>` path instead. (`agy plugin link` only generates a share link for an *already-known* marketplace; it does not register a local directory.)
+> The `name@crickets` marketplace syntax is **Claude-only**. Antigravity's `agy` has no marketplace-registration command, so install each plugin by its `dist/antigravity/plugins/<group>` path instead.
 
-**Claude Code** — one word, straight from GitHub:
+Claude Code — add the marketplace once, then install each plugin you want **by name, one command per plugin** (the names below are examples — install only what you need):
 
 ```bash
 claude plugin marketplace add alexherrero/crickets
-claude plugin install developer-workflows@crickets   # + developer-safety, code-review, github-ci, pii, wiki-maintenance @crickets
+claude plugin install developer-workflows@crickets
+claude plugin install code-review@crickets
+# repeat for any of: developer-safety, github-ci, pii, wiki-maintenance
 ```
 
-**Antigravity** (`agy` 1.0.2) — install each plugin by path from a clone. Install `developer-workflows` **first** (`github-ci` and `wiki-maintenance` require it):
+Antigravity (`agy` 1.0.2 or later) — by path from a clone; install `developer-workflows` first (two plugins require it):
 
 ```bash
 git clone https://github.com/alexherrero/crickets.git ~/Antigravity/crickets
@@ -50,30 +50,25 @@ for p in developer-workflows developer-safety code-review github-ci pii wiki-mai
 done
 ```
 
-Migrating from the v2.x set? Drop the retired seed afterward: `agy plugin uninstall developer`.
-
-## Mode 3 — Manual (one plugin, no marketplace)
-
-**Claude Code** — load a single plugin for one session (great for trying one out):
+**Option 3 — one plugin, no marketplace.** Good for trying a single plugin. On Claude Code, load it for one session:
 
 ```bash
 claude --plugin-dir ~/Antigravity/crickets/dist/claude-code/plugins/pii
 ```
 
-**Antigravity** — the same `agy plugin install <path>` as above, pointed at any single `dist/antigravity/plugins/<group>` dir.
+On Antigravity, the same `agy plugin install <path>`, pointed at any one `dist/antigravity/plugins/<group>` dir.
 
 ## Verify
 
 ```bash
-claude plugin list      # the @crickets plugins, enabled (scope user)
+claude plugin list      # the @crickets plugins, enabled (user scope)
 agy plugin list         # the imported plugins
 ```
 
-Hooks fire on both hosts. **Note:** on Antigravity, `kill-switch` / `steer` are advisory only (the host runs plugin hooks observe-only) — see [Compatibility](Compatibility).
+Some plugins have limited compatibility on Antigravity — see [Compatibility](Compatibility) for the per-plugin details.
 
-## Related
+## See also
 
+- [Using code review](01-First-Code-Review) — a hands-on first run of one plugin.
 - [Develop a crickets plugin locally](Develop-A-Plugin-Locally) — the source → generate → dogfood loop.
-- [Run a standalone code review](Use-Code-Review) — using the `/code-review` command from `code-review`.
-- [Compatibility](Compatibility) — per-host component + hook effectiveness matrix.
-- [ADR 0013](0013-bundles-native-plugins) · [ADR 0014](0014-install-decoupling) — why native plugins, why the installer was retired.
+- [Compatibility](Compatibility) — the per-host component + hook matrix.
