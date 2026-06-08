@@ -81,7 +81,7 @@ claude plugin marketplace add alexherrero/crickets
 claude plugin install developer-workflows@crickets   # + developer-safety, code-review, github-ci, pii, wiki-maintenance
 ```
 
-All three install modes (one-liner / marketplace / manual `--plugin-dir`) per host: **[Install crickets plugins](wiki/how-to/Install-Into-Project.md)**. Hacking on a plugin? **[Develop a crickets plugin locally](wiki/how-to/Develop-A-Plugin-Locally.md)**.
+All three install modes (one-liner / marketplace / manual `--plugin-dir`) per host: **[Install crickets plugins](wiki/how-to/Install-Into-Project.md)**. Hacking on a plugin? **[Modify a crickets plugin](wiki/how-to/Modify-A-Plugin.md)**.
 
 ## PII guardrails
 
@@ -119,7 +119,7 @@ crickets/
 ## Adding + developing customizations
 
 - [Tutorial 1 — Your first code review](wiki/tutorials/01-First-Code-Review.md)
-- [Develop a crickets plugin locally](wiki/how-to/Develop-A-Plugin-Locally.md) — the `src/` → generate → dogfood loop
+- [Modify a crickets plugin](wiki/how-to/Modify-A-Plugin.md) — the `src/` → generate → dogfood loop
 - [Add a skill](wiki/how-to/Add-A-Skill.md)
 - [Use the evaluator](wiki/how-to/Use-The-Evaluator.md) · [Use the base hooks](wiki/how-to/Use-The-Base-Hooks.md)
 - [Manifest Schema](wiki/reference/Manifest-Schema.md) — primitive frontmatter + `group.yaml`

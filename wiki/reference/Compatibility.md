@@ -50,7 +50,7 @@ A hook can be *emitted* on a host without being *effective* there. Antigravity r
 | `evidence-tracker` | `code-review` | ✅ effective | ❌ not effective | Its enforcement/veto needs the hook-veto contract Antigravity lacks; **Claude-only** (`supported_hosts: [claude-code]`). |
 | `harness-context` | `developer-workflows` | ✅ effective | ❌ not emitted | SessionStart hook; **Claude-only** — Antigravity has no SessionStart hook surface. |
 
-**Rule of thumb:** side-effect-only hooks port to both hosts; any hook whose value depends on its exit code (veto) or stdout (inject) is Claude-only-effective. See [Develop a crickets plugin locally](Develop-A-Plugin-Locally) and [ADR 0009](decisions/0009-evidence-tracker-hook) for the underlying host contracts.
+**Rule of thumb:** side-effect-only hooks port to both hosts; any hook whose value depends on its exit code (veto) or stdout (inject) is Claude-only-effective. See [Modify a crickets plugin](Modify-A-Plugin) and [ADR 0009](decisions/0009-evidence-tracker-hook) for the underlying host contracts.
 
 ## Snippet emission
 

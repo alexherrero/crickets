@@ -16,7 +16,7 @@
 - [Compatibility](Compatibility)
 - [Antigravity Limitations](Antigravity-Limitations)
 - [Wiki Watch Config](Wiki-Watch-Config)
-- [Develop a plugin locally](Develop-A-Plugin-Locally)
+- [Modify a plugin](Modify-A-Plugin)
 - [Add a skill](Add-A-Skill)
 - [Customization Types](Customization-Types)
 - [Manifest Schema](Manifest-Schema)

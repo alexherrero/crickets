@@ -70,5 +70,5 @@ Some plugins have limited compatibility on Antigravity — see [Compatibility](C
 ## See also
 
 - [Using code review](01-First-Code-Review) — a hands-on first run of one plugin.
-- [Develop a crickets plugin locally](Develop-A-Plugin-Locally) — the source → generate → dogfood loop.
+- [Modify a crickets plugin](Modify-A-Plugin) — the source → generate → dogfood loop.
 - [Compatibility](Compatibility) — the per-host component + hook matrix.

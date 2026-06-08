@@ -19,25 +19,40 @@ A wiki is built from **pages**; each page is composed from **sections**.
 - A **page-template** — `templates/<page-type>.md` — is a **manifest**: frontmatter
   `sections: [ordered list]`. The list *is* the page — resolve each name to
   `sections/<name>.md` and compose in order. Edit the list to author a page.
-- **Page types:** the four Diátaxis modes (`tutorial` / `how-to` / `reference` /
-  `explanation`) are today page-level monoliths; **landing types** (`home`, and later
-  `plugin-home`, `project-landing`) are section-composed.
+- **Page types:** **landing types** (`home`, and later `plugin-home`, `project-landing`)
+  are section-composed today. The four Diátaxis modes (`tutorial` / `how-to` / `reference` /
+  `explanation`) are still page-level monoliths, but their sections are now extracted into the
+  library (§2), ready for the composer to assemble.
 
-## 2. The section library (current)
+## 2. The section library
 
-| Section | Reusable | Purpose |
+| Section | Page types | Purpose |
 |---|---|---|
-| `hero` | no (landing) | banner · tagline · badges |
-| `intro` | yes | what it is, one plain paragraph |
-| `get-started` | yes | the single first action (install) |
-| `task-scenarios` | yes | user-intent table — What / Component / Example primitives |
-| `lookup` | yes | user-facing reference list |
-| `why-it-works` | yes | principles + research grounding |
-| `major-designs` | yes | architecture first, then components |
-| `decisions-index` | yes | one link to the decision index |
-| `contribute` | yes | short pointer; specs live elsewhere |
+| `hero` | landing | banner · tagline · badges (landing-only, not reusable) |
+| `intro` | landing, plugin-home | what it is, one plain paragraph |
+| `get-started` | landing, plugin-home | the single first action (install) |
+| `task-scenarios` | landing, plugin-home | user-intent table — What / Component / Example primitives |
+| `lookup` | landing | user-facing reference list |
+| `why-it-works` | landing, plugin-home | principles + research grounding |
+| `major-designs` | landing | architecture first, then components |
+| `decisions-index` | landing | one link to the decision index |
+| `contribute` | landing, plugin-home | short pointer; specs live elsewhere |
+| `mode-block` | how-to, tutorial | the `> [!NOTE]` Goal / [Time] / Prereqs block |
+| `steps` | how-to, tutorial | numbered, imperative steps |
+| `verify` | how-to, tutorial | confirm the result (optional) |
+| `notes` | how-to, reference | caveats / gotchas (optional) |
+| `see-also` | all | cross-links — the universal footer |
+| `what-you-learned` | tutorial | the recap |
+| `next` | tutorial | where to go after |
 
-Page-templates: `home.md` (the worked first instance — composes all nine).
+Page-templates: `home.md` is a section manifest (the worked first instance). The four
+Diátaxis mode templates (`how-to` / `tutorial` / `reference` / `explanation`) are still
+**monoliths** read live by `author.py`; their sections now live in the library above, and the
+**composer** (§6) will assemble them at codification — until then the monoliths stay.
+
+> **Keep the library current.** When you polish a page during pass 1 and hit a generalizable
+> section it doesn't yet have, pull it into `templates/sections/` and add a row here in the
+> *same* pass. The library must never fall behind the pages — no batch backfills.
 
 ## 3. Structural opinions (the house wiki structure)
 
@@ -48,6 +63,9 @@ Page-templates: `home.md` (the worked first instance — composes all nine).
   a dead link.
 - **Long enumerations** (decisions, design sub-parts) sit behind a single **index link**,
   never inline on a landing.
+- **Link the design, not the ADR.** When a page explains *how* something works, link the
+  relevant **design section** (the how-it-works explanation) — not the ADR (the decision
+  record). ADRs live behind the `Decisions` index; designs explain the system.
 - **User-facing vs contributor-facing are separated.** The landing *body* stays
   user-facing; dev/authoring specs live with the other reference material (the
   `_Sidebar` **Reference** section) + `CONTRIBUTING`, not in the landing body.
@@ -80,9 +98,9 @@ project memory.)
 1. **Composer** — reads a page manifest, loads its sections, applies the resolved voice
    (base ⊕ overlay) + the target language, and concatenates them into the page. Wires
    `/diataxis author <page-type>` to assemble from sections instead of emitting a monolith.
-2. **Enforcement** — the `check-wiki` **rule-`j` change** (curated landings are legal;
-   completeness is satisfied by `_Sidebar` + index pages, not by listing everything on the
-   homepage) + section-structure checks in `check-wiki` / `convention-drift`.
+2. **Enforcement** — the `check-wiki` **rule-`j` change** ✅ *landed* (commit `0ad9ca4`:
+   curated landings are legal; completeness lives in `_Sidebar`). Still to do: section-structure
+   checks in `check-wiki` / `convention-drift`.
 3. **Its own `/design` + plan** — this is net-new, beyond the wiki-maintenance finale. i18n
    (§5) is a first-class axis of that design.
 

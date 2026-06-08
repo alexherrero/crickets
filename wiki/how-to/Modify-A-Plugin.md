@@ -1,10 +1,10 @@
-# How to develop a crickets plugin locally
+# How to modify a crickets plugin
 
 > [!NOTE]
-> **Goal:** Edit a crickets plugin's source, regenerate, and try it on a host before committing.
+> **Goal:** Edit a crickets plugin's source, regenerate, and try it on a host before opening a PR.
 > **Prereqs:** crickets cloned locally; Python 3 + PyYAML (`pip install pyyaml`); `claude` and/or `agy`.
 
-crickets is a source-of-truth (`src/<group>/`) plus a generator that emits committed native plugins under `dist/`. You edit `src/`, rebuild, dogfood, then commit source **and** `dist/` together. Never hand-edit `dist/` — it is generated.
+crickets is a source of truth (`src/<group>/`) plus a generator that emits committed native plugins under `dist/`. You edit `src/`, rebuild, dogfood, then submit the source **and** `dist/` together. Never hand-edit `dist/` — it's generated.
 
 ## Steps
 
@@ -20,41 +20,44 @@ crickets is a source-of-truth (`src/<group>/`) plus a generator that emits commi
    python3 scripts/generate.py build
    ```
 
-3. Confirm `dist/` is in sync — the CI drift gate, run locally:
+3. Confirm the generated plugin has your changes:
 
    ```bash
-   python3 scripts/generate.py check
+   git diff dist/
    ```
 
-4. Try it on a host **without installing** — load the generated plugin for one session:
+4. Try it on a host — the two hosts differ:
 
    ```bash
-   claude --plugin-dir dist/claude-code/plugins/developer-safety        # Claude Code
-   agy plugin install "$PWD/dist/antigravity/plugins/developer-safety"  # Antigravity
+   claude --plugin-dir dist/claude-code/plugins/developer-safety        # Claude: loads for one session, nothing installed
+   agy plugin install "$PWD/dist/antigravity/plugins/developer-safety"  # Antigravity: actually installs — uninstall when done
    ```
 
-5. Run the unit + structural gates before committing:
+5. _(Optional — CI runs this on your PR.)_ For faster feedback, run the full gate battery locally before pushing:
 
    ```bash
-   ( cd scripts && python3 -m unittest discover -p 'test_*.py' )
-   python3 scripts/lint_src.py
-   bash scripts/check-no-pii.sh --all
+   bash scripts/check-all.sh
    ```
 
-6. Commit the source **and** the regenerated output together (CI's `generate.py check` fails on drift):
+6. Open a PR — commit the source **and** the regenerated `dist/` together (they ship as one change):
 
    ```bash
+   git checkout -b <branch>
    git add src/ dist/ .claude-plugin .agents
    git commit -m "feat(<group>): <what changed>"
+   git push -u origin <branch>
+   gh pr create --fill        # or open the PR on GitHub
    ```
+
+   CI runs the drift gate + the unit/structural gates on the PR.
 
 ## Notes
 
 - A new primitive kind or per-host mapping may need a generator/emitter change — see [Manifest-Schema](Manifest-Schema).
-- Antigravity runs plugin hooks observe/side-effect-only, so a veto/inject hook won't enforce there — see [Compatibility](Compatibility).
+- Some hooks behave differently on Antigravity (it runs plugin hooks observe-only, so a veto/inject hook won't enforce there) — see [Compatibility](Compatibility).
 
-## Related
+## See also
 
 - [Install crickets plugins](Install-Into-Project) — the three install modes.
 - [Manifest-Schema](Manifest-Schema) — primitive frontmatter + `group.yaml`.
-- [ADR 0013](0013-bundles-native-plugins) — the source-of-truth + generator model.
+- [The source-of-truth + generator model](crickets-v3-native-plugins#overview) — how crickets generates native plugins from one `src/`.
