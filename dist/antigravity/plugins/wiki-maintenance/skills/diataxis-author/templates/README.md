@@ -29,7 +29,7 @@ A wiki is built from **pages**; each page is composed from **sections**.
 | Section | Page types | Purpose |
 |---|---|---|
 | `hero` | landing | banner · tagline · badges (landing-only, not reusable) |
-| `intro` | landing, plugin-home | what it is, one plain paragraph |
+| `intro` | landing, plugin-home, reference | what it is, one plain paragraph |
 | `get-started` | landing, plugin-home | the single first action (install) |
 | `task-scenarios` | landing, plugin-home | user-intent table — What / Component / Example primitives |
 | `lookup` | landing | user-facing reference list |
@@ -44,6 +44,7 @@ A wiki is built from **pages**; each page is composed from **sections**.
 | `see-also` | all | cross-links — the universal footer |
 | `what-you-learned` | tutorial | the recap |
 | `next` | tutorial | where to go after |
+| `quick-reference` | reference | the `## ⚡ Quick Reference` opener table; doubles as a catalog (add a Details column) |
 
 Page-templates: `home.md` is a section manifest (the worked first instance). The four
 Diátaxis mode templates (`how-to` / `tutorial` / `reference` / `explanation`) are still
@@ -76,6 +77,13 @@ Diátaxis mode templates (`how-to` / `tutorial` / `reference` / `explanation`) a
 - **`_Sidebar` is the complete sitemap**, grouped to mirror the landing's intent order:
   Get started · Do · Reference (user lookups + developer specs) · Why it works · Designs ·
   Decisions. One **Reference** section covers both lookups and contributor specs.
+- **Pick the mode by reader intent, not topic.** A page that's mostly lookup — tables, a
+  catalog, troubleshooting — with thin task content is **reference**, not how-to, even if it's
+  titled "How to use X." (Pass-1: the base-hooks how-to → the `Operator-Control-Hooks` reference.)
+- **Catalog a family of primitives on one reference page.** Related items (hooks, plugins,
+  kinds) get a central reference page — an explainer + a `⚡ Quick Reference` table with a
+  **Details** column linking per-item detail; those Details links repoint to per-item pages as
+  they land. (Pass-1: the `Hooks` page.)
 
 ## 4. Voice
 
@@ -83,6 +91,9 @@ Diátaxis mode templates (`how-to` / `tutorial` / `reference` / `explanation`) a
   `style/base-style-guide.md`, plus on-demand learned lessons (global / per-project / per-repo).
 - Governing lesson — **`user-facing-prose`** (global): plain, present-tense; cut marketing
   boasts, version-history asides, and docs meta-commentary. Describe what a thing does now.
+- Lesson — **`command-howto-clarity`** (global): in command/install how-tos, flag example
+  lists as examples + show per-item commands; state versions as minimums; defer per-host
+  detail to the reference page.
 - **Brand:** a tastefully *hidden* easter-egg link is welcome (e.g. the banner tagline); keep
   the Men-in-Black reference implicit — never explained inline.
 
