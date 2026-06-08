@@ -22,6 +22,7 @@ A **hook** is a script crickets runs at a fixed point in an agent session — be
 - **Effect.** A `PreToolUse` hook can **block** the tool call (a non-zero exit — e.g. `kill-switch`) or **inject** text into context (stdout — e.g. `steer`). A `Stop` hook runs as a side effect (e.g. `commit-on-stop`); a `SessionStart` hook seeds context.
 - **Ordering.** When several hooks share an event, they run in the order the plugin's `hooks.json` declares them — `developer-safety` registers `kill-switch` before `steer`, so a halt always pre-empts a steer.
 - **Per-host effectiveness.** On Antigravity, plugin hooks run **observe/side-effect-only**: any hook whose value depends on a veto (exit code) or an inject (stdout) is Claude-only-effective. See [Compatibility](Compatibility).
+- **Authoring a portable hook.** The two hosts invoke hooks differently — Claude Code runs them at the project root (and sets `$CLAUDE_PROJECT_DIR`); Antigravity runs them in the *plugin* dir and passes the workspace only as stdin JSON (`{"workspacePaths":["<root>"]}`). A portable hook reads stdin, parses it with a real JSON parser (top-level keys only — a `sed`/regex parser mismatches nested payloads), resolves the root as `workspacePaths[0]` → stdin `cwd` → `$CLAUDE_PROJECT_DIR` → `cwd`, then `cd`s in before any relative logic. The shipped `developer-safety` hooks do this (`scripts/test_developer_hooks_workspace.py`).
 
 ## See also
 

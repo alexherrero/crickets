@@ -1,112 +1,71 @@
 # Compatibility
 
-Hosts and surfaces Crickets is verified to run with.
+Which hosts and OSes crickets runs on, and how each component behaves per host.
 
-## Supported hosts
+## ⚡ Quick Reference
 
-Crickets customizations declare host compatibility per-manifest via the YAML `supported_hosts:` field. The installer reads that field and dispatches the customization to the right host-specific path.
-
-| Host | Path convention | Status |
+| Host | Status | Notes |
 |---|---|---|
-| **Claude Code** (Anthropic CLI / IDE extension) | `.claude/{skills,agents,hooks,commands}/<name>/` | ✅ first-class — primary development surface, CI-verified on every push |
-| **Antigravity 2.0** (Google IDE) + **Antigravity CLI (`agy`)** | `.agents/{skills,workflows,rules}/<name>/` (project) + `~/.gemini/config/plugins/<name>/` (user-global, plugin-wrapped) | ✅ first-class as of v1.2.0 — CI-verified on every push. **Migrated from `.agent/` (singular) to `.agents/` (plural) in v1.2.0** per [ADR 0011](decisions/0011-antigravity-2-host-support). Antigravity CLI replaced Gemini CLI 2026-05-19; consumer Gemini CLI sunsets 2026-06-18. |
+| **Claude Code** (Anthropic CLI / IDE) | ✅ supported | the primary surface; CI-verified on every push |
+| **Antigravity 2.0** + the **`agy`** CLI | ✅ supported | CI-verified; some hooks run observe-only (below) |
 
-See [Per-Host-Paths](Per-Host-Paths) for the full per-kind destination matrix.
+Every customization declares `supported_hosts:` in its manifest, and the generator emits each plugin only for the hosts it supports. Destination paths per kind: [Per-Host Paths](Per-Host-Paths).
 
-## Supported operating systems
+## Operating systems
 
-| OS | Tested via | Frequency |
+Linux, macOS, and Windows (PowerShell 7+) are tested on **every push and PR**.
+
+## Per-plugin host support
+
+Claude Code supports every plugin fully; the **Support** column reflects Antigravity completeness.
+
+| Plugin | Support | Antigravity gaps |
 |---|---|---|
-| Linux (`ubuntu-latest`) | [`.github/workflows/tests-linux.yml`](https://github.com/alexherrero/crickets/blob/main/.github/workflows/tests-linux.yml) | Every push + every PR |
-| macOS (`macos-latest`) | [`.github/workflows/tests-mac.yml`](https://github.com/alexherrero/crickets/blob/main/.github/workflows/tests-mac.yml) | Every push + every PR |
-| Windows (`windows-latest`, PowerShell 7+) | [`.github/workflows/tests-windows.yml`](https://github.com/alexherrero/crickets/blob/main/.github/workflows/tests-windows.yml) | Every push + every PR |
+| `developer-workflows` | ⚠️ Partial | the `harness-context` SessionStart hook is Claude-only |
+| `developer-safety` | ⚠️ Partial | its hooks fire but run **observe-only** (below) |
+| `code-review` | ⚠️ Partial | the `evidence-tracker` hook is Claude-only |
+| `github-ci` | ✅ Supported | — |
+| `pii` | ✅ Supported | — |
+| `wiki-maintenance` | ⚠️ Partial | the slash commands + the `wiki-author` skill are Claude-only ([why](Antigravity-Limitations)) |
 
-The single aggregate `CI` badge in the README + wiki Home points at a dedicated [`ci-all.yml`](https://github.com/alexherrero/crickets/blob/main/.github/workflows/ci-all.yml) workflow that waits for all 3 OS workflows then reports a combined success/failure. Diagnostic drill-down: click the badge → Actions tab → pick the OS that's failing.
+## Hook effectiveness
 
-## Per-customization compatibility
-
-Each customization in the shipped catalog declares its own `supported_hosts` in the manifest:
-
-| Kind | Customization | Hosts |
-|---|---|---|
-| skill (2) | `pii-scrubber`, `dependabot-fixer` | `[claude-code, antigravity]` |
-| agent (2) | `evaluator`, `diataxis-evaluator` | `[claude-code, antigravity]` (sub-agent-as-skill on Antigravity) |
-| hook (3) | `kill-switch`, `steer`, `commit-on-stop` | `[claude-code]` (Antigravity hook-surface support tracked separately — see Known gaps below) |
-| bundle (2) | `quality-gates` (claude-code-only because contents include hooks), `example-bundle` (`[claude-code, antigravity]`) | inherits from contents |
-| plugin (1) | `example-plugin` (reference; Antigravity 2.0 + agy) | `[antigravity]` |
-| plugin | `wiki-maintenance` | `[claude-code, antigravity]` cross-host engine; scheduling/`wiki-author`/`recent-wiki-changes` are Claude-only (see [Antigravity limitations](Antigravity-Limitations) for the scheduling gap) |
-
-The installer respects each manifest's `supported_hosts` — installing into a target project only writes the customizations declared for the host(s) you're targeting.
-
-## Hook host-effectiveness matrix
-
-A hook can be *emitted* on a host without being *effective* there. Antigravity runs plugin hooks **observe / side-effect-only** — it fires them but ignores their exit codes and never reads their stdout. So a hook that vetoes a tool call or injects steering text is inert on Antigravity even though it runs. The matrix below is the effectiveness contract for the crickets hooks as shipped in v3.0:
+A hook can be *emitted* on a host without being *effective* there. Antigravity runs plugin hooks **observe / side-effect-only** — it fires them but ignores exit codes and never reads stdout. So a hook that vetoes a tool call or injects text is inert on Antigravity even though it runs.
 
 | Hook | Plugin | Claude Code | Antigravity | Why |
 |---|---|---|---|---|
-| `commit-on-stop` | `developer-safety` | ✅ effective | ✅ effective | Pure side-effect (it commits) — needs no exit-code/stdout contract, so it works on both hosts. |
-| `kill-switch` | `developer-safety` | ✅ effective | ⚠️ fires but **advisory only** | Vetoes via non-zero exit; Antigravity ignores exit codes, so the veto doesn't block. |
-| `steer` | `developer-safety` | ✅ effective | ⚠️ fires but **advisory only** | Injects via stdout; Antigravity never reads hook stdout, so the steer text is dropped. |
-| `evidence-tracker` | `code-review` | ✅ effective | ❌ not effective | Its enforcement/veto needs the hook-veto contract Antigravity lacks; **Claude-only** (`supported_hosts: [claude-code]`). |
-| `harness-context` | `developer-workflows` | ✅ effective | ❌ not emitted | SessionStart hook; **Claude-only** — Antigravity has no SessionStart hook surface. |
+| `commit-on-stop` | `developer-safety` | ✅ effective | ✅ effective | pure side-effect (it commits) — no exit/stdout contract needed |
+| `kill-switch` | `developer-safety` | ✅ effective | ⚠️ advisory only | vetoes via exit code; Antigravity ignores exit codes |
+| `steer` | `developer-safety` | ✅ effective | ⚠️ advisory only | injects via stdout; Antigravity never reads hook stdout |
+| `evidence-tracker` | `code-review` | ✅ effective | ❌ Claude-only | needs the veto contract Antigravity lacks (`[claude-code]`) |
+| `harness-context` | `developer-workflows` | ✅ effective | ❌ Claude-only | SessionStart — Antigravity has no SessionStart surface |
 
-**Rule of thumb:** side-effect-only hooks port to both hosts; any hook whose value depends on its exit code (veto) or stdout (inject) is Claude-only-effective. See [Modify a crickets plugin](Modify-A-Plugin) and [ADR 0009](decisions/0009-evidence-tracker-hook) for the underlying host contracts.
+**Rule of thumb:** side-effect-only hooks port to both hosts; any hook whose value depends on a veto (exit code) or an inject (stdout) is Claude-only-effective. The full catalog is in [Hooks](Hooks).
+
+Authoring a host-portable hook? Resolve the workspace from stdin, not `cwd` — see [Hooks](Hooks).
 
 ## Snippet emission
 
-The `snippet` kind is an instruction fragment. The generator emits it **as an Antigravity `rules/` file** (`<plugin>/rules/<name>.md`) and **drops it on Claude Code** — Claude Code's plugin surface has no instruction-file primitive to land it in. So `developer-safety`'s `commit-no-coauthor` + `worktrees-never-auto` conventions ship as Antigravity rules but have no Claude-Code emitted form. See [Per-Host Paths](Per-Host-Paths) and [Customization Types](Customization-Types) for the per-kind detail.
+The `snippet` kind is an instruction fragment. The generator emits it **as an Antigravity `rules/` file** (`<plugin>/rules/<name>.md`) and **drops it on Claude Code**, which has no instruction-file primitive to land it in. So `developer-safety`'s `commit-no-coauthor` + `worktrees-never-auto` conventions ship as Antigravity rules with no Claude-Code form. See [Per-Host Paths](Per-Host-Paths).
 
-## Known gaps — Antigravity 2.0 surface
+## Antigravity 2.0 gaps
 
-Three Antigravity 2.0 primitive surfaces have **no file-based authoring path** as of crickets v1.2.0. Customizations targeting these surfaces are out of scope for the crickets installer; users must hand-author them in a Python SDK environment if they want to use them. These three gaps are mirrored — with explicit re-address triggers — in the dedicated, growing [Antigravity limitations](Antigravity-Limitations) register, the canonical place host gaps are tracked as they accumulate.
+Three Antigravity surfaces have **no file-based authoring path**, so crickets can't ship into them from the manifest model:
 
-### Hooks gap
+- **Hooks** — Antigravity hooks are Python decorators registered at agent creation; there's no `hooks.json` / `.agents/hooks/` to target. (crickets' file-based hooks therefore run observe-only — above.)
+- **Scheduled tasks / triggers** — Python registration patterns, no file-based config; crickets ships none.
+- **Multi-agent orchestration** — operator-facing (`start_subagent`); no plugin-author surface for spawn policy.
 
-Antigravity 2.0 / agy hooks are **Python decorators** registered at agent-creation time via `LocalAgentConfig(hooks=[...])` (from `google.antigravity.hooks`). The 9 hook types (`on_session_start`, `on_session_end`, `pre_turn`, `post_turn`, `pre_tool_call_decide`, `post_tool_call`, `on_tool_error`, `on_compaction`, `on_interaction`) cover most use cases that Claude Code's file-based hooks cover, but they require Python SDK integration to register — no `.agents/hooks/` directory or `hooks.json` config file exists.
-
-**Crickets ships four hooks** (`kill-switch` / `steer` / `commit-on-stop` in `developer-safety`; `evidence-tracker` in `code-review`) plus the `harness-context` SessionStart hook in `developer-workflows`. As of crickets v3.0 the `evidence-tracker` hook ships **into crickets** (`code-review` plugin), Claude-only — its enforcement/veto needs the Claude-Code hook-veto contract that Antigravity lacks. (The memory recall hooks remain agentm-native, not crickets.) See the [Hook host-effectiveness matrix](#hook-host-effectiveness-matrix) below for which hooks are *effective* on which host. See [ADR 0009 § Antigravity re-audit outcome](decisions/0009-evidence-tracker-hook) for the original rationale — its "no Antigravity file-based hook surface" finding is superseded by Antigravity 2.0 (tracked in the crickets-ADR-overhaul follow-up).
-
-**Future direction (deferred, FOLLOWUP candidate)**: a separate Python sidecar package (`crickets-hooks-py`?) could translate crickets's file-based hook scripts to SDK decorator registration at agent-author boot time. Out of scope for v1.2.0.
-
-> [!NOTE]
-> **Gotcha for hook authors — resolve the workspace from the host's hook-input contract, never from `cwd`.** A bash hook that checks `.harness/…` (or any project-relative path) relative to `cwd` works on Claude Code but is silently inert on Antigravity, because the two hosts invoke plugin hooks differently:
-> - **Claude Code** — runs hooks with `cwd` = the project root, and also supplies it on stdin (`cwd`) and via `$CLAUDE_PROJECT_DIR`.
-> - **Antigravity / agy** — runs plugin hooks with `cwd` = the *plugin dir* (not the workspace), and supplies the workspace **only** on stdin as JSON `{"workspacePaths":["<root>"]}` (no env var).
->
-> A host-portable hook reads stdin, parses it with a real JSON parser (`python3 json.load`, top-level keys only — a `sed`/regex parser mismatches nested or pretty-printed payloads), and resolves the root as `workspacePaths[0]` (Antigravity) → stdin `cwd` (Claude) → `$CLAUDE_PROJECT_DIR` → `cwd` (fallback), then `cd`s into it before any relative logic. The shipped `kill-switch`, `steer`, and `commit-on-stop` hooks do this; see `scripts/test_developer_hooks_workspace.py` for the contract cases. (Fixed crickets v3.0 #40 part 6 T2; full plugin-authoring treatment lands in the upcoming "Develop a crickets plugin locally" how-to + ADR 0013/0014.)
-
-### Scheduled tasks (triggers) gap
-
-Antigravity 2.0 / agy triggers — the host's scheduled-task primitive — are **Python registration patterns**: `every(seconds, callback)`, `on_file_change(path, callback)`, custom async functions. Registered via `LocalAgentConfig(triggers=[...])`. No file-based config; trigger callbacks are Python code running in the agent process.
-
-**Crickets doesn't ship trigger primitives** in v1.2.0. The Agent M V7 roadmap (`agentm/.harness/ROADMAP-AgentMemoryV7.md`) contemplates a scheduled-sidecar framework as a future cross-host primitive; if/when that lands, it may also provide an Antigravity-trigger integration path. See agentm V7 for forward-looking context. *(This was the V6/dream-mode roadmap before the 2026-06-03 V5-unbundling arc renumber.)* This gap is entry #1 in the [Antigravity limitations](Antigravity-Limitations) register — it's why the `wiki-maintenance` wiki-watcher's scheduling loop is Claude-first (the engine is cross-host; only the loop wiring is Claude-only today).
-
-### Multi-agent orchestration gap
-
-Antigravity 2.0's multi-agent orchestration is **operator-facing**: the parent agent decides when to spawn subagents via the built-in `start_subagent` tool, enabled by default via `CapabilitiesConfig(enable_subagents=True)`. No plugin-author surface for orchestration policy (which subagents to spawn, when, with what context).
-
-**Crickets's contribution to orchestration** is the sub-agent-as-skill pattern: ship SKILL.md files (via `kind: agent` or `kind: plugin`); the parent agent treats them as callable sub-agents via `start_subagent`. The agents-available-for-spawning surface is what crickets controls; the spawning decisions are the parent agent's.
-
-Deeper orchestration design (e.g. specifying spawn policy via manifest fields) would require a customization kind we don't yet have — and unclear value vs. letting the parent agent reason about it dynamically. Out of scope.
-
-## Sibling repo
-
-Crickets pairs with **[Agent M (`agentm`)](https://github.com/alexherrero/agentm)** — the structural backend harness (phase-gated workflow, auto-recall, on-disk state). Agent M is tested on the same OS matrix; both repos ship paired releases per [ADR 0006](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0006-crickets-split.md).
+Each is tracked, with its re-address trigger, in the canonical [Antigravity limitations](Antigravity-Limitations) register.
 
 ## Out-of-scope hosts
 
-Hosts that previously had adapters or were considered but are not supported now:
+- **Gemini CLI** — dropped in v3.0. Google replaced it with the Antigravity CLI (`agy`), which **is** supported; consumer Gemini CLI sunsets 2026-06-18. ([ADR 0006 — the crickets split](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0006-crickets-split.md).)
+- **Codex** — never had an adapter.
 
-- **Gemini CLI** — dropped in v0.9.0 (2026-05-17). Google replaced Gemini CLI with the new Antigravity CLI (`agy`) on 2026-05-19; consumer Gemini CLI sunsets 2026-06-18 ([transition blog](https://developers.googleblog.com/an-important-update-transitioning-gemini-cli-to-antigravity-cli/)). Enterprise tier keeps Gemini CLI indefinitely (out of scope for crickets). **Antigravity CLI IS supported as of crickets v1.2.0** (shares the agent harness with Antigravity 2.0 desktop; single `antigravity` slug).
-- **Codex** — never had a Crickets adapter; was dropped from the harness in v1.0.0 per harness ADR 0005.
+## See also
 
-## When a host stops working
-
-If a host's CI starts failing or a customization's adapter goes stale:
-
-1. Check the host's release notes for surface changes (`.claude/` shape, `.agent/` shape, command syntax, etc.)
-2. Verify the affected customization's manifest `supported_hosts` field still matches reality
-3. Run `bash scripts/smoke-install-bash.sh` locally; if it fails on the affected host, you've reproduced
-4. Patch the installer dispatch logic OR the customization's manifest, whichever resolves the surface change at the right layer
-
-For adding new hosts, see [ADR 0006 — Split customizations into crickets](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0006-crickets-split.md) for the customization contract + [Manifest-Schema](Manifest-Schema) for the per-customization declaration shape.
+- [Antigravity limitations](Antigravity-Limitations) — the host-gap register.
+- [Hooks](Hooks) — the full hook catalog.
+- [Per-Host Paths](Per-Host-Paths) — destinations per kind, per host.
+- [Manifest Schema](Manifest-Schema) — the `supported_hosts` declaration.
