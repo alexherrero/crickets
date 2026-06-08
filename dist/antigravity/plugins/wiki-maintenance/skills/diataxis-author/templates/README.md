@@ -80,6 +80,12 @@ Diátaxis mode templates (`how-to` / `tutorial` / `reference` / `explanation`) a
 - **Pick the mode by reader intent, not topic.** A page that's mostly lookup — tables, a
   catalog, troubleshooting — with thin task content is **reference**, not how-to, even if it's
   titled "How to use X." (Pass-1: the base-hooks how-to → the `Operator-Control-Hooks` reference.)
+- **One-line pointer over inline detail.** When content's canonical home is another page, leave
+  a brief pointer (a line or a few words), not a duplicated block. (Pass-1: the hook-portability
+  contract → `Hooks`; the Antigravity gaps → the `Antigravity-Limitations` register.)
+- **Status column for support/capability tables.** A reference table cataloging support or
+  capability carries an explicit status column — ✅ Supported / ⚠️ Partial / ❌ Unsupported —
+  with the explanation in the adjacent column. (Pass-1: the Compatibility per-plugin table.)
 - **Catalog a family of primitives on one reference page.** Related items (hooks, plugins,
   kinds) get a central reference page — an explainer + a `⚡ Quick Reference` table with a
   **Details** column linking per-item detail; those Details links repoint to per-item pages as
@@ -90,7 +96,8 @@ Diátaxis mode templates (`how-to` / `tutorial` / `reference` / `explanation`) a
 - Resolved as **base style-guide ⊕ overlay** (`style_resolver`): the committed floor at
   `style/base-style-guide.md`, plus on-demand learned lessons (global / per-project / per-repo).
 - Governing lesson — **`user-facing-prose`** (global): plain, present-tense; cut marketing
-  boasts, version-history asides, and docs meta-commentary. Describe what a thing does now.
+  boasts, version-history asides, docs meta-commentary, and **LLM-tell vocabulary**
+  ("first-class" → "supported", "seamless", "robust", "leverage"). Describe what a thing does now.
 - Lesson — **`command-howto-clarity`** (global): in command/install how-tos, flag example
   lists as examples + show per-item commands; state versions as minimums; defer per-host
   detail to the reference page.
