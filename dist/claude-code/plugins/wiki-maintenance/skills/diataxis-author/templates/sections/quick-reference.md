@@ -8,7 +8,8 @@ applies-to: [reference]
      page that CATALOGS a set of items, this table IS the catalog — give it a
      "Details" column linking each row to its per-item detail (repoint those links to
      per-item pages as they land). For a support/capability catalog, add a status column
-     (✅ Supported / ⚠️ Partial / ❌ Unsupported) with the explanation in an adjacent column. -->
+     (✅ Supported / ⚠️ Partial / ❌ Unsupported) with the explanation in an adjacent column.
+     For a gaps/limitations register the status vocabulary is 🟡 mitigated / ✅ resolved instead. -->
 
 ## ⚡ Quick Reference
 

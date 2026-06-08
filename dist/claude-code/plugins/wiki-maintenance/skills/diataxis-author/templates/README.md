@@ -86,6 +86,10 @@ Diátaxis mode templates (`how-to` / `tutorial` / `reference` / `explanation`) a
 - **Status column for support/capability tables.** A reference table cataloging support or
   capability carries an explicit status column — ✅ Supported / ⚠️ Partial / ❌ Unsupported —
   with the explanation in the adjacent column. (Pass-1: the Compatibility per-plugin table.)
+  A **gaps/limitations register** uses a different status vocabulary — 🟡 mitigated (a workaround
+  exists; the gap is contained) / ✅ resolved (the host shipped a path; strike the row) — because
+  a gap with a mitigation isn't "open"; it only reopens when the host provides a path to resolve
+  it. (Pass-1: the Antigravity-Limitations register — the operator's "mitigated, not open" call.)
 - **Catalog a family of primitives on one reference page.** Related items (hooks, plugins,
   kinds) get a central reference page — an explainer + a `⚡ Quick Reference` table with a
   **Details** column linking per-item detail; those Details links repoint to per-item pages as
