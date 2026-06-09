@@ -100,6 +100,13 @@ Diátaxis mode templates (`how-to` / `tutorial` / `reference` / `explanation`) a
   drop only the dead link, mark *(retired in vX)*), and fold any surviving lookup surface into the
   page that owns the workflow. (Pass-1: `Installer-CLI` deleted — `install.sh` was retired in v3.0,
   its surviving `generate.py` surface folded into Modify-a-plugin.)
+- **Ground a reference in the artifacts, not the old prose.** When rewriting a reference that
+  catalogs concrete outputs — paths, generated files, schema values — derive every fact from the
+  real artifacts (the build output, the emitter/source code), never from the page's prior prose. A
+  stale reference's prose describes a dead model; the artifacts are the truth. (Pass-1:
+  Per-Host-Paths rebuilt from the `dist/` tree + the `emit_*` source — the v2.x installer-dispatch
+  prose was entirely obsolete, including a wrong "`command` is n/a on Antigravity" row the artifacts
+  corrected.)
 
 ## 4. Voice
 
