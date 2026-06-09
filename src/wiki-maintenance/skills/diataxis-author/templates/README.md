@@ -37,6 +37,7 @@ A wiki is built from **pages**; each page is composed from **sections**.
 | `major-designs` | landing | architecture first, then components |
 | `decisions-index` | landing | one link to the decision index |
 | `contribute` | landing, plugin-home | short pointer; specs live elsewhere |
+| `plugin-composition` | plugin-home | one plugin's standalone / requires / enhances + host reach |
 | `mode-block` | how-to, tutorial | the `> [!NOTE]` Goal / [Time] / Prereqs block |
 | `steps` | how-to, tutorial | numbered, imperative steps |
 | `verify` | how-to, tutorial | confirm the result (optional) |
@@ -45,11 +46,13 @@ A wiki is built from **pages**; each page is composed from **sections**.
 | `what-you-learned` | tutorial | the recap |
 | `next` | tutorial | where to go after |
 | `quick-reference` | reference | the `## ⚡ Quick Reference` opener table; doubles as a catalog (add a Details column) |
+| `host-differences` | reference | per-host asymmetry — state both hosts + the equivalent, not just "unsupported" |
 
-Page-templates: `home.md` is a section manifest (the worked first instance). The four
-Diátaxis mode templates (`how-to` / `tutorial` / `reference` / `explanation`) are still
-**monoliths** read live by `author.py`; their sections now live in the library above, and the
-**composer** (§6) will assemble them at codification — until then the monoliths stay.
+Page-templates: `home.md` (landing) and `plugin-home.md` (the per-plugin page — the wave-2
+per-plugin-pages target) are section manifests. The four Diátaxis mode templates (`how-to` /
+`tutorial` / `reference` / `explanation`) are still **monoliths** read live by `author.py`; their
+sections now live in the library above, and the **composer** (§6) will assemble them at
+codification — until then the monoliths stay.
 
 > **Keep the library current.** When you polish a page during pass 1 and hit a generalizable
 > section it doesn't yet have, pull it into `templates/sections/` and add a row here in the
@@ -107,6 +110,17 @@ Diátaxis mode templates (`how-to` / `tutorial` / `reference` / `explanation`) a
   Per-Host-Paths rebuilt from the `dist/` tree + the `emit_*` source — the v2.x installer-dispatch
   prose was entirely obsolete, including a wrong "`command` is n/a on Antigravity" row the artifacts
   corrected.)
+- **Document host asymmetries symmetrically.** For a two-host project, state what *each* host does.
+  When one host lacks a feature, name its equivalent — what it does *instead* — never just
+  "unsupported / n/a". (Pass-1: operator edits — a `snippet` → an Antigravity `rules/` file vs the
+  convention carried in Claude's `CLAUDE.md`/`AGENTS.md`; a bundled script → `${CLAUDE_PLUGIN_ROOT}/…`
+  on Claude vs a relative path on Antigravity.) The `host-differences` section bakes this in.
+- **A cluster of detail pages needs an anchor.** When several reference pages each document a *part*
+  of one thing, add an overview/anchor page that says what the whole *is* and points down to the
+  parts; the parts link back up. Distinct from cataloging items on one page — this is an overview
+  *over a cluster of pages*. (Pass-1: `Plugin-Anatomy` over `Customization-Types` / `Per-Host-Paths` /
+  `Manifest-Schema`, at the operator's prompt. The wave-2 `plugin-home` page-template is its
+  per-plugin instance.)
 
 ## 4. Voice
 
