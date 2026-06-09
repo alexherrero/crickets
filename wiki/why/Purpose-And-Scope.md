@@ -1,77 +1,56 @@
 # Purpose and scope
 
-What `crickets` is, what it isn't, and how it relates to `agentm`. Written to answer "why does this repo exist" in under five minutes; deeper reasoning lives in [ADR 0001](0001-crickets-purpose).
+What crickets is, what it isn't, and how it relates to agentm — the "why does this repo exist" read in under five minutes. The full decision, with consequences, is [ADR 0001](0001-crickets-purpose).
 
 ## ⚡ Quick Reference
 
 | Question | Answer |
 |---|---|
-| What is it? | Personal collection of agent customizations (skills, sub-agents, hooks, MCP servers, slash commands, bundles, etc.) across Claude Code, Antigravity, and Gemini CLI. |
-| Sibling to? | [`agentm`](https://github.com/alexherrero/agentm) — the phase-gated workflow harness. The harness owns workflow; this toolkit owns customizations. |
-| How does it install? | `bash /path/to/crickets/install.sh /path/to/your-project`. See [Install-Into-Project](Install-Into-Project). |
-| What kinds of customizations? | 11 types — see [Customization Types](Customization-Types). |
-| How are skills addressed across hosts? | Each customization's manifest declares `supported_hosts`; the installer dispatches per [Per-Host Paths](Per-Host-Paths). |
+| What is it? | A personal collection of agent customizations — skills, sub-agents, commands, hooks — shipped as **native host plugins** for Claude Code and Antigravity. |
+| Sibling to? | [`agentm`](https://github.com/alexherrero/agentm) — the phase-gated workflow harness. The harness owns *workflow*; crickets owns *customizations*. |
+| How does it install? | The host's plugin manager — `claude plugin install <plugin>@crickets`, the bootstrap one-liner, or a manual `--plugin-dir`. See [Install crickets plugins](Install-Into-Project). |
+| What's in it? | Six plugins (groups) generated from one source — see [Plugin anatomy](Plugin-Anatomy); the primitive kinds are in [Customization types](Customization-Types). |
+| How is it built? | Author once under `src/<group>/`; `generate.py` emits a native plugin per host into `dist/`. |
 
-## What this repo is for
+## What it's for
 
 A place to keep agent customizations that:
 
-- **Travel across projects.** Install once into a target project; the toolkit drops them into the right host paths.
-- **Travel across hosts.** A skill that works in Claude Code, Antigravity, and Gemini CLI ships from one source manifest; the installer adapts the destination.
-- **Stay version-controlled.** Customizations are markdown + YAML frontmatter, so diffs, rollbacks, and audit history are first-class.
-- **Don't bloat the workflow harness.** `agentm` stays focused on phase-gated workflow; this repo absorbs the customization-catalog growth.
+- **Travel across projects.** Install a plugin once; the host's plugin manager makes it available everywhere — nothing is copied per-project.
+- **Travel across hosts.** One source primitive (`kind` + `supported_hosts`) generates a Claude Code plugin *and* an Antigravity plugin.
+- **Stay version-controlled.** Customizations are markdown + YAML, so diffs, rollbacks, and audit history are first-class. The generated `dist/` is committed too, and a CI gate proves it matches `src/`.
+- **Don't bloat the workflow harness.** agentm stays focused on phase-gated workflow; crickets absorbs the customization growth.
 
-## What this repo is NOT for
+## What it's NOT for
 
-- **Workflow primitives** — `/plan`, `/work`, `/review`, `/release`, `/bugfix` and their phase specs live in `agentm`. The toolkit consumes those (via `dependabot-fixer` and `ship-release`, which the harness's phase specs reference as graceful-skip suggestions), but doesn't redefine them.
-- **Project-specific config** — repo-rooted `.claude/` and `.agent/` files for a *specific* project belong in that project's repo. The toolkit ships *user-portable* customizations; project-specific ones (e.g. `.harness/verify.sh` for a particular codebase's lint config) stay with the project.
-- **Binary artifacts or large files.** The toolkit is text-only — markdown, YAML, JSON, shell scripts. If a customization needs binaries, it ships pointers (download URLs in its manifest body); not the binaries themselves.
+- **Workflow primitives.** `/plan` · `/work` · `/review` · `/release` · `/bugfix` and their phase specs live in agentm. crickets's `developer-workflows` plugin *extracts* the phase loop, but the canonical specs stay in the harness.
+- **Project-specific config.** A particular project's `.claude/` / `.harness/` files belong in that project's repo. crickets ships *portable* customizations, not one codebase's lint config.
+- **Binary artifacts.** Text only — markdown, YAML, JSON, shell. A customization that needs binaries ships a pointer, not the bytes.
 
-## How it relates to `agentm`
+## How it relates to agentm
 
-Sibling repos, designed to be cloned as siblings (`~/Antigravity/agentm/`, `~/Antigravity/crickets/`):
+Sibling repos, cloned side by side (`~/Antigravity/agentm/`, `~/Antigravity/crickets/`):
 
 ```
-                  ┌────────────────────────────────────────────┐
-                  │  agentm                            │
-                  │    workflow phases + state                  │
-                  │    (/setup /plan /work /review /release ...) │
-                  │    .harness/PLAN.md / progress.md / etc.    │
-                  └────────────┬────────────────────────────────┘
-                               │ shared lib/install/
-                               │ (byte-identical; sync-lib.sh)
-                               ▼
-                  ┌────────────────────────────────────────────┐
-                  │  crickets                              │
-                  │    customizations + install plumbing        │
-                  │    skills/ commands/ agents/ hooks/ ...     │
-                  │    bundles/ + 12 primitive-type subdirs     │
-                  └────────────────────────────────────────────┘
+  agentm — phase-gated workflow + on-disk state
+    /setup · /plan · /work · /review · /release · /bugfix
+        │  its phase specs suggest crickets plugins (graceful-skip — neither requires the other)
+        ▼
+  crickets — customizations as native host plugins
+    src/<group>/  →  generate.py  →  dist/<host>/plugins/<group>/
 ```
 
-Both repos:
-
-- Have independent release cycles (the harness is at v2.x; the toolkit shipped its first release at v0.1.0).
-- Share `lib/install/` byte-identically — primitives like `cp_managed`, `ensure_boundary_src`, `sync_managed_parents` live in one place and are copied to the other via `scripts/sync-lib.sh`.
-- Use the same PII guardrails (`scripts/check-no-pii.sh`, `.gitleaks.toml`, pre-push hook template) — both are public repos.
-
-## Where customizations come from
-
-Two paths:
-
-1. **Migrated from the harness** — `dependabot-fixer` and `ship-release` lived in `agentm` through v1.x, then moved here in toolkit v0.1.0 (paired with harness v2.0.0). The migration freed the harness from the parity tax for those skills and gave them a richer home (the toolkit's manifest schema lets a single SKILL.md ship to all 3 hosts at install time).
-2. **Net-new in the toolkit** — `pii-scrubber` was written from scratch as the agent-facing PII guardrail. Future skills (an `evaluator` sub-agent, `kill-switch` + `steer` hooks, a `commit-on-stop` hook, the `quality-gates` bundle) are net-new from the crickets roadmap.
+They're **decoupled** — independent release cycles, and no shared install code ([ADR 0014](0014-install-decoupling) retired the old byte-synced `lib/install/`). Both are public, with the same PII guardrails (the pre-push hook + `check-no-pii.sh` + gitleaks).
 
 ## Non-goals
 
-- **Replacing the harness's phase workflow.** The phases stay in agentm. Skills here that integrate with phases (e.g. `ship-release` referenced from `/release`) use graceful-skip patterns — present in toolkit, suggested by harness, neither requires the other to exist.
-- **Cross-host parity enforcement at the manifest level.** Each customization declares its own `supported_hosts`; there's no global "every skill must support all 3 hosts" rule. A Claude-Code-only hook is fine, declared via `supported_hosts: [claude-code]`.
-- **A "150-agent supermarket".** Same principle as the harness: small, opinionated, deliberate. Each skill or bundle earns its keep through use, not by being a catalog entry.
+- **Replacing the harness's phases.** The phases stay in agentm; a crickets plugin that touches one (e.g. `code-review` at `/review`) engages via a capability probe and graceful-skips when absent.
+- **Cross-host parity enforcement.** Each primitive declares its own `supported_hosts`; there's no "every primitive must support both hosts" rule. A Claude-only hook is fine.
+- **A catalog supermarket.** Small, opinionated, deliberate — each primitive earns its keep through use, not by being a catalog entry.
 
 ## Related
 
-- [ADR 0001 — crickets purpose, scope, public-with-PII-guardrails](0001-crickets-purpose) — the architectural decision with full context + consequences.
-- [Customization Types](Customization-Types) — the 12 primitive types this repo holds.
-- [Manifest Schema](Manifest-Schema) — the YAML frontmatter contract.
-- [Per-Host Paths](Per-Host-Paths) — how each kind maps to a host destination.
-- [Install Into Project](Install-Into-Project) — the install recipe.
+- [ADR 0001 — crickets purpose, scope, public-with-PII-guardrails](0001-crickets-purpose) — the decision with full context + consequences.
+- [Plugin anatomy](Plugin-Anatomy) — what a crickets plugin is.
+- [Customization types](Customization-Types) — the primitive kinds.
+- [Install crickets plugins](Install-Into-Project) — the install modes.
