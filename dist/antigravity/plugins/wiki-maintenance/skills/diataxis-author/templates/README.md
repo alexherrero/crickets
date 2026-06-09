@@ -94,6 +94,12 @@ Diátaxis mode templates (`how-to` / `tutorial` / `reference` / `explanation`) a
   kinds) get a central reference page — an explainer + a `⚡ Quick Reference` table with a
   **Details** column linking per-item detail; those Details links repoint to per-item pages as
   they land. (Pass-1: the `Hooks` page.)
+- **Retiring a page.** When a page's subject is retired (a removed tool, a dropped feature),
+  delete the page rather than leave it stale: repoint live See-also links to the successor page,
+  drop the `_Sidebar` entry, de-link historical references in ADRs/CHANGELOG (preserve the prose —
+  drop only the dead link, mark *(retired in vX)*), and fold any surviving lookup surface into the
+  page that owns the workflow. (Pass-1: `Installer-CLI` deleted — `install.sh` was retired in v3.0,
+  its surviving `generate.py` surface folded into Modify-a-plugin.)
 
 ## 4. Voice
 
