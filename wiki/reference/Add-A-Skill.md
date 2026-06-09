@@ -90,7 +90,7 @@ The installer copies the whole dir (managed-dir wipe-and-recreate on `--update`)
 
 ### Skill inside a bundle
 
-`kind: bundle` is reserved-future in v2.0.0 (no bundles ship). For multi-primitive packaging recipes, see the [Quality-Gates-Recipe](Quality-Gates-Recipe) — the docs-only pattern that replaced the v1.x quality-gates bundle.
+To package multiple primitives together, group them in one plugin (`src/<group>/`) — see [Plugin anatomy](Plugin-Anatomy).
 
 ## Verify
 
@@ -105,4 +105,4 @@ After adding the skill:
 - [Manifest Schema](Manifest-Schema) — frontmatter contract.
 - [Per-Host Paths](Per-Host-Paths) — where the skill lands per host.
 - [Customization Types](Customization-Types) — when a skill is the right kind vs. command/agent/hook.
-- [Quality-Gates-Recipe](Quality-Gates-Recipe) — docs-only recipe pattern that replaces the v1.x quality-gates bundle.
+- [Plugin anatomy](Plugin-Anatomy) — packaging primitives into a plugin.

@@ -3,6 +3,7 @@
 ### 🚀 [Get started](Get-Started)
 ### 🔧 [Do](Do)
 ### 📖 [Reference](Reference)
+### 🔌 [Plugins](Plugins)
 ### 💡 [Why it works](Why-It-Works)
 ### 🧩 [Designs](Designs)
 ### 📐 [Decisions](Decisions)

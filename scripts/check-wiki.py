@@ -71,6 +71,7 @@ _FOLDER_MODE = {
     "why": "explanation",
     "designs": "explanation",
     "decisions": "explanation",
+    "plugins": "index",
 }
 MODE_DIRS = tuple(_FOLDER_MODE)
 STRUCTURAL_BASENAMES = {"Home", "_Sidebar", "_Footer", "README"}

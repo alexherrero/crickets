@@ -1,11 +1,10 @@
 **[Home](Home)**
 
 ### 🚀 [Get started](Get-Started)
-- [Install plugins](Install-Into-Project)
-- [Using code review](01-First-Code-Review)
 ### 🔧 [Do](Do)
 ### 📖 [Reference](Reference)
-### 🔌 [Plugins](Plugins)
+### 🔌 Plugins
+- [Developer Safety](Developer-Safety)
 ### 💡 [Why it works](Why-It-Works)
 ### 🧩 [Designs](Designs)
 ### 📐 [Decisions](Decisions)
