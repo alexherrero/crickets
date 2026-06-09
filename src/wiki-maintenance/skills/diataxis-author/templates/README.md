@@ -95,6 +95,13 @@ codification — until then the monoliths stay.
   whose folder default doesn't fit carries an invisible `<!-- mode: tutorial|how-to|reference|explanation -->`
   comment that `check-wiki` reads (folder default otherwise). Folder→mode defaults: `get-started`/`do`
   → how-to, `reference` → reference, `why`/`designs`/`decisions` → explanation, `plugins` → index (a landing).
+- **Page basenames are globally unique — case-insensitively.** GitHub Wiki flattens every page to its
+  basename and resolves links **case-insensitively**, so `Developer-Safety` and `developer-safety`
+  collide and the second silently clobbers the first. `check-wiki` rule-g enforces this. When a
+  user-facing page and an internal/design page want the same name, the **user-facing page wins the
+  clean name**; the design page takes a `-design` qualifier. (Pass-1: the `Developer-Safety` plugin +
+  `Style-Learning-Loop` reference pages vs their design parts → `developer-safety-design` /
+  `style-learning-loop-design`.)
 - **Every section has an index landing — not a redirect to a sub-page.** Each intent-folder gets an
   index page (`Get-Started`, `Reference`, …) marked `<!-- mode: index -->` (a shape-exempt landing,
   not a Diátaxis mode): what the section *is* + its pages as curated one-liners (not regurgitated) +
