@@ -52,7 +52,7 @@ A wiki is built from **pages**; each page is composed from **sections**.
 | `validation` | reference | what the validator asserts (grouped by scope) + the command to run it |
 
 Page-templates: `home.md` (landing), `plugin-home.md` (the per-plugin page — the wave-2
-per-plugin-pages target), and `section-index.md` (a section's landing — one per intent-folder)
+per-plugin-pages target — Developer-Safety is the first, in the `plugins/` section), and `section-index.md` (a section's landing — one per intent-folder)
 are section manifests. The four Diátaxis mode templates (`how-to` /
 `tutorial` / `reference` / `explanation`) are still **monoliths** read live by `author.py`; their
 sections now live in the library above, and the **composer** (§6) will assemble them at
@@ -83,7 +83,7 @@ codification — until then the monoliths stay.
   docs), then components in plain English.
 - **The sidebar is per-section, not one complete sitemap.** The wiki is organized into
   **intent-group folders** matching the nav sections — `get-started/` · `do/` · `reference/` ·
-  `why/` · `designs/` · `decisions/`. Each folder carries its own `_Sidebar.md`; GitHub Wiki renders
+  `why/` · `designs/` · `decisions/` · `plugins/`. Each folder carries its own `_Sidebar.md`; GitHub Wiki renders
   the **nearest** one, so a per-folder sidebar shows the full section list with **only the current
   section expanded**; collapsed headings link to that section's **index landing**. The **root
   sidebar (the homepage)** instead shows **all sections expanded one level** — the full map.
@@ -94,7 +94,7 @@ codification — until then the monoliths stay.
   Diátaxis modes (a tutorial + a how-to in `get-started/`; how-tos filed under `reference/`). A page
   whose folder default doesn't fit carries an invisible `<!-- mode: tutorial|how-to|reference|explanation -->`
   comment that `check-wiki` reads (folder default otherwise). Folder→mode defaults: `get-started`/`do`
-  → how-to, `reference` → reference, `why`/`designs`/`decisions` → explanation.
+  → how-to, `reference` → reference, `why`/`designs`/`decisions` → explanation, `plugins` → index (a landing).
 - **Every section has an index landing — not a redirect to a sub-page.** Each intent-folder gets an
   index page (`Get-Started`, `Reference`, …) marked `<!-- mode: index -->` (a shape-exempt landing,
   not a Diátaxis mode): what the section *is* + its pages as curated one-liners (not regurgitated) +
