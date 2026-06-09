@@ -29,7 +29,7 @@ A wiki is built from **pages**; each page is composed from **sections**.
 | Section | Page types | Purpose |
 |---|---|---|
 | `hero` | landing | banner · tagline · badges (landing-only, not reusable) |
-| `intro` | landing, plugin-home, reference | what it is, one plain paragraph |
+| `intro` | landing, plugin-home, reference, section-index | what it is, one plain paragraph |
 | `get-started` | landing, plugin-home | the single first action (install) |
 | `task-scenarios` | landing, plugin-home | user-intent table — What / Component / Example primitives |
 | `lookup` | landing | user-facing reference list |
@@ -38,6 +38,8 @@ A wiki is built from **pages**; each page is composed from **sections**.
 | `decisions-index` | landing | one link to the decision index |
 | `contribute` | landing, plugin-home | short pointer; specs live elsewhere |
 | `plugin-composition` | plugin-home | one plugin's standalone / requires / enhances + host reach |
+| `section-contents` | section-index | the section's pages as curated one-liners (not regurgitated) |
+| `recent-changes` | section-index, plugin-home | tooling-maintained dated list of recent edits |
 | `mode-block` | how-to, tutorial | the `> [!NOTE]` Goal / [Time] / Prereqs block |
 | `steps` | how-to, tutorial | numbered, imperative steps |
 | `verify` | how-to, tutorial | confirm the result (optional) |
@@ -49,8 +51,9 @@ A wiki is built from **pages**; each page is composed from **sections**.
 | `host-differences` | reference | per-host asymmetry — state both hosts + the equivalent, not just "unsupported" |
 | `validation` | reference | what the validator asserts (grouped by scope) + the command to run it |
 
-Page-templates: `home.md` (landing) and `plugin-home.md` (the per-plugin page — the wave-2
-per-plugin-pages target) are section manifests. The four Diátaxis mode templates (`how-to` /
+Page-templates: `home.md` (landing), `plugin-home.md` (the per-plugin page — the wave-2
+per-plugin-pages target), and `section-index.md` (a section's landing — one per intent-folder)
+are section manifests. The four Diátaxis mode templates (`how-to` /
 `tutorial` / `reference` / `explanation`) are still **monoliths** read live by `author.py`; their
 sections now live in the library above, and the **composer** (§6) will assemble them at
 codification — until then the monoliths stay.
@@ -91,6 +94,12 @@ codification — until then the monoliths stay.
   whose folder default doesn't fit carries an invisible `<!-- mode: tutorial|how-to|reference|explanation -->`
   comment that `check-wiki` reads (folder default otherwise). Folder→mode defaults: `get-started`/`do`
   → how-to, `reference` → reference, `why`/`designs`/`decisions` → explanation.
+- **Every section has an index landing — not a redirect to a sub-page.** Each intent-folder gets an
+  index page (`Get-Started`, `Reference`, …) marked `<!-- mode: index -->` (a shape-exempt landing,
+  not a Diátaxis mode): what the section *is* + its pages as curated one-liners (not regurgitated) +
+  a **tooling-maintained Recent changes** block. The sidebar's section heading links to the index,
+  never the first sub-page. (Rollout 2026-06-08; the `section-index` page-template + `section-contents`
+  / `recent-changes` sections.)
 - **Pick the mode by reader intent, not topic.** A page that's mostly lookup — tables, a
   catalog, troubleshooting — with thin task content is **reference**, not how-to, even if it's
   titled "How to use X." (Pass-1: the base-hooks how-to → the `Operator-Control-Hooks` reference.)
