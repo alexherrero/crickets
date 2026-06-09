@@ -1,8 +1,8 @@
 **[Home](Home)**
 
-### 🚀 [Get started](Install-Into-Project)
-### 🔧 [Do](Use-Code-Review)
-### 📖 Reference
+### 🚀 [Get started](Get-Started)
+### 🔧 [Do](Do)
+### 📖 [Reference](Reference)
 - [Plugin anatomy](Plugin-Anatomy)
 - [Compatibility](Compatibility)
 - [Customization Types](Customization-Types)
@@ -14,6 +14,6 @@
 - [Wiki Watch Config](Wiki-Watch-Config)
 - [Modify a plugin](Modify-A-Plugin)
 - [Add a skill](Add-A-Skill)
-### 💡 [Why it works](Purpose-And-Scope)
-### 🧩 [Designs](crickets-v3-native-plugins)
+### 💡 [Why it works](Why-It-Works)
+### 🧩 [Designs](Designs)
 ### 📐 [Decisions](Decisions)

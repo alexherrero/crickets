@@ -1,3 +1,4 @@
+<!-- mode: index -->
 # Architecture decisions
 
 Every load-bearing call in crickets is recorded as an Architecture Decision Record (ADR): the context, the decision with explicit *"why X, and why not Y"* reasoning, and the consequences with re-audit triggers so a stale assumption surfaces later instead of rotting silently.
@@ -27,7 +28,13 @@ This page is the index. The homepage links here once instead of listing every AD
 
 - [V3 Retrospective](v3-retrospective) — what shipped across the V3 arc, what we learned, what's next.
 
-## Related
+## Recent changes
+
+<!-- maintained by the wiki tooling -->
+
+- **2026-06-08** — ADR 0018 (per-folder sidebars) added; the ADRs moved into `decisions/`.
+
+## See also
 
 - [Home](Home) — the wiki landing page.
 - [Purpose and scope](Purpose-And-Scope) — the founding rationale ADR 0001 records.

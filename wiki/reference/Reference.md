@@ -1,0 +1,26 @@
+<!-- mode: index -->
+# Reference
+
+Look up how crickets is built — what a plugin is, the kinds you can author, where each lands, the manifest contract, and the host hooks.
+
+## What's here
+
+- **[Plugin anatomy](Plugin-Anatomy)** — what a crickets plugin *is* and how it's structured (the anchor — start here).
+- **[Customization Types](Customization-Types)** — the primitive kinds (`skill` · `agent` · `command` · `hook` · `snippet`).
+- **[Per-Host Paths](Per-Host-Paths)** — where each kind lands inside the generated plugin, per host.
+- **[Manifest Schema](Manifest-Schema)** — the frontmatter + `group.yaml` contract.
+- **[Compatibility](Compatibility)** — supported hosts + per-plugin and per-hook effectiveness.
+- **[Antigravity Limitations](Antigravity-Limitations)** — the `agy` host-gaps register + crickets mitigations.
+- **[Hooks](Hooks)** · **[Operator-control hooks](Operator-Control-Hooks)** — the hook catalog + how to drive the control trio.
+- **[Wiki Watch Config](Wiki-Watch-Config)** — the wiki-watcher config contract.
+- **[Modify a plugin](Modify-A-Plugin)** · **[Add a skill](Add-A-Skill)** — author and extend a plugin.
+
+## Recent changes
+
+<!-- maintained by the wiki tooling -->
+
+- **2026-06-08** — the whole Reference section rewritten for v3.0 (Compatibility · Per-Host-Paths · Customization-Types · Manifest-Schema · the new Plugin-Anatomy anchor); this index added.
+
+## See also
+
+[Get started](Get-Started) · [Do](Do) · [Designs](Designs) · [Home](Home)

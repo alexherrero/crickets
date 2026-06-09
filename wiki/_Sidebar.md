@@ -1,15 +1,15 @@
 **[Home](Home)**
 
-### 🚀 Get started
+### 🚀 [Get started](Get-Started)
 - [Install plugins](Install-Into-Project)
 - [Using code review](01-First-Code-Review)
-### 🔧 Do
+### 🔧 [Do](Do)
 - [Maintain a wiki — style-learning loop](Run-The-Style-Learning-Loop)
 - [Maintain a wiki — wiki-watcher](Run-The-Wiki-Watcher)
 - [Review a change — code review](Use-Code-Review)
 - [Dev process — evaluator](Use-The-Evaluator)
 - [Guard quality — quality gates](Quality-Gates-Recipe)
-### 📖 Reference
+### 📖 [Reference](Reference)
 - [Plugin anatomy](Plugin-Anatomy)
 - [Compatibility](Compatibility)
 - [Customization Types](Customization-Types)
@@ -21,13 +21,13 @@
 - [Wiki Watch Config](Wiki-Watch-Config)
 - [Modify a plugin](Modify-A-Plugin)
 - [Add a skill](Add-A-Skill)
-### 💡 Why it works
+### 💡 [Why it works](Why-It-Works)
 - [Purpose and scope](Purpose-And-Scope)
 - [Cross-Repo Memory Protocol](Cross-Repo-Memory-Protocol)
 - [Why adversarial review](Why-Adversarial-Review)
 - [Why deterministic gates run first](Why-Deterministic-Gates)
 - [Why phase-gating](Why-Phase-Gating)
-### 🧩 Designs
+### 🧩 [Designs](Designs)
 **Architecture (Agent M)**
 - [MemoryVault — permanent agent memory](memoryvault)
 - [Agent Memory Evolution V1→V7](agent-memory-evolution)
@@ -39,7 +39,7 @@
 - [Developer Plugin Suite (V5 ④)](developer-plugin-suite)
 - [Wiki Maintenance (V5 ④)](wiki-maintenance)
 - [diataxis-author — Diátaxis wiki authoring + maintenance](diataxis-author)
-### 📐 Decisions — [Browse all](Decisions)
+### 📐 [Decisions](Decisions)
 - [V3 Retrospective](v3-retrospective)
 - [0001 — crickets purpose](0001-crickets-purpose)
 - [0002 — evaluator design](0002-evaluator-design)

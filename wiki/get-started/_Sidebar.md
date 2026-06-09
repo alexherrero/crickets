@@ -1,10 +1,10 @@
 **[Home](Home)**
 
-### 🚀 Get started
+### 🚀 [Get started](Get-Started)
 - [Install plugins](Install-Into-Project)
 - [Using code review](01-First-Code-Review)
-### 🔧 [Do](Use-Code-Review)
-### 📖 [Reference](Plugin-Anatomy)
-### 💡 [Why it works](Purpose-And-Scope)
-### 🧩 [Designs](crickets-v3-native-plugins)
+### 🔧 [Do](Do)
+### 📖 [Reference](Reference)
+### 💡 [Why it works](Why-It-Works)
+### 🧩 [Designs](Designs)
 ### 📐 [Decisions](Decisions)

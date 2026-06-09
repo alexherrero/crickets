@@ -1,11 +1,11 @@
 **[Home](Home)**
 
-### 🚀 [Get started](Install-Into-Project)
-### 🔧 [Do](Use-Code-Review)
-### 📖 [Reference](Plugin-Anatomy)
-### 💡 [Why it works](Purpose-And-Scope)
-### 🧩 [Designs](crickets-v3-native-plugins)
-### 📐 Decisions — [Browse all](Decisions)
+### 🚀 [Get started](Get-Started)
+### 🔧 [Do](Do)
+### 📖 [Reference](Reference)
+### 💡 [Why it works](Why-It-Works)
+### 🧩 [Designs](Designs)
+### 📐 [Decisions](Decisions)
 - [V3 Retrospective](v3-retrospective)
 - [0001 — crickets purpose](0001-crickets-purpose)
 - [0002 — evaluator design](0002-evaluator-design)

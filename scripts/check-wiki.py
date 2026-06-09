@@ -87,7 +87,7 @@ NUMBERED_STEP_TITLE_RE = re.compile(r"^(Step\s+\d+|\d+\.)", re.IGNORECASE)
 WHAT_LEARNED_RE = re.compile(r"^what\s+you('ve)?\s*learned", re.IGNORECASE)
 AMENDMENT_DATE_RE = re.compile(r"^Amendment\s+(\d{4}-\d{2}-\d{2})\s*$", re.IGNORECASE)
 STATUS_RE = re.compile(r"\*\*Status:\*\*\s*(\w+)", re.IGNORECASE)
-MODE_HINT_RE = re.compile(r"<!--\s*mode:\s*(tutorial|how-to|reference|explanation)\s*-->", re.IGNORECASE)
+MODE_HINT_RE = re.compile(r"<!--\s*mode:\s*(tutorial|how-to|reference|explanation|index)\s*-->", re.IGNORECASE)
 
 
 @dataclass

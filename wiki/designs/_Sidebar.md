@@ -1,11 +1,10 @@
 **[Home](Home)**
 
-### 🚀 [Get started](Install-Into-Project)
-### 🔧 [Do](Use-Code-Review)
-### 📖 [Reference](Plugin-Anatomy)
-### 💡 [Why it works](Purpose-And-Scope)
-### 🧩 Designs
-
+### 🚀 [Get started](Get-Started)
+### 🔧 [Do](Do)
+### 📖 [Reference](Reference)
+### 💡 [Why it works](Why-It-Works)
+### 🧩 [Designs](Designs)
 **Architecture (Agent M)**
 - [MemoryVault — permanent agent memory](memoryvault)
   - [write-primitives](write-primitives)
