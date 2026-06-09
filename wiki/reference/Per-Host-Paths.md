@@ -66,5 +66,5 @@ This means a bundle's primitives can collide at the destination with standalone 
 
 - [Customization Types](Customization-Types) — what each kind means.
 - [Manifest Schema](Manifest-Schema) — frontmatter required to participate in dispatch.
-- [Installer CLI](Installer-CLI) — flag reference.
+- [Install crickets plugins](Install-Into-Project) — how plugins get installed.
 - [Add a Skill](Add-A-Skill) — the most common dispatch path walked through.

@@ -56,6 +56,7 @@ crickets is a source of truth (`src/<group>/`) plus a generator that emits commi
 - A new primitive kind or per-host mapping may need a generator/emitter change — see [Manifest-Schema](Manifest-Schema).
 - Some hooks behave differently on Antigravity (it runs plugin hooks observe-only, so a veto/inject hook won't enforce there) — see [Compatibility](Compatibility).
 - **Writing a host-portable hook?** Resolve the workspace from the host's stdin hook-input, not `cwd` — the two hosts invoke hooks differently. See [Hooks](Hooks) for the contract.
+- **`generate.py` subcommands.** `build` writes `dist/` + the repo-root marketplace pointer from `src/`; `check` exits non-zero when `dist/` is out of sync with `src/` (the drift gate CI runs); `clean` removes `dist/` + the pointer.
 
 ## See also
 

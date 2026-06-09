@@ -1,4 +1,4 @@
-# <Replace with reference subject — noun-phrase; e.g. "Installer CLI" or "Manifest Schema">
+# <Replace with reference subject — noun-phrase; e.g. "Compatibility" or "Manifest Schema">
 
 <!--
   Reference mode (per ADR 0004):

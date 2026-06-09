@@ -22,7 +22,6 @@
 - [Customization Types](Customization-Types)
 - [Manifest Schema](Manifest-Schema)
 - [Per-Host Paths](Per-Host-Paths)
-- [Installer CLI](Installer-CLI)
 
 ### 💡 Why it works
 - [Purpose and scope](Purpose-And-Scope)

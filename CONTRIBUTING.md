@@ -52,12 +52,11 @@ If `check-no-pii.sh` flags something that's a real false positive (e.g. a docume
 
 Contributing a customization? Author it once under `src/<group>/`, then generate and dogfood it. These are the specs you'll need:
 
-- [Develop a plugin locally](https://github.com/alexherrero/crickets/wiki/Develop-A-Plugin-Locally) — the source → generate → dogfood → commit loop.
+- [Modify a plugin](https://github.com/alexherrero/crickets/wiki/Modify-A-Plugin) — the source → generate → dogfood → commit loop.
 - [Add a skill](https://github.com/alexherrero/crickets/wiki/Add-A-Skill) — package and ship a standalone skill.
 - [Customization types](https://github.com/alexherrero/crickets/wiki/Customization-Types) — the kinds you can author and where each goes.
 - [Manifest schema](https://github.com/alexherrero/crickets/wiki/Manifest-Schema) — the YAML frontmatter contract.
 - [Per-host paths](https://github.com/alexherrero/crickets/wiki/Per-Host-Paths) — where each kind installs, per host.
-- [Installer CLI](https://github.com/alexherrero/crickets/wiki/Installer-CLI) — flags, prereqs, exit codes.
 
 ## Local gates
 

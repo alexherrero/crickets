@@ -148,6 +148,6 @@ Together: operator-controllable (kill-switch + steer), recoverable (commit-on-st
 - [Use-The-Evaluator](Use-The-Evaluator) — caller patterns for the evaluator sub-agent.
 - [Operator-control hooks](Operator-Control-Hooks) — the three hooks + their trigger files.
 - [Add-A-Skill](Add-A-Skill) — authoring new primitives.
-- [Installer-CLI](Installer-CLI) — full flag reference for `install.sh` / `install.ps1`.
+- [Install crickets plugins](Install-Into-Project) — installing the plugins these gates ship in.
 - [Compatibility](Compatibility) — host coverage per primitive.
 - [Agent M wiki — evidence-tracker hook + Antigravity plugins](https://github.com/alexherrero/agentm/wiki) — the evidence-tracker hook and plugin-authoring docs live in Agent M since v2.0.0.

@@ -168,6 +168,6 @@ v0.1.0 of the toolkit always installs into project paths (the installer takes a 
 
 - [Customization Types](Customization-Types) — what each `kind` means and where to put it.
 - [Per-Host Paths](Per-Host-Paths) — destination paths per kind per host.
-- [Installer CLI](Installer-CLI) — flags and modes.
+- [Install crickets plugins](Install-Into-Project) — the install modes.
 - [Add a Skill](Add-A-Skill) — practical recipe.
 - [ADR 0001](0001-crickets-purpose) — why the schema looks like this.

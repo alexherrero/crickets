@@ -80,6 +80,6 @@ Concretely:
 - [Per-Host Paths reference](../../reference/Per-Host-Paths) — destination table now 2-column
 - [Customization Types reference](../../reference/Customization-Types) — kind × host matrix updated
 - [Manifest Schema reference](../../reference/Manifest-Schema) — `supported_hosts` allowed values tightened
-- [Installer CLI reference](../../reference/Installer-CLI) — `--no-legacy-cleanup` flag documented + legacy cleanup section
+- Installer CLI reference (retired in v3.0) — `--no-legacy-cleanup` flag documented + legacy cleanup section
 - [crickets CHANGELOG.md](https://github.com/alexherrero/crickets/blob/main/CHANGELOG.md) — v0.9.0 entry (lands in task 6)
 - [agentm CHANGELOG.md](https://github.com/alexherrero/agentm/blob/main/CHANGELOG.md) — paired v2.4.0 entry (lands in task 6)

@@ -216,7 +216,7 @@ This fixes the three problems directly: **(1) no working-tree mutation** — in-
 - [commit-on-stop hook spec](https://github.com/alexherrero/crickets/blob/main/hooks/commit-on-stop/hook.md)
 - [Customization Types](Customization-Types) — what `kind: hook` means + v0.7.0 installer support.
 - [Per-Host Paths](Per-Host-Paths) — where the hook scripts + settings fragments land.
-- [Installer CLI](Installer-CLI) — `--hook` flag + `.claude/settings.json` deep-merge semantics.
+- Installer CLI reference (retired in v3.0) — `--hook` flag + `.claude/settings.json` deep-merge semantics.
 - [ADR 0001 — crickets purpose](0001-crickets-purpose) — the sibling-repo decision that put these customizations here.
 - [ADR 0002 — evaluator design](0002-evaluator-design) — same kind=X-first-consumer pattern at one earlier turn (`kind: agent`).
 - [agentm `/work` § Long-running operator-control hooks](https://github.com/alexherrero/agentm/blob/main/harness/phases/03-work.md) — harness-side dispatch.
