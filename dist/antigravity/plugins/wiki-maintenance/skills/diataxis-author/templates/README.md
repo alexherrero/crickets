@@ -47,6 +47,7 @@ A wiki is built from **pages**; each page is composed from **sections**.
 | `next` | tutorial | where to go after |
 | `quick-reference` | reference | the `## ⚡ Quick Reference` opener table; doubles as a catalog (add a Details column) |
 | `host-differences` | reference | per-host asymmetry — state both hosts + the equivalent, not just "unsupported" |
+| `validation` | reference | what the validator asserts (grouped by scope) + the command to run it |
 
 Page-templates: `home.md` (landing) and `plugin-home.md` (the per-plugin page — the wave-2
 per-plugin-pages target) are section manifests. The four Diátaxis mode templates (`how-to` /
