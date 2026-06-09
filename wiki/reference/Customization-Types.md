@@ -1,86 +1,40 @@
-# Customization types reference
+# Customization types
 
-The 12 primitive types `crickets` recognizes via its `kind` field. Each maps to a subdirectory in the repo and a destination path per host.
+The primitive **kinds** crickets recognizes via each primitive's `kind` field. You author a primitive under its kind's subdir inside a plugin group — `src/<group>/<subdir>/<name>` — and the generator emits it into that group's plugin for each host in its `supported_hosts`. This page is what each kind *is* and when to reach for which; for where each lands see [Per-host paths](Per-Host-Paths), and for the frontmatter contract see [Manifest Schema](Manifest-Schema).
 
 ## ⚡ Quick Reference
 
-| Kind | Subdir | What it is | Hosts that consume it |
+| Kind | Authored in | What it is | Effective on |
 |---|---|---|---|
-| `bundle` | `bundles/` | Multi-primitive package; manifest enumerates contents | (dispatches per content kind) |
-| `skill` | `skills/` | Agent-invoked helper (`SKILL.md` body + optional scripts dir) | claude-code, antigravity |
-| `command` | `commands/` | User-invokable slash command | claude-code |
-| `agent` | `agents/` | Specialized sub-agent for fan-out work | claude-code, antigravity |
-| `hook` | `hooks/` | Pre/post tool-call shell script (e.g. [`kill-switch`, `steer`, `commit-on-stop`](Operator-Control-Hooks)) | claude-code (today) |
-| `mcp-server` | `mcp-servers/` | MCP server config + launcher | claude-code (Antigravity: TBD) |
-| `status-line` | `status-line/` | Custom status line display | claude-code |
-| `output-style` | `output-styles/` | Output formatting template | claude-code |
-| `workflow` | `workflows/` | Antigravity multi-step workflow | antigravity |
-| `rule` | `rules/` | Antigravity always-on rule | antigravity |
-| `snippet` | `snippets/` | Instruction fragment → emitted as an Antigravity `rules/` file; **dropped on Claude Code** (no instruction-file primitive) | antigravity (effective); claude-code (declared but dropped) |
-| `settings-fragment` | `settings-fragments/` | JSON fragment merged into host `settings.json` | claude-code (Antigravity: TBD) |
+| `skill` | `skills/<name>/SKILL.md` | agent-invoked helper — the model triggers it on a context match | both |
+| `command` | `commands/<name>.md` | user-typed `/slash` command | both |
+| `agent` | `agents/<name>.md` | specialized sub-agent for fan-out work | both |
+| `hook` | `hooks/<name>/` | script the host runs at a session event ([Hooks](Hooks)) | both — observe-only on Antigravity |
+| `snippet` | `snippets/<name>.md` | standing instruction fragment — emits as an Antigravity `rules/` file; Claude plugins can't ship instruction files, so it's dropped and the convention is carried directly in `CLAUDE.md` / `AGENTS.md` instead | Antigravity |
+
+These five ship today. The `kind` enum also reserves `mcp-server`, `status-line`, `output-style`, `workflow`, `rule`, and `settings-fragment` — no primitive uses them yet, so the generator emits none. The full enum lives in [Manifest Schema](Manifest-Schema).
 
 > [!NOTE]
-> **Group-level `scripts/` is not a `kind`.** A `src/<group>/scripts/` directory holds **verbatim helper scripts** (e.g. `code-review/scripts/cross-review.sh`, `developer-workflows/scripts/capability_probe.py`) — no frontmatter, no `kind`, not discovered as a primitive. The generator copies the whole directory wholesale (excluding `__pycache__`) into the emitted plugin at `dist/<host>/plugins/<group>/scripts/`, host-agnostic (both hosts). A primitive references a bundled script via the host plugin-root path (`${CLAUDE_PLUGIN_ROOT}/scripts/<name>` on Claude Code). See [`src/SCHEMA.md`](https://github.com/alexherrero/crickets/blob/main/src/SCHEMA.md) § Group-level assets.
+> **Group-level `scripts/` is not a `kind`.** A `src/<group>/scripts/` dir holds verbatim helper scripts (e.g. `code-review/scripts/cross-review.sh`, `developer-workflows/scripts/capability_probe.py`) — no frontmatter, no `kind`, not discovered as a primitive. The generator copies the whole dir wholesale (excluding `__pycache__`) into the plugin at `<plugin>/scripts/`, both hosts. A primitive references a bundled script through the host's plugin path — `${CLAUDE_PLUGIN_ROOT}/scripts/<name>` on Claude Code, or a **relative** `scripts/<name>` on Antigravity, which runs primitives from inside the plugin dir and sets no plugin-root variable. See [`src/SCHEMA.md`](https://github.com/alexherrero/crickets/blob/main/src/SCHEMA.md) § Group-level assets.
 
-> [!NOTE]
-> **Gemini CLI host removed in v0.9.0** per [ROADMAP item #15](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md). Standalone Gemini CLI is no longer a supported host. Antigravity (Gemini-in-IDE) stays as a supported host — different surface. See [ADR 0006](decisions/0006-gemini-cli-host-removal) for the host-scope-reduction rationale.
-
-## Implementation status
-
-| Kind | Installer support | Notes |
-|---|---|---|
-| `bundle` | ✅ (dispatches to inner primitives) | `skill`, `agent`, and `hook` kinds inside bundles are wired as of v0.7.0 |
-| `skill` | ✅ (v0.5.0; gemini-cli destination removed in v0.9.0) | Full dispatch to `.claude/skills/<name>/`, `.agents/skills/<name>/` |
-| `agent` | ✅ (v0.6.0; gemini-cli destination removed in v0.9.0) | Full dispatch to `.claude/agents/<name>.md`, `.agents/skills/<name>/SKILL.md` (sub-agent-as-skill wrap for Antigravity) |
-| `hook` | ✅ (v0.7.0, claude-code only) | Full dispatch to `.claude/hooks/<name>.{sh,ps1}` **plus** idempotent deep-merge of the hook's `settings-fragment-{bash,pwsh}.json` into `.claude/settings.json` via `scripts/merge-settings-fragment.py`. Other hosts have no first-class hook surface today. |
-| All others | ⚠️ Warning "not yet supported — skipped" | Future toolkit versions add them as the catalog grows |
-
-When a customization with an unsupported kind is encountered, the installer logs a warning and continues. The manifest still passes validation — the `kind` enum recognizes the value, the dispatch logic just doesn't have a handler yet.
-
-## What goes where
-
-### When to use a `skill` vs. `command` vs. `agent`
+## Choosing skill vs command vs agent
 
 | You want… | Use |
 |---|---|
-| An agent-triggered helper that runs on a keyword or context match (e.g. [`pii-scrubber`](https://github.com/alexherrero/crickets/blob/main/skills/pii-scrubber/SKILL.md); `design` and `memory` skills live in [Agent M](https://github.com/alexherrero/agentm) since v2.0.0) | `skill` |
-| A user-typed `/something` slash command | `command` |
-| A specialized agent for a specific kind of task (e.g. [`evaluator`](Use-The-Evaluator), `explorer`) | `agent` |
+| a helper the agent triggers on a keyword or context match (e.g. `pii-scrubber`) | `skill` |
+| a user-typed `/something` command | `command` |
+| a specialized agent for a specific task (e.g. [`evaluator`](Use-The-Evaluator), `explorer`) | `agent` |
 
-A single concept can ship as multiple primitives — e.g. an [`evaluator`](Use-The-Evaluator) agent + a `quality-gates` bundle that references it from a skill that auto-invokes it.
+One concept can ship as several primitives — e.g. an [`evaluator`](Use-The-Evaluator) agent plus a skill that auto-invokes it.
 
-### When to use a `bundle` vs. multiple standalone primitives
+## Grouping primitives into a plugin
 
-| You want… | Use |
-|---|---|
-| One coherent unit with multiple primitive types (e.g. skill + hook + agent that work together) | `bundle` |
-| Multiple independent customizations | Multiple standalone primitives |
-
-A bundle is right when the primitives **depend on each other** — installing one without the others would break the design. If the primitives are independently useful, ship them standalone.
-
-### Bundle directory layout
-
-```
-bundles/<bundle-name>/
-├── bundle.md                                # manifest + bundle-level doc
-├── skills/<inner-name>/SKILL.md             # one inner skill (kind: skill)
-├── hooks/<inner-name>.sh                    # one inner hook (kind: hook)  
-└── agents/<inner-name>.md                   # one inner agent (kind: agent)
-```
-
-The bundle's `contents:` list enumerates each inner primitive:
-
-```yaml
-contents:
-  - skill: <inner-name>
-  - hook: <inner-name>
-  - agent: <inner-name>
-```
-
-The installer resolves each entry by walking the bundle's matching subdir and dispatching to the right host destinations.
+Primitives that belong together live in one group (`src/<group>/`), which emits as one installable plugin. The group's `group.yaml` declares whether it's `standalone` or `requires` another group, and what it `enhances` — see [Manifest Schema](Manifest-Schema) for that contract. Independent customizations go in separate groups.
 
 ## Related
 
-- [Manifest Schema](Manifest-Schema) — the YAML frontmatter contract.
-- [Per-Host Paths](Per-Host-Paths) — destination paths per kind per host.
-- [Add a Skill](Add-A-Skill) — practical recipe. Plugin authoring lives in [Agent M](https://github.com/alexherrero/agentm) since v2.0.0. (`kind: bundle` is reserved-future in v2.0.0; no bundles ship.)
+- [Plugin anatomy](Plugin-Anatomy) — what a plugin is + its overall structure.
+- [Per-host paths](Per-Host-Paths) — where each kind lands in the plugin, per host.
+- [Manifest Schema](Manifest-Schema) — the frontmatter + `group.yaml` contract.
+- [Hooks](Hooks) — the hook catalog + how hooks run.
+- [Add a skill](Add-A-Skill) — a worked authoring recipe.

@@ -19,6 +19,7 @@
 - [Operator-control hooks](Operator-Control-Hooks)
 - [Modify a plugin](Modify-A-Plugin)
 - [Add a skill](Add-A-Skill)
+- [Plugin anatomy](Plugin-Anatomy)
 - [Customization Types](Customization-Types)
 - [Manifest Schema](Manifest-Schema)
 - [Per-Host Paths](Per-Host-Paths)
