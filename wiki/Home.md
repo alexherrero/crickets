@@ -42,7 +42,6 @@ For devs running the plugins:
 Crickets is grounded in established practice and industry precedent — and it *adapts* that practice rather than following it to the letter. We take inspiration from [Diátaxis](https://diataxis.fr) for documentation (expanding from it toward a house voice, not applying it strictly), adversarial review for code, phase-gating for the dev loop, and deterministic gates ahead of LLM judgment.
 
 - [Purpose and scope](Purpose-And-Scope) — what the repo is for, and what it isn't.
-- [Cross-Repo Memory Protocol](Cross-Repo-Memory-Protocol) — how agentm and crickets share memory at phase boundaries.
 - [Why adversarial review](Why-Adversarial-Review) — a reviewer primed to assume bugs finds real ones; a neutral "looks good" doesn't.
 - [Why deterministic gates run first](Why-Deterministic-Gates) — typecheck, lint, and tests gate before sycophantic LLM judgment.
 - [Why phase-gating](Why-Phase-Gating) — discrete plan → work → review → release gates beat freestyling the whole lifecycle.
