@@ -64,7 +64,15 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent
 DEFAULT_WIKI = REPO_ROOT / "wiki"
 
-MODE_DIRS = ("tutorials", "how-to", "reference", "explanation")
+_FOLDER_MODE = {
+    "get-started": "how-to",
+    "do": "how-to",
+    "reference": "reference",
+    "why": "explanation",
+    "designs": "explanation",
+    "decisions": "explanation",
+}
+MODE_DIRS = tuple(_FOLDER_MODE)
 STRUCTURAL_BASENAMES = {"Home", "_Sidebar", "_Footer", "README"}
 WORD_CAPS = {"tutorial": 1200, "how-to": 600, "explanation": 2000}
 BANNED_HOWTO_HEADINGS = {"rationale", "why", "background", "context"}
@@ -79,6 +87,7 @@ NUMBERED_STEP_TITLE_RE = re.compile(r"^(Step\s+\d+|\d+\.)", re.IGNORECASE)
 WHAT_LEARNED_RE = re.compile(r"^what\s+you('ve)?\s*learned", re.IGNORECASE)
 AMENDMENT_DATE_RE = re.compile(r"^Amendment\s+(\d{4}-\d{2}-\d{2})\s*$", re.IGNORECASE)
 STATUS_RE = re.compile(r"\*\*Status:\*\*\s*(\w+)", re.IGNORECASE)
+MODE_HINT_RE = re.compile(r"<!--\s*mode:\s*(tutorial|how-to|reference|explanation)\s*-->", re.IGNORECASE)
 
 
 @dataclass
@@ -111,16 +120,21 @@ def mode_for(path: Path, wiki_root: Path) -> str | None:
         return None
     if not rel.parts:
         return None
-    top = rel.parts[0]
-    if top == "tutorials":
-        return "tutorial"
-    if top == "how-to":
-        return "how-to"
-    if top == "reference":
-        return "reference"
-    if top == "explanation":
-        return "explanation"
-    return None
+    return _FOLDER_MODE.get(rel.parts[0])
+
+
+def resolve_mode(path: Path, wiki_root: Path) -> str | None:
+    """Page mode: an explicit `<!-- mode: X -->` hint wins (for a page whose folder
+    default doesn't fit — a tutorial in get-started/, a how-to in reference/);
+    otherwise the folder default (mode_for)."""
+    if is_structural(path):
+        return None
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return mode_for(path, wiki_root)
+    m = MODE_HINT_RE.search(text)
+    return m.group(1).lower() if m else mode_for(path, wiki_root)
 
 
 # ── parsing helpers ────────────────────────────────────────────────────────
@@ -350,11 +364,11 @@ def rule_i_orphan(modes: dict[Path, str | None],
 
 def rule_j_home_sidebar(wiki_root: Path, modes: dict[Path, str | None],
                         issues: list[Issue]) -> None:
-    """Home.md and _Sidebar.md must exist. `_Sidebar` is the **complete sitemap** —
-    it references every non-structural content page; since the sidebar renders on
-    every wiki page, that is the no-orphan guarantee. `Home` is **curated** — it is
-    not required to list every page (completeness lives in the sidebar), so a
-    landing page is free to surface only what a reader acts on."""
+    """Home.md and the root _Sidebar.md must exist. Every content page must be
+    reachable within **2 levels** of the sitemap: listed in the root _Sidebar.md OR
+    in a per-folder _Sidebar.md (GH Wiki renders the nearest one, so a section's own
+    sidebar is the second level). The union of all _Sidebar.md refs is the no-orphan
+    guarantee. `Home` is **curated** — free to surface only what a reader acts on."""
     home = wiki_root / "Home.md"
     sidebar = wiki_root / "_Sidebar.md"
     for p in (home, sidebar):
@@ -363,15 +377,17 @@ def rule_j_home_sidebar(wiki_root: Path, modes: dict[Path, str | None],
     if not sidebar.is_file():
         return
 
-    text = sidebar.read_text(encoding="utf-8", errors="replace")
-    sidebar_refs = {page for _, _, page in extract_wiki_links(text)}
+    all_refs: set[str] = set()
+    for sb in wiki_root.rglob("_Sidebar.md"):
+        all_refs |= {page for _, _, page in
+                     extract_wiki_links(sb.read_text(encoding="utf-8", errors="replace"))}
     for p, mode in modes.items():
         if mode is None:
             continue
-        if p.stem not in sidebar_refs:
+        if p.stem not in all_refs:
             emit(issues, sidebar, 1, "j",
-                 f"_Sidebar.md does not reference `{p.stem}` (mode: {mode}); "
-                 f"the sidebar must be the complete sitemap")
+                 f"`{p.stem}` (mode: {mode}) is referenced by no _Sidebar.md (root or "
+                 f"per-folder); every page must be reachable within 2 levels of the sitemap")
 
 
 def rule_k_word_count(p: Path, mode: str | None, text: str,
@@ -451,7 +467,7 @@ def resolve_include_readme(repo_root: Path, cli_include: bool) -> bool:
 def collect_issues(wiki_root: Path) -> list[Issue]:
     issues: list[Issue] = []
     all_paths = sorted(wiki_root.rglob("*.md"))
-    modes: dict[Path, str | None] = {p: mode_for(p, wiki_root) for p in all_paths}
+    modes: dict[Path, str | None] = {p: resolve_mode(p, wiki_root) for p in all_paths}
     stem_to_mode: dict[str, str] = {
         p.stem: m for p, m in modes.items() if m is not None
     }

@@ -1,3 +1,4 @@
+<!-- mode: how-to -->
 # How to add a new skill
 
 > [!NOTE]

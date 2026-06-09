@@ -1,3 +1,4 @@
+<!-- mode: tutorial -->
 # Installing and using the code-review plugin
 
 > [!NOTE]

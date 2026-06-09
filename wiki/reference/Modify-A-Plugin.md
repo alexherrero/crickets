@@ -1,3 +1,4 @@
+<!-- mode: how-to -->
 # How to modify a crickets plugin
 
 > [!NOTE]

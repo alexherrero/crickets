@@ -29,8 +29,8 @@
 
 [**Agent M**](https://github.com/alexherrero/agentm) holds the phase-gated workflow, auto-recall, and on-disk state — the structural backend. Crickets holds everything that rides on top.
 
-> **Latest:** v3.1 — **the developer-plugin suite**. The old `developer` seed split into `developer-workflows` (the phase loop), `developer-safety` (control hooks), and `code-review` (adversarial review), composed through `enhances:`. Native plugins still emit from one source: author under `src/<group>/`, and `scripts/generate.py` writes committed plugins under `dist/` for both hosts. Install with one line, the marketplace, or a manual `--plugin-dir` — see [the install how-to](wiki/how-to/Install-Into-Project.md).
-> [Release notes](https://github.com/alexherrero/crickets/releases/latest) · [Native-plugins HLD](wiki/explanation/designs/crickets-v3-native-plugins.md) · [CHANGELOG](CHANGELOG.md)
+> **Latest:** v3.1 — **the developer-plugin suite**. The old `developer` seed split into `developer-workflows` (the phase loop), `developer-safety` (control hooks), and `code-review` (adversarial review), composed through `enhances:`. Native plugins still emit from one source: author under `src/<group>/`, and `scripts/generate.py` writes committed plugins under `dist/` for both hosts. Install with one line, the marketplace, or a manual `--plugin-dir` — see [the install how-to](wiki/get-started/Install-Into-Project.md).
+> [Release notes](https://github.com/alexherrero/crickets/releases/latest) · [Native-plugins HLD](wiki/designs/crickets-v3-native-plugins.md) · [CHANGELOG](CHANGELOG.md)
 
 ## What's inside
 
@@ -81,7 +81,7 @@ claude plugin marketplace add alexherrero/crickets
 claude plugin install developer-workflows@crickets   # + developer-safety, code-review, github-ci, pii, wiki-maintenance
 ```
 
-All three install modes (one-liner / marketplace / manual `--plugin-dir`) per host: **[Install crickets plugins](wiki/how-to/Install-Into-Project.md)**. Hacking on a plugin? **[Modify a crickets plugin](wiki/how-to/Modify-A-Plugin.md)**.
+All three install modes (one-liner / marketplace / manual `--plugin-dir`) per host: **[Install crickets plugins](wiki/get-started/Install-Into-Project.md)**. Hacking on a plugin? **[Modify a crickets plugin](wiki/reference/Modify-A-Plugin.md)**.
 
 ## PII guardrails
 
@@ -109,7 +109,7 @@ crickets/
 ├── scripts/            # generate.py (+ emit_*), lint_src.py, src_model.py, check-* gates, tests
 ├── bootstrap.sh        # one-line installer (curl | bash)
 ├── templates/          # scaffolding (e.g. hooks/pre-push)
-├── wiki/               # Diátaxis docs (tutorials/ how-to/ reference/ explanation/)
+├── wiki/               # Diátaxis docs (get-started/ do/ reference/ why/ designs/ decisions/)
 ├── AGENTS.md           # universal instructions for any AGENTS.md-aware host
 └── CLAUDE.md           # Claude Code entry point — points back at AGENTS.md
 ```
@@ -118,10 +118,10 @@ crickets/
 
 ## Adding + developing customizations
 
-- [Tutorial 1 — Your first code review](wiki/tutorials/01-First-Code-Review.md)
-- [Modify a crickets plugin](wiki/how-to/Modify-A-Plugin.md) — the `src/` → generate → dogfood loop
-- [Add a skill](wiki/how-to/Add-A-Skill.md)
-- [Use the evaluator](wiki/how-to/Use-The-Evaluator.md) · [Operator-control hooks](wiki/reference/Operator-Control-Hooks.md)
+- [Tutorial 1 — Your first code review](wiki/get-started/01-First-Code-Review.md)
+- [Modify a crickets plugin](wiki/reference/Modify-A-Plugin.md) — the `src/` → generate → dogfood loop
+- [Add a skill](wiki/reference/Add-A-Skill.md)
+- [Use the evaluator](wiki/do/Use-The-Evaluator.md) · [Operator-control hooks](wiki/reference/Operator-Control-Hooks.md)
 - [Manifest Schema](wiki/reference/Manifest-Schema.md) — primitive frontmatter + `group.yaml`
 
 ## Status
