@@ -9,7 +9,7 @@ updated: 2026-06-04
 last_major_revision: 2026-06-04
 prd:
 project: https://github.com/users/alexherrero/projects/5
-parent_design: ../../wiki-maintenance.md
+parent_design: ../../wiki-maintenance-design.md
 part_slug: scaffold-fold-in
 dependencies: []
 estimated_scope: M

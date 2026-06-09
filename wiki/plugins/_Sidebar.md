@@ -8,6 +8,7 @@
 - [Developer Safety](Developer-Safety)
 - [Code Review](Code-Review)
 - [GitHub CI](GitHub-CI)
+- [Wiki Maintenance](Wiki-Maintenance)
 ### 💡 [Why it works](Why-It-Works)
 ### 🧩 [Designs](Designs)
 ### 📐 [Decisions](Decisions)

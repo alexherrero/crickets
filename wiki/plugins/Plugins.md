@@ -9,7 +9,8 @@ The crickets plugins — what each is and ships. Every one is a native host plug
 - **[Developer Safety](Developer-Safety)** — operator control + safety: `kill-switch` · `steer` · `commit-on-stop` + the commit conventions.
 - **[Code Review](Code-Review)** — standalone adversarial review of any diff or PR; sharpens `/review`. The `adversarial-reviewer` (+ cross-model) agents · `evidence-tracker`.
 - **[GitHub CI](GitHub-CI)** — CI + dependency-update tooling: the `dependabot-fixer` skill (requires `developer-workflows`).
-- **pii · wiki-maintenance** — `coming soon` (per-plugin pages land next).
+- **[Wiki Maintenance](Wiki-Maintenance)** — Diátaxis-shape, house-voice wiki upkeep: `wiki-author` · `diataxis-author` · `documenter` · `wiki-watch`.
+- **pii** — `coming soon` (the last per-plugin page).
 
 ## Recent changes
 

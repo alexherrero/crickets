@@ -26,6 +26,7 @@
 - [Developer Safety](Developer-Safety)
 - [Code Review](Code-Review)
 - [GitHub CI](GitHub-CI)
+- [Wiki Maintenance](Wiki-Maintenance)
 ### 💡 [Why it works](Why-It-Works)
 - [Purpose and scope](Purpose-And-Scope)
 - [Why adversarial review](Why-Adversarial-Review)
@@ -41,7 +42,7 @@
 **Crickets**
 - [Crickets v3.0 — Native Host Plugins](crickets-v3-native-plugins)
 - [Developer Plugin Suite (V5 ④)](developer-plugin-suite)
-- [Wiki Maintenance (V5 ④)](wiki-maintenance)
+- [Wiki Maintenance (V5 ④)](wiki-maintenance-design)
 - [diataxis-author — Diátaxis wiki authoring + maintenance](diataxis-author)
 ### 📐 [Decisions](Decisions)
 - [V3 Retrospective](v3-retrospective)

@@ -24,7 +24,7 @@
 
 | What | Plugin | Example primitives |
 |---|---|---|
-| 🪶 **Maintain a wiki** — Diátaxis shape, your house voice, doc-watching | [wiki-maintenance](wiki-maintenance) | [style-learning loop](Style-Learning-Loop) · [wiki-watcher](Run-The-Wiki-Watcher) |
+| 🪶 **Maintain a wiki** — Diátaxis shape, your house voice, doc-watching | [wiki-maintenance](Wiki-Maintenance) | [style-learning loop](Style-Learning-Loop) · [wiki-watcher](Run-The-Wiki-Watcher) |
 | 🔁 **Run a phase-gated dev process** — plan → work → review → release | [developer-workflows](Developer-Workflows) | [operator-control hooks](Operator-Control-Hooks) · [evaluator](Evaluator) |
 | 🔎 **Review a change adversarially** — any diff or PR, no `/work` cycle | [code-review](Code-Review) | [code review](Use-Code-Review) |
 | 🛡️ **Guard quality + secrets** — control + recovery hooks, a PII scan on push | [developer-safety](Developer-Safety) | [operator-control hooks](Operator-Control-Hooks) |
@@ -56,7 +56,7 @@ Crickets is grounded in established practice and industry precedent — and it *
 
 - **Native host plugins** ([design](crickets-v3-native-plugins)) — author a primitive once; the generator emits native Claude Code **and** Antigravity plugins, installable three ways, with a CI gate that fails if `dist/` drifts from `src/`.
 - **Developer plugin suite** ([design](developer-plugin-suite)) — the phase-gated dev loop, the safety controls, and adversarial review, as three composable plugins joined by `enhances:`.
-- **Wiki maintenance** ([design](wiki-maintenance)) — a template-driven wiki maintainer that expands from Diátaxis toward your house voice via an operator-in-the-loop learning loop, plus the wiki-watcher.
+- **Wiki maintenance** ([design](wiki-maintenance-design)) — a template-driven wiki maintainer that expands from Diátaxis toward your house voice via an operator-in-the-loop learning loop, plus the wiki-watcher.
 - **diataxis-author** ([design](diataxis-author)) — Diátaxis authoring and repair for any repo. *(now an Agent M skill — see the [Agent M design](https://github.com/alexherrero/agentm).)*
 
 ## 📐 Architecture decisions

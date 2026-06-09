@@ -33,7 +33,7 @@
   - [code-review](code-review-design)
   - [auto-enable-runtime](auto-enable-runtime)
   - [seed-retirement](seed-retirement)
-- [Wiki Maintenance (V5 ④)](wiki-maintenance)
+- [Wiki Maintenance (V5 ④)](wiki-maintenance-design)
   - [scaffold-fold-in](scaffold-fold-in)
   - [documenter-wiring](documenter-wiring)
   - [style-learning-loop](style-learning-loop-design)
