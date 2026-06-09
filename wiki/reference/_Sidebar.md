@@ -12,6 +12,7 @@
 - [Operator-control hooks](Operator-Control-Hooks)
 - [Antigravity Limitations](Antigravity-Limitations)
 - [Wiki Watch Config](Wiki-Watch-Config)
+- [Style-learning loop](Style-Learning-Loop)
 - [Modify a plugin](Modify-A-Plugin)
 - [Add a skill](Add-A-Skill)
 ### 💡 [Why it works](Why-It-Works)

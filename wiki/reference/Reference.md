@@ -13,6 +13,7 @@ Look up how crickets is built — what a plugin is, the kinds you can author, wh
 - **[Antigravity Limitations](Antigravity-Limitations)** — the `agy` host-gaps register + crickets mitigations.
 - **[Hooks](Hooks)** · **[Operator-control hooks](Operator-Control-Hooks)** — the hook catalog + how to drive the control trio.
 - **[Wiki Watch Config](Wiki-Watch-Config)** — the wiki-watcher config contract.
+- **[Style-learning loop](Style-Learning-Loop)** — how the wiki stays in your voice + what invokes it.
 - **[Modify a plugin](Modify-A-Plugin)** · **[Add a skill](Add-A-Skill)** — author and extend a plugin.
 
 ## Recent changes

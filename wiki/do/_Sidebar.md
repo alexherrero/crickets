@@ -2,7 +2,6 @@
 
 ### 🚀 [Get started](Get-Started)
 ### 🔧 [Do](Do)
-- [Maintain a wiki — style-learning loop](Run-The-Style-Learning-Loop)
 - [Maintain a wiki — wiki-watcher](Run-The-Wiki-Watcher)
 - [Review a change — code review](Use-Code-Review)
 - [Dev process — evaluator](Use-The-Evaluator)

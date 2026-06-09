@@ -24,7 +24,7 @@
 
 | What | Plugin | Example primitives |
 |---|---|---|
-| 🪶 **Maintain a wiki** — Diátaxis shape, your house voice, doc-watching | [wiki-maintenance](wiki-maintenance) | [style-learning loop](Run-The-Style-Learning-Loop) · [wiki-watcher](Run-The-Wiki-Watcher) |
+| 🪶 **Maintain a wiki** — Diátaxis shape, your house voice, doc-watching | [wiki-maintenance](wiki-maintenance) | [style-learning loop](Style-Learning-Loop) · [wiki-watcher](Run-The-Wiki-Watcher) |
 | 🔁 **Run a phase-gated dev process** — plan → work → review → release | [developer-workflows](developer-workflows) | [operator-control hooks](Operator-Control-Hooks) · [evaluator](Use-The-Evaluator) |
 | 🔎 **Review a change adversarially** — any diff or PR, no `/work` cycle | [code-review](code-review) | [code review](Use-Code-Review) |
 | 🛡️ **Guard quality + secrets** — deterministic gates + a PII scan on push | cross-plugin recipe | [quality gates](Quality-Gates-Recipe) |
