@@ -3,7 +3,7 @@
 > [!NOTE]
 > **Status:** accepted
 > **Date:** 2026-05-22
-> **Related:** [ADR 0001 — crickets purpose](0001-crickets-purpose) · [Parent design — MemoryVault](../designs/memoryvault.md) · [Plan #7b discovery-mining part](../designs/memoryvault/parts/discovery-mining.md) · [ROADMAP item #7b](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md)
+> **Related:** [ADR 0001 — crickets purpose](0001-crickets-purpose) · [Parent design — MemoryVault](https://github.com/alexherrero/agentm/wiki/memoryvault) · [Plan #7b discovery-mining part](https://github.com/alexherrero/agentm/wiki/discovery-mining) · [ROADMAP item #7b](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md)
 
 ## Context
 
@@ -105,8 +105,8 @@ All three new scripts (`index_skills.py`, `discover_skills.py`, `adapt_skills.py
 
 ## Related
 
-- Parent design: [MemoryVault — permanent agent memory](../designs/memoryvault.md)
-- Plan #7b part: [discovery-mining](../designs/memoryvault/parts/discovery-mining.md)
+- Parent design: [MemoryVault — permanent agent memory](https://github.com/alexherrero/agentm/wiki/memoryvault)
+- Plan #7b part: [discovery-mining](https://github.com/alexherrero/agentm/wiki/discovery-mining)
 - ROADMAP: [#7b MemoryVault Discovery + Mining](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md)
 - Sibling discovery follow-up: [ROADMAP #21 Harness self-audit skill](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md) — reuses discover_skills.py + adapt-evaluator infrastructure against harness's own conventions
 - Sibling discovery follow-up: [ROADMAP #22 Cross-surface AgentMemory protocol](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md) — configure-don't-build vault access across surfaces; uses the same operator-editable-whitelist pattern locked here

@@ -91,7 +91,7 @@ This amendment does not supersede ADR 0001's central decision (the toolkit/harne
 > [!NOTE]
 > **Status:** accepted · **Date:** 2026-05-20 · **Source:** [ROADMAP item #18](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md). Implemented in plan #18 (inserted mid-flight of plan #7a part 5). See `crickets/skills/memory/scripts/embed.py` v0.9.2+ for the implementation; this amendment captures the design rationale.
 
-The original ADR 0001 (2026-05-12) implied — and the parent [MemoryVault design](../designs/memoryvault.md)'s locked design call **C2** made explicit — that the toolkit would ship both an API-based embedding path (Anthropic API routed through Voyage) and a local `sentence-transformers` fallback. The dual-mode posture was driven by the assumption that operators with API access would prefer it for quality while local mode existed as an offline-capable fallback.
+The original ADR 0001 (2026-05-12) implied — and the parent [MemoryVault design](https://github.com/alexherrero/agentm/wiki/memoryvault)'s locked design call **C2** made explicit — that the toolkit would ship both an API-based embedding path (Anthropic API routed through Voyage) and a local `sentence-transformers` fallback. The dual-mode posture was driven by the assumption that operators with API access would prefer it for quality while local mode existed as an offline-capable fallback.
 
 In v0.9.2 (2026-05-20), the API embedding mode was **dropped entirely**. The toolkit now ships a single embedding mode — local `sentence-transformers` — with the default model upgraded from `all-MiniLM-L6-v2` (384-d, MTEB English 56.3) to `BAAI/bge-large-en-v1.5` (1024-d, MTEB English 64.2). `EMBEDDING_DIM` bumped 384 → 1024. The original ADR text above is preserved as historical record. Forward-looking references to embedding modes should read as a single production mode: `local` (plus `stub` for tests).
 
@@ -129,7 +129,7 @@ This amendment does not supersede ADR 0001's central decision (the toolkit/harne
 
 - [agentm ADR 0006](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0006-crickets-split.md) — the sibling decision in the harness repo, focused on the harness-side framing.
 - [ADR 0006 (crickets) — Gemini CLI host removal](0006-gemini-cli-host-removal) — the host-scope-reduction rationale that the 2026-05-17 amendment cross-references.
-- [MemoryVault design](../designs/memoryvault.md) — parent design doc; locked design call C2 (dual-mode embeddings) is superseded by the 2026-05-20 amendment.
+- [MemoryVault design](https://github.com/alexherrero/agentm/wiki/memoryvault) — parent design doc; locked design call C2 (dual-mode embeddings) is superseded by the 2026-05-20 amendment.
 - [agentm ROADMAP item #18](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md) — the inserting-mid-flight context for plan #18 (local-only embeddings).
 - [Purpose and scope](Purpose-And-Scope) — narrative summary of what this repo is for.
 - [Manifest schema reference](Manifest-Schema) — the YAML frontmatter contract.

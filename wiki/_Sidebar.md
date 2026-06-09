@@ -34,11 +34,7 @@
 - [Why deterministic gates run first](Why-Deterministic-Gates)
 - [Why phase-gating](Why-Phase-Gating)
 ### 🧩 [Designs](Designs)
-**Architecture (Agent M)**
-- [MemoryVault — permanent agent memory](memoryvault)
-- [Agent Memory Evolution V1→V7](agent-memory-evolution)
-- [Device-Wide Architecture](device-wide-architecture)
-- [Memory-OS Architecture (V5)](memory-os-architecture)
+**Architecture (Agent M)** — [in the agentm wiki ↗](https://github.com/alexherrero/agentm/wiki/memoryvault)
 
 **Crickets**
 - [Crickets v3.0 — Native Host Plugins](crickets-v3-native-plugins)

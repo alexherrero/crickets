@@ -6,17 +6,7 @@
 ### 🔌 [Plugins](Plugins)
 ### 💡 [Why it works](Why-It-Works)
 ### 🧩 [Designs](Designs)
-**Architecture (Agent M)**
-- [MemoryVault — permanent agent memory](memoryvault)
-  - [write-primitives](write-primitives)
-  - [recall-loop](recall-loop)
-  - [reflection-and-recovery](reflection-and-recovery)
-  - [idea-ledger](idea-ledger)
-  - [seed-pass](seed-pass)
-  - [discovery-mining](discovery-mining)
-- [Agent Memory Evolution V1→V7](agent-memory-evolution)
-- [Device-Wide Architecture](device-wide-architecture)
-- [Memory-OS Architecture (V5)](memory-os-architecture)
+**Architecture (Agent M)** — [in the agentm wiki ↗](https://github.com/alexherrero/agentm/wiki/memoryvault)
 
 **Crickets**
 - [Crickets v3.0 — Native Host Plugins](crickets-v3-native-plugins)

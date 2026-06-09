@@ -6,7 +6,7 @@
 
 ## Context
 
-Bucket ④ extracted the operator's opinionated developer process out of `agentm` into native crickets plugins — the first build step of the V5 "unbundling" ([memory-os-architecture HLD](../designs/memory-os-architecture)). The companion child design [Developer Plugin Suite](../designs/developer-plugin-suite) (`launched`) ships the full design across six parts; this ADR locks the load-bearing decisions.
+Bucket ④ extracted the operator's opinionated developer process out of `agentm` into native crickets plugins — the first build step of the V5 "unbundling" ([memory-os-architecture HLD](https://github.com/alexherrero/agentm/wiki/memory-os-architecture)). The companion child design [Developer Plugin Suite](../designs/developer-plugin-suite) (`launched`) ships the full design across six parts; this ADR locks the load-bearing decisions.
 
 The `#40` schema modelled only **hard** dependencies (`requires:` / `standalone:` — [ADR 0013](0013-bundles-native-plugins)). But the relationships in the dev-loop are **soft**: a safety layer that should auto-engage *when present*; an adversarial reviewer that should upgrade `/review` *when installed* — each also useful entirely on its own. There was no manifest expression for "augments X when both are installed," no runtime to make it engage, and the monolithic `developer` seed conflated three separable concerns.
 
@@ -72,7 +72,7 @@ The local probe is the **interim fallback**. The permanent home is a generalized
 ## Related
 
 - [Developer Plugin Suite](../designs/developer-plugin-suite) (`launched`) — the child design + its six part files.
-- [memory-os-architecture HLD](../designs/memory-os-architecture) (V5) — the parent; the unbundling this wave begins.
+- [memory-os-architecture HLD](https://github.com/alexherrero/agentm/wiki/memory-os-architecture) (V5) — the parent; the unbundling this wave begins.
 - [ADR 0013](0013-bundles-native-plugins) — bundles are native plugins generated from one SoT (the `requires:`/`standalone:` hard-dep model `enhances:` extends).
 - [ADR 0016](0016-project-surface-split) — the project-surface split.
 - agentm `ROADMAP-AgentMemoryV5.md` item **V5-8** — the host capability-discovery API that retires the local probe; and **⑤ V5 slim** — removing agentm's now-duplicated baked-in copies (the **dev-loop** portion is unblocked by this wave's dogfood; the docs/PM portions follow as bucket ④'s Wiki/docs + project-management plugins land).

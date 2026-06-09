@@ -14,8 +14,8 @@ The architecture behind crickets and Agent M — the high-level design docs that
 
 **Architecture (Agent M)**
 
-- **[MemoryVault](memoryvault)** — permanent agent memory.
-- **[Agent Memory Evolution V1→V7](agent-memory-evolution)** · **[Device-Wide Architecture](device-wide-architecture)** · **[Memory-OS (V5)](memory-os-architecture)**.
+- **[MemoryVault](https://github.com/alexherrero/agentm/wiki/memoryvault)** — permanent agent memory.
+- **[Agent Memory Evolution V1→V7](https://github.com/alexherrero/agentm/wiki/agent-memory-evolution)** · **[Device-Wide Architecture](https://github.com/alexherrero/agentm/wiki/device-wide-architecture)** · **[Memory-OS (V5)](https://github.com/alexherrero/agentm/wiki/memory-os-architecture)**.
 
 ## Recent changes
 

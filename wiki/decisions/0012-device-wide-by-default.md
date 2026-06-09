@@ -14,7 +14,7 @@ The harness started as a phase-gated workflow for a single repo: `bash install.s
 - Onboarding new repos: re-run `install.sh` per project; easy to forget; install drift between projects.
 - The agent's tools (skills, hooks, slash commands) belong to the OPERATOR, not to each project. Today's per-project install model says otherwise.
 
-Plan #18 (V4 architecture design pass) reframed the harness as the operator's **agentic OS** — installed device-wide once, with project-specific state living in the vault. The companion HLD [`device-wide-architecture.md`](../designs/device-wide-architecture.md) ships the full design. This ADR captures the load-bearing decisions + their trade-offs.
+Plan #18 (V4 architecture design pass) reframed the harness as the operator's **agentic OS** — installed device-wide once, with project-specific state living in the vault. The companion HLD [`device-wide-architecture.md`](https://github.com/alexherrero/agentm/wiki/device-wide-architecture) ships the full design. This ADR captures the load-bearing decisions + their trade-offs.
 
 **Open questions the decision resolves:**
 
@@ -117,8 +117,8 @@ v3.x MINOR releases ship with deprecation warnings on every legacy-path read fal
 
 ## Related
 
-- [`device-wide-architecture.md`](../designs/device-wide-architecture.md) — the HLD this ADR locks decisions for
-- [`agent-memory-evolution.md`](../designs/agent-memory-evolution.md) — the V1 → V6 evolution context
+- [`device-wide-architecture.md`](https://github.com/alexherrero/agentm/wiki/device-wide-architecture) — the HLD this ADR locks decisions for
+- [`agent-memory-evolution.md`](https://github.com/alexherrero/agentm/wiki/agent-memory-evolution) — the V1 → V6 evolution context
 - [ADR 0001](0001-crickets-purpose) — original crickets/agentm split (this ADR shifts the boundary per V4 #36)
 - [ADR 0002](0002-evaluator-design) — sub-agent-as-skill pattern preserved per design call
 - [ADR 0006](0006-gemini-cli-host-removal) — historical context for the `agentm requires crickets; crickets standalone` asymmetry

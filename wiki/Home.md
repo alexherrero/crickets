@@ -50,7 +50,7 @@ Crickets is grounded in established practice and industry precedent — and it *
 
 **Architecture (Agent M)** — the substrate crickets runs on. These are Agent M's; see its design docs rather than re-reading them here.
 
-- **Agent M memory** — the MemoryVault store, the device-wide architecture, and the memory-OS unbundling. → [Agent M design docs](https://github.com/alexherrero/agentm). Background: [MemoryVault](memoryvault) · [memory evolution](agent-memory-evolution) · [device-wide](device-wide-architecture) · [memory-OS](memory-os-architecture).
+- **Agent M memory** — the MemoryVault store, the device-wide architecture, and the memory-OS unbundling. → [Agent M design docs](https://github.com/alexherrero/agentm). Background: [MemoryVault](https://github.com/alexherrero/agentm/wiki/memoryvault) · [memory evolution](https://github.com/alexherrero/agentm/wiki/agent-memory-evolution) · [device-wide](https://github.com/alexherrero/agentm/wiki/device-wide-architecture) · [memory-OS](https://github.com/alexherrero/agentm/wiki/memory-os-architecture).
 
 **Plugins (Crickets)** — what each adds, in plain terms.
 
