@@ -10,7 +10,7 @@ last_major_revision: 2026-06-03
 prd:
 project:
 parent_design: ../../developer-plugin-suite.md
-part_slug: developer-safety
+part_slug: developer-safety-design
 dependencies: [enhances-schema, developer-workflows]
 estimated_scope: S
 ---

@@ -10,7 +10,7 @@ last_major_revision: 2026-06-04
 prd:
 project: https://github.com/users/alexherrero/projects/5
 parent_design: ../../wiki-maintenance.md
-part_slug: style-learning-loop
+part_slug: style-learning-loop-design
 dependencies: [scaffold-fold-in]
 estimated_scope: L
 ---

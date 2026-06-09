@@ -319,13 +319,14 @@ def rule_g_unique(all_paths: list[Path], wiki_root: Path,
     for p in all_paths:
         if is_structural(p):
             continue
-        stems.setdefault(p.stem, []).append(p)
+        stems.setdefault(p.stem.lower(), []).append(p)
     for stem, paths in stems.items():
         if len(paths) > 1:
             others = [p.relative_to(wiki_root).as_posix() for p in paths]
             for p in paths:
                 emit(issues, p, 1, "g",
-                     f"basename `{stem}` not unique; collides with {others}")
+                     f"basename `{stem}` not unique (case-insensitive — GitHub Wiki "
+                     f"resolves links by basename and collides on case); collides with {others}")
 
 
 def rule_h_links_resolve(p: Path, text: str, known_stems: set[str],
