@@ -103,6 +103,12 @@ codification — until then the monoliths stay.
 - **Pick the mode by reader intent, not topic.** A page that's mostly lookup — tables, a
   catalog, troubleshooting — with thin task content is **reference**, not how-to, even if it's
   titled "How to use X." (Pass-1: the base-hooks how-to → the `Operator-Control-Hooks` reference.)
+- **Infrastructure other workflows invoke is reference, not how-to.** A page about a mechanism the
+  system runs *for* the operator — a voice layer, a hook, a watcher — is **reference**, even if you
+  *can* drive it by hand. Lead with **what it is** + **how the infra uses it** (which workflows invoke
+  it), describe the mechanism, and demote any hands-on to a **light section at the end** (for
+  experimenting). A how-to is a task the operator performs; if they rarely run it, it's reference.
+  (Pass-1: the style-learning-loop how-to → the `Style-Learning-Loop` reference, at the operator's call.)
 - **One-line pointer over inline detail.** When content's canonical home is another page, leave
   a brief pointer (a line or a few words), not a duplicated block. (Pass-1: the hook-portability
   contract → `Hooks`; the Antigravity gaps → the `Antigravity-Limitations` register.)
