@@ -61,8 +61,8 @@ codification — until then the monoliths stay.
 
 ## 3. Structural opinions (the house wiki structure)
 
-- **Landing pages are curated, not exhaustive sitemaps.** Completeness lives in `_Sidebar`
-  (the sitemap); a landing lists only what a reader acts on.
+- **Landing pages are curated, not exhaustive sitemaps.** Completeness lives in the per-section
+  sidebars (see *the sidebar is per-section* below); a landing lists only what a reader acts on.
 - The "do" section organizes by **user intent** — a `What / Component / Example primitives`
   table — never a flat how-to dump. Not-yet-built intents get a `coming soon` marker, never
   a dead link.
@@ -78,9 +78,19 @@ codification — until then the monoliths stay.
   principles. Not decision history (that's ADRs) and not retrospectives.
 - **"Major designs"** lists architecture/substrate first (refer *out* to the substrate's own
   docs), then components in plain English.
-- **`_Sidebar` is the complete sitemap**, grouped to mirror the landing's intent order:
-  Get started · Do · Reference (user lookups + developer specs) · Why it works · Designs ·
-  Decisions. One **Reference** section covers both lookups and contributor specs.
+- **The sidebar is per-section, not one complete sitemap.** The wiki is organized into
+  **intent-group folders** matching the nav sections — `get-started/` · `do/` · `reference/` ·
+  `why/` · `designs/` · `decisions/`. Each folder carries its own `_Sidebar.md`; GitHub Wiki renders
+  the **nearest** one, so a section's sidebar shows the full section list with **only the current
+  section expanded** (collapsed sections link to a representative entry page). Reachability is
+  **≤2 levels** — the root sidebar lists the sections, a per-folder sidebar lists that section's
+  pages; a page need not be on the root. (Needs the wiki-sync to exempt `_Sidebar.md`/`_Footer.md`
+  from the basename dupe-check; `check-wiki` rule-j checks the union of all sidebars.)
+- **Mode follows intent, not folder — pin it with a hint when they diverge.** Intent folders mix
+  Diátaxis modes (a tutorial + a how-to in `get-started/`; how-tos filed under `reference/`). A page
+  whose folder default doesn't fit carries an invisible `<!-- mode: tutorial|how-to|reference|explanation -->`
+  comment that `check-wiki` reads (folder default otherwise). Folder→mode defaults: `get-started`/`do`
+  → how-to, `reference` → reference, `why`/`designs`/`decisions` → explanation.
 - **Pick the mode by reader intent, not topic.** A page that's mostly lookup — tables, a
   catalog, troubleshooting — with thin task content is **reference**, not how-to, even if it's
   titled "How to use X." (Pass-1: the base-hooks how-to → the `Operator-Control-Hooks` reference.)
