@@ -24,6 +24,7 @@
 ### 🔌 [Plugins](Plugins)
 - [Developer Workflows](Developer-Workflows)
 - [Developer Safety](Developer-Safety)
+- [Code Review](Code-Review)
 ### 💡 [Why it works](Why-It-Works)
 - [Purpose and scope](Purpose-And-Scope)
 - [Why adversarial review](Why-Adversarial-Review)

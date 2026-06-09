@@ -7,7 +7,8 @@ The crickets plugins — what each is and ships. Every one is a native host plug
 
 - **[Developer Workflows](Developer-Workflows)** — the phase-gated dev loop (`/setup` … `/bugfix`) + the explorer / evaluator agents; the base the others enhance.
 - **[Developer Safety](Developer-Safety)** — operator control + safety: `kill-switch` · `steer` · `commit-on-stop` + the commit conventions.
-- **code-review · github-ci · pii · wiki-maintenance** — `coming soon` (per-plugin pages land next).
+- **[Code Review](Code-Review)** — standalone adversarial review of any diff or PR; sharpens `/review`. The `adversarial-reviewer` (+ cross-model) agents · `evidence-tracker`.
+- **github-ci · pii · wiki-maintenance** — `coming soon` (per-plugin pages land next).
 
 ## Recent changes
 

@@ -26,7 +26,7 @@
 |---|---|---|
 | 🪶 **Maintain a wiki** — Diátaxis shape, your house voice, doc-watching | [wiki-maintenance](wiki-maintenance) | [style-learning loop](Style-Learning-Loop) · [wiki-watcher](Run-The-Wiki-Watcher) |
 | 🔁 **Run a phase-gated dev process** — plan → work → review → release | [developer-workflows](Developer-Workflows) | [operator-control hooks](Operator-Control-Hooks) · [evaluator](Evaluator) |
-| 🔎 **Review a change adversarially** — any diff or PR, no `/work` cycle | [code-review](code-review) | [code review](Use-Code-Review) |
+| 🔎 **Review a change adversarially** — any diff or PR, no `/work` cycle | [code-review](Code-Review) | [code review](Use-Code-Review) |
 | 🛡️ **Guard quality + secrets** — control + recovery hooks, a PII scan on push | [developer-safety](Developer-Safety) | [operator-control hooks](Operator-Control-Hooks) |
 | 📋 **Plan & track a project** — roadmaps, plans, boards | `coming soon` (V5) | — |
 

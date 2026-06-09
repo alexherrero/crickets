@@ -6,6 +6,7 @@
 ### 🔌 Plugins
 - [Developer Workflows](Developer-Workflows)
 - [Developer Safety](Developer-Safety)
+- [Code Review](Code-Review)
 ### 💡 [Why it works](Why-It-Works)
 ### 🧩 [Designs](Designs)
 ### 📐 [Decisions](Decisions)

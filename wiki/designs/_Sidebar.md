@@ -30,7 +30,7 @@
   - [enhances-schema](enhances-schema)
   - [developer-workflows](developer-workflows-design)
   - [developer-safety](developer-safety-design)
-  - [code-review](code-review)
+  - [code-review](code-review-design)
   - [auto-enable-runtime](auto-enable-runtime)
   - [seed-retirement](seed-retirement)
 - [Wiki Maintenance (V5 ④)](wiki-maintenance)
