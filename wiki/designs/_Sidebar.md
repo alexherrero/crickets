@@ -28,7 +28,7 @@
   - [dogfood-proof-docs](dogfood-proof-docs)
 - [Developer Plugin Suite (V5 ④)](developer-plugin-suite)
   - [enhances-schema](enhances-schema)
-  - [developer-workflows](developer-workflows)
+  - [developer-workflows](developer-workflows-design)
   - [developer-safety](developer-safety-design)
   - [code-review](code-review)
   - [auto-enable-runtime](auto-enable-runtime)

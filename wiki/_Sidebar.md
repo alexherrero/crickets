@@ -22,6 +22,7 @@
 - [Add a skill](Add-A-Skill)
 - [Add a plugin](Add-A-Plugin)
 ### 🔌 [Plugins](Plugins)
+- [Developer Workflows](Developer-Workflows)
 - [Developer Safety](Developer-Safety)
 ### 💡 [Why it works](Why-It-Works)
 - [Purpose and scope](Purpose-And-Scope)

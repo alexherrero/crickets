@@ -10,7 +10,7 @@ last_major_revision: 2026-06-03
 prd:
 project:
 parent_design: ../../developer-plugin-suite.md
-part_slug: developer-workflows
+part_slug: developer-workflows-design
 dependencies: [enhances-schema]
 estimated_scope: L
 ---
