@@ -27,6 +27,7 @@
 - [Code Review](Code-Review)
 - [GitHub CI](GitHub-CI)
 - [Wiki Maintenance](Wiki-Maintenance)
+- [PII Guardrail](PII)
 ### 💡 [Why it works](Why-It-Works)
 - [Purpose and scope](Purpose-And-Scope)
 - [Why adversarial review](Why-Adversarial-Review)

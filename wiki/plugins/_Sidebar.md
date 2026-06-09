@@ -9,6 +9,7 @@
 - [Code Review](Code-Review)
 - [GitHub CI](GitHub-CI)
 - [Wiki Maintenance](Wiki-Maintenance)
+- [PII Guardrail](PII)
 ### 💡 [Why it works](Why-It-Works)
 ### 🧩 [Designs](Designs)
 ### 📐 [Decisions](Decisions)

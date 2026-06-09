@@ -10,13 +10,14 @@ The crickets plugins — what each is and ships. Every one is a native host plug
 - **[Code Review](Code-Review)** — standalone adversarial review of any diff or PR; sharpens `/review`. The `adversarial-reviewer` (+ cross-model) agents · `evidence-tracker`.
 - **[GitHub CI](GitHub-CI)** — CI + dependency-update tooling: the `dependabot-fixer` skill (requires `developer-workflows`).
 - **[Wiki Maintenance](Wiki-Maintenance)** — Diátaxis-shape, house-voice wiki upkeep: `wiki-author` · `diataxis-author` · `documenter` · `wiki-watch`.
-- **pii** — `coming soon` (the last per-plugin page).
+- **[PII Guardrail](PII)** — scan diffs + the working tree for personal info before commit/push: the `pii-scrubber` skill.
 
 ## Recent changes
 
 <!-- maintained by the wiki tooling -->
 
 - **2026-06-09** — Plugins section added; Developer Safety is the first per-plugin page (it folds in the retired quality-gates recipe).
+- **2026-06-09** — Plugins section complete — all six plugin pages now live (developer-workflows · developer-safety · code-review · github-ci · wiki-maintenance · pii).
 
 ## See also
 
