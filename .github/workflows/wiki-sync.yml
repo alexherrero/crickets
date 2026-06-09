@@ -2,9 +2,13 @@ name: "[W] Update Wiki"
 
 # Mirrors wiki/ in this repo to the GitHub Wiki on every push to the
 # default branch that touches wiki/**. Mirror semantics — add, edit,
-# rename, delete. Fails loudly on duplicate basenames across subdirs
-# (GH Wiki resolves page links by basename, so collisions would silently
-# clobber). Gracefully skips when the wiki is disabled on the repo.
+# rename, delete. rsync -a preserves the dir tree, so a per-folder
+# _Sidebar.md renders as that section's nav (GH Wiki uses the nearest one).
+# Fails loudly on duplicate basenames across subdirs (GH Wiki resolves page
+# LINKS by basename, so collisions would silently clobber) — but _Sidebar.md
+# / _Footer.md are exempt: they're location-rendered, never linked by
+# basename, so per-folder copies are expected. Gracefully skips when the
+# wiki is disabled on the repo.
 
 on:
   push:
@@ -35,7 +39,7 @@ jobs:
             exit 0
           fi
 
-          dupes=$(find wiki -type f -name '*.md' | awk -F/ '{print $NF}' | sort | uniq -d || true)
+          dupes=$(find wiki -type f -name '*.md' -not -name '_Sidebar.md' -not -name '_Footer.md' | awk -F/ '{print $NF}' | sort | uniq -d || true)
           if [[ -n "$dupes" ]]; then
             echo "::error::Duplicate wiki basenames (would collide on GitHub Wiki):"
             while IFS= read -r name; do
