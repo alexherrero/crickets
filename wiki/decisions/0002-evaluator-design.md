@@ -79,7 +79,7 @@ Verdict: <PASS or NEEDS_WORK> — <one-sentence framing>
 
 **Negative**
 
-- **Caller carries the rubric-quality responsibility.** A vague rubric ("the code is well-structured") returns FAIL with "rubric item not verifiable as written." This is the intended failure mode — the evaluator refuses to grade prose — but it means rubric authoring is a real skill consumers have to learn. The how-to ([Use the evaluator](Use-The-Evaluator)) covers rubric anti-patterns explicitly.
+- **Caller carries the rubric-quality responsibility.** A vague rubric ("the code is well-structured") returns FAIL with "rubric item not verifiable as written." This is the intended failure mode — the evaluator refuses to grade prose — but it means rubric authoring is a real skill consumers have to learn. The [Evaluator](Evaluator) reference covers rubric anti-patterns explicitly.
 - **No `Bash` means tests must be pre-run by the caller.** The evaluator cannot run tests to check their status. Callers run tests beforehand, redirect output to a file, add the file to `ARTIFACT:`, and have a rubric item like *"test-output.txt's final line reads 'OK'"*. More setup than "evaluator runs the tests"; the trade-off keeps the no-replay invariant intact.
 - **Two grader surfaces means consumers must pick.** `/review` users now choose: adversarial alone, evaluator alone, or both. The comparison table in `04-review.md §3b` makes the choice explicit, but it's a real discoverability cost paid by every reviewer.
 - **Rubric format is a soft API.** The `ARTIFACT:` / `RUBRIC:` labeled-sections shape isn't enforced by a schema validator — it's a documented prompt convention. If a consumer dispatches with a different shape, the evaluator returns "Input contract violation" rather than silently degrading; but the contract is conventional, not enforced.
@@ -114,7 +114,7 @@ Per ADR 0011, the sub-agent-as-skill pattern remains the correct dispatch for `k
 
 ## Related
 
-- [Use the evaluator](Use-The-Evaluator) — practical how-to with three worked rubrics.
+- [Evaluator](Evaluator) — the dispatch contract + a worked rubric.
 - [Customization Types](Customization-Types) — what `kind: agent` means and the v0.6.0 installer support.
 - [Per-Host Paths](Per-Host-Paths) — where the evaluator lands per host.
 - [evaluator agent spec](https://github.com/alexherrero/crickets/blob/main/agents/evaluator.md) — the canonical body.

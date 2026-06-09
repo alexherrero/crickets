@@ -145,7 +145,7 @@ Together: operator-controllable (kill-switch + steer), recoverable (commit-on-st
 
 ## Cross-references
 
-- [Use-The-Evaluator](Use-The-Evaluator) — caller patterns for the evaluator sub-agent.
+- [Evaluator](Evaluator) — the rubric dispatch contract for the evaluator sub-agent.
 - [Operator-control hooks](Operator-Control-Hooks) — the three hooks + their trigger files.
 - [Add-A-Skill](Add-A-Skill) — authoring new primitives.
 - [Install crickets plugins](Install-Into-Project) — installing the plugins these gates ship in.

@@ -47,6 +47,6 @@ The cross-model pass sends your diff to the **Gemini CLI → Google**. Treat it 
 
 - [Install crickets plugins](Install-Into-Project) — get the `code-review` plugin onto your host.
 - [Installing and using the code-review plugin](01-First-Code-Review) — the hands-on first run, if you haven't done one.
-- [Use the evaluator](Use-The-Evaluator) — PASS / NEEDS_WORK grading against a rubric (a different reviewer role).
+- [Evaluator](Evaluator) — PASS / NEEDS_WORK grading against a rubric (a different reviewer role).
 - [Compatibility](Compatibility) — the `evidence-tracker` hook (also in `code-review`) is Claude-only-effective.
 - [Modify a crickets plugin](Modify-A-Plugin) — edit the reviewers / `cross-review.sh` and dogfood.

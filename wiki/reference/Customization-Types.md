@@ -23,9 +23,9 @@ These five ship today. The `kind` enum also reserves `mcp-server`, `status-line`
 |---|---|
 | a helper the agent triggers on a keyword or context match (e.g. `pii-scrubber`) | `skill` |
 | a user-typed `/something` command | `command` |
-| a specialized agent for a specific task (e.g. [`evaluator`](Use-The-Evaluator), `explorer`) | `agent` |
+| a specialized agent for a specific task (e.g. [`evaluator`](Evaluator), `explorer`) | `agent` |
 
-One concept can ship as several primitives — e.g. an [`evaluator`](Use-The-Evaluator) agent plus a skill that auto-invokes it.
+One concept can ship as several primitives — e.g. an [`evaluator`](Evaluator) agent plus a skill that auto-invokes it.
 
 ## Grouping primitives into a plugin
 
