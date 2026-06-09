@@ -35,6 +35,7 @@ crickets ships the five kinds above — `skill`, `agent`, `command`, `hook`, `sn
 
 ## Related
 
+- [Plugin anatomy](Plugin-Anatomy) — what a plugin is + its overall structure.
 - [Customization Types](Customization-Types) — what each kind means.
 - [Manifest Schema](Manifest-Schema) — the frontmatter + `group.yaml` contract.
 - [Modify a plugin](Modify-A-Plugin) — edit `src/`, regenerate, dogfood.
