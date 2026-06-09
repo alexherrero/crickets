@@ -84,10 +84,11 @@ codification — until then the monoliths stay.
 - **The sidebar is per-section, not one complete sitemap.** The wiki is organized into
   **intent-group folders** matching the nav sections — `get-started/` · `do/` · `reference/` ·
   `why/` · `designs/` · `decisions/`. Each folder carries its own `_Sidebar.md`; GitHub Wiki renders
-  the **nearest** one, so a section's sidebar shows the full section list with **only the current
-  section expanded** (collapsed sections link to a representative entry page). Reachability is
-  **≤2 levels** — the root sidebar lists the sections, a per-folder sidebar lists that section's
-  pages; a page need not be on the root. (Needs the wiki-sync to exempt `_Sidebar.md`/`_Footer.md`
+  the **nearest** one, so a per-folder sidebar shows the full section list with **only the current
+  section expanded**; collapsed headings link to that section's **index landing**. The **root
+  sidebar (the homepage)** instead shows **all sections expanded one level** — the full map.
+  Reachability is **≤2 levels** — the root shows each section's pages one level deep, a per-folder
+  sidebar lists its full section; a page need not be on the root. (Needs the wiki-sync to exempt `_Sidebar.md`/`_Footer.md`
   from the basename dupe-check; `check-wiki` rule-j checks the union of all sidebars.)
 - **Mode follows intent, not folder — pin it with a hint when they diverge.** Intent folders mix
   Diátaxis modes (a tutorial + a how-to in `get-started/`; how-tos filed under `reference/`). A page
@@ -155,6 +156,12 @@ codification — until then the monoliths stay.
 - Governing lesson — **`user-facing-prose`** (global): plain, present-tense; cut marketing
   boasts, version-history asides, docs meta-commentary, and **LLM-tell vocabulary**
   ("first-class" → "supported", "seamless", "robust", "leverage"). Describe what a thing does now.
+- **Strip plan-internal jargon + implementation internals from user-facing pages.** Cut design-call
+  codes (`DC-W4`, `DC-8`), task/part numbers (`part 4`, `task 1-4`), internal IDs (`(W1)`), and bucket
+  labels; cut implementation names a reader doesn't act on — resolver/function names, internal `.py`
+  filenames, test counts (`38 tests`), internal mechanics (`CycleReport`, `finalize_cycle`). State the
+  behaviour, not how it's built or which task shipped it. (Pass-1: applied across the wiki-maintenance
+  pages — Antigravity-Limitations · Wiki-Watch-Config · Run-The-Wiki-Watcher · Style-Learning-Loop.)
 - Lesson — **`command-howto-clarity`** (global): in command/install how-tos, flag example
   lists as examples + show per-item commands; state versions as minimums; defer per-host
   detail to the reference page.
