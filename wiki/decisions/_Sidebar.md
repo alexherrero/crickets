@@ -22,3 +22,4 @@
 - [0015 — #36 partial-revision](0015-partial-revision-36)
 - [0016 — Project surface split](0016-project-surface-split)
 - [0017 — `enhances:` soft composition](0017-enhances-soft-composition)
+- [0018 — per-folder sidebars](0018-per-folder-sidebars)

@@ -21,6 +21,7 @@ This page is the index. The homepage links here once instead of listing every AD
 - [ADR 0015 — #36 partial-revision](0015-partial-revision-36)
 - [ADR 0016 — Project surface split](0016-project-surface-split)
 - [ADR 0017 — Soft composition (`enhances:`) + the developer split + capability probe](0017-enhances-soft-composition)
+- [ADR 0018 — Per-folder sidebars: intent-grouped wiki folders with collapse/expand nav](0018-per-folder-sidebars)
 
 ## Retrospectives
 
