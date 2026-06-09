@@ -20,6 +20,7 @@
 - [Style-learning loop](Style-Learning-Loop)
 - [Modify a plugin](Modify-A-Plugin)
 - [Add a skill](Add-A-Skill)
+- [Add a plugin](Add-A-Plugin)
 ### 🔌 [Plugins](Plugins)
 - [Developer Safety](Developer-Safety)
 ### 💡 [Why it works](Why-It-Works)

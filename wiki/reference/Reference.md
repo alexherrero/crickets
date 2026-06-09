@@ -15,7 +15,7 @@ Look up how crickets is built — what a plugin is, the kinds you can author, wh
 - **[Evaluator](Evaluator)** — the read-only rubric grader + its dispatch contract.
 - **[Wiki Watch Config](Wiki-Watch-Config)** — the wiki-watcher config contract.
 - **[Style-learning loop](Style-Learning-Loop)** — how the wiki stays in your voice + what invokes it.
-- **[Modify a plugin](Modify-A-Plugin)** · **[Add a skill](Add-A-Skill)** — author and extend a plugin.
+- **[Modify a plugin](Modify-A-Plugin)** · **[Add a skill](Add-A-Skill)** · **[Add a plugin](Add-A-Plugin)** — author, extend, and create plugins.
 
 ## Recent changes
 

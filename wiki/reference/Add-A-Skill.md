@@ -1,108 +1,49 @@
 <!-- mode: how-to -->
-# How to add a new skill
+# How to add a skill
 
 > [!NOTE]
-> **Goal:** Add a new standalone skill to `crickets` and ship it via the installer.
-> **Prereqs:** You know what the skill does and which hosts it targets; `crickets` cloned locally.
+> **Goal:** Add a skill to a crickets plugin — author the `SKILL.md`, regenerate, and dogfood it.
+> **Prereqs:** crickets cloned; Python 3 + PyYAML; `claude` and/or `agy`. You know what the skill does and which hosts it targets.
+
+A skill lives **inside a plugin group** — `src/<group>/skills/<name>/SKILL.md`. Pick the group it belongs to (e.g. `pii`, `wiki-maintenance`); if it needs a new one, [add the plugin first](Add-A-Plugin).
 
 ## Steps
 
-1. Pick a name (`CamelCase-With-Dashes` per filename convention; globally unique across all customizations):
-
-   ```bash
-   SKILL_NAME=my-new-skill
-   ```
-
-2. Create the directory:
-
-   ```bash
-   cd ~/Antigravity/crickets
-   mkdir -p skills/$SKILL_NAME
-   ```
-
-3. Create `skills/<name>/SKILL.md` with full frontmatter:
+1. **Author the skill** at `src/<group>/skills/<name>/SKILL.md` (`<name>` is `kebab-case`, globally unique):
 
    ```yaml
    ---
-   name: my-new-skill
-   description: One or two sentences describing when this skill triggers and what it does.
+   name: my-skill
+   description: One or two sentences — when it triggers and what it does.
    kind: skill
    supported_hosts: [claude-code, antigravity]
    version: 0.1.0
-   install_scope: project
    ---
 
-   <skill body — operational instructions for the agent>
+   <skill body — operational instructions for the agent: preconditions, workflow, hard rules, output contract>
    ```
 
-   See [Manifest Schema](Manifest-Schema) for the full field list and validation rules.
+   The body *is* the skill; keep it operational. `src/pii/skills/pii-scrubber/SKILL.md` is a good model. Field contract: [Manifest schema](Manifest-Schema).
 
-4. Write the skill body. Keep it operational — preconditions, workflow, hard rules, output contract. See `skills/pii-scrubber/SKILL.md` as a reference.
-
-5. Validate locally:
+2. **Lint the source:**
 
    ```bash
-   python3 scripts/validate-manifests.py
+   python3 scripts/lint_src.py
    ```
 
-   Output should be: `validate-manifests: clean (X bundle(s), Y standalone skill(s))` with `Y` increased by one.
+3. **Regenerate + dogfood** — `python3 scripts/generate.py build`, then load the plugin on a host and exercise the skill. The full edit → generate → dogfood loop is in [Modify a plugin](Modify-A-Plugin).
 
-6. Test the dispatch by installing into a scratch dir:
-
-   ```bash
-   TARGET=$(mktemp -d)
-   cd $TARGET && git init -q
-   bash ~/Antigravity/crickets/install.sh $TARGET
-   ls $TARGET/.claude/skills/$SKILL_NAME/    # should contain SKILL.md
-   ls $TARGET/.agents/skills/$SKILL_NAME/     # same
-   # Note: .agents/skills/ removed in v0.9.0 (Gemini CLI host dropped per ROADMAP #15).
-   rm -rf $TARGET
-   ```
-
-7. Commit your changes. The pre-push hook will scan your changes for PII before the push goes out — fix any findings before pushing.
+4. **Commit the source *and* `dist/`** together (`git add src/ dist/`) — they ship as one change. The pre-push PII hook scans first.
 
 ## Variants
 
-### Host-specific skill
-
-If the skill only makes sense on one host (e.g. a Claude Code hook that has no Antigravity equivalent), narrow `supported_hosts`:
-
-```yaml
-supported_hosts: [claude-code]
-```
-
-The installer skips the dispatch for hosts not in the list.
-
-### Skill with supporting scripts
-
-Skills can ship more than just `SKILL.md`. Place supporting files under the same dir:
-
-```
-skills/<name>/
-├── SKILL.md                # manifest + body
-├── scripts/
-│   └── <helper>.sh         # invoked from the skill body
-└── templates/
-    └── <template>.md       # used by the skill at runtime
-```
-
-The installer copies the whole dir (managed-dir wipe-and-recreate on `--update`). Reference supporting files from `SKILL.md` body via relative paths.
-
-### Skill inside a bundle
-
-To package multiple primitives together, group them in one plugin (`src/<group>/`) — see [Plugin anatomy](Plugin-Anatomy).
-
-## Verify
-
-After adding the skill:
-
-1. `python3 scripts/validate-manifests.py` exits 0.
-2. `bash scripts/smoke-install-bash.sh` exits 0 (the expected-files list might need updating if your skill is in the smoke test's assertion list — but for net-new skills not in the smoke list, the test still passes since it only asserts a subset).
-3. The skill body's instructions actually do what they claim — test by invoking the skill in your host.
+- **Host-specific** — narrow `supported_hosts` (e.g. `[claude-code]`); the generator emits the skill only for the listed hosts.
+- **Supporting files** — a skill can ship more than `SKILL.md`. A file used only by this skill lives in its own dir (`skills/<name>/…`, referenced by a relative path); a helper shared across the plugin's primitives goes in the group's `scripts/` (referenced via `${CLAUDE_PLUGIN_ROOT}/scripts/<name>` — see [Per-host paths](Per-Host-Paths)).
 
 ## Related
 
-- [Manifest Schema](Manifest-Schema) — frontmatter contract.
-- [Per-Host Paths](Per-Host-Paths) — where the skill lands per host.
-- [Customization Types](Customization-Types) — when a skill is the right kind vs. command/agent/hook.
-- [Plugin anatomy](Plugin-Anatomy) — packaging primitives into a plugin.
+- [Add a plugin](Add-A-Plugin) — create a new plugin group to house the skill.
+- [Modify a plugin](Modify-A-Plugin) — the edit → generate → dogfood loop.
+- [Manifest schema](Manifest-Schema) — the frontmatter contract.
+- [Customization types](Customization-Types) — skill vs command / agent / hook.
+- [Per-host paths](Per-Host-Paths) — where the skill lands per host.
