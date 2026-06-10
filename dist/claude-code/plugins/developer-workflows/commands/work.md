@@ -1,6 +1,6 @@
 ---
 name: work
-description: Implement exactly one task from .harness/PLAN.md. Stop after one, gates green.
+description: Work .harness/PLAN.md's task list autonomously; safety-gate each task, stop to ask only when one fails the check or needs a clarification.
 kind: command
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
@@ -8,15 +8,15 @@ install_scope: project
 argument-hint: [optional — "task N" to pick a specific task instead of the next unchecked one]
 ---
 
-You are running the **work** phase of the developer-workflows loop. Implement **exactly one** task from `.harness/PLAN.md`. Stop when that task is done and its verification gates are green. **Do not start the next task.**
+You are running the **work** phase of the developer-workflows loop. Work through `.harness/PLAN.md`'s task list **autonomously** — one task at a time, in sequence, assuming the full list. Before each task, run a safety pre-check; **stop and ask the operator only when a task fails it or an important clarification is needed.** Otherwise run to the end of the plan, gates green before each `[x]`.
 
 **Argument (if any):** $ARGUMENTS
 
-> "One task per session" is not a suggestion — it's the load-bearing constraint that keeps implementation single-threaded and coherent. Parallel implementers produce mutually-inconsistent decisions; single-task sessions let you hold the full context of what you're changing and why.
+> The session works the **whole task list autonomously** — the unit is the plan, not a single task. What keeps that safe is the **per-task safety pre-check**: before each task, decide whether it can be done safely and autonomously, and stop to ask if it can't (or if a clarification is needed). Single-threaded execution is the load-bearing constraint — never fan out parallel implementers; the autonomy boundary is the safety check, not the task count.
 
 ## Non-negotiable constraints
 
-1. **One task per session.** Do not start the next task, even if it looks easy.
+1. **Assume the full task list; safety-gate each task.** Work the plan's tasks autonomously, in sequence — no per-task approval. Before each task, run a safety pre-check; **stop and ask only when a task fails it (hard-to-reverse / ambiguous / scope-drifting / unverifiable) or needs a clarification** — otherwise continue to the end of the plan. Single-threaded always; never fan out parallel implementers.
 2. **Gates must be green before the task is marked `[x]`.** No "I'll fix this next session" on failed gates.
 3. **Never edit or delete a failing test to make it pass.** If a test is wrong, surface it and stop.
 4. **Feed full error output back** on gate failures — do not summarize. The exact error is the signal.
@@ -33,13 +33,9 @@ You are running the **work** phase of the developer-workflows loop. Implement **
 
 Read `PLAN.md` (find the first unchecked `[ ]` task, or honor `/work task N`); `progress.md` (was a prior session interrupted — resume or restart?); `AGENTS.md` / `CLAUDE.md` (commit style, test runner, conventions).
 
-### 2. Confirm scope
+### 2. Safety pre-check (before each task)
 
-Before writing any code, state the task in one sentence and confirm:
-
-> About to work on **task N: <title>**. Verification: <one-line criterion>. OK?
-
-Skip only if the user explicitly said "just work on the next task." The confirmation is cheap and catches plan/intent drift.
+The session assumes the **full task list** — it does not ask permission per task. Before starting each task, run a go/no-go safety pre-check: **proceed autonomously if the task is safe; stop and ask only when it isn't, or when an important clarification is needed.** Triggers to stop — the task is hard to reverse or touches something destructive / external / published / security-sensitive; needs a decision that isn't locked; turns out bigger or different than the plan said (scope drift); has a verification that can't be made executable or an unmet prerequisite; or surfaces a failing test that invalidates its premise. State the trigger plainly and wait — even mid-plan. Otherwise proceed to step 3.
 
 ### 3. Gather context (optional)
 
@@ -82,15 +78,15 @@ One task, one commit, referencing the task. Follow project trailer conventions (
 
 If `.harness/project.json` exists and `gh` is authed, consider whether this session surfaced anything **out of task scope** (an adjacent bug, a refactor, missing coverage elsewhere, a stale doc) — *not* follow-ups to the current task. Batch one item per finding into a single preview after the commit. Preview-and-ask is non-negotiable. Silent-skip if absent / nothing surfaced.
 
-### 11. Stop
+### 11. Loop or stop
 
-**Do not start the next task** — it gets its own session (`/work` again, or `/review` first if the task was high-risk). Return a ≤5-bullet summary: task completed; files changed; tests added; gates (all green, or N iterations + why); next (`/review` if high-risk, else `/work`, or `/release` if all tasks done).
+After the commit, **loop back to step 2** for the next unchecked task — same session, same context — running the plan autonomously. Stop only when the plan is done (no `[ ]` left) or a safety pre-check fires / a clarification is needed (stop mid-plan and ask). Run an inline `/review` first when a just-finished task was high-risk. Return a ≤5-bullet summary: tasks completed this session; why it stopped (plan done / safety stop); files changed; gates (green per task, or N iterations + why); next.
 
 When to `/review` rather than straight to the next `/work`: the task touched security/auth/payments/persistence; it was the last task in the plan; the plan's Risks flagged this area; or the change feels brittle. Skip review for routine changes (new tests, pure refactors, docs, scaffolding) — the next `/work` runs gates anyway.
 
 ## Failure modes to avoid
 
-- **Starting the next task "while you're in there."** The most common way `/work` breaks coherence. Stop after one.
+- **Pushing past a failed safety pre-check.** Being in an approved run isn't a license — if a task is hard-to-reverse, ambiguous, scope-drifting, or needs a clarification, stop and ask, even mid-plan.
 - **Editing tests to make them pass.** Banned — if a test is wrong, say so and stop.
 - **Skipping failed gates** ("I'll fix it next session"). Green before `[x]`.
 - **Silently expanding scope.** Surface it; don't quietly do more than the plan says.

@@ -35,7 +35,7 @@ The commands run the loop; the canonical phase **methodology** (what each phase 
 
 ## Why it works
 
-Discrete `plan → work → review → release` gates beat freestyling the whole lifecycle in one pass: context is ephemeral, so state lives on disk (`PLAN.md` / `progress.md`); one task per `/work` session keeps changes coherent; and `/review` is adversarial by design — a reviewer primed to assume bugs finds real ones. See [Why phase-gating](Why-Phase-Gating) and [Why adversarial review](Why-Adversarial-Review).
+Discrete `plan → work → review → release` gates beat freestyling the whole lifecycle in one pass: context is ephemeral, so state lives on disk (`PLAN.md` / `progress.md`); `/work` runs the plan's task list autonomously, single-threaded and gated by a per-task safety check, so changes stay coherent; and `/review` is adversarial by design — a reviewer primed to assume bugs finds real ones. See [Why phase-gating](Why-Phase-Gating) and [Why adversarial review](Why-Adversarial-Review).
 
 ## Related
 

@@ -35,7 +35,7 @@ What's new lives in the [CHANGELOG](CHANGELOG.md).
 
 Six plugins, generated from one source. Together they cover the working day with an agent:
 
-- **Run a phase-gated dev process** — plan → work → review → release, one task at a time.
+- **Run a phase-gated dev process** — plan → work → review → release, working the plan autonomously with a per-task safety check.
 - **Stay in control of a running agent** — an emergency stop, mid-run redirection, and crash recovery that never touches your branch.
 - **Review any diff or PR adversarially** — a reviewer primed to find bugs, not to agree.
 - **Fix Dependabot PRs automatically** — reads the failing CI and the changelog, patches, never merges.
