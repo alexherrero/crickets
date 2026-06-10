@@ -110,7 +110,7 @@ codification — until then the monoliths stay.
   / `recent-changes` sections.)
 - **Pick the mode by reader intent, not topic.** A page that's mostly lookup — tables, a
   catalog, troubleshooting — with thin task content is **reference**, not how-to, even if it's
-  titled "How to use X." (Pass-1: the base-hooks how-to → the `Operator-Control-Hooks` reference.)
+  titled "How to use X." (Pass-1: the base-hooks content is lookup-heavy — trigger files + troubleshooting — so reference, not how-to; it now lives in the Developer-Safety plugin page.)
 - **Infrastructure other workflows invoke is reference, not how-to.** A page about a mechanism the
   system runs *for* the operator — a voice layer, a hook, a watcher — is **reference**, even if you
   *can* drive it by hand. Lead with **what it is** + **how the infra uses it** (which workflows invoke

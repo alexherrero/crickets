@@ -21,7 +21,46 @@ On Antigravity, install by path (see [Install crickets plugins](Install-Into-Pro
 | **`commit-no-coauthor`** | snippet | never append a `Co-Authored-By` trailer — the user is the sole author |
 | **`worktrees-never-auto`** | snippet | never auto-create git worktrees |
 
-Drive the control trio from [Operator-control hooks](Operator-Control-Hooks); the full hook catalog is in [Hooks](Hooks). The snippets emit as Antigravity `rules/` and drop on Claude (where the conventions live in `CLAUDE.md`/`AGENTS.md` instead — see [Customization types](Customization-Types)).
+Drive the control trio with the trigger files under `.harness/` — see **[Driving the control trio](#driving-the-control-trio)** below; the full hook catalog is in [Hooks](Hooks). The snippets emit as Antigravity `rules/` and drop on Claude (where the conventions live in `CLAUDE.md`/`AGENTS.md` instead — see [Customization types](Customization-Types)).
+
+## Driving the control trio
+
+The three hooks are driven by **trigger files** under `.harness/` (all per-repo):
+
+| File | Who writes it | Lifecycle |
+|---|---|---|
+| `.harness/STOP` | you | `touch` to halt; `rm` to resume |
+| `.harness/STEER.md` | you | the hook renames it to `STEER.consumed-<ts>.md` after reading |
+| `auto-save/<ts>` (branch) | `commit-on-stop` | recover (below), then `git branch -D auto-save/<ts>` |
+
+**Halt a runaway session** — in another terminal at the repo root:
+
+```bash
+touch .harness/STOP     # next tool call is blocked; rm .harness/STOP to resume
+```
+
+**Redirect mid-run** — write the correction; the next tool call injects it into context:
+
+```bash
+cat > .harness/STEER.md <<'EOF'
+Use the existing helper at src/utils.py:format_record() instead of writing a new one.
+EOF
+```
+
+To **halt *and* redirect**, write `STEER.md` first, then `touch .harness/STOP`. `kill-switch` is declared before `steer` in the plugin's `hooks.json`, so the halt always wins; when you `rm` STOP, the next call passes kill-switch and then `steer` injects the redirect. (Re-audit on every Claude Code release — this relies on declaration-ordered firing; rationale in [ADR 0003](0003-base-operator-hooks).)
+
+**Recover crashed work** — `commit-on-stop` saved each dirty turn to a branch:
+
+```bash
+git branch -a | grep auto-save                        # find the safety branches
+git checkout main && git cherry-pick auto-save/<ts>    # bring the commit onto main
+```
+
+The hook never modifies your current branch or pushes — recovery is always your call.
+
+**On Antigravity** the hooks run observe-only (no veto/inject). Approximate them with an always-on rule (`.agents/rules/operator-control.md`) that, before each step, checks `.harness/STOP` (halt) and `.harness/STEER.md` (apply + rename), and saves a dirty tree to an `auto-save/<ts>` branch at the end — best-effort, since the agent has to remember to check.
+
+**Troubleshooting.** A hook didn't fire → confirm `claude plugin list` shows `developer-safety` (re-sync with `claude plugin install developer-safety@crickets`; the hooks run from the plugin, not `.claude/hooks/`). `.harness/STOP` ignored → it must be a regular file (`touch`, not `mkdir`), resolved against the repo root. No `auto-save` branch → a silent no-op when git is absent, you're not in a work tree, or the tree is already clean.
 
 ## How it composes
 
@@ -35,8 +74,8 @@ The primitives compose into a safety net: **operator-controllable** (kill-switch
 
 ## Related
 
-- [Operator-control hooks](Operator-Control-Hooks) — how to use kill-switch / steer / commit-on-stop.
 - [Hooks](Hooks) — the hook catalog + per-host effectiveness.
+- [ADR 0003 — base operator hooks](0003-base-operator-hooks) — the design rationale + re-audit triggers.
 - [Plugin anatomy](Plugin-Anatomy) — what a crickets plugin is + its structure.
 - [Install crickets plugins](Install-Into-Project) — all three install modes.
 - [Developer Plugin Suite design](developer-plugin-suite) — the developer-workflows / safety / code-review split.

@@ -11,7 +11,7 @@ Look up how crickets is built — what a plugin is, the kinds you can author, wh
 - **[Manifest Schema](Manifest-Schema)** — the frontmatter + `group.yaml` contract.
 - **[Compatibility](Compatibility)** — supported hosts + per-plugin and per-hook effectiveness.
 - **[Antigravity Limitations](Antigravity-Limitations)** — the `agy` host-gaps register + crickets mitigations.
-- **[Hooks](Hooks)** · **[Operator-control hooks](Operator-Control-Hooks)** — the hook catalog + how to drive the control trio.
+- **[Hooks](Hooks)** — the hook catalog + how hooks work (the `developer-safety` control trio is driven from its [plugin page](Developer-Safety)).
 - **[Evaluator](Evaluator)** — the read-only rubric grader + its dispatch contract.
 - **[Wiki Watch Config](Wiki-Watch-Config)** — the wiki-watcher config contract.
 - **[Style-learning loop](Style-Learning-Loop)** — how the wiki stays in your voice + what invokes it.

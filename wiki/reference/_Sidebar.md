@@ -9,7 +9,6 @@
 - [Manifest Schema](Manifest-Schema)
 - [Per-Host Paths](Per-Host-Paths)
 - [Hooks](Hooks)
-- [Operator-control hooks](Operator-Control-Hooks)
 - [Evaluator](Evaluator)
 - [Antigravity Limitations](Antigravity-Limitations)
 - [Wiki Watch Config](Wiki-Watch-Config)

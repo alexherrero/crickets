@@ -25,9 +25,9 @@
 | What | Plugin | Example primitives |
 |---|---|---|
 | 🪶 **Maintain a wiki** — Diátaxis shape, your house voice, doc-watching | [wiki-maintenance](Wiki-Maintenance) | [style-learning loop](Style-Learning-Loop) · [wiki-watcher](Run-The-Wiki-Watcher) |
-| 🔁 **Run a phase-gated dev process** — plan → work → review → release | [developer-workflows](Developer-Workflows) | [operator-control hooks](Operator-Control-Hooks) · [evaluator](Evaluator) |
+| 🔁 **Run a phase-gated dev process** — plan → work → review → release | [developer-workflows](Developer-Workflows) | [operator-control hooks](Developer-Safety) · [evaluator](Evaluator) |
 | 🔎 **Review a change adversarially** — any diff or PR, no `/work` cycle | [code-review](Code-Review) | [code review](Use-Code-Review) |
-| 🛡️ **Guard quality + secrets** — control + recovery hooks, a PII scan on push | [developer-safety](Developer-Safety) | [operator-control hooks](Operator-Control-Hooks) · [PII guardrail](PII) |
+| 🛡️ **Guard quality + secrets** — control + recovery hooks, a PII scan on push | [developer-safety](Developer-Safety) | [operator-control hooks](Developer-Safety) · [PII guardrail](PII) |
 | 📋 **Plan & track a project** — roadmaps, plans, boards | `coming soon` (V5) | — |
 
 ## 📖 Look up a detail

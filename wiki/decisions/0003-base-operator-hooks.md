@@ -210,7 +210,7 @@ This fixes the three problems directly: **(1) no working-tree mutation** — in-
 
 ## Related
 
-- [Operator-control hooks](Operator-Control-Hooks) — the reference: the three hooks, their trigger files, ordering, and troubleshooting.
+- [Developer Safety](Developer-Safety) — the plugin page: the three hooks, their trigger files, ordering, and troubleshooting.
 - [kill-switch hook spec](https://github.com/alexherrero/crickets/blob/main/hooks/kill-switch/hook.md)
 - [steer hook spec](https://github.com/alexherrero/crickets/blob/main/hooks/steer/hook.md)
 - [commit-on-stop hook spec](https://github.com/alexherrero/crickets/blob/main/hooks/commit-on-stop/hook.md)
