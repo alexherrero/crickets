@@ -20,6 +20,11 @@ Symptom-first lookup for when something stops working — find your symptom, fol
 2. Re-sync: `claude plugin install <plugin>@crickets` (after `claude plugin marketplace update crickets` if the marketplace is stale). On Antigravity, reinstall by path against `dist/antigravity/plugins/<plugin>` ([Install crickets plugins](Install-Into-Project)).
 3. If you're developing locally with `--plugin-dir`, check the path points at the **generated** plugin (`dist/claude-code/plugins/<plugin>`), not `src/` — and regenerate after edits ([Modify a plugin](Modify-A-Plugin)).
 4. A primitive missing on one host only → check its `supported_hosts:`; the generator only emits it for the hosts it declares ([Manifest schema](Manifest-Schema)).
+5. **Shows `✘ failed to load` after an upgrade** → the plugin was **renamed or removed** (e.g. `wiki` → `wiki-maintenance` in v3.2.0). The old install points at a name the marketplace no longer offers. Uninstall the old name and install the new one:
+   ```bash
+   claude plugin uninstall <old>@crickets && claude plugin install <new>@crickets
+   ```
+   To see every out-of-sync plugin + the exact swap commands in one shot: `python3 scripts/reconcile_plugins.py`.
 
 ## A hook didn't fire
 
