@@ -156,7 +156,26 @@ def classify_standalones(claude_home: Path = CLAUDE_HOME,
     return actions
 
 
-def main() -> int:
+def remove_standalone(claude_home: Path, prim) -> Path:
+    """Remove one ~/.claude standalone — a skill directory or an agent/command
+    .md file — and return the path removed. Reversible: reinstall the plugin (or
+    the standalone) to restore it."""
+    kind, name = prim
+    target = claude_home / KINDS[kind] / (name if kind == "skill" else f"{name}.md")
+    if kind == "skill":
+        shutil.rmtree(target)
+    else:
+        target.unlink()
+    return target
+
+
+def apply_retirement(claude_home: Path, superseded) -> list:
+    """Remove every superseded standalone; return the removed paths (sorted by the
+    primitive). Pure mechanics — confirmation + printing live in the CLI."""
+    return [remove_standalone(claude_home, prim) for prim in sorted(superseded)]
+
+
+def _reconcile_plugins() -> int:
     offered = offered_plugins()
     installed = installed_plugins()
     if installed is None:
@@ -174,6 +193,62 @@ def main() -> int:
         print(f"  ○ {name}@{MARKET} is available but not installed "
               f"→ claude plugin install {name}@{MARKET}")
     return 0
+
+
+def _reconcile_standalones(apply: bool = False, assume_yes: bool = False,
+                           claude_home: Path = CLAUDE_HOME,
+                           plugins_root: Path = PLUGINS_ROOT, installed=None) -> int:
+    if installed is None:
+        installed = installed_plugins()
+    if installed is None:
+        print("reconcile: `claude` CLI unavailable — can't confirm installed plugins,")
+        print(f"  so no standalone under {claude_home} is eligible for retirement "
+              f"(safe default).")
+        return 0
+    rep = classify_standalones(claude_home, plugins_root, installed)
+    sup, kept, prov = rep["superseded"], rep["kept"], rep["provenance"]
+    divergent = sorted(KNOWN_DIVERGENT & installed_standalones(claude_home))
+    if not sup:
+        print(f"reconcile: ✓ no superseded standalones under {claude_home} "
+              f"({len(kept)} kept).")
+        return 0
+    print(f"reconcile: {len(sup)} superseded standalone(s) under {claude_home}:")
+    for kind, name in sup:
+        print(f"  ✘ {KINDS[kind]}/{name}  — superseded by {prov[(kind, name)]}@{MARKET}")
+    for kind, name in divergent:
+        print(f"  ◆ {KINDS[kind]}/{name}  — kept (known-divergent, not auto-removed)")
+    if not apply:
+        print(f"\n  preview only — re-run with --standalones --apply to remove the "
+              f"{len(sup)} superseded standalone(s). Reversible (reinstall to restore).")
+        return 0
+    if not assume_yes:
+        resp = input(f"\nRemove {len(sup)} superseded standalone(s)? [y/N] ").strip().lower()
+        if resp not in ("y", "yes"):
+            print("  aborted — nothing removed.")
+            return 0
+    for path in apply_retirement(claude_home, sup):
+        print(f"  removed {path}")
+    print(f"reconcile: removed {len(sup)} standalone(s).")
+    return 0
+
+
+def main(argv=None) -> int:
+    import argparse
+    p = argparse.ArgumentParser(
+        description="Reconcile installed crickets plugins (default), or retire "
+                    "shadowing ~/.claude primitive standalones (--standalones).")
+    p.add_argument("--standalones", action="store_true",
+                   help="reconcile ~/.claude primitive standalones instead of plugins")
+    p.add_argument("--apply", action="store_true",
+                   help="(with --standalones) remove superseded standalones after confirmation")
+    p.add_argument("--yes", action="store_true",
+                   help="(with --apply) skip the interactive confirmation")
+    args = p.parse_args(argv)
+    if args.standalones:
+        return _reconcile_standalones(apply=args.apply, assume_yes=args.yes)
+    if args.apply or args.yes:
+        p.error("--apply / --yes require --standalones")
+    return _reconcile_plugins()
 
 
 if __name__ == "__main__":

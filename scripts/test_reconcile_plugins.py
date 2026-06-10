@@ -4,6 +4,8 @@ real marketplace reflects the wiki→wiki-maintenance rename.
 Runs in the battery (unittest discovery). Stdlib only; the host shell-out
 (`installed_plugins`) is deliberately NOT exercised here — it graceful-skips
 when `claude` is absent, which is the case in CI."""
+import contextlib
+import io
 import sys
 import tempfile
 import unittest
@@ -150,6 +152,79 @@ class TestStandaloneScan(unittest.TestCase):
             rep = rp.classify_standalones(home, rp.PLUGINS_ROOT, installed=None)
             self.assertEqual(rep["superseded"], [])               # can't confirm installs
             self.assertEqual(rep["kept"], [("command", "work")])
+
+
+class TestApplyRetirement(unittest.TestCase):
+    def _fixture(self, root):
+        """A ~/.claude home + a dist plugins root. home has: command/work (superseded),
+        command/design (keep-list), agent/documenter (divergent -> kept), skill/wiki-author
+        (superseded). Returns (home, plugins, installed)."""
+        home = root / "home"
+        (home / "commands").mkdir(parents=True)
+        (home / "commands" / "work.md").write_text("x", encoding="utf-8")
+        (home / "commands" / "design.md").write_text("x", encoding="utf-8")
+        (home / "agents").mkdir()
+        (home / "agents" / "documenter.md").write_text("x", encoding="utf-8")
+        (home / "skills" / "wiki-author").mkdir(parents=True)
+        plugins = root / "plugins"
+        (plugins / "developer-workflows" / "commands").mkdir(parents=True)
+        (plugins / "developer-workflows" / "commands" / "work.md").write_text("x", encoding="utf-8")
+        (plugins / "wiki-maintenance" / "agents").mkdir(parents=True)
+        (plugins / "wiki-maintenance" / "agents" / "documenter.md").write_text("x", encoding="utf-8")
+        (plugins / "wiki-maintenance" / "skills" / "wiki-author").mkdir(parents=True)
+        return home, plugins, {"developer-workflows", "wiki-maintenance"}
+
+    def test_remove_standalone_file_and_dir(self):
+        with tempfile.TemporaryDirectory() as td:
+            home = Path(td)
+            (home / "agents").mkdir()
+            f = home / "agents" / "bar.md"; f.write_text("x", encoding="utf-8")
+            (home / "skills" / "foo").mkdir(parents=True)
+            rp.remove_standalone(home, ("agent", "bar"))
+            rp.remove_standalone(home, ("skill", "foo"))
+            self.assertFalse(f.exists())
+            self.assertFalse((home / "skills" / "foo").exists())
+
+    def test_classify_then_apply_removes_only_superseded(self):
+        with tempfile.TemporaryDirectory() as td:
+            home, plugins, installed = self._fixture(Path(td))
+            rep = rp.classify_standalones(home, plugins, installed)
+            self.assertEqual(rep["superseded"],
+                             [("command", "work"), ("skill", "wiki-author")])
+            self.assertIn(("command", "design"), rep["kept"])
+            self.assertIn(("agent", "documenter"), rep["kept"])   # divergent protected
+            rp.apply_retirement(home, rep["superseded"])
+            self.assertFalse((home / "commands" / "work.md").exists())
+            self.assertFalse((home / "skills" / "wiki-author").exists())
+            self.assertTrue((home / "commands" / "design.md").exists())     # keep-list survives
+            self.assertTrue((home / "agents" / "documenter.md").exists())   # divergent survives
+
+    def test_apply_is_idempotent(self):
+        with tempfile.TemporaryDirectory() as td:
+            home, plugins, installed = self._fixture(Path(td))
+            rep = rp.classify_standalones(home, plugins, installed)
+            rp.apply_retirement(home, rep["superseded"])
+            rep2 = rp.classify_standalones(home, plugins, installed)
+            self.assertEqual(rep2["superseded"], [])               # second run is a no-op
+
+    def test_preview_writes_nothing(self):
+        with tempfile.TemporaryDirectory() as td:
+            home, plugins, installed = self._fixture(Path(td))
+            with contextlib.redirect_stdout(io.StringIO()):
+                rc = rp._reconcile_standalones(apply=False, claude_home=home,
+                                               plugins_root=plugins, installed=installed)
+            self.assertEqual(rc, 0)
+            self.assertTrue((home / "commands" / "work.md").exists())   # untouched in preview
+
+    def test_apply_via_cli_helper_assume_yes(self):
+        with tempfile.TemporaryDirectory() as td:
+            home, plugins, installed = self._fixture(Path(td))
+            with contextlib.redirect_stdout(io.StringIO()):
+                rc = rp._reconcile_standalones(apply=True, assume_yes=True, claude_home=home,
+                                               plugins_root=plugins, installed=installed)
+            self.assertEqual(rc, 0)
+            self.assertFalse((home / "commands" / "work.md").exists())
+            self.assertTrue((home / "agents" / "documenter.md").exists())  # divergent kept
 
 
 class TestRealMarketplace(unittest.TestCase):
