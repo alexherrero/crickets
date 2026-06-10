@@ -258,14 +258,5 @@ Reversible by git: reverting the v3.0 release commit restores the v2 `install.sh
 
 | Date | Change | Status |
 |---|---|---|
-| 2026-06-01 | Initial draft created via `/design author`. | draft |
-| 2026-06-01 | Drafted Context + Design Overview/Infrastructure from #40 discussion + verified host research. | draft |
-| 2026-06-01 | Locked Detailed Design decisions: folder-per-group SoT (D1); thin-separate AG composition (D2); architecture-only + proof scope, #36 moves deferred to ④ (D3). | draft |
-| 2026-06-01 | Drafted remaining Detailed Design subsections + Alternatives / Dependencies / Migrations / Risks / Quality Attributes (proposed) / Project management / Operations. | draft |
-| 2026-06-01 | Author signaled ready for review. | review |
-| 2026-06-01 | Review pass: added three install modes (one-line default installer + marketplace + manual pick-and-choose) per operator feedback. | review |
-| 2026-06-01 | Approved as final via /design author review pass. | final |
-| 2026-06-01 | Published to wiki/explanation/designs/ (visibility: confidential → published). | final |
-| 2026-06-01 | Translated to 6 parts via /design translate: foundations, generator-claude, antigravity-emitter, ci-gate, distribution-clean-break, dogfood-proof-docs. | final |
-| 2026-06-01 | Sequenced into 6 plans via /design sequence; foundations active at the crickets vault PLAN.md, 5 queued at _harness/designs/crickets-v3-native-plugins/queued-plans/. | final |
+| 2026-06-01 | Authored, locked, and finalized via `/design author` in one day: Context + Design drafted from the #40 discussion + verified host research; Decisions 1–3 locked (folder-per-group SoT · thin-separate AG composition · proof scope with the #36 moves deferred to ④); the review pass added the three install modes; approved as final, published, translated to 6 parts (foundations · generator-claude · antigravity-emitter · ci-gate · distribution-clean-break · dogfood-proof-docs), and sequenced into 6 plans (foundations active, 5 queued). | final |
 | 2026-06-09 | Content updated to the **shipped** architecture (the six real plugins, per-host `dist/`, `enhances:` composition, the catalog that landed). 10-section structure unchanged. | launched |
