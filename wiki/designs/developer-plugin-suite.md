@@ -24,7 +24,7 @@ project: https://github.com/users/alexherrero/projects/5
 
 ### Objective
 
-crickets v3.x **bucket ④ (Wave 1, critical)** extracts the operator's opinionated developer process out of agentm into native host plugins — the first build step of the **V5 "unbundling"** ([memory-os-architecture HLD](https://github.com/alexherrero/agentm/wiki/memory-os-architecture)). This design specifies the **critical-3** dev-loop plugins plus the schema change that lets them compose: **`developer-workflows`** (the phase-gated `research→design→plan→work→review→release→bugfix` loop), **`developer-safety`** (control/safety hooks usable in *any* session), and **`code-review`** (adversarial review of any diff/PR). They share **no hard dependency** — each is usable alone — but compose into a richer experience when installed together, via a **new soft-composition manifest field, `enhances:`**. It's ready to build now because #40 shipped the generator and Hardening I made agentm a clean standalone; the plugins are built **parallel-run against today's agentm** (they coexist with the baked-in copies until the ⑤ V5 slim).
+crickets v3.x **bucket ④ (Wave 1, critical)** extracts the operator's opinionated developer process out of agentm into native host plugins — the first build step of the **V5 "unbundling"** ([memory-os-architecture HLD](https://github.com/alexherrero/agentm/wiki/memory-os-architecture)). This design specifies the **critical-3** dev-loop plugins plus the schema change that lets them compose: **`developer-workflows`** (the phase-gated `research→design→plan→work→review→release→bugfix` loop), **`developer-safety`** (control/safety hooks usable in *any* session), and **`code-review`** (adversarial review of any diff/PR). They share **no hard dependency** — each is usable alone — but compose into a richer experience when installed together, via a **new soft-composition manifest field, `enhances:`**. It shipped (crickets **v3.1.0**) because #40 had delivered the generator and Hardening I made agentm a clean standalone; the plugins were built **parallel-run against agentm** — they coexist with the baked-in copies until the ⑤ V5 slim.
 
 ### Background
 
@@ -91,7 +91,7 @@ The `kill-switch`, `steer`, `commit-on-stop` hooks + `commit-no-coauthor` / `wor
 
 #### 4. `code-review` (adversarial review, standalone)
 
-The `adversarial-reviewer` + `adversarial-reviewer-cross` agents, the `evidence-tracker` hook (grounds review in what was actually read), `cross-review.sh` (cross-model via the Gemini CLI), and a standalone **`/code-review <diff|PR>`** command. `standalone: true`; `enhances: [{group: developer-workflows, capability: review}]`. Test-sanctity conventions (`tests-are-sacred`, `test-outcome-not-structure`, `verification-executable-first`) are **referenced, not owned** — they live in the future Testing bundle.
+The `adversarial-reviewer` + `adversarial-reviewer-cross` agents, the `evidence-tracker` hook (grounds review in what was actually read), `cross-review.sh` (cross-model via the Gemini CLI), and a standalone **`/code-review <diff|PR>`** command. `standalone: true`; `enhances: [{group: developer-workflows, capability: review}]`. Test-sanctity conventions (`tests-are-sacred`, `test-outcome-not-structure`, `verification-executable-first`) are **referenced, not owned** — no separate Testing plugin shipped, so they remain agentm/harness conventions the reviewer honors.
 
 #### 5. The auto-enable runtime mechanism + capability discovery
 
@@ -141,7 +141,7 @@ Split the `#40` `developer` seed: control hooks (`commit-on-stop`/`kill-switch`/
 
 ## Quality Attributes
 
-*Per-attribute analysis. Each sub-section below is **mandatory**: either describe the concern or explicitly mark N/A with a one-sentence justification.*
+*Per-attribute analysis; all held through the build.*
 
 ### Security
 
@@ -198,18 +198,18 @@ N/A: no regulatory scope; public-repo discipline is covered under Privacy.
 - auto-enable runtime (local probe; host API is the separate agentm V5-8): **S**.
 - seed-split + sibling `requires:` re-point + parallel-run dogfood: **S–M**.
 
-~5–6 translate parts; ships granularly across crickets 3.x.
+Shipped as **6 parts** across crickets 3.x: enhances-schema · developer-workflows · developer-safety · code-review · auto-enable-runtime · seed-retirement.
 
 ### Documentation Plan
 
 - **This published HLD-child design** (the "why"/architecture of the suite).
 - Per-plugin **how-tos** under crickets `wiki/how-to/` (install + use each; the standalone `/code-review`; the `enhances:` composition).
 - Update `wiki/reference/Manifest-Schema.md` for `enhances:` + `capabilities:`; extend the Compatibility page (tooling-resolved composition + AG observe-only nuance).
-- A crickets **ADR** (why-only, per the living-doc convention): the `enhances:` soft-composition schema + the three-way split decision.
+- **[ADR 0017](0017-enhances-soft-composition)** (shipped): the `enhances:` soft-composition schema + the three-way split decision + the probe → V5-8 hand-off.
 
 ### Launch Plans
 
-Ships as crickets 3.x releases — bucket ④ (Wave 1, critical). **Order:** `enhances:` schema first (the foundation) → `developer-workflows` → `developer-safety` + `code-review` (compose on top). Each plugin merges as its part completes; **dogfood-proven on agentm/crickets/sherwood** before the wave ships. **Parallel-run** throughout; the agentm slim is ⑤ (not this wave). Crickets-side release cadence; **no agentm release required** for ④ (the host capability-discovery V5-8 is a separate agentm track).
+Shipped as crickets **v3.1.0** — bucket ④ (Wave 1, critical), in order: `enhances:` schema first (the foundation) → `developer-workflows` → `developer-safety` + `code-review` (compose on top). Each plugin merged as its part completed; **dogfood-proven on agentm/crickets/sherwood** before the wave shipped. **Parallel-run** throughout; the agentm slim is ⑤ (not this wave). Crickets-side release cadence; **no agentm release required** for ④ (the host capability-discovery V5-8 is a separate agentm track).
 
 ## Operations
 
@@ -245,3 +245,4 @@ Highly reversible. Each plugin is an additive native plugin — uninstall remove
 | 2026-06-03 | **Part 5 (`auto-enable-runtime`) built** — the runtime half of `enhances:`: a deterministic local capability probe (`capability_probe.py`, host-CLI shell-out + graceful-skip) wiring developer-workflows' thin `/review` to dispatch code-review when present. The composition now engages on both axes (emergent + conditional-dispatch). Local probe is the interim fallback for the agentm **V5-8** capability-discovery API. CI surfaced + fixed a `__pycache__`-leak in the `scripts/` asset copy. | final |
 | 2026-06-03 | **Part 6 (`seed-retirement`) built** — the `#40 developer` seed retired (`src/developer/` deleted; siblings `wiki`/`github-ci` re-pointed `requires:` → `developer-workflows`); the go-forward **6-plugin** world dogfood-proven; agentm's baked-in copies untouched (the slim is V5 ⑤). **Bucket ④ build complete.** | final |
 | 2026-06-04 | **Wave `/release` — launched.** All 6 parts shipped + CI green; the wave-boundary docs landed (Compatibility host-matrix + snippet emission, the `/code-review` how-to, the corrected snippet rows, the go-forward install/develop how-tos); ADR 0017 (the `enhances:` soft-composition + 3-way split + probe→V5-8 hand-off); CHANGELOG v3.1.0. Status `final → launched`. This ships the **Developer base** — the **first** of bucket ④'s three critical plugins (Wiki/docs #4 + project-management #41 remain). The slim of agentm's now-duplicated **dev-loop** baked-in copies (the ⑤ V5 slim's first portion) is unblocked by this wave's dogfood proof. | launched |
+| 2026-06-09 | Content reviewed against shipped reality (no separate Testing plugin landed → test conventions reframed; design-time tense → shipped; estimates → the 6 parts that landed; ADR 0017 cited). 10-section structure unchanged. | launched |
