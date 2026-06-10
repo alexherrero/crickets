@@ -39,7 +39,8 @@ house defaults. Keep it tight.
 - **Machine-checkable terms.** The `convention-drift` check (`/diataxis check`)
   scans pages for the terms on the `banned:` line below; overlay lessons extend
   it with their own `banned:` line. Findings, not failures (unless `--strict`).
-  banned: groundbreaking, deeply, vital, crucial, truly, delve, transformative, visionary, this journey, it should be noted that, it is worth mentioning, arguably, essentially
+  banned: groundbreaking, deeply, vital, crucial, truly, delve, transformative, visionary, this journey, it should be noted that, it is worth mentioning, arguably, essentially, first-class, seamless, robust, leverage, comprehensive
+- **Avoid LLM-tell vocabulary.** Words like "first-class," "seamless," "robust," "leverage," "comprehensive" read as machine-generated. Use the plain word instead: "supported," "smooth," "reliable," "uses," "full."
 
 ## Structure
 
