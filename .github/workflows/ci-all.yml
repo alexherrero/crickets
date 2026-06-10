@@ -32,6 +32,8 @@ jobs:
           SHA: ${{ github.sha }}
         run: |
           set -e
+          # Coupled by FILENAME to .github/workflows/<wf>.yml — renaming a test
+          # workflow file breaks this list (asserted by scripts/test_ci_consistency.py).
           WORKFLOWS="tests-linux tests-mac tests-windows"
 
           # Poll until all 3 reach 'completed' status, or timeout via job-level setting.

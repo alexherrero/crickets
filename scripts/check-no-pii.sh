@@ -90,6 +90,14 @@ ALLOWLIST_PATTERNS=(
     '@crickets\.local'             # synthetic identity used by commit-on-stop hook
 )
 
+# Line-level allowlist: applied to the WHOLE LINE a match sits on, for cases
+# where the surrounding context proves the match harmless. Kept separate from
+# ALLOWLIST_PATTERNS (match-level) so broad context patterns can't mask a real
+# finding that merely shares a line with allowlisted text.
+LINE_ALLOWLIST_PATTERNS=(
+    'uses: [A-Za-z0-9_./-]+@[0-9a-f]{40}'  # SHA-pinned GitHub Actions (public refs; digit runs inside a SHA can mimic a phone number)
+)
+
 # ── file collection ───────────────────────────────────────────────────────
 get_files() {
     case "$MODE" in
@@ -129,6 +137,16 @@ is_allowed() {
     return 1
 }
 
+is_line_allowed() {
+    local line="$1"
+    for allow in "${LINE_ALLOWLIST_PATTERNS[@]}"; do
+        if echo "$line" | grep -qE "$allow"; then
+            return 0
+        fi
+    done
+    return 1
+}
+
 # ── scan ──────────────────────────────────────────────────────────────────
 findings=0
 
@@ -148,6 +166,7 @@ while IFS= read -r file; do
         while IFS=: read -r lineno match; do
             [[ -z "$lineno" ]] && continue
             is_allowed "$match" && continue
+            is_line_allowed "$(sed -n "${lineno}p" "$file")" && continue
             echo "$file:$lineno: $kind match: $match" >&2
             findings=$((findings + 1))
         done < <(grep -nEo "$regex" "$file" 2>/dev/null || true)

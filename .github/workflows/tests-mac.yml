@@ -1,4 +1,6 @@
 name: "[T] Mac Tests"
+# NOTE: ci-all.yml waits on this workflow by FILENAME (tests-mac.yml). Renaming this
+# file breaks the aggregate + the badge. (scripts/test_ci_consistency.py asserts it.)
 
 on:
   push:
@@ -10,7 +12,7 @@ jobs:
     name: checks
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       # macos-latest ships python3 and pwsh 7+ preinstalled.
       - name: Install Python deps
         run: python3 -m pip install --break-system-packages pyyaml
