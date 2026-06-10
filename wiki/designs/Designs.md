@@ -11,6 +11,8 @@ The architecture behind crickets and Agent M — the high-level design docs that
 - **[Developer Plugin Suite](developer-plugin-suite)** — the developer-workflows / safety / code-review split + `enhances:`.
 - **[Wiki Maintenance](wiki-maintenance-design)** — the diataxis-author + documenter + wiki-watcher system.
 - **[diataxis-author](diataxis-author)** — the authoring + style-learning skill.
+- **[Continuous Integration](continuous-integration)** — the gate battery · the 3-OS matrix · the PII layers.
+- **[Wiki](wiki-design)** — the intent-grouped IA · per-folder sidebars · linting + publish.
 
 **Architecture (Agent M)**
 

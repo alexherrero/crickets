@@ -35,4 +35,6 @@
   - [check-repair](check-repair)
   - [migrate-subsume](migrate-subsume)
   - [agentmemory-docs-release](agentmemory-docs-release)
+- [Continuous Integration](continuous-integration)
+- [Wiki Design](wiki-design)
 ### 📐 [Decisions](Decisions)

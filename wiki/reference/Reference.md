@@ -10,6 +10,7 @@ Look up how crickets is built — what a plugin is, the kinds you can author, wh
 - **[Per-Host Paths](Per-Host-Paths)** — where each kind lands inside the generated plugin, per host.
 - **[Manifest Schema](Manifest-Schema)** — the frontmatter + `group.yaml` contract.
 - **[Compatibility](Compatibility)** — supported hosts + per-plugin and per-hook effectiveness.
+- **[CI gates](CI-Gates)** — the local gate battery + the 3-OS CI matrix.
 - **[Antigravity Limitations](Antigravity-Limitations)** — the `agy` host-gaps register + crickets mitigations.
 - **[Hooks](Hooks)** — the hook catalog + how hooks work (the `developer-safety` control trio is driven from its [plugin page](Developer-Safety)).
 - **[Evaluator](Evaluator)** — the read-only rubric grader + its dispatch contract.

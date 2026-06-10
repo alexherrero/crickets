@@ -13,7 +13,7 @@ Every customization declares `supported_hosts:` in its manifest, and the generat
 
 ## Operating systems
 
-Linux, macOS, and Windows (PowerShell 7+) are tested on **every push and PR**.
+Linux, macOS, and Windows (PowerShell 7+) are tested on **every push and PR** — the per-OS workflows, the aggregate badge, and the gate battery are in [CI gates](CI-Gates).
 
 ## Per-plugin host support
 
