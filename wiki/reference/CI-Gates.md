@@ -24,13 +24,13 @@ It prints a PASS/FAIL table and exits non-zero on any failure. Run it before eve
 
 ## The CI matrix
 
-Three OS workflows run on **every push and every PR** — Linux carries the full battery; macOS and Windows the portability checks for their script surfaces:
+Three OS workflows run on **every push and every PR**. All three run the toolchain gates (source lint · unit tests · drift · wiki lint); the syntax checks follow each OS's shell surface, and gitleaks rides the Linux leg:
 
 | OS | Workflow | What it runs |
 |---|---|---|
-| Linux (`ubuntu-latest`) | [`tests-linux.yml`](https://github.com/alexherrero/crickets/blob/main/.github/workflows/tests-linux.yml) | the full battery + gitleaks |
-| macOS (`macos-latest`) | [`tests-mac.yml`](https://github.com/alexherrero/crickets/blob/main/.github/workflows/tests-mac.yml) | `.sh` + `.ps1` syntax · PII scan |
-| Windows (`windows-latest`, PowerShell 7+) | [`tests-windows.yml`](https://github.com/alexherrero/crickets/blob/main/.github/workflows/tests-windows.yml) | `.ps1` syntax · PII scan |
+| Linux (`ubuntu-latest`) | [`tests-linux.yml`](https://github.com/alexherrero/crickets/blob/main/.github/workflows/tests-linux.yml) | toolchain gates · `.sh` + `.ps1` syntax · PII scan · gitleaks |
+| macOS (`macos-latest`) | [`tests-mac.yml`](https://github.com/alexherrero/crickets/blob/main/.github/workflows/tests-mac.yml) | toolchain gates · `.sh` + `.ps1` syntax · PII scan |
+| Windows (`windows-latest`, PowerShell 7+) | [`tests-windows.yml`](https://github.com/alexherrero/crickets/blob/main/.github/workflows/tests-windows.yml) | toolchain gates (under `PYTHONUTF8: 1`) · `.ps1` syntax · PII scan |
 
 The single `CI` badge on the README + wiki Home points at [`ci-all.yml`](https://github.com/alexherrero/crickets/blob/main/.github/workflows/ci-all.yml), an aggregate workflow that waits for all three OS workflows and reports a combined result. **Drill-down:** click the badge → the Actions tab → pick the failing OS → the failing step names the gate.
 
@@ -43,7 +43,7 @@ The single `CI` badge on the README + wiki Home points at [`ci-all.yml`](https:/
 
 ## Adding a gate
 
-When a new check earns its keep, add it in **both places**: a `run` line in `scripts/check-all.sh` *and* a step in `tests-linux.yml` (plus mac/windows if it's OS-sensitive) — the battery stays the single source of truth for "is it green," and `scripts/test_ci_consistency.py` fails the battery if the two drift.
+When a new check earns its keep, add it in **both places**: a `run` line in `scripts/check-all.sh` *and* a step in the three `tests-*.yml` workflows — the battery stays the single source of truth for "is it green," and `scripts/test_ci_consistency.py` fails the battery if they drift.
 
 ## Related
 

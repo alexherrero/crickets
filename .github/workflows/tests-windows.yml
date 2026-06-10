@@ -8,6 +8,26 @@ on:
   pull_request:
 
 jobs:
+  validate:
+    name: validate
+    runs-on: windows-latest
+    env:
+      # Force UTF-8 stdio — windows-latest's default cp1252 console encoding
+      # is the historical breakage class here (plan #13 caught it live).
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Install Python deps
+        run: python -m pip install pyyaml
+      - name: Lint src/ source-of-truth tree (group.yaml + primitive frontmatter)
+        run: python scripts/lint_src.py
+      - name: Unit tests (scripts/ — lint_src, src_model, generate, …)
+        run: cd scripts && python -m unittest discover -p 'test_*.py'
+      - name: Generated dist/ in sync with src/ (generate.py check)
+        run: python scripts/generate.py check
+      - name: Lint wiki (Diátaxis)
+        run: python scripts/check-wiki.py --strict
+
   checks:
     name: checks
     runs-on: windows-latest

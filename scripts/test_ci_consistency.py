@@ -7,9 +7,10 @@ Nothing enforced that until now — this test does, by parsing the real files:
      tests-linux.yml (Linux runs the full battery).
   2. The known gate flags ride along (--strict on check-wiki, --all on
      check-no-pii) in both places.
-  3. macOS + Windows keep their portability subset: check-syntax.ps1 and
-     check-no-pii.sh --all. (They deliberately do NOT run the full battery —
-     the Python toolchain gates are Linux-resident; see the CI design.)
+  3. The Python toolchain gates (lint_src, the unit suite, generate-drift,
+     check-wiki) run on ALL THREE OSes (extended 2026-06-09 — the Windows
+     leg is what catches cp1252-class gotchas), and macOS + Windows keep
+     their portability checks: check-syntax.ps1 and check-no-pii.sh --all.
   4. ci-all.yml's WORKFLOWS list points at workflow FILES that exist —
      the aggregate waits by filename, so a rename silently breaks it.
 
@@ -81,7 +82,25 @@ class TestBatteryMatchesLinuxWorkflow(unittest.TestCase):
 
 
 class TestPortabilitySubset(unittest.TestCase):
-    """Rule 3: mac + windows keep the OS-portability checks."""
+    """Rule 3: the toolchain gates run on all three OSes + per-OS portability."""
+
+    TOOLCHAIN = ("lint_src.py", "test_*.py", "generate.py", "check-wiki.py")
+
+    def test_toolchain_gates_run_on_all_three_oses(self):
+        for path in (LINUX, MAC, WINDOWS):
+            text = path.read_text(encoding="utf-8")
+            for token in self.TOOLCHAIN:
+                self.assertIn(
+                    token,
+                    text,
+                    f"{path.name} must run the {token} toolchain gate "
+                    f"(all three OSes carry the validate job since 2026-06-09)",
+                )
+            self.assertRegex(
+                text,
+                re.compile(r"check-wiki\.py[^\n]*--strict"),
+                f"{path.name} must run check-wiki.py with --strict",
+            )
 
     def test_mac_and_windows_run_ps1_syntax_and_pii(self):
         for path in (MAC, WINDOWS):
@@ -95,6 +114,11 @@ class TestPortabilitySubset(unittest.TestCase):
 
     def test_mac_also_checks_shell_syntax(self):
         self.assertIn("check-syntax.sh", MAC.read_text(encoding="utf-8"))
+
+    def test_windows_validate_forces_utf8(self):
+        # The historical Windows breakage class is cp1252 console encoding;
+        # the validate job pins PYTHONUTF8 so it can't regress silently.
+        self.assertIn("PYTHONUTF8", WINDOWS.read_text(encoding="utf-8"))
 
 
 class TestAggregateFilenameCoupling(unittest.TestCase):

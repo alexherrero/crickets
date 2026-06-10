@@ -8,6 +8,22 @@ on:
   pull_request:
 
 jobs:
+  validate:
+    name: validate
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Install Python deps
+        run: python3 -m pip install --break-system-packages pyyaml
+      - name: Lint src/ source-of-truth tree (group.yaml + primitive frontmatter)
+        run: python3 scripts/lint_src.py
+      - name: Unit tests (scripts/ — lint_src, src_model, generate, …)
+        run: cd scripts && python3 -m unittest discover -p 'test_*.py'
+      - name: Generated dist/ in sync with src/ (generate.py check)
+        run: python3 scripts/generate.py check
+      - name: Lint wiki (Diátaxis)
+        run: python3 scripts/check-wiki.py --strict
+
   checks:
     name: checks
     runs-on: macos-latest

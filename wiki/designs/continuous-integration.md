@@ -33,13 +33,13 @@ The ways this repo breaks are mechanical — generated output drifting from sour
 
 The same checks run in two places: locally as `bash scripts/check-all.sh` before each commit, and on GitHub on every push and pull request. Running in both places drives two of the design's rules. The battery can't depend on anything that exists only on one machine — it's plain Python and bash, no host CLIs — and a new check is always added to both places at once, so a local green means the same thing as a CI green. The flip side: work isn't *done* on a local pass; it's done when GitHub agrees (the wake-on-CI convention).
 
-GitHub Actions is free for public repos, so there's no cost pressure to trim anything: all three operating systems run on every push and every PR (Linux carries the full battery; macOS and Windows the portability checks). The matrix has paid for itself — back in the v0.x era, when Windows also ran the install tests, that leg alone caught three real failures (argument splitting, working-directory dependence, console encoding) that Linux and macOS would never have surfaced.
+GitHub Actions is free for public repos, so there's no cost pressure to trim anything: all three operating systems run the toolchain gates on every push and every PR. The matrix has paid for itself — in the v0.x era the Windows leg alone caught three real failures (argument splitting, working-directory dependence, console encoding) that Linux and macOS would never have surfaced. That coverage narrowed during the v3 rebuild and was restored on 2026-06-09, with the Windows job pinning UTF-8 stdio against the encoding class outright.
 
 ## Design
 
 ### Overview
 
-One set of checks, run in two places. On your machine, `bash scripts/check-all.sh` runs all six in sequence — source lint, unit tests, generated-output drift, wiki lint, shell syntax, PII scan — and prints a PASS/FAIL table. On GitHub, **Linux runs that full battery** (plus a second secret scanner, gitleaks) on every push and pull request, while **macOS and Windows run the portability checks** — script syntax for their shells and the PII scan — since the Python toolchain gates are OS-independent and the per-OS risk lives in the script surface. A small aggregate workflow waits for all three OS runs and reports one combined result — that's the `CI` badge on the README and the wiki Home. The rule that holds it all together: a new check lands in the local battery and the CI workflows together, or not at all. (The repo has one more workflow, the wiki publisher — that's deployment, not CI; it's covered in the [Wiki design](wiki-design).)
+One set of checks, run in two places. On your machine, `bash scripts/check-all.sh` runs all six in sequence — source lint, unit tests, generated-output drift, wiki lint, shell syntax, PII scan — and prints a PASS/FAIL table. On GitHub, **all three operating systems run the toolchain gates** (source lint, unit tests, drift, wiki lint) on every push and pull request; the per-OS differences are small — each OS checks the script syntax its shells can parse, and a second secret scanner (gitleaks) runs on Linux. A small aggregate workflow waits for all three OS runs and reports one combined result — that's the `CI` badge on the README and the wiki Home. The rule that holds it all together: a new check lands in the local battery and the CI workflows together, or not at all. (The repo has one more workflow, the wiki publisher — that's deployment, not CI; it's covered in the [Wiki design](wiki-design).)
 
 ### Infrastructure
 
@@ -49,11 +49,13 @@ CI runs on **GitHub's Actions framework**: four CI workflows under `.github/work
 
 | Workflow | Job | What runs in it |
 |---|---|---|
-| `[T] Linux Tests` (`tests-linux.yml`) — **the full battery** | `validate` | `lint_src.py` · `unittest` over `scripts/test_*.py` (incl. the CI-consistency check) · `generate.py check` · `check-wiki.py --strict` |
+| `[T] Linux Tests` (`tests-linux.yml`) | `validate` | `lint_src.py` · `unittest` over `scripts/test_*.py` (incl. the CI-consistency check) · `generate.py check` · `check-wiki.py --strict` |
 | | `syntax` | `check-syntax.sh` (`bash -n` every `.sh`) · `check-syntax.ps1` (AST-parse every `.ps1`) |
 | | `pii-guardrails` | `check-no-pii.sh --all` · gitleaks (`.gitleaks.toml`) |
-| `[T] Mac Tests` (`tests-mac.yml`) — portability checks | `checks` | `check-syntax.sh` · `check-syntax.ps1` · `check-no-pii.sh --all` |
-| `[T] Windows Tests` (`tests-windows.yml`) — portability checks | `checks` | `check-syntax.ps1` (PowerShell 7+) · `check-no-pii.sh --all` |
+| `[T] Mac Tests` (`tests-mac.yml`) | `validate` | same toolchain gates as Linux's `validate` |
+| | `checks` | `check-syntax.sh` · `check-syntax.ps1` · `check-no-pii.sh --all` |
+| `[T] Windows Tests` (`tests-windows.yml`) | `validate` | same toolchain gates, under `PYTHONUTF8: 1` (the cp1252 guard) |
+| | `checks` | `check-syntax.ps1` (PowerShell 7+) · `check-no-pii.sh --all` |
 | `[T] CI All` (`ci-all.yml`) | aggregate | waits for the three OS workflows **by filename**; reports one combined result — the badge target |
 
 **When what runs:**
@@ -88,7 +90,7 @@ Gate scripts are deterministic and exit-code-honest — a gate that can flap (e.
 
 #### 2. The matrix + the aggregate badge
 
-Linux runs the full battery on every push and PR; macOS and Windows run the portability checks for their script surfaces (the Python toolchain gates are OS-independent text processing, so they run once). The aggregate `ci-all.yml` exists because a README can carry only one badge: it waits for all three **by workflow filename** (`tests-linux.yml` …) and reports the conjunction — a rename of a workflow *file* breaks it, which is why the files carry warning comments and `test_ci_consistency.py` asserts the list. Diagnostic drill-down is badge → Actions tab → the failing OS → the failing step (steps are named after gates).
+All three OSes run the toolchain gates on every push and PR (since 2026-06-09 — restoring the v0.x-era cross-OS coverage that caught the Windows-only failures); the syntax checks differ per shell surface, and gitleaks rides the Linux leg. The aggregate `ci-all.yml` exists because a README can carry only one badge: it waits for all three **by workflow filename** (`tests-linux.yml` …) and reports the conjunction — a rename of a workflow *file* breaks it, which is why the files carry warning comments and `test_ci_consistency.py` asserts the list. Diagnostic drill-down is badge → Actions tab → the failing OS → the failing step (steps are named after gates).
 
 #### 3. Host plugin validation (outside both the battery and CI today)
 
@@ -105,7 +107,7 @@ Linux runs the full battery on every push and PR; macOS and Windows run the port
 These conventions are about **agent behavior**: CI produces the signals, and the LLM running the session is the one acting on them.
 
 - **Wake-on-CI:** after the agent pushes, it doesn't sit idle or declare victory — it schedules a wake (or polls `gh run list`) while continuing other work, reads the per-OS results when the runs finish, and only then closes out the task (`[x]`, progress append, "done" claims). Green locally is never treated as done; done is when the matrix agrees.
-- **The both-places rule:** when the agent adds a gate, it adds it to `check-all.sh` *and* the CI workflows in the same change, so local and CI never diverge on what "green" means — and since 2026-06-09 that's **mechanically enforced**: `scripts/test_ci_consistency.py` (itself a battery test) fails if a battery gate is missing from the Linux workflow.
+- **The both-places rule:** when the agent adds a gate, it adds it to `check-all.sh` *and* the CI workflows in the same change, so local and CI never diverge on what "green" means — and since 2026-06-09 that's **mechanically enforced**: `scripts/test_ci_consistency.py` (itself a battery test) fails if a battery gate is missing from the Linux workflow or a toolchain gate from any of the three.
 - **Full-output feedback:** on a gate failure — local or CI — the agent reads the **full** failing log (check-all `cat`s it; in CI the agent pulls the failing step's log), never a summary. Failures are information to be read, not noise to be retried.
 
 ## Alternatives Considered
@@ -134,14 +136,13 @@ These conventions are about **agent behavior**: CI produces the signals, and the
 
 ## Technical Debt & Risks
 
-*(Three earlier entries — the unenforced both-places rule, the unguarded filename coupling, and tag-pinned actions — were **paid down on 2026-06-09**: `scripts/test_ci_consistency.py` now enforces battery↔workflow consistency and the aggregate's filename list, the workflow files carry coupling warnings, and every third-party action is SHA-pinned with its tag in a trailing comment.)*
+*(Four earlier entries were **paid down on 2026-06-09**: `scripts/test_ci_consistency.py` enforces battery↔workflow consistency and the aggregate's filename list; the workflow files carry coupling warnings; every third-party action is SHA-pinned with its tag in a trailing comment; and the toolchain gates were extended to all three OSes — closing the Linux-only unit-suite gap, with `PYTHONUTF8` pinned on the Windows job against the cp1252 class.)*
 
-1. **The unit suite runs on Linux only.** macOS and Windows run portability checks (script syntax + PII), not the Python toolchain gates — so a cp1252-class, Windows-only Python gotcha would not be caught today (the v0.x catches happened when Windows ran more). *Cheap extension if wanted: copy the `validate` job into the mac/windows workflows — minutes are free; the cost is wall time. Re-audit if any script grows OS-sensitive behavior.*
-2. **gitleaks/regex false positives.** Documentation examples can trip the scanners; the allowlist (`.gitleaks.toml` regexes + `ALLOWLIST_PATTERNS`) is the relief valve, and every allowlist addition must be justified in the commit. *Risk: allowlist rot — re-audit if it grows past a screenful.*
-3. **CI minutes scale with the matrix.** 3 OS × every push; acceptable at current volume (and free on a public repo). *Re-audit if queueing becomes noticeable.*
-4. **The pre-push hook is opt-in by nature** (a clone doesn't auto-install hooks). The skill + CI layers cover the gap, but a fresh clone pushing PII reaches the public repo before CI flags it. *Standing mitigation: bootstrap docs instruct installing the hook; re-audit if a real leak ever reaches `main`.*
-5. **Host plugin validation is not automated.** `claude plugin validate` / `agy` checks need the host CLIs, which neither the battery nor the GitHub runners have — loadability rests on dogfood discipline. *Re-audit trigger: a generated plugin that passed every gate but failed to load on a host — then either install the CLIs in a CI job or add a schema-level validator to the battery.*
-6. **SHA pins need deliberate upgrades.** Pinned actions no longer float with their major tag; security fixes in the actions arrive only when we re-pin. *Convention: re-pin (and re-verify the tag comment) when bumping; re-audit pins quarterly.*
+1. **gitleaks/regex false positives.** Documentation examples — and now SHA pins, whose digit runs can mimic a phone number — can trip the scanners. The relief valves are the match-level allowlist and the **line-level allowlist** (added 2026-06-09 for `uses:`-pinned lines; kept separate so broad context patterns can't mask a real finding). Every allowlist addition must be justified in the commit. *Risk: allowlist rot — re-audit if it grows past a screenful.*
+2. **CI minutes scale with the matrix.** 3 OS × every push, now with the toolchain gates everywhere; acceptable at current volume (and free on a public repo). *Re-audit if queueing becomes noticeable.*
+3. **The pre-push hook is opt-in by nature** (a clone doesn't auto-install hooks). The skill + CI layers cover the gap, but a fresh clone pushing PII reaches the public repo before CI flags it. *Standing mitigation: bootstrap docs instruct installing the hook; re-audit if a real leak ever reaches `main`.*
+4. **Host plugin validation is not automated.** `claude plugin validate` / `agy` checks need the host CLIs, which neither the battery nor the GitHub runners have — loadability rests on dogfood discipline. *Re-audit trigger: a generated plugin that passed every gate but failed to load on a host — then either install the CLIs in a CI job or add a schema-level validator to the battery.*
+5. **SHA pins need deliberate upgrades.** Pinned actions no longer float with their major tag; security fixes in the actions arrive only when we re-pin. *Convention: re-pin (and re-verify the tag comment) when bumping; re-audit pins quarterly.*
 
 ## Quality Attributes
 
@@ -152,7 +153,7 @@ These conventions are about **agent behavior**: CI produces the signals, and the
 Real, and the dominant concern — two distinct surfaces:
 
 - **What CI protects:** crickets is public, so the PII/secret defense (Detailed Design §4) is the privacy story too. Three independent layers (interactive skill, mandatory pre-push hook, CI scanners ×2) with allowlist discipline; `check-no-pii` also keeps operator-machine paths out of the repo, so CI logs only ever contain repo content.
-- **Protecting CI itself (supply chain):** the workflows execute third-party actions with repo access, so every action is **pinned to a full commit SHA** (the tag kept as a trailing comment, e.g. `actions/checkout@34e11487… # v4`) — a re-pointed or compromised tag can't execute in our CI. Upgrades are deliberate re-pins (Technical Debt & Risks #6). CI runs with default GitHub token scopes and the gate scripts need no secrets.
+- **Protecting CI itself (supply chain):** the workflows execute third-party actions with repo access, so every action is **pinned to a full commit SHA** (the tag kept as a trailing comment, e.g. `actions/checkout@34e11487… # v4`) — a re-pointed or compromised tag can't execute in our CI. Upgrades are deliberate re-pins (Technical Debt & Risks #5). CI runs with default GitHub token scopes and the gate scripts need no secrets.
 
 ### Reliability
 
@@ -209,3 +210,4 @@ CI config is repo-versioned: a bad workflow or gate change reverts by git like a
 | 2026-06-09 | Operator review round 1 applied: title plain ("Continuous Integration Design"); Objective cut to 4 plain sentences; Background reshaped to 3 paragraphs (why · GitHub+local · free-for-public-repos); Overview de-jargoned; Infrastructure restructured platform-first (Actions framework → jobs chart → triggers chart → guarantees → coverage). Accuracy fix surfaced by the rework: host `plugin validate` is **not** a CI step (check-all.sh's comment was stale) — §3 corrected + new risk. Lessons codified into the design template prompts + a global voice-lesson overlay. | draft |
 | 2026-06-09 | Operator review round 2 applied: wiki publishing reclassified as **deployment, not CI** — moved to the new [Wiki design](wiki-design) (cross-linked); operating conventions + Monitoring made **agent-explicit** (the LLM polls, reads, closes out); supply-chain **SHA-pinning** added under Security + Risks (tag-pins are mutable); cheap-paydown annotations on risks 1–3; N/A quality attributes omitted (new convention); Project management slimmed to Documentation Plan (all pages) + launch dates; Operations slimmed to Monitoring + Rollback. Conventions codified into the template + overlay. | draft |
 | 2026-06-09 | **Hardening landed + accuracy pass.** The three cheap paydowns shipped: `test_ci_consistency.py` (the both-places rule + the aggregate's filename list, mechanically enforced from inside the battery), SHA-pinned actions (tags as comments), filename-coupling warning comments. Risks rewritten accordingly (+ a new deliberate-re-pin entry). Accuracy findings fixed: the aggregate couples by workflow **filename**, not display name; and **only Linux runs the full battery** — macOS/Windows run portability checks (new Risk #1 records the Linux-only unit-suite gap + the cheap extension). | draft |
+| 2026-06-09 | **3-OS coverage restored** (operator call): the `validate` job (toolchain gates) extended to macOS + Windows, with `PYTHONUTF8: 1` pinned on the Windows job against the historical cp1252 class; the consistency test now asserts the toolchain gates on all three OSes (+ the UTF-8 pin). The Linux-only-unit-suite risk retired (4 paydowns total); fallout from the SHA pins (a digit run mimicking a phone number) fixed with a separate **line-level PII allowlist** scoped to pinned `uses:` lines — recorded under Risk #1. | draft |
