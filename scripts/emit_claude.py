@@ -24,7 +24,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from generate import HostEmitter, dump_json  # noqa: E402  (registered by generate._load_emitters)
+from generate import HostEmitter, dump_json, write_utf8  # noqa: E402  (registered by generate._load_emitters)
 from src_model import Group, Primitive, bundle_ignore, copy_group_scripts, enhances_to_json  # noqa: E402
 
 HOST = "claude-code"
@@ -65,7 +65,7 @@ class ClaudeEmitter(HostEmitter):
         # the marketplace entry only (below), mirroring the Antigravity emitter.
         cp = plugin_dir / ".claude-plugin"
         cp.mkdir(parents=True, exist_ok=True)
-        (cp / "plugin.json").write_text(dump_json(manifest), encoding="utf-8")
+        write_utf8(cp / "plugin.json", dump_json(manifest))
 
         hooks: dict[str, list] = {}
         mcp_servers: dict[str, dict] = {}
@@ -96,10 +96,10 @@ class ClaudeEmitter(HostEmitter):
             hd.mkdir(parents=True, exist_ok=True)
             # Claude expects hooks.json wrapped in a top-level "hooks" record
             # (confirmed via `claude plugin validate`, v2.1.112).
-            (hd / "hooks.json").write_text(dump_json({"hooks": hooks}), encoding="utf-8")
+            write_utf8(hd / "hooks.json", dump_json({"hooks": hooks}))
         if mcp_servers:
-            (plugin_dir / ".mcp.json").write_text(
-                dump_json({"mcpServers": mcp_servers}), encoding="utf-8")
+            write_utf8(plugin_dir / ".mcp.json",
+                       dump_json({"mcpServers": mcp_servers}))
         copy_group_scripts(group, plugin_dir)
 
         entry = {
@@ -172,7 +172,7 @@ class ClaudeEmitter(HostEmitter):
     def write_marketplace(self, entries: list[dict], dist_root: Path) -> None:
         cp = dist_root / ".claude-plugin"
         cp.mkdir(parents=True, exist_ok=True)
-        (cp / "marketplace.json").write_text(dump_json(self._marketplace(entries)), encoding="utf-8")
+        write_utf8(cp / "marketplace.json", dump_json(self._marketplace(entries)))
 
     def write_root_marketplace(self, entries: list[dict], repo_root: Path) -> None:
         # Same manifest, but each plugin source points at its committed dist/
@@ -180,4 +180,4 @@ class ClaudeEmitter(HostEmitter):
         rooted = [{**e, "source": f"./dist/{self.host}/plugins/{e['name']}"} for e in entries]
         dest = repo_root / self.root_marketplace_rel
         dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_text(dump_json(self._marketplace(rooted)), encoding="utf-8")
+        write_utf8(dest, dump_json(self._marketplace(rooted)))

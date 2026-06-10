@@ -27,7 +27,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from generate import HostEmitter, dump_json  # noqa: E402
+from generate import HostEmitter, dump_json, write_utf8  # noqa: E402
 from src_model import Group, Primitive, bundle_ignore, copy_group_scripts, enhances_to_json  # noqa: E402
 
 HOST = "antigravity"
@@ -61,7 +61,7 @@ class AntigravityEmitter(HostEmitter):
         # carries NO dependencies (thin composition; requires documented in the
         # marketplace entry).
         plugin_dir.mkdir(parents=True, exist_ok=True)
-        (plugin_dir / "plugin.json").write_text(dump_json(manifest), encoding="utf-8")
+        write_utf8(plugin_dir / "plugin.json", dump_json(manifest))
 
         ag_hooks: dict[str, dict] = {}
         mcp_servers: dict[str, dict] = {}
@@ -83,10 +83,10 @@ class AntigravityEmitter(HostEmitter):
                       f"('{prim.name}' in '{group.slug}')", file=sys.stderr)
 
         if ag_hooks:
-            (plugin_dir / "hooks.json").write_text(dump_json(ag_hooks), encoding="utf-8")
+            write_utf8(plugin_dir / "hooks.json", dump_json(ag_hooks))
         if mcp_servers:
-            (plugin_dir / "mcp_config.json").write_text(
-                dump_json({"mcpServers": mcp_servers}), encoding="utf-8")
+            write_utf8(plugin_dir / "mcp_config.json",
+                       dump_json({"mcpServers": mcp_servers}))
         copy_group_scripts(group, plugin_dir)
 
         entry = {
@@ -157,7 +157,7 @@ class AntigravityEmitter(HostEmitter):
     def write_marketplace(self, entries: list[dict], dist_root: Path) -> None:
         mp = dist_root / ".agents" / "plugins"
         mp.mkdir(parents=True, exist_ok=True)
-        (mp / "marketplace.json").write_text(dump_json(self._marketplace(entries)), encoding="utf-8")
+        write_utf8(mp / "marketplace.json", dump_json(self._marketplace(entries)))
 
     def write_root_marketplace(self, entries: list[dict], repo_root: Path) -> None:
         # Same manifest, but each plugin source points at its committed dist/
@@ -168,4 +168,4 @@ class AntigravityEmitter(HostEmitter):
         ]
         dest = repo_root / self.root_marketplace_rel
         dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_text(dump_json(self._marketplace(rooted)), encoding="utf-8")
+        write_utf8(dest, dump_json(self._marketplace(rooted)))

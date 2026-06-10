@@ -44,6 +44,16 @@ def dump_json(obj) -> str:
     return json.dumps(obj, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
 
 
+def write_utf8(path: Path, text: str) -> None:
+    """Byte-deterministic text write: UTF-8, LF newlines on every OS.
+
+    Path.write_text() runs newline translation on Windows (\\n -> \\r\\n),
+    which made `generate.py check` fail there — committed dist/ is LF.
+    Writing bytes sidesteps text-mode translation entirely.
+    """
+    path.write_bytes(text.encode("utf-8"))
+
+
 class HostEmitter:
     """Base host emitter. One subclass per host (Claude lands in part 2 task 2,
     Antigravity in part 3). Implementations write a plugin directory per group
@@ -109,8 +119,8 @@ def _emit(src: Path, dist: Path, root: Path) -> bool:
             emitter.write_root_marketplace(entries, root)
     # host-agnostic default-set manifest (the recommended install list) — read
     # by the one-line installer; data-driven so it can't drift from the catalog.
-    (dist / "default-set.json").write_text(
-        dump_json({"plugins": sorted(g.slug for g in groups)}), encoding="utf-8")
+    write_utf8(dist / "default-set.json",
+               dump_json({"plugins": sorted(g.slug for g in groups)}))
     return True
 
 
