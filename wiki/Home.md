@@ -36,6 +36,7 @@ For devs running the plugins:
 
 - [Compatibility](Compatibility) — which hosts and OSes are supported, and the `supported_hosts` contract.
 - [Antigravity limitations](Antigravity-Limitations) — known host gaps and the trigger that closes each.
+- [Troubleshooting](Troubleshooting) — symptom-first lookup when something stops working.
 
 ## 💡 Why it works the way it does
 

@@ -65,6 +65,7 @@ Each is tracked, with its re-address trigger, in the canonical [Antigravity limi
 
 ## See also
 
+- [Troubleshooting](Troubleshooting) — when a host that *should* work stops working.
 - [Antigravity limitations](Antigravity-Limitations) — the host-gap register.
 - [Hooks](Hooks) — the full hook catalog.
 - [Per-Host Paths](Per-Host-Paths) — destinations per kind, per host.

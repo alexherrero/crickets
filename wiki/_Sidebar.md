@@ -10,6 +10,7 @@
 - [Plugin anatomy](Plugin-Anatomy)
 - [Compatibility](Compatibility)
 - [CI gates](CI-Gates)
+- [Troubleshooting](Troubleshooting)
 - [Customization Types](Customization-Types)
 - [Manifest Schema](Manifest-Schema)
 - [Per-Host Paths](Per-Host-Paths)
