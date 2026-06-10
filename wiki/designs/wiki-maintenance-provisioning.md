@@ -64,7 +64,7 @@ The init runs as a **plugin command in the agent session** (`Read`/`Write`/`Edit
 
 #### 1. Ship `wiki-sync.yml` as a template
 
-Add `templates/workflows/wiki-sync.yml` — crickets' own 72-line workflow, parameterized to be repo-agnostic (no hard-coded owner/repo; the default-branch + `wiki/**` trigger + the case-insensitive dupe-check kept verbatim). The init drops it into the target's `.github/workflows/` and fills any per-repo blanks. **The job is opinionated-named `[W] Wiki Sync`** — the `[W]` prefix matches the badge-status convention crickets uses for its own workflows, so a provisioned repo's Actions list reads consistently. (crickets' own predates this and is named `[W] Update Wiki`; align it later as cleanup.) This is the publish half (deployment, documented in the [Wiki design](wiki-design)).
+Add `templates/workflows/wiki-sync.yml` — crickets' own 72-line workflow, parameterized to be repo-agnostic (no hard-coded owner/repo; the default-branch + `wiki/**` trigger + the case-insensitive dupe-check kept verbatim). The init drops it into the target's `.github/workflows/` and fills any per-repo blanks. **The job is opinionated-named `[W] Update Wiki`** — matching crickets' own publish workflow and the `[W]` badge-status convention, so a provisioned repo's Actions list reads consistently with the rest of the catalog. This is the publish half (deployment, documented in the [Wiki design](wiki-design)).
 
 #### 2. The `wiki-init` action
 
@@ -167,4 +167,4 @@ The init is git-reversible in the target (it only adds files); the retirement is
 
 | Date | Change | Status |
 |---|---|---|
-| 2026-06-10 | Authored from the v3.2.0 dogfood feedback (provision-not-just-author) + the live `~/.claude` shadowing investigation (systemic, supersession-gated retirement); drafted against the 10-section template with the 2026-06-09 conventions. Operator review: two changes applied — the publish job is opinionated-named **`[W] Wiki Sync`**, and `wiki-init` **warns about billed Actions minutes when the target isn't public** — and the design **approved → final**. Voice deferred to the #14 dogfood (corpus piece logged). The blog-repo dogfood validates + may amend; approval doesn't wait on it. | final |
+| 2026-06-10 | Authored from the v3.2.0 dogfood feedback (provision-not-just-author) + the live `~/.claude` shadowing investigation (systemic, supersession-gated retirement); drafted against the 10-section template with the 2026-06-09 conventions. Operator review: two changes applied — the publish job is opinionated-named **`[W] Update Wiki`** (matching crickets' own), and `wiki-init` **warns about billed Actions minutes when the target isn't public** — and the design **approved → final**. Voice deferred to the #14 dogfood (corpus piece logged). The blog-repo dogfood validates + may amend; approval doesn't wait on it. | final |

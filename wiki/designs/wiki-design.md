@@ -1,6 +1,6 @@
 ---
 title: Wiki Design
-status: draft
+status: final
 visibility: published
 author: Alex Herrero
 contributors: []
@@ -188,3 +188,4 @@ Everything is repo-versioned: revert the commit and the next push re-mirrors the
 | Date | Change | Status |
 |---|---|---|
 | 2026-06-09 | Codified retroactively from the shipped wiki system (the 2026-06-08 IA restructure / ADR 0018 · wiki-sync.yml · check-wiki.py · the template/voice spec · the three maintenance loops). Created at operator direction during the CI-design review — wiki publishing is deployment, not CI, and belongs here. Authored against the 10-section template with the 2026-06-09 conventions (plain title · 4-sentence objective · 3-paragraph background · platform-first infrastructure · N/A sections omitted · PM slimmed for shipped systems). | draft |
+| 2026-06-10 | Operator green-light → **final**. Build order: tweaked + built **after wiki-init**, before continuous-integration (the composer — generate sidebars + Recent-changes from per-release notes — is the main tweak, with i18n ≥ Spanish a first-class axis). | final |

@@ -1,6 +1,6 @@
 ---
 title: Continuous Integration Design
-status: draft
+status: final
 visibility: published
 author: Alex Herrero
 contributors: []
@@ -207,3 +207,4 @@ CI config is repo-versioned: a bad workflow or gate change reverts by git like a
 | Date | Change | Status |
 |---|---|---|
 | 2026-06-09 | Codified retroactively from the shipped CI surface and driven to its current shape the same day. **Two operator review rounds:** plain title; 4-sentence Objective; 3-paragraph Background; de-jargoned Overview; platform-first Infrastructure (Actions framework → jobs chart → triggers chart → guarantees → coverage); wiki publishing reclassified as **deployment, not CI** (→ the new [Wiki design](wiki-design)); operating conventions + Monitoring made **agent-explicit**; N/A sections omitted; PM slimmed to doc-plan + launch dates. **Four hardening paydowns landed:** `test_ci_consistency.py` (the both-places rule + the aggregate's filename list, enforced from inside the battery); every action **SHA-pinned**; filename-coupling comments; the `validate` job extended to **all three OSes** (`PYTHONUTF8` pinned on Windows). **Accuracy fixes en route:** host `plugin validate` is dogfood-time, not CI; the aggregate couples by workflow **filename**. **Two live catches:** a SHA digit-run tripping the phone regex (→ the line-level PII allowlist) and Windows' first `validate` run exposing the generator's text-mode newline translation (→ `write_utf8` byte writes — the Reliability proof point). Conventions from the review codified into the design template + the global voice overlay. | draft |
+| 2026-06-10 | Operator green-light → **final**. Build order locked: this builds **last** (after wiki-init + the wiki-design tweaks). | final |
