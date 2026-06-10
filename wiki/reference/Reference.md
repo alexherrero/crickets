@@ -25,6 +25,7 @@ Look up how crickets is built — what a plugin is, the kinds you can author, wh
 <!-- maintained by the wiki tooling -->
 
 - **2026-06-08** — the whole Reference section rewritten for v3.0 (Compatibility · Per-Host-Paths · Customization-Types · Manifest-Schema · the new Plugin-Anatomy anchor); this index added.
+- **2026-06-09** — four references added: CI gates · Troubleshooting · Repo layout · Add a plugin.
 
 ## See also
 

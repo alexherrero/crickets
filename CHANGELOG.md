@@ -5,6 +5,32 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.2.0] — 2026-06-10 — The wiki-maintenance plugin + the wiki overhaul
+
+**MINOR — one breaking rename (the `wiki` stub → `wiki-maintenance`), with migration.** Bucket ④'s second critical plugin: a wiki maintainer that authors and repairs pages against a prescriptive template library in the operator's voice — and **gets closer to that voice every time it's used**, via an operator-in-the-loop learning loop. The plugin shipped across five parts and was validated the honest way: its own dogfood finale rewrote this repo's entire wiki (two waves, ~40 pages), with every lesson the operator taught captured into the voice overlay and the first proven lesson **promoted into the committed base**. Architecture + rationale: the [Wiki-Maintenance design](https://github.com/alexherrero/crickets/wiki/wiki-maintenance-design) (`launched`) + the new [Wiki](https://github.com/alexherrero/crickets/wiki/wiki-design) and [Continuous Integration](https://github.com/alexherrero/crickets/wiki/continuous-integration) designs. No paired agentm release — the docs portion of the V5 ⑤ slim is unblocked but not performed.
+
+### Added
+
+- **The `wiki-maintenance` plugin, complete** (8 primitives): the `diataxis-author` authoring/learning engine + `wiki-author` dispatch skill; the `documenter` write-executor wired to the developer-workflows phase boundaries via a `documentation` capability probe; the **wiki-watcher (W1)** — `wiki-watch` skill + command, one idempotent cooldown-gated cycle, PR-default; the `diataxis-evaluator` + `style-scope-evaluator` read-only agents; `recent-wiki-changes`.
+- **The style layer**: a committed base style guide ⊕ learned voice overlays (global / per-project / per-repo, on-demand), **edit-driven lesson capture** from operator diffs, and the operator-gated **`/diataxis promote`** that graduates a proven overlay lesson into the committed base (preview-first, `src/`-only, never auto-commits). The first real promotion shipped in this release: the llm-tell-vocabulary lesson (+5 machine-checkable banned terms).
+- **The Plugins wiki section** — a per-plugin page for all six plugins (plugin-home shape: install · what it ships · how it composes · why it works).
+- **New references**: [CI gates](https://github.com/alexherrero/crickets/wiki/CI-Gates) · [Troubleshooting](https://github.com/alexherrero/crickets/wiki/Troubleshooting) (symptom-first) · [Repo layout](https://github.com/alexherrero/crickets/wiki/Repo-Layout) · the [Add-A-Plugin](https://github.com/alexherrero/crickets/wiki/Add-A-Plugin) how-to.
+- **Two codified designs**: [Continuous Integration](https://github.com/alexherrero/crickets/wiki/continuous-integration) + [Wiki](https://github.com/alexherrero/crickets/wiki/wiki-design) (both `draft`, operator-review lifecycle).
+
+### Changed
+
+- **BREAKING (migration: reinstall):** the `wiki` stub group is renamed **`wiki-maintenance`** and its composition flips to `standalone: true` + `enhances: developer-workflows` (capability-targeted). Operators with the old `wiki` plugin install `wiki-maintenance` from the updated marketplace.
+- **The wiki's information architecture** ([ADR 0018](https://github.com/alexherrero/crickets/wiki/0018-per-folder-sidebars)): intent-grouped folders with per-folder sidebars (collapse/expand nav on GitHub's nearest-sidebar rendering), section landing pages, and a **case-insensitive basename guard** (two silently-shipped page collisions found + fixed; user-facing pages own clean names, design pages take `-design`).
+- **Every user-facing page rewritten** for the v3 model and the house voice; the Agent-M memory-architecture design docs relocated to the agentm wiki; the README rebuilt capabilities-first (five sections); stale v2.x how-tos (Add-A-Skill, Purpose-And-Scope, …) rewritten or retired.
+- The base style guide gains the promoted banned-terms class (`first-class`, `seamless`, `robust`, `leverage`, `comprehensive`).
+
+### Internal
+
+- **CI hardening (from the new CI design's review):** `test_ci_consistency.py` mechanically enforces the battery↔workflow both-places rule + the aggregate's filename coupling; all third-party actions **SHA-pinned**; the **toolchain gates extended to all three OSes** (`PYTHONUTF8` pinned on Windows) — and Windows' first `validate` run immediately caught a real bug: `Path.write_text()` newline translation made the generator non-byte-deterministic, fixed structurally with byte writes (`write_utf8`, all 11 emit sites).
+- `check-no-pii.sh` gains a separate **line-level allowlist** (scoped to SHA-pinned `uses:` lines) so context patterns can't mask real findings.
+- `check-wiki.py` grows per-folder mode defaults, the `index` landing mode, case-insensitive rule-g, and rule-l README governance; `wiki-sync.yml` ships per-folder sidebars with a case-insensitive dupe-check.
+- Twelve design-doc authoring conventions codified into the `/design` template + skill (plain titles, 3–4-sentence objectives, platform-first infrastructure charts, omit-N/A sections, one history row per day, …).
+
 ## [v3.1.0] — 2026-06-04 — The developer-plugin suite + `enhances:` soft composition
 
 **MINOR — one breaking removal (the transitional `developer` seed), with migration.** v3.0 stood up the generator and a single seed `developer` plugin; this wave (bucket ④, the first build step of the V5 "unbundling") extracts the operator's opinionated developer process into a **suite of composable native plugins**. Where v3.0 modelled only *hard* dependencies (`requires:` / `standalone:`), v3.1 adds **soft composition** — a new `enhances:` manifest field so a plugin can *augment* another when both are installed while staying fully usable alone. The monolithic `developer` seed splits into three standalone plugins that compose through `enhances:`, and a deterministic capability probe makes the composition engage at runtime. Architecture + rationale: the [Developer Plugin Suite design](https://github.com/alexherrero/crickets/blob/main/wiki/explanation/designs/developer-plugin-suite.md) (`launched`) + [ADR 0017](https://github.com/alexherrero/crickets/blob/main/wiki/explanation/decisions/0017-enhances-soft-composition.md). Dogfood-proven on Claude Code + Antigravity across `agentm` / `crickets` / `sherwood`.

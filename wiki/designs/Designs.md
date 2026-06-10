@@ -24,6 +24,7 @@ The architecture behind crickets and Agent M — the high-level design docs that
 <!-- maintained by the wiki tooling -->
 
 - **2026-06-08** — moved to `designs/`; this index added.
+- **2026-06-09** — Continuous Integration + Wiki designs added; the four earlier designs updated to shipped reality; Wiki Maintenance is now launched.
 
 ## See also
 

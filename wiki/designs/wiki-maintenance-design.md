@@ -1,12 +1,12 @@
 ---
 title: Wiki-Maintenance — an opinionated, template-driven wiki maintainer
-status: final
+status: launched
 visibility: published
 author: Alex Herrero
 contributors: []
 created: 2026-06-04
-updated: 2026-06-04
-last_major_revision: 2026-06-04
+updated: 2026-06-09
+last_major_revision: 2026-06-09
 prd:
 project: https://github.com/users/alexherrero/projects/5
 ---
@@ -249,4 +249,4 @@ A bad auto-PR is closed; a bad auto-commit is `git revert`-ed. The `_always-load
 |---|---|---|
 | 2026-06-04 | Authored, finalized, translated, and sequenced via `/design` in one day. Full 10-section draft: the identity pivot (Diátaxis as floor, not law → template-driven + operator-voice learning loop); group renamed `wiki`→`wiki-maintenance`; `standalone:true`+`enhances` composition; the wiki-watcher continuous mode (§7 — W1-now/W3-later, PR-default, config riding `.agentm-config.json` + per-repo marker + `repo_registry`, cursors/processed-set, significance gate, audit log; completed at translate time as the one stubbed subsection); bucket-A fold-in vs bucket-B kernel-graceful-skip; `_always-load`→on-demand convention storage. Cross-doc notes placed in `memory-os-architecture` + `agent-memory-evolution`. Translated to 5 parts and sequenced (Kahn order: scaffold-fold-in → documenter-wiring → style-learning-loop → wiki-watcher → dogfood-finale, the finale strengthened to sort last); state written to the vault `_harness/`. | final |
 | 2026-06-07 | **Parts 1–4 built** — scaffold-fold-in (group rename + bucket-A copy-not-move), documenter-wiring (the `documentation` capability + probe-dispatch), style-learning-loop (base style guide ⊕ overlay, edit-driven capture, `style-scope-evaluator`, the `_always-load`→`_global` on-demand relocation), and the wiki-watcher W1 (`wiki-watch` skill + command — one idempotent cycle, cooldown-gated + cursor-backed, PR-default). | final |
-| 2026-06-09 | **Part 5 (dogfood finale) in progress** — the operator-paced learning loop running against the real crickets wiki (waves 1–2: every user-facing page rewritten through draft → operator edit → voice-lesson capture; the section-template library + per-folder-sidebar IA grew out of it). Design content reviewed against shipped reality (tense, the shipped primitive set incl. `wiki-watch` + `style-scope-evaluator`); 10-section structure unchanged. Status stays `final` until the wave `/release`. | final |
+| 2026-06-09 | **Part 5 (dogfood finale) completed → wave `/release` — launched.** The operator-paced learning loop ran against the real crickets wiki (two waves, ~40+ pages: every user-facing page through draft → operator edit → voice-lesson capture; the section-template library + per-folder-sidebar IA grew out of it; ~25 lessons confirmed into the overlay). The **first real `/diataxis promote`** graduated the llm-tell-vocabulary lesson into the committed base (operator-gated per DC-F1; base-alone composition verified on both hosts). Confidential proof log written; **the docs portion of the V5 ⑤ slim is unblocked** (Migration-2 gate satisfied; agentm's parallel copies untouched). Design content also reviewed against shipped reality (tense, the shipped primitive set incl. `wiki-watch` + `style-scope-evaluator`; structure unchanged). Ships as **crickets v3.2.0**. Status `final → launched`. | launched |
