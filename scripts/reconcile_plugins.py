@@ -1,15 +1,28 @@
 #!/usr/bin/env python3
-"""reconcile_plugins.py — diff installed crickets plugins against the marketplace.
+"""reconcile_plugins.py — reconcile crickets plugins, and retire shadowing standalones.
 
-After an upgrade that renames or drops a plugin group, the old install lingers
-as a silent `✘ failed to load` and nothing says what to do. This prints what's
-out of sync + the exact `claude plugin {install,uninstall}` commands to fix it.
+Two modes:
 
-  python3 scripts/reconcile_plugins.py
+  python3 scripts/reconcile_plugins.py                        # plugins vs marketplace
+  python3 scripts/reconcile_plugins.py --standalones          # ~/.claude standalones (preview)
+  python3 scripts/reconcile_plugins.py --standalones --apply  # remove superseded (confirms first)
 
-Operator-run — NOT a CI gate (it needs the `claude` CLI for the installed
-side). The pure diff (`compute_actions`) + the marketplace read are unit-tested;
-the host shell-out graceful-skips when `claude` is absent.
+Plugin mode (default): after an upgrade that renames or drops a plugin group, the
+old install lingers as a silent `✘ failed to load` and nothing says what to do —
+this prints what's out of sync + the exact `claude plugin {install,uninstall}`
+commands to fix it.
+
+Standalone mode (--standalones): the pre-v3 install left ~/.claude/{skills,agents,
+commands}/<name> standalones that *shadow* the installed plugins. This retires
+only the ones an INSTALLED crickets plugin provably supersedes — matched by
+(kind, name) AND plugin provenance — never a standalone no plugin provides
+(design / memory / doctor / …), and never a KNOWN_DIVERGENT one. Preview-first;
+--apply confirms before removing; every removal is reversible (reinstall).
+
+Operator-run — NOT a CI gate (it needs the `claude` CLI for the installed side).
+The pure diffs (`compute_actions`, `compute_primitive_actions`), the primitive
+enumeration, and the ~/.claude scan/classify are unit-tested; the host shell-out
+graceful-skips when `claude` is absent (then nothing is eligible for removal).
 """
 import json
 import shutil
