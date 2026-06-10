@@ -45,6 +45,7 @@
 - [diataxis-author — Diátaxis wiki authoring + maintenance](diataxis-author)
 - [Continuous Integration](continuous-integration)
 - [Wiki Design](wiki-design)
+- [Wiki-Maintenance Provisioning](wiki-maintenance-provisioning)
 ### 📐 [Decisions](Decisions)
 - [V3 Retrospective](v3-retrospective)
 - [0001 — crickets purpose](0001-crickets-purpose)
