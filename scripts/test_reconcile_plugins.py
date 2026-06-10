@@ -6,10 +6,12 @@ Runs in the battery (unittest discovery). Stdlib only; the host shell-out
 when `claude` is absent, which is the case in CI."""
 import contextlib
 import io
+import os
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import reconcile_plugins as rp  # noqa: E402
@@ -165,7 +167,13 @@ class TestApplyRetirement(unittest.TestCase):
         (home / "commands" / "design.md").write_text("x", encoding="utf-8")
         (home / "agents").mkdir()
         (home / "agents" / "documenter.md").write_text("x", encoding="utf-8")
-        (home / "skills" / "wiki-author").mkdir(parents=True)
+        # the skill standalone is a SYMLINK into "agentm source" — the real shape
+        # the pre-v3 install created. Removal must unlink the link, not the target.
+        (home / "skills").mkdir(parents=True)
+        src = root / "agentm_src" / "wiki-author"
+        src.mkdir(parents=True)
+        (src / "SKILL.md").write_text("REAL SOURCE", encoding="utf-8")
+        (home / "skills" / "wiki-author").symlink_to(src, target_is_directory=True)
         plugins = root / "plugins"
         (plugins / "developer-workflows" / "commands").mkdir(parents=True)
         (plugins / "developer-workflows" / "commands" / "work.md").write_text("x", encoding="utf-8")
@@ -187,17 +195,69 @@ class TestApplyRetirement(unittest.TestCase):
 
     def test_classify_then_apply_removes_only_superseded(self):
         with tempfile.TemporaryDirectory() as td:
-            home, plugins, installed = self._fixture(Path(td))
+            root = Path(td)
+            home, plugins, installed = self._fixture(root)
             rep = rp.classify_standalones(home, plugins, installed)
             self.assertEqual(rep["superseded"],
                              [("command", "work"), ("skill", "wiki-author")])
             self.assertIn(("command", "design"), rep["kept"])
             self.assertIn(("agent", "documenter"), rep["kept"])   # divergent protected
-            rp.apply_retirement(home, rep["superseded"])
+            self.assertEqual(rep["divergent"], [("agent", "documenter")])
+            removed, errors = rp.apply_retirement(home, rep["superseded"])
+            self.assertEqual(errors, [])
             self.assertFalse((home / "commands" / "work.md").exists())
-            self.assertFalse((home / "skills" / "wiki-author").exists())
+            self.assertFalse(os.path.lexists(home / "skills" / "wiki-author"))  # link gone
+            self.assertTrue((root / "agentm_src" / "wiki-author" / "SKILL.md").exists())  # source safe
             self.assertTrue((home / "commands" / "design.md").exists())     # keep-list survives
             self.assertTrue((home / "agents" / "documenter.md").exists())   # divergent survives
+
+    def test_remove_symlinked_skill_unlinks_link_not_target(self):
+        # the catastrophic case: ~/.claude/skills/* are SYMLINKS into agentm source.
+        # remove must unlink the LINK — never raise, never touch the target.
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            src = root / "agentm" / "skills" / "wiki-author"
+            src.mkdir(parents=True)
+            (src / "SKILL.md").write_text("REAL SOURCE", encoding="utf-8")
+            home = root / "home"
+            (home / "skills").mkdir(parents=True)
+            (home / "skills" / "wiki-author").symlink_to(src, target_is_directory=True)
+            rp.remove_standalone(home, ("skill", "wiki-author"))   # must NOT raise
+            self.assertFalse(os.path.lexists(home / "skills" / "wiki-author"))  # link gone
+            self.assertTrue((src / "SKILL.md").exists())                        # source untouched
+
+    def test_apply_retirement_partial_failure_is_recorded(self):
+        # one removal fails (a ghost path) — the batch continues and records both,
+        # so the operator never loses the account of what was already removed.
+        with tempfile.TemporaryDirectory() as td:
+            home = Path(td)
+            (home / "commands").mkdir(parents=True)
+            (home / "commands" / "work.md").write_text("x", encoding="utf-8")
+            removed, errors = rp.apply_retirement(
+                home, {("command", "ghost"), ("command", "work")})
+            self.assertEqual(removed, [home / "commands" / "work.md"])  # real one removed
+            self.assertEqual(len(errors), 1)
+            self.assertEqual(errors[0][0], ("command", "ghost"))        # ghost recorded
+
+    def test_broken_symlink_skill_is_scanned_and_removable(self):
+        with tempfile.TemporaryDirectory() as td:
+            home = Path(td)
+            (home / "skills").mkdir(parents=True)
+            (home / "skills" / "dangling").symlink_to(home / "missing", target_is_directory=True)
+            self.assertIn(("skill", "dangling"), rp.installed_standalones(home))  # scanned
+            rp.remove_standalone(home, ("skill", "dangling"))                     # removable
+            self.assertFalse(os.path.lexists(home / "skills" / "dangling"))
+
+    def test_cli_helper_returns_nonzero_on_partial_failure(self):
+        with tempfile.TemporaryDirectory() as td:
+            home, plugins, installed = self._fixture(Path(td))
+            fake = ([home / "commands" / "work.md"],
+                    [(("skill", "wiki-author"), OSError("boom"))])
+            with mock.patch.object(rp, "apply_retirement", return_value=fake), \
+                 contextlib.redirect_stdout(io.StringIO()):
+                rc = rp._reconcile_standalones(apply=True, assume_yes=True, claude_home=home,
+                                               plugins_root=plugins, installed=installed)
+            self.assertEqual(rc, 1)   # a removal failed -> non-zero exit
 
     def test_apply_is_idempotent(self):
         with tempfile.TemporaryDirectory() as td:

@@ -149,7 +149,10 @@ def installed_standalones(claude_home: Path = CLAUDE_HOME) -> set:
     found = set()
     skills = claude_home / "skills"
     if skills.is_dir():
-        found |= {("skill", d.name) for d in skills.iterdir() if d.is_dir()}
+        # standalones are often SYMLINKS (pre-v3 install) — catch them even when the
+        # link is broken (is_dir() follows the link and would silently miss those).
+        found |= {("skill", d.name) for d in skills.iterdir()
+                  if d.is_dir() or d.is_symlink()}
     for kind in ("agent", "command"):
         sub = claude_home / KINDS[kind]
         if sub.is_dir():
@@ -160,32 +163,49 @@ def installed_standalones(claude_home: Path = CLAUDE_HOME) -> set:
 def classify_standalones(claude_home: Path = CLAUDE_HOME,
                          plugins_root: Path = PLUGINS_ROOT, installed=None) -> dict:
     """Read-only: scan the ~/.claude standalones, read the installed plugins'
-    offered primitives, and return {superseded, kept, provenance}. `provenance`
-    maps each superseded primitive to the plugin group that supersedes it (for
-    the preview). No writes — this is the report half; removal lives in main()."""
+    offered primitives, and return {superseded, kept, provenance, divergent}.
+    `provenance` maps each superseded primitive to the plugin group that supersedes
+    it; `divergent` lists protected (would-be-superseded) standalones kept anyway.
+    No writes — this is the report half; removal lives in main()."""
     offered = offered_primitive_map(plugins_root, installed)
-    actions = compute_primitive_actions(set(offered), installed_standalones(claude_home))
+    stand = installed_standalones(claude_home)
+    actions = compute_primitive_actions(set(offered), stand)
     actions["provenance"] = {prim: offered[prim] for prim in actions["superseded"]}
+    # would-be-superseded but protected (e.g. the divergent documenter) — reported,
+    # never removed. Computed from the same scan: no second filesystem walk.
+    actions["divergent"] = sorted(p for p in stand if p in offered and p in KNOWN_DIVERGENT)
     return actions
 
 
 def remove_standalone(claude_home: Path, prim) -> Path:
-    """Remove one ~/.claude standalone — a skill directory or an agent/command
-    .md file — and return the path removed. Reversible: reinstall the plugin (or
-    the standalone) to restore it."""
+    """Remove one ~/.claude standalone and return the path removed.
+
+    The pre-v3 install created these standalones as SYMLINKS into agentm's source
+    tree, so a symlink is removed with unlink() — never rmtree(), which both raises
+    on a symlink-to-directory and (if it didn't) would recurse into the link's
+    *target*, deleting the real source. Only a genuine directory is tree-walked.
+    Reversible: reinstall the plugin (or the standalone) to restore it."""
     kind, name = prim
     target = claude_home / KINDS[kind] / (name if kind == "skill" else f"{name}.md")
-    if kind == "skill":
-        shutil.rmtree(target)
+    if kind == "skill" and not target.is_symlink():
+        shutil.rmtree(target)          # a genuine skill directory
     else:
-        target.unlink()
+        target.unlink()                # a symlink (skill or .md), or a real .md file
     return target
 
 
-def apply_retirement(claude_home: Path, superseded) -> list:
-    """Remove every superseded standalone; return the removed paths (sorted by the
-    primitive). Pure mechanics — confirmation + printing live in the CLI."""
-    return [remove_standalone(claude_home, prim) for prim in sorted(superseded)]
+def apply_retirement(claude_home: Path, superseded):
+    """Remove every superseded standalone. Returns (removed, errors): `removed` is
+    the list of paths removed, `errors` a list of (prim, exception). A failure on
+    one item never aborts the batch or loses the record of what was already
+    removed — the operator always gets a complete account of what happened."""
+    removed, errors = [], []
+    for prim in sorted(superseded):
+        try:
+            removed.append(remove_standalone(claude_home, prim))
+        except OSError as exc:
+            errors.append((prim, exc))
+    return removed, errors
 
 
 def _reconcile_plugins() -> int:
@@ -219,8 +239,8 @@ def _reconcile_standalones(apply: bool = False, assume_yes: bool = False,
               f"(safe default).")
         return 0
     rep = classify_standalones(claude_home, plugins_root, installed)
-    sup, kept, prov = rep["superseded"], rep["kept"], rep["provenance"]
-    divergent = sorted(KNOWN_DIVERGENT & installed_standalones(claude_home))
+    sup, kept, prov, divergent = (rep["superseded"], rep["kept"],
+                                  rep["provenance"], rep["divergent"])
     if not sup:
         print(f"reconcile: ✓ no superseded standalones under {claude_home} "
               f"({len(kept)} kept).")
@@ -239,10 +259,14 @@ def _reconcile_standalones(apply: bool = False, assume_yes: bool = False,
         if resp not in ("y", "yes"):
             print("  aborted — nothing removed.")
             return 0
-    for path in apply_retirement(claude_home, sup):
+    removed, errors = apply_retirement(claude_home, sup)
+    for path in removed:
         print(f"  removed {path}")
-    print(f"reconcile: removed {len(sup)} standalone(s).")
-    return 0
+    for (kind, name), exc in errors:
+        print(f"  ! could not remove {KINDS[kind]}/{name}: {exc}")
+    print(f"reconcile: removed {len(removed)} standalone(s)"
+          + (f"; {len(errors)} failed." if errors else "."))
+    return 1 if errors else 0
 
 
 def main(argv=None) -> int:
