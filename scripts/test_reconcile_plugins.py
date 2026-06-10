@@ -5,6 +5,7 @@ Runs in the battery (unittest discovery). Stdlib only; the host shell-out
 (`installed_plugins`) is deliberately NOT exercised here — it graceful-skips
 when `claude` is absent, which is the case in CI."""
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -76,6 +77,38 @@ class TestComputePrimitiveActions(unittest.TestCase):
         a = rp.compute_primitive_actions(offered, standalones, protected=set())
         self.assertEqual(a["superseded"], [])
         self.assertEqual(a["kept"], [("skill", "foo")])
+
+
+class TestPrimitiveEnumeration(unittest.TestCase):
+    def test_plugin_primitives_real_dist(self):
+        dw = rp.plugin_primitives(rp.PLUGINS_ROOT / "developer-workflows")
+        self.assertIn(("command", "work"), dw)
+        self.assertIn(("command", "plan"), dw)
+        self.assertIn(("agent", "explorer"), dw)
+        # bundled scripts + hooks are NOT ~/.claude standalones
+        self.assertNotIn(("command", "capability_probe"), dw)
+        self.assertFalse(any(kind == "hook" for kind, _ in dw))
+
+    def test_plugin_primitives_includes_skills_and_agents(self):
+        wm = rp.plugin_primitives(rp.PLUGINS_ROOT / "wiki-maintenance")
+        self.assertIn(("agent", "documenter"), wm)
+        self.assertIn(("skill", "diataxis-author"), wm)
+
+    def test_offered_map_none_installed_is_empty(self):
+        # host CLI unavailable -> can't confirm installs -> nothing eligible
+        self.assertEqual(rp.offered_primitive_map(installed=None), {})
+
+    def test_offered_map_filters_to_installed(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "alpha" / "commands").mkdir(parents=True)
+            (root / "alpha" / "commands" / "foo.md").write_text("x", encoding="utf-8")
+            (root / "beta" / "agents").mkdir(parents=True)
+            (root / "beta" / "agents" / "bar.md").write_text("x", encoding="utf-8")
+            self.assertEqual(rp.offered_primitive_map(root, installed={"alpha"}),
+                             {("command", "foo"): "alpha"})  # beta not installed
+            self.assertEqual(rp.offered_primitive_map(root, installed={"alpha", "beta"}),
+                             {("command", "foo"): "alpha", ("agent", "bar"): "beta"})
 
 
 class TestRealMarketplace(unittest.TestCase):

@@ -19,7 +19,9 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 MARKETPLACE = REPO / ".claude-plugin" / "marketplace.json"
+PLUGINS_ROOT = REPO / "dist" / "claude-code" / "plugins"
 MARKET = "crickets"
+CLAUDE_HOME = Path.home() / ".claude"
 
 
 def offered_plugins(marketplace_path: Path = MARKETPLACE) -> set:
@@ -93,6 +95,39 @@ def compute_primitive_actions(offered_primitives: set, installed_standalones: se
         else:
             kept.append(prim)
     return {"superseded": sorted(superseded), "kept": sorted(kept)}
+
+
+def plugin_primitives(plugin_dir: Path) -> set:
+    """The (kind, name) primitives a single plugin directory provides: skills
+    (subdirs of skills/), agents (agents/*.md), commands (commands/*.md). Hooks
+    and bundled scripts are not ~/.claude standalones, so they're not included."""
+    found = set()
+    skills = plugin_dir / "skills"
+    if skills.is_dir():
+        found |= {("skill", d.name) for d in skills.iterdir() if d.is_dir()}
+    for kind in ("agent", "command"):
+        sub = plugin_dir / KINDS[kind]
+        if sub.is_dir():
+            found |= {(kind, f.stem) for f in sub.glob("*.md")}
+    return found
+
+
+def offered_primitive_map(plugins_root: Path = PLUGINS_ROOT, installed=None) -> dict:
+    """Map (kind, name) -> the installed crickets plugin group that provides it.
+
+    Only an INSTALLED plugin's primitives can supersede a standalone, so if
+    `installed` is None (host CLI unavailable — can't confirm what's installed)
+    this returns {}: nothing is eligible for removal, the safe default. Pass the
+    set of installed group names to enumerate their primitives."""
+    if installed is None or not plugins_root.is_dir():
+        return {}
+    out = {}
+    for group_dir in sorted(plugins_root.iterdir()):
+        if not group_dir.is_dir() or group_dir.name not in installed:
+            continue
+        for prim in plugin_primitives(group_dir):
+            out.setdefault(prim, group_dir.name)
+    return out
 
 
 def main() -> int:
