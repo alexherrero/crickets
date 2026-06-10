@@ -4,6 +4,7 @@
 ### 🔧 [Do](Do)
 ### 📖 [Reference](Reference)
 - [Plugin anatomy](Plugin-Anatomy)
+- [Repo layout](Repo-Layout)
 - [Compatibility](Compatibility)
 - [CI gates](CI-Gates)
 - [Troubleshooting](Troubleshooting)

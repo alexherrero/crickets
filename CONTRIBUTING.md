@@ -60,18 +60,15 @@ Contributing a customization? Author it once under `src/<group>/`, then generate
 
 ## Local gates
 
-Run all gates before pushing (the pre-push hook will run a subset automatically; running the full set locally catches things sooner):
+One command runs every gate before pushing (the pre-push hook runs a subset automatically; the full battery catches things sooner):
 
 ```bash
-python3 scripts/lint_src.py                                 # validate src/ (group.yaml + frontmatter)
-python3 scripts/generate.py check                           # committed dist/ in sync with src/
-( cd scripts && python3 -m unittest discover -p 'test_*.py' )
-bash scripts/check-syntax.sh
-bash scripts/check-no-pii.sh --all
-python3 scripts/check-wiki.py --strict
+bash scripts/check-all.sh
 ```
 
-> These mirror the three per-OS CI workflows. The generator (`generate.py build` → commit `dist/`) is the only way to change shipped plugins — never hand-edit `dist/`. See [Develop a crickets plugin locally](https://github.com/alexherrero/crickets/wiki/Develop-A-Plugin-Locally).
+It prints a PASS/FAIL table per gate — source lint, unit tests, generated-output drift, wiki lint, shell syntax, PII scan. The full breakdown, and what CI adds on top, is in [CI gates](https://github.com/alexherrero/crickets/wiki/CI-Gates).
+
+> These mirror the three per-OS CI workflows. The generator (`generate.py build` → commit `dist/`) is the only way to change shipped plugins — never hand-edit `dist/`. See [Modify a plugin](https://github.com/alexherrero/crickets/wiki/Modify-A-Plugin).
 
 ## Regenerating the brand banner
 

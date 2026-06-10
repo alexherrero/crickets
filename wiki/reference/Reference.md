@@ -6,6 +6,7 @@ Look up how crickets is built — what a plugin is, the kinds you can author, wh
 ## What's here
 
 - **[Plugin anatomy](Plugin-Anatomy)** — what a crickets plugin *is* and how it's structured (the anchor — start here).
+- **[Repo layout](Repo-Layout)** — what lives where in the repo.
 - **[Customization Types](Customization-Types)** — the primitive kinds (`skill` · `agent` · `command` · `hook` · `snippet`).
 - **[Per-Host Paths](Per-Host-Paths)** — where each kind lands inside the generated plugin, per host.
 - **[Manifest Schema](Manifest-Schema)** — the frontmatter + `group.yaml` contract.
