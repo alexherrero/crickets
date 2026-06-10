@@ -38,4 +38,8 @@
 - [Continuous Integration](continuous-integration)
 - [Wiki Design](wiki-design)
 - [Wiki-Maintenance Provisioning](wiki-maintenance-provisioning)
+  - [wiki-sync-template](wiki-sync-template)
+  - [wiki-init](wiki-init)
+  - [standalone-retirement](standalone-retirement)
+  - [docs-adr](docs-adr)
 ### 📐 [Decisions](Decisions)
