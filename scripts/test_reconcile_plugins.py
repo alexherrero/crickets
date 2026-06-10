@@ -36,6 +36,48 @@ class TestComputeActions(unittest.TestCase):
         self.assertEqual(a["missing"], ["a", "m", "z"])
 
 
+class TestComputePrimitiveActions(unittest.TestCase):
+    # The keep-list: agentm-native / third-party standalones no crickets plugin
+    # provides. These must ALWAYS survive.
+    KEEP = {("command", "design"), ("command", "memory"), ("command", "doctor"),
+            ("command", "last30days"), ("agent", "adapt-evaluator"),
+            ("agent", "memory-idea-researcher")}
+
+    def test_superseded_and_kept_split(self):
+        offered = {("command", "work"), ("command", "plan"), ("agent", "explorer")}
+        standalones = {("command", "work"), ("command", "plan"),
+                       ("agent", "explorer")} | self.KEEP
+        a = rp.compute_primitive_actions(offered, standalones, protected=set())
+        self.assertEqual(a["superseded"],
+                         [("agent", "explorer"), ("command", "plan"), ("command", "work")])
+        # everything the plugins don't provide is kept
+        self.assertEqual(set(a["kept"]), self.KEEP)
+
+    def test_keep_list_always_survives(self):
+        # even if a (buggy) offered set somehow lists nothing, keep-list survives;
+        # and when offered is empty, NOTHING is superseded.
+        a = rp.compute_primitive_actions(set(), self.KEEP)
+        self.assertEqual(a["superseded"], [])
+        self.assertEqual(set(a["kept"]), self.KEEP)
+
+    def test_known_divergent_is_protected(self):
+        # wiki-maintenance provides (agent, documenter), but the standalone differs
+        # — it must be kept, not superseded, by default.
+        offered = {("agent", "documenter"), ("command", "work")}
+        standalones = {("agent", "documenter"), ("command", "work")}
+        a = rp.compute_primitive_actions(offered, standalones)  # default protected
+        self.assertEqual(a["superseded"], [("command", "work")])
+        self.assertIn(("agent", "documenter"), a["kept"])
+
+    def test_name_match_is_kind_scoped(self):
+        # a skill named 'foo' is NOT superseded by a plugin *agent* named 'foo'
+        offered = {("agent", "foo")}
+        standalones = {("skill", "foo")}
+        a = rp.compute_primitive_actions(offered, standalones, protected=set())
+        self.assertEqual(a["superseded"], [])
+        self.assertEqual(a["kept"], [("skill", "foo")])
+
+
 class TestRealMarketplace(unittest.TestCase):
     def test_marketplace_reflects_the_rename(self):
         offered = rp.offered_plugins()

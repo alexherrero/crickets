@@ -61,6 +61,40 @@ def compute_actions(offered: set, installed: set) -> dict:
     }
 
 
+# --- primitive-level reconcile: retire shadowing ~/.claude standalones ---------
+#
+# The pre-v3 install symlinked agentm's source into ~/.claude/{skills,agents,
+# commands}/<name>. After the v3 plugin migration those standalones *shadow* the
+# installed plugins. This retires them — but only the ones an installed crickets
+# plugin provably supersedes, matched by (kind, name) AND plugin provenance.
+# A standalone no installed plugin provides (design, memory, doctor, …) is never
+# touched.
+
+# Primitive kind -> the ~/.claude (and dist plugin) subdirectory that holds it.
+KINDS = {"skill": "skills", "agent": "agents", "command": "commands"}
+
+# Standalones a plugin nominally provides but which are known to DIVERGE from the
+# plugin's copy — always kept + reported, never auto-removed. (Operator flag,
+# 2026-06-10: ~/.claude/agents/documenter.md differs from wiki-maintenance's.)
+KNOWN_DIVERGENT = {("agent", "documenter")}
+
+
+def compute_primitive_actions(offered_primitives: set, installed_standalones: set,
+                              protected: set = KNOWN_DIVERGENT) -> dict:
+    """Pure diff over (kind, name) primitives. A standalone is `superseded` iff an
+    installed crickets plugin provides the same (kind, name) AND it is not
+    `protected` (known-divergent); everything else is `kept`. A standalone no
+    plugin provides is always kept — the false-remove guard is structural: only
+    members of `offered_primitives` can ever be superseded."""
+    superseded, kept = [], []
+    for prim in installed_standalones:
+        if prim in offered_primitives and prim not in protected:
+            superseded.append(prim)
+        else:
+            kept.append(prim)
+    return {"superseded": sorted(superseded), "kept": sorted(kept)}
+
+
 def main() -> int:
     offered = offered_plugins()
     installed = installed_plugins()
