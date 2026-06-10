@@ -130,6 +130,32 @@ def offered_primitive_map(plugins_root: Path = PLUGINS_ROOT, installed=None) -> 
     return out
 
 
+def installed_standalones(claude_home: Path = CLAUDE_HOME) -> set:
+    """The (kind, name) standalones under ~/.claude/{skills,agents,commands}/.
+    Skills are subdirectories; agents/commands are *.md files."""
+    found = set()
+    skills = claude_home / "skills"
+    if skills.is_dir():
+        found |= {("skill", d.name) for d in skills.iterdir() if d.is_dir()}
+    for kind in ("agent", "command"):
+        sub = claude_home / KINDS[kind]
+        if sub.is_dir():
+            found |= {(kind, f.stem) for f in sub.glob("*.md")}
+    return found
+
+
+def classify_standalones(claude_home: Path = CLAUDE_HOME,
+                         plugins_root: Path = PLUGINS_ROOT, installed=None) -> dict:
+    """Read-only: scan the ~/.claude standalones, read the installed plugins'
+    offered primitives, and return {superseded, kept, provenance}. `provenance`
+    maps each superseded primitive to the plugin group that supersedes it (for
+    the preview). No writes — this is the report half; removal lives in main()."""
+    offered = offered_primitive_map(plugins_root, installed)
+    actions = compute_primitive_actions(set(offered), installed_standalones(claude_home))
+    actions["provenance"] = {prim: offered[prim] for prim in actions["superseded"]}
+    return actions
+
+
 def main() -> int:
     offered = offered_plugins()
     installed = installed_plugins()

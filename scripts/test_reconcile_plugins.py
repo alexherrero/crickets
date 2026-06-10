@@ -111,6 +111,47 @@ class TestPrimitiveEnumeration(unittest.TestCase):
                              {("command", "foo"): "alpha", ("agent", "bar"): "beta"})
 
 
+class TestStandaloneScan(unittest.TestCase):
+    def test_installed_standalones_scan(self):
+        with tempfile.TemporaryDirectory() as td:
+            home = Path(td)
+            (home / "skills" / "foo").mkdir(parents=True)
+            (home / "agents").mkdir()
+            (home / "agents" / "bar.md").write_text("x", encoding="utf-8")
+            (home / "commands").mkdir()
+            (home / "commands" / "baz.md").write_text("x", encoding="utf-8")
+            self.assertEqual(rp.installed_standalones(home),
+                             {("skill", "foo"), ("agent", "bar"), ("command", "baz")})
+
+    def test_installed_standalones_missing_dirs_is_empty(self):
+        with tempfile.TemporaryDirectory() as td:
+            self.assertEqual(rp.installed_standalones(Path(td)), set())
+
+    def test_classify_supersedes_only_installed_provided(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            home = root / "home"
+            (home / "commands").mkdir(parents=True)
+            (home / "commands" / "work.md").write_text("x", encoding="utf-8")     # superseded
+            (home / "commands" / "design.md").write_text("x", encoding="utf-8")   # keep-list
+            plugins = root / "plugins"
+            (plugins / "developer-workflows" / "commands").mkdir(parents=True)
+            (plugins / "developer-workflows" / "commands" / "work.md").write_text("x", encoding="utf-8")
+            rep = rp.classify_standalones(home, plugins, installed={"developer-workflows"})
+            self.assertEqual(rep["superseded"], [("command", "work")])
+            self.assertEqual(rep["kept"], [("command", "design")])  # no plugin provides it
+            self.assertEqual(rep["provenance"], {("command", "work"): "developer-workflows"})
+
+    def test_classify_installed_none_keeps_everything(self):
+        with tempfile.TemporaryDirectory() as td:
+            home = Path(td)
+            (home / "commands").mkdir(parents=True)
+            (home / "commands" / "work.md").write_text("x", encoding="utf-8")
+            rep = rp.classify_standalones(home, rp.PLUGINS_ROOT, installed=None)
+            self.assertEqual(rep["superseded"], [])               # can't confirm installs
+            self.assertEqual(rep["kept"], [("command", "work")])
+
+
 class TestRealMarketplace(unittest.TestCase):
     def test_marketplace_reflects_the_rename(self):
         offered = rp.offered_plugins()
