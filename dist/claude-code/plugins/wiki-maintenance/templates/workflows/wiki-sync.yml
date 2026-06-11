@@ -1,0 +1,76 @@
+name: "[W] Update Wiki"
+
+# Wiki publisher — dropped into a repo by `wiki-init` as the INITIAL copy. Mirrors
+# wiki/ in the repo to the GitHub Wiki on every push to the default branch that
+# touches wiki/**. Mirror semantics — add, edit, rename, delete. rsync -a
+# preserves the dir tree, so a per-folder _Sidebar.md renders as that section's
+# nav (GH Wiki uses the nearest one). Fails loudly on duplicate basenames across
+# subdirs (GH Wiki resolves page LINKS by basename, so collisions would silently
+# clobber) — but _Sidebar.md / _Footer.md are exempt: they're location-rendered,
+# never linked by basename, so per-folder copies are expected. Gracefully skips
+# when the wiki is disabled on the repo.
+#
+# Repo-agnostic: no hard-coded owner/repo (uses ${{ github.repository }} + the
+# repo's own default branch). This is a starting point — you own it after it
+# lands; edit it freely. `wiki-init` only seeds it once.
+
+on:
+  push:
+    paths:
+      - 'wiki/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-wiki:
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Sync wiki/ to GitHub Wiki
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! -d wiki ]]; then
+            echo "::notice::No wiki/ directory in source — nothing to sync."
+            exit 0
+          fi
+
+          dupes=$(find wiki -type f -name '*.md' -not -name '_Sidebar.md' -not -name '_Footer.md' | awk -F/ '{print $NF}' | sort | uniq -d || true)
+          if [[ -n "$dupes" ]]; then
+            echo "::error::Duplicate wiki basenames (would collide on GitHub Wiki):"
+            while IFS= read -r name; do
+              echo "::error::  $name"
+              find wiki -type f -name "$name" | sed 's|^|::error::    |'
+            done <<< "$dupes"
+            exit 1
+          fi
+
+          wiki_url="https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO}.wiki.git"
+          if ! git ls-remote "$wiki_url" >/dev/null 2>&1; then
+            echo "::notice::GitHub Wiki not enabled for ${REPO}. Skipping sync."
+            exit 0
+          fi
+
+          git clone "$wiki_url" wiki-repo
+
+          rsync -a --delete --exclude='.git' wiki/ wiki-repo/
+
+          cd wiki-repo
+          git add -A
+          if git diff --cached --quiet; then
+            echo "::notice::No wiki changes to sync."
+            exit 0
+          fi
+
+          git -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              -c user.name='github-actions[bot]' \
+              commit -m "sync: ${SHA:0:7}"
+          git push origin HEAD:master

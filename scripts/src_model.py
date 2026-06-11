@@ -30,9 +30,10 @@ PRIMITIVE_KINDS = {
     "command": ("commands/*.md", lambda p: p.stem),
     "snippet": ("snippets/*.md", lambda p: p.stem),
 }
-KNOWN_KIND_DIRS = {"skills", "hooks", "agents", "commands", "snippets", "mcp", "rules", "scripts"}
-# `scripts/` is NOT a primitive kind — it's a group-level asset dir copied
-# verbatim into the emitted plugin (e.g. code-review's cross-review.sh). Listed
+KNOWN_KIND_DIRS = {"skills", "hooks", "agents", "commands", "snippets", "mcp", "rules", "scripts", "templates"}
+# `scripts/` and `templates/` are NOT primitive kinds — they're group-level asset
+# dirs copied verbatim into the emitted plugin (e.g. code-review's cross-review.sh;
+# wiki-maintenance's wiki-sync.yml + section-template library). Listed
 # here so lint doesn't flag it as an unexpected kind folder.
 
 
@@ -143,6 +144,21 @@ def copy_group_scripts(group: "Group", plugin_dir: Path) -> None:
     if src_scripts.is_dir():
         shutil.copytree(
             src_scripts, plugin_dir / "scripts", dirs_exist_ok=True,
+            ignore=bundle_ignore())
+
+
+def copy_group_templates(group: "Group", plugin_dir: Path) -> None:
+    """Copy a group's verbatim `templates/` asset dir into the emitted plugin at
+    `<plugin_dir>/templates/`. Like `copy_group_scripts` — a wholesale,
+    host-agnostic asset bundle (e.g. wiki-maintenance's `workflows/wiki-sync.yml`
+    + the section-template library `wiki-init` scaffolds from). No-op when the
+    group has no manifest or no `templates/` dir. Shared by both host emitters."""
+    if group.manifest is None:
+        return
+    src_templates = group.manifest.parent / "templates"
+    if src_templates.is_dir():
+        shutil.copytree(
+            src_templates, plugin_dir / "templates", dirs_exist_ok=True,
             ignore=bundle_ignore())
 
 
