@@ -47,5 +47,6 @@
   - [crickets-dogfood](crickets-dogfood)
   - [agentm-dogfood](agentm-dogfood)
   - [docs-adr](wiki-section-taxonomy-docs-adr)
+- [Wiki Composer](wiki-composer)
 ### 💡 [Explanation](Explanation)
 ### 📐 [Decisions](Decisions)

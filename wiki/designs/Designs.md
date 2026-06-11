@@ -15,6 +15,7 @@ The architecture behind crickets and Agent M — the high-level design docs that
 - **[Wiki](wiki-design)** — the intent-grouped IA · per-folder sidebars · linting + publish.
 - **[Wiki-Maintenance Provisioning](wiki-maintenance-provisioning)** — provision a target repo end-to-end (init · template-ship · gate distribution · standalone retirement).
 - **[Wiki Section Taxonomy](wiki-section-taxonomy)** — the 7-section frame · per-project Architecture manifest · conditional sections · the two dogfood restructures.
+- **[Wiki Composer](wiki-composer)** — the manifest → page transform: load each section · strip its opinion comment · resolve voice + language · concatenate.
 
 **Architecture (Agent M)**
 
