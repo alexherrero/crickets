@@ -1,0 +1,35 @@
+# crickets' Architecture manifest — the five structural components of the toolkit,
+# in locked order. Read by `wiki-init` (the wiki-maintenance plugin) to scaffold and
+# render the Architecture section of the wiki.
+#
+# All five are free-formed under `components:` with NO `pillars:` toggles — on
+# purpose. Pillars expand first (in declared order) ahead of free-form components,
+# so toggling `host-adapters` as a pillar would hoist it to position 0 and break the
+# locked plugins-first order. Free-forming every component keeps the declared
+# sequence verbatim. `host-adapters` matches a known pillar template by slug but is
+# free-formed here to hold its 4th-place slot (and to carry crickets-specific
+# wording). PII guardrails fold into `build-and-distribution`; the harness seam with
+# Agent M is its own component. See wiki/designs/wiki-section-taxonomy.md
+# (part: crickets-dogfood).
+architecture:
+  components:
+    - slug: plugins
+      title: Plugins
+      summary: The shipped plugins (developer-workflows · developer-safety · code-review · github-ci · wiki-maintenance · pii) and what each contains.
+      overview: Plugins
+    - slug: customization-model
+      title: Customization model
+      summary: The primitive types (skills · commands · agents · hooks · …) and the `enhances:` soft-composition model that lets plugins layer.
+      overview: Customization-Model
+    - slug: build-and-distribution
+      title: Build & distribution
+      summary: How `src/` is generated into committed `dist/` native host plugins and shipped (bootstrap · marketplace · `--plugin-dir`); the PII guardrails gate the push.
+      overview: Build-And-Distribution
+    - slug: host-adapters
+      title: Host adapters
+      summary: The per-host surface mapping (Claude Code · Antigravity) and where each authored primitive lands.
+      overview: Host-Adapters
+    - slug: harness-interface
+      title: Harness interface ↔ Agent M
+      summary: The seam between this toolkit and the sibling `agentm` harness — what each owns, and how they compose without depending on each other.
+      overview: Harness-Interface
