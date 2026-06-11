@@ -261,7 +261,8 @@ architecture:
             wiki = Path(td) / "wiki"
             wiki.mkdir()
             (wiki / "architecture.yml").write_text(self.COMPONENTS_ONLY, encoding="utf-8")
-            rc, _, _ = self._run_main(["--root", str(wiki), "--no-ci", "--yes"])
+            rc, _, _ = self._run_main(
+                ["--root", str(wiki), "--no-ci", "--yes", "--visibility", "public"])
             self.assertEqual(rc, 0)
             self.assertTrue((wiki / "architecture" / "Architecture.md").is_file())
             self.assertTrue((wiki / "architecture" / "plugins" / "Plugins.md").is_file())
@@ -272,7 +273,8 @@ architecture:
         with tempfile.TemporaryDirectory() as td:
             wiki = Path(td) / "wiki"
             wiki.mkdir()
-            rc, _, _ = self._run_main(["--root", str(wiki), "--no-ci", "--yes"])
+            rc, _, _ = self._run_main(
+                ["--root", str(wiki), "--no-ci", "--yes", "--visibility", "public"])
             self.assertEqual(rc, 0)
             self.assertFalse((wiki / "architecture").exists())
 
@@ -287,6 +289,117 @@ architecture:
             self.assertIn("unknown pillar", err)
             self.assertFalse((wiki / "architecture").exists())   # nothing written
             self.assertFalse((wiki / "Home.md").exists())        # fail closed = no scaffold
+
+
+class TestNestedArchitectureSidebar(unittest.TestCase):
+    """The third nesting level: the root _Sidebar.md Architecture bullet expands
+    into its declared components, in manifest order, each linking to its overview
+    page (wiki-section-taxonomy 3/6 — render-and-gate task 1). Fixtures:
+    no-manifest · single-component · recurring-pillars."""
+
+    SECTIONS = ["how-to", "reference", "architecture", "designs",
+                "explanation", "decisions"]
+
+    def test_no_components_keeps_architecture_a_flat_bullet(self):
+        # no-manifest fixture: architecture present in sections but no components →
+        # a flat top-level bullet, NO nested sub-block.
+        text = wi.render_root_sidebar(self.SECTIONS, "Demo")        # components=None
+        self.assertIn("- [Architecture](Architecture)", text)
+        self.assertNotIn("  - [", text)                            # no indented sub-bullets
+
+    def test_single_component_nests_under_architecture(self):
+        comps = [wi.Component("plugins", "Plugins", "s", "Plugins")]
+        text = wi.render_root_sidebar(self.SECTIONS, "Demo", comps)
+        self.assertIn("- [Architecture](Architecture)", text)
+        self.assertIn("  - [Plugins](Plugins)", text)              # two-space indent (GFM nesting)
+        # the sub-bullet sits between the Architecture bullet and the next section.
+        lines = text.splitlines()
+        arch = lines.index("- [Architecture](Architecture)")
+        self.assertEqual(lines[arch + 1], "  - [Plugins](Plugins)")
+        self.assertEqual(lines[arch + 2], "- [Designs](Designs)")
+
+    def test_recurring_pillars_nest_in_manifest_order(self):
+        comps = wi.parse_architecture_manifest(
+            "architecture:\n  pillars: [host-adapters, sibling-interface]\n")
+        text = wi.render_root_sidebar(["architecture"], "Demo", comps)
+        lines = text.splitlines()
+        arch = lines.index("- [Architecture](Architecture)")
+        self.assertEqual(lines[arch + 1], "  - [Host adapters](Host-Adapters)")
+        self.assertEqual(lines[arch + 2], "  - [Sibling interface](Sibling-Interface)")
+
+    def test_only_architecture_nests_other_sections_stay_flat(self):
+        comps = [wi.Component("plugins", "Plugins", "s", "Plugins")]
+        text = wi.render_root_sidebar(self.SECTIONS, "Demo", comps)
+        # exactly one indented sub-bullet (the single component); every other
+        # section is a flat top-level bullet.
+        self.assertEqual([ln for ln in text.splitlines() if ln.startswith("  - ")],
+                         ["  - [Plugins](Plugins)"])
+
+    def test_components_ignored_when_architecture_not_in_sections(self):
+        comps = [wi.Component("plugins", "Plugins", "s", "Plugins")]
+        text = wi.render_root_sidebar(["how-to", "reference"], "Demo", comps)
+        self.assertNotIn("Plugins", text)                         # no architecture → no nest
+        self.assertNotIn("  - [", text)
+
+    def test_main_writes_nested_block_to_root_sidebar(self):
+        # integration: a real run with a manifest writes the nested block into the
+        # on-disk root _Sidebar.md.
+        out, err = io.StringIO(), io.StringIO()
+        with tempfile.TemporaryDirectory() as td:
+            wiki = Path(td) / "wiki"
+            wiki.mkdir()
+            (wiki / "architecture.yml").write_text(
+                TestArchitectureManifest.COMPONENTS_ONLY, encoding="utf-8")
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                rc = wi.main(["--root", str(wiki), "--no-ci", "--yes",
+                              "--visibility", "public"])
+            self.assertEqual(rc, 0)
+            sidebar = (wiki / "_Sidebar.md").read_text(encoding="utf-8")
+            self.assertIn("- [Architecture](Architecture)", sidebar)
+            self.assertIn("  - [Plugins](Plugins)", sidebar)
+            self.assertIn("  - [Customization model](Customization-Model)", sidebar)
+
+
+class TestOperationalVisibilityGate(unittest.TestCase):
+    """Operational renders only on non-public wikis (wiki-section-taxonomy 3/6 —
+    render-and-gate task 2). The axis is audience, not content-sensitivity:
+    `private` and `internal` render it; `public` and `unknown` suppress it."""
+
+    def test_renders_operational_per_visibility(self):
+        self.assertTrue(wi.renders_operational("private"))
+        self.assertTrue(wi.renders_operational("internal"))
+        self.assertFalse(wi.renders_operational("public"))
+        self.assertFalse(wi.renders_operational("unknown"))       # conservative default
+
+    def _scaffold_with_visibility(self, visibility):
+        out, err = io.StringIO(), io.StringIO()
+        with tempfile.TemporaryDirectory() as td:
+            wiki = Path(td) / "wiki"
+            wiki.mkdir()
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                rc = wi.main(["--root", str(wiki), "--no-ci", "--yes",
+                              "--visibility", visibility])
+            return rc, (wiki / "operational").exists()
+
+    def test_main_renders_operational_when_private(self):
+        rc, has_op = self._scaffold_with_visibility("private")
+        self.assertEqual(rc, 0)
+        self.assertTrue(has_op)
+
+    def test_main_renders_operational_when_internal(self):
+        rc, has_op = self._scaffold_with_visibility("internal")
+        self.assertEqual(rc, 0)
+        self.assertTrue(has_op)
+
+    def test_main_suppresses_operational_when_public(self):
+        rc, has_op = self._scaffold_with_visibility("public")
+        self.assertEqual(rc, 0)
+        self.assertFalse(has_op)
+
+    def test_main_suppresses_operational_when_unknown(self):
+        rc, has_op = self._scaffold_with_visibility("unknown")
+        self.assertEqual(rc, 0)
+        self.assertFalse(has_op)
 
 
 class TestRender(unittest.TestCase):
@@ -363,6 +476,26 @@ class TestScaffoldPassesCheckWiki(unittest.TestCase):
     def test_extended_sections_scaffold_is_gate_clean(self):
         self._assert_clean(["how-to", "reference", "designs", "explanation",
                             "decisions", "operational"])
+
+    def test_architecture_manifest_scaffold_is_gate_clean(self):
+        # a manifest-driven scaffold (Architecture + nested component folders +
+        # the third-level sidebar render) is gate-clean by construction: every
+        # component landing is referenced by both its folder _Sidebar.md and the
+        # root nested block.
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "wiki"
+            root.mkdir()
+            comps = wi.parse_architecture_manifest(
+                TestArchitectureManifest.COMPONENTS_ONLY)
+            sections = wi.active_sections(wi.DEFAULT_SECTIONS, has_architecture=True)
+            wi.apply_scaffold(
+                root, wi.compute_scaffold_plan(set(), sections, comps),
+                sections, "Demo", comps)
+            hard = [i for i in cw.collect_issues(root) if i.severity == "hard"]
+            self.assertEqual(
+                hard, [],
+                "manifest scaffold has hard check-wiki issues:\n  "
+                + "\n  ".join(f"[{i.rule}] {i.path.name}:{i.line}: {i.message}" for i in hard))
 
 
 class TestProvisionCI(unittest.TestCase):

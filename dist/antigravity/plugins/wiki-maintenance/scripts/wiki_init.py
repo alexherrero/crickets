@@ -308,11 +308,24 @@ def render_arch_folder_sidebar(component: Component) -> str:
     return _FOLDER_SIDEBAR.format(title=component.title, landing_base=component.overview)
 
 
-def render_root_sidebar(sections: list[str], project: str) -> str:
+def render_root_sidebar(sections: list[str], project: str,
+                        components: list[Component] | None = None) -> str:
+    """The root _Sidebar.md: Home + one bullet per active section. When
+    `architecture` is among the sections AND components are declared, the
+    Architecture bullet expands into an indented sub-block — one sub-bullet per
+    component, in manifest order, each linking to its overview page. This third
+    nesting level (ADR 0018's root→folder model is two levels; this is the one new
+    render mechanic, wiki-section-taxonomy 3/6) is the ONLY nested render: every
+    other section stays a flat top-level bullet. Two-space indent is the
+    GitHub-flavored-Markdown nested-list convention."""
+    components = components or []
     lines = [f"### {project} Wiki", "", "- [Home](Home)"]
     for s in sections:
         base, title, _ = section_meta(s)
         lines.append(f"- [{title}]({base})")
+        if s == "architecture" and components:
+            for c in components:
+                lines.append(f"  - [{c.title}]({c.overview})")
     return "\n".join(lines) + "\n"
 
 
@@ -333,7 +346,7 @@ def render_item(item: ScaffoldItem, sections: list[str], project: str,
     if item.kind == "home":
         return render_home(sections, project)
     if item.kind == "root_sidebar":
-        return render_root_sidebar(sections, project)
+        return render_root_sidebar(sections, project, components)
     if item.kind == "landing":
         return render_landing(item.section)
     if item.kind == "folder_sidebar":
@@ -451,6 +464,16 @@ def cost_warning(visibility: str) -> str | None:
             "Proceed only if that billing is acceptable.")
 
 
+def renders_operational(visibility: str) -> bool:
+    """Whether the Operational conditional section renders, given the repo's
+    visibility (wiki-section-taxonomy 3/6 — the visibility gate). `private` and
+    `internal` are both non-public and render it (the axis is AUDIENCE, not
+    content-sensitivity — both get Operational); `public` and `unknown` suppress
+    it (conservative on an undeterminable visibility). Feeds `active_sections`'
+    `non_public` gate in main()."""
+    return visibility in ("private", "internal")
+
+
 def default_project_name(root: Path) -> str:
     """A reasonable project name for Home/_Sidebar titles: the wiki's repo dir."""
     return root.resolve().parent.name or "Project"
@@ -492,10 +515,16 @@ def main(argv=None) -> int:
     except ManifestError as e:
         print(f"wiki-init: ✗ {e}", file=sys.stderr)
         return 1
-    # Suppress undeclared conditional sections. architecture is gated on a declared
-    # manifest (conditional gate #1, wired here); operational's --visibility gate is
-    # part 3, so it still defaults off.
-    sections = active_sections(sections, has_architecture=bool(components))
+    # Repo visibility drives two gates — detect once (gh shell-out; → 'unknown' on
+    # any failure), reuse for both: (1) Operational renders only on non-public
+    # wikis (the conditional-section gate, below); (2) the billed-Actions cost
+    # warning fires on non-public CI provisioning (further down).
+    visibility = args.visibility or detect_visibility(target_root)
+    # Suppress undeclared conditional sections: architecture gates on a declared
+    # manifest (conditional gate #1); operational gates on non-public visibility
+    # (conditional gate #2 — public/unknown suppress, private/internal render).
+    sections = active_sections(sections, has_architecture=bool(components),
+                               non_public=renders_operational(visibility))
     project = args.name or default_project_name(args.root)
     existing = {str(p.relative_to(args.root)) for p in args.root.rglob("*") if p.is_file()} \
         if args.root.is_dir() else set()
@@ -504,8 +533,7 @@ def main(argv=None) -> int:
 
     # Cost warning fires only when this run would ADD a billing surface — i.e.
     # at least one workflow would be dropped — on a non-public target.
-    warn = cost_warning(args.visibility or detect_visibility(target_root)) \
-        if (not args.no_ci and ci["workflows"]) else None
+    warn = cost_warning(visibility) if (not args.no_ci and ci["workflows"]) else None
 
     if not plan and not ci["workflows"] and not ci["gate"]:
         print(f"wiki-init: ✓ {args.root} already scaffolded + CI provisioned — nothing to do.")
