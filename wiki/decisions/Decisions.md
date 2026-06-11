@@ -23,6 +23,7 @@ This page is the index. The homepage links here once instead of listing every AD
 - [ADR 0016 — Project surface split](0016-project-surface-split)
 - [ADR 0017 — Soft composition (`enhances:`) + the developer split + capability probe](0017-enhances-soft-composition)
 - [ADR 0018 — Per-folder sidebars: intent-grouped wiki folders with collapse/expand nav](0018-per-folder-sidebars)
+- [ADR 0019 — Wiki provisioning: gate-distribution split + supersession-gated retirement](0019-wiki-provisioning)
 
 ## Retrospectives
 
@@ -32,6 +33,7 @@ This page is the index. The homepage links here once instead of listing every AD
 
 <!-- maintained by the wiki tooling -->
 
+- **2026-06-10** — ADR 0019 (wiki provisioning) added; records the gate-distribution split + supersession-gated retirement.
 - **2026-06-08** — ADR 0018 (per-folder sidebars) added; the ADRs moved into `decisions/`.
 
 ## See also
