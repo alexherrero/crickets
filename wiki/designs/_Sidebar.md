@@ -42,4 +42,5 @@
   - [wiki-init](wiki-init)
   - [standalone-retirement](standalone-retirement)
   - [docs-adr](docs-adr)
+- [Wiki Section Taxonomy](wiki-section-taxonomy)
 ### 📐 [Decisions](Decisions)

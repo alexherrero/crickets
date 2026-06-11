@@ -1,0 +1,129 @@
+---
+title: Wiki Section Taxonomy Design
+status: final
+visibility: published
+author: Alex Herrero
+contributors: []
+created: 2026-06-10
+updated: 2026-06-10
+last_major_revision: 2026-06-10
+prd:
+project: https://github.com/users/alexherrero/projects/5
+---
+
+<!--
+  Authored 2026-06-10 via /design author from the settled taxonomy
+  discussion. Lightweight shape: Context · Design · Alternatives · Risks
+  (the N/A-for-this-change sections — Dependencies, Migrations, Quality
+  Attributes, Project management, Operations — are omitted; their one
+  load-bearing point each is folded into Design or Risks).
+  status: draft → review → final → launched.
+-->
+
+# Wiki Section Taxonomy Design
+
+## Context
+
+### Objective
+
+The wiki generator's section taxonomy is a four-section Diátaxis skeleton (`get-started · do · reference · why`) that doesn't match how the operator navigates a project and has no home for a project's structural component map. This design replaces it with a seven-section taxonomy — How-to · Reference · Architecture · Designs · Explanation · Decisions · Operational — where Architecture is a per-project, dynamically-populated component map and Operational is suppressed on public wikis. It threads that taxonomy through the three coupled surfaces it lives in, and validates the result by restructuring crickets' own wiki to it and rewriting agentm's wiki from scratch against it.
+
+### Background
+
+The generator (`wiki_init.py`) hard-codes `DEFAULT_SECTIONS = ["get-started", "do", "reference", "why"]` plus standalone `designs`, `decisions`, and `plugins` folders, and crickets' hand-built wiki is its canonical no-op reference — if `SECTION_META` drifts from that wiki, a `wiki-init` run on crickets stops being idempotent. So the taxonomy lives in three coupled surfaces that must move together: the rendered sidebars (root + per-folder `_Sidebar.md`), the generator's `SECTION_META`/`DEFAULT_SECTIONS`, and the authoring spec (`diataxis-author/templates/README.md` §3).
+
+Two gaps drove the redesign. There was nowhere for a project's **structural component map** — the "how is this built" view between Reference's lookup tables and the per-feature designs; the old `plugins` folder was a flat list that fit only crickets. And the four-section skeleton split task content across `Do`/`Get-Started`, a division the operator never wanted. The shaping constraint: **Architecture is unique per project** — crickets' components (plugins, customization model, build & distribution, host adapters, harness interface) share almost nothing with agentm's (phases, AgentMemory, auto-detect, device-wide substrate). A static `SECTION_META` can't encode that, so the *frame* stays static while Architecture's *contents* move into a per-repo manifest.
+
+## Design
+
+### Overview
+
+The taxonomy has two halves that change independently. The **frame** is a fixed, ordered set of seven top-level sections — How-to, Reference, Architecture, Designs, Explanation, Decisions, Operational — shared by every project. Two are **conditional**: Architecture appears only when the project declares one; Operational only when the wiki isn't public. The other five are always present.
+
+The **Architecture contents** are per-project. Rather than hard-code sub-sections, the generator reads a small per-repo manifest (`wiki/architecture.yml`) listing each large component as `{slug, title, summary, overview-page}`, scaffolds an `architecture/<slug>/` folder per entry, and renders a nested, grouped Architecture block in the sidebar — the one genuinely new render mechanic, a third nesting level on top of the per-folder-sidebar model ([ADR 0018](0018-per-folder-sidebars)). A few components recur across the operator's sibling repos (host-adapters, the sibling-interface, distribution); those ship as **optional pillar toggles** so a project gets them with one keyword, while everything else is free-form.
+
+Two renames close an earlier Diátaxis experiment: `do→How-to` (reversing `do→Do`) and `why→Explanation` (reversing `why→Why-It-Works`), with Get-Started/Tutorials folding into How-to. Architecture is understanding-oriented and sits *before* Designs: each Architecture page links *down* to its design, and the per-feature designs also list in their own Designs section after Architecture. Reference keeps the lookup tables (Manifest-Schema, Per-Host-Paths, Compatibility); Architecture pages link *out* to that detail rather than duplicating it.
+
+### Detailed Design
+
+No new infrastructure — this is a generator + content change, run by the existing `wiki-init` command. The work lands across the three coupled surfaces:
+
+| Surface | File(s) | Change |
+|---|---|---|
+| Generator source | `src/wiki-maintenance/scripts/wiki_init.py` | `SECTION_META`/`DEFAULT_SECTIONS` reshaped to the 7-section frame; conditional tagging; manifest reader + nested render |
+| Rendered sidebars | root `wiki/_Sidebar.md` + per-folder `<section>/_Sidebar.md` | reordered + renamed; Architecture gains the nested sub-section render |
+| Authoring spec | `diataxis-author/templates/README.md` §3 | the intent-folder list + Architecture nesting + conditional-section rules |
+
+#### 1. The static frame
+
+```python
+DEFAULT_SECTIONS = ["how-to", "reference", "architecture", "designs",
+                    "explanation", "decisions", "operational"]
+```
+
+`SECTION_META` maps each slug to `(basename, title, one-liner)`; the renames land here (`how-to`, `explanation`). `architecture` and `operational` are tagged conditional (a `CONDITIONAL_SECTIONS` set) so the renderer can suppress them. Basenames keep mirroring crickets' own wiki so a `wiki-init` run on crickets stays a near-no-op — which is why the crickets dogfood must move `do/→how-to/`, `why/→explanation/`, and absorb `plugins/` into `architecture/plugins/`. `check-wiki.py` updates in the same arc so the new intent-folder set passes lint.
+
+#### 2. The per-project Architecture manifest (net-new)
+
+`wiki_init.py` reads no per-repo config today (CLI-flag-driven), so `wiki/architecture.yml` is a new file the generator learns to read:
+
+```yaml
+architecture:
+  pillars: [host-adapters, sibling-interface]   # recurring toggles, optional
+  components:
+    - slug: plugins
+      title: Plugins
+      summary: One folder per plugin; the generated dist surface.
+      overview: Plugins              # the section's anchor page
+    - slug: customization-model
+      title: Customization model
+      summary: How a customization is declared, validated, installed.
+      overview: Customization-Model
+```
+
+The generator expands each `pillars:` toggle to its known template, scaffolds `architecture/<slug>/` + a section landing per `components:` entry, and feeds the ordered list to the sidebar renderer. An absent/empty manifest suppresses Architecture entirely (conditional gate #1). The block is validated (required keys; known pillar names) and fails closed with a clear error.
+
+#### 3. The nested sub-section render (third nesting level)
+
+The sidebar model ([ADR 0018](0018-per-folder-sidebars)) is two levels today (root lists sections; each folder lists its pages). Architecture adds a third — the root Architecture entry expands into its components:
+
+```
+### 🏛️ [Architecture](Architecture)
+- [Plugins](Plugins)
+- [Customization model](Customization-Model)
+- [Build & distribution](Build-And-Distribution)
+- [Host adapters](Host-Adapters)
+- [Harness interface ↔ Agent M](Harness-Interface)
+```
+
+Per-component folders still get their own `_Sidebar.md` for pages *within* a component (GitHub Wiki renders the nearest sidebar). This is the only new render mechanic.
+
+#### 4. The visibility gate for Operational
+
+`wiki-init` already takes `--visibility {public|private|internal|unknown}`. Operational renders only when `visibility != public` — both `private` and `internal` are non-public (the distinction is *audience*, not content-sensitivity; both get Operational); `public` and `unknown` suppress it. crickets and agentm are public → suppressed for both, but the slot exists for the operator's private wikis.
+
+#### 5. The lockstep validation (the two dogfoods)
+
+The crickets wiki is the canonical reference: after the change, crickets' hand-built `wiki/` must match what `SECTION_META` + crickets' `architecture.yml` render, or the no-op invariant breaks. So restructuring crickets in place (`do/→how-to/`, `why/→explanation/`, `plugins/→architecture/plugins/`, + four new pillars) is the *lock* that proves surfaces 1 and 2 agree, not just validation. agentm gets a full rewrite — its Tutorials/How-to/Explanation tree replaced wholesale by the frame + agentm's own manifest. The static frame, manifest expansion, conditional gates, and nested render are pure functions over fixtures (no-manifest · single-component · recurring-pillars · public-vs-private), unit-tested in the battery; the crickets no-op is the e2e check.
+
+The Detailed Design's five subsections map onto the translate split: **frame · manifest · render+gate · crickets-dogfood · agentm-dogfood · docs/ADR** — likely 4–6 parts.
+
+## Alternatives Considered
+
+- **Hard-code Architecture sub-sections in `SECTION_META`** (like the old `plugins` folder). Rejected — every project's architecture differs; a static list fits crickets and nothing else. The manifest is the only way to make Architecture per-project without forking the generator per repo.
+- **A flat Architecture section** (one page, no sub-folders). Rejected — the operator wanted real sub-sections, each a component with its own pages (e.g. "the interface with Agent M"); a flat list can't carry per-component depth.
+- **Fold Designs into Architecture.** Rejected — Architecture is the understanding-oriented component map; Designs are per-feature design docs. Different Diátaxis modes; each Architecture page links *down* to its design and designs also list separately. Co-documenting blurs the map/feature line.
+- **Gate Operational on a content-sensitivity flag** instead of visibility. Rejected — the real axis is audience (public vs not), and `--visibility` already encodes it; a separate flag is a second source of truth to keep in sync.
+
+## Technical Debt & Risks
+
+1. **The no-op invariant is load-bearing and fragile.** If crickets' hand-built wiki and `SECTION_META` disagree after the change, `wiki-init` on crickets stops being idempotent and the canonical reference rots. *Mitigation: the crickets dogfood IS the lock — restructure crickets, then prove `wiki-init` is a no-op against it in the battery. Re-audit on any future `SECTION_META` edit.*
+2. **The manifest is a new schema to maintain + validate.** A malformed `architecture.yml` could scaffold garbage or crash the generator. *Mitigation: validate the block (required keys per component; known pillar names); fail closed. Re-audit if a third repo's manifest exposes a missing field.*
+3. **Three coupled surfaces can still drift** between releases even with the dogfood lock — a future edit to one without the others reintroduces drift. *Mitigation: a battery check that the rendered crickets sidebar matches the generator output. Re-audit if the check is ever skipped.*
+
+## Document History
+
+| Date | Change | Status |
+|---|---|---|
+| 2026-06-10 | Authored via `/design author` from the settled taxonomy discussion (7-section frame · per-project Architecture manifest · nested render · visibility gate · two dogfoods). Lightweight shape — N/A-for-this-change sections omitted, their load-bearing points folded into Design/Risks. Operator approved the lighter draft; **draft → review → final** in one pass. Translated to **6 parts** via `/design translate` (split verbatim from the design's DD mapping): `static-frame` · `architecture-manifest` · `render-and-gate` · `crickets-dogfood` · `agentm-dogfood` · `docs-adr`. | final |
+| 2026-06-10 | Sequenced into 6 `PLAN.md` via `/design sequence` (topo order static-frame → architecture-manifest → render-and-gate → crickets-dogfood → agentm-dogfood → docs-adr). `static-frame` activated as the vault `_harness/PLAN.md`; the other 5 queued to `_harness/designs/wiki-section-taxonomy/queued-plans/`. Ready for `/work`. | final |
