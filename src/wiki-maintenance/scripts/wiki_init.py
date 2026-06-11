@@ -91,17 +91,102 @@ def parse_sections(raw: str | None) -> list[str]:
     return [s for s in parts if s] or list(DEFAULT_SECTIONS)
 
 
+# --- template library (in-code) -----------------------------------------------
+# Produces a wiki/ that passes the bundled check-wiki gate: landings are
+# `<!-- mode: index -->` (exempt from the per-mode shape rules); per-folder +
+# root _Sidebar.md together reference every content page (rule j); Home is
+# curated. File-based / i18n templates are a future enhancement.
+
+_LANDING = """<!-- mode: index -->
+# {title}
+
+_{purpose}_
+
+Add pages under `{section}/` and list them in this folder's `_Sidebar.md`.
+"""
+
+_FOLDER_SIDEBAR = """### {title}
+
+- [{title}]({landing_base})
+"""
+
+
+def render_landing(section: str) -> str:
+    base, title, purpose = section_meta(section)
+    return _LANDING.format(title=title, purpose=purpose or title, section=section)
+
+
+def render_folder_sidebar(section: str) -> str:
+    base, title, _ = section_meta(section)
+    return _FOLDER_SIDEBAR.format(title=title, landing_base=base)
+
+
+def render_root_sidebar(sections: list[str], project: str) -> str:
+    lines = [f"### {project} Wiki", "", "- [Home](Home)"]
+    for s in sections:
+        base, title, _ = section_meta(s)
+        lines.append(f"- [{title}]({base})")
+    return "\n".join(lines) + "\n"
+
+
+def render_home(sections: list[str], project: str) -> str:
+    links = "  ".join(f"**[{section_meta(s)[1]}]({section_meta(s)[0]})**" for s in sections)
+    return (
+        f"# {project} Wiki\n\n"
+        f"Welcome. Jump in: {links}.\n\n"
+        f"_This wiki uses the intent-group structure "
+        f"({' · '.join(sections)}); each folder has its own `_Sidebar.md`._\n"
+    )
+
+
+def render_item(item: ScaffoldItem, sections: list[str], project: str) -> str:
+    """The file content for one scaffold item."""
+    if item.kind == "home":
+        return render_home(sections, project)
+    if item.kind == "root_sidebar":
+        return render_root_sidebar(sections, project)
+    if item.kind == "landing":
+        return render_landing(item.section)
+    if item.kind == "folder_sidebar":
+        return render_folder_sidebar(item.section)
+    raise ValueError(f"unknown scaffold item kind: {item.kind}")
+
+
+def apply_scaffold(root: Path, plan: list[ScaffoldItem], sections: list[str],
+                   project: str) -> list[Path]:
+    """Write every planned (gap-fill) item; return the paths written. Only plan
+    items are written, and the plan excludes existing paths, so this never
+    clobbers operator content."""
+    written = []
+    for it in plan:
+        dest = root / it.relpath
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(render_item(it, sections, project), encoding="utf-8")
+        written.append(dest)
+    return written
+
+
+def default_project_name(root: Path) -> str:
+    """A reasonable project name for Home/_Sidebar titles: the wiki's repo dir."""
+    return root.resolve().parent.name or "Project"
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Scaffold a repo's wiki to the intent-group IA.")
     ap.add_argument("--root", type=Path, default=Path("wiki"),
                     help="wiki root to scaffold (default: ./wiki)")
     ap.add_argument("--sections", default=None,
                     help=f"comma/space-separated section folders (default: {','.join(DEFAULT_SECTIONS)})")
+    ap.add_argument("--name", default=None,
+                    help="project name for Home/_Sidebar titles (default: the repo dir name)")
     ap.add_argument("--preview", action="store_true",
                     help="print the gap-fill plan and write nothing")
+    ap.add_argument("--yes", action="store_true",
+                    help="skip the confirmation prompt before writing")
     args = ap.parse_args(argv)
 
     sections = parse_sections(args.sections)
+    project = args.name or default_project_name(args.root)
     existing = {str(p.relative_to(args.root)) for p in args.root.rglob("*") if p.is_file()} \
         if args.root.is_dir() else set()
     plan = compute_scaffold_plan(existing, sections)
@@ -116,8 +201,15 @@ def main(argv=None) -> int:
     if args.preview:
         print("\n  preview only — re-run without --preview to write the gap-fill.")
         return 0
-    # apply lands in the command surface (task 2); the pure plan is task 1.
-    print("\n  (apply not wired in this entrypoint yet — see the wiki-init command)")
+    if not args.yes:
+        if input(f"\nWrite {len(plan)} file(s) under {args.root}? [y/N] ").strip().lower() \
+                not in ("y", "yes"):
+            print("  aborted — nothing written.")
+            return 0
+    written = apply_scaffold(args.root, plan, sections, project)
+    for p in written:
+        print(f"  wrote {p}")
+    print(f"wiki-init: scaffolded {len(written)} file(s).")
     return 0
 
 

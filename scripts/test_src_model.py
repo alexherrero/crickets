@@ -50,15 +50,17 @@ class TestSrcModel(unittest.TestCase):
         # part 2 folded in the bucket-A primitives (copy-not-move from agentm);
         # part 3 task 2 added the read-only style-scope-evaluator agent (DC-4);
         # part 4 task 4 added the wiki-watch skill (cross-host) + the wiki-watch
-        # command (claude-only scheduling entry, DC-W4) → 8 primitives. Keyed by
-        # (name, kind) since wiki-watch is BOTH a skill and a command (same name,
-        # distinct kinds + emit subdirs — no collision).
+        # command (claude-only scheduling entry, DC-W4). The provisioning part
+        # (wiki-maintenance-provisioning 3/4) added the wiki-init command → 9
+        # primitives. Keyed by (name, kind) since wiki-watch is BOTH a skill and a
+        # command (same name, distinct kinds + emit subdirs — no collision).
         self.assertEqual({(p.name, p.kind) for p in wm.primitives}, {
             ("diataxis-evaluator", "agent"), ("documenter", "agent"),
             ("style-scope-evaluator", "agent"),
             ("wiki-author", "skill"), ("diataxis-author", "skill"),
             ("wiki-watch", "skill"),
-            ("recent-wiki-changes", "command"), ("wiki-watch", "command")})
+            ("recent-wiki-changes", "command"), ("wiki-watch", "command"),
+            ("wiki-init", "command")})
         self.assertEqual(by["pii"].requires, [])
         self.assertTrue(by["pii"].standalone)
         self.assertFalse(by["github-ci"].standalone)
@@ -209,7 +211,7 @@ class TestSrcModel(unittest.TestCase):
         cr_cmds = {p.name for p in by["code-review"].primitives if p.kind == "command"}
         self.assertEqual(cr_cmds, {"code-review"})
         wm_cmds = {p.name for p in by["wiki-maintenance"].primitives if p.kind == "command"}
-        self.assertEqual(wm_cmds, {"recent-wiki-changes", "wiki-watch"})
+        self.assertEqual(wm_cmds, {"recent-wiki-changes", "wiki-watch", "wiki-init"})
 
 
 if __name__ == "__main__":
