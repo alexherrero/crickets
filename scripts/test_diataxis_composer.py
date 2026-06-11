@@ -23,6 +23,7 @@ _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
 _SKILL_SCRIPTS = _ROOT / "src" / "wiki-maintenance" / "skills" / "diataxis-author" / "scripts"
 _SECTIONS_DIR = _SKILL_SCRIPTS.parent / "templates" / "sections"
+_MANIFEST_PATH = _SKILL_SCRIPTS.parent / "templates" / "component-overview.md"
 
 
 def _load(name: str):
@@ -136,6 +137,113 @@ class TestVoice(unittest.TestCase):
         m.assert_called_once_with(wiki_root=Path("/w"), vault_path=Path("/v"), project_slug="proj")
         self.assertIn(style_resolver._BLOCK_OPEN, out, "the resolved voice is applied")
         self.assertLess(out.index("# Sample Page"), out.index(style_resolver._BLOCK_OPEN))
+
+
+class TestManifestParser(unittest.TestCase):
+    """Task 3 — the block-list `sections:` reader (the inline-list parsers can't)."""
+
+    def test_reads_block_list_in_manifest_order(self):
+        names = composer._parse_manifest_sections(_MANIFEST_PATH.read_text(encoding="utf-8"))
+        self.assertEqual(
+            names,
+            ["intro", "how-it-works", "component-composition", "see-also"],
+            "the real component-overview manifest's sections, in document order",
+        )
+
+    def test_tolerates_inline_list(self):
+        # A future manifest may use the inline form; the reader accepts both.
+        txt = "---\npage-template: x\nsections: [a, b, c]\n---\nbody\n"
+        self.assertEqual(composer._parse_manifest_sections(txt), ["a", "b", "c"])
+
+    def test_absent_sections_yields_empty(self):
+        self.assertEqual(composer._parse_manifest_sections("---\npage-template: x\n---\nbody\n"), [])
+
+    def test_no_frontmatter_yields_empty(self):
+        self.assertEqual(composer._parse_manifest_sections("just a body, no frontmatter\n"), [])
+
+    def test_block_list_stops_at_next_key(self):
+        # A key after the block list must not be swallowed as a section.
+        txt = "---\nsections:\n  - a\n  - b\nother-key: v\n---\nbody\n"
+        self.assertEqual(composer._parse_manifest_sections(txt), ["a", "b"])
+
+
+class TestComposePage(unittest.TestCase):
+    """Task 3 — compose_page() assembles the manifest under the H1, deterministically."""
+
+    _MANIFEST = _MANIFEST_PATH.read_text(encoding="utf-8")
+    _TITLE = "Build & Distribution"
+
+    @staticmethod
+    def _pinned_voice():
+        # A fixed voice — the determinism seam: the proof pins voice rather than
+        # reading the live, mutable vault (parent Risk #3).
+        return style_resolver.ResolvedStyle(
+            base_text="Plain, present-tense prose.", lessons=[], provenance=[]
+        )
+
+    def _compose(self, **kw):
+        return composer.compose_page(self._MANIFEST, title=self._TITLE, **kw)
+
+    def test_emits_h1_then_four_sections_in_manifest_order(self):
+        out = self._compose(resolved_style=self._pinned_voice())
+        self.assertTrue(out.startswith(f"# {self._TITLE}\n"), "the page leads with the # {title} H1")
+        # The four section bodies, located by their distinctive markers, appear in
+        # manifest order: intro (bold lead, no heading) → how-it-works → how-it-fits
+        # → see-also.
+        i_intro = out.index("**<Project>**")
+        i_how = out.index("## How it works")
+        i_fits = out.index("## How it fits")
+        i_see = out.index("## See also")
+        self.assertLess(i_intro, i_how)
+        self.assertLess(i_how, i_fits)
+        self.assertLess(i_fits, i_see)
+
+    def test_voice_comment_positioned_after_h1(self):
+        out = self._compose(resolved_style=self._pinned_voice())
+        self.assertEqual(out.count(style_resolver._BLOCK_OPEN), 1, "voice emitted once")
+        # H1 → voice → first section body.
+        self.assertLess(out.index(f"# {self._TITLE}"), out.index(style_resolver._BLOCK_OPEN))
+        self.assertLess(out.index(style_resolver._BLOCK_OPEN), out.index("**<Project>**"))
+
+    def test_is_deterministic_byte_identical_across_runs(self):
+        # The load-bearing proof: same (manifest, library, title, pinned voice,
+        # lang=en) → byte-identical output. This is byte-reproduction without a
+        # brittle committed golden (the plan's Risk: a golden breaks on any library
+        # or voice edit) — determinism is asserted directly, run-to-run.
+        rs = self._pinned_voice()
+        first = self._compose(resolved_style=rs)
+        second = self._compose(resolved_style=rs)
+        self.assertEqual(first, second, "compose_page must be deterministic")
+
+    def test_concatenates_section_bodies_verbatim(self):
+        # Round-trip: each stripped parse_section().body appears verbatim in the
+        # assembled page — the composer concatenates, it does not rewrite.
+        out = self._compose(resolved_style=self._pinned_voice())
+        for name in ("intro", "how-it-works", "component-composition", "see-also"):
+            body = section_schema.parse_section(
+                (_SECTIONS_DIR / f"{name}.md").read_text(encoding="utf-8")
+            ).body.strip()
+            self.assertIn(body, out, f"{name}: body must appear verbatim in the composed page")
+
+    def test_opinion_stripped_placeholders_survive(self):
+        out = self._compose(resolved_style=self._pinned_voice())
+        self.assertNotIn("<!-- SECTION", out, "no section opinion comment leaks into the page")
+        self.assertIn("<Project>", out, "author-fill placeholders survive (the output contract)")
+
+    def test_bare_page_when_voice_empty(self):
+        # Empty voice → assembled page with no voice block (the graceful path).
+        empty = style_resolver.ResolvedStyle(base_text="   ", lessons=[], provenance=[])
+        out = self._compose(resolved_style=empty)
+        self.assertNotIn(style_resolver._BLOCK_OPEN, out)
+        self.assertTrue(out.startswith(f"# {self._TITLE}\n\n"))
+        self.assertIn("## How it works", out, "sections are still assembled without voice")
+
+    def test_lang_seam_threads_through_to_loader(self):
+        # compose_page's lang flows to load_section_body; a non-en value is
+        # rejected there, and the rejection propagates (the reserved seam is not
+        # silently honored end-to-end).
+        with self.assertRaises(NotImplementedError):
+            composer.compose_page(self._MANIFEST, title=self._TITLE, lang="es")
 
 
 if __name__ == "__main__":

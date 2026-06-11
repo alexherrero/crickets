@@ -41,6 +41,7 @@ only the transform.
 """
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -55,6 +56,11 @@ _SECTIONS_DIR = _SCRIPTS_DIR.parent / "templates" / "sections"
 
 # The reserved translate-downstream seam: English today, the only value built.
 _DEFAULT_LANG = "en"
+
+# Matches a leading `--- … ---` frontmatter block (the manifest header). Used by
+# the block-list `sections:` reader — section_schema / style_resolver only parse
+# inline `[a, b]` lists, so the composer carries its own block-list parse.
+_FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n?", re.DOTALL)
 
 
 def load_section_body(name: str, *, sections_dir: Path | None = None, lang: str = _DEFAULT_LANG) -> str:
@@ -132,3 +138,95 @@ def compose_voice(
             file=sys.stderr,
         )
         return page_text
+
+
+def _parse_manifest_sections(manifest_text: str) -> list[str]:
+    """Read the ordered ``sections:`` list from a page manifest's frontmatter.
+
+    A page manifest (e.g. ``templates/component-overview.md``) names its sections
+    as a YAML block list::
+
+        sections:
+          - intro
+          - how-it-works
+
+    ``section_schema`` / ``style_resolver`` only parse inline ``[a, b]`` lists, so
+    the composer carries this small block-list reader. Returns the section names in
+    document order. The inline ``[a, b]`` form is tolerated too, so a future
+    manifest may use either. An absent or empty ``sections:`` yields ``[]`` — the
+    caller (``author-wiring``) decides whether an empty manifest is an error;
+    compose-core just reports what the manifest says.
+    """
+    m = _FRONTMATTER_RE.match(manifest_text)
+    if not m:
+        return []
+    names: list[str] = []
+    in_block = False
+    for line in m.group(1).splitlines():
+        if not in_block:
+            stripped = line.strip()
+            if stripped.startswith("sections:"):
+                rest = stripped.partition(":")[2].strip()
+                if rest.startswith("[") and rest.endswith("]"):
+                    # Inline form: sections: [a, b, c]
+                    return [s.strip() for s in rest[1:-1].split(",") if s.strip()]
+                in_block = True  # block form — items follow on subsequent lines
+            continue
+        # Inside the block list: collect `- item` lines; a non-list, non-blank
+        # line (the next frontmatter key) ends the block.
+        if re.match(r"^\s*-\s+", line):
+            item = re.sub(r"^\s*-\s+", "", line).strip()
+            if item:
+                names.append(item)
+        elif line.strip() == "":
+            continue
+        else:
+            break
+    return names
+
+
+def compose_page(
+    manifest_text: str,
+    *,
+    title: str,
+    sections_dir: Path | None = None,
+    lang: str = _DEFAULT_LANG,
+    resolved_style=None,  # style_resolver.ResolvedStyle | None — inject to pin voice
+    wiki_root: Path | None = None,
+    vault_path: Path | None = None,
+    project_slug: str | None = None,
+) -> str:
+    """Assemble a page from a manifest: load · strip · concatenate · resolve-voice.
+
+    The full pipeline. Reads the manifest's ordered ``sections:`` list, loads and
+    strips each named body (``load_section_body`` — steps 1+2), joins them in
+    manifest order under a ``# {title}`` page H1 (step 4), then injects the resolved
+    house voice after the H1 (``compose_voice`` — step 3). Pure and deterministic:
+    the same ``(manifest_text, library, title, voice, lang)`` → byte-identical
+    output, which is what makes the proof slice an acceptance test.
+
+    ``title`` is the page identity the caller supplies — the manifest is shared
+    across every page of its type, so it cannot carry a per-page title;
+    ``author-wiring`` derives it from the slug. ``lang`` threads to the loader (the
+    reserved translate-downstream seam: ``en`` only, non-``en`` raises). The voice
+    scopes (``resolved_style`` / ``wiki_root`` / ``vault_path`` / ``project_slug``)
+    pass straight through to ``compose_voice``; inject ``resolved_style`` to pin the
+    voice for a deterministic proof.
+    """
+    section_names = _parse_manifest_sections(manifest_text)
+    bodies = [
+        load_section_body(name, sections_dir=sections_dir, lang=lang)
+        for name in section_names
+    ]
+    # The composer owns inter-section whitespace: parse_section keeps each body's
+    # leading/trailing whitespace verbatim (the round-trip guarantee), so the
+    # normalization for assembly happens HERE — strip each body, join with one
+    # blank line, under the page H1. Not in the loader.
+    assembled = f"# {title}\n\n" + "\n\n".join(b.strip() for b in bodies) + "\n"
+    return compose_voice(
+        assembled,
+        resolved_style=resolved_style,
+        wiki_root=wiki_root,
+        vault_path=vault_path,
+        project_slug=project_slug,
+    )
