@@ -1,28 +1,52 @@
 name: "[W] Update Wiki"
 
-# Mirrors wiki/ in this repo to the GitHub Wiki on every push to the
-# default branch that touches wiki/**. Mirror semantics — add, edit,
-# rename, delete. rsync -a preserves the dir tree, so a per-folder
-# _Sidebar.md renders as that section's nav (GH Wiki uses the nearest one).
-# Fails loudly on duplicate basenames across subdirs (GH Wiki resolves page
-# LINKS by basename, so collisions would silently clobber) — but _Sidebar.md
-# / _Footer.md are exempt: they're location-rendered, never linked by
-# basename, so per-folder copies are expected. Gracefully skips when the
-# wiki is disabled on the repo.
+# crickets' own wiki publisher — the proven original the wiki-init template is
+# parameterized from. Two jobs:
+#
+#   lint-wiki  — runs crickets' SINGLE-SOURCE gate
+#                (src/wiki-maintenance/scripts/check-wiki.py — the same one
+#                check-all.sh runs; crickets IS the source, so no vendored copy).
+#   update-wiki — mirrors wiki/ to the GitHub Wiki, but only `needs: lint-wiki`
+#                (a structurally-broken wiki never publishes) and only on the
+#                default branch.
+#
+# Mirror semantics — add, edit, rename, delete. rsync -a preserves the dir tree,
+# so a per-folder _Sidebar.md renders as that section's nav (GH Wiki uses the
+# nearest one). Fails loudly on duplicate basenames across subdirs (GH Wiki
+# resolves page LINKS by basename, so collisions would silently clobber) — but
+# _Sidebar.md / _Footer.md are exempt: location-rendered, never linked by basename.
+# Gracefully skips when the wiki is disabled on the repo.
 
 on:
   push:
     paths:
       - 'wiki/**'
+      - 'src/wiki-maintenance/scripts/check-wiki.py'
+  pull_request:
+    paths:
+      - 'wiki/**'
+      - 'src/wiki-maintenance/scripts/check-wiki.py'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
+  lint-wiki:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Lint wiki/ structure
+        # crickets' single-source gate (same one check-all.sh runs); stdlib-only.
+        run: python3 src/wiki-maintenance/scripts/check-wiki.py --strict --root wiki
+
   update-wiki:
+    needs: lint-wiki
     if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 

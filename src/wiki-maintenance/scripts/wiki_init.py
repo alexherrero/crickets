@@ -177,13 +177,14 @@ def apply_scaffold(root: Path, plan: list[ScaffoldItem], sections: list[str],
     return written
 
 
-# --- CI provisioning: drop the workflows + vendor the gate ---------------------
-# The publish (wiki-sync) + lint (wiki-lint) workflow templates, plus the vendored
-# check-wiki gate (GH Actions has no ${CLAUDE_PLUGIN_ROOT}). Workflows are gap-fill
-# (the user owns them after install — never overwrite); the gate is (re)vendored
-# when missing or on --resync-gate.
+# --- CI provisioning: drop the workflow + vendor the gate ----------------------
+# The single lint-then-publish wiki workflow template (wiki-sync.yml: a lint-wiki
+# job runs the gate, an update-wiki job publishes only `needs: lint-wiki`), plus
+# the vendored check-wiki gate the lint job invokes (GH Actions has no
+# ${CLAUDE_PLUGIN_ROOT}). The workflow is gap-fill (the user owns it after install
+# — never overwrite); the gate is (re)vendored when missing or on --resync-gate.
 
-TEMPLATE_WORKFLOWS = ["wiki-sync.yml", "wiki-lint.yml"]
+TEMPLATE_WORKFLOWS = ["wiki-sync.yml"]
 
 
 def plan_ci(target_root: Path, plugin_root: Path = PLUGIN_ROOT,
@@ -201,9 +202,10 @@ def plan_ci(target_root: Path, plugin_root: Path = PLUGIN_ROOT,
 
 def provision_ci(target_root: Path, plugin_root: Path = PLUGIN_ROOT,
                  resync_gate: bool = False) -> dict:
-    """Drop the publish + lint workflow templates into <target>/.github/workflows/
-    (gap-fill — never overwrites a user-owned workflow) and vendor the check-wiki
-    gate into <target>/.github/scripts/. Returns {workflows, skipped, gate}."""
+    """Drop the lint-then-publish wiki workflow template into
+    <target>/.github/workflows/ (gap-fill — never overwrites a user-owned workflow)
+    and vendor the check-wiki gate into <target>/.github/scripts/. Returns
+    {workflows, skipped, gate}."""
     workflows_src = plugin_root / "templates" / "workflows"
     wf_dir = target_root / ".github" / "workflows"
     written, skipped = [], []
@@ -222,12 +224,13 @@ def provision_ci(target_root: Path, plugin_root: Path = PLUGIN_ROOT,
 
 
 # --- non-public cost warning ---------------------------------------------------
-# GitHub Actions minutes are free only on PUBLIC repos. Dropping the publish +
-# lint workflows onto a private/internal target adds a billed-minutes surface, so
-# we warn (and the confirmation gate stops) before the workflows land. The
-# requirement is operator-locked: "the non-public-only cost warning." An
-# undeterminable visibility (gh missing / not a GitHub repo / network error) is
-# treated conservatively — warn, but say we couldn't confirm.
+# GitHub Actions minutes are free only on PUBLIC repos. Dropping the wiki workflow
+# onto a private/internal target adds a billed-minutes surface (it runs the gate on
+# every push/PR and publishes on the default branch), so we warn (and the
+# confirmation gate stops) before the workflow lands. The requirement is
+# operator-locked: "the non-public-only cost warning." An undeterminable
+# visibility (gh missing / not a GitHub repo / network error) is treated
+# conservatively — warn, but say we couldn't confirm.
 
 def _gh_visibility(target_root: Path) -> str:
     """Shell out to `gh` for the target repo's visibility (the runtime detector)."""
@@ -252,16 +255,16 @@ def detect_visibility(target_root: Path, fetch=_gh_visibility) -> str:
 def cost_warning(visibility: str) -> str | None:
     """The billed-Actions warning for a non-public target, or None for a public
     one. Public repos run Actions free; private/internal (or undeterminable)
-    targets bill the publish + lint workflows against the account's quota."""
+    targets bill the wiki workflow against the account's quota."""
     if visibility == "public":
         return None
     if visibility == "unknown":
         return ("⚠ Could not determine this repo's visibility. If it is NOT public, "
-                "the wiki-sync + wiki-lint workflows will consume billed GitHub "
-                "Actions minutes. Public repos run free.")
-    return (f"⚠ This repo is {visibility}. The wiki-sync + wiki-lint workflows will "
-            "consume billed GitHub Actions minutes — Actions is free only on public "
-            "repos. Proceed only if that billing is acceptable.")
+                "the wiki workflow will consume billed GitHub Actions minutes. "
+                "Public repos run free.")
+    return (f"⚠ This repo is {visibility}. The wiki workflow will consume billed "
+            "GitHub Actions minutes — Actions is free only on public repos. "
+            "Proceed only if that billing is acceptable.")
 
 
 def default_project_name(root: Path) -> str:

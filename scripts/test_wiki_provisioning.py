@@ -56,30 +56,28 @@ class TestVendorGate(unittest.TestCase):
 
 class TestWorkflowTemplates(unittest.TestCase):
     SYNC = "templates/workflows/wiki-sync.yml"
-    LINT = "templates/workflows/wiki-lint.yml"
 
-    def test_templates_live_in_plugin_source(self):
+    def test_template_lives_in_plugin_source(self):
         self.assertTrue((PLUGIN_SRC / self.SYNC).is_file())
-        self.assertTrue((PLUGIN_SRC / self.LINT).is_file())
 
-    def test_templates_bundle_to_both_hosts(self):
+    def test_template_bundles_to_both_hosts(self):
         for host in ("claude-code", "antigravity"):
             base = DIST / host / "plugins" / "wiki-maintenance"
-            self.assertTrue((base / self.SYNC).is_file(), f"{host} missing sync template")
-            self.assertTrue((base / self.LINT).is_file(), f"{host} missing lint template")
+            self.assertTrue((base / self.SYNC).is_file(), f"{host} missing wiki workflow")
 
-    def test_sync_job_name_is_opinionated(self):
+    def test_workflow_job_name_is_opinionated(self):
         self.assertIn('name: "[W] Update Wiki"',
                       (PLUGIN_SRC / self.SYNC).read_text(encoding="utf-8"))
 
-    def test_lint_runs_the_vendored_gate(self):
-        text = (PLUGIN_SRC / self.LINT).read_text(encoding="utf-8")
-        self.assertIn('name: "[W] Lint Wiki"', text)
+    def test_lint_job_gates_publish_via_vendored_gate(self):
+        text = (PLUGIN_SRC / self.SYNC).read_text(encoding="utf-8")
         run_lines = [ln for ln in text.splitlines()
                      if "run:" in ln and "check-wiki.py" in ln]
         self.assertTrue(run_lines, "no run: step invoking check-wiki.py")
-        # CI invokes the VENDORED gate (GH Actions has no ${CLAUDE_PLUGIN_ROOT})
+        # the lint job invokes the VENDORED gate (GH Actions has no ${CLAUDE_PLUGIN_ROOT})
         self.assertIn(".github/scripts/check-wiki.py", run_lines[0])
+        # publish is gated on the lint job — a structurally-broken wiki never publishes
+        self.assertIn("needs: lint-wiki", text)
 
     def test_single_source_no_repo_root_gate(self):
         # exactly one hand-maintained check-wiki.py — in the plugin, not repo root

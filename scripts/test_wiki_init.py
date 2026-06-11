@@ -146,13 +146,12 @@ class TestScaffoldPassesCheckWiki(unittest.TestCase):
 class TestProvisionCI(unittest.TestCase):
     GATE = SCRIPTS / "check-wiki.py"
 
-    def test_drops_both_workflows_and_vendors_gate(self):
+    def test_drops_workflow_and_vendors_gate(self):
         with tempfile.TemporaryDirectory() as td:
             target = Path(td)
             wi.provision_ci(target)
             wf = target / ".github" / "workflows"
-            self.assertTrue((wf / "wiki-sync.yml").is_file())
-            self.assertTrue((wf / "wiki-lint.yml").is_file())
+            self.assertTrue((wf / "wiki-sync.yml").is_file())           # one lint-gates-publish workflow
             gate = target / ".github" / "scripts" / "check-wiki.py"
             self.assertEqual(gate.read_bytes(), self.GATE.read_bytes())  # vendored = plugin gate
 
@@ -164,8 +163,8 @@ class TestProvisionCI(unittest.TestCase):
             (wf / "wiki-sync.yml").write_text("USER EDITED", encoding="utf-8")
             result = wi.provision_ci(target)
             self.assertEqual((wf / "wiki-sync.yml").read_text(encoding="utf-8"), "USER EDITED")
-            self.assertTrue((wf / "wiki-lint.yml").is_file())            # missing one dropped
             self.assertEqual([p.name for p in result["skipped"]], ["wiki-sync.yml"])
+            self.assertEqual(result["workflows"], [])                    # nothing new dropped
 
     def test_default_run_does_not_re_vendor_present_gate(self):
         with tempfile.TemporaryDirectory() as td:
@@ -190,7 +189,7 @@ class TestProvisionCI(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             target = Path(td)
             p = wi.plan_ci(target)
-            self.assertEqual(set(p["workflows"]), {"wiki-sync.yml", "wiki-lint.yml"})
+            self.assertEqual(p["workflows"], ["wiki-sync.yml"])
             self.assertTrue(p["gate"])
             wi.provision_ci(target)
             p2 = wi.plan_ci(target)
@@ -276,7 +275,6 @@ class TestMainCostGate(unittest.TestCase):
             self.assertIn("billed", text)                       # still informed
             wf = Path(td) / ".github" / "workflows"
             self.assertTrue((wf / "wiki-sync.yml").is_file())   # but proceeded
-            self.assertTrue((wf / "wiki-lint.yml").is_file())
 
     def test_no_ci_skips_warning_even_when_private(self):
         with tempfile.TemporaryDirectory() as td:

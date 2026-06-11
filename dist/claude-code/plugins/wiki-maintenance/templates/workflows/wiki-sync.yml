@@ -1,14 +1,27 @@
 name: "[W] Update Wiki"
 
-# Wiki publisher — dropped into a repo by `wiki-init` as the INITIAL copy. Mirrors
-# wiki/ in the repo to the GitHub Wiki on every push to the default branch that
-# touches wiki/**. Mirror semantics — add, edit, rename, delete. rsync -a
-# preserves the dir tree, so a per-folder _Sidebar.md renders as that section's
-# nav (GH Wiki uses the nearest one). Fails loudly on duplicate basenames across
-# subdirs (GH Wiki resolves page LINKS by basename, so collisions would silently
-# clobber) — but _Sidebar.md / _Footer.md are exempt: they're location-rendered,
-# never linked by basename, so per-folder copies are expected. Gracefully skips
-# when the wiki is disabled on the repo.
+# Lint-then-publish for a repo's wiki — dropped into a repo by `wiki-init` as the
+# INITIAL copy. Two jobs in one workflow:
+#
+#   lint-wiki  — runs the VENDORED check-wiki.py that wiki-init copies into
+#                .github/scripts/ (GitHub Actions runners have no
+#                ${CLAUDE_PLUGIN_ROOT}, so the gate is vendored, not referenced;
+#                re-sync after a plugin upgrade with `wiki-init --resync-gate`).
+#                Runs on push AND pull_request, so wiki breakage is caught before
+#                it merges.
+#   update-wiki — mirrors wiki/ to the GitHub Wiki, but only `needs: lint-wiki`
+#                (so a structurally-broken wiki can NEVER publish) and only on the
+#                default branch.
+#
+# (Agent-invoked check-wiki — during /work, wiki-author — uses the bundled
+# ${CLAUDE_PLUGIN_ROOT}/scripts/check-wiki.py directly; no vendoring needed there.)
+#
+# Publish = mirror semantics — add, edit, rename, delete. rsync -a preserves the
+# dir tree, so a per-folder _Sidebar.md renders as that section's nav (GH Wiki uses
+# the nearest one). Fails loudly on duplicate basenames across subdirs (GH Wiki
+# resolves page LINKS by basename, so collisions would silently clobber) — but
+# _Sidebar.md / _Footer.md are exempt: location-rendered, never linked by basename.
+# Gracefully skips when the wiki is disabled on the repo.
 #
 # Repo-agnostic: no hard-coded owner/repo (uses ${{ github.repository }} + the
 # repo's own default branch). This is a starting point — you own it after it
@@ -18,15 +31,32 @@ on:
   push:
     paths:
       - 'wiki/**'
+      - '.github/scripts/check-wiki.py'
+  pull_request:
+    paths:
+      - 'wiki/**'
+      - '.github/scripts/check-wiki.py'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
+  lint-wiki:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Lint wiki/ structure
+        # ubuntu-latest ships python3; check-wiki.py is stdlib-only.
+        run: python3 .github/scripts/check-wiki.py --strict --root wiki
+
   update-wiki:
+    needs: lint-wiki
     if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 

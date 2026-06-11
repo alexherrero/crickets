@@ -47,13 +47,15 @@ overwrites an operator-authored page**; a second run is a no-op.
 
 ## Cost warning on non-public targets
 
-The scaffolder drops two GitHub Actions workflows (`wiki-sync` publish +
-`wiki-lint`). Actions minutes are **free only on public repos** — on a
-private/internal target they're billed. The preview auto-detects visibility (via
-`gh`) and prints a billed-minutes warning when the target isn't public; the apply
-prompt then gates on it. **Surface that warning to the operator and get an
-explicit OK before applying** — don't auto-confirm a non-public run. Use `--no-ci`
-to scaffold the wiki only (no workflows, no billing surface).
+The scaffolder drops one GitHub Actions workflow (`wiki-sync.yml` — a `lint-wiki`
+job runs the gate on every push/PR, an `update-wiki` job publishes only
+`needs: lint-wiki`, so a broken wiki never reaches the GitHub Wiki). Actions
+minutes are **free only on public repos** — on a private/internal target they're
+billed. The preview auto-detects visibility (via `gh`) and prints a billed-minutes
+warning when the target isn't public; the apply prompt then gates on it. **Surface
+that warning to the operator and get an explicit OK before applying** — don't
+auto-confirm a non-public run. Use `--no-ci` to scaffold the wiki only (no
+workflow, no billing surface).
 
 ## Non-negotiables
 
