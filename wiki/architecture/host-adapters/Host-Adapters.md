@@ -1,16 +1,37 @@
 <!-- mode: index -->
 # Host adapters
 
-_The per-host surface mapping — how one authored primitive lands in each supported host._
+_One authored primitive, two hosts — how each kind lands on Claude Code and Antigravity, and where a host can't follow._
 
-crickets supports two hosts: **Claude Code** and **Antigravity**. A single authored primitive emits host-specific artifacts: a skill becomes `.claude/skills/<name>/SKILL.md` on Claude Code, while commands, agents, and hooks each route to their own per-host destination. Antigravity adds workflows and rules as native primitive kinds. Some host capabilities are absent on one side; those gaps are tracked explicitly rather than papered over.
+crickets targets two hosts — **Claude Code** and **Antigravity** — from one source. A primitive declares `supported_hosts`, and the generator emits a host-shaped artifact for each: same `kind`, host-specific destination and packaging. Where a host can't honor a primitive, the gap is named rather than hidden.
 
-Field-level detail lives in Reference:
+## How it works
 
-- [Per-Host Paths](Per-Host-Paths) — the destination table per primitive × host.
-- [Compatibility](Compatibility) — which primitive kinds each host supports.
-- [Antigravity Limitations](Antigravity-Limitations) — the host-gap register.
+The generator mirrors the source layout into `dist/<host>/plugins/<group>/`, and each `kind` lands at a host-specific path inside that plugin. The host's own plugin manager installs the whole plugin — nothing is copied into `.claude/` or the project tree.
+
+| Kind | Claude Code | Antigravity |
+|---|---|---|
+| **`skill`** / **`agent`** / **`command`** | same in-plugin path on both hosts | same |
+| **`hook`** | `hooks/hooks.json` + `hooks/<name>/` | root `hooks.json` + `hooks/<name>/`; runs observe-only |
+| **`snippet`** | dropped — no instruction-file surface | `rules/<name>.md` |
+
+The two hosts agree on most paths and split in a few places: the plugin manifest (`.claude-plugin/plugin.json` vs a root `plugin.json`), the hook manifest location, and the marketplace pointer. Two splits are load-bearing — Claude Code drops `snippet`s (it has no instruction-file surface), and Antigravity runs hooks observe-only (it ignores exit codes and never reads stdout), so a hook that vetoes or injects is Claude-only-effective.
+
+## How it fits
+
+- **[Build & distribution](Build-And-Distribution)** — the pipeline that runs the emit. Host adapters define *where* each kind lands; build & distribution puts it there.
+- **[Customization model](Customization-Model)** — the inputs the adapter switches on. Each primitive's `supported_hosts` + `kind` decide which hosts receive it and what artifact it becomes.
+
+## Host gaps
+
+- **Antigravity authoring gaps.** Hooks, scheduled tasks, and multi-agent orchestration have no file-based authoring path, so a primitive can emit without being effective — each gap is tracked with its re-address trigger in the limitations register.
 
 ## See also
+
+Detail:
+
+- [Per-host paths](Per-Host-Paths) — the destination table per primitive × host.
+- [Compatibility](Compatibility) — which kinds and hooks are effective on each host.
+- [Antigravity limitations](Antigravity-Limitations) — the host-gap register.
 
 [Architecture](Architecture) · [Reference](Reference) · [Home](Home)

@@ -1,7 +1,7 @@
 ---
 section: see-also
 reusable: true
-applies-to: [how-to, tutorial, reference, explanation]
+applies-to: [how-to, tutorial, reference, explanation, component-overview]
 ---
 <!-- SECTION see-also — cross-links. The universal footer. Link the pages a reader goes
      to next; a how-to should link at least one reference page. -->

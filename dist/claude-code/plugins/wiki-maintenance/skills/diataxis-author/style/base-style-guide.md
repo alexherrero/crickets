@@ -35,7 +35,9 @@ house defaults. Keep it tight.
   mattered, what it solved, what it changed — not a generic description that
   would read the same anywhere.
 - **Restating instead of linking.** Reference other pages; don't re-derive them.
-  The same content at three zoom levels is wrong — pick one, link the rest.
+  The same content at three zoom levels is wrong — pick one, link the rest. When you
+  do link, name the seam — what crosses between the two pages, the division of labor —
+  not a re-description of the linked page.
 - **Machine-checkable terms.** The `convention-drift` check (`/diataxis check`)
   scans pages for the terms on the `banned:` line below; overlay lessons extend
   it with their own `banned:` line. Findings, not failures (unless `--strict`).

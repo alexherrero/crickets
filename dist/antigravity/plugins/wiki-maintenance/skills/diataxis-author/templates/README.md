@@ -38,6 +38,9 @@ A wiki is built from **pages**; each page is composed from **sections**.
 | `decisions-index` | landing | one link to the decision index |
 | `contribute` | landing, plugin-home | short pointer; specs live elsewhere |
 | `plugin-composition` | plugin-home | one plugin's standalone / requires / enhances + host reach |
+| `how-it-works` | component-overview | the mechanism — the lead of a component landing; table for the parallel parts |
+| `component-composition` | component-overview | one Architecture component's couplings to its siblings |
+| `safety` | component-overview | OPTIONAL cross-cutting-concern callout (`## Safety` / `## Host gaps`) — only when a guardrail or host-gap story exists |
 | `section-contents` | section-index | the section's pages as curated one-liners (not regurgitated) |
 | `recent-changes` | section-index, plugin-home | tooling-maintained dated list of recent edits |
 | `mode-block` | how-to, tutorial | the `> [!NOTE]` Goal / [Time] / Prereqs block |
@@ -52,7 +55,8 @@ A wiki is built from **pages**; each page is composed from **sections**.
 | `validation` | reference | what the validator asserts (grouped by scope) + the command to run it |
 
 Page-templates: `home.md` (landing), `plugin-home.md` (the per-plugin page — the wave-2
-per-plugin-pages target — Developer-Safety is the first, in the `plugins/` section), and `section-index.md` (a section's landing — one per intent-folder)
+per-plugin-pages target — Developer-Safety is the first, in the `plugins/` section), `section-index.md` (a section's landing — one per intent-folder),
+and `component-overview.md` (an Architecture component's landing — one per `architecture.yml` entry)
 are section manifests. The four Diátaxis mode templates (`how-to` /
 `tutorial` / `reference` / `explanation`) are still **monoliths** read live by `author.py`; their
 sections now live in the library above, and the **composer** (§6) will assemble them at
@@ -155,6 +159,15 @@ codification — until then the monoliths stay.
   *over a cluster of pages*. (Pass-1: `Plugin-Anatomy` over `Customization-Types` / `Per-Host-Paths` /
   `Manifest-Schema`, at the operator's prompt. The wave-2 `plugin-home` page-template is its
   per-plugin instance.)
+- **A cross-cutting concern is its own section, not a composition bullet.** On a component
+  overview, a guardrail or where-it-falls-short story (PII defense, a destructive-action gate, a
+  host capability with no authoring path) gets its OWN short section after `how-it-fits`, before
+  `see-also` — `## Safety` for a guardrail, `## Host gaps` / `## Limitations` for the shortfall
+  variant. Never a `how-it-fits` bullet: that section is for sibling-component couplings, and a
+  concern is not a coupling. Include it only when the component carries one (most don't), and name
+  the enforcer/gap + where it's tracked — the full mechanism is the Reference page's job. (Pass-1:
+  Build & distribution → `## Safety` (PII guardrails → CI-Gates); Host adapters → `## Host gaps`
+  (Antigravity authoring gaps → Antigravity-Limitations).) The `safety` section-template bakes this in.
 
 ## 4. Voice
 
@@ -172,6 +185,10 @@ codification — until then the monoliths stay.
 - Lesson — **`command-howto-clarity`** (global): in command/install how-tos, flag example
   lists as examples + show per-item commands; state versions as minimums; defer per-host
   detail to the reference page.
+- **Cross-links name the seam, not the page.** A `How it fits` or `See also` bullet says what
+  crosses between the two pages — the division of labor — not a re-description of the linked page;
+  prefer a crisp two-clause contrast that splits the work. (Pass-1: the component landings' `How it
+  fits` bullets — "host adapters define *where* each kind lands; build & distribution puts it there".)
 - **Brand:** a tastefully *hidden* easter-egg link is welcome (e.g. the banner tagline); keep
   the Men-in-Black reference implicit — never explained inline.
 

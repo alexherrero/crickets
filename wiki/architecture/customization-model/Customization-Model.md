@@ -1,16 +1,36 @@
 <!-- mode: index -->
 # Customization model
 
-_How a crickets customization is shaped: the primitive types, and the soft-composition model that lets plugins layer on each other._
+_What a crickets customization is made of: the primitive kinds, and how plugins compose._
 
-crickets ships **primitives** — skills, commands, agents, hooks, MCP servers, status lines, output styles, workflows, rules, snippets, settings fragments — packaged as **plugins**. Each primitive carries YAML frontmatter (`name` · `description` · `kind` · `supported_hosts` · `version`); plugins additionally declare a `contents:` list. Plugins layer through the `enhances:` soft-composition model: a plugin names another it builds on, honored when present and skipped when absent — never a hard dependency.
+A crickets customization is a **primitive** — a skill, command, agent, hook, or snippet — described by a YAML manifest. Primitives that belong together live in one **plugin**, and the plugin is the unit you install. You author one primitive per file; its frontmatter says what kind it is and which hosts it runs on.
 
-Field-level detail lives in Reference:
+## How it works
 
-- [Customization Types](Customization-Types) — the full primitive catalogue.
-- [Manifest Schema](Manifest-Schema) — every frontmatter field and when it is required.
-- [Add a skill](Add-A-Skill) · [Add a plugin](Add-A-Plugin) · [Modify a plugin](Modify-A-Plugin) — the authoring how-tos.
+A primitive's `kind` field decides both what it does and where you author it — `src/<group>/<kind-dir>/<name>`. The generator discovers it by walking that subdir, and a per-group `group.yaml` describes the plugin around it. Five kinds ship today; the schema reserves six more (`mcp-server`, `status-line`, `output-style`, `workflow`, `rule`, `settings-fragment`) with no instance yet.
+
+| Kind | What it is |
+|---|---|
+| **`skill`** | an agent-invoked helper — the model triggers it on a context match. |
+| **`command`** | a user-typed `/slash` command. |
+| **`agent`** | a sub-agent for fan-out work. |
+| **`hook`** | a script the host runs at a session event. |
+| **`snippet`** | a standing instruction fragment. |
+
+Plugins compose two ways. A plugin `requires:` another when it hard-depends on it — it is then *integrated*, not `standalone`. A plugin `enhances:` another when it augments it only if both are installed: soft, and skipped when the target is absent.
+
+## How it fits
+
+- **[Plugins](Plugins)** — the unit primitives ship in. Each `src/<group>/` is one plugin; `group.yaml`'s `requires:` / `enhances:` are where one plugin's relationship to another is declared.
+- **[Build & distribution](Build-And-Distribution)** — what reads these manifests. The generator switches on `kind` and `supported_hosts` to emit each plugin.
+- **[Host adapters](Host-Adapters)** — where a primitive's `supported_hosts` + `kind` resolve to a real destination. The model declares intent; the adapter places the artifact.
 
 ## See also
+
+Detail:
+
+- [Customization types](Customization-Types) — the full primitive catalogue, kind by kind.
+- [Manifest schema](Manifest-Schema) — every frontmatter and `group.yaml` field, and when each is required.
+- [Add a skill](Add-A-Skill) · [Add a plugin](Add-A-Plugin) · [Modify a plugin](Modify-A-Plugin) — the authoring how-tos.
 
 [Architecture](Architecture) · [Reference](Reference) · [Home](Home)

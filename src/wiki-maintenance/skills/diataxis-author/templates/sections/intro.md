@@ -1,7 +1,7 @@
 ---
 section: intro
 reusable: true
-applies-to: [home, plugin-home, project-landing, reference, section-index]
+applies-to: [home, plugin-home, project-landing, reference, section-index, component-overview]
 ---
 <!-- SECTION intro — what it is, in one plain paragraph. No boast, no history.
      (See the `user-facing-prose` voice lesson.) -->
