@@ -2,6 +2,7 @@
 
 ### 🚀 [Get started](Get-Started)
 ### 🔧 [Do](Do)
+- [Provision a repo's wiki — wiki-init](Provision-A-Repo-Wiki)
 - [Maintain a wiki — wiki-watcher](Run-The-Wiki-Watcher)
 - [Review a change — code review](Use-Code-Review)
 ### 📖 [Reference](Reference)
