@@ -2,6 +2,7 @@
 import contextlib
 import importlib.util
 import io
+import shutil
 import sys
 import tempfile
 import unittest
@@ -284,6 +285,44 @@ class TestMainCostGate(unittest.TestCase):
                 ["--root", str(wiki), "--visibility", "private", "--no-ci", "--yes"])
             self.assertNotIn("billed", text)                    # no workflows → no bill
             self.assertFalse((Path(td) / ".github").exists())
+
+
+class TestRealWikiSmoke(unittest.TestCase):
+    """Integration smoke: running wiki-init against crickets' OWN wiki is a
+    near-no-op that never clobbers operator content (design Migrations note)."""
+    WIKI = REPO / "wiki"
+
+    def _sections(self, root):
+        return sorted(d.name for d in root.iterdir() if d.is_dir())
+
+    def test_real_wiki_run_is_near_noop(self):
+        existing = {p.relative_to(self.WIKI).as_posix()
+                    for p in self.WIKI.rglob("*") if p.is_file()}
+        plan = wi.compute_scaffold_plan(existing, self._sections(self.WIKI))
+        # Near-no-op: the scaffolder proposes only a handful of additive index
+        # landings — currently 2 (do/How-To.md + why/Why.md), a landing-basename
+        # drift vs crickets' own Do.md / Why-It-Works.md. It never plans an
+        # existing path, so it cannot clobber operator content. Drops to 0 if
+        # SECTION_META is later reconciled to crickets' basenames.
+        self.assertLess(len(plan), 5, [it.relpath for it in plan])
+        self.assertTrue({it.relpath for it in plan}.isdisjoint(existing))
+        for it in plan:
+            self.assertIn(it.kind, {"home", "root_sidebar", "landing", "folder_sidebar"})
+
+    def test_apply_on_real_wiki_copy_preserves_existing_bytes(self):
+        with tempfile.TemporaryDirectory() as td:
+            copy = Path(td) / "wiki"
+            shutil.copytree(self.WIKI, copy)
+            before = {p.relative_to(copy).as_posix(): p.read_bytes()
+                      for p in copy.rglob("*") if p.is_file()}
+            sections = self._sections(copy)
+            plan = wi.compute_scaffold_plan(set(before), sections)
+            written = wi.apply_scaffold(copy, plan, sections, "crickets")
+            for rel, data in before.items():                      # never clobbered
+                self.assertEqual((copy / rel).read_bytes(), data, f"clobbered {rel}")
+            added = {p.relative_to(copy).as_posix() for p in written}
+            self.assertEqual(added, {it.relpath for it in plan})  # only the gaps
+            self.assertTrue(added.isdisjoint(before))             # additive only
 
 
 if __name__ == "__main__":
