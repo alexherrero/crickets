@@ -648,23 +648,22 @@ class TestRealWikiSmoke(unittest.TestCase):
     WIKI = REPO / "wiki"
 
     def _sections(self, root):
-        return sorted(d.name for d in root.iterdir() if d.is_dir())
+        # The intent-group folders — never hidden/dot dirs. A gitignored
+        # wiki/.harness/ session marker is not a wiki section, and wiki-init never
+        # treats it as one (it scaffolds DEFAULT_SECTIONS / --sections, not by
+        # dir-scan), so the helper must skip dotdirs to mirror real behavior.
+        return sorted(d.name for d in root.iterdir()
+                      if d.is_dir() and not d.name.startswith("."))
 
-    @unittest.expectedFailure
     def test_real_wiki_run_is_noop(self):
-        # TRANSITIONAL RED (wiki-section-taxonomy, accepted "battery red 1→4").
-        # static-frame (part 1) reshaped SECTION_META to the post-restructure
-        # basenames (do -> how-to/How-To, why -> explanation/Explanation), but
-        # crickets' OWN wiki still has the OLD folders (do/, why/, plugins/) until
-        # crickets-dogfood (part 4) moves them. So `section_meta("why")` now falls
-        # back to "Why" while the on-disk landing is "Why-It-Works" → the plan is
-        # non-empty and this no-op assertion fails BY DESIGN in this window.
-        #
-        # RESTORE in crickets-dogfood (part 4): once crickets' wiki is on the new
-        # frame, the run is a true no-op again — REMOVE this @expectedFailure. The
-        # decorator self-alarms: a restored no-op turns this into an UNEXPECTED
-        # SUCCESS (a unittest failure), forcing the cleanup. The assertion below is
-        # unchanged — still the real no-op invariant, not a weakened one.
+        # The no-op invariant, RESTORED in crickets-dogfood (part 4): crickets' own
+        # wiki is now on the seven-section frame, so the section-level scaffold plan
+        # converges to nothing to do. The @expectedFailure tripwire that guarded the
+        # "battery red 1→4" transition window (parts 1-3, while crickets still had
+        # the old do/, why/, plugins/ folders) is gone — its job is done. The
+        # stronger lock (no-op WITH the architecture.yml manifest, plus the
+        # rendered-sidebar == generator-output structural check) lives in
+        # TestCricketsDogfoodLock below.
         existing = {p.relative_to(self.WIKI).as_posix()
                     for p in self.WIKI.rglob("*") if p.is_file()}
         plan = wi.compute_scaffold_plan(existing, self._sections(self.WIKI))
@@ -684,6 +683,81 @@ class TestRealWikiSmoke(unittest.TestCase):
             added = {p.relative_to(copy).as_posix() for p in written}
             self.assertEqual(added, {it.relpath for it in plan})  # only the gaps
             self.assertTrue(added.isdisjoint(before))             # additive only
+
+
+import re as _re
+
+_LINK_RE = _re.compile(r"\[([^\]]+)\]\(([^)#]+)\)")
+
+
+def _component_refs(text, overviews):
+    """Ordered (label, target) pairs from sidebar `text` whose target is one of the
+    Architecture component overview basenames. The hand-built sidebar uses emoji
+    section headers + flat bullets while the generator nests two-space-indented
+    sub-bullets; filtering on the component overviews compares the load-bearing
+    content (which components, what label, in what order) without pinning the
+    cosmetic shell — exactly the "keep rich operator sidebars" allowance."""
+    return [(m.group(1), m.group(2)) for m in _LINK_RE.finditer(text)
+            if m.group(2) in overviews]
+
+
+class TestCricketsDogfoodLock(unittest.TestCase):
+    """The wiki-section-taxonomy 4/6 lock: crickets' OWN restructured wiki +
+    architecture.yml is a verified generator no-op, and its hand-built root sidebar
+    agrees structurally with what the generator would render from the manifest. This
+    is the proof that surface 1 (generator) and surface 2 (sidebars) agree — the
+    design's Risk #1/#3 mitigation, guarded going forward by the battery."""
+    WIKI = REPO / "wiki"
+
+    def _components(self):
+        return wi.read_architecture_manifest(self.WIKI)
+
+    def _active_sections(self):
+        # crickets: Architecture on (manifest present), Operational off (public).
+        return wi.active_sections(wi.DEFAULT_SECTIONS, has_architecture=True,
+                                  non_public=False)
+
+    def test_full_scaffold_with_manifest_is_noop(self):
+        # The strong lock: the FULL planned set — section landings + per-folder
+        # sidebars + every architecture/<component>/ landing + sidebar from the real
+        # architecture.yml — is already on disk, so the gap-fill plan is empty.
+        components = self._components()
+        self.assertEqual([c.slug for c in components],
+                         ["plugins", "customization-model", "build-and-distribution",
+                          "host-adapters", "harness-interface"])
+        existing = {p.relative_to(self.WIKI).as_posix()
+                    for p in self.WIKI.rglob("*") if p.is_file()}
+        plan = wi.compute_scaffold_plan(existing, self._active_sections(), components)
+        self.assertEqual([it.relpath for it in plan], [],
+                         "wiki-init would create files — the dogfood no-op is broken")
+
+    def test_root_sidebar_component_refs_match_generator(self):
+        # Structural (not byte) equality: the component references in the hand-built
+        # root _Sidebar.md == those the generator renders from the manifest — same
+        # components, same labels, same order. NOT a byte-match (that would force
+        # regenerating the operator's rich emoji-header sidebar, which the plan
+        # forbids); structural agreement is the real invariant.
+        components = self._components()
+        overviews = {c.overview for c in components}
+        real = (self.WIKI / "_Sidebar.md").read_text(encoding="utf-8")
+        generated = wi.render_root_sidebar(self._active_sections(), "crickets", components)
+        self.assertEqual(_component_refs(real, overviews),
+                         _component_refs(generated, overviews))
+        # and they are exactly the five components, in manifest order:
+        self.assertEqual(_component_refs(real, overviews),
+                         [(c.title, c.overview) for c in components])
+
+    def test_sidebar_drift_is_caught(self):
+        # Negative test: the structural check has teeth — drop one component from the
+        # rendered sidebar and the agreement breaks loudly.
+        components = self._components()
+        overviews = {c.overview for c in components}
+        real = (self.WIKI / "_Sidebar.md").read_text(encoding="utf-8")
+        generated = wi.render_root_sidebar(self._active_sections(), "crickets", components)
+        drifted = real.replace("- [Host adapters](Host-Adapters)\n", "")
+        self.assertNotEqual(real, drifted, "fixture line not found — test is stale")
+        self.assertNotEqual(_component_refs(drifted, overviews),
+                            _component_refs(generated, overviews))
 
 
 if __name__ == "__main__":
