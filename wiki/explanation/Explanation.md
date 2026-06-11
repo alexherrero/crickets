@@ -16,6 +16,7 @@ The principles behind crickets — why adversarial review, deterministic gates, 
 
 - **2026-06-08** — folded into `why/`; this index added.
 - **2026-06-09** — Purpose and scope rewritten for v3.0; Cross-Repo-Memory-Protocol retired (memory is out of crickets scope).
+- **2026-06-11** — `why/` renamed to `explanation/` under the seven-section frame (wiki-section-taxonomy dogfood).
 
 ## See also
 

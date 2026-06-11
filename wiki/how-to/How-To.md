@@ -1,0 +1,29 @@
+<!-- mode: index -->
+# How-to
+
+Task-focused recipes for getting things done with the crickets plugins — from a zero-to-working install through running each plugin on real work. New here? Start with the one-liner install, then watch a plugin work end-to-end.
+
+## Start here
+
+1. [Install crickets plugins](Install-Into-Project) — the three install modes (one-liner · marketplace · manual `--plugin-dir`), per host.
+2. [Using code review](01-First-Code-Review) — a hands-on first run: install one plugin, plant a bug, watch `/code-review` catch it.
+
+## What's here
+
+- **[Install crickets plugins](Install-Into-Project)** — the three install modes, per host.
+- **[Using code review](01-First-Code-Review)** — a hands-on first run, end-to-end.
+- **[Review a change — code review](Use-Code-Review)** — run `/code-review` over a diff or PR for adversarial bug-finding.
+- **[Provision a repo's wiki — wiki-init](Provision-A-Repo-Wiki)** — scaffold a repo's `wiki/` and its lint-then-publish CI from nothing.
+- **[Maintain a wiki — wiki-watcher](Run-The-Wiki-Watcher)** — keep a wiki in sync with its repo, automatically.
+
+## Recent changes
+
+<!-- maintained by the wiki tooling (recent-wiki-changes / the documenter) -->
+
+- **2026-06-11** — `do/` + `get-started/` folded into `how-to/` (wiki-section-taxonomy restructure); this index merged from both.
+- **2026-06-10** — Provision-A-Repo-Wiki how-to added (the `wiki-init` walkthrough).
+- **2026-06-08** — Run-The-Wiki-Watcher trimmed + de-jargoned.
+
+## See also
+
+[Reference](Reference) · [Architecture](Architecture) · [Home](Home)

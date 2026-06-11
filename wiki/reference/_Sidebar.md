@@ -1,7 +1,6 @@
 **[Home](Home)**
 
-### 🚀 [Get started](Get-Started)
-### 🔧 [Do](Do)
+### 🔧 [How-to](How-To)
 ### 📖 [Reference](Reference)
 - [Plugin anatomy](Plugin-Anatomy)
 - [Repo layout](Repo-Layout)
@@ -19,7 +18,7 @@
 - [Modify a plugin](Modify-A-Plugin)
 - [Add a skill](Add-A-Skill)
 - [Add a plugin](Add-A-Plugin)
-### 🔌 [Plugins](Plugins)
-### 💡 [Why it works](Why-It-Works)
+### 🏛️ [Architecture](Architecture)
 ### 🧩 [Designs](Designs)
+### 💡 [Explanation](Explanation)
 ### 📐 [Decisions](Decisions)

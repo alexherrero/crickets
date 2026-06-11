@@ -1,11 +1,10 @@
 **[Home](Home)**
 
-### 🚀 [Get started](Get-Started)
-### 🔧 [Do](Do)
+### 🔧 [How-to](How-To)
 ### 📖 [Reference](Reference)
-### 🔌 [Plugins](Plugins)
-### 💡 [Why it works](Why-It-Works)
+### 🏛️ [Architecture](Architecture)
 ### 🧩 [Designs](Designs)
+### 💡 [Explanation](Explanation)
 ### 📐 [Decisions](Decisions)
 - [V3 Retrospective](v3-retrospective)
 - [0001 — crickets purpose](0001-crickets-purpose)

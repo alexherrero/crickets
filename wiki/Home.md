@@ -38,14 +38,15 @@ For devs running the plugins:
 - [Antigravity limitations](Antigravity-Limitations) — known host gaps and the trigger that closes each.
 - [Troubleshooting](Troubleshooting) — symptom-first lookup when something stops working.
 
-## 💡 Why it works the way it does
+## 🏛️ How it's built
 
-Crickets is grounded in established practice and industry precedent — and it *adapts* that practice rather than following it to the letter. We take inspiration from [Diátaxis](https://diataxis.fr) for documentation (expanding from it toward a house voice, not applying it strictly), adversarial review for code, phase-gating for the dev loop, and deterministic gates ahead of LLM judgment.
+The structural component map — five components, each a folder under **Architecture** in the sidebar. → **[Browse the architecture](Architecture)**
 
-- [Purpose and scope](Purpose-And-Scope) — what the repo is for, and what it isn't.
-- [Why adversarial review](Why-Adversarial-Review) — a reviewer primed to assume bugs finds real ones; a neutral "looks good" doesn't.
-- [Why deterministic gates run first](Why-Deterministic-Gates) — typecheck, lint, and tests gate before sycophantic LLM judgment.
-- [Why phase-gating](Why-Phase-Gating) — discrete plan → work → review → release gates beat freestyling the whole lifecycle.
+- [Plugins](Plugins) — the shipped plugins and what each contains.
+- [Customization model](Customization-Model) — the primitive types and the `enhances:` soft-composition model.
+- [Build & distribution](Build-And-Distribution) — `src/` → generated `dist/` native plugins, three install modes.
+- [Host adapters](Host-Adapters) — the per-host surface mapping (Claude Code · Antigravity).
+- [Harness interface ↔ Agent M](Harness-Interface) — the seam between this toolkit and the sibling harness.
 
 ## 🧩 Major designs
 
@@ -59,6 +60,15 @@ Crickets is grounded in established practice and industry precedent — and it *
 - **Developer plugin suite** ([design](developer-plugin-suite)) — the phase-gated dev loop, the safety controls, and adversarial review, as three composable plugins joined by `enhances:`.
 - **Wiki maintenance** ([design](wiki-maintenance-design)) — a template-driven wiki maintainer that expands from Diátaxis toward your house voice via an operator-in-the-loop learning loop, plus the wiki-watcher.
 - **diataxis-author** ([design](diataxis-author)) — Diátaxis authoring and repair for any repo. *(now an Agent M skill — see the [Agent M design](https://github.com/alexherrero/agentm).)*
+
+## 💡 Why it works the way it does
+
+Crickets is grounded in established practice and industry precedent — and it *adapts* that practice rather than following it to the letter. We take inspiration from [Diátaxis](https://diataxis.fr) for documentation (expanding from it toward a house voice, not applying it strictly), adversarial review for code, phase-gating for the dev loop, and deterministic gates ahead of LLM judgment.
+
+- [Purpose and scope](Purpose-And-Scope) — what the repo is for, and what it isn't.
+- [Why adversarial review](Why-Adversarial-Review) — a reviewer primed to assume bugs finds real ones; a neutral "looks good" doesn't.
+- [Why deterministic gates run first](Why-Deterministic-Gates) — typecheck, lint, and tests gate before sycophantic LLM judgment.
+- [Why phase-gating](Why-Phase-Gating) — discrete plan → work → review → release gates beat freestyling the whole lifecycle.
 
 ## 📐 Architecture decisions
 

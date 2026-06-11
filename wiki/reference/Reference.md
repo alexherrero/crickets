@@ -29,4 +29,4 @@ Look up how crickets is built — what a plugin is, the kinds you can author, wh
 
 ## See also
 
-[Get started](Get-Started) · [Do](Do) · [Designs](Designs) · [Home](Home)
+[How-to](How-To) · [Architecture](Architecture) · [Designs](Designs) · [Home](Home)

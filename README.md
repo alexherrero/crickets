@@ -42,7 +42,7 @@ Six plugins, generated from one source. Together they cover the working day with
 - **Keep personal information out of public commits** — scan and redact before anything ships.
 - **Keep a wiki current, in your voice** — authoring, repair, and a watcher that opens doc PRs.
 
-Each capability is its own plugin; install only what you want. What each one ships, and how they compose, is in the [plugin pages](wiki/plugins/Plugins.md) (the **Plugins** section of the wiki sidebar).
+Each capability is its own plugin; install only what you want. What each one ships, and how they compose, is in the [plugin pages](wiki/architecture/plugins/Plugins.md) (the **Plugins** component under **Architecture** in the wiki sidebar).
 
 ## How it works
 
@@ -74,11 +74,11 @@ claude plugin marketplace add alexherrero/crickets
 claude plugin install developer-workflows@crickets   # + developer-safety, code-review, github-ci, pii, wiki-maintenance
 ```
 
-All three install modes (one-liner / marketplace / manual `--plugin-dir`) per host: **[Install crickets plugins](wiki/get-started/Install-Into-Project.md)**. Hacking on a plugin? **[Modify a crickets plugin](wiki/reference/Modify-A-Plugin.md)**.
+All three install modes (one-liner / marketplace / manual `--plugin-dir`) per host: **[Install crickets plugins](wiki/how-to/Install-Into-Project.md)**. Hacking on a plugin? **[Modify a crickets plugin](wiki/reference/Modify-A-Plugin.md)**.
 
 ## Adding + developing customizations
 
-- [Tutorial 1 — Your first code review](wiki/get-started/01-First-Code-Review.md) — use a plugin end-to-end.
+- [Tutorial 1 — Your first code review](wiki/how-to/01-First-Code-Review.md) — use a plugin end-to-end.
 - [Plugin anatomy](wiki/reference/Plugin-Anatomy.md) — what a crickets plugin *is*, before you change one.
 - [Repo layout](wiki/reference/Repo-Layout.md) — what lives where.
 - [Modify a crickets plugin](wiki/reference/Modify-A-Plugin.md) — the `src/` → generate → dogfood loop.

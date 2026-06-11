@@ -1,10 +1,8 @@
 **[Home](Home)**
 
-### 🚀 [Get started](Get-Started)
-### 🔧 [Do](Do)
+### 🔧 [How-to](How-To)
 ### 📖 [Reference](Reference)
-### 🔌 [Plugins](Plugins)
-### 💡 [Why it works](Why-It-Works)
+### 🏛️ [Architecture](Architecture)
 ### 🧩 [Designs](Designs)
 **Architecture (Agent M)** — [in the agentm wiki ↗](https://github.com/alexherrero/agentm/wiki/memoryvault)
 
@@ -43,4 +41,10 @@
   - [standalone-retirement](standalone-retirement)
   - [docs-adr](docs-adr)
 - [Wiki Section Taxonomy](wiki-section-taxonomy)
+  - [static-frame](static-frame)
+  - [architecture-manifest](architecture-manifest)
+  - [render-and-gate](render-and-gate)
+  - [crickets-dogfood](crickets-dogfood)
+  - [agentm-dogfood](agentm-dogfood)
+### 💡 [Explanation](Explanation)
 ### 📐 [Decisions](Decisions)
