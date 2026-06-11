@@ -139,5 +139,60 @@ class TestScaffoldPassesCheckWiki(unittest.TestCase):
         self._assert_clean(["get-started", "do", "reference", "why", "designs", "decisions"])
 
 
+class TestProvisionCI(unittest.TestCase):
+    GATE = SCRIPTS / "check-wiki.py"
+
+    def test_drops_both_workflows_and_vendors_gate(self):
+        with tempfile.TemporaryDirectory() as td:
+            target = Path(td)
+            wi.provision_ci(target)
+            wf = target / ".github" / "workflows"
+            self.assertTrue((wf / "wiki-sync.yml").is_file())
+            self.assertTrue((wf / "wiki-lint.yml").is_file())
+            gate = target / ".github" / "scripts" / "check-wiki.py"
+            self.assertEqual(gate.read_bytes(), self.GATE.read_bytes())  # vendored = plugin gate
+
+    def test_workflow_gap_fill_never_overwrites(self):
+        with tempfile.TemporaryDirectory() as td:
+            target = Path(td)
+            wf = target / ".github" / "workflows"
+            wf.mkdir(parents=True)
+            (wf / "wiki-sync.yml").write_text("USER EDITED", encoding="utf-8")
+            result = wi.provision_ci(target)
+            self.assertEqual((wf / "wiki-sync.yml").read_text(encoding="utf-8"), "USER EDITED")
+            self.assertTrue((wf / "wiki-lint.yml").is_file())            # missing one dropped
+            self.assertEqual([p.name for p in result["skipped"]], ["wiki-sync.yml"])
+
+    def test_default_run_does_not_re_vendor_present_gate(self):
+        with tempfile.TemporaryDirectory() as td:
+            target = Path(td)
+            wi.provision_ci(target)
+            gate = target / ".github" / "scripts" / "check-wiki.py"
+            gate.write_text("STALE", encoding="utf-8")
+            r = wi.provision_ci(target)                                  # gate present -> skip
+            self.assertIsNone(r["gate"])
+            self.assertEqual(gate.read_text(encoding="utf-8"), "STALE")  # untouched
+
+    def test_resync_gate_revendors_even_when_present(self):
+        with tempfile.TemporaryDirectory() as td:
+            target = Path(td)
+            wi.provision_ci(target)
+            gate = target / ".github" / "scripts" / "check-wiki.py"
+            gate.write_text("STALE", encoding="utf-8")
+            wi.provision_ci(target, resync_gate=True)
+            self.assertEqual(gate.read_bytes(), self.GATE.read_bytes())
+
+    def test_plan_ci_reports_then_converges(self):
+        with tempfile.TemporaryDirectory() as td:
+            target = Path(td)
+            p = wi.plan_ci(target)
+            self.assertEqual(set(p["workflows"]), {"wiki-sync.yml", "wiki-lint.yml"})
+            self.assertTrue(p["gate"])
+            wi.provision_ci(target)
+            p2 = wi.plan_ci(target)
+            self.assertEqual(p2["workflows"], [])     # all present
+            self.assertFalse(p2["gate"])              # gate present
+
+
 if __name__ == "__main__":
     unittest.main()

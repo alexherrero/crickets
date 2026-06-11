@@ -18,9 +18,17 @@ check-wiki.py gate (a near-no-op run on an already-built wiki is the smoke test)
 from __future__ import annotations
 
 import argparse
+import shutil
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+
+# The plugin root bundling our sibling scripts (vendor_gate, check-wiki) + the
+# templates/ library — this file's dir's parent. Resolves correctly as the dist
+# copy under ${CLAUDE_PLUGIN_ROOT}/scripts/.
+PLUGIN_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import vendor_gate as _vendor  # noqa: E402  (sibling in the plugin's scripts/)
 
 # Default section set — the four core doc folders the gate's _FOLDER_MODE maps
 # (tutorial / how-to / reference / explanation in intent-group naming).
@@ -166,13 +174,57 @@ def apply_scaffold(root: Path, plan: list[ScaffoldItem], sections: list[str],
     return written
 
 
+# --- CI provisioning: drop the workflows + vendor the gate ---------------------
+# The publish (wiki-sync) + lint (wiki-lint) workflow templates, plus the vendored
+# check-wiki gate (GH Actions has no ${CLAUDE_PLUGIN_ROOT}). Workflows are gap-fill
+# (the user owns them after install — never overwrite); the gate is (re)vendored
+# when missing or on --resync-gate.
+
+TEMPLATE_WORKFLOWS = ["wiki-sync.yml", "wiki-lint.yml"]
+
+
+def plan_ci(target_root: Path, plugin_root: Path = PLUGIN_ROOT,
+            resync_gate: bool = False) -> dict:
+    """What CI provisioning WOULD do (no writes): which workflows are missing
+    (would be dropped) vs present (skipped), and whether the gate would be
+    vendored. For --preview."""
+    wf_dir = target_root / ".github" / "workflows"
+    missing = [name for name in TEMPLATE_WORKFLOWS if not (wf_dir / name).exists()]
+    skipped = [name for name in TEMPLATE_WORKFLOWS if (wf_dir / name).exists()]
+    gate_dest = target_root / _vendor.VENDOR_REL
+    gate = resync_gate or not gate_dest.exists()
+    return {"workflows": missing, "skipped": skipped, "gate": gate}
+
+
+def provision_ci(target_root: Path, plugin_root: Path = PLUGIN_ROOT,
+                 resync_gate: bool = False) -> dict:
+    """Drop the publish + lint workflow templates into <target>/.github/workflows/
+    (gap-fill — never overwrites a user-owned workflow) and vendor the check-wiki
+    gate into <target>/.github/scripts/. Returns {workflows, skipped, gate}."""
+    workflows_src = plugin_root / "templates" / "workflows"
+    wf_dir = target_root / ".github" / "workflows"
+    written, skipped = [], []
+    for name in TEMPLATE_WORKFLOWS:
+        dest = wf_dir / name
+        if dest.exists():
+            skipped.append(dest)
+            continue
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(workflows_src / name, dest)
+        written.append(dest)
+    gate_dest = target_root / _vendor.VENDOR_REL
+    gate = _vendor.vendor_gate(target_root, plugin_root) \
+        if (resync_gate or not gate_dest.exists()) else None
+    return {"workflows": written, "skipped": skipped, "gate": gate}
+
+
 def default_project_name(root: Path) -> str:
     """A reasonable project name for Home/_Sidebar titles: the wiki's repo dir."""
     return root.resolve().parent.name or "Project"
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description="Scaffold a repo's wiki to the intent-group IA.")
+    ap = argparse.ArgumentParser(description="Scaffold a repo's wiki to the intent-group IA + provision CI.")
     ap.add_argument("--root", type=Path, default=Path("wiki"),
                     help="wiki root to scaffold (default: ./wiki)")
     ap.add_argument("--sections", default=None,
@@ -183,33 +235,62 @@ def main(argv=None) -> int:
                     help="print the gap-fill plan and write nothing")
     ap.add_argument("--yes", action="store_true",
                     help="skip the confirmation prompt before writing")
+    ap.add_argument("--no-ci", action="store_true",
+                    help="scaffold the wiki only; skip CI provisioning (workflows + gate)")
+    ap.add_argument("--resync-gate", action="store_true",
+                    help="re-vendor the check-wiki gate into .github/scripts/ and exit (post-upgrade)")
     args = ap.parse_args(argv)
+
+    target_root = args.root.resolve().parent  # the repo root (wiki's parent)
+
+    if args.resync_gate:
+        dest = _vendor.vendor_gate(target_root, PLUGIN_ROOT)
+        print(f"wiki-init: re-vendored gate -> {dest}")
+        return 0
 
     sections = parse_sections(args.sections)
     project = args.name or default_project_name(args.root)
     existing = {str(p.relative_to(args.root)) for p in args.root.rglob("*") if p.is_file()} \
         if args.root.is_dir() else set()
     plan = compute_scaffold_plan(existing, sections)
+    ci = plan_ci(target_root) if not args.no_ci else {"workflows": [], "skipped": [], "gate": False}
 
-    if not plan:
-        print(f"wiki-init: ✓ {args.root} already scaffolded ({len(sections)} sections) — nothing to do.")
+    if not plan and not ci["workflows"] and not ci["gate"]:
+        print(f"wiki-init: ✓ {args.root} already scaffolded + CI provisioned — nothing to do.")
         return 0
-    print(f"wiki-init: {len(plan)} file(s) to create under {args.root} "
-          f"(sections: {', '.join(sections)}):")
-    for it in plan:
-        print(f"  + {args.root}/{it.relpath}  ({it.kind})")
+
+    if plan:
+        print(f"wiki-init: {len(plan)} wiki file(s) to create under {args.root} "
+              f"(sections: {', '.join(sections)}):")
+        for it in plan:
+            print(f"  + {args.root}/{it.relpath}  ({it.kind})")
+    if not args.no_ci and (ci["workflows"] or ci["gate"]):
+        print(f"wiki-init: CI provisioning under {target_root}/.github/:")
+        for name in ci["workflows"]:
+            print(f"  + .github/workflows/{name}")
+        if ci["gate"]:
+            print("  + .github/scripts/check-wiki.py  (vendored gate)")
+        for name in ci["skipped"]:
+            print(f"  = .github/workflows/{name}  (exists — kept)")
+
     if args.preview:
-        print("\n  preview only — re-run without --preview to write the gap-fill.")
+        print("\n  preview only — re-run without --preview to write.")
         return 0
     if not args.yes:
-        if input(f"\nWrite {len(plan)} file(s) under {args.root}? [y/N] ").strip().lower() \
-                not in ("y", "yes"):
+        if input("\nProceed with the writes above? [y/N] ").strip().lower() not in ("y", "yes"):
             print("  aborted — nothing written.")
             return 0
-    written = apply_scaffold(args.root, plan, sections, project)
-    for p in written:
-        print(f"  wrote {p}")
-    print(f"wiki-init: scaffolded {len(written)} file(s).")
+
+    if plan:
+        for p in apply_scaffold(args.root, plan, sections, project):
+            print(f"  wrote {p}")
+    if not args.no_ci:
+        result = provision_ci(target_root)
+        for p in result["workflows"]:
+            print(f"  wrote {p}")
+        if result["gate"]:
+            print(f"  vendored {result['gate']}")
+    print("wiki-init: done.")
     return 0
 
 
