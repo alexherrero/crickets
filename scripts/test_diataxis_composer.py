@@ -11,10 +11,13 @@ manifest under the page H1, deterministically (Task 3).
 """
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
@@ -34,6 +37,9 @@ def _load(name: str):
 
 composer = _load("composer")
 section_schema = _load("section_schema")
+# Loaded here so sys.modules["style_resolver"] is this handle — composer's lazy
+# `import style_resolver` binds the same object the voice tests patch.
+style_resolver = _load("style_resolver")
 
 
 class TestSectionLoader(unittest.TestCase):
@@ -67,6 +73,69 @@ class TestSectionLoader(unittest.TestCase):
         # untranslated page (parent DD §1 — translate-downstream is deferred).
         with self.assertRaises(NotImplementedError):
             composer.load_section_body("intro", lang="es")
+
+
+class TestVoice(unittest.TestCase):
+    """Task 2 — resolve voice reuses style_resolver; graceful-degrade like author_page()."""
+
+    # A synthetic assembled page: an H1, a placeholder-bearing body, an H2 section.
+    _PAGE = "# Sample Page\n\n**<Project>** is a thing.\n\n## How it works\n\nBody.\n"
+
+    @staticmethod
+    def _nonempty_style():
+        # A fixed, non-empty ResolvedStyle — the determinism seam in action (the
+        # proof pins voice rather than reading the live, mutable vault).
+        return style_resolver.ResolvedStyle(
+            base_text="Be concise and concrete.", lessons=[], provenance=[]
+        )
+
+    @staticmethod
+    def _empty_style():
+        # Whitespace-only base, no lessons → the empty-voice case.
+        return style_resolver.ResolvedStyle(base_text="   ", lessons=[], provenance=[])
+
+    def test_injected_voice_lands_once_after_h1(self):
+        out = composer.compose_voice(self._PAGE, resolved_style=self._nonempty_style())
+        self.assertEqual(
+            out.count(style_resolver._BLOCK_OPEN), 1, "the voice comment is emitted exactly once"
+        )
+        # H1 stays first; the voice block follows it; the body follows the block —
+        # exactly author_page()'s after-H1 positioning.
+        self.assertLess(out.index("# Sample Page"), out.index(style_resolver._BLOCK_OPEN))
+        self.assertLess(out.index(style_resolver._BLOCK_OPEN), out.index("## How it works"))
+        self.assertIn("Be concise and concrete.", out, "the injected base voice text is rendered")
+        self.assertIn("**<Project>**", out, "placeholders survive — voice guides, it does not rewrite")
+
+    def test_empty_voice_returns_bare_page(self):
+        out = composer.compose_voice(self._PAGE, resolved_style=self._empty_style())
+        self.assertEqual(out, self._PAGE, "empty voice → page returned unchanged")
+        self.assertNotIn(style_resolver._BLOCK_OPEN, out)
+
+    def test_resolution_failure_degrades_to_bare_page(self):
+        # No injection → compose_voice resolves live; force resolve_style to raise.
+        # The degrade must swallow it and return the bare page (never raises).
+        # Patch via the string target (not the module-level handle): under
+        # `unittest discover`, a later test file re-_load()s style_resolver and
+        # clobbers sys.modules, so the handle captured here can diverge from what
+        # compose_voice's lazy `import style_resolver` binds. The string target
+        # patches the live sys.modules entry both resolve through.
+        with mock.patch("style_resolver.resolve_style", side_effect=RuntimeError("boom")):
+            with contextlib.redirect_stderr(io.StringIO()):  # the degrade logs to stderr
+                out = composer.compose_voice(self._PAGE)
+        self.assertEqual(out, self._PAGE, "a resolver failure falls back to the bare page")
+        self.assertNotIn(style_resolver._BLOCK_OPEN, out)
+
+    def test_resolution_path_taken_and_scopes_threaded_when_not_injected(self):
+        # Positive proof of the live path: with no injection, resolve_style is
+        # called with the three scope args and its result is applied.
+        rs = self._nonempty_style()
+        with mock.patch("style_resolver.resolve_style", return_value=rs) as m:  # string target — see note above
+            out = composer.compose_voice(
+                self._PAGE, wiki_root=Path("/w"), vault_path=Path("/v"), project_slug="proj"
+            )
+        m.assert_called_once_with(wiki_root=Path("/w"), vault_path=Path("/v"), project_slug="proj")
+        self.assertIn(style_resolver._BLOCK_OPEN, out, "the resolved voice is applied")
+        self.assertLess(out.index("# Sample Page"), out.index(style_resolver._BLOCK_OPEN))
 
 
 if __name__ == "__main__":

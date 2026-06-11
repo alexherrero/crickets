@@ -81,3 +81,54 @@ def load_section_body(name: str, *, sections_dir: Path | None = None, lang: str 
     directory = Path(sections_dir) if sections_dir is not None else _SECTIONS_DIR
     text = (directory / f"{name}.md").read_text(encoding="utf-8")
     return section_schema.parse_section(text).body
+
+
+def compose_voice(
+    page_text: str,
+    *,
+    resolved_style=None,  # style_resolver.ResolvedStyle | None — inject to pin voice (deterministic proofs)
+    wiki_root: Path | None = None,
+    vault_path: Path | None = None,
+    project_slug: str | None = None,
+) -> str:
+    """Inject the resolved house voice once, after the page H1 — or degrade to the bare page.
+
+    Step 3 (resolve) of the pipeline. Mirrors ``author_page()``: the composed
+    voice (``base ⊕ overlay`` via ``style_resolver``) is emitted as a single
+    author-facing comment after the page H1 (``apply_style_to_page`` anchors it),
+    guiding the author without rewriting their prose — the ``<…>`` placeholders are
+    left intact. Both emit paths — the composer here and ``author.py``'s verbatim
+    monolith — share this one voice convention, so the parent's verbatim-vs-compose
+    fork (Risk #2) narrows to a single injection point.
+
+    Resolution is wrapped in the same try/except graceful-degrade ``author_page()``
+    uses: an import failure, a resolver error, or an empty voice all fall back to
+    ``page_text`` unchanged — voice never raises and never blocks composition.
+
+    ``resolved_style`` is the determinism seam: pass a fixed ``ResolvedStyle`` to
+    pin the voice (the proof slice does this, so it exercises the pipeline rather
+    than the live vault — parent Risk #3); leave it ``None`` to resolve live across
+    the three scopes (``wiki_root`` / ``vault_path`` / ``project_slug``), exactly as
+    ``author_page()`` does.
+    """
+    try:
+        import style_resolver  # type: ignore — lazy, so an import failure degrades too
+        resolved = resolved_style
+        if resolved is None:
+            resolved = style_resolver.resolve_style(
+                wiki_root=wiki_root,
+                vault_path=vault_path,
+                project_slug=project_slug,
+            )
+        # Empty voice (no committed floor, no overlay lessons) → bare page; an
+        # empty comment block would be noise. Same guard as author_page().
+        if not (resolved.base_text.strip() or resolved.lessons):
+            return page_text
+        return style_resolver.apply_style_to_page(page_text, resolved)
+    except Exception as e:  # noqa: BLE001 — never fail composition over the voice layer
+        print(
+            f"[diataxis-author] style resolver unavailable ({e}); "
+            "composing without the voice layer",
+            file=sys.stderr,
+        )
+        return page_text
