@@ -1,12 +1,12 @@
 ---
 title: Wiki Section Taxonomy Design
-status: final
+status: launched
 visibility: published
 author: Alex Herrero
 contributors: []
 created: 2026-06-10
-updated: 2026-06-10
-last_major_revision: 2026-06-10
+updated: 2026-06-11
+last_major_revision: 2026-06-11
 prd:
 project: https://github.com/users/alexherrero/projects/5
 ---
@@ -127,3 +127,4 @@ The Detailed Design's five subsections map onto the translate split: **frame · 
 |---|---|---|
 | 2026-06-10 | Authored via `/design author` from the settled taxonomy discussion (7-section frame · per-project Architecture manifest · nested render · visibility gate · two dogfoods). Lightweight shape — N/A-for-this-change sections omitted, their load-bearing points folded into Design/Risks. Operator approved the lighter draft; **draft → review → final** in one pass. Translated to **6 parts** via `/design translate` (split verbatim from the design's DD mapping): `static-frame` · `architecture-manifest` · `render-and-gate` · `crickets-dogfood` · `agentm-dogfood` · `docs-adr`. | final |
 | 2026-06-10 | Sequenced into 6 `PLAN.md` via `/design sequence` (topo order static-frame → architecture-manifest → render-and-gate → crickets-dogfood → agentm-dogfood → docs-adr). `static-frame` activated as the vault `_harness/PLAN.md`; the other 5 queued to `_harness/designs/wiki-section-taxonomy/queued-plans/`. Ready for `/work`. | final |
+| 2026-06-11 | **final → launched.** All 6 parts shipped + their PLAN.md archived: `static-frame` (DEFAULT_SECTIONS/_FOLDER_MODE reshaped to the seven sections), `architecture-manifest` (`wiki/architecture.yml` reader + PILLAR_TEMPLATES + fail-closed parse), `render-and-gate` (nested third-level Architecture sidebar + the has_architecture/renders_operational gates), `crickets-dogfood` (crickets' own wiki restructured to the frame), `agentm-dogfood` (agentm's wiki rewritten against it), `docs-adr` (README §3 authoring spec · the Declare-Architecture how-to · the wiki-design weave-in · **ADR 0020**). The seven-section frame, the per-project Architecture manifest, and the two conditional gates are the shipped taxonomy; ADR 0020 records the calls. No further queued plans — the design is closed. | launched |
