@@ -55,7 +55,7 @@ A wiki is built from **pages**; each page is composed from **sections**.
 | `validation` | reference | what the validator asserts (grouped by scope) + the command to run it |
 
 Page-templates: `home.md` (landing), `plugin-home.md` (the per-plugin page — the wave-2
-per-plugin-pages target — Developer-Safety is the first, in the `plugins/` section), `section-index.md` (a section's landing — one per intent-folder),
+per-plugin-pages target — Developer-Safety is the first, in the `architecture/plugins/` section), `section-index.md` (a section's landing — one per intent-folder),
 and `component-overview.md` (an Architecture component's landing — one per `architecture.yml` entry)
 are section manifests. The four Diátaxis mode templates (`how-to` /
 `tutorial` / `reference` / `explanation`) are still **monoliths** read live by `author.py`; their
@@ -68,9 +68,34 @@ codification — until then the monoliths stay.
 
 ## 3. Structural opinions (the house wiki structure)
 
+- **The wiki is a seven-section frame, in a fixed order.** Every page lives under one of seven
+  top-level intent-folders, rendered in this order: **How-to · Reference · Architecture · Designs ·
+  Explanation · Decisions · Operational** (`how-to/` · `reference/` · `architecture/` · `designs/` ·
+  `explanation/` · `decisions/` · `operational/`). The order is the reader's arc — *do the thing*,
+  *look it up*, *how it's built*, *why it was designed that way*, *the principles*, *the decisions
+  of record*, *running it in production*. `wiki_init.py` scaffolds exactly these folders (its
+  `DEFAULT_SECTIONS`); `check-wiki` rejects a page filed outside them (`_FOLDER_MODE` is the
+  allow-list). This replaces the pass-1 `get-started/do/why/plugins` intent-folders.
+- **Two of the seven sections are conditional — gated, not always present.**
+  - **Architecture** renders only when the repo declares components in a `wiki/architecture.yml`
+    manifest (`has_architecture = bool(components)`); no manifest → no Architecture section. The
+    *manifest*, not a hard-coded sub-section list, is what each project's Architecture contains —
+    one `{slug, title, summary, overview}` entry per large component, plus optional recurring-pillar
+    toggles. See the **Declare a project's Architecture** how-to.
+  - **Operational** renders only when the wiki's visibility is **non-public** (`renders_operational`:
+    `private`/`internal` render, `public`/`unknown` suppress — the test is *audience*, not
+    sensitivity). Both crickets and agentm are public, so both suppress Operational; an internal
+    runbook surface would render it.
+  - The other five — How-to · Reference · Designs · Explanation · Decisions — are **always present**.
+- **Architecture nests a third level; every other section is flat.** ADR 0018's root→folder sidebar
+  model is two levels (the root lists each section; a per-folder `_Sidebar.md` lists that section's
+  pages). Architecture is the one exception: in the **root** `_Sidebar.md`, its bullet expands into
+  one indented sub-bullet per declared component — `  - [Title](Overview)`, two-space GFM indent, in
+  manifest order — each linking to that component's `component-overview` landing (one per
+  `architecture.yml` entry). No other section nests on the root.
 - **Landing pages are curated, not exhaustive sitemaps.** Completeness lives in the per-section
   sidebars (see *the sidebar is per-section* below); a landing lists only what a reader acts on.
-- The "do" section organizes by **user intent** — a `What / Component / Example primitives`
+- The **How-to** section organizes by **user intent** — a `What / Component / Example primitives`
   table — never a flat how-to dump. Not-yet-built intents get a `coming soon` marker, never
   a dead link.
 - **Long enumerations** (decisions, design sub-parts) sit behind a single **index link**,
@@ -85,20 +110,22 @@ codification — until then the monoliths stay.
   principles. Not decision history (that's ADRs) and not retrospectives.
 - **"Major designs"** lists architecture/substrate first (refer *out* to the substrate's own
   docs), then components in plain English.
-- **The sidebar is per-section, not one complete sitemap.** The wiki is organized into
-  **intent-group folders** matching the nav sections — `get-started/` · `do/` · `reference/` ·
-  `why/` · `designs/` · `decisions/` · `plugins/`. Each folder carries its own `_Sidebar.md`; GitHub Wiki renders
+- **The sidebar is per-section, not one complete sitemap.** The wiki is organized into the seven
+  **intent-group folders** above — `how-to/` · `reference/` · `architecture/` · `designs/` ·
+  `explanation/` · `decisions/` · `operational/`. Each folder carries its own `_Sidebar.md`; GitHub Wiki renders
   the **nearest** one, so a per-folder sidebar shows the full section list with **only the current
   section expanded**; collapsed headings link to that section's **index landing**. The **root
-  sidebar (the homepage)** instead shows **all sections expanded one level** — the full map.
+  sidebar (the homepage)** instead shows **all sections expanded one level** — the full map (plus
+  Architecture's third-level component sub-bullets, the one nested exception above).
   Reachability is **≤2 levels** — the root shows each section's pages one level deep, a per-folder
   sidebar lists its full section; a page need not be on the root. (Needs the wiki-sync to exempt `_Sidebar.md`/`_Footer.md`
   from the basename dupe-check; `check-wiki` rule-j checks the union of all sidebars.)
 - **Mode follows intent, not folder — pin it with a hint when they diverge.** Intent folders mix
-  Diátaxis modes (a tutorial + a how-to in `get-started/`; how-tos filed under `reference/`). A page
-  whose folder default doesn't fit carries an invisible `<!-- mode: tutorial|how-to|reference|explanation -->`
-  comment that `check-wiki` reads (folder default otherwise). Folder→mode defaults: `get-started`/`do`
-  → how-to, `reference` → reference, `why`/`designs`/`decisions` → explanation, `plugins` → index (a landing).
+  Diátaxis modes (a how-to filed under `reference/`; a tutorial-shaped page in `how-to/`). A page
+  whose folder default doesn't fit carries an invisible `<!-- mode: tutorial|how-to|reference|explanation|index -->`
+  comment that `check-wiki` reads (folder default otherwise). Folder→mode defaults: `how-to`
+  → how-to, `reference` → reference, `architecture` → index (a landing), `designs`/`explanation`/`decisions`
+  → explanation, `operational` → how-to.
 - **Page basenames are globally unique — case-insensitively.** GitHub Wiki flattens every page to its
   basename and resolves links **case-insensitively**, so `Developer-Safety` and `developer-safety`
   collide and the second silently clobbers the first. `check-wiki` rule-g enforces this. When a
@@ -107,7 +134,7 @@ codification — until then the monoliths stay.
   `Style-Learning-Loop` reference pages vs their design parts → `developer-safety-design` /
   `style-learning-loop-design`.)
 - **Every section has an index landing — not a redirect to a sub-page.** Each intent-folder gets an
-  index page (`Get-Started`, `Reference`, …) marked `<!-- mode: index -->` (a shape-exempt landing,
+  index page (`How-To`, `Reference`, `Architecture`, …) marked `<!-- mode: index -->` (a shape-exempt landing,
   not a Diátaxis mode): what the section *is* + its pages as curated one-liners (not regurgitated) +
   a **tooling-maintained Recent changes** block. The sidebar's section heading links to the index,
   never the first sub-page. (Rollout 2026-06-08; the `section-index` page-template + `section-contents`
