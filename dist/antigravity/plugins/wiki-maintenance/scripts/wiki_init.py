@@ -39,12 +39,14 @@ DEFAULT_SECTIONS = ["get-started", "do", "reference", "why"]
 
 # section slug -> (landing basename, H1 title, one-line purpose). Drives both the
 # plan (basename) and the render (title + purpose). Unknown sections fall back to
-# a title-cased basename + the slug as title.
+# a title-cased basename + the slug as title. Basenames + titles mirror crickets'
+# OWN wiki (the canonical reference for the intent-group IA) so a wiki-init run on
+# crickets is a true no-op — notably do -> Do (not How-To) and why -> Why-It-Works.
 SECTION_META: dict[str, tuple[str, str, str]] = {
     "get-started": ("Get-Started", "Get started", "Tutorials and first steps."),
-    "do": ("How-To", "How-to guides", "Task-focused recipes for getting things done."),
+    "do": ("Do", "Do", "Task-focused recipes for getting things done."),
     "reference": ("Reference", "Reference", "Lookup-oriented technical detail."),
-    "why": ("Why", "Why it works this way", "Background, rationale, and decisions."),
+    "why": ("Why-It-Works", "Why it works", "Background, rationale, and decisions."),
     "designs": ("Designs", "Designs", "Design docs for in-flight and shipped work."),
     "decisions": ("Decisions", "Decisions", "Architecture Decision Records."),
     "plugins": ("Plugins", "Plugins", "One page per plugin."),

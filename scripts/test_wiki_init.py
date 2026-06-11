@@ -34,8 +34,8 @@ class TestScaffoldPlan(unittest.TestCase):
         rels = self._rels(plan)
         self.assertIn("Home.md", rels)
         self.assertIn("_Sidebar.md", rels)
-        for s, base in [("get-started", "Get-Started"), ("do", "How-To"),
-                        ("reference", "Reference"), ("why", "Why")]:
+        for s, base in [("get-started", "Get-Started"), ("do", "Do"),
+                        ("reference", "Reference"), ("why", "Why-It-Works")]:
             self.assertIn(f"{s}/{base}.md", rels)
             self.assertIn(f"{s}/_Sidebar.md", rels)
         self.assertEqual(len(plan), 2 + 2 * 4)   # 2 root + (landing + sidebar) * 4
@@ -75,7 +75,7 @@ class TestRender(unittest.TestCase):
         self.assertIn("# Get started", text)
 
     def test_folder_sidebar_links_landing(self):
-        self.assertIn("[How-to guides](How-To)", wi.render_folder_sidebar("do"))
+        self.assertIn("[Do](Do)", wi.render_folder_sidebar("do"))
 
     def test_root_sidebar_lists_home_and_landings(self):
         text = wi.render_root_sidebar(["get-started", "reference"], "Demo")
@@ -289,25 +289,22 @@ class TestMainCostGate(unittest.TestCase):
 
 class TestRealWikiSmoke(unittest.TestCase):
     """Integration smoke: running wiki-init against crickets' OWN wiki is a
-    near-no-op that never clobbers operator content (design Migrations note)."""
+    no-op that never clobbers operator content (design Migrations note).
+    crickets is the canonical reference for the intent-group IA, so SECTION_META
+    mirrors its landing basenames — the run converges to nothing to do."""
     WIKI = REPO / "wiki"
 
     def _sections(self, root):
         return sorted(d.name for d in root.iterdir() if d.is_dir())
 
-    def test_real_wiki_run_is_near_noop(self):
+    def test_real_wiki_run_is_noop(self):
         existing = {p.relative_to(self.WIKI).as_posix()
                     for p in self.WIKI.rglob("*") if p.is_file()}
         plan = wi.compute_scaffold_plan(existing, self._sections(self.WIKI))
-        # Near-no-op: the scaffolder proposes only a handful of additive index
-        # landings — currently 2 (do/How-To.md + why/Why.md), a landing-basename
-        # drift vs crickets' own Do.md / Why-It-Works.md. It never plans an
-        # existing path, so it cannot clobber operator content. Drops to 0 if
-        # SECTION_META is later reconciled to crickets' basenames.
-        self.assertLess(len(plan), 5, [it.relpath for it in plan])
-        self.assertTrue({it.relpath for it in plan}.isdisjoint(existing))
-        for it in plan:
-            self.assertIn(it.kind, {"home", "root_sidebar", "landing", "folder_sidebar"})
+        # True no-op: SECTION_META is reconciled to crickets' own landing
+        # basenames (do -> Do, why -> Why-It-Works, …), so every section's landing
+        # + sidebar already exists. An empty plan also means apply can't clobber.
+        self.assertEqual([it.relpath for it in plan], [])
 
     def test_apply_on_real_wiki_copy_preserves_existing_bytes(self):
         with tempfile.TemporaryDirectory() as td:
