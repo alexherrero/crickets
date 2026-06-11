@@ -14,12 +14,14 @@ Task-focused recipes for getting things done with the crickets plugins — from 
 - **[Using code review](01-First-Code-Review)** — a hands-on first run, end-to-end.
 - **[Review a change — code review](Use-Code-Review)** — run `/code-review` over a diff or PR for adversarial bug-finding.
 - **[Provision a repo's wiki — wiki-init](Provision-A-Repo-Wiki)** — scaffold a repo's `wiki/` and its lint-then-publish CI from nothing.
+- **[Declare a project's Architecture — architecture.yml](Declare-Architecture)** — write the per-project manifest that grows the wiki's Architecture section.
 - **[Maintain a wiki — wiki-watcher](Run-The-Wiki-Watcher)** — keep a wiki in sync with its repo, automatically.
 
 ## Recent changes
 
 <!-- maintained by the wiki tooling (recent-wiki-changes / the documenter) -->
 
+- **2026-06-11** — Declare-Architecture how-to added (writing `wiki/architecture.yml`).
 - **2026-06-11** — `do/` + `get-started/` folded into `how-to/` (wiki-section-taxonomy restructure); this index merged from both.
 - **2026-06-10** — Provision-A-Repo-Wiki how-to added (the `wiki-init` walkthrough).
 - **2026-06-08** — Run-The-Wiki-Watcher trimmed + de-jargoned.
