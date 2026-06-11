@@ -26,7 +26,7 @@ jobs:
       - name: Generated dist/ in sync with src/ (generate.py check)
         run: python scripts/generate.py check
       - name: Lint wiki (Diátaxis)
-        run: python scripts/check-wiki.py --strict
+        run: python src/wiki-maintenance/scripts/check-wiki.py --strict
 
   checks:
     name: checks

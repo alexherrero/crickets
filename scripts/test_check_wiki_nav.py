@@ -26,7 +26,7 @@ def _load(mod_name: str, filename: str):
     return mod
 
 
-cw = _load("check_wiki_nav_under_test", "check-wiki.py")
+cw = _load("check_wiki_nav_under_test", "../src/wiki-maintenance/scripts/check-wiki.py")
 
 
 class NavRuleJTest(unittest.TestCase):

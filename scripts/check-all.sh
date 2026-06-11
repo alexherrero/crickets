@@ -32,7 +32,7 @@ run() {
 run "lint_src"       python3 scripts/lint_src.py
 run "unit tests"     bash -c "cd scripts && python3 -m unittest discover -p 'test_*.py'"
 run "generate drift" python3 scripts/generate.py check
-run "check-wiki"     python3 scripts/check-wiki.py --strict
+run "check-wiki"     python3 src/wiki-maintenance/scripts/check-wiki.py --strict
 run "check-syntax"   bash scripts/check-syntax.sh
 run "check-no-pii"   bash scripts/check-no-pii.sh --all
 
