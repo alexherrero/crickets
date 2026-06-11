@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import shutil
+import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -218,6 +219,49 @@ def provision_ci(target_root: Path, plugin_root: Path = PLUGIN_ROOT,
     return {"workflows": written, "skipped": skipped, "gate": gate}
 
 
+# --- non-public cost warning ---------------------------------------------------
+# GitHub Actions minutes are free only on PUBLIC repos. Dropping the publish +
+# lint workflows onto a private/internal target adds a billed-minutes surface, so
+# we warn (and the confirmation gate stops) before the workflows land. The
+# requirement is operator-locked: "the non-public-only cost warning." An
+# undeterminable visibility (gh missing / not a GitHub repo / network error) is
+# treated conservatively — warn, but say we couldn't confirm.
+
+def _gh_visibility(target_root: Path) -> str:
+    """Shell out to `gh` for the target repo's visibility (the runtime detector)."""
+    out = subprocess.run(
+        ["gh", "repo", "view", "--json", "visibility", "-q", ".visibility"],
+        cwd=target_root, capture_output=True, text=True, check=True,
+    )
+    return out.stdout.strip()
+
+
+def detect_visibility(target_root: Path, fetch=_gh_visibility) -> str:
+    """The target repo's GitHub visibility, lowercased ('public' | 'private' |
+    'internal'), or 'unknown' if it can't be determined. `fetch` is injectable
+    for testing; any failure (gh absent, not a GitHub repo, network) → 'unknown'."""
+    try:
+        v = fetch(target_root).strip().lower()
+    except Exception:
+        return "unknown"
+    return v or "unknown"
+
+
+def cost_warning(visibility: str) -> str | None:
+    """The billed-Actions warning for a non-public target, or None for a public
+    one. Public repos run Actions free; private/internal (or undeterminable)
+    targets bill the publish + lint workflows against the account's quota."""
+    if visibility == "public":
+        return None
+    if visibility == "unknown":
+        return ("⚠ Could not determine this repo's visibility. If it is NOT public, "
+                "the wiki-sync + wiki-lint workflows will consume billed GitHub "
+                "Actions minutes. Public repos run free.")
+    return (f"⚠ This repo is {visibility}. The wiki-sync + wiki-lint workflows will "
+            "consume billed GitHub Actions minutes — Actions is free only on public "
+            "repos. Proceed only if that billing is acceptable.")
+
+
 def default_project_name(root: Path) -> str:
     """A reasonable project name for Home/_Sidebar titles: the wiki's repo dir."""
     return root.resolve().parent.name or "Project"
@@ -239,6 +283,9 @@ def main(argv=None) -> int:
                     help="scaffold the wiki only; skip CI provisioning (workflows + gate)")
     ap.add_argument("--resync-gate", action="store_true",
                     help="re-vendor the check-wiki gate into .github/scripts/ and exit (post-upgrade)")
+    ap.add_argument("--visibility", default=None,
+                    choices=["public", "private", "internal", "unknown"],
+                    help="override repo-visibility detection (default: auto-detect via gh)")
     args = ap.parse_args(argv)
 
     target_root = args.root.resolve().parent  # the repo root (wiki's parent)
@@ -254,6 +301,11 @@ def main(argv=None) -> int:
         if args.root.is_dir() else set()
     plan = compute_scaffold_plan(existing, sections)
     ci = plan_ci(target_root) if not args.no_ci else {"workflows": [], "skipped": [], "gate": False}
+
+    # Cost warning fires only when this run would ADD a billing surface — i.e.
+    # at least one workflow would be dropped — on a non-public target.
+    warn = cost_warning(args.visibility or detect_visibility(target_root)) \
+        if (not args.no_ci and ci["workflows"]) else None
 
     if not plan and not ci["workflows"] and not ci["gate"]:
         print(f"wiki-init: ✓ {args.root} already scaffolded + CI provisioned — nothing to do.")
@@ -273,11 +325,16 @@ def main(argv=None) -> int:
         for name in ci["skipped"]:
             print(f"  = .github/workflows/{name}  (exists — kept)")
 
+    if warn:
+        print(f"\n{warn}")
+
     if args.preview:
         print("\n  preview only — re-run without --preview to write.")
         return 0
     if not args.yes:
-        if input("\nProceed with the writes above? [y/N] ").strip().lower() not in ("y", "yes"):
+        prompt = ("\nNon-public target — proceed and bill Actions minutes? [y/N] "
+                  if warn else "\nProceed with the writes above? [y/N] ")
+        if input(prompt).strip().lower() not in ("y", "yes"):
             print("  aborted — nothing written.")
             return 0
 

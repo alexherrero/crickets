@@ -1,9 +1,12 @@
 """test_wiki_init.py — the wiki-init scaffold plan (task 1: pure gap-fill)."""
+import contextlib
 import importlib.util
+import io
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 REPO = Path(__file__).resolve().parent.parent
 SCRIPTS = REPO / "src" / "wiki-maintenance" / "scripts"
@@ -192,6 +195,95 @@ class TestProvisionCI(unittest.TestCase):
             p2 = wi.plan_ci(target)
             self.assertEqual(p2["workflows"], [])     # all present
             self.assertFalse(p2["gate"])              # gate present
+
+
+class TestCostWarning(unittest.TestCase):
+    """The non-public Actions-minutes warning (operator-locked requirement)."""
+
+    def test_public_is_silent(self):
+        self.assertIsNone(wi.cost_warning("public"))
+
+    def test_private_warns(self):
+        w = wi.cost_warning("private")
+        self.assertIsNotNone(w)
+        self.assertIn("private", w)
+        self.assertIn("billed", w)
+
+    def test_internal_warns(self):
+        self.assertIn("internal", wi.cost_warning("internal"))
+
+    def test_unknown_warns_conservatively(self):
+        w = wi.cost_warning("unknown")
+        self.assertIsNotNone(w)
+        self.assertIn("Could not determine", w)
+
+    def test_detect_visibility_lowercases_gh_output(self):
+        v = wi.detect_visibility(Path("."), fetch=lambda root: "PRIVATE\n")
+        self.assertEqual(v, "private")
+
+    def test_detect_visibility_unknown_when_gh_fails(self):
+        def boom(root):
+            raise FileNotFoundError("gh not installed")
+        self.assertEqual(wi.detect_visibility(Path("."), fetch=boom), "unknown")
+
+
+class TestMainCostGate(unittest.TestCase):
+    """main() surfaces the warning before the workflow write and the
+    confirmation gate stops a declined non-public run."""
+
+    def _run(self, argv, stdin_input=None):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            if stdin_input is not None:
+                with mock.patch("builtins.input", return_value=stdin_input):
+                    rc = wi.main(argv)
+            else:
+                rc = wi.main(argv)
+        return rc, out.getvalue()
+
+    def test_preview_private_prints_warning_writes_nothing(self):
+        with tempfile.TemporaryDirectory() as td:
+            wiki = Path(td) / "wiki"
+            rc, text = self._run(
+                ["--root", str(wiki), "--visibility", "private", "--preview"])
+            self.assertEqual(rc, 0)
+            self.assertIn("billed", text)
+            self.assertFalse((Path(td) / ".github").exists())   # nothing written
+
+    def test_preview_public_is_silent(self):
+        with tempfile.TemporaryDirectory() as td:
+            wiki = Path(td) / "wiki"
+            _, text = self._run(
+                ["--root", str(wiki), "--visibility", "public", "--preview"])
+            self.assertNotIn("billed", text)
+
+    def test_decline_writes_no_workflow(self):
+        with tempfile.TemporaryDirectory() as td:
+            wiki = Path(td) / "wiki"
+            rc, text = self._run(
+                ["--root", str(wiki), "--visibility", "private"], stdin_input="n")
+            self.assertEqual(rc, 0)
+            self.assertIn("aborted", text)
+            self.assertFalse((Path(td) / ".github" / "workflows").exists())
+
+    def test_yes_private_warns_but_writes(self):
+        with tempfile.TemporaryDirectory() as td:
+            wiki = Path(td) / "wiki"
+            rc, text = self._run(
+                ["--root", str(wiki), "--visibility", "private", "--yes"])
+            self.assertEqual(rc, 0)
+            self.assertIn("billed", text)                       # still informed
+            wf = Path(td) / ".github" / "workflows"
+            self.assertTrue((wf / "wiki-sync.yml").is_file())   # but proceeded
+            self.assertTrue((wf / "wiki-lint.yml").is_file())
+
+    def test_no_ci_skips_warning_even_when_private(self):
+        with tempfile.TemporaryDirectory() as td:
+            wiki = Path(td) / "wiki"
+            _, text = self._run(
+                ["--root", str(wiki), "--visibility", "private", "--no-ci", "--yes"])
+            self.assertNotIn("billed", text)                    # no workflows → no bill
+            self.assertFalse((Path(td) / ".github").exists())
 
 
 if __name__ == "__main__":

@@ -45,10 +45,22 @@ overwrites an operator-authored page**; a second run is a no-op.
 3. `--sections a,b,c` selects the folder set; `--name <project>` sets the
    Home/_Sidebar titles (defaults to the repo directory name).
 
+## Cost warning on non-public targets
+
+The scaffolder drops two GitHub Actions workflows (`wiki-sync` publish +
+`wiki-lint`). Actions minutes are **free only on public repos** — on a
+private/internal target they're billed. The preview auto-detects visibility (via
+`gh`) and prints a billed-minutes warning when the target isn't public; the apply
+prompt then gates on it. **Surface that warning to the operator and get an
+explicit OK before applying** — don't auto-confirm a non-public run. Use `--no-ci`
+to scaffold the wiki only (no workflows, no billing surface).
+
 ## Non-negotiables
 
 - **Preview before any write.** The operator sees the exact file list first.
 - **Never clobber.** The scaffolder only writes missing files; if it would touch
   an existing page, that's a bug — stop and report.
+- **Honor the non-public cost warning.** If the preview warns about billed Actions
+  minutes, relay it and confirm before applying; never silently `--yes` past it.
 - **Don't hand-edit `wiki/` to "fix" the scaffold.** If the scaffolded wiki fails
   `check-wiki`, that's a scaffolder defect — surface it.
