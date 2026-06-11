@@ -19,6 +19,7 @@ from pathlib import Path
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
 _SKILL_SCRIPTS = _ROOT / "src" / "wiki-maintenance" / "skills" / "diataxis-author" / "scripts"
+_SECTIONS_DIR = _ROOT / "src" / "wiki-maintenance" / "skills" / "diataxis-author" / "templates" / "sections"
 
 
 def _load(name: str):
@@ -153,6 +154,27 @@ class TestStripRule(unittest.TestCase):
 
     def test_find_placeholders_ignores_html_comments(self):
         self.assertEqual(section_schema.find_placeholders("<!-- not a placeholder --> <Real>"), ["<Real>"])
+
+
+class TestLibraryAdditive(unittest.TestCase):
+    """Task 3 — every v1 file parses unchanged + the `safety` worked example."""
+
+    def test_every_section_file_parses_under_v2(self):
+        files = sorted(_SECTIONS_DIR.glob("*.md"))
+        self.assertTrue(files, f"no section files found under {_SECTIONS_DIR}")
+        for f in files:
+            sf = section_schema.parse_section(f.read_text(encoding="utf-8"))
+            # The `section:` field equals the filename stem across the library.
+            self.assertEqual(sf.section, f.stem, f"{f.name}: section field should equal filename stem")
+            # Every file follows the strip rule (first comment is the opinion block) —
+            # the strip-rule-thinness precondition holds library-wide today.
+            self.assertIsNotNone(sf.opinion, f"{f.name}: first comment must be SECTION-prefixed (strip rule)")
+            self.assertNotIn("<!-- SECTION", sf.body, f"{f.name}: opinion comment must be stripped from the body")
+
+    def test_safety_exposes_the_two_new_fields(self):
+        sf = section_schema.parse_section((_SECTIONS_DIR / "safety.md").read_text(encoding="utf-8"))
+        self.assertTrue(sf.optional, "safety is the worked example: optional: true")
+        self.assertEqual(sf.heading_variants, ["Safety", "Host gaps", "Limitations"])
 
 
 if __name__ == "__main__":

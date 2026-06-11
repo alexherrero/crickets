@@ -2,6 +2,8 @@
 section: safety
 reusable: true
 applies-to: [component-overview]
+optional: true
+heading-variants: [Safety, Host gaps, Limitations]
 ---
 <!-- SECTION safety — an OPTIONAL cross-cutting-concern callout, included ONLY when the
      component carries a real guardrail or where-it-falls-short story (a public repo's PII
