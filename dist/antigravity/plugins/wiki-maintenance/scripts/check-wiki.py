@@ -7,9 +7,10 @@ wiki/explanation/decisions/0004-diataxis-documentation-spec.md.
 
 Rules (hard = blocking under --strict; soft = always warn-only):
 
-  (a) Every content .md lives under tutorials/, how-to/, reference/,
-      or explanation/. Structural pages (Home.md, _Sidebar.md,
-      _Footer.md, README.md) are exempt.                      [hard]
+  (a) Every content .md lives under one of the taxonomy folders
+      (how-to/, reference/, architecture/, designs/, explanation/,
+      decisions/, operational/). Structural pages (Home.md,
+      _Sidebar.md, _Footer.md, README.md) are exempt.         [hard]
   (b) Tutorials and how-tos have a `> [!NOTE]` mode-declaration block
       in the first 25 lines with the required fields:
         tutorial: Goal, Time, Prereqs
@@ -66,13 +67,13 @@ from pathlib import Path
 DEFAULT_WIKI = Path("wiki")
 
 _FOLDER_MODE = {
-    "get-started": "how-to",
-    "do": "how-to",
+    "how-to": "how-to",
     "reference": "reference",
-    "why": "explanation",
+    "architecture": "index",
     "designs": "explanation",
+    "explanation": "explanation",
     "decisions": "explanation",
-    "plugins": "index",
+    "operational": "how-to",
 }
 MODE_DIRS = tuple(_FOLDER_MODE)
 STRUCTURAL_BASENAMES = {"Home", "_Sidebar", "_Footer", "README"}
@@ -127,7 +128,7 @@ def mode_for(path: Path, wiki_root: Path) -> str | None:
 
 def resolve_mode(path: Path, wiki_root: Path) -> str | None:
     """Page mode: an explicit `<!-- mode: X -->` hint wins (for a page whose folder
-    default doesn't fit — a tutorial in get-started/, a how-to in reference/);
+    default doesn't fit — a tutorial in how-to/, a reference table in explanation/);
     otherwise the folder default (mode_for)."""
     if is_structural(path):
         return None

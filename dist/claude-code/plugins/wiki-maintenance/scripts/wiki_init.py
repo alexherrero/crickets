@@ -31,25 +31,30 @@ PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import vendor_gate as _vendor  # noqa: E402  (sibling in the plugin's scripts/)
 
-# Default section set — the four core doc folders the gate's _FOLDER_MODE maps
-# (tutorial / how-to / reference / explanation in intent-group naming).
-# Operator-confirmed 2026-06-10. designs/decisions/plugins are toolkit-specific,
-# opt-in via --sections.
-DEFAULT_SECTIONS = ["get-started", "do", "reference", "why"]
+# Default section set — the ordered seven-section taxonomy (wiki-section-taxonomy
+# design). Five always-present (how-to · reference · designs · explanation ·
+# decisions) plus two CONDITIONAL slots: architecture (gated on a declared
+# wiki/architecture.yml manifest — part 2) and operational (gated on non-public
+# visibility — part 3). Architecture sits BEFORE designs (understanding-oriented
+# component map first; per-feature designs follow).
+DEFAULT_SECTIONS = ["how-to", "reference", "architecture", "designs",
+                    "explanation", "decisions", "operational"]
 
 # section slug -> (landing basename, H1 title, one-line purpose). Drives both the
 # plan (basename) and the render (title + purpose). Unknown sections fall back to
 # a title-cased basename + the slug as title. Basenames + titles mirror crickets'
-# OWN wiki (the canonical reference for the intent-group IA) so a wiki-init run on
-# crickets is a true no-op — notably do -> Do (not How-To) and why -> Why-It-Works.
+# OWN (post-restructure) wiki so a wiki-init run on crickets stays a near-no-op —
+# notably do -> how-to/How-To and why -> explanation/Explanation (reversing the
+# earlier do->Do / why->Why-It-Works experiment; the crickets dogfood, part 4,
+# moves the folders to match).
 SECTION_META: dict[str, tuple[str, str, str]] = {
-    "get-started": ("Get-Started", "Get started", "Tutorials and first steps."),
-    "do": ("Do", "Do", "Task-focused recipes for getting things done."),
+    "how-to": ("How-To", "How-to", "Task-focused recipes for getting things done."),
     "reference": ("Reference", "Reference", "Lookup-oriented technical detail."),
-    "why": ("Why-It-Works", "Why it works", "Background, rationale, and decisions."),
+    "architecture": ("Architecture", "Architecture", "The structural component map — how the project is built."),
     "designs": ("Designs", "Designs", "Design docs for in-flight and shipped work."),
+    "explanation": ("Explanation", "Explanation", "Background, rationale, and decisions."),
     "decisions": ("Decisions", "Decisions", "Architecture Decision Records."),
-    "plugins": ("Plugins", "Plugins", "One page per plugin."),
+    "operational": ("Operational", "Operational", "Runbooks, SLAs, monitoring, and rollback (non-public wikis)."),
 }
 
 
@@ -62,10 +67,30 @@ def section_meta(section: str) -> tuple[str, str, str]:
     return (base, section, "")
 
 
+# The two conditional sections (wiki-section-taxonomy design): architecture is
+# suppressed unless the project declares a wiki/architecture.yml manifest (gate
+# wired in part 2); operational is suppressed on public/unknown wikis (visibility
+# gate wired in part 3). The other five always render. This part owns only the
+# mechanism — "given which conditionals are active, emit only the active sections."
+CONDITIONAL_SECTIONS = frozenset({"architecture", "operational"})
+
+
+def active_sections(sections: list[str], *, has_architecture: bool = False,
+                    non_public: bool = False) -> list[str]:
+    """Filter `sections` to those that should actually render: every always-present
+    section, plus each conditional section only when its gate is on. Defaults
+    suppress both conditionals — the gating inputs (manifest presence, visibility)
+    are wired in parts 2-3, so a part-1 render emits the five always-present
+    sections."""
+    gated = {"architecture": has_architecture, "operational": non_public}
+    return [s for s in sections
+            if s not in CONDITIONAL_SECTIONS or gated.get(s, False)]
+
+
 @dataclass(frozen=True)
 class ScaffoldItem:
     """One file the scaffold may create, relative to wiki/."""
-    relpath: str               # e.g. "get-started/_Sidebar.md"
+    relpath: str               # e.g. "how-to/_Sidebar.md"
     kind: str                  # home | root_sidebar | landing | folder_sidebar
     section: str | None        # the section folder, or None for root-level items
 
@@ -301,6 +326,10 @@ def main(argv=None) -> int:
         return 0
 
     sections = parse_sections(args.sections)
+    # Suppress undeclared conditional sections (architecture/operational). The real
+    # gates — manifest presence, --visibility — are wired in parts 2-3; until then
+    # both default off, so a default run scaffolds the five always-present sections.
+    sections = active_sections(sections)
     project = args.name or default_project_name(args.root)
     existing = {str(p.relative_to(args.root)) for p in args.root.rglob("*") if p.is_file()} \
         if args.root.is_dir() else set()
