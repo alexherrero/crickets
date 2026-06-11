@@ -87,17 +87,145 @@ def active_sections(sections: list[str], *, has_architecture: bool = False,
             if s not in CONDITIONAL_SECTIONS or gated.get(s, False)]
 
 
+# --- the per-project Architecture manifest (wiki-section-taxonomy 2/6) ----------
+# Architecture is the one section whose CONTENTS are per-project. Rather than
+# hard-code sub-sections, the generator reads a small per-repo manifest —
+# wiki/architecture.yml — listing each large component as {slug, title, summary,
+# overview} plus an optional `pillars:` list of recurring toggles. The reader
+# expands each pillar to its known template, validates, and fails CLOSED (scaffolds
+# nothing on any violation). An absent/empty manifest suppresses Architecture
+# entirely (conditional gate #1 — wired into main() via has_architecture). The
+# nested sidebar render that consumes the ordered list is part 3 (render-and-gate).
+
+@dataclass(frozen=True)
+class Component:
+    """One Architecture component: a folder `architecture/<slug>/` whose landing
+    page is `<overview>.md`. `summary` is the landing's one-liner."""
+    slug: str
+    title: str
+    summary: str
+    overview: str              # landing basename within architecture/<slug>/
+
+
+# Recurring components that ship as one-keyword `pillars:` toggles — they recur
+# across the operator's sibling repos. Templates are deliberately repo-agnostic so
+# they fit either side of a pair; a project that wants repo-specific wording adds a
+# `components:` entry with the SAME slug to override the template's fields in place.
+PILLAR_TEMPLATES: dict[str, Component] = {
+    "host-adapters": Component(
+        "host-adapters", "Host adapters",
+        "How the toolkit adapts to each supported host.", "Host-Adapters"),
+    "sibling-interface": Component(
+        "sibling-interface", "Sibling interface",
+        "The contract with the paired sibling repo.", "Sibling-Interface"),
+    "distribution": Component(
+        "distribution", "Build & distribution",
+        "How the project is built and distributed to consumers.", "Build-And-Distribution"),
+}
+
+_REQUIRED_COMPONENT_KEYS = ("slug", "title", "summary", "overview")
+
+
+class ManifestError(ValueError):
+    """A malformed architecture.yml. Raising this is the fail-closed contract —
+    main() turns it into a clear error and writes NOTHING (never a partial scaffold)."""
+
+
+def parse_architecture_manifest(text: str) -> list[Component]:
+    """Parse architecture.yml text into the ORDERED component list. Pillars expand
+    first (in declared order) to their known templates; free-form `components:`
+    follow (in declared order); a `components:` entry whose slug matches a pillar
+    OVERRIDES that pillar's fields in place (the pillar's position is kept, the
+    operator's wording wins). Raises ManifestError on any violation — an empty
+    document (or empty `architecture:` block) yields [] (no Architecture)."""
+    try:
+        import yaml  # guarded — only imported when a manifest actually exists
+    except ImportError as e:  # pragma: no cover - environment-dependent
+        raise ManifestError(
+            "architecture.yml is present but PyYAML is not installed "
+            "(pip install pyyaml) — Architecture scaffolding needs it.") from e
+    try:
+        data = yaml.safe_load(text)
+    except yaml.YAMLError as e:
+        raise ManifestError(f"architecture.yml is not valid YAML: {e}") from e
+    if data is None:
+        return []                                  # empty file → no Architecture
+    if not isinstance(data, dict) or "architecture" not in data:
+        raise ManifestError("architecture.yml must have a top-level 'architecture:' mapping.")
+    block = data["architecture"] or {}
+    if not isinstance(block, dict):
+        raise ManifestError("'architecture:' must be a mapping of pillars/components.")
+    pillars = block.get("pillars") or []
+    components_raw = block.get("components") or []
+    if not isinstance(pillars, list):
+        raise ManifestError("'pillars:' must be a list of toggle names.")
+    if not isinstance(components_raw, list):
+        raise ManifestError("'components:' must be a list of component mappings.")
+
+    ordered: dict[str, Component] = {}
+    for name in pillars:
+        if name not in PILLAR_TEMPLATES:
+            raise ManifestError(
+                f"unknown pillar {name!r}. Known pillars: "
+                f"{', '.join(sorted(PILLAR_TEMPLATES))}.")
+        c = PILLAR_TEMPLATES[name]
+        ordered[c.slug] = c
+    for raw in components_raw:
+        if not isinstance(raw, dict):
+            raise ManifestError("each 'components:' entry must be a mapping.")
+        missing = [k for k in _REQUIRED_COMPONENT_KEYS if not str(raw.get(k, "")).strip()]
+        if missing:
+            raise ManifestError(
+                f"'components:' entry {raw.get('slug', '?')!r} is missing required "
+                f"key(s): {', '.join(missing)}.")
+        c = Component(str(raw["slug"]).strip(), str(raw["title"]).strip(),
+                      str(raw["summary"]).strip(), str(raw["overview"]).strip())
+        ordered[c.slug] = c                        # override-in-place on slug collision
+    return list(ordered.values())
+
+
+def read_architecture_manifest(wiki_root: Path) -> list[Component]:
+    """Read `<wiki_root>/architecture.yml` into the ordered component list. An
+    absent file yields [] (Architecture cleanly suppressed — NOT an error); a
+    present-but-malformed file raises ManifestError (fail closed)."""
+    manifest = wiki_root / "architecture.yml"
+    if not manifest.is_file():
+        return []
+    return parse_architecture_manifest(manifest.read_text(encoding="utf-8"))
+
+
 @dataclass(frozen=True)
 class ScaffoldItem:
     """One file the scaffold may create, relative to wiki/."""
     relpath: str               # e.g. "how-to/_Sidebar.md"
     kind: str                  # home | root_sidebar | landing | folder_sidebar
+                               #   | arch_landing | arch_folder_sidebar
     section: str | None        # the section folder, or None for root-level items
+    component: str | None = None  # the Architecture component slug, for arch_* kinds
 
 
-def planned_items(sections: list[str]) -> list[ScaffoldItem]:
+def architecture_items(components: list[Component]) -> list[ScaffoldItem]:
+    """The scaffold items for the Architecture components, in manifest order: a
+    section landing (`architecture/<slug>/<overview>.md`) + a per-component
+    `_Sidebar.md` per entry. The third-level nested render that lists these in the
+    Architecture section's sidebar is part 3 (render-and-gate)."""
+    items: list[ScaffoldItem] = []
+    for c in components:
+        items.append(ScaffoldItem(
+            f"architecture/{c.slug}/{c.overview}.md", "arch_landing", "architecture", c.slug))
+        items.append(ScaffoldItem(
+            f"architecture/{c.slug}/_Sidebar.md", "arch_folder_sidebar", "architecture", c.slug))
+    return items
+
+
+def planned_items(sections: list[str],
+                  components: list[Component] | None = None) -> list[ScaffoldItem]:
     """The full set of files a scaffold of `sections` would own (before gap-fill):
-    the curated Home + root sidebar, then a landing + per-folder sidebar per section."""
+    the curated Home + root sidebar, then a landing + per-folder sidebar per section.
+    When `architecture` is among the sections AND `components` is non-empty, each
+    component's folder (landing + `_Sidebar.md`) is scaffolded right after the
+    Architecture section's own landing."""
+    components = components or []
     items = [
         ScaffoldItem("Home.md", "home", None),
         ScaffoldItem("_Sidebar.md", "root_sidebar", None),
@@ -106,16 +234,20 @@ def planned_items(sections: list[str]) -> list[ScaffoldItem]:
         base = section_meta(s)[0]
         items.append(ScaffoldItem(f"{s}/{base}.md", "landing", s))
         items.append(ScaffoldItem(f"{s}/_Sidebar.md", "folder_sidebar", s))
+        if s == "architecture" and components:
+            items.extend(architecture_items(components))
     return items
 
 
-def compute_scaffold_plan(existing: set[str], sections: list[str] | None = None) -> list[ScaffoldItem]:
+def compute_scaffold_plan(existing: set[str], sections: list[str] | None = None,
+                          components: list[Component] | None = None) -> list[ScaffoldItem]:
     """Pure gap-fill plan: the wiki-relative files to CREATE given what already
     exists. Only missing paths are returned — an existing page is never in the
     plan, so apply can never clobber operator content. `existing` is the set of
-    wiki-relative paths (e.g. {"Home.md", "reference/Reference.md"})."""
+    wiki-relative paths (e.g. {"Home.md", "reference/Reference.md"}). `components`
+    (from the Architecture manifest) adds the per-component folders when present."""
     sections = sections or DEFAULT_SECTIONS
-    return [it for it in planned_items(sections) if it.relpath not in existing]
+    return [it for it in planned_items(sections, components) if it.relpath not in existing]
 
 
 def parse_sections(raw: str | None) -> list[str]:
@@ -146,6 +278,16 @@ _FOLDER_SIDEBAR = """### {title}
 - [{title}]({landing_base})
 """
 
+# An Architecture component landing — index-mode (architecture/ folders are
+# index-mode in check-wiki), keyed on the component's summary.
+_ARCH_LANDING = """<!-- mode: index -->
+# {title}
+
+_{summary}_
+
+Pages for the {title} component go under `architecture/{slug}/`; list them in this folder's `_Sidebar.md`.
+"""
+
 
 def render_landing(section: str) -> str:
     base, title, purpose = section_meta(section)
@@ -155,6 +297,15 @@ def render_landing(section: str) -> str:
 def render_folder_sidebar(section: str) -> str:
     base, title, _ = section_meta(section)
     return _FOLDER_SIDEBAR.format(title=title, landing_base=base)
+
+
+def render_arch_landing(component: Component) -> str:
+    return _ARCH_LANDING.format(
+        title=component.title, summary=component.summary, slug=component.slug)
+
+
+def render_arch_folder_sidebar(component: Component) -> str:
+    return _FOLDER_SIDEBAR.format(title=component.title, landing_base=component.overview)
 
 
 def render_root_sidebar(sections: list[str], project: str) -> str:
@@ -175,8 +326,10 @@ def render_home(sections: list[str], project: str) -> str:
     )
 
 
-def render_item(item: ScaffoldItem, sections: list[str], project: str) -> str:
-    """The file content for one scaffold item."""
+def render_item(item: ScaffoldItem, sections: list[str], project: str,
+                components: list[Component] | None = None) -> str:
+    """The file content for one scaffold item. `components` (manifest order) is
+    needed only for the arch_* kinds — looked up by the item's component slug."""
     if item.kind == "home":
         return render_home(sections, project)
     if item.kind == "root_sidebar":
@@ -185,19 +338,25 @@ def render_item(item: ScaffoldItem, sections: list[str], project: str) -> str:
         return render_landing(item.section)
     if item.kind == "folder_sidebar":
         return render_folder_sidebar(item.section)
+    if item.kind in ("arch_landing", "arch_folder_sidebar"):
+        by_slug = {c.slug: c for c in (components or [])}
+        component = by_slug[item.component]
+        return (render_arch_landing(component) if item.kind == "arch_landing"
+                else render_arch_folder_sidebar(component))
     raise ValueError(f"unknown scaffold item kind: {item.kind}")
 
 
 def apply_scaffold(root: Path, plan: list[ScaffoldItem], sections: list[str],
-                   project: str) -> list[Path]:
+                   project: str, components: list[Component] | None = None) -> list[Path]:
     """Write every planned (gap-fill) item; return the paths written. Only plan
     items are written, and the plan excludes existing paths, so this never
-    clobbers operator content."""
+    clobbers operator content. `components` carries the Architecture manifest for
+    the arch_* items."""
     written = []
     for it in plan:
         dest = root / it.relpath
         dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_text(render_item(it, sections, project), encoding="utf-8")
+        dest.write_text(render_item(it, sections, project, components), encoding="utf-8")
         written.append(dest)
     return written
 
@@ -326,14 +485,21 @@ def main(argv=None) -> int:
         return 0
 
     sections = parse_sections(args.sections)
-    # Suppress undeclared conditional sections (architecture/operational). The real
-    # gates — manifest presence, --visibility — are wired in parts 2-3; until then
-    # both default off, so a default run scaffolds the five always-present sections.
-    sections = active_sections(sections)
+    # Read the per-project Architecture manifest (wiki/architecture.yml). Absent /
+    # empty → [] (Architecture suppressed); malformed → fail closed, write nothing.
+    try:
+        components = read_architecture_manifest(args.root)
+    except ManifestError as e:
+        print(f"wiki-init: ✗ {e}", file=sys.stderr)
+        return 1
+    # Suppress undeclared conditional sections. architecture is gated on a declared
+    # manifest (conditional gate #1, wired here); operational's --visibility gate is
+    # part 3, so it still defaults off.
+    sections = active_sections(sections, has_architecture=bool(components))
     project = args.name or default_project_name(args.root)
     existing = {str(p.relative_to(args.root)) for p in args.root.rglob("*") if p.is_file()} \
         if args.root.is_dir() else set()
-    plan = compute_scaffold_plan(existing, sections)
+    plan = compute_scaffold_plan(existing, sections, components)
     ci = plan_ci(target_root) if not args.no_ci else {"workflows": [], "skipped": [], "gate": False}
 
     # Cost warning fires only when this run would ADD a billing surface — i.e.
@@ -373,7 +539,7 @@ def main(argv=None) -> int:
             return 0
 
     if plan:
-        for p in apply_scaffold(args.root, plan, sections, project):
+        for p in apply_scaffold(args.root, plan, sections, project, components):
             print(f"  wrote {p}")
     if not args.no_ci:
         result = provision_ci(target_root)

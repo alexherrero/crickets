@@ -114,6 +114,181 @@ class TestSevenSectionFrame(unittest.TestCase):
             ["how-to", "reference", "designs", "explanation", "decisions", "operational"])
 
 
+class TestArchitectureManifest(unittest.TestCase):
+    """The per-project Architecture manifest: reader + validation (fail closed),
+    pillar-toggle expansion, component scaffolding, and absent-manifest
+    suppression (wiki-section-taxonomy 2/6 — architecture-manifest)."""
+
+    COMPONENTS_ONLY = """\
+architecture:
+  components:
+    - slug: plugins
+      title: Plugins
+      summary: One folder per plugin.
+      overview: Plugins
+    - slug: customization-model
+      title: Customization model
+      summary: How a customization is declared.
+      overview: Customization-Model
+"""
+
+    # --- task 1: reader + schema validation (fail closed) ---
+
+    def test_components_only_parses_in_order(self):
+        comps = wi.parse_architecture_manifest(self.COMPONENTS_ONLY)
+        self.assertEqual([c.slug for c in comps], ["plugins", "customization-model"])
+        self.assertEqual(
+            comps[0], wi.Component("plugins", "Plugins", "One folder per plugin.", "Plugins"))
+
+    def test_unknown_pillar_fails_closed(self):
+        with self.assertRaises(wi.ManifestError):
+            wi.parse_architecture_manifest("architecture:\n  pillars: [nope]\n")
+
+    def test_missing_required_key_fails_closed(self):
+        text = ("architecture:\n  components:\n    - slug: plugins\n"
+                "      title: Plugins\n      summary: s\n")     # no overview
+        with self.assertRaises(wi.ManifestError) as cm:
+            wi.parse_architecture_manifest(text)
+        self.assertIn("overview", str(cm.exception))
+
+    def test_empty_doc_yields_no_architecture(self):
+        self.assertEqual(wi.parse_architecture_manifest(""), [])
+        self.assertEqual(wi.parse_architecture_manifest("architecture:\n"), [])
+
+    def test_missing_top_level_key_fails_closed(self):
+        with self.assertRaises(wi.ManifestError):
+            wi.parse_architecture_manifest("something_else: 1\n")
+
+    def test_non_list_pillars_fails_closed(self):
+        with self.assertRaises(wi.ManifestError):
+            wi.parse_architecture_manifest("architecture:\n  pillars: host-adapters\n")
+
+    def test_read_absent_file_is_not_an_error(self):
+        with tempfile.TemporaryDirectory() as td:
+            self.assertEqual(wi.read_architecture_manifest(Path(td)), [])
+
+    def test_read_present_manifest(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "architecture.yml").write_text(self.COMPONENTS_ONLY, encoding="utf-8")
+            comps = wi.read_architecture_manifest(root)
+            self.assertEqual([c.slug for c in comps], ["plugins", "customization-model"])
+
+    def test_read_malformed_fails_closed(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "architecture.yml").write_text(
+                "architecture:\n  pillars: [nope]\n", encoding="utf-8")
+            with self.assertRaises(wi.ManifestError):
+                wi.read_architecture_manifest(root)
+
+    # --- task 2: pillar-toggle expansion ---
+
+    def test_pillars_expand_to_templates(self):
+        comps = wi.parse_architecture_manifest(
+            "architecture:\n  pillars: [host-adapters, distribution]\n")
+        self.assertEqual([c.slug for c in comps], ["host-adapters", "distribution"])
+        self.assertEqual(comps[0], wi.PILLAR_TEMPLATES["host-adapters"])
+        self.assertEqual(comps[1].title, "Build & distribution")
+
+    def test_known_pillars_are_the_three_recurring(self):
+        self.assertEqual(set(wi.PILLAR_TEMPLATES),
+                         {"host-adapters", "sibling-interface", "distribution"})
+
+    def test_pillars_then_components_order(self):
+        text = ("architecture:\n  pillars: [host-adapters]\n  components:\n"
+                "    - slug: plugins\n      title: Plugins\n      summary: s\n"
+                "      overview: Plugins\n")
+        comps = wi.parse_architecture_manifest(text)
+        self.assertEqual([c.slug for c in comps], ["host-adapters", "plugins"])
+
+    def test_components_override_pillar_in_place(self):
+        # a components entry sharing a pillar slug overrides the template's FIELDS
+        # but keeps the pillar's POSITION (first-declared wins ordering).
+        text = ("architecture:\n  pillars: [host-adapters, distribution]\n  components:\n"
+                "    - slug: host-adapters\n      title: Host adapters (repo-specific)\n"
+                "      summary: custom wording.\n      overview: Host-Adapters\n")
+        comps = wi.parse_architecture_manifest(text)
+        self.assertEqual([c.slug for c in comps], ["host-adapters", "distribution"])
+        self.assertEqual(comps[0].title, "Host adapters (repo-specific)")
+        self.assertEqual(comps[0].summary, "custom wording.")
+
+    # --- task 3: component scaffolding + absent-manifest suppression ---
+
+    def test_scaffold_plan_adds_component_folders_in_order(self):
+        comps = wi.parse_architecture_manifest(self.COMPONENTS_ONLY)
+        rels = [it.relpath for it in wi.compute_scaffold_plan(set(), ["architecture"], comps)]
+        self.assertEqual(rels, [
+            "Home.md", "_Sidebar.md",
+            "architecture/Architecture.md", "architecture/_Sidebar.md",
+            "architecture/plugins/Plugins.md", "architecture/plugins/_Sidebar.md",
+            "architecture/customization-model/Customization-Model.md",
+            "architecture/customization-model/_Sidebar.md",
+        ])
+
+    def test_scaffold_re_run_is_noop(self):
+        comps = wi.parse_architecture_manifest(self.COMPONENTS_ONLY)
+        full = {it.relpath for it in wi.planned_items(["architecture"], comps)}
+        self.assertEqual(wi.compute_scaffold_plan(full, ["architecture"], comps), [])
+
+    def test_absent_manifest_scaffolds_no_component_folders(self):
+        rels = [it.relpath for it in wi.compute_scaffold_plan(set(), ["architecture"], [])]
+        self.assertEqual([r for r in rels if r.startswith("architecture/")],
+                         ["architecture/Architecture.md", "architecture/_Sidebar.md"])
+
+    def test_arch_landing_is_index_mode_with_summary(self):
+        c = wi.Component("plugins", "Plugins", "One folder per plugin.", "Plugins")
+        text = wi.render_arch_landing(c)
+        self.assertIn("<!-- mode: index -->", text)
+        self.assertIn("# Plugins", text)
+        self.assertIn("One folder per plugin.", text)
+
+    def test_arch_folder_sidebar_links_overview(self):
+        c = wi.Component("customization-model", "Customization model", "s", "Customization-Model")
+        self.assertIn("[Customization model](Customization-Model)",
+                      wi.render_arch_folder_sidebar(c))
+
+    # --- main() wiring: manifest presence is conditional gate #1 ---
+
+    def _run_main(self, argv):
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            rc = wi.main(argv)
+        return rc, out.getvalue(), err.getvalue()
+
+    def test_main_scaffolds_architecture_when_manifest_present(self):
+        with tempfile.TemporaryDirectory() as td:
+            wiki = Path(td) / "wiki"
+            wiki.mkdir()
+            (wiki / "architecture.yml").write_text(self.COMPONENTS_ONLY, encoding="utf-8")
+            rc, _, _ = self._run_main(["--root", str(wiki), "--no-ci", "--yes"])
+            self.assertEqual(rc, 0)
+            self.assertTrue((wiki / "architecture" / "Architecture.md").is_file())
+            self.assertTrue((wiki / "architecture" / "plugins" / "Plugins.md").is_file())
+            self.assertTrue((wiki / "architecture" / "customization-model"
+                             / "Customization-Model.md").is_file())
+
+    def test_main_suppresses_architecture_without_manifest(self):
+        with tempfile.TemporaryDirectory() as td:
+            wiki = Path(td) / "wiki"
+            wiki.mkdir()
+            rc, _, _ = self._run_main(["--root", str(wiki), "--no-ci", "--yes"])
+            self.assertEqual(rc, 0)
+            self.assertFalse((wiki / "architecture").exists())
+
+    def test_main_malformed_manifest_fails_closed_writes_nothing(self):
+        with tempfile.TemporaryDirectory() as td:
+            wiki = Path(td) / "wiki"
+            wiki.mkdir()
+            (wiki / "architecture.yml").write_text(
+                "architecture:\n  pillars: [nope]\n", encoding="utf-8")
+            rc, _, err = self._run_main(["--root", str(wiki), "--no-ci", "--yes"])
+            self.assertEqual(rc, 1)
+            self.assertIn("unknown pillar", err)
+            self.assertFalse((wiki / "architecture").exists())   # nothing written
+            self.assertFalse((wiki / "Home.md").exists())        # fail closed = no scaffold
+
+
 class TestRender(unittest.TestCase):
     def test_landing_is_index_mode(self):
         text = wi.render_landing("how-to")
