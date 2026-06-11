@@ -39,7 +39,7 @@ The source of truth stays in the repo, so everything rides the normal dev flow: 
 
 ### Overview
 
-Pages live in folders named for reader intent — `get-started/`, `do/`, `reference/`, `plugins/`, `why/`, `designs/`, `decisions/` — and each folder carries its own sidebar and a landing page. Because GitHub renders the nearest sidebar, a reader inside Reference sees Reference expanded and every other section collapsed to a heading; the root sidebar (used by Home) shows everything expanded one level. Section headings link to the landing page — a short, curated "what's in here" with recent changes — never to an arbitrary first page. Every page is exactly one kind of thing (a tutorial, a how-to, a reference, an explanation, or an index), written against a shared template library in the operator's voice. A linter enforces all of it on every push, and a deploy workflow mirrors the folder to the live wiki.
+Pages live in folders named for reader intent — `get-started/`, `do/`, `reference/`, `plugins/`, `why/`, `designs/`, `decisions/` — and each folder carries its own sidebar and a landing page. Because GitHub renders the nearest sidebar, a reader inside Reference sees Reference expanded and every other section collapsed to a heading; the root sidebar (used by Home) shows everything expanded one level. Section headings link to the landing page — a short, curated "what's in here" with recent changes — never to an arbitrary first page. Every page is exactly one kind of thing (a tutorial, a how-to, a reference, an explanation, or an index), written against a shared template library in the operator's voice. A linter enforces all of it on every push, and a deploy workflow mirrors the folder to the live wiki. A repo gets this whole structure **in one shot** — `wiki-init` scaffolds the folders, landings, and sidebars and drops the lint-then-publish workflow, idempotently and preview-first — after which the maintenance loops keep it current (provisioning is detailed in the [provisioning design](wiki-maintenance-provisioning)).
 
 ### Infrastructure
 
@@ -52,17 +52,18 @@ The wiki runs on **GitHub's wiki rendering** (display) plus **GitHub Actions** (
 | `wiki/<section>/` folders | repo | the intent-grouped page tree; one folder per section |
 | `_Sidebar.md` (root + per-folder) | repo | navigation; GitHub renders the nearest one → collapse/expand behavior |
 | Section index pages (`<!-- mode: index -->`) | repo | per-section landings: what the section is + curated one-liners + Recent changes |
-| `scripts/check-wiki.py` | repo | the deterministic linter (modes, links, sidebars, basenames) — a [CI](continuous-integration) gate |
+| `check-wiki.py` | `src/wiki-maintenance/scripts/` (plugin-single-sourced) | the deterministic linter (modes, links, sidebars, basenames) — a [CI](continuous-integration) gate; a provisioned repo's CI runs a vendored copy under `.github/scripts/` |
 | Template spec + section library | `src/wiki-maintenance/skills/diataxis-author/templates/` | the page shapes (§2 library, §3 structural conventions, §4 voice) |
 | Voice overlays | the operator's vault (`_global/wiki-style/` + per-project) | learned voice lessons, read at authoring time |
-| `[W] Update Wiki` (`wiki-sync.yml`) | Actions | the deploy job — mirrors `wiki/` to the GitHub wiki |
+| `[W] Update Wiki` (`wiki-sync.yml`) | Actions | one workflow, two jobs — `lint-wiki` (the gate) then `update-wiki` (`needs: lint-wiki`, mirrors `wiki/` to the GitHub wiki) |
 
 **When what runs:**
 
 | Trigger | What runs |
 |---|---|
-| Push to the default branch touching `wiki/**` | the deploy job (also manually runnable via `workflow_dispatch`) |
-| Every push + PR | `check-wiki.py --strict` as a [CI](continuous-integration) gate |
+| Operator provisions a repo (`wiki-init`) | scaffold the intent-group IA + drop the lint-then-publish workflow + vendor the gate (one-time, preview-first) |
+| Push to the default branch touching `wiki/**` | `lint-wiki` gates, then `update-wiki` publishes (also manually runnable via `workflow_dispatch`) |
+| Every push + PR | `check-wiki.py --strict` as a [CI](continuous-integration) gate (the battery, and the workflow's own `lint-wiki` job) |
 | Phase boundaries (`/plan` · `/work` · `/release`) | the `documenter` agent authors/repairs affected pages (synchronous) |
 | Operator loop / cron | a `wiki-watch` cycle — detect doc-worthy changes, dispatch the documenter, PR-default (asynchronous) |
 
@@ -92,7 +93,9 @@ The deterministic gate: pages live under a mode folder (rule-a), tutorials/how-t
 
 #### 6. Publishing — `wiki-sync.yml`
 
-The deploy job (**deployment, not CI**): on every push to the default branch touching `wiki/**` (or a manual `workflow_dispatch`), it mirrors `wiki/` into the GitHub wiki with `rsync -a` — add, edit, rename, delete; the directory tree is preserved, which is what makes per-folder sidebars render. Before syncing it **fails loudly on case-insensitive duplicate basenames** (`_Sidebar.md`/`_Footer.md` exempt — they're location-rendered, never linked), and it gracefully skips when the repo's wiki is disabled. A bad publish self-heals: the next green push re-mirrors the whole tree.
+`wiki-sync.yml` is **one workflow with two jobs**: `lint-wiki` runs the `check-wiki` gate (on push + PR), and `update-wiki` (`needs: lint-wiki`) does the publish below — so a structurally-broken wiki can never reach the live wiki, even on a direct push to the default branch. (These were briefly two independent workflows; merging them turned the lint from a tripwire into a real gate — the 2026-06-10 reconciliation in the [provisioning design](wiki-maintenance-provisioning).)
+
+The publish job (**deployment, not CI**): on every push to the default branch touching `wiki/**` (or a manual `workflow_dispatch`), it mirrors `wiki/` into the GitHub wiki with `rsync -a` — add, edit, rename, delete; the directory tree is preserved, which is what makes per-folder sidebars render. Before syncing it **fails loudly on case-insensitive duplicate basenames** (`_Sidebar.md`/`_Footer.md` exempt — they're location-rendered, never linked), and it gracefully skips when the repo's wiki is disabled. A bad publish self-heals: the next green push re-mirrors the whole tree.
 
 #### 7. Maintenance — who keeps it current
 
@@ -165,6 +168,7 @@ Every wiki page documenting this system:
 - **[Style-learning loop](Style-Learning-Loop)** — the voice layer's reference.
 - **[Run the wiki-watcher](Run-The-Wiki-Watcher)** + **[Wiki Watch Config](Wiki-Watch-Config)** — the async maintenance loop.
 - **[Wiki Maintenance](Wiki-Maintenance)** (plugin page) + **[wiki-maintenance design](wiki-maintenance-design)** — the toolchain that maintains the tree.
+- **[Provision a repo's wiki](Provision-A-Repo-Wiki)** (how-to) + **[provisioning design](wiki-maintenance-provisioning)** — scaffolding a wiki + its CI from nothing, and the gate-distribution split (reference for the agent, vendor for CI).
 - **This design** — the wiki system itself; future IA/publish changes amend it.
 
 ### Launch Plans
@@ -189,3 +193,4 @@ Everything is repo-versioned: revert the commit and the next push re-mirrors the
 |---|---|---|
 | 2026-06-09 | Codified retroactively from the shipped wiki system (the 2026-06-08 IA restructure / ADR 0018 · wiki-sync.yml · check-wiki.py · the template/voice spec · the three maintenance loops). Created at operator direction during the CI-design review — wiki publishing is deployment, not CI, and belongs here. Authored against the 10-section template with the 2026-06-09 conventions (plain title · 4-sentence objective · 3-paragraph background · platform-first infrastructure · N/A sections omitted · PM slimmed for shipped systems). | draft |
 | 2026-06-10 | Operator green-light → **final**. Build order: tweaked + built **after wiki-init**, before continuous-integration (the composer — generate sidebars + Recent-changes from per-release notes — is the main tweak, with i18n ≥ Spanish a first-class axis). | final |
+| 2026-06-10 | **Provisioning joins the narrative** (`wiki-maintenance-provisioning` docs-adr part). Added `wiki-init` to the Overview, the components + "when what runs" tables, and the Documentation Plan. Reconciled two now-stale details from the provisioning dogfood: `check-wiki.py` is plugin-single-sourced (`src/wiki-maintenance/scripts/`, repo-root copy gone; CI vendors a `.github/scripts/` copy), and `wiki-sync.yml` is now one workflow with two jobs (`lint-wiki` gates `update-wiki`) after the drift-1 merge. Content-only; no section restructure; Status unchanged. | final |

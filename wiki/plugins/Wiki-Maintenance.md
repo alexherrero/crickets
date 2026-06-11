@@ -1,7 +1,7 @@
 <!-- mode: index -->
 # Wiki Maintenance
 
-Opinionated, template-driven wiki maintenance — it keeps a repo's `wiki/` in the **Diátaxis** shape and your **house voice**, and watches for doc-worthy changes. Standalone; it also powers `developer-workflows`' phase-boundary documentation when both are installed.
+Opinionated, template-driven wiki maintenance — it **provisions** a repo's `wiki/` from nothing, keeps it in the **Diátaxis** single-mode shape and your **house voice**, and watches for doc-worthy changes. Standalone; it also powers `developer-workflows`' phase-boundary documentation when both are installed.
 
 ## Install
 
@@ -15,6 +15,7 @@ On Antigravity, install by path (see [Install crickets plugins](Install-Into-Pro
 
 | Primitive | Kind | What it does |
 |---|---|---|
+| **`wiki-init`** | command | "provision the wiki" — scaffold a repo's `wiki/` from nothing (intent-group folders + index landings + per-folder sidebars) and drop the lint-then-publish CI; idempotent + preview-first, never clobbers ([how-to](Provision-A-Repo-Wiki)) |
 | **`wiki-author`** | skill | "update the wiki" — create or update a Diátaxis page for this (or another registered) repo; dispatches the documenter with preview-before-write (Claude-only) |
 | **`diataxis-author`** | skill | the Diátaxis engine — mode selection, template-fill, filename style, drift detection + repair, legacy-wiki migration; learns voice lessons from your own edits |
 | **`documenter`** | agent | the structural write-executor — creates / updates / prunes `wiki/**`, preserves human edits, never touches code, enforces one mode per page |
@@ -23,7 +24,7 @@ On Antigravity, install by path (see [Install crickets plugins](Install-Into-Pro
 | **`diataxis-evaluator`** | agent | read-only — classify a page's Diátaxis mode when it's ambiguous |
 | **`style-scope-evaluator`** | agent | read-only — recommend the scope (global / per-project / per-repo) to store a confirmed voice lesson |
 
-`check-wiki.py` is the deterministic linter behind the authoring + repair flows (mode discipline, link integrity, the section conventions).
+`check-wiki.py` is the deterministic linter behind the authoring + repair flows (mode discipline, link integrity, the section conventions) — and the gate `wiki-init` wires into a provisioned repo's CI. The agent runs it by reference (`${CLAUDE_PLUGIN_ROOT}`); CI runs a vendored copy (`--resync-gate` refreshes it), because GitHub Actions has no plugin-runtime path — see the [provisioning design](wiki-maintenance-provisioning).
 
 ## How it composes
 
@@ -37,8 +38,10 @@ A wiki rots when it's hand-maintained and voiceless. This plugin fights both: **
 
 ## Related
 
+- [Provision a repo's wiki](Provision-A-Repo-Wiki) — scaffold a wiki + its CI from nothing with `wiki-init`.
 - [Run the wiki-watcher](Run-The-Wiki-Watcher) — drive one watcher cycle.
 - [Style-learning loop](Style-Learning-Loop) · [Wiki Watch Config](Wiki-Watch-Config) — the voice layer + the watcher's config contract.
+- [Provisioning design](wiki-maintenance-provisioning) — why provisioning joins authoring; the gate-distribution split + supersession-gated retirement.
 - [Developer Workflows](Developer-Workflows) — the base plugin this enhances at phase boundaries.
 - [Plugin anatomy](Plugin-Anatomy) — what a crickets plugin is + its structure.
 - [Wiki Maintenance design](wiki-maintenance-design) — why the voice layer + operator-in-the-loop learning exist.
