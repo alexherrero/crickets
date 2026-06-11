@@ -39,7 +39,7 @@ The source of truth stays in the repo, so everything rides the normal dev flow: 
 
 ### Overview
 
-Pages live in folders named for reader intent — `get-started/`, `do/`, `reference/`, `plugins/`, `why/`, `designs/`, `decisions/` — and each folder carries its own sidebar and a landing page. Because GitHub renders the nearest sidebar, a reader inside Reference sees Reference expanded and every other section collapsed to a heading; the root sidebar (used by Home) shows everything expanded one level. Section headings link to the landing page — a short, curated "what's in here" with recent changes — never to an arbitrary first page. Every page is exactly one kind of thing (a tutorial, a how-to, a reference, an explanation, or an index), written against a shared template library in the operator's voice. A linter enforces all of it on every push, and a deploy workflow mirrors the folder to the live wiki. A repo gets this whole structure **in one shot** — `wiki-init` scaffolds the folders, landings, and sidebars and drops the lint-then-publish workflow, idempotently and preview-first — after which the maintenance loops keep it current (provisioning is detailed in the [provisioning design](wiki-maintenance-provisioning)).
+Pages live in folders named for reader intent — a fixed seven-section frame: `how-to/`, `reference/`, `architecture/`, `designs/`, `explanation/`, `decisions/`, `operational/` — and each folder carries its own sidebar and a landing page. Five of those sections are always present; two are conditional — **Architecture** (when the repo declares components in a `wiki/architecture.yml` manifest) and **Operational** (non-public wikis only) — per the [section taxonomy](wiki-section-taxonomy). Because GitHub renders the nearest sidebar, a reader inside Reference sees Reference expanded and every other section collapsed to a heading; the root sidebar (used by Home) shows everything expanded one level. Section headings link to the landing page — a short, curated "what's in here" with recent changes — never to an arbitrary first page. Every page is exactly one kind of thing (a tutorial, a how-to, a reference, an explanation, or an index), written against a shared template library in the operator's voice. A linter enforces all of it on every push, and a deploy workflow mirrors the folder to the live wiki. A repo gets this whole structure **in one shot** — `wiki-init` scaffolds the folders, landings, and sidebars and drops the lint-then-publish workflow, idempotently and preview-first — after which the maintenance loops keep it current (provisioning is detailed in the [provisioning design](wiki-maintenance-provisioning)).
 
 ### Infrastructure
 
@@ -50,6 +50,7 @@ The wiki runs on **GitHub's wiki rendering** (display) plus **GitHub Actions** (
 | Component | Where | What it does |
 |---|---|---|
 | `wiki/<section>/` folders | repo | the intent-grouped page tree; one folder per section |
+| `wiki/architecture.yml` (optional) | repo | the per-project Architecture manifest — declares the components (and recurring pillars) that grow the `architecture/` section and its nested third sidebar level |
 | `_Sidebar.md` (root + per-folder) | repo | navigation; GitHub renders the nearest one → collapse/expand behavior |
 | Section index pages (`<!-- mode: index -->`) | repo | per-section landings: what the section is + curated one-liners + Recent changes |
 | `check-wiki.py` | `src/wiki-maintenance/scripts/` (plugin-single-sourced) | the deterministic linter (modes, links, sidebars, basenames) — a [CI](continuous-integration) gate; a provisioned repo's CI runs a vendored copy under `.github/scripts/` |
@@ -61,7 +62,7 @@ The wiki runs on **GitHub's wiki rendering** (display) plus **GitHub Actions** (
 
 | Trigger | What runs |
 |---|---|
-| Operator provisions a repo (`wiki-init`) | scaffold the intent-group IA + drop the lint-then-publish workflow + vendor the gate (one-time, preview-first) |
+| Operator provisions a repo (`wiki-init`) | scaffold the seven-section frame (Architecture from `wiki/architecture.yml` when present) + drop the lint-then-publish workflow + vendor the gate (one-time, preview-first) |
 | Push to the default branch touching `wiki/**` | `lint-wiki` gates, then `update-wiki` publishes (also manually runnable via `workflow_dispatch`) |
 | Every push + PR | `check-wiki.py --strict` as a [CI](continuous-integration) gate (the battery, and the workflow's own `lint-wiki` job) |
 | Phase boundaries (`/plan` · `/work` · `/release`) | the `documenter` agent authors/repairs affected pages (synchronous) |
@@ -73,7 +74,7 @@ The wiki runs on **GitHub's wiki rendering** (display) plus **GitHub Actions** (
 
 #### 1. The intent-grouped IA + section landings
 
-Seven sections, named for what the reader wants: get started · do · reference · plugins · why it works · designs · decisions. Each has an **index landing page** (`<!-- mode: index -->`, shape-exempt from Diátaxis rules): a short statement of what the section is, its pages as curated one-liners (not regurgitated intros), and a tooling-maintained **Recent changes** block. Sidebar section headings link to the landing, never the first sub-page.
+Seven sections in a fixed order, named for what the reader wants: How-to · Reference · Architecture · Designs · Explanation · Decisions · Operational — `wiki_init.py`'s `DEFAULT_SECTIONS` scaffolds them and `check-wiki`'s `_FOLDER_MODE` is the matching allow-list. Two are conditional: **Architecture** renders only when a `wiki/architecture.yml` manifest declares components — and is the one section that nests a third level, each component expanding under the section heading in the root sidebar — and **Operational** renders only for non-public visibility; the other five are always scaffolded. Each has an **index landing page** (`<!-- mode: index -->`, shape-exempt from Diátaxis rules): a short statement of what the section is, its pages as curated one-liners (not regurgitated intros), and a tooling-maintained **Recent changes** block. Sidebar section headings link to the landing, never the first sub-page.
 
 #### 2. Sidebars — the nearest-wins trick
 
@@ -122,6 +123,7 @@ Three loops, all reusing the same writer (the `documenter` agent, hard-scoped to
 - **2026-06-08 — flat → intent-grouped** ([ADR 0018](0018-per-folder-sidebars)): pages moved into section folders; per-folder sidebars added; section index landings created; `check-wiki.py` gained folder-mode defaults, the `index` mode, and the mode-hint comment. Verified against the live rendered wiki.
 - **2026-06-09 — case-collision renames:** the `-design` suffix convention applied to five design pages whose basenames collided case-insensitively with user-facing pages; rule-g made case-insensitive (it caught the second collision the moment it landed).
 - **2026-06-09 — the Agent-M design docs relocated** to the agentm wiki (they document the sibling system); crickets pages re-pointed.
+- **2026-06-11 — intent-folders → seven-section frame** ([section taxonomy](wiki-section-taxonomy)): the pass-1 reader-intent folders were reconciled to the fixed seven — `get-started/` + `do/` → `how-to/`, `why/` → `explanation/`, `plugins/` → `architecture/plugins/`; `architecture/`, `designs/`, `decisions/`, and (non-public wikis only) `operational/` round out the frame. Architecture gained a per-project `wiki/architecture.yml` manifest and a third sidebar nesting level; Architecture and Operational became the two conditional sections.
 - Page retirements follow the standard pattern: fold the content into its successor, repoint every inbound link, delete — never leave a stub.
 
 ## Technical Debt & Risks
@@ -169,6 +171,7 @@ Every wiki page documenting this system:
 - **[Run the wiki-watcher](Run-The-Wiki-Watcher)** + **[Wiki Watch Config](Wiki-Watch-Config)** — the async maintenance loop.
 - **[Wiki Maintenance](Wiki-Maintenance)** (plugin page) + **[wiki-maintenance design](wiki-maintenance-design)** — the toolchain that maintains the tree.
 - **[Provision a repo's wiki](Provision-A-Repo-Wiki)** (how-to) + **[provisioning design](wiki-maintenance-provisioning)** — scaffolding a wiki + its CI from nothing, and the gate-distribution split (reference for the agent, vendor for CI).
+- **[Declare a project's Architecture](Declare-Architecture)** (how-to) + **[Wiki Section Taxonomy](wiki-section-taxonomy)** (design) — the seven-section frame, the two conditional gates, and writing the `wiki/architecture.yml` manifest that grows the Architecture section.
 - **This design** — the wiki system itself; future IA/publish changes amend it.
 
 ### Launch Plans
@@ -194,3 +197,4 @@ Everything is repo-versioned: revert the commit and the next push re-mirrors the
 | 2026-06-09 | Codified retroactively from the shipped wiki system (the 2026-06-08 IA restructure / ADR 0018 · wiki-sync.yml · check-wiki.py · the template/voice spec · the three maintenance loops). Created at operator direction during the CI-design review — wiki publishing is deployment, not CI, and belongs here. Authored against the 10-section template with the 2026-06-09 conventions (plain title · 4-sentence objective · 3-paragraph background · platform-first infrastructure · N/A sections omitted · PM slimmed for shipped systems). | draft |
 | 2026-06-10 | Operator green-light → **final**. Build order: tweaked + built **after wiki-init**, before continuous-integration (the composer — generate sidebars + Recent-changes from per-release notes — is the main tweak, with i18n ≥ Spanish a first-class axis). | final |
 | 2026-06-10 | **Provisioning joins the narrative** (`wiki-maintenance-provisioning` docs-adr part). Added `wiki-init` to the Overview, the components + "when what runs" tables, and the Documentation Plan. Reconciled two now-stale details from the provisioning dogfood: `check-wiki.py` is plugin-single-sourced (`src/wiki-maintenance/scripts/`, repo-root copy gone; CI vendors a `.github/scripts/` copy), and `wiki-sync.yml` is now one workflow with two jobs (`lint-wiki` gates `update-wiki`) after the drift-1 merge. Content-only; no section restructure; Status unchanged. | final |
+| 2026-06-11 | **Taxonomy joins the narrative** (`wiki-section-taxonomy` docs-adr part). Reconciled the fixed seven-section frame (How-to · Reference · Architecture · Designs · Explanation · Decisions · Operational) across the Overview, Detailed Design #1, the components + "when what runs" tables, and the Documentation Plan — replacing the retired pass-1 `get-started/do/why/plugins` intent-folders. Recorded the two conditional gates (Architecture-on-manifest, Operational-on-visibility), Architecture's third nesting level + its `wiki/architecture.yml` manifest, and a Migrations row for the folder reconciliation. Content-only; no section restructure; Status unchanged. | final |
