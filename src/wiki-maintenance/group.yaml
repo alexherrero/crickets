@@ -6,6 +6,13 @@ description: Opinionated, template-driven wiki maintenance — the wiki-author a
 category: documentation
 requires: []
 standalone: true
+# Per-plugin marketplace version. Bump on every release that ships new/changed
+# primitives so `claude plugin update wiki-maintenance@crickets` actually pulls
+# them (the marketplace entry compares this value; a static version no-ops the
+# update). 0.2.0 = first bump past the original 0.1.0 — covers wiki-init,
+# wiki-sync.yml, the single-sourced check-wiki.py, and the seven-section composer
+# shipped since 0.1.0.
+version: 0.2.0
 enhances:
   - group: developer-workflows
     capability: documentation

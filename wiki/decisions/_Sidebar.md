@@ -25,3 +25,4 @@
 - [0018 — per-folder sidebars](0018-per-folder-sidebars)
 - [0019 — wiki provisioning](0019-wiki-provisioning)
 - [0020 — seven-section taxonomy](0020-seven-section-wiki-taxonomy)
+- [0021 — per-plugin versioning](0021-per-plugin-versioning)

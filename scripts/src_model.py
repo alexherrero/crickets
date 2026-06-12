@@ -114,6 +114,13 @@ class Group:
     # that build Group(..., primitives) positionally — e.g. the emit tests)
     enhances: list[Enhance] = field(default_factory=list)
     capabilities: list[str] = field(default_factory=list)
+    # per-plugin marketplace version (the `version:` in group.yaml). Independent
+    # of the per-primitive frontmatter versions. Bumping it is what lets
+    # `claude plugin update <slug>@crickets` pull new primitives — the marketplace
+    # entry compares this value. Defaults to "0.1.0" for groups built positionally
+    # (the emit tests) or whose group.yaml omits the key. Appended LAST so the
+    # positional ctor `Group(..., primitives)` stays valid.
+    version: str = "0.1.0"
 
     def supports(self, host: str) -> bool:
         """A group targets a host if any of its primitives do."""
@@ -185,6 +192,7 @@ def load_groups(src: Path) -> list[Group]:
             standalone=bool(meta.get("standalone", not requires)),
             enhances=enhances,
             capabilities=capabilities,
+            version=str(meta.get("version", "0.1.0")),
             manifest=gy if gy.exists() else None,
         )
         for kind, (glb, name_of) in PRIMITIVE_KINDS.items():

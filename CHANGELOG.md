@@ -5,6 +5,22 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+**Fix — `claude plugin update` now actually delivers a plugin's new primitives.** Plugin versions were a single hardcoded module constant (`PLUGIN_VERSION = "0.1.0"`) duplicated across both host emitters and written into every `plugin.json` + marketplace entry — and never bumped, framed in prior release notes as *"plugins stay `0.1.0` per the repo-level versioning model."* That pin silently broke updates: `claude plugin update <slug>@crickets` compares the marketplace `version:`, so a frozen `0.1.0` meant the comparison was always `0.1.0 == 0.1.0` → a permanent no-op. A machine that installed `wiki-maintenance` at `0.1.0` could never pull the primitives shipped since (wiki-init, `wiki-sync.yml`, the single-sourced `check-wiki.py`, the seven-section composer) without a manual uninstall + reinstall. **This reverses the repo-level pin for the marketplace version specifically:** each plugin now carries its own `version:` in `group.yaml`, bumped independently. Rationale + the load-bearing calls: [ADR 0021](https://github.com/alexherrero/crickets/wiki/0021-per-plugin-versioning).
+
+### Fixed
+
+- **Per-plugin marketplace version sourced from `group.yaml`** — `Group` carries a `version` field (default `"0.1.0"`); both emitters write `group.version` into `plugin.json` and the marketplace entry in place of the deleted `PLUGIN_VERSION` constant. **`wiki-maintenance` → `0.2.0`** (the first move past `0.1.0`, covering everything it shipped since the original publish); the other five plugins stay `0.1.0` until *their* content next changes. Acceptance: a machine on `wiki-maintenance@0.1.0` can now `claude plugin update wiki-maintenance@crickets` to `0.2.0` with no uninstall/reinstall.
+
+### Changed
+
+- **Versioning model (marketplace version only):** the repo-level "all plugins stay `0.1.0`" policy is superseded by per-plugin SemVer in `group.yaml`. Repo git tags (v3.x) + this CHANGELOG remain the human release record — orthogonal to the per-plugin marketplace version, which is the machine update trigger. (Historical entries below retain the old phrasing as an append-only record of what was true then.)
+
+### Internal
+
+- **Anti-recurrence guard (`scripts/check-version-bump.py`)** — fails when anything under `src/<slug>/**` changed versus a base ref (default `origin/main`; CI passes the PR base / push before-SHA) without that plugin's `group.yaml` `version:` moving. Graceful-skips when the base ref is unresolvable (fresh clone / shallow checkout). Wired into `scripts/check-all.sh` (now a 7-gate battery) and the CI `validate` job (checkout deepened to full history so the base resolves). New unit suite `scripts/test_check_version_bump.py` (11 tests); `scripts/test_emit_claude.py` updated to assert the per-plugin contract (plugin.json version == declared `group.yaml` version; `wiki-maintenance` == `0.2.0`).
+
 ## [v3.3.0] — 2026-06-11 — The wiki composer: manifests become pages
 
 **MINOR — a net-new `wiki-maintenance` capability (additive; no migration).** The seven-section taxonomy (v3.2.1) split each wiki page-type into a *manifest* — an ordered list of reusable section files — but nothing turned that list into a page: the diataxis-author skill's `/diataxis author` read a manifest verbatim and emitted its scaffolding comment instead of assembled prose. **The composer is that missing transform.** It reads a page manifest, loads each named section, strips the author-facing `<!-- SECTION … -->` opinion comment, applies the house voice and the target language, and concatenates the sections in order under the page H1 into a publishable page. Monoliths stay as a verbatim fallback, so nothing that worked before regresses. Design + rationale: the [Wiki Composer design](https://github.com/alexherrero/crickets/wiki/wiki-composer) (`launched`).

@@ -31,7 +31,6 @@ from generate import HostEmitter, dump_json, write_utf8  # noqa: E402
 from src_model import Group, Primitive, bundle_ignore, copy_group_scripts, copy_group_templates, enhances_to_json  # noqa: E402
 
 HOST = "antigravity"
-PLUGIN_VERSION = "0.1.0"
 
 _COMPONENT_SUBDIR = {"skill": "skills", "agent": "agents", "command": "commands"}
 # Antigravity's hook event set (no SessionStart / UserPromptSubmit).
@@ -53,7 +52,7 @@ class AntigravityEmitter(HostEmitter):
 
         manifest = {
             "name": group.slug,
-            "version": PLUGIN_VERSION,
+            "version": group.version,
             "description": group.description,
             "author": {"name": "alexherrero", "url": "https://github.com/alexherrero/crickets"},
         }

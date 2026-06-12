@@ -13,6 +13,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        # Full history so the version-bump guard can resolve its base ref
+        # (the PR base SHA on pull_request, the before-SHA on push). The default
+        # shallow clone (fetch-depth: 1) only has HEAD, so the base would be
+        # unresolvable and the guard would graceful-skip — defeating it in CI.
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.11'
@@ -24,6 +30,14 @@ jobs:
         run: cd scripts && python3 -m unittest discover -p 'test_*.py'
       - name: Generated dist/ in sync with src/ (generate.py check)
         run: python3 scripts/generate.py check
+      - name: Per-plugin version bumped when its src/ content changed
+        # Anti-recurrence guard for the per-plugin-semver fix: a plugin whose
+        # src/<slug>/** changed must bump its group.yaml `version:`, else
+        # `claude plugin update` can't pull the new primitives. Compares against
+        # the PR base (pull_request) or the previous commit (push to main).
+        env:
+          VERSION_BUMP_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: python3 scripts/check-version-bump.py
       - name: Lint wiki (Diátaxis)
         # Mirrors agentm's tests-linux.yml step. Linux-only (Diátaxis lint is
         # deterministic; no need to run per OS). Added 2026-05-29 to close

@@ -53,11 +53,23 @@ class TestClaudeEmitter(unittest.TestCase):
         return json.loads(p.read_text(encoding="utf-8"))
 
     def test_plugin_json_per_group(self):
+        # Per-plugin semver: each plugin.json version is sourced from that
+        # group's `group.yaml` `version:` (default "0.1.0"), NOT a single global
+        # constant — bumping one group's version is what lets `claude plugin
+        # update <slug>@crickets` pull its new primitives. Assert the wiring
+        # (plugin.json == declared group version) so this stays true across
+        # future bumps without re-hardcoding numbers here.
+        src_model = sys.modules["src_model"]
+        declared = {g.slug: g.version for g in src_model.load_groups(_ROOT / "src")}
         for slug in ("developer-workflows", "pii", "github-ci", "wiki-maintenance"):
             d = self._plugin_json(slug)
             self.assertEqual(d["name"], slug)
             self.assertTrue(d.get("description"))
-            self.assertEqual(d["version"], "0.1.0")
+            self.assertEqual(d["version"], declared[slug])
+        # Concrete anchor for the per-plugin-semver fix: wiki-maintenance was
+        # bumped past the original 0.1.0; the others have not been bumped yet.
+        self.assertEqual(self._plugin_json("wiki-maintenance")["version"], "0.2.0")
+        self.assertEqual(self._plugin_json("pii")["version"], "0.1.0")
 
     def test_dependencies_from_requires(self):
         # post-seed-retirement: github-ci depends on developer-workflows; wiki-maintenance

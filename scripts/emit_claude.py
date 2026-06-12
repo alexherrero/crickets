@@ -28,7 +28,6 @@ from generate import HostEmitter, dump_json, write_utf8  # noqa: E402  (register
 from src_model import Group, Primitive, bundle_ignore, copy_group_scripts, copy_group_templates, enhances_to_json  # noqa: E402
 
 HOST = "claude-code"
-PLUGIN_VERSION = "0.1.0"
 
 # kinds copied verbatim into a native component subdir.
 _COMPONENT_SUBDIR = {"skill": "skills", "agent": "agents", "command": "commands"}
@@ -52,7 +51,7 @@ class ClaudeEmitter(HostEmitter):
 
         manifest = {
             "name": group.slug,
-            "version": PLUGIN_VERSION,
+            "version": group.version,
             "description": group.description,
             "author": {"name": "alexherrero", "url": "https://github.com/alexherrero/crickets"},
         }
@@ -106,7 +105,7 @@ class ClaudeEmitter(HostEmitter):
         entry = {
             "name": group.slug,
             "description": group.description,
-            "version": PLUGIN_VERSION,
+            "version": group.version,
             "source": f"./plugins/{group.slug}",
         }
         if group.requires:
