@@ -3,4 +3,12 @@ description: The phase-gated developer loop — /setup /plan /work /review /rele
 category: Coding
 requires: []
 standalone: true
+# Per-plugin marketplace version. Bump on every release that ships new/changed
+# primitives so `claude plugin update developer-workflows@crickets` actually
+# pulls them (the marketplace entry compares this value; a static version no-ops
+# the update). 0.2.0 = first bump past the original 0.1.0 — covers the phase-spec
+# refinements shipped since (the full-task-list /work autonomy + safety
+# pre-check, deferred-items-to-Project offers, and the documenter dispatch
+# graceful-skip wiring).
+version: 0.2.0
 capabilities: [setup, plan, work, review, release, bugfix, documentation]
