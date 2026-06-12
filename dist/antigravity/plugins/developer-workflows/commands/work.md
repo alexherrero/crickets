@@ -5,7 +5,7 @@ kind: command
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
 install_scope: project
-argument-hint: [optional — "task N" to pick a specific task instead of the next unchecked one]
+argument-hint: [optional — "<plan-name>" to target a named plan, and/or "task N" to pick a specific task]
 ---
 
 You are running the **work** phase of the developer-workflows loop. Work through `.harness/PLAN.md`'s task list **autonomously** — one task at a time, in sequence, assuming the full list. Before each task, run a safety pre-check; **stop and ask the operator only when a task fails it or an important clarification is needed.** Otherwise run to the end of the plan, gates green before each `[x]`.
@@ -24,14 +24,22 @@ You are running the **work** phase of the developer-workflows loop. Work through
 6. **Do not silently expand task scope.** If it turns out bigger than planned, stop and ask.
 7. **Do not touch `wiki/` during implementation.** Documentation updates are phase-boundary-only.
 8. **After gates are green (before committing), dispatch the `documenter` sub-agent** with the task spec + the diff (via the `wiki-maintenance` capability probe — exit 0 dispatch, exit 1 skip). It flips matching `pending → implemented` pages and adds operational pages if the task introduced one. Resolve `OPEN QUESTIONS` before committing.
-9. **End by updating `PLAN.md` (mark `[x]`), `progress.md` (append line), and committing.**
+9. **End by updating the resolved `PLAN.md` (mark `[x]`), the resolved `progress.md` (append line), and committing.**
 10. **Offer deferred items to the GitHub Project** (optional). If this session surfaced anything *out of task scope* (adjacent bug, refactor opportunity, stale doc elsewhere — not follow-ups to the current task), propose one item per finding via `gh project item-create`, batched into a single preview at phase end. Silent-skip if `.harness/project.json` absent or `gh` unavailable. **No `gh` without confirmation.** Then stop.
 
 ## Process
 
 ### 1. Read state
 
-Read `PLAN.md` (find the first unchecked `[ ]` task, or honor `/work task N`); `progress.md` (was a prior session interrupted — resume or restart?); `AGENTS.md` / `CLAUDE.md` (commit style, test runner, conventions).
+**Resolve the active plan pair first.** A `/work` invocation may target a named plan: parse `$ARGUMENTS` so that a leading token that is **not** `task` is the **plan name**, while `task N` stays the task selector (`<plan-name> task N` carries both; `task N` alone keeps the singleton). Resolve the on-disk pair by **consuming** the agentm reader — never re-deriving the paths here:
+
+```
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/resolve_plan.py" [<plan-name>]
+```
+
+It emits one tab-separated line, `<plan_path>\t<progress_path>` — the **resolved pair** every later step reads and writes. Bare (no plan name) resolves to the singleton `.harness/PLAN.md` / `.harness/progress.md`, **byte-identical** to the historic behavior. A **non-zero exit is a hard stop** — surface its stderr and stop; never fall back to the singleton on a dangling binding (that would silently bind the worker to the wrong plan). If `CLAUDE_PLUGIN_ROOT` is unset, treat the pair as the singleton.
+
+Then read the **resolved `PLAN.md`** (find the first unchecked `[ ]` task, or honor the `task N` selector); the **resolved `progress.md`** (was a prior session interrupted — resume or restart?); `AGENTS.md` / `CLAUDE.md` (commit style, test runner, conventions).
 
 ### 2. Safety pre-check (before each task)
 
@@ -60,7 +68,7 @@ Feed the **full error output** into the next pass (don't summarize). Cap at **5 
 
 ### 7. Update state
 
-Once all gates are green: edit `PLAN.md` to mark the task `[x]` (`planning → in-progress` on the first task; `→ done` if it was the last). Do **not** set `features.json` `passes: true` — that's `/review`'s job. Append to `progress.md`:
+Once all gates are green: edit the **resolved `PLAN.md`** to mark the task `[x]` (`planning → in-progress` on the first task; `→ done` if it was the last). Do **not** set `features.json` `passes: true` — that's `/review`'s job. Append to the **resolved `progress.md`** (the scoped `progress-<name>.md` when a named plan is active, never the singleton):
 
 ```
 <YYYY-MM-DD HH:MM> /work — completed task N: "<title>" (<filesChanged> files, <testsAdded> tests)
@@ -68,7 +76,7 @@ Once all gates are green: edit `PLAN.md` to mark the task `[x]` (`planning → i
 
 ### 8. Update the wiki (post-gates, graceful-skip)
 
-Probe with `bash "${CLAUDE_PLUGIN_ROOT}/scripts/capability_probe.py" wiki-maintenance`. On **exit 0** dispatch its `documenter` with the task's title + What + Verification and the diff — it flips `pending → implemented` **only if the diff proves it** (speculative flips are worse than missed ones), fills `## Implementation` with real `file:line` refs, and adds how-to pages for new operational concerns. Resolve `OPEN QUESTIONS` before committing; `NO CHANGES` is fine. On **exit 1** (absent, or no `CLAUDE_PLUGIN_ROOT`) skip silently. Not invoked during step 4.
+Probe with `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/capability_probe.py" wiki-maintenance`. On **exit 0** dispatch its `documenter` with the task's title + What + Verification and the diff — it flips `pending → implemented` **only if the diff proves it** (speculative flips are worse than missed ones), fills `## Implementation` with real `file:line` refs, and adds how-to pages for new operational concerns. Resolve `OPEN QUESTIONS` before committing; `NO CHANGES` is fine. On **exit 1** (absent, or no `CLAUDE_PLUGIN_ROOT`) skip silently. Not invoked during step 4.
 
 ### 9. Commit
 
