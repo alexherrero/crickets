@@ -48,10 +48,13 @@ Rules (hard = blocking under --strict; soft = always warn-only):
       <repo-root>/.diataxis.json.                             [hard]
   (m) component-overview landings (architecture/<slug>/<Base>.md, mode
       index) carry their manifest's required sections (intro · how-it-
-      works · component-composition · see-also) in relative order; an H2
-      matching no known section is an unknown-section. Read from the
-      bundled section library (DC-5). Soft on live pages during the
-      taxonomy-migration interim (the fixture is the hard test).  [soft]
+      works · component-composition · see-also) in relative order. Read
+      from the bundled section library (DC-5). Soft on live pages during
+      the taxonomy-migration interim (the fixture is the hard test). [soft]
+  (n) Every H2 on such a landing is a required section or a declared
+      heading-variant of an optional section that applies to
+      component-overview (e.g. safety → Safety / Host gaps / Limitations);
+      any other H2 is an unknown-section. Soft during the interim. [soft]
 
 Usage:
   python3 scripts/check-wiki.py               # warn, exit 0
@@ -486,8 +489,9 @@ _CO_SCRIPTS_DIR = _SKILL_DIR / "scripts"
 class ComponentOverviewModel:
     """Expected per-page section shape for component-overview landings, derived
     from the bundled manifest + section library. `required_h2s` is the manifest's
-    section order (sections with no H2, like intro, drop out); `optional_headings`
-    is the set of declared heading-variants for optional sections (rule n / Task 2)."""
+    section order (sections with no H2, like intro, drop out — rule m); `optional_headings`
+    is the set of declared heading-variants of optional sections that apply to
+    component-overview (rule n's allowance, e.g. safety → Safety/Host gaps/Limitations)."""
     required_h2s: list[str]
     optional_headings: set[str]
 
@@ -535,7 +539,18 @@ def _component_overview_model() -> ComponentOverviewModel | None:
         h2 = _first_h2(section_schema.parse_section(text).body)
         if h2:
             required_h2s.append(h2)
-    optional_headings: set[str] = set()  # populated by rule n (Task 2)
+    # Optional-section axis (rule n): any section in the library marked
+    # `optional: true` whose `applies-to` includes component-overview contributes
+    # its declared heading-variants to the allowed set (safety → Safety / Host
+    # gaps / Limitations). These may appear in any position (DC-2 leniency).
+    optional_headings: set[str] = set()
+    for sec_path in sorted(_CO_SECTIONS_DIR.glob("*.md")):
+        try:
+            sec = section_schema.parse_section(sec_path.read_text(encoding="utf-8"))
+        except OSError:
+            continue
+        if sec.optional and "component-overview" in sec.applies_to:
+            optional_headings.update(sec.heading_variants)
     return ComponentOverviewModel(required_h2s, optional_headings)
 
 
@@ -557,28 +572,38 @@ def _is_component_overview(path: Path, wiki_root: Path) -> bool:
 def rule_m_section_order(p: Path, heads: list[tuple[int, int, str]],
                          model: ComponentOverviewModel | None,
                          issues: list[Issue]) -> None:
-    """A component-overview landing carries its manifest's required sections in
-    relative order (membership + order, lenient on optional-section position — DC-2);
-    an H2 that is neither a required section nor a declared optional heading-variant
-    is an unknown section. Soft during the taxonomy-migration interim (DC-6) — the
-    committed fixture, asserted in the unit suite, is the hard test."""
+    """A component-overview landing carries its manifest's required sections —
+    intro · how-it-works · component-composition · see-also — in relative order
+    (membership + relative order, lenient on optional-section position — DC-2). A
+    missing or reordered required section fires. Soft during the taxonomy-migration
+    interim (DC-6) — the committed fixture, asserted in the unit suite, is the hard test."""
     if model is None:
         return
     required = model.required_h2s
     required_set = set(required)
-    page_h2s = [(ln, t) for ln, lvl, t in heads if lvl == 2]
-    seen_required = [t for _, t in page_h2s if t in required_set]
+    seen_required = [t for _, lvl, t in heads if lvl == 2 and t in required_set]
     if seen_required != required:
         emit(issues, p, 1, "m",
              f"component-overview sections missing or out of order: expected "
              f"required H2s {required} in relative order, found {seen_required}",
              soft=True)
-    for ln, t in page_h2s:
-        if t in required_set or t in model.optional_headings:
-            continue
-        emit(issues, p, ln, "m",
-             f"component-overview has unknown section `## {t}` (not a manifest "
-             f"section or a declared optional heading-variant)", soft=True)
+
+
+def rule_n_heading_variant(p: Path, heads: list[tuple[int, int, str]],
+                           model: ComponentOverviewModel | None,
+                           issues: list[Issue]) -> None:
+    """Every H2 on a component-overview landing is either a required section or a
+    declared heading-variant of an optional section whose applies-to includes
+    component-overview (the optional set is read from the library — DC-2/DC-5);
+    any other H2 is an unknown section. Soft during the interim (DC-6)."""
+    if model is None:
+        return
+    allowed = set(model.required_h2s) | model.optional_headings
+    for ln, lvl, t in heads:
+        if lvl == 2 and t not in allowed:
+            emit(issues, p, ln, "n",
+                 f"component-overview has unknown section `## {t}` (not a manifest "
+                 f"section or a declared optional heading-variant)", soft=True)
 
 
 # ── driver ─────────────────────────────────────────────────────────────────
@@ -613,6 +638,7 @@ def collect_issues(wiki_root: Path) -> list[Issue]:
             rule_k_word_count(p, mode, text, issues)
             if _is_component_overview(p, wiki_root):
                 rule_m_section_order(p, heads, co_model, issues)
+                rule_n_heading_variant(p, heads, co_model, issues)
 
         out_stems = {page for _, _, page in extract_wiki_links(text)}
         link_graph[p.stem] = out_stems
