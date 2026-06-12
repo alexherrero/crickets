@@ -55,6 +55,12 @@ Rules (hard = blocking under --strict; soft = always warn-only):
       heading-variant of an optional section that applies to
       component-overview (e.g. safety → Safety / Host gaps / Limitations);
       any other H2 is an unknown-section. Soft during the interim. [soft]
+  (o) No unfilled <…> placeholder survives in a component-overview landing's
+      prose. Angle-bracket template slots must be filled; ones inside an inline
+      code span or a fenced block are exempt (the live architecture pages use
+      angle-brackets as legitimate path-notation, e.g. `dist/<host>/...`).
+      Detected via the section library's find_placeholders. Hard — --strict
+      fails on a stray slot (DC-4).                                     [hard]
 
 Usage:
   python3 scripts/check-wiki.py               # warn, exit 0
@@ -606,6 +612,36 @@ def rule_n_heading_variant(p: Path, heads: list[tuple[int, int, str]],
                  f"section or a declared optional heading-variant)", soft=True)
 
 
+_INLINE_CODE_RE = re.compile(r"`+[^`]*`+")
+
+
+def rule_o_unfilled_placeholder(p: Path, text: str, issues: list[Issue]) -> None:
+    """A composed component-overview landing should have every angle-bracket
+    template slot filled. A surviving `<…>` placeholder in *prose* is a finding —
+    but ones inside an inline code span or a fenced block are exempt, because the
+    live architecture pages use angle-brackets as legitimate path-notation
+    (`dist/<host>/plugins/<group>/`). Detection reuses the section library's
+    find_placeholders; code spans + fences are stripped first, mirroring how
+    parse_headings / rule_k skip fences. Hard — `--strict` fails on a stray slot
+    (DC-4); the design's "soft; --strict promotes" maps to check-wiki's hard tier
+    (whose real `soft` tier is advisory-forever)."""
+    section_schema, _ = _import_section_schema()
+    if section_schema is None:
+        return
+    in_fence = False
+    for ln, raw in enumerate(text.splitlines(), start=1):
+        if FENCE_RE.match(raw):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        prose = _INLINE_CODE_RE.sub("", raw)
+        for ph in section_schema.find_placeholders(prose):
+            emit(issues, p, ln, "o",
+                 f"component-overview has an unfilled placeholder `{ph}` — fill the "
+                 f"template slot, or move it into a code span if it is path-notation")
+
+
 # ── driver ─────────────────────────────────────────────────────────────────
 
 def collect_issues(wiki_root: Path) -> list[Issue]:
@@ -639,6 +675,7 @@ def collect_issues(wiki_root: Path) -> list[Issue]:
             if _is_component_overview(p, wiki_root):
                 rule_m_section_order(p, heads, co_model, issues)
                 rule_n_heading_variant(p, heads, co_model, issues)
+                rule_o_unfilled_placeholder(p, text, issues)
 
         out_stems = {page for _, _, page in extract_wiki_links(text)}
         link_graph[p.stem] = out_stems

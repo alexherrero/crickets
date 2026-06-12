@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-"""Tests for check-wiki.py rules (m) + (n) — component-overview section structure.
+"""Tests for check-wiki.py rules (m) + (n) + (o) — component-overview structure.
 
 A component-overview landing (architecture/<slug>/<Base>.md, mode index) carries
 its manifest's required sections — intro · how-it-works · component-composition ·
 see-also — in relative order (rule m). Every H2 is either a required section or a
 declared heading-variant of an optional section that applies to component-overview
 (rule n, e.g. safety → Safety / Host gaps / Limitations); any other H2 is unknown.
-Both read the bundled section library (DC-5). Soft on live pages during the
-taxonomy-migration interim (DC-6); the committed proof-slice fixtures are the hard
-acceptance tests.
+No <…> placeholder may survive in prose — angle-bracket path-notation inside a code
+span or fence is exempt (rule o, HARD: --strict fails on a stray slot). All read the
+bundled section library (DC-5). m/n are soft on live pages during the taxonomy-
+migration interim (DC-6); the placeholder check stays hard; the committed proof-slice
+fixtures are the hard acceptance tests.
 """
 from __future__ import annotations
 
@@ -18,6 +20,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 SCRIPTS = Path(__file__).resolve().parent
 FIXTURES = SCRIPTS / "fixtures" / "component-overview"
@@ -248,9 +251,125 @@ class RuleNHeadingVariantTest(unittest.TestCase):
         self.assertEqual(issues, [])
 
 
+class RuleOPlaceholderTest(unittest.TestCase):
+    """rule (o): a surviving <…> placeholder in a component-overview landing's
+    prose is a HARD finding; ones inside an inline code span or a fenced block are
+    exempt (legitimate path-notation). Detection reuses find_placeholders (DC-5)."""
+
+    def setUp(self):
+        self.p = Path("architecture/x/X.md")
+
+    def _run(self, text: str):
+        issues: list = []
+        cw.rule_o_unfilled_placeholder(self.p, text, issues)
+        return [i for i in issues if i.rule == "o"]
+
+    def test_conforming_page_clean(self):
+        # CONFORMING carries the <!-- mode: index --> hint but no template slot.
+        self.assertEqual(self._run(CONFORMING), [])
+
+    def test_prose_placeholder_fires(self):
+        text = CONFORMING.replace(
+            "It works like so.", "It works via <name the enforcer> in prose.")
+        found = self._run(text)
+        self.assertTrue(any("<name the enforcer>" in i.message for i in found),
+                        "a prose placeholder should fire rule o naming the slot")
+
+    def test_placeholder_finding_is_hard(self):
+        # DC-4: placeholder is hard (drives --strict exit), unlike m/n which are soft.
+        found = self._run(CONFORMING.replace("It works like so.", "Via <slot>."))
+        self.assertTrue(found)
+        self.assertTrue(all(i.severity == "hard" for i in found))
+
+    def test_inline_code_placeholder_exempt(self):
+        # The live-wiki shape: angle-brackets as path-notation inside a code span.
+        text = CONFORMING.replace(
+            "It works like so.", "It writes to `dist/<host>/plugins/<group>/`.")
+        self.assertEqual(self._run(text), [])
+
+    def test_fenced_placeholder_exempt(self):
+        text = CONFORMING.replace(
+            "It works like so.", "It works like so.\n\n```\ncp <src> <dst>\n```")
+        self.assertEqual(self._run(text), [])
+
+    def test_html_comment_is_not_a_placeholder(self):
+        # The <!-- mode: index --> hint heads every landing; it must never trip o.
+        text = CONFORMING + "\n<!-- a trailing comment -->\n"
+        self.assertEqual(self._run(text), [])
+
+    def test_finding_reports_the_placeholder_line(self):
+        text = CONFORMING.replace("It works like so.", "It works via <slot> here.")
+        found = self._run(text)
+        self.assertTrue(found)
+        target = [n for n, ln in enumerate(text.splitlines(), 1) if "<slot>" in ln][0]
+        self.assertEqual(found[0].line, target)
+
+    def test_multiple_prose_placeholders_each_fire(self):
+        text = CONFORMING.replace(
+            "It works like so.", "It works via <first> and <second>.")
+        msgs = " ".join(i.message for i in self._run(text))
+        self.assertIn("<first>", msgs)
+        self.assertIn("<second>", msgs)
+
+
+class RuleOStrictExitTest(unittest.TestCase):
+    """rule (o) is hard end-to-end. The temp wiki is otherwise clean (Home +
+    _Sidebar referencing the page, no unresolved links), so the unfilled prose
+    placeholder is the SOLE hard issue — `check-wiki --strict` then exits non-zero
+    *because of* rule o; filling the slot flips it back to 0, and a plain run warns
+    + exits 0 (the design's "soft finding; --strict promotes" → check-wiki's hard
+    tier, DC-4)."""
+
+    PLACEHOLDER = "It works via <name the enforcer> left unfilled."
+    FILLED = "It works via the enforcer, fully described in prose."
+
+    def _wiki(self, works_line: str) -> Path:
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
+        (root / "Home.md").write_text("# Home\n\n- [Leaky](Leaky)\n", encoding="utf-8")
+        (root / "_Sidebar.md").write_text("- [Leaky](Leaky)\n", encoding="utf-8")
+        pg = root / "architecture" / "leaky" / "Leaky.md"
+        pg.parent.mkdir(parents=True, exist_ok=True)
+        pg.write_text(
+            "<!-- mode: index -->\n# Leaky\n\n**Crickets** is a toolkit.\n\n"
+            f"## How it works\n\n{works_line}\n\n"
+            "## How it fits\n\n- It sits beside the other parts.\n\n"
+            "## See also\n\n- The field-level reference.\n",
+            encoding="utf-8")
+        return root
+
+    def test_only_hard_issue_is_the_placeholder(self):
+        hard = [i for i in cw.collect_issues(self._wiki(self.PLACEHOLDER))
+                if i.severity == "hard"]
+        self.assertEqual({i.rule for i in hard}, {"o"},
+                         "the placeholder must be the sole hard issue (isolation)")
+
+    def test_strict_run_exits_nonzero(self):
+        root = self._wiki(self.PLACEHOLDER)
+        with mock.patch.object(sys, "argv",
+                               ["check-wiki.py", "--strict", "--no-readme",
+                                "--root", str(root)]):
+            self.assertEqual(cw.main(), 1)
+
+    def test_filling_the_slot_flips_strict_to_zero(self):
+        # Causation: the same wiki with the placeholder filled exits 0 under
+        # --strict — proving rule o (not some incidental issue) drove the failure.
+        root = self._wiki(self.FILLED)
+        with mock.patch.object(sys, "argv",
+                               ["check-wiki.py", "--strict", "--no-readme",
+                                "--root", str(root)]):
+            self.assertEqual(cw.main(), 0)
+
+    def test_plain_run_exits_zero(self):
+        root = self._wiki(self.PLACEHOLDER)
+        with mock.patch.object(sys, "argv",
+                               ["check-wiki.py", "--no-readme", "--root", str(root)]):
+            self.assertEqual(cw.main(), 0)
+
+
 class FixtureAcceptanceTest(unittest.TestCase):
     """The committed proof-slice fixtures are the hard test: a full collect_issues
-    scan over each must surface zero rule (m)/(n) findings (DC-6)."""
+    scan over each must surface zero rule (m)/(n)/(o) findings (DC-6)."""
 
     def _wiki(self) -> Path:
         root = Path(tempfile.mkdtemp())
@@ -262,20 +381,21 @@ class FixtureAcceptanceTest(unittest.TestCase):
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text((FIXTURES / fixture).read_text(encoding="utf-8"), encoding="utf-8")
 
-    def _mn(self, root: Path):
-        return [i for i in cw.collect_issues(root) if i.rule in ("m", "n")]
+    def _mno(self, root: Path):
+        return [i for i in cw.collect_issues(root) if i.rule in ("m", "n", "o")]
 
     def test_required_only_fixture_clean(self):
         root = self._wiki()
         self._place(root, "sample-component", "Sample-Component.md")
-        self.assertEqual(self._mn(root), [], "required-only fixture should be clean")
+        self.assertEqual(self._mno(root), [], "required-only fixture should be clean (m/n/o)")
 
     def test_guarded_fixture_with_optional_section_clean(self):
         # A Host-Adapters-shaped page (optional `## Host gaps` between How it fits
-        # and See also) passes clean once rule (n) reads the optional set.
+        # and See also) passes clean once rule (n) reads the optional set — and
+        # carries no stray placeholder, so rule (o) is clean too.
         root = self._wiki()
         self._place(root, "sample-guarded", "Sample-Guarded-Component.md")
-        self.assertEqual(self._mn(root), [], "guarded fixture should be clean")
+        self.assertEqual(self._mno(root), [], "guarded fixture should be clean (m/n/o)")
 
     def test_broken_order_fires_rule_m(self):
         root = self._wiki()
