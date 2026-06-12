@@ -46,6 +46,12 @@ Rules (hard = blocking under --strict; soft = always warn-only):
       link resolves to an existing file under the repo root. Opt out
       with --no-readme or {"include_readme": false} in
       <repo-root>/.diataxis.json.                             [hard]
+  (m) component-overview landings (architecture/<slug>/<Base>.md, mode
+      index) carry their manifest's required sections (intro · how-it-
+      works · component-composition · see-also) in relative order; an H2
+      matching no known section is an unknown-section. Read from the
+      bundled section library (DC-5). Soft on live pages during the
+      taxonomy-migration interim (the fixture is the hard test).  [soft]
 
 Usage:
   python3 scripts/check-wiki.py               # warn, exit 0
@@ -466,6 +472,115 @@ def resolve_include_readme(repo_root: Path, cli_include: bool) -> bool:
     return True
 
 
+# ── component-overview section model (rules m/n/o) ─────────────────────────
+# This gate ships in the wiki-maintenance plugin beside the diataxis-author
+# skill; the section library + schema travel with it, so resolve them relative
+# to THIS file (the layout holds in src/ and in the generated dist/ plugin — DC-5).
+_SKILL_DIR = Path(__file__).resolve().parent.parent / "skills" / "diataxis-author"
+_CO_TEMPLATES_DIR = _SKILL_DIR / "templates"
+_CO_SECTIONS_DIR = _CO_TEMPLATES_DIR / "sections"
+_CO_SCRIPTS_DIR = _SKILL_DIR / "scripts"
+
+
+@dataclass
+class ComponentOverviewModel:
+    """Expected per-page section shape for component-overview landings, derived
+    from the bundled manifest + section library. `required_h2s` is the manifest's
+    section order (sections with no H2, like intro, drop out); `optional_headings`
+    is the set of declared heading-variants for optional sections (rule n / Task 2)."""
+    required_h2s: list[str]
+    optional_headings: set[str]
+
+
+def _import_section_schema():
+    """Import the sibling section_schema + composer modules (DC-5), or return
+    (None, None). Guarded so a repo that lacks the diataxis-author skill still
+    runs the other rules instead of crashing the linter."""
+    if str(_CO_SCRIPTS_DIR) not in sys.path:
+        sys.path.insert(0, str(_CO_SCRIPTS_DIR))
+    try:
+        import section_schema
+        import composer
+        return section_schema, composer
+    except Exception:
+        return None, None
+
+
+def _first_h2(body: str) -> str | None:
+    """The title of the first H2 in a section body, or None (intro has none)."""
+    for _, lvl, title in parse_headings(body.splitlines()):
+        if lvl == 2:
+            return title
+    return None
+
+
+def _component_overview_model() -> ComponentOverviewModel | None:
+    """Build the expected-section model from the bundled component-overview
+    manifest + section library. Returns None if the skill (and thus the library)
+    isn't reachable — callers then skip the component-overview rules entirely."""
+    section_schema, composer = _import_section_schema()
+    if section_schema is None:
+        return None
+    try:
+        manifest_text = (_CO_TEMPLATES_DIR / "component-overview.md").read_text(encoding="utf-8")
+    except OSError:
+        return None
+    required_names = composer._parse_manifest_sections(manifest_text)
+    required_h2s: list[str] = []
+    for name in required_names:
+        try:
+            text = (_CO_SECTIONS_DIR / f"{name}.md").read_text(encoding="utf-8")
+        except OSError:
+            continue
+        h2 = _first_h2(section_schema.parse_section(text).body)
+        if h2:
+            required_h2s.append(h2)
+    optional_headings: set[str] = set()  # populated by rule n (Task 2)
+    return ComponentOverviewModel(required_h2s, optional_headings)
+
+
+def _is_component_overview(path: Path, wiki_root: Path) -> bool:
+    """A component-overview landing is a mode-index page at exactly
+    architecture/<slug>/<Base>.md — one level under architecture/, excluding the
+    architecture/plugins/** subtree (DC-3). The top-level architecture/Architecture.md
+    and any deeper nesting fall outside the three-part depth check."""
+    try:
+        rel = path.relative_to(wiki_root)
+    except ValueError:
+        return False
+    parts = rel.parts
+    if len(parts) != 3 or parts[0] != "architecture" or parts[1] == "plugins":
+        return False
+    return resolve_mode(path, wiki_root) == "index"
+
+
+def rule_m_section_order(p: Path, heads: list[tuple[int, int, str]],
+                         model: ComponentOverviewModel | None,
+                         issues: list[Issue]) -> None:
+    """A component-overview landing carries its manifest's required sections in
+    relative order (membership + order, lenient on optional-section position — DC-2);
+    an H2 that is neither a required section nor a declared optional heading-variant
+    is an unknown section. Soft during the taxonomy-migration interim (DC-6) — the
+    committed fixture, asserted in the unit suite, is the hard test."""
+    if model is None:
+        return
+    required = model.required_h2s
+    required_set = set(required)
+    page_h2s = [(ln, t) for ln, lvl, t in heads if lvl == 2]
+    seen_required = [t for _, t in page_h2s if t in required_set]
+    if seen_required != required:
+        emit(issues, p, 1, "m",
+             f"component-overview sections missing or out of order: expected "
+             f"required H2s {required} in relative order, found {seen_required}",
+             soft=True)
+    for ln, t in page_h2s:
+        if t in required_set or t in model.optional_headings:
+            continue
+        emit(issues, p, ln, "m",
+             f"component-overview has unknown section `## {t}` (not a manifest "
+             f"section or a declared optional heading-variant)", soft=True)
+
+
 # ── driver ─────────────────────────────────────────────────────────────────
 
 def collect_issues(wiki_root: Path) -> list[Issue]:
@@ -477,6 +592,7 @@ def collect_issues(wiki_root: Path) -> list[Issue]:
     }
     known_stems: set[str] = {p.stem for p in all_paths}
     link_graph: dict[str, set[str]] = {}
+    co_model = _component_overview_model()
 
     for p in all_paths:
         text = p.read_text(encoding="utf-8", errors="replace")
@@ -495,6 +611,8 @@ def collect_issues(wiki_root: Path) -> list[Issue]:
             rule_e_reference_shape(p, mode, lines, heads, issues)
             rule_f_adr_amendments(p, wiki_root, text, heads, issues)
             rule_k_word_count(p, mode, text, issues)
+            if _is_component_overview(p, wiki_root):
+                rule_m_section_order(p, heads, co_model, issues)
 
         out_stems = {page for _, _, page in extract_wiki_links(text)}
         link_graph[p.stem] = out_stems
