@@ -5,9 +5,11 @@ wiki-composer part 3/4 (author-wiring).
 
 Covers author-wiring Task 1: template-driven page-type validation (validity is
 "a templates/<page-type>.md exists", not a hardcoded enum); the compose-vs-verbatim
-routing keyed on `sections:` presence; the byte-identical monolith path (the
-non-regression guarantee); and the recognized-but-deferred manifest placement that
-fails closed until Task 2 wires it.
+routing keyed on `sections:` presence; and the byte-identical monolith path (the
+non-regression guarantee). Task 2 adds the component-overview placement proof
+(`architecture/<kebab>/<base>.md` with the four section bodies in manifest order);
+the other three manifest page-types stay recognized-but-deferred, failing closed at
+placement rather than being misplaced.
 
 Deterministic-only: every author/dispatch call injects a fixed ``resolved_style``
 (the determinism seam), so the proofs exercise the pipeline rather than a live,
@@ -186,26 +188,94 @@ class TestMonolithEndToEnd(unittest.TestCase):
             self.assertEqual(res["action"], "authored")
 
 
-class TestManifestPlacementDeferredToTask2(unittest.TestCase):
-    """Task 1 — manifest page-types are recognized but fail closed at placement.
+class TestComponentOverviewPlacement(unittest.TestCase):
+    """Task 2 — component-overview places end-to-end and composes its sections.
 
-    The dispatch routes manifests to compose at the *content* level (proven in
-    TestDispatchRouting), but the end-to-end *placement* of the component-overview
-    proof slice is Task 2 — so author_page fails closed here rather than misplacing
-    a page. This test morphs in Task 2 when placement is wired."""
+    The proof slice that morphs Task 1's fail-closed test: placement is now wired.
+    The target is grounded in wiki_init's universal component layout
+    (``architecture/<slug>/<Overview>.md``, wiki_init.py:215) — the folder is always
+    the kebab slug; the basename follows the operator's ``filename_style``."""
 
-    def test_component_overview_fails_closed_at_placement(self):
+    def test_places_under_architecture_kebab_folder_camelcase_basename(self):
         with tempfile.TemporaryDirectory() as td:
             w = _mkwiki(td)
-            with self.assertRaises(NotImplementedError) as cm:
-                author.author_page(
-                    "Code Review", "component-overview", wiki_root=w,
-                    resolved_style=_empty_style(),
-                )
-            self.assertIn(
-                "Task 2", str(cm.exception),
-                "the deferral names the task that wires placement",
+            res = author.author_page(
+                "Code Review", "component-overview", wiki_root=w,
+                resolved_style=_empty_style(),
             )
+            self.assertEqual(
+                Path(res["target"]), w / "architecture" / "code-review" / "Code-Review.md",
+                "kebab folder + default CamelCase-With-Dashes basename (wiki_init layout)",
+            )
+            self.assertEqual(res["filename"], "Code-Review.md")
+            self.assertEqual(res["mode"], "component-overview")
+            self.assertTrue(Path(res["target"]).exists(), "the page is written to disk")
+
+    def test_composed_page_has_h1_and_four_sections_in_manifest_order(self):
+        with tempfile.TemporaryDirectory() as td:
+            w = _mkwiki(td)
+            res = author.author_page(
+                "Code Review", "component-overview", wiki_root=w,
+                resolved_style=_empty_style(),
+            )
+            written = Path(res["target"]).read_text(encoding="utf-8")
+            self.assertTrue(written.startswith("# Code Review\n"), "leads with the # <slug> H1")
+            self.assertNotIn("page-template:", written, "manifest frontmatter consumed, not emitted")
+            self.assertNotIn("sections:", written, "the sections: list is consumed too")
+            i_intro = written.index("**<Project>**")
+            i_how = written.index("## How it works")
+            i_fits = written.index("## How it fits")
+            i_see = written.index("## See also")
+            self.assertLess(i_intro, i_how)
+            self.assertLess(i_how, i_fits)
+            self.assertLess(i_fits, i_see)
+
+    def test_filename_style_changes_basename_but_folder_stays_kebab(self):
+        with tempfile.TemporaryDirectory() as td:
+            w = _mkwiki(td)
+            res = author.author_page(
+                "Code Review", "component-overview", wiki_root=w,
+                filename_style="kebab-case", resolved_style=_empty_style(),
+            )
+            self.assertEqual(
+                Path(res["target"]), w / "architecture" / "code-review" / "code-review.md",
+                "folder stays kebab; basename follows filename_style",
+            )
+
+    def test_existing_target_refuses_without_overwrite_then_rewrites_with_it(self):
+        with tempfile.TemporaryDirectory() as td:
+            w = _mkwiki(td)
+            author.author_page(
+                "Code Review", "component-overview", wiki_root=w, resolved_style=_empty_style()
+            )
+            with self.assertRaises(FileExistsError):
+                author.author_page(
+                    "Code Review", "component-overview", wiki_root=w, resolved_style=_empty_style()
+                )
+            res = author.author_page(
+                "Code Review", "component-overview", wiki_root=w,
+                overwrite=True, resolved_style=_empty_style(),
+            )
+            self.assertEqual(res["action"], "authored")
+
+
+class TestDeferredManifestTypesFailClosed(unittest.TestCase):
+    """Task 2 — the other three manifest page-types are recognized but their
+    placement is deferred; they fail closed at ``_manifest_target`` rather than
+    being misplaced. (``home`` collides with release-time ``Home.md`` ownership;
+    ``section-index``'s target is per-section under the live taxonomy migration;
+    ``plugin-home``'s ``architecture/plugins/`` is a repo-specific layout, not
+    wiki_init's universal component placement.)"""
+
+    def test_deferred_manifest_types_raise_not_implemented(self):
+        for pt in ("home", "plugin-home", "section-index"):
+            with tempfile.TemporaryDirectory() as td:
+                w = _mkwiki(td)
+                with self.assertRaises(NotImplementedError, msg=f"{pt} placement is deferred") as cm:
+                    author.author_page(
+                        "Whatever", pt, wiki_root=w, resolved_style=_empty_style()
+                    )
+                self.assertIn(pt, str(cm.exception), "the deferral names the page-type")
 
 
 if __name__ == "__main__":

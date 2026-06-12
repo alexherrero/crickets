@@ -182,18 +182,32 @@ def _manifest_target(
     wiki_root: Path,
     filename_style: str,
 ) -> Path:
-    """Resolve the on-disk target for a manifest page-type — the Task-2 seam.
+    """Resolve the on-disk target for a manifest page-type.
 
-    ``component-overview`` will place at ``architecture/<kebab-slug>/<base>.md``
-    (grounded in wiki_init's component layout); ``home`` / ``plugin-home`` /
-    ``section-index`` are recognized-but-deferred (placement out of scope this part).
-    Until Task 2 wires the mapping, every manifest page-type fails closed here
-    rather than being misplaced — the routing is proven at the content level
-    (``_dispatch_content``); the end-to-end manifest write is Task 2."""
+    ``component-overview`` places at ``architecture/<kebab-slug>/<base>.md`` —
+    grounded in wiki_init's universal component layout (the ``Component`` dataclass /
+    ``architecture_items``, wiki_init.py:215, e.g. ``architecture/host-adapters/
+    Host-Adapters.md``). The folder is always the kebab-cased slug (the component-dir
+    convention); the basename follows the operator's ``filename_style`` (default
+    ``CamelCase-With-Dashes``, which matches wiki_init's own basename casing). Both
+    casings reuse author.py's own ``_apply_filename_style`` rather than importing
+    wiki_init — the convention is small and already local, and it dodges the cross-dir
+    import (parent Risk: dist/ import fragility).
+
+    ``home`` / ``plugin-home`` / ``section-index`` are recognized-but-deferred: their
+    placement is out of scope this part (``home`` collides with release-time
+    ``Home.md`` ownership; ``section-index``'s target is per-section under the live
+    seven-section-taxonomy migration; ``plugin-home``'s ``architecture/plugins/`` is a
+    repo-specific layout, not wiki_init's universal component placement). They fail
+    closed here rather than being misplaced — Task 3 surfaces the per-type reason."""
+    if mode == "component-overview":
+        folder = _apply_filename_style(slug, "kebab-case")
+        base = _apply_filename_style(slug, filename_style)
+        return wiki_root / "architecture" / folder / f"{base}.md"
     raise NotImplementedError(
-        f"manifest placement for page-type {mode!r} is wired in author-wiring Task 2 "
-        "(the component-overview placement proof slice); the dispatch recognizes the "
-        "page-type but its target path is not resolved yet"
+        f"manifest placement for page-type {mode!r} is deferred this part "
+        "(recognized but not wired — see the plan's Out of scope); only "
+        "'component-overview' placement is wired in author-wiring"
     )
 
 
