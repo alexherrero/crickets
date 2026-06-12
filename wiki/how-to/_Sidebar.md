@@ -7,7 +7,7 @@
 - [Declare a project's Architecture](Declare-Architecture)
 - [Maintain a wiki — wiki-watcher](Run-The-Wiki-Watcher)
 - [Review a change — code review](Use-Code-Review)
-- [Run a named plan](Run-A-Named-Plan) _(pending)_
+- [Run a named plan](Run-A-Named-Plan)
 ### 📖 [Reference](Reference)
 ### 🏛️ [Architecture](Architecture)
 ### 🧩 [Designs](Designs)

@@ -5,7 +5,7 @@ kind: command
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
 install_scope: project
-argument-hint: [optional — "<plan-name>" to target a named plan, and/or "task N" to pick a specific task]
+argument-hint: [optional — "--name <plan-name>" to target a named plan, and/or "task N" to pick a specific task]
 ---
 
 You are running the **work** phase of the developer-workflows loop. Work through `.harness/PLAN.md`'s task list **autonomously** — one task at a time, in sequence, assuming the full list. Before each task, run a safety pre-check; **stop and ask the operator only when a task fails it or an important clarification is needed.** Otherwise run to the end of the plan, gates green before each `[x]`.
@@ -31,13 +31,13 @@ You are running the **work** phase of the developer-workflows loop. Work through
 
 ### 1. Read state
 
-**Resolve the active plan pair first.** A `/work` invocation may target a named plan: parse `$ARGUMENTS` so that a leading token that is **not** `task` is the **plan name**, while `task N` stays the task selector (`<plan-name> task N` carries both; `task N` alone keeps the singleton). Resolve the on-disk pair by **consuming** the agentm reader — never re-deriving the paths here:
+**Resolve the active plan pair first.** A `/work` invocation may target a named plan with **`--name <slug>`** anywhere in `$ARGUMENTS`; the `task N` selector keeps its meaning, so `/work --name <slug> task N` carries both. Absent `--name`, the singleton is used. Resolve the on-disk pair by **consuming** the agentm reader — never re-deriving the paths here (pass the `--name` value as `<slug>`; omit it for the singleton):
 
 ```
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/resolve_plan.py" [<plan-name>]
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/resolve_plan.py" [<slug>]
 ```
 
-It emits one tab-separated line, `<plan_path>\t<progress_path>` — the **resolved pair** every later step reads and writes. Bare (no plan name) resolves to the singleton `.harness/PLAN.md` / `.harness/progress.md`, **byte-identical** to the historic behavior. A **non-zero exit is a hard stop** — surface its stderr and stop; never fall back to the singleton on a dangling binding (that would silently bind the worker to the wrong plan). If `CLAUDE_PLUGIN_ROOT` is unset, treat the pair as the singleton.
+It emits one tab-separated line, `<plan_path>\t<progress_path>` — the **resolved pair** every later step reads and writes. Bare (no `--name`) resolves to the singleton `.harness/PLAN.md` / `.harness/progress.md`, **byte-identical** to the historic behavior. A **non-zero exit is a hard stop** — surface its stderr and stop; never fall back to the singleton on a dangling binding (that would silently bind the worker to the wrong plan). If `CLAUDE_PLUGIN_ROOT` is unset, treat the pair as the singleton.
 
 Then read the **resolved `PLAN.md`** (find the first unchecked `[ ]` task, or honor the `task N` selector); the **resolved `progress.md`** (was a prior session interrupted — resume or restart?); `AGENTS.md` / `CLAUDE.md` (commit style, test runner, conventions).
 
@@ -68,7 +68,7 @@ Feed the **full error output** into the next pass (don't summarize). Cap at **5 
 
 ### 7. Update state
 
-Once all gates are green: edit the **resolved `PLAN.md`** to mark the task `[x]` (`planning → in-progress` on the first task; `→ done` if it was the last). Do **not** set `features.json` `passes: true` — that's `/review`'s job. Append to the **resolved `progress.md`** (the scoped `progress-<name>.md` when a named plan is active, never the singleton):
+Once all gates are green: edit the **resolved `PLAN.md`** to mark the task `[x]` (`planning → in-progress` on the first task; `→ done` if it was the last). Do **not** set `features.json` `passes: true` — that's `/review`'s job. Append to the **resolved `progress.md`** (the scoped `progress-<slug>.md` when a named plan is active, never the singleton):
 
 ```
 <YYYY-MM-DD HH:MM> /work — completed task N: "<title>" (<filesChanged> files, <testsAdded> tests)

@@ -18,7 +18,7 @@
 - [Modify a plugin](Modify-A-Plugin)
 - [Add a skill](Add-A-Skill)
 - [Add a plugin](Add-A-Plugin)
-- [Named plans](Named-Plans) _(pending)_
+- [Named plans](Named-Plans)
 ### 🏛️ [Architecture](Architecture)
 ### 🧩 [Designs](Designs)
 ### 💡 [Explanation](Explanation)
