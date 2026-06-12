@@ -42,8 +42,6 @@ import composer  # noqa: E402 — sibling module, resolved via the sys.path inse
 # Templates ship alongside scripts/ at templates/<mode>.md.
 _TEMPLATES_DIR = _SCRIPTS_DIR.parent / "templates"
 
-_VALID_MODES = {"tutorial", "how-to", "reference", "explanation"}
-
 # Per Diátaxis convention (matches harness's templates/wiki/ + check-wiki.py
 # expectations): tutorials/ is plural, others are singular. Map mode names to
 # their directory names here so author.py + classify.py share the convention.
@@ -62,6 +60,26 @@ _VALID_FILENAME_STYLES = {"CamelCase-With-Dashes", "snake_case", "kebab-case"}
 # new page-type needs only a template, not an edit to a hardcoded enum
 # (author-wiring 3/4 — template-driven validation replaces _VALID_MODES).
 _TEMPLATE_NON_PAGES = frozenset({"README"})
+
+# Why each recognized-but-deferred manifest page-type's placement is not wired this
+# part — surfaced in the fail-closed NotImplementedError so the operator sees the
+# specific reason, not just "not wired" (author-wiring 3/4 fail-closed edge (c)).
+# component-overview is the one wired placement (wiki_init's universal component
+# layout); these three each await their own slice (see the plan's Out of scope).
+_DEFERRED_MANIFEST_REASONS = {
+    "home": (
+        "it collides with release-time Home.md ownership (wiki_init.render_home + "
+        "the release flow own that file)"
+    ),
+    "section-index": (
+        "its target is per-section under the live seven-section-taxonomy migration "
+        "(a parallel track)"
+    ),
+    "plugin-home": (
+        "its architecture/plugins/<Plugin>.md is a repo-specific layout, not "
+        "wiki_init's universal component placement (wave-2 per its own template)"
+    ),
+}
 
 
 def _resolve_wiki_root(arg_path: str | None) -> Path:
@@ -199,15 +217,18 @@ def _manifest_target(
     ``Home.md`` ownership; ``section-index``'s target is per-section under the live
     seven-section-taxonomy migration; ``plugin-home``'s ``architecture/plugins/`` is a
     repo-specific layout, not wiki_init's universal component placement). They fail
-    closed here rather than being misplaced — Task 3 surfaces the per-type reason."""
+    closed here rather than being misplaced, with the per-type reason named in the
+    message (from ``_DEFERRED_MANIFEST_REASONS``)."""
     if mode == "component-overview":
         folder = _apply_filename_style(slug, "kebab-case")
         base = _apply_filename_style(slug, filename_style)
         return wiki_root / "architecture" / folder / f"{base}.md"
+    reason = _DEFERRED_MANIFEST_REASONS.get(
+        mode, "it is recognized but not wired this part — see the plan's Out of scope"
+    )
     raise NotImplementedError(
-        f"manifest placement for page-type {mode!r} is deferred this part "
-        "(recognized but not wired — see the plan's Out of scope); only "
-        "'component-overview' placement is wired in author-wiring"
+        f"manifest placement for page-type {mode!r} is deferred in author-wiring: "
+        f"{reason}. Only 'component-overview' placement is wired this part."
     )
 
 
@@ -276,15 +297,27 @@ def author_page(
     # Content dispatch: manifest → compose_page, monolith → verbatim + the shared
     # voice tail. The voice provenance (operator summary) mirrors the composer's
     # resolve decision — see _voice_provenance.
-    content = _dispatch_content(
-        template_text,
-        section_names=section_names,
-        slug=slug,
-        resolved_style=resolved_style,
-        wiki_root=wiki_root,
-        vault_path=vault_path,
-        project_slug=project_slug,
-    )
+    try:
+        content = _dispatch_content(
+            template_text,
+            section_names=section_names,
+            slug=slug,
+            resolved_style=resolved_style,
+            wiki_root=wiki_root,
+            vault_path=vault_path,
+            project_slug=project_slug,
+        )
+    except FileNotFoundError as e:
+        # A manifest named a section with no library file. Fail closed naming the
+        # manifest (page-type) + the missing section — propagated from compose_page's
+        # loader, never swallowed into a partial page (author-wiring 3/4 edge (b)).
+        # Only the manifest path loads sections, so a FileNotFoundError here is always
+        # a missing section, not the (already-read) template.
+        missing = Path(e.filename).stem if e.filename else "?"
+        raise FileNotFoundError(
+            f"page-type {mode!r} manifest names section {missing!r}, but its library "
+            f"file does not exist: {e.filename}"
+        ) from e
     style_composed, style_scopes = _voice_provenance(
         resolved_style,
         wiki_root=wiki_root,
@@ -335,8 +368,10 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     )
     parser.add_argument("slug", help="page slug (e.g. 'Install foo into a project')")
     parser.add_argument(
-        "--mode", choices=sorted(_VALID_MODES), default=None,
-        help="Diátaxis mode (default: prompt or infer from --intent via classify.py)",
+        "--mode", choices=_valid_page_types(), default=None,
+        help="page-type to author: the four Diátaxis monoliths plus the manifest "
+             "page-types (validity is template existence). Default: prompt or infer "
+             "from --intent via classify.py (the classifier infers monoliths only).",
     )
     parser.add_argument(
         "--intent", default=None,
@@ -425,7 +460,7 @@ def main(argv: list[str] | None = None) -> int:
             vault_path=vault_path,
             project_slug=args.project_slug,
         )
-    except (FileNotFoundError, FileExistsError, ValueError) as e:
+    except (FileNotFoundError, FileExistsError, ValueError, NotImplementedError) as e:
         print(f"ERROR: {e}", file=sys.stderr)
         return 1
     print(json.dumps(result, indent=2))

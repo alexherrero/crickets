@@ -18,11 +18,14 @@ discover`` causes across the sibling diataxis test files.
 """
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
@@ -276,6 +279,82 @@ class TestDeferredManifestTypesFailClosed(unittest.TestCase):
                         "Whatever", pt, wiki_root=w, resolved_style=_empty_style()
                     )
                 self.assertIn(pt, str(cm.exception), "the deferral names the page-type")
+
+
+class TestFailClosedEdges(unittest.TestCase):
+    """Task 3 — every edge halts with a specific message, never a partial/misplaced page."""
+
+    def test_unknown_page_type_lists_valid_types(self):
+        # (a) — enforced since Task 1; re-asserted here as a Task-3 fail-closed edge.
+        with tempfile.TemporaryDirectory() as td:
+            w = _mkwiki(td)
+            with self.assertRaises(ValueError) as cm:
+                author.author_page("X", "nonsuch", wiki_root=w, resolved_style=_empty_style())
+            self.assertIn("unknown page-type", str(cm.exception))
+            self.assertIn("how-to", str(cm.exception), "the error lists the valid page-types")
+
+    def test_manifest_with_a_bogus_section_fails_closed_naming_manifest_and_section(self):
+        # (b) — a manifest naming a section with no library file halts with the
+        # page-type (manifest) + the missing section, propagated from compose_page's
+        # loader (not swallowed into a partial page). A synthetic component-overview
+        # manifest names a section absent from the shipped library: placement resolves
+        # (component-overview is wired), so the failure surfaces at compose time.
+        with tempfile.TemporaryDirectory() as td:
+            w = _mkwiki(td)
+            tmpl_dir = Path(td) / "templates"
+            tmpl_dir.mkdir()
+            (tmpl_dir / "component-overview.md").write_text(
+                "---\npage-template: component-overview\nsections: [does-not-exist]\n---\n",
+                encoding="utf-8",
+            )
+            with mock.patch.object(author, "_TEMPLATES_DIR", tmpl_dir):
+                with self.assertRaises(FileNotFoundError) as cm:
+                    author.author_page(
+                        "Code Review", "component-overview", wiki_root=w,
+                        resolved_style=_empty_style(),
+                    )
+            msg = str(cm.exception)
+            self.assertIn("component-overview", msg, "names the manifest (page-type)")
+            self.assertIn("does-not-exist", msg, "names the missing section")
+
+    def test_each_deferred_manifest_type_message_names_its_specific_reason(self):
+        # (c) — the deferred trio each halt with their OWN deferral reason, not a
+        # generic "not wired" (the operator sees why, per _DEFERRED_MANIFEST_REASONS).
+        reasons = {"home": "Home.md", "section-index": "taxonomy", "plugin-home": "plugins"}
+        for pt, needle in reasons.items():
+            with tempfile.TemporaryDirectory() as td:
+                w = _mkwiki(td)
+                with self.assertRaises(NotImplementedError) as cm:
+                    author.author_page("X", pt, wiki_root=w, resolved_style=_empty_style())
+                msg = str(cm.exception)
+                self.assertIn(pt, msg, f"{pt}: names the page-type")
+                self.assertIn(needle, msg, f"{pt}: names its specific deferral reason")
+
+
+class TestCommandSurface(unittest.TestCase):
+    """Task 3 — --mode widens to template-validated page-types; deferred types are
+    reachable via the CLI but fail clean; --intent stays monolith-only."""
+
+    def test_parse_args_accepts_every_template_page_type(self):
+        # The four-monolith --mode hardcode is gone: --mode now accepts any page-type
+        # with a template (all eight), including the manifests Task 1+2 recognize.
+        for pt in _MONOLITHS + _MANIFESTS:
+            ns = author._parse_args(["Some slug", "--mode", pt])
+            self.assertEqual(ns.mode, pt, f"--mode {pt} accepted (template-validated)")
+
+    def test_main_fails_clean_on_a_deferred_manifest_type(self):
+        # A deferred type is reachable via --mode now, but main() catches the
+        # NotImplementedError → exit 1 + ERROR (with the reason), no traceback, no
+        # page written. Proves widening the surface didn't open a misplacement path.
+        with tempfile.TemporaryDirectory() as td:
+            w = _mkwiki(td)
+            err = io.StringIO()
+            with contextlib.redirect_stderr(err):
+                rc = author.main(["Some Home", "--mode", "home", "--wiki-root", str(w)])
+            self.assertEqual(rc, 1, "deferred type exits non-zero, not a crash")
+            self.assertIn("ERROR", err.getvalue())
+            self.assertIn("Home.md", err.getvalue(), "the clean error carries the reason")
+            self.assertFalse(list(w.rglob("*.md")), "no page written for a deferred type")
 
 
 if __name__ == "__main__":
