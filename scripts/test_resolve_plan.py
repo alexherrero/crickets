@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import importlib.util
 import io
+import json
 import contextlib
 import shutil
 import sys
@@ -196,7 +197,7 @@ class TestLocateResolver(unittest.TestCase):
         hm = self._make_clone(clone)
         cfg = self.tmp / "cfg.json"
         cfg.write_text(
-            '{"source_clones": {"agentm": "%s"}}' % clone, encoding="utf-8"
+            json.dumps({"source_clones": {"agentm": str(clone)}}), encoding="utf-8"
         )
         self.assertEqual(rp.locate_resolver(config_path=cfg, home=self.tmp), hm)
 
