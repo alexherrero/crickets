@@ -575,6 +575,14 @@ def _is_component_overview(path: Path, wiki_root: Path) -> bool:
     return resolve_mode(path, wiki_root) == "index"
 
 
+# DC-6 soft→hard follow-up (wiki-composer enforcement 4/4). Rules (m) and (n)
+# below emit `soft=True` on LIVE pages for the taxonomy-migration interim, so this
+# gate isn't coupled to the in-flight wiki-section-taxonomy migration that owns
+# wiki/architecture/** — the committed proof-slice fixture, asserted hard in the
+# unit suite, is the real acceptance test regardless of live severity. FOLLOW-UP:
+# once wiki-section-taxonomy parts 5–6 land, flip live order/heading to hard — a
+# one-line change here: drop the `soft=True` from rule_m's and rule_n's emit()
+# calls. (Rule (o) placeholder is already hard per DC-4; only m/n are interim-soft.)
 def rule_m_section_order(p: Path, heads: list[tuple[int, int, str]],
                          model: ComponentOverviewModel | None,
                          issues: list[Issue]) -> None:
