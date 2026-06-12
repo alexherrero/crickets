@@ -34,6 +34,11 @@ _SCRIPTS_DIR = Path(__file__).resolve().parent
 if str(_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS_DIR))
 
+# composer ships beside author.py in scripts/; it owns the manifest→page transform
+# (compose_page) + the shared voice convention (compose_voice). author-wiring (this
+# part) adds only the dispatch that chooses between it and the verbatim monolith path.
+import composer  # noqa: E402 — sibling module, resolved via the sys.path insert above
+
 # Templates ship alongside scripts/ at templates/<mode>.md.
 _TEMPLATES_DIR = _SCRIPTS_DIR.parent / "templates"
 
@@ -50,6 +55,13 @@ _MODE_TO_DIR = {
 }
 _DEFAULT_FILENAME_STYLE = "CamelCase-With-Dashes"
 _VALID_FILENAME_STYLES = {"CamelCase-With-Dashes", "snake_case", "kebab-case"}
+
+# Files under templates/ that are NOT authorable page-types (docs, not pages). A
+# page-type is valid iff templates/<page-type>.md exists and is not one of these —
+# so the four monolith modes and the four manifest page-types are all valid, and a
+# new page-type needs only a template, not an edit to a hardcoded enum
+# (author-wiring 3/4 — template-driven validation replaces _VALID_MODES).
+_TEMPLATE_NON_PAGES = frozenset({"README"})
 
 
 def _resolve_wiki_root(arg_path: str | None) -> Path:
@@ -80,6 +92,111 @@ def _apply_filename_style(slug: str, style: str) -> str:
     raise ValueError(f"unknown filename style: {style}")
 
 
+def _valid_page_types() -> list[str]:
+    """The authorable page-types: every ``templates/<name>.md`` whose stem is not a
+    doc (``README``). Template existence *is* the validity rule (author-wiring 3/4),
+    so a new page-type needs only a template — no enum to edit. Covers the four
+    monolith modes and the four manifest page-types uniformly."""
+    return sorted(
+        p.stem for p in _TEMPLATES_DIR.glob("*.md") if p.stem not in _TEMPLATE_NON_PAGES
+    )
+
+
+def _dispatch_content(
+    template_text: str,
+    *,
+    section_names: list[str] | None = None,
+    slug: str,
+    resolved_style=None,  # style_resolver.ResolvedStyle | None — inject to pin voice
+    wiki_root: Path | None = None,
+    vault_path: Path | None = None,
+    project_slug: str | None = None,
+) -> str:
+    """The compose-vs-verbatim dispatch — the one branch author-wiring adds.
+
+    A manifest (``section_names`` non-empty) is assembled by
+    ``composer.compose_page``; a monolith (no sections) emits today's verbatim
+    template through ``composer.compose_voice`` — byte-identical to the legacy
+    inline voice tail, since ``compose_voice`` mirrors it (parent Risk #2: one
+    voice convention, not two parallel emit paths). ``section_names`` defaults to
+    the manifest's own ``sections:`` list; ``resolved_style`` is the determinism
+    seam, threaded straight through to the composer so an injected pin yields
+    reproducible output."""
+    if section_names is None:
+        section_names = composer._parse_manifest_sections(template_text)
+    if section_names:
+        return composer.compose_page(
+            template_text,
+            title=slug,
+            resolved_style=resolved_style,
+            wiki_root=wiki_root,
+            vault_path=vault_path,
+            project_slug=project_slug,
+        )
+    return composer.compose_voice(
+        template_text,
+        resolved_style=resolved_style,
+        wiki_root=wiki_root,
+        vault_path=vault_path,
+        project_slug=project_slug,
+    )
+
+
+def _voice_provenance(
+    resolved_style,
+    *,
+    wiki_root: Path | None,
+    vault_path: Path | None,
+    project_slug: str | None,
+) -> tuple[bool, list]:
+    """Report ``(style_composed, style_scopes)`` for the operator summary.
+
+    ``_dispatch_content`` routes voice through the composer, which returns the
+    page but not whether a voice was applied or from which scopes — so the summary
+    metadata is recovered here by mirroring the composer's resolve decision.
+    Deterministic: an injected ``resolved_style`` is the same object the composer
+    used; ``None`` re-resolves live, and ``resolve_style`` is a pure function of the
+    same three scopes, so the verdict always matches what the composer emitted. Any
+    failure degrades to ``(False, [])`` — the same never-fail-over-voice contract as
+    ``compose_voice``."""
+    try:
+        resolved = resolved_style
+        if resolved is None:
+            import style_resolver  # type: ignore
+            resolved = style_resolver.resolve_style(
+                wiki_root=wiki_root,
+                vault_path=vault_path,
+                project_slug=project_slug,
+            )
+        if resolved.base_text.strip() or resolved.lessons:
+            return True, list(resolved.provenance)
+        return False, []
+    except Exception:  # noqa: BLE001 — never fail authoring over the voice layer
+        return False, []
+
+
+def _manifest_target(
+    mode: str,
+    slug: str,
+    *,
+    wiki_root: Path,
+    filename_style: str,
+) -> Path:
+    """Resolve the on-disk target for a manifest page-type — the Task-2 seam.
+
+    ``component-overview`` will place at ``architecture/<kebab-slug>/<base>.md``
+    (grounded in wiki_init's component layout); ``home`` / ``plugin-home`` /
+    ``section-index`` are recognized-but-deferred (placement out of scope this part).
+    Until Task 2 wires the mapping, every manifest page-type fails closed here
+    rather than being misplaced — the routing is proven at the content level
+    (``_dispatch_content``); the end-to-end manifest write is Task 2."""
+    raise NotImplementedError(
+        f"manifest placement for page-type {mode!r} is wired in author-wiring Task 2 "
+        "(the component-overview placement proof slice); the dispatch recognizes the "
+        "page-type but its target path is not resolved yet"
+    )
+
+
 def author_page(
     slug: str,
     mode: str,
@@ -89,60 +206,78 @@ def author_page(
     overwrite: bool = False,
     vault_path: Path | None = None,
     project_slug: str | None = None,
+    resolved_style=None,  # style_resolver.ResolvedStyle | None — inject to pin voice (proofs)
 ) -> dict:
-    """Emit a pre-filled template skeleton to <wiki-root>/<mode>/<filename>.md.
+    """Emit a page to its target under ``wiki_root`` — composed manifest or verbatim monolith.
 
-    The written page composes ``template ⊕ base style-guide ⊕ overlay`` — the
-    style_resolver injects the house voice (committed floor + on-demand overlay
-    lessons from the global / per-project / per-repo scopes) as an author-facing
-    comment after the H1. Falls back to the bare template only if the resolver /
-    committed base style-guide are unavailable.
+    The page-type is valid iff ``templates/<mode>.md`` exists (template-driven
+    validation — author-wiring 3/4, replacing the old ``_VALID_MODES`` enum). The
+    loaded template's ``sections:`` frontmatter then selects the path: a manifest
+    (sections present) is assembled by ``composer.compose_page``; a monolith (no
+    sections) emits the template verbatim with the shared voice tail, byte-identical
+    to before. Both converge on one write tail (the ``FileExistsError`` / ``overwrite``
+    guard + ``write_bytes``).
+
+    Manifest placement is wired for ``component-overview`` in Task 2; until then a
+    recognized manifest page-type fails closed at target resolution
+    (``_manifest_target``) rather than being misplaced.
+
+    ``resolved_style`` is the determinism seam (inject a fixed ``ResolvedStyle`` to
+    pin voice for reproducible proofs; ``None`` resolves live, as the CLI does).
 
     Returns: {action, target, mode, template, filename_style, filename,
     style_composed, style_scopes}.
-    Raises FileExistsError if target exists + overwrite=False.
+    Raises ValueError (unknown page-type / filename style), FileNotFoundError
+    (wiki root absent), FileExistsError (target exists + overwrite=False),
+    NotImplementedError (a recognized manifest page-type whose placement is deferred).
     """
-    if mode not in _VALID_MODES:
-        raise ValueError(f"mode must be one of {sorted(_VALID_MODES)}; got {mode!r}")
     if filename_style not in _VALID_FILENAME_STYLES:
         raise ValueError(
             f"filename style must be one of {sorted(_VALID_FILENAME_STYLES)}; got {filename_style!r}"
         )
     if not wiki_root.exists() or not wiki_root.is_dir():
         raise FileNotFoundError(f"wiki root not found: {wiki_root}")
+    # Template-driven page-type validation: valid iff templates/<mode>.md exists
+    # and is not a doc (README). Replaces the _VALID_MODES enum so a new page-type
+    # needs only a template (author-wiring 3/4).
     template_path = _TEMPLATES_DIR / f"{mode}.md"
-    if not template_path.exists():
-        raise FileNotFoundError(f"template missing: {template_path}")
+    if mode in _TEMPLATE_NON_PAGES or not template_path.exists():
+        raise ValueError(
+            f"unknown page-type {mode!r}; valid page-types: {', '.join(_valid_page_types())}"
+        )
+    template_text = template_path.read_text(encoding="utf-8")
+    section_names = composer._parse_manifest_sections(template_text)
     base = _apply_filename_style(slug, filename_style)
-    target = wiki_root / _MODE_TO_DIR[mode] / f"{base}.md"
+    # Target resolution forks by page-shape: a manifest places by its own rule
+    # (the Task-2 seam — fails closed until wired); a monolith uses the Diátaxis
+    # mode→dir map, exactly as before.
+    if section_names:
+        target = _manifest_target(mode, slug, wiki_root=wiki_root, filename_style=filename_style)
+    else:
+        target = wiki_root / _MODE_TO_DIR[mode] / f"{base}.md"
     if target.exists() and not overwrite:
         raise FileExistsError(
             f"target already exists: {target}; pick a different slug or pass --overwrite"
         )
+    # Content dispatch: manifest → compose_page, monolith → verbatim + the shared
+    # voice tail. The voice provenance (operator summary) mirrors the composer's
+    # resolve decision — see _voice_provenance.
+    content = _dispatch_content(
+        template_text,
+        section_names=section_names,
+        slug=slug,
+        resolved_style=resolved_style,
+        wiki_root=wiki_root,
+        vault_path=vault_path,
+        project_slug=project_slug,
+    )
+    style_composed, style_scopes = _voice_provenance(
+        resolved_style,
+        wiki_root=wiki_root,
+        vault_path=vault_path,
+        project_slug=project_slug,
+    )
     target.parent.mkdir(parents=True, exist_ok=True)
-    content = template_path.read_text(encoding="utf-8")
-    # Compose the voice layer (template ⊕ base style-guide ⊕ overlay) — part 3
-    # task 1. Graceful-degrade to the bare template if the resolver or the
-    # committed base style-guide are unavailable (the page is still useful).
-    style_composed = False
-    style_scopes: list = []
-    try:
-        import style_resolver  # type: ignore
-        resolved = style_resolver.resolve_style(
-            wiki_root=wiki_root,
-            vault_path=vault_path,
-            project_slug=project_slug,
-        )
-        if resolved.base_text.strip() or resolved.lessons:
-            content = style_resolver.apply_style_to_page(content, resolved)
-            style_composed = True
-            style_scopes = list(resolved.provenance)
-    except Exception as e:  # noqa: BLE001 — never fail authoring over the voice layer
-        print(
-            f"[diataxis-author] style resolver unavailable ({e}); "
-            "writing template verbatim",
-            file=sys.stderr,
-        )
     # write_bytes for LF-only line endings (Windows portability — same
     # pattern as save.py / ideas_surface.py / adapt_skills.py).
     target.write_bytes(content.encode("utf-8"))
@@ -152,7 +287,7 @@ def author_page(
         "mode": mode,
         "template": str(template_path),
         "filename_style": filename_style,
-        "filename": f"{base}.md",
+        "filename": target.name,
         "style_composed": style_composed,
         "style_scopes": style_scopes,
     }
