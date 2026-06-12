@@ -9,6 +9,9 @@ standalone: true
 # the update). 0.2.0 = first bump past the original 0.1.0 — covers the phase-spec
 # refinements shipped since (the full-task-list /work autonomy + safety
 # pre-check, deferred-items-to-Project offers, and the documenter dispatch
-# graceful-skip wiring).
-version: 0.2.0
+# graceful-skip wiring). 0.3.0 = the multi-plan writers — a `resolve_plan.py`
+# bridge (delegates to agentm's `resolve-active-plan` verb, graceful `.harness/`
+# fallback standalone) + named-plan-aware /work, /plan, /review that target
+# PLAN-<name>.md / progress-<name>.md pairs; bare invocations stay byte-identical.
+version: 0.3.0
 capabilities: [setup, plan, work, review, release, bugfix, documentation]
