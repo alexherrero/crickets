@@ -5,6 +5,14 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.3.2] — 2026-06-12 — `developer-workflows` → 0.2.0: its shipped primitives become pullable
+
+**PATCH — a distribution bump, no new code.** The first plugin to exercise the per-plugin versioning [v3.3.1] just shipped. `developer-workflows` had accumulated phase-spec refinements since its original `0.1.0` publish — the full-task-list `/work` autonomy + per-task safety pre-check, the deferred-items-to-GitHub-Project offers, and the `documenter` dispatch graceful-skip wiring — but, like every plugin under the old frozen-`0.1.0` pin, existing installs could never pull them. Bumping `developer-workflows` to `0.2.0` makes those already-shipped primitives reachable through a plain `claude plugin update developer-workflows@crickets`. No `src/` logic changed in this release beyond the `version:` field; the dist churn is the regenerated manifests + marketplace entries.
+
+### Changed
+
+- **`developer-workflows` marketplace version `0.1.0` → `0.2.0`** — `version:` added to `src/developer-workflows/group.yaml` and regenerated into both host `plugin.json` manifests + both marketplace surfaces (`generate.py build`). The anti-recurrence guard confirms the bump vs `origin/main`; the other four `0.1.0` plugins are untouched and bump independently when their own content next changes.
+
 ## [v3.3.1] — 2026-06-11 — Per-plugin versioning: `claude plugin update` delivers
 
 **PATCH — a fix to the update mechanism, no new user-facing surface.** **`claude plugin update` now actually delivers a plugin's new primitives.** Plugin versions were a single hardcoded module constant (`PLUGIN_VERSION = "0.1.0"`) duplicated across both host emitters and written into every `plugin.json` + marketplace entry — and never bumped, framed in prior release notes as *"plugins stay `0.1.0` per the repo-level versioning model."* That pin silently broke updates: `claude plugin update <slug>@crickets` compares the marketplace `version:`, so a frozen `0.1.0` meant the comparison was always `0.1.0 == 0.1.0` → a permanent no-op. A machine that installed `wiki-maintenance` at `0.1.0` could never pull the primitives shipped since (wiki-init, `wiki-sync.yml`, the single-sourced `check-wiki.py`, the seven-section composer) without a manual uninstall + reinstall. **This reverses the repo-level pin for the marketplace version specifically:** each plugin now carries its own `version:` in `group.yaml`, bumped independently. Rationale + the load-bearing calls: [ADR 0021](https://github.com/alexherrero/crickets/wiki/0021-per-plugin-versioning).
