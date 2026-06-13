@@ -26,3 +26,4 @@
 - [0019 — wiki provisioning](0019-wiki-provisioning)
 - [0020 — seven-section taxonomy](0020-seven-section-wiki-taxonomy)
 - [0021 — per-plugin versioning](0021-per-plugin-versioning)
+- [0022 — retire worktrees-never-auto](0022-retire-worktrees-never-auto)
