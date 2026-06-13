@@ -63,6 +63,25 @@ Write-Output "nothing workspace-relative here"
 exit 0
 """
 
+# DEFECT 2: the bare cwd-relative bug DISGUISED by moving the resolution markers
+# into an inline trailing comment. The markers (`workspacePaths`, and a dir-change
+# verb) appear in the file text — but only inside a comment, so the code still
+# never resolves the host workspace. Pre-fix these PASSED the gate (only full-line
+# comments were stripped); post-fix they must FAIL it.
+_PS1_DISGUISED = """#!/usr/bin/env pwsh
+# kill-switch (PowerShell twin) — BROKEN: markers live only in the trailing comment
+Set-Location $PSScriptRoot  # unrelated dir, not the workspace
+if (Test-Path -LiteralPath '.harness/STOP') { exit 2 }  # workspacePaths resolved (a lie)
+exit 0
+"""
+
+_SH_DISGUISED = """#!/usr/bin/env bash
+# kill-switch (bash) — BROKEN: markers live only in the trailing comment
+ref=".harness/STOP"  # workspacePaths read + cd done upstream (a lie)
+test -f "$ref" && exit 2
+exit 0
+"""
+
 
 def _make_hook(hooks_root: Path, name: str, *, sh: str | None = None, ps1: str | None = None) -> Path:
     d = hooks_root / name
@@ -75,21 +94,45 @@ def _make_hook(hooks_root: Path, name: str, *, sh: str | None = None, ps1: str |
 
 
 # ── pure logic ───────────────────────────────────────────────────────────────
-class TestStripFullLineComments(unittest.TestCase):
+class TestStripComments(unittest.TestCase):
     def test_drops_full_line_comment(self):
-        out = chp.strip_full_line_comments("# .harness in a comment\nreal code\n")
+        out = chp.strip_comments("# .harness in a comment\nreal code\n")
         self.assertNotIn(".harness", out)
         self.assertIn("real code", out)
 
     def test_drops_indented_full_line_comment(self):
-        out = chp.strip_full_line_comments("    # workspacePaths note\ncode\n")
+        out = chp.strip_comments("    # workspacePaths note\ncode\n")
         self.assertNotIn("workspacePaths", out)
 
-    def test_keeps_inline_trailing_comment(self):
-        # The code on the line is real — stripping mid-line risks corrupting it.
-        line = "Test-Path '.harness/STOP'  # trailing note\n"
-        out = chp.strip_full_line_comments(line)
+    def test_strips_inline_trailing_comment(self):
+        # DEFECT 2: an inline trailing comment must be stripped too, so a marker
+        # hidden in it (`workspacePaths`) no longer counts as resolution.
+        out = chp.strip_comments("Set-Location $ws  # workspacePaths resolved\n")
+        self.assertIn("Set-Location", out)         # the real code survives
+        self.assertNotIn("workspacePaths", out)    # the comment marker is gone
+
+    def test_preserves_code_before_inline_comment(self):
+        # Stripping the comment must not eat the real code (incl. a `.harness` ref)
+        # that precedes it on the same line.
+        out = chp.strip_comments("Test-Path '.harness/STOP'  # trailing note\n")
         self.assertIn(".harness", out)
+        self.assertNotIn("trailing note", out)
+
+    def test_preserves_hash_inside_single_quotes(self):
+        # A `#` inside a string literal is code, not a comment leader.
+        out = chp.strip_comments("grep '#define' file\n")
+        self.assertIn("#define", out)
+
+    def test_preserves_hash_inside_double_quotes(self):
+        out = chp.strip_comments('git commit -m "fix #123"\n')
+        self.assertIn("#123", out)
+
+    def test_preserves_hash_glued_to_token(self):
+        # `$#` / `${x#prefix}` — a `#` not preceded by whitespace is not a comment
+        # in either shell, so it must be left intact.
+        out = chp.strip_comments("n=$#; v=${x#prefix}\n")
+        self.assertIn("$#", out)
+        self.assertIn("${x#prefix}", out)
 
 
 class TestReferencesHarness(unittest.TestCase):
@@ -169,6 +212,22 @@ class TestTwinViolations(unittest.TestCase):
         ps1 = "#!/usr/bin/env pwsh\n# we check .harness/STOP elsewhere\nWrite-Output ok\n"
         self.assertEqual(chp.twin_violations("k", _SH_NO_HARNESS, ps1), [])
 
+    # ---- DEFECT 2: the inline-comment disguise must not slip past the gate ----
+    def test_ps1_disguised_by_inline_comment_is_flagged(self):
+        # The bare cwd-relative bug dressed with an inline `# …workspacePaths…`
+        # comment + an unrelated Set-Location. Pair with a clean .sh so the only
+        # violation is the .ps1.
+        v = chp.twin_violations("kill-switch", _SH_RESOLVES, _PS1_DISGUISED)
+        self.assertEqual(len(v), 1, f"expected exactly the .ps1 violation, got {v}")
+        self.assertIn("the .ps1 twin reads", v[0])
+
+    def test_sh_disguised_by_inline_comment_is_flagged(self):
+        # Symmetric: the same disguise in the .sh direction (bare cwd-relative read
+        # + inline `# …workspacePaths… cd…` comment) must also be caught.
+        v = chp.twin_violations("kill-switch", _SH_DISGUISED, _PS1_RESOLVES)
+        self.assertEqual(len(v), 1, f"expected exactly the .sh violation, got {v}")
+        self.assertIn("the .sh twin reads", v[0])
+
 
 # ── fixture-based scan()/main() red/green ────────────────────────────────────
 class TestScanFixtures(unittest.TestCase):
@@ -194,6 +253,13 @@ class TestScanFixtures(unittest.TestCase):
 
     def test_red_tree_flags_missing_twin(self):
         _make_hook(self.root, "steer", sh=_SH_RESOLVES)  # no .ps1
+        self.assertEqual(chp.main(["--hooks-root", str(self.root)]), 1)
+
+    def test_red_tree_flags_disguised_inline_comment_bug(self):
+        # DEFECT 2 end-to-end: the disguised bug must drive a non-zero exit, not
+        # slip through to a green gate.
+        _make_hook(self.root, "kill-switch", sh=_SH_RESOLVES, ps1=_PS1_DISGUISED)
+        self.assertEqual(len(chp.scan(self.root)), 1)
         self.assertEqual(chp.main(["--hooks-root", str(self.root)]), 1)
 
     def test_multiple_hooks_aggregate_violations(self):

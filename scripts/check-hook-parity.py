@@ -23,10 +23,10 @@ For every hook directory under `src/developer-safety/hooks/*/`:
      parity hole by construction — the developer-safety trio is dual-host.
 
   2. **`references_harness ⟹ resolves_workspace`, per twin.** If a twin's *code*
-     (full-line comments stripped — a doc-comment that merely mentions
-     `.harness` or `workspacePaths` proves nothing) references a workspace-
-     relative `.harness/…` path, that same code must also carry the two
-     resolution markers:
+     (comments stripped — full-line AND inline trailing — so a comment that
+     merely mentions `.harness` or `workspacePaths` proves nothing either way)
+     references a workspace-relative `.harness/…` path, that same code must also
+     carry the two resolution markers:
        - `workspacePaths` — the host-contract protocol key. Naming-agnostic: it
          survives a rename of the resolver function (`_resolve_workspace` →
          `Resolve-Workspace` → anything) because it is the *only* way to read
@@ -74,21 +74,45 @@ _DIRCHANGE = {
 
 
 # ── pure logic (unit-tested without a real tree) ────────────────────────────
-def strip_full_line_comments(text: str) -> str:
-    """Drop whole-line comments so a doc-comment mentioning `.harness` /
-    `workspacePaths` neither triggers the requirement nor satisfies it.
+def strip_comments(text: str) -> str:
+    """Drop comments — full-line AND inline trailing — so a marker that appears
+    only inside a comment proves nothing: a `# … workspacePaths … Set-Location …`
+    comment must neither trigger the `.harness` requirement nor satisfy the
+    resolution check.
 
-    A *full-line* comment is a line whose first non-blank character is `#`
-    (the comment leader for both `bash` and PowerShell). Inline trailing
-    comments are intentionally left in place — the code on that line is real,
-    and stripping mid-line risks corrupting a string literal that contains `#`.
+    The original gate stripped only *full-line* comments, so the bare cwd-relative
+    bug it exists to catch could be disguised as "resolves workspace" simply by
+    moving the markers into an inline trailing comment (crickets v3.0 #40
+    follow-through, DEFECT 2). Inline comments must go too.
+
+    Quote-aware so a `#` inside a string literal is preserved as code (a `sed`
+    pattern, a refname, `grep '#'`, a `"fix #123"` message) rather than mistaken
+    for a comment leader. The comment leader recognized for both `bash` and
+    PowerShell is an unquoted `#` that begins a token — at the start of the line
+    (after optional whitespace) or immediately preceded by whitespace. A `#` glued
+    to a non-space character (`$#`, `foo#bar`, `${x#prefix}`) is not a comment in
+    either shell and is left intact.
+
+    Line-oriented, with quote state tracked per line (matching this module's
+    text-level philosophy): it does not model `bash` here-docs or PowerShell
+    `<# … #>` block comments. On those constructs it can only ever strip *more*
+    than a real parser would, never miss a comment — and the fixture + real-tree
+    tests pin that the live twins stay correctly classified.
     """
-    kept = []
-    for line in text.splitlines():
-        if line.lstrip().startswith("#"):
-            continue
-        kept.append(line)
-    return "\n".join(kept)
+    return "\n".join(_strip_line_comment(line) for line in text.splitlines())
+
+
+def _strip_line_comment(line: str) -> str:
+    """Return `line` with any unquoted `#` comment (whole-line or inline) removed."""
+    in_single = in_double = False
+    for i, ch in enumerate(line):
+        if ch == "'" and not in_double:
+            in_single = not in_single
+        elif ch == '"' and not in_single:
+            in_double = not in_double
+        elif ch == "#" and not in_single and not in_double and (i == 0 or line[i - 1].isspace()):
+            return line[:i].rstrip()
+    return line
 
 
 def references_harness(code: str) -> bool:
@@ -130,7 +154,7 @@ def twin_violations(name: str, sh_text: str | None, ps1_text: str | None) -> lis
     for kind, text in (("sh", sh_text), ("ps1", ps1_text)):
         if text is None:
             continue
-        code = strip_full_line_comments(text)
+        code = strip_comments(text)
         if references_harness(code) and not resolves_workspace(code, kind):
             violations.append(
                 f"{name}: the .{kind} twin reads a workspace-relative .harness/… path "
