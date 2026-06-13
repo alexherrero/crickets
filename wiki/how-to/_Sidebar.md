@@ -8,6 +8,7 @@
 - [Maintain a wiki — wiki-watcher](Run-The-Wiki-Watcher)
 - [Review a change — code review](Use-Code-Review)
 - [Run a named plan](Run-A-Named-Plan)
+- [See every active plan](See-Every-Active-Plan)
 ### 📖 [Reference](Reference)
 ### 🏛️ [Architecture](Architecture)
 ### 🧩 [Designs](Designs)

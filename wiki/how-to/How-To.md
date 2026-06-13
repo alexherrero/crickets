@@ -21,6 +21,7 @@ Task-focused recipes for getting things done with the crickets plugins — from 
 
 <!-- maintained by the wiki tooling (recent-wiki-changes / the documenter) -->
 
+- **2026-06-12** — See-Every-Active-Plan how-to added (`/queue-status-lite`, the read-side glance over the plan queue).
 - **2026-06-11** — Declare-Architecture how-to added (writing `wiki/architecture.yml`).
 - **2026-06-11** — `do/` + `get-started/` folded into `how-to/` (wiki-section-taxonomy restructure); this index merged from both.
 - **2026-06-10** — Provision-A-Repo-Wiki how-to added (the `wiki-init` walkthrough).

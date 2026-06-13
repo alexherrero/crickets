@@ -1,6 +1,6 @@
 # Named plans
 
-The `developer-workflows` phase commands `/work`, `/plan`, and `/review` accept an **optional `--name <slug>` flag**. With a name they operate on a **named plan pair** — `PLAN-<slug>.md` + `progress-<slug>.md` — instead of the singleton `PLAN.md` / `progress.md`. This is what lets one shared harness state dir hold several concurrent plans at once. Bare invocations are unchanged: they resolve to the singleton, byte-for-byte as today. Consult this page to look up what a name maps to, how the name is resolved, and the standalone-fallback paths. The task recipe is in [Run a named plan](Run-A-Named-Plan); the *why* is in [Why phase-gating](Why-Phase-Gating).
+The `developer-workflows` phase commands `/work`, `/plan`, and `/review` accept an **optional `--name <slug>` flag**. With a name they operate on a **named plan pair** — `PLAN-<slug>.md` + `progress-<slug>.md` — instead of the singleton `PLAN.md` / `progress.md`. This is what lets one shared harness state dir hold several concurrent plans at once. Bare invocations are unchanged: they resolve to the singleton, byte-for-byte as today. Consult this page to look up what a name maps to, how the name is resolved, the standalone-fallback paths, and the read-only `/queue-status-lite` command that lists the whole queue. The task recipes are in [Run a named plan](Run-A-Named-Plan) and [See every active plan](See-Every-Active-Plan); the *why* is in [Why phase-gating](Why-Phase-Gating).
 
 ## ⚡ Quick Reference
 
@@ -27,6 +27,36 @@ The `developer-workflows` phase commands `/work`, `/plan`, and `/review` accept 
 | `/review` | optional `--name <slug>` (anywhere in args) | resolves + reads the named pair for adversarial critique |
 
 `/setup`, `/release`, and `/bugfix` do **not** take a plan name in this plan — they remain singleton-only.
+
+## Reading the queue — `/queue-status-lite`
+
+The read complement to the `--name` writers above. `/queue-status-lite` lists **every** active plan in the harness dir — for each, its name, its `Status:` line, and the most-recent entry of the matching `progress*.md` — and prints that dashboard. It takes **no** `--name` flag: it enumerates the whole queue, not one pair. It is the coordinator's *glance* — **read-only by contract**: no claim, no lease, no arbitration, no writes. It surfaces the queue and decides nothing; the human stays the arbiter of who works which plan. It is **not a gate**. The task recipe is in [See every active plan](See-Every-Active-Plan).
+
+| Property | Value |
+|---|---|
+| Command | `/queue-status-lite` |
+| Argument | optional `--harness-dir <path>` (default: resolve from cwd) |
+| Active plans listed | `PLAN.md` plus every `PLAN-<slug>.md` (archives + GDrive conflict copies skipped) |
+| Per-plan output | name · `Status:` line · last `progress*.md` line |
+| Mutates | nothing — reads and prints only |
+| Exit | `0` in normal use (a status read, never a gate) — `0` even when there is no harness dir to read |
+
+### Read bridge
+
+`/queue-status-lite` calls a bridge script that mirrors the resolver bridge's **two backends, one contract** shape (see [Resolution](#resolution) above):
+
+| Property | Value |
+|---|---|
+| Script | `${CLAUDE_PLUGIN_ROOT}/scripts/queue_status.py` |
+| Args | optional `--harness-dir PATH` (default: resolve from cwd) |
+| Output | a deterministic, human-scannable dashboard block on stdout |
+| Delegate target | agentm's shipped `queue_status_lite.py` reader when an agentm clone is locatable |
+| Standalone fallback | a minimal local `.harness/` dashboard mirroring the reader's format |
+
+When an agentm clone is installed the bridge **delegates** to agentm's `queue_status_lite.py` and re-emits its stdout verbatim — that reader is the single owner of the enumeration + render (naming contract, GDrive-conflict skipping, vault redirection). With no clone the bridge renders the minimal local dashboard itself, so the glance degrades rather than vanishing — a clean graceful-skip, never an error. It imports the agentm-clone lookup and the PLAN→progress naming helpers from the resolver bridge (`resolve_plan.py`), so that logic has one owner and is never copied.
+
+> [!NOTE]
+> `/queue-status-lite` adds **zero** agentm changes: it direct-shells to the *already-shipped* standalone reader — no new agentm verb. It is the read side of the multi-plan surface whose writers are the `--name`-aware `/work` / `/plan` / `/review` above.
 
 ## `/work` argument parse rule
 
@@ -83,6 +113,7 @@ The bare paths are **byte-identical** to today's literals; this is locked by an 
 ## Related
 
 - [Run a named plan](Run-A-Named-Plan) — the task recipe for driving `/work --name <slug>` and friends.
+- [See every active plan](See-Every-Active-Plan) — the read-side recipe: `/queue-status-lite` for a one-glance view of the queue.
 - [Developer Workflows](Developer-Workflows) — the phase-loop plugin these commands belong to.
 - [Why phase-gating](Why-Phase-Gating) — why the loop is gated and state lives on disk.
 - [Compatibility](Compatibility) — host support for the phase commands.
