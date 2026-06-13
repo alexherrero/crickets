@@ -13,5 +13,9 @@ standalone: true
 # bridge (delegates to agentm's `resolve-active-plan` verb, graceful `.harness/`
 # fallback standalone) + named-plan-aware /work, /plan, /review that target
 # PLAN-<name>.md / progress-<name>.md pairs; bare invocations stay byte-identical.
-version: 0.3.0
+# 0.4.0 = the read side of the multi-plan surface — a `/queue-status-lite`
+# command + `queue_status.py` bridge (delegates to agentm's shipped
+# `queue_status_lite.py` reader, minimal `.harness/` dashboard standalone) giving
+# the coordinator a read-only glance at every active plan. Read-only by contract.
+version: 0.4.0
 capabilities: [setup, plan, work, review, release, bugfix, documentation]
