@@ -28,5 +28,13 @@ standalone: true
 # `activate()`'s `os.open` fd defaulted to *text* mode on Windows, so `os.write`
 # translated `\n`→`\r\n` and the copy wasn't byte-verbatim there. Adds `O_BINARY`
 # (Windows-only; no-op on POSIX) so the staged→active copy is verbatim on every OS.
-version: 0.5.1
+# 0.6.0 = worktree-spawn (V5-10 sibling #2, operator-initiated worker worktrees) —
+# a `spawn_worker.py` helper + `/spawn-worker` command. The helper creates a
+# `worker/<slug>` git worktree and drops the worktree-local `.harness/active-plan`
+# marker (the bare slug agentm's `resolve_active_plan` reads back) so a worker
+# binds to `PLAN-<slug>.md` with no `--name` and no singleton ambiguity. Composed
+# onto `resolve_plan` (a non-zero resolve gates the spawn — nothing created); the
+# divergent-`vault_project` copy is the LC-2 fallback only. Operator-initiated,
+# never autonomous (paired with the `worktrees-operator-initiated` norm, ADR 0022).
+version: 0.6.0
 capabilities: [setup, plan, work, review, release, bugfix, documentation]
