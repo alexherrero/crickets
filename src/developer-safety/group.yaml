@@ -4,3 +4,13 @@ category: Coding
 requires: []
 standalone: true
 enhances: [developer-workflows]
+# Per-plugin marketplace version. Bump on every release that ships new/changed
+# primitives so `claude plugin update developer-safety@crickets` actually pulls
+# them (the marketplace entry compares this value; a static version no-ops the
+# update). 0.1.1 = the first bump past the original 0.1.0 — ports the host-portable
+# workspace resolution from the .sh hooks to their .ps1 twins (kill-switch, steer,
+# commit-on-stop), so the operator-control hooks read the real workspace root on
+# Antigravity/Windows (cwd = plugin dir, workspace on stdin) instead of doing inert
+# cwd-relative .harness/ checks. Restores .sh/.ps1 parity; .sh + Claude Code behavior
+# unchanged.
+version: 0.1.1

@@ -1,11 +1,42 @@
 # commit-on-stop — non-disruptive safety snapshot at Stop (Windows / pwsh).
-# Mirrors commit-on-stop.sh: snapshots the dirty working tree to the side ref
-# refs/auto-save/<ts> via a temp index + commit-tree, WITHOUT switching branches,
-# moving HEAD, or touching the working tree or index.
+# Mirrors commit-on-stop.sh (incl. host-portable workspace resolution): snapshots
+# the dirty working tree to the side ref refs/auto-save/<ts> via a temp index +
+# commit-tree, WITHOUT switching branches, moving HEAD, or touching the working
+# tree or index.
 #
 # See hook.md in this directory for full documentation.
 
 $ErrorActionPreference = 'Stop'
+
+# ── resolve the workspace root (host-portable) ──────────────────────────────
+# Claude Code runs hooks from the project root + passes JSON on stdin with
+# "cwd" (and sets $env:CLAUDE_PROJECT_DIR). Antigravity runs plugin hooks from
+# the PLUGIN dir + passes the workspace on stdin as {"workspacePaths":["<root>"]}.
+# Resolve an explicit workspace signal (TOP-LEVEL keys only — robust against
+# nested/decoy "cwd" tokens and pretty-printed payloads), then Set-Location into
+# it so the git snapshot below operates on the workspace repo; fall back to cwd.
+function Resolve-Workspace {
+    $ws = ''
+    if ([Console]::IsInputRedirected) {
+        try { $payload = [Console]::In.ReadToEnd() } catch { $payload = '' }
+        if ($payload) {
+            try { $obj = $payload | ConvertFrom-Json -ErrorAction Stop } catch { $obj = $null }
+            if (($null -ne $obj) -and ($obj -isnot [array]) -and ($obj -isnot [string]) -and ($obj -isnot [valuetype])) {
+                $wp = $obj.workspacePaths
+                if (($wp -is [array]) -and ($wp.Count -gt 0) -and ($wp[0] -is [string]) -and $wp[0]) {
+                    $ws = $wp[0]
+                } elseif (($obj.cwd -is [string]) -and $obj.cwd) {
+                    $ws = $obj.cwd
+                }
+            }
+        }
+    }
+    if (-not $ws) { $ws = $env:CLAUDE_PROJECT_DIR }
+    if (-not $ws) { $ws = '.' }
+    return $ws
+}
+$ws = Resolve-Workspace
+try { Set-Location -LiteralPath $ws } catch { }
 
 # Skip if git unavailable.
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) { exit 0 }
