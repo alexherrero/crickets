@@ -79,7 +79,11 @@ class TestStagingPath(unittest.TestCase):
         )
         rc, out, err = sp.staging_path("foo", str(self.tmp), resolver=stub)
         self.assertEqual(rc, 0)
-        self.assertEqual(out.strip(), "/v/_harness/queued-plans/PLAN-foo.md")
+        # Compare as Path objects, not a forward-slash literal: staging_path emits
+        # a native filesystem path (back-slashes on Windows), so the separator is
+        # incidental — the assertion is that queued-plans/ is composed onto the
+        # resolver's vault path.
+        self.assertEqual(Path(out.strip()), Path("/v/_harness/queued-plans/PLAN-foo.md"))
         self.assertNotIn(".harness", out)  # honored the vault redirect, not <root>/.harness
 
     def test_empty_or_singleton_name_refused(self):

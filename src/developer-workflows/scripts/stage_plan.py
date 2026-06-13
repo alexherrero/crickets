@@ -127,8 +127,12 @@ def activate(name: str, root: str, *, resolver=_AUTO) -> tuple[int, str, str]:
     # a symlink — already occupies the path, and never follows a symlink. This is
     # the backstop for the TOCTOU window between the lexists check and the write:
     # a worker that lands the active plan in that window can't be clobbered.
+    # `O_BINARY` (Windows-only; `getattr(..., 0)` → no-op on POSIX) keeps the fd
+    # in binary mode so `os.write` does NOT translate `\n`→`\r\n` — the copy must
+    # be byte-verbatim on every OS, not only the ones whose fd defaults to binary.
+    flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY | getattr(os, "O_BINARY", 0)
     try:
-        fd = os.open(str(active), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+        fd = os.open(str(active), flags, 0o644)
     except FileExistsError:
         return collision
     try:
