@@ -225,6 +225,49 @@ class TestCommitOnStopWorkspacePs1(unittest.TestCase):
         self.assertTrue(refs.stdout.strip(),
                         "commit-on-stop must snapshot the WORKSPACE repo, not skip from a foreign cwd")
 
+    # ---- pwsh-7.4 native-command throw: the three states the .sh twin handles ----
+    # On pwsh >= 7.4, $PSNativeCommandUseErrorActionPreference defaults $true, so under
+    # $ErrorActionPreference='Stop' a non-zero `git` exit throws a terminating
+    # NativeCommandExitException instead of setting $LASTEXITCODE for the hook's guards.
+    # These three assert the non-fatal probes opt out of the throw (exit 0 + snapshot),
+    # matching commit-on-stop.sh. Each FAILS on the unfixed hook (crash → exit 1).
+    def test_non_git_workspace_exits_zero(self):
+        # `git rev-parse --is-inside-work-tree` exits 128 in a non-git dir — must skip,
+        # not crash, before the snapshot logic runs.
+        (self.ws / "f.txt").write_text("dirty", encoding="utf-8")
+        r = _run(COMMIT_ON_STOP, cwd=self.foreign, stdin=_ag_payload(self.ws))
+        self.assertEqual(r.returncode, 0,
+                         f"non-git workspace must skip cleanly (exit 0), not crash; stderr={r.stderr!r}")
+        self.assertNotIn("Exception", r.stderr,
+                         f"no PowerShell exception should leak; stderr={r.stderr!r}")
+
+    def test_detached_head_snapshots(self):
+        # Detached HEAD makes `git symbolic-ref --short HEAD` exit non-zero — must fall
+        # back to the short SHA and still snapshot, not crash.
+        self._git("init", "-q")
+        (self.ws / "f.txt").write_text("v1", encoding="utf-8")
+        self._git("add", "-A"); self._git("commit", "-qm", "init")
+        self._git("checkout", "--detach")
+        (self.ws / "f.txt").write_text("v2-dirty", encoding="utf-8")
+        r = _run(COMMIT_ON_STOP, cwd=self.foreign, stdin=_ag_payload(self.ws))
+        self.assertEqual(r.returncode, 0,
+                         f"detached HEAD must snapshot, not crash; stderr={r.stderr!r}")
+        refs = self._git("for-each-ref", "--format=%(refname)", "refs/auto-save")
+        self.assertTrue(refs.stdout.strip(),
+                        "detached HEAD must still produce an auto-save snapshot")
+
+    def test_unborn_branch_snapshots_empty_tree(self):
+        # An unborn branch (init, no commit) makes `git rev-parse --verify --quiet HEAD`
+        # exit 1 — must fall back to the empty-tree parent and still snapshot, not crash.
+        self._git("init", "-q")
+        (self.ws / "f.txt").write_text("untracked-dirty", encoding="utf-8")
+        r = _run(COMMIT_ON_STOP, cwd=self.foreign, stdin=_ag_payload(self.ws))
+        self.assertEqual(r.returncode, 0,
+                         f"unborn branch must snapshot empty-tree, not crash; stderr={r.stderr!r}")
+        refs = self._git("for-each-ref", "--format=%(refname)", "refs/auto-save")
+        self.assertTrue(refs.stdout.strip(),
+                        "unborn branch must still produce an auto-save snapshot (empty-tree parent)")
+
 
 if __name__ == "__main__":
     unittest.main()

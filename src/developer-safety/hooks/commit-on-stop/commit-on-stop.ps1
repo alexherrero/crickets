@@ -41,8 +41,15 @@ try { Set-Location -LiteralPath $ws } catch { }
 # Skip if git unavailable.
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) { exit 0 }
 
-# Skip if not in a git work tree.
-git rev-parse --is-inside-work-tree 2>$null | Out-Null
+# Skip if not in a git work tree. (try/catch: on pwsh 7.4+ —
+# where $PSNativeCommandUseErrorActionPreference defaults $true — a non-zero
+# `git` exit throws under $ErrorActionPreference='Stop'. This hook inspects
+# $LASTEXITCODE instead, mirroring the .sh twin's `||`/`if` guards, so the
+# NON-FATAL probes opt out of the throw. $LASTEXITCODE is still set before the
+# throw, so the guard stays correct either way. The snapshot-CREATING calls
+# below keep throwing, so a genuine write failure still aborts — matching the
+# .sh twin's `set -e`.)
+try { git rev-parse --is-inside-work-tree 2>$null | Out-Null } catch { }
 if ($LASTEXITCODE -ne 0) { exit 0 }
 
 # Skip if working tree clean — nothing to save.
@@ -50,8 +57,12 @@ $porcelain = git status --porcelain
 if (-not $porcelain) { exit 0 }
 
 $ts = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssZ')
-$origBranch = git symbolic-ref --short HEAD 2>$null
-if (-not $origBranch) { $origBranch = git rev-parse --short HEAD }
+# Non-fatal probe (see the try/catch note above): a detached HEAD makes
+# symbolic-ref exit non-zero (→ throw on pwsh 7.4+); fall back to the short SHA.
+try { $origBranch = git symbolic-ref --short HEAD 2>$null } catch { $origBranch = '' }
+if (-not $origBranch) {
+    try { $origBranch = git rev-parse --short HEAD } catch { $origBranch = '' }
+}
 $ref = "refs/auto-save/$ts"
 $msg = "auto-save: stop at $ts on branch $origBranch"
 
@@ -67,7 +78,9 @@ $env:GIT_COMMITTER_EMAIL = 'commit-on-stop@crickets.local'
 # every change — tracked + untracked. .gitignore is honored.
 $tmpIndex = [System.IO.Path]::GetTempFileName()
 try {
-    $parent = git rev-parse --verify --quiet HEAD
+    # Non-fatal probe (see the try/catch note above): an unborn branch makes
+    # rev-parse --verify exit 1 (→ throw on pwsh 7.4+); fall back to empty tree.
+    try { $parent = git rev-parse --verify --quiet HEAD } catch { $parent = '' }
     $hasParent = ($LASTEXITCODE -eq 0) -and $parent
     $env:GIT_INDEX_FILE = $tmpIndex
     if ($hasParent) {
@@ -87,12 +100,15 @@ try {
     # index, and the working tree are all unchanged.
     git update-ref $ref $commit | Out-Null
 
-    # Bound growth: keep only the most recent N snapshots (best-effort).
+    # Bound growth: keep only the most recent N snapshots. Best-effort — a prune
+    # failure (e.g. a concurrent delete in the multi-agent case) must never abort
+    # the hook; the snapshot is already published above. Mirrors the .sh twin's
+    # `|| true`, and stays non-throwing under pwsh 7.4+ (see the note above).
     $keep = 10
-    $all = @(git for-each-ref --sort=-refname --format='%(refname)' refs/auto-save)
+    try { $all = @(git for-each-ref --sort=-refname --format='%(refname)' refs/auto-save) } catch { $all = @() }
     if ($all.Count -gt $keep) {
         $all[$keep..($all.Count - 1)] | ForEach-Object {
-            if ($_) { git update-ref -d $_ 2>$null | Out-Null }
+            if ($_) { try { git update-ref -d $_ 2>$null | Out-Null } catch { } }
         }
     }
 }

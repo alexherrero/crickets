@@ -12,5 +12,12 @@ enhances: [developer-workflows]
 # commit-on-stop), so the operator-control hooks read the real workspace root on
 # Antigravity/Windows (cwd = plugin dir, workspace on stdin) instead of doing inert
 # cwd-relative .harness/ checks. Restores .sh/.ps1 parity; .sh + Claude Code behavior
-# unchanged.
-version: 0.1.1
+# unchanged. 0.1.2 = hardens commit-on-stop.ps1 against the pwsh-7.4 native-command
+# throw: with $PSNativeCommandUseErrorActionPreference defaulting $true under
+# $ErrorActionPreference='Stop', a non-zero `git` exit threw instead of letting the
+# hook's $LASTEXITCODE/fallback guards run, crashing the Stop event on a non-git
+# dir, detached HEAD, or unborn branch. The non-fatal git probes now opt out of the
+# throw (try/catch, mirroring the .sh twin's `||`/`if` guards); the snapshot-creating
+# calls still throw so a real write failure aborts loudly. Restores .sh/.ps1 robustness
+# parity; .sh + Claude Code behavior unchanged.
+version: 0.1.2
