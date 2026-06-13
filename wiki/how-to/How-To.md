@@ -22,7 +22,7 @@ Task-focused recipes for getting things done with the crickets plugins — from 
 
 <!-- maintained by the wiki tooling (recent-wiki-changes / the documenter) -->
 
-- **2026-06-13** — Spawn-A-Worker-In-A-Worktree how-to reserved (pending — `/spawn-worker`, operator-initiated worktree per worker).
+- **2026-06-13** — Spawn-A-Worker-In-A-Worktree how-to added (`/spawn-worker`, operator-initiated worktree per worker).
 - **2026-06-12** — See-Every-Active-Plan how-to added (`/queue-status-lite`, the read-side glance over the plan queue).
 - **2026-06-11** — Declare-Architecture how-to added (writing `wiki/architecture.yml`).
 - **2026-06-11** — `do/` + `get-started/` folded into `how-to/` (wiki-section-taxonomy restructure); this index merged from both.

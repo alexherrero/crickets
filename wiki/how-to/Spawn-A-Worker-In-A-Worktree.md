@@ -30,6 +30,8 @@ Use `/spawn-worker <name>` when a coordinator has staged and activated a named p
 
   Do not work around a refusal by mutating the name or path to dodge the guard. Remove the conflicting worktree/branch, or pick a different plan name, then re-run.
 
+- **`/spawn-worker` failed *after* creating the worktree (exit 2) and the message names a survivor.** A failure on the post-create setup path (or a checkout-phase failure inside `git worktree add`) rolls the worktree + branch back automatically — so the normal case is still "nothing left behind." In the rare case the rollback itself can't finish (a git hang, a non-zero `git`), the exit-2 message names **exactly what survived** — the worktree dir, the `worker/<name>` branch, or both. Remove only what it names: `git worktree remove <path>` (or `git worktree remove --force <path>`) for the dir, then `git branch -D worker/<name>` for the branch, then re-run. The message never makes a false clean-rollback claim, so trust it over a guess.
+
 ## Related
 
 - [Named plans](Named-Plans) — the lookup: `/spawn-worker`'s arguments, the per-worktree plan marker, and the spawn guards.
