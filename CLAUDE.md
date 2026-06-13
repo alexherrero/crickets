@@ -11,3 +11,7 @@ This repo is [`crickets`](https://github.com/alexherrero/crickets). Universal in
 - **Commit messages: no `Co-Authored-By: Claude` trailer.** See [AGENTS.md § Conventions § Commit messages](AGENTS.md#commit-messages) — the rule is host-agnostic; this bullet is the Claude-specific reminder because Claude Code emits the trailer by default.
 
 For anything not Claude-specific, [AGENTS.md](AGENTS.md) is authoritative.
+
+<!-- Conventions auto-load below — moved here from the global ~/.claude/CLAUDE.md for the token-efficiency floor-trim (2026-06-13). crickets keeps the agentm import because it runs on the agentm phase harness. -->
+@AGENTS.md
+@~/Antigravity/agentm/AGENTS.md
