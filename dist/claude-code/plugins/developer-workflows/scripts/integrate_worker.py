@@ -257,7 +257,19 @@ def _promote(named_progress: Path | None, root: str | os.PathLike, branch: str,
                 chunk += "\n"
         record = (f"{datetime.now().strftime('%Y-%m-%d %H:%M')} /integrate-worker — "
                   f"merged {branch} at {sha[:9]}, check-all green\n")
+        # Symmetric to the chunk's trailing-newline normalization above: ensure the
+        # EXISTING mainline ends in a newline before we append, or the first byte we
+        # write fuses onto its last line. Seek-based last-byte check (not a full read)
+        # so a large progress.md is not pulled into memory; a missing or empty file
+        # gets no stray leading newline.
+        needs_sep = False
+        if mainline.exists() and mainline.stat().st_size > 0:
+            with mainline.open("rb") as rfh:
+                rfh.seek(-1, os.SEEK_END)
+                needs_sep = rfh.read(1) != b"\n"
         with mainline.open("a", encoding="utf-8") as fh:
+            if needs_sep:
+                fh.write("\n")
             if chunk:
                 fh.write(chunk)
             fh.write(record)

@@ -289,6 +289,71 @@ class TestIntegrateConsolidation(unittest.TestCase):
         self.assertFalse(iw._branch_exists(self.repo, branch))
 
 
+class TestIntegratePromotionNewline(unittest.TestCase):
+    """Regression: promotion must not fuse records onto a newline-less mainline.
+
+    `_promote` appends the worker chunk + an integration record in append mode. If
+    the pre-existing `progress.md` does not end in a newline (printf, heredocs, many
+    editors leave it that way), the first appended byte lands mid-line and glues two
+    records into one. The append must emit a leading newline iff the existing file is
+    non-empty and unterminated — symmetric to the trailing-newline normalization the
+    worker chunk already gets. Both branches are covered: a worker chunk present, and
+    no worker file (the bare integration record). Fails against the pre-fix code.
+    """
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="iw-nl-"))
+        self.repo = self.tmp / "repo"
+        _init_repo(self.repo)
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_newlineless_mainline_with_worker_chunk_does_not_fuse(self):
+        last = "2026-06-13 09:00 /plan — created plan"
+        # No trailing newline on the mainline — the production trigger.
+        mainline = _seed_progress(
+            self.repo / ".harness",
+            worker="2026-06-13 10:00 /work — task 1 done\n",
+            mainline=f"# Mainline progress\n{last}",
+        )
+        _add_worker(self.repo, self.tmp)
+
+        rc, out, err = iw.integrate("foo", str(self.repo), gate=_green_gate, resolver=None)
+        self.assertEqual(rc, 0, err)
+        body = mainline.read_text(encoding="utf-8")
+        lines = body.split("\n")
+        # The pre-existing last record survives as its OWN complete line (not fused).
+        self.assertIn(last, lines)
+        # The worker's record is its own complete line too.
+        self.assertIn("2026-06-13 10:00 /work — task 1 done", lines)
+        # And the integration record landed on its own line.
+        self.assertTrue(any("/integrate-worker — merged worker/foo" in ln for ln in lines))
+        # The smoking gun: the two records were never glued.
+        self.assertNotIn(f"{last}2026-06-13 10:00", body)
+
+    def test_newlineless_mainline_without_worker_chunk_does_not_fuse(self):
+        last = "2026-06-13 09:00 /plan — created plan"
+        mainline = _seed_progress(
+            self.repo / ".harness",
+            worker=None,  # no worker progress file → the bare integration record
+            mainline=f"# Mainline progress\n{last}",
+        )
+        _add_worker(self.repo, self.tmp)
+
+        rc, out, err = iw.integrate("foo", str(self.repo), gate=_green_gate, resolver=None)
+        self.assertEqual(rc, 0, err)
+        body = mainline.read_text(encoding="utf-8")
+        lines = body.split("\n")
+        # The pre-existing record is intact on its own line.
+        self.assertIn(last, lines)
+        # The integration record is a separate line, not fused onto `created plan`.
+        self.assertTrue(any("/integrate-worker — merged worker/foo" in ln for ln in lines))
+        self.assertFalse(any(ln.startswith(last) and "/integrate-worker" in ln for ln in lines),
+                         "the integration record must not be glued onto the last record")
+
+
 class TestIntegrateConflict(unittest.TestCase):
     """(b) a merge conflict aborts, restores main to pre-merge HEAD, worktree intact."""
 
