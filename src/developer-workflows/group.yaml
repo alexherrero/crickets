@@ -36,5 +36,16 @@ standalone: true
 # onto `resolve_plan` (a non-zero resolve gates the spawn — nothing created); the
 # divergent-`vault_project` copy is the LC-2 fallback only. Operator-initiated,
 # never autonomous (paired with the `worktrees-operator-initiated` norm, ADR 0022).
-version: 0.6.0
+# 0.7.0 = integration-merge-command (V5-10 sibling #3) — the lifecycle counterpart
+# to spawn-worker that CLOSES the loop. An `integrate_worker.py` helper +
+# `/integrate-worker` command merges a finished `worker/<slug>` branch into the
+# integration branch with `git merge --no-ff`, runs `scripts/check-all.sh` as the
+# gate ON THE MERGED TREE (a red gate hard-resets to the captured pre-merge HEAD;
+# a conflict `git merge --abort`s — main is never left broken, no commit lost),
+# then promotes the worker's `progress-<slug>.md` into mainline progress and prunes
+# the worktree. Pure core + injectable gate (tests stub the gate over real git in
+# throwaway temp repos — never the real battery). Ships a read-only
+# `doctor_worktrees.py` probe that lists + classifies worker worktrees (Risk #6).
+# Local merge only — no push (LC-L). developer-safety untouched (LC-O).
+version: 0.7.0
 capabilities: [setup, plan, work, review, release, bugfix, documentation]
