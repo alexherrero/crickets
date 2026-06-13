@@ -8,15 +8,21 @@ git repo, drives a real `git worktree add` + real merges, and injects a STUB gat
 recursion). Both resolution backends are exercised: the standalone `.harness/`
 fallback (`resolver=None`) and a planted stub for agentm's verb (`resolver=<path>`).
 
-Load-bearing assertions (Task 1 — merge + gate + rollback core):
-  (a) green merge + green gate → an explicit `--no-ff` merge commit on `main`,
-      worker commits are ancestors, the worktree is left intact (no prune yet);
-  (b) a merge conflict is `git merge --abort`-ed, `main` is back at the pre-merge
-      HEAD, the worktree is intact, exit 2;
-  (c) green merge + RED gate → `main` hard-reset to the pre-merge HEAD (zero
-      commits added), the worktree intact, exit 2, the gate output surfaced;
-  (d)-(g) the pre-mutation guards (dirty tree / missing branch / singleton /
-      unresolvable plan) refuse loud and mutate nothing.
+Load-bearing assertions:
+  Task 1 — merge + gate + rollback core:
+    (b) a merge conflict is `git merge --abort`-ed, `main` is back at the pre-merge
+        HEAD, the worktree is intact, exit 2;
+    (c) green merge + RED gate → `main` hard-reset to the pre-merge HEAD (zero
+        commits added), the worktree intact, exit 2, the gate output surfaced;
+    (d)-(g) the pre-mutation guards (dirty tree / missing branch / singleton /
+        unresolvable plan) refuse loud and mutate nothing.
+  Task 2 — green-path consolidation (promote + prune):
+    (a) green merge + green gate → an explicit `--no-ff` merge commit on `main`,
+        worker commits are ancestors, the worker's `progress-<slug>.md` is folded
+        (additive) into mainline `progress.md` + an integration record line, and
+        the worktree + now-merged branch are pruned; rc 0;
+    promotion is additive (named file kept) and runs BEFORE prune; a forced prune
+    failure leaves the merge + promotion intact and reports the survivor (rc 0).
 """
 from __future__ import annotations
 
@@ -53,15 +59,65 @@ def _git(repo: Path, *args: str, check: bool = True) -> subprocess.CompletedProc
 
 
 def _init_repo(repo: Path) -> None:
-    """A throwaway git repo on `main` with one commit."""
+    """A throwaway git repo on `main` with one commit.
+
+    `.harness/` is gitignored — mirroring the real project (its `.harness/` is
+    gitignored, the vault `_harness/` lives outside the repo). This keeps a seeded
+    `.harness/progress*.md` from dirtying the tree and tripping the clean-tree
+    guard in the `resolver=None` promotion tests.
+    """
     repo.mkdir(parents=True, exist_ok=True)
     _git(repo, "init", "-q", "-b", "main")
     _git(repo, "config", "user.email", "test@example.com")
     _git(repo, "config", "user.name", "Test")
     _git(repo, "config", "commit.gpgsign", "false")
     (repo / "README.md").write_text("seed\n", encoding="utf-8")
-    _git(repo, "add", "README.md")
+    (repo / ".gitignore").write_text(".harness/\n", encoding="utf-8")
+    _git(repo, "add", "README.md", ".gitignore")
     _git(repo, "commit", "-q", "-m", "seed")
+
+
+def _seed_progress(harness: Path, *, worker: str | None, mainline: str) -> Path:
+    """Plant a worker `progress-foo.md` (unless None) + a mainline `progress.md`.
+
+    Returns the mainline path. `harness` is the dir the resolver maps to — the
+    repo's `.harness/` for the `resolver=None` fallback, or an out-of-repo vault
+    for the delegate stub.
+    """
+    harness.mkdir(parents=True, exist_ok=True)
+    if worker is not None:
+        (harness / "progress-foo.md").write_text(worker, encoding="utf-8")
+    mainline_path = harness / "progress.md"
+    mainline_path.write_text(mainline, encoding="utf-8")
+    return mainline_path
+
+
+def _dyn_stub(path: Path, harness: Path) -> Path:
+    """A delegate-backend stub that maps name → a pair under `harness` (out-of-repo).
+
+    Unlike a static stub, it honors the `--plan <name>` the bridge passes, so
+    `resolve('foo')` → `progress-foo.md` and `resolve('')` (the mainline lookup in
+    `_promote`) → `progress.md`. Mirrors `resolve_plan`'s naming so promotion
+    resolves the right two files through the delegate path, not just the fallback.
+    """
+    body = (
+        "import sys\n"
+        "from pathlib import Path\n"
+        f"H = Path(r{str(harness)!r})\n"
+        "a = sys.argv\n"
+        "name = a[a.index('--plan') + 1] if '--plan' in a else ''\n"
+        "s = name\n"
+        "if s.endswith('.md'): s = s[:-3]\n"
+        "if s.startswith('PLAN-'): s = s[5:]\n"
+        "if s in ('', 'PLAN'):\n"
+        "    plan, prog = 'PLAN.md', 'progress.md'\n"
+        "else:\n"
+        "    plan, prog = 'PLAN-' + s + '.md', 'progress-' + s + '.md'\n"
+        "sys.stdout.write(str(H / plan) + chr(9) + str(H / prog) + chr(10))\n"
+        "sys.exit(0)\n"
+    )
+    path.write_text(body, encoding="utf-8")
+    return path
 
 
 def _write_stub(path: Path, body: str) -> Path:
@@ -70,11 +126,8 @@ def _write_stub(path: Path, body: str) -> Path:
 
 
 # Stub resolvers standing in for the located agentm verb (the delegate backend).
-_STUB_OK = (
-    "import sys\n"
-    "sys.stdout.write('/v/_harness/PLAN-foo.md\\t/v/_harness/progress-foo.md\\n')\n"
-    "sys.exit(0)\n"
-)
+# The rc-0 case uses the dynamic `_dyn_stub` (name-aware, out-of-repo paths); the
+# skip/refuse cases are static — they never reach promotion.
 _STUB_SKIP = (
     "import sys\n"
     "sys.stderr.write('[resolver] no resolvable _harness/\\n')\n"
@@ -113,25 +166,31 @@ def _parents(repo: Path) -> list[str]:
 
 
 class TestIntegrateHappyPath(unittest.TestCase):
-    """(a) green merge + green gate → a --no-ff merge commit; worktree left intact."""
+    """(a) green merge + green gate → a --no-ff merge commit, progress promoted, pruned."""
 
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="iw-happy-"))
         self.repo = self.tmp / "repo"
         _init_repo(self.repo)
+        # The `resolver=None` fallback maps to the repo's (gitignored) `.harness/`.
+        self.mainline = _seed_progress(
+            self.repo / ".harness",
+            worker="2026-06-13 10:00 /work — completed task 1 in the worker\n",
+            mainline="2026-06-13 09:00 /plan — created plan\n",
+        )
 
     def tearDown(self):
         import shutil
         shutil.rmtree(self.tmp, ignore_errors=True)
 
-    def test_green_merge_and_gate_creates_no_ff_merge_commit(self):
+    def test_green_merge_promotes_progress_and_prunes(self):
         branch, wt = _add_worker(self.repo, self.tmp)
         worker_tip = _git(self.repo, "rev-parse", branch).stdout.strip()
         pre = _git(self.repo, "rev-parse", "HEAD").stdout.strip()
 
         rc, out, err = iw.integrate("foo", str(self.repo), gate=_green_gate, resolver=None)
         self.assertEqual(rc, 0, err)
-        self.assertEqual(err, "")
+        self.assertEqual(err, "", "a fully clean green path emits no warnings")
         self.assertIn("merged worker/foo into main", out)
 
         # HEAD advanced to an explicit merge commit (two parents: old main + worker).
@@ -142,10 +201,92 @@ class TestIntegrateHappyPath(unittest.TestCase):
         # The worker's commit is now an ancestor of main.
         anc = _git(self.repo, "merge-base", "--is-ancestor", worker_tip, "HEAD", check=False)
         self.assertEqual(anc.returncode, 0, "worker commits must be ancestors of main")
-        # Task 1 does NOT prune — the worktree + branch are left intact.
-        self.assertTrue(wt.is_dir())
-        self.assertIsNotNone(iw._find_worktree_for_branch(self.repo, branch))
-        self.assertTrue(iw._branch_exists(self.repo, branch))
+
+        # Promotion (additive): mainline progress gained the worker's line + the
+        # integration record, and the named worker file is KEPT.
+        body = self.mainline.read_text(encoding="utf-8")
+        self.assertIn("2026-06-13 09:00 /plan — created plan", body)  # original mainline
+        self.assertIn("/work — completed task 1 in the worker", body)  # worker's content
+        self.assertIn("/integrate-worker — merged worker/foo", body)  # the record
+        self.assertTrue((self.repo / ".harness" / "progress-foo.md").is_file(),
+                        "promotion is additive — the named file is kept")
+        self.assertIn("Promoted the worker's progress", out)
+
+        # Prune: the worktree is gone and the now-merged branch is deleted.
+        self.assertFalse(wt.exists())
+        self.assertIsNone(iw._find_worktree_for_branch(self.repo, branch))
+        self.assertFalse(iw._branch_exists(self.repo, branch))
+        self.assertIn("Pruned the worktree", out)
+
+
+class TestIntegrateConsolidation(unittest.TestCase):
+    """Task 2 green-path consolidation: promote-before-prune, additive, fault-tolerant."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="iw-consol-"))
+        self.repo = self.tmp / "repo"
+        _init_repo(self.repo)
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_promote_runs_before_prune(self):
+        # The order matters: promotion reads the worker's progress, prune removes
+        # its worktree. Promote MUST run first. Spy on both, preserving behavior.
+        _seed_progress(self.repo / ".harness", worker="w\n", mainline="m\n")
+        _add_worker(self.repo, self.tmp)
+        calls = []
+        orig_promote, orig_prune = iw._promote, iw._prune
+
+        def spy_promote(*a, **k):
+            calls.append("promote")
+            return orig_promote(*a, **k)
+
+        def spy_prune(*a, **k):
+            calls.append("prune")
+            return orig_prune(*a, **k)
+
+        with mock.patch.object(iw, "_promote", spy_promote), \
+             mock.patch.object(iw, "_prune", spy_prune):
+            rc, out, err = iw.integrate("foo", str(self.repo), gate=_green_gate, resolver=None)
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(calls, ["promote", "prune"])
+
+    def test_forced_prune_failure_keeps_merge_and_promotion(self):
+        # A prune that can't remove the worktree must NOT undo the verified merge
+        # or the promotion — it reports the survivor on stderr and returns rc 0.
+        mainline = _seed_progress(self.repo / ".harness", worker="worker work\n",
+                                  mainline="seed\n")
+        branch, wt = _add_worker(self.repo, self.tmp)
+        pre = _git(self.repo, "rev-parse", "HEAD").stdout.strip()
+
+        with mock.patch.object(iw.spawn_worker, "_worktree_gone", lambda root, w: False):
+            rc, out, err = iw.integrate("foo", str(self.repo), gate=_green_gate, resolver=None)
+        self.assertEqual(rc, 0, err)  # merge stands despite the prune failure
+        # The merge happened (HEAD moved past pre to a two-parent commit).
+        self.assertNotEqual(_git(self.repo, "rev-parse", "HEAD").stdout.strip(), pre)
+        self.assertEqual(len(_parents(self.repo)), 2)
+        # Promotion still landed.
+        self.assertIn("worker work", mainline.read_text(encoding="utf-8"))
+        self.assertIn("Promoted the worker's progress", out)
+        # The survivor is reported on stderr for manual cleanup.
+        self.assertIn("prune incomplete", err)
+        self.assertIn("worker/foo", err)
+
+    def test_promotion_when_named_progress_absent_appends_only_the_record(self):
+        # No worker `progress-foo.md` → promotion appends ONLY its own record line,
+        # never crashes, merge + prune still succeed.
+        mainline = _seed_progress(self.repo / ".harness", worker=None, mainline="seed only\n")
+        branch, wt = _add_worker(self.repo, self.tmp)
+
+        rc, out, err = iw.integrate("foo", str(self.repo), gate=_green_gate, resolver=None)
+        self.assertEqual(rc, 0, err)
+        body = mainline.read_text(encoding="utf-8")
+        self.assertIn("seed only", body)
+        self.assertIn("/integrate-worker — merged worker/foo", body)
+        self.assertFalse(wt.exists())
+        self.assertFalse(iw._branch_exists(self.repo, branch))
 
 
 class TestIntegrateConflict(unittest.TestCase):
@@ -305,10 +446,20 @@ class TestIntegrateDelegateBackend(unittest.TestCase):
 
     def test_resolver_ok_allows_integrate(self):
         _add_worker(self.repo, self.tmp)
-        stub = _write_stub(self.tmp / "stub_ok.py", _STUB_OK)
+        # The delegate backend resolves to an OUT-OF-REPO vault (not the repo's
+        # `.harness/`), so promotion writes there — proving `_promote` honors the
+        # injected resolver, not a hard-coded fallback.
+        vault = self.tmp / "vault"
+        mainline = _seed_progress(vault, worker="worker delegate line\n",
+                                  mainline="mainline delegate seed\n")
+        stub = _dyn_stub(self.tmp / "stub_ok.py", vault)
         rc, out, err = iw.integrate("foo", str(self.repo), gate=_green_gate, resolver=stub)
         self.assertEqual(rc, 0, err)
         self.assertEqual(len(_parents(self.repo)), 2)
+        # Promotion resolved + appended through the delegate path.
+        body = mainline.read_text(encoding="utf-8")
+        self.assertIn("worker delegate line", body)
+        self.assertIn("/integrate-worker — merged worker/foo", body)
 
     def test_resolver_graceful_skip_propagates_rc1_no_merge(self):
         _add_worker(self.repo, self.tmp)

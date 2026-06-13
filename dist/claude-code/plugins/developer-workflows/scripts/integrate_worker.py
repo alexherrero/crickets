@@ -5,8 +5,8 @@ The coordinator runs this to *close the loop* opened by `spawn_worker.py`: where
 `/spawn-worker <name>` creates a `worker/<slug>` branch + worktree bound to a
 named plan, `/integrate-worker <name>` lands that branch on the integration
 branch (normally `main`) **only if the integrated result still passes the full
-deterministic battery**, then (task 2) folds the worker's progress into the
-mainline log and prunes the worktree.
+deterministic battery**, then folds the worker's progress into the mainline log
+(additive) and prunes the worktree + now-merged branch.
 
     integrate_worker.py <name> [--project-root <path>]
     # stdout (rc 0): a one-line integration summary
@@ -22,7 +22,7 @@ inspect, fix, and re-run.
 
 **Merge strategy: `git merge --no-ff` (LC-H).** Preserves the worker's per-task
 commits *and* records an explicit integration point; because `--no-ff` records
-the merge, a later safe `git branch -d` (task 2's prune) can clean the branch up.
+the merge, the post-green safe `git branch -d` prune deletes the branch cleanly.
 
 **Pure core + injectable gate (LC-K).** `integrate(name, root, *, gate, resolver)`
 takes the gate as a **callable** `gate(root) -> (rc, output)`, so tests drive the
@@ -61,6 +61,7 @@ import argparse
 import os
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 
 # `resolve_plan` / `spawn_worker` are sibling modules; ensure this dir is
@@ -190,6 +191,81 @@ def _merge_message(slug: str, branch: str) -> str:
     return f"Merge {branch} via integrate-worker (plan {slug})"
 
 
+# ── consolidation: promote progress + prune the worktree (green path only) ──────
+
+def _branch_safe_gone(root: str | os.PathLike, branch: str) -> bool:
+    """Best-effort SAFE branch delete (`git branch -d`); True iff gone afterward.
+
+    Uses `-d`, NOT `-D`: git refuses to delete a branch not fully merged into
+    HEAD. After the `--no-ff` merge the branch IS an ancestor of HEAD so `-d`
+    succeeds — but an unexpected unmerged state is *preserved* (reported as a
+    survivor, never force-dropped), so prune can never silently destroy work.
+    Returns True if already absent or deleted now; False if it survives a delete
+    attempt or a git call raised. Mirrors `spawn_worker._branch_gone`'s guard
+    shape but with the safe flag (its rollback can force; a post-green prune
+    must not).
+    """
+    try:
+        if not _branch_exists(root, branch):
+            return True
+        _git(["branch", "-d", branch], root)
+        return not _branch_exists(root, branch)
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
+def _prune(root: str | os.PathLike, wt: Path, branch: str) -> str:
+    """Remove the worker's worktree then safe-delete its branch; survivor clause.
+
+    Worktree FIRST (a branch checked out in a worktree can't be deleted), reusing
+    `spawn_worker`'s guarded `_worktree_gone`, then the safe `_branch_safe_gone`.
+    Returns "" when both are gone (a clean prune) or a human clause naming only
+    what survived. Never raises — both helpers swallow a raising/hanging git, and
+    truth is the artifact's real presence, never an rc.
+    """
+    wt_gone = spawn_worker._worktree_gone(root, wt)
+    branch_gone = _branch_safe_gone(root, branch)
+    survivors = []
+    if not wt_gone:
+        survivors.append(f"the worktree ({wt})")
+    if not branch_gone:
+        survivors.append(f"the branch ({branch})")
+    return " and ".join(survivors)
+
+
+def _promote(named_progress: Path | None, root: str | os.PathLike, branch: str,
+             sha: str, *, resolver) -> tuple[bool, str]:
+    """Fold the worker's progress into mainline progress (additive, never raises).
+
+    Resolves the SINGLETON (mainline) progress path via the same resolver backend,
+    then appends the worker's `progress-<slug>.md` content (if present) plus a
+    one-line integration record, in append mode — the named file is KEPT, so this
+    is additive only (LC-J). Best-effort: any failure returns `(False, reason)`
+    and the caller surfaces it on stderr *without* undoing the verified merge.
+    Returns `(True, <mainline path>)` on success.
+    """
+    try:
+        rc, out, err = resolve_plan.resolve("", root, resolver=resolver)
+        if rc != 0 or not out.strip():
+            return (False, f"could not resolve mainline progress (rc={rc}): {err.strip()}")
+        mainline = Path(out.strip().split("\t")[1])
+        mainline.parent.mkdir(parents=True, exist_ok=True)
+        chunk = ""
+        if named_progress is not None and named_progress.is_file():
+            chunk = named_progress.read_text(encoding="utf-8")
+            if chunk and not chunk.endswith("\n"):
+                chunk += "\n"
+        record = (f"{datetime.now().strftime('%Y-%m-%d %H:%M')} /integrate-worker — "
+                  f"merged {branch} at {sha[:9]}, check-all green\n")
+        with mainline.open("a", encoding="utf-8") as fh:
+            if chunk:
+                fh.write(chunk)
+            fh.write(record)
+        return (True, str(mainline))
+    except Exception as exc:  # best-effort: a promotion failure never undoes the merge
+        return (False, str(exc))
+
+
 # ── default production gate (never used by tests — see module docstring) ────────
 
 def _check_all_gate(root: str | os.PathLike) -> tuple[int, str]:
@@ -226,9 +302,11 @@ def integrate(name: str, root: str, *, gate=_DEFAULT_GATE,
     """Merge `worker/<slug>` into the integration branch, gated on the merged tree.
 
     Pure core, injectable backend. Guards run before any mutation; the merge +
-    gate + rollback never leave `main` broken or lose a commit. On green this
-    returns rc 0 — consolidation (progress promotion + worktree prune) lands in
-    task 2; here the worktree is left intact.
+    gate + rollback never leave `main` broken or lose a commit. On green the merge
+    stands and the green path consolidates: it promotes the worker's progress into
+    mainline progress (additive) then prunes the worktree + now-merged branch.
+    Consolidation is best-effort — a promotion or prune failure is reported on
+    stderr but NEVER undoes the verified merge (rc stays 0).
 
     `gate(root) -> (rc, output)` is injected so tests drive green/red without the
     real battery. `resolver` is forwarded to `resolve_plan.resolve` (`_AUTO`
@@ -244,9 +322,16 @@ def integrate(name: str, root: str, *, gate=_DEFAULT_GATE,
     # (unsafe slug, dangling marker, no resolvable `_harness/`) is authoritative
     # and propagated verbatim — Risk #7, never paper over a refusal — and we never
     # touch git for a plan that doesn't resolve.
-    rc, _out, err = resolve_plan.resolve(name, root, resolver=resolver)
+    rc, res_out, err = resolve_plan.resolve(name, root, resolver=resolver)
     if rc != 0:
         return (rc, "", err)
+    # The worker's own progress-<slug>.md, for the green-path promotion. A
+    # malformed resolver line degrades to None (promotion appends only its own
+    # record) rather than crashing the integrate.
+    try:
+        named_progress: Path | None = Path(res_out.strip().split("\t")[1])
+    except (IndexError, AttributeError):
+        named_progress = None
 
     branch = branch_name(slug)
 
@@ -319,11 +404,30 @@ def integrate(name: str, root: str, *, gate=_DEFAULT_GATE,
                        "inspect it by hand. The worktree is untouched.\n"
                        + (f"\ngate output:\n{tail}\n" if tail else ""))
 
-    # Green. Consolidation (promote progress + prune the worktree) lands in task 2;
-    # for now the merge stands and the worktree is left intact.
+    # Green: the merge is verified and STANDS. Consolidate (LC-J), best-effort —
+    # a promotion or prune failure is reported on stderr but never undoes the
+    # merge (rc stays 0). Promote BEFORE prune so the worker's progress is folded
+    # into mainline *before* its worktree disappears.
     new_sha = _head_sha(root) or "?"
-    return (0, f"[integrate_worker] merged {branch} into {target} ({new_sha[:9]}); "
-               "integration gate passed.\n", "")
+    summary = [f"[integrate_worker] merged {branch} into {target} ({new_sha[:9]}); "
+               "integration gate passed."]
+    warnings = []
+
+    promoted, promo_detail = _promote(named_progress, root, branch, new_sha, resolver=resolver)
+    if promoted:
+        summary.append(f"Promoted the worker's progress into {promo_detail}.")
+    else:
+        warnings.append(f"[integrate_worker] progress promotion incomplete ({promo_detail}); "
+                        "the merge stands — fold the worker's progress in by hand.")
+
+    survivors = _prune(root, wt, branch)
+    if survivors:
+        warnings.append(f"[integrate_worker] prune incomplete — manually remove {survivors}. "
+                        "The merge stands.")
+    else:
+        summary.append(f"Pruned the worktree and deleted {branch}.")
+
+    return (0, " ".join(summary) + "\n", ("\n".join(warnings) + "\n") if warnings else "")
 
 
 # ── CLI ─────────────────────────────────────────────────────────────────────────
