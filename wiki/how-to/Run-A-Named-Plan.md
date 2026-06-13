@@ -30,10 +30,25 @@ Use a named plan when you want more than one plan in flight at once — the wedg
 
    It prints one tab-separated line — `<plan_path>\t<progress_path>` — or exits non-zero with a stderr message on a dangling marker or unsafe slug (never a silent singleton fallback).
 
+## Stage a plan, then activate it later
+
+Use this flow when you want to author one or more named plans **ahead of time** without putting them in front of a worker — staged plans are inert (invisible to `/work` and `/queue-status-lite`) until you activate one. The active-tier `--name` flow above is unchanged.
+
+### Steps
+
+1. **Stage the plan.** Run `/plan --stage <slug> <brief>` to author the plan into the inactive staging tier. The rest of the arguments after `<slug>` is the brief, exactly as for `--name`. `/plan` writes the plan to the staging path that `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/stage_plan.py" path <slug>` prints — `<harness>/queued-plans/PLAN-<slug>.md` — *instead of* the active path, and logs a `staged plan "<slug>"` line to the singleton `progress.md` (a staged plan has no run-scoped progress log until it is activated and first worked).
+
+2. **Confirm it is inert.** A staged plan is **not** resolved by `/work --name <slug>` and **not** listed by `/queue-status-lite` until you activate it — staged means inactive by design. This needs no flag or marker: `/queue-status-lite` globs `PLAN-*.md` non-recursively at the harness root, so the `queued-plans/` subdir is skipped for free. Stage as many plans as you like; the queue glance stays empty until you promote one.
+
+3. **Activate when a worker picks it up.** Run `/plan --activate <slug>` to promote the staged plan. This is a **promote-only** verb — no interview, no decompose, no plan authoring: it copies `queued-plans/PLAN-<slug>.md` → the active `PLAN-<slug>.md` that `/work --name <slug>` reads (via `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/stage_plan.py" activate <slug>`), reports the activated path, and appends an `activated plan "<slug>"` line to the singleton `progress.md`. The copy is **guarded** — it hard-stops (exit 2, writes nothing) if an active `PLAN-<slug>.md` already exists (would clobber) or the staged file is missing (nothing to promote). The staged copy is left in place (activation is a copy, not a move).
+
+4. **Work it as a normal named plan.** Once activated, drive it with `/work --name <slug>` exactly as in the [Steps](#steps) above — activation is the only extra step.
+
 ## Troubleshooting
 
 - **A bare `/work` picked up the wrong plan.** A present-but-unresolvable `.harness/active-plan` marker surfaces a loud error + non-zero exit rather than silently running the singleton. Resolve or remove the marker — never assume the singleton ran. See [Named plans § Resolution](Named-Plans#resolution).
 - **The name was rejected.** Names are slug-safe; traversal or unsafe characters are refused. Pick a plain name.
+- **`/plan --activate <slug>` refused.** Activation is guarded: it hard-stops (exit 2, writes nothing) if an active `PLAN-<slug>.md` already exists (would clobber) or the staged `queued-plans/PLAN-<slug>.md` is missing (nothing to promote). See [Named plans § `--activate` guard](Named-Plans#--activate-guard).
 
 ## Related
 

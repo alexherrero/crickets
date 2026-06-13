@@ -11,7 +11,9 @@ The `developer-workflows` phase commands `/work`, `/plan`, and `/review` accept 
 | `/work task N` | `PLAN.md` | `progress.md` | singleton, task selector — unchanged |
 | `/work --name <slug> task N` | `PLAN-<slug>.md` | `progress-<slug>.md` | named pair + task selector |
 | `/plan` | `PLAN.md` | `progress.md` | singleton — unchanged |
-| `/plan --name <slug>` | `PLAN-<slug>.md` (authored) | `progress-<slug>.md` | named pair |
+| `/plan --name <slug>` | `PLAN-<slug>.md` (authored, **active**) | `progress-<slug>.md` | named pair, active tier |
+| `/plan --stage <slug>` | `queued-plans/PLAN-<slug>.md` (authored, **staged/inert**) | — | staging tier ([Two-tier staging](#two-tier-named-plan-staging)) |
+| `/plan --activate <slug>` | `queued-plans/PLAN-<slug>.md` → `PLAN-<slug>.md` (promoted) | — | promotes staged → active |
 | `/review` | `PLAN.md` | — | singleton — unchanged |
 | `/review --name <slug>` | `PLAN-<slug>.md` | — | named pair |
 
@@ -27,6 +29,63 @@ The `developer-workflows` phase commands `/work`, `/plan`, and `/review` accept 
 | `/review` | optional `--name <slug>` (anywhere in args) | resolves + reads the named pair for adversarial critique |
 
 `/setup`, `/release`, and `/bugfix` do **not** take a plan name in this plan — they remain singleton-only.
+
+## Two-tier named-plan staging
+
+> [!NOTE]
+> Shipped in `developer-workflows` 0.5.0. The active-tier `--name` write and the singleton write above are **unchanged** — staging is purely additive.
+
+`/plan` gains a second tier. Alongside writing the **active** named plan directly (`--name`), a coordinator can **stage** a plan into an inactive tier and **activate** it later when a worker picks it up. Staged plans are **inert** — invisible to `/work` and `/queue-status-lite` until activated.
+
+### The four `/plan` modes
+
+| Mode | Writes | Tier | Seen by `/work` & `/queue-status-lite`? |
+|---|---|---|---|
+| `/plan <brief>` | `PLAN.md` | singleton | yes |
+| `/plan --name <slug> <brief>` | `PLAN-<slug>.md` | active | yes |
+| `/plan --stage <slug> <brief>` | `queued-plans/PLAN-<slug>.md` | **staging (inert)** | **no** — until activated |
+| `/plan --activate <slug>` | promotes `queued-plans/PLAN-<slug>.md` → `PLAN-<slug>.md` | staging → active | yes, after promotion |
+
+### Staging tier
+
+| Property | Value |
+|---|---|
+| Staging dir | `<harness>/queued-plans/` — **flat** (crickets flat-vault convention) |
+| Staged plan file | `queued-plans/PLAN-<slug>.md` |
+| Visibility | inert — not resolved by `/work --name`, not listed by `/queue-status-lite`, until activated |
+| Active path it activates into | `<harness>/PLAN-<slug>.md` (the path `/work --name <slug>` reads) |
+| Harness dir | whatever the resolver returns — vault-backed `_harness/` when a memory layer is present, `.harness/` standalone (see [Resolution](#resolution)) |
+
+### `--activate` guard
+
+`/plan --activate <slug>` is a **guarded copy** — it hard-stops (non-zero exit, no silent fallback) when promotion would be unsafe:
+
+| Condition | Behavior |
+|---|---|
+| Active `PLAN-<slug>.md` already exists | refuse — would clobber an active plan |
+| Staged `queued-plans/PLAN-<slug>.md` missing | refuse — nothing to promote |
+| Both clear | copy `queued-plans/PLAN-<slug>.md` → `PLAN-<slug>.md` |
+
+### Implementation
+
+A new `scripts/stage_plan.py` (stdlib-only, pure-core + injectable resolver, mirroring `resolve_plan.py`) owns both verbs. It is **composed onto** `resolve_plan.resolve` — it never re-derives the `_harness/` location or the vault redirect; it takes the resolved *active* `PLAN-<slug>.md` and composes `queued-plans/` onto its parent.
+
+| Component | Location | Role |
+|---|---|---|
+| `staging_path()` | [`stage_plan.py:87`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/stage_plan.py#L87) | Composes `queued-plans/` onto the active path the resolver returns → `<_harness>/queued-plans/PLAN-<slug>.md`. Read-only; emits the path. |
+| `activate()` | [`stage_plan.py:101`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/stage_plan.py#L101) | The guarded copy. Refuses (exit 2, writes nothing) on missing staged file ([`:115`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/stage_plan.py#L115)) or active-plan collision ([`:116`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/stage_plan.py#L116), "refusing to clobber"). Copies bytes verbatim; leaves the staged file in place (copy, not move). |
+| `_active_plan_path()` | [`stage_plan.py:70`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/stage_plan.py#L70) | Named-only guard — refuses an empty/singleton name (exit 2, "staging requires a named plan") at [`:79`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/stage_plan.py#L79) *before* the resolver is consulted. The singleton `PLAN.md` is the active default; there is nothing to stage for it. |
+| `_QUEUED_DIR = "queued-plans"` | [`stage_plan.py:65`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/stage_plan.py#L65) | The flat staging-dir name (crickets flat-vault convention). |
+| CLI verbs `path` / `activate` | [`stage_plan.py:127`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/stage_plan.py#L127) (`_build_parser`) | Invoked as `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/stage_plan.py" path <slug>` and `... activate <slug>`. Exit codes align with `resolve_plan.py`: `0` ok, `1` graceful-skip propagated from the resolver, `2` loud refusal. |
+
+The `--stage` / `--activate` modes are wired in [`commands/plan.md:35`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/commands/plan.md#L35) (the four-mode block; `--stage` bullet at [`:39`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/commands/plan.md#L39), `--activate` bullet at [`:40`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/commands/plan.md#L40)) with an updated `argument-hint` at [`:8`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/commands/plan.md#L8).
+
+The **staged = inert** invariant is free, not a new change: `queue_status._list_plan_files` root-globs `PLAN-*.md` **non-recursively** ([`queue_status.py:138`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/queue_status.py#L138)), so the `queued-plans/` subdir is naturally skipped — that is the load-bearing reason staged plans are invisible to `/queue-status-lite`. `queue_status.py` was **not** modified for staging.
+
+Locked by `scripts/test_stage_plan.py` — 14 hermetic tests over both resolver backends (standalone `.harness/` fallback + a stub proving the vault redirect is honored, not `<root>/.harness`), the three `activate` guards (happy-path bytes-verbatim, collision-refuses-leaving-active-untouched, missing-staged-refuses), copy-not-move, the negative invariant that a staged plan is not returned by `queue_status._list_plan_files`, and the `main()` CLI.
+
+> [!NOTE]
+> **Not in scope of this plan:** surfacing staged plans in `/queue-status-lite` (staged = inactive *by design*). The queue glance continues to list only the active tier — see [Reading the queue](#reading-the-queue--queue-status-lite).
 
 ## Reading the queue — `/queue-status-lite`
 
