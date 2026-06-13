@@ -23,9 +23,10 @@ For every hook directory under `src/developer-safety/hooks/*/`:
      parity hole by construction — the developer-safety trio is dual-host.
 
   2. **`references_harness ⟹ resolves_workspace`, per twin.** If a twin's *code*
-     (comments stripped — full-line AND inline trailing — so a comment that
-     merely mentions `.harness` or `workspacePaths` proves nothing either way)
-     references a workspace-relative `.harness/…` path, that same code must also
+     (comments stripped — full-line AND inline trailing, escape-aware per shell so
+     an escaped/doubled quote can't smuggle a comment past the stripper — so a
+     comment that merely mentions `.harness` or `workspacePaths` proves nothing
+     either way) references a workspace-relative `.harness/…` path, that code must
      carry the two resolution markers:
        - `workspacePaths` — the host-contract protocol key. Naming-agnostic: it
          survives a rename of the resolver function (`_resolve_workspace` →
@@ -74,7 +75,7 @@ _DIRCHANGE = {
 
 
 # ── pure logic (unit-tested without a real tree) ────────────────────────────
-def strip_comments(text: str) -> str:
+def strip_comments(text: str, kind: str) -> str:
     """Drop comments — full-line AND inline trailing — so a marker that appears
     only inside a comment proves nothing: a `# … workspacePaths … Set-Location …`
     comment must neither trigger the `.harness` requirement nor satisfy the
@@ -85,33 +86,79 @@ def strip_comments(text: str) -> str:
     moving the markers into an inline trailing comment (crickets v3.0 #40
     follow-through, DEFECT 2). Inline comments must go too.
 
-    Quote-aware so a `#` inside a string literal is preserved as code (a `sed`
-    pattern, a refname, `grep '#'`, a `"fix #123"` message) rather than mistaken
-    for a comment leader. The comment leader recognized for both `bash` and
-    PowerShell is an unquoted `#` that begins a token — at the start of the line
-    (after optional whitespace) or immediately preceded by whitespace. A `#` glued
-    to a non-space character (`$#`, `foo#bar`, `${x#prefix}`) is not a comment in
-    either shell and is left intact.
+    Quote- AND escape-aware, per `kind` ("sh" or "ps1"), so a `#` inside a string
+    literal is preserved as code (a `sed` pattern, a refname, `grep '#'`, a
+    `"fix #123"` message) rather than mistaken for a comment leader. The comment
+    leader recognized for both shells is an *unquoted* `#` that begins a token — at
+    the start of the line (after optional whitespace) or immediately preceded by
+    whitespace. A `#` glued to a non-space character (`$#`, `foo#bar`,
+    `${x#prefix}`) is not a comment in either shell and is left intact.
+
+    Escape-awareness is per-shell (the reason this takes `kind`): inside a
+    double-quoted string the shell's escape char consumes the next character so an
+    escaped quote does not look like the string's end — backslash for `bash`
+    (`\\"`), backtick for PowerShell (`` `" ``). PowerShell's doubled-quote literals
+    (`""` inside `"…"`, `''` inside `'…'`) are likewise consumed as a pair. Without
+    this, an escaped/doubled quote flips the in-string state and a *trailing* `#`
+    comment survives — smuggling its markers into the "code" and reopening the
+    DEFECT-2 disguise via a sibling escaping construct (caught by the post-fix
+    `/review`). A unified backslash rule was rejected: backslash is not a pwsh
+    escape, so applying it to `.ps1` would mis-track a real path literal like
+    `"C:\\x\\"` — `kind` keeps each shell's rule correct.
 
     Line-oriented, with quote state tracked per line (matching this module's
-    text-level philosophy): it does not model `bash` here-docs or PowerShell
-    `<# … #>` block comments. On those constructs it can only ever strip *more*
-    than a real parser would, never miss a comment — and the fixture + real-tree
-    tests pin that the live twins stay correctly classified.
+    text-level philosophy). The escape/doubling handling makes it sound for
+    *single-line* string constructs; it still does not model multi-line strings,
+    `bash` here-docs, or PowerShell `<# … #>` block comments — on those it may
+    classify a line in isolation. The fixture + real-tree tests pin that the live
+    twins stay correctly classified, and learn any new construct a future twin
+    introduces.
     """
-    return "\n".join(_strip_line_comment(line) for line in text.splitlines())
+    return "\n".join(_strip_line_comment(line, kind) for line in text.splitlines())
 
 
-def _strip_line_comment(line: str) -> str:
-    """Return `line` with any unquoted `#` comment (whole-line or inline) removed."""
+def _strip_line_comment(line: str, kind: str) -> str:
+    """Return `line` with any unquoted `#` comment (whole-line or inline) removed.
+
+    Quote- and escape-aware per `kind` (see `strip_comments`): an escaped quote
+    inside a string (`\\"` for sh, `` `" `` for ps1), a pwsh `""`/`''` doubled
+    literal, and an escaped `#` in unquoted text are all consumed rather than
+    treated as a string boundary / comment leader.
+    """
+    esc = "`" if kind == "ps1" else "\\"
     in_single = in_double = False
-    for i, ch in enumerate(line):
-        if ch == "'" and not in_double:
-            in_single = not in_single
-        elif ch == '"' and not in_single:
-            in_double = not in_double
-        elif ch == "#" and not in_single and not in_double and (i == 0 or line[i - 1].isspace()):
-            return line[:i].rstrip()
+    i, n = 0, len(line)
+    while i < n:
+        ch = line[i]
+        if in_single:
+            # Single-quoted: literal. pwsh '' is an escaped single quote (stays open).
+            if ch == "'":
+                if kind == "ps1" and i + 1 < n and line[i + 1] == "'":
+                    i += 2
+                    continue
+                in_single = False
+            i += 1
+        elif in_double:
+            if ch == esc and i + 1 < n:
+                i += 2                      # escaped char inside the string
+                continue
+            if ch == '"':
+                if kind == "ps1" and i + 1 < n and line[i + 1] == '"':
+                    i += 2                  # pwsh "" → a literal double-quote
+                    continue
+                in_double = False
+            i += 1
+        else:
+            if ch == esc and i + 1 < n:
+                i += 2                      # escaped char in unquoted text (`\#`/`` `# `` is literal)
+                continue
+            if ch == "'":
+                in_single = True
+            elif ch == '"':
+                in_double = True
+            elif ch == "#" and (i == 0 or line[i - 1].isspace()):
+                return line[:i].rstrip()
+            i += 1
     return line
 
 
@@ -154,7 +201,7 @@ def twin_violations(name: str, sh_text: str | None, ps1_text: str | None) -> lis
     for kind, text in (("sh", sh_text), ("ps1", ps1_text)):
         if text is None:
             continue
-        code = strip_comments(text)
+        code = strip_comments(text, kind)
         if references_harness(code) and not resolves_workspace(code, kind):
             violations.append(
                 f"{name}: the .{kind} twin reads a workspace-relative .harness/… path "

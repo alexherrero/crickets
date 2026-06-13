@@ -82,6 +82,27 @@ test -f "$ref" && exit 2
 exit 0
 """
 
+# DEFECT 2 follow-on (post-fix /review): the disguise still landed when the marker
+# comment trails an ESCAPED quote (pwsh `"  /  bash \") — the naive tracker mis-read
+# the escape as closing the string, stayed "in string" at the trailing #, and KEPT
+# the comment, leaking its markers. Bare cwd-relative bug + a real .harness read so
+# the resolution requirement fires; markers ONLY in the comment. Escape-aware
+# stripping must flag these too.
+_PS1_DISGUISED_ESC = """#!/usr/bin/env pwsh
+# kill-switch (PowerShell twin) — BROKEN: bare cwd-relative, markers only in comment
+$label = "tag`"x"  # workspacePaths Set-Location resolved upstream (a lie)
+if (Test-Path -LiteralPath '.harness/STOP') { exit 2 }
+exit 0
+"""
+
+_SH_DISGUISED_ESC = """#!/usr/bin/env bash
+# kill-switch (bash) — BROKEN: bare cwd-relative, markers only in comment
+label="tag\\"x"  # workspacePaths read + cd done upstream (a lie)
+ref=".harness/STOP"
+test -f "$ref" && exit 2
+exit 0
+"""
+
 
 def _make_hook(hooks_root: Path, name: str, *, sh: str | None = None, ps1: str | None = None) -> Path:
     d = hooks_root / name
@@ -95,44 +116,81 @@ def _make_hook(hooks_root: Path, name: str, *, sh: str | None = None, ps1: str |
 
 # ── pure logic ───────────────────────────────────────────────────────────────
 class TestStripComments(unittest.TestCase):
+    # strip_comments is now kind-aware ("sh"/"ps1") so per-shell escaping applies;
+    # the comment-leader rules below are identical for both kinds.
     def test_drops_full_line_comment(self):
-        out = chp.strip_comments("# .harness in a comment\nreal code\n")
+        out = chp.strip_comments("# .harness in a comment\nreal code\n", "sh")
         self.assertNotIn(".harness", out)
         self.assertIn("real code", out)
 
     def test_drops_indented_full_line_comment(self):
-        out = chp.strip_comments("    # workspacePaths note\ncode\n")
+        out = chp.strip_comments("    # workspacePaths note\ncode\n", "ps1")
         self.assertNotIn("workspacePaths", out)
 
     def test_strips_inline_trailing_comment(self):
         # DEFECT 2: an inline trailing comment must be stripped too, so a marker
         # hidden in it (`workspacePaths`) no longer counts as resolution.
-        out = chp.strip_comments("Set-Location $ws  # workspacePaths resolved\n")
+        out = chp.strip_comments("Set-Location $ws  # workspacePaths resolved\n", "ps1")
         self.assertIn("Set-Location", out)         # the real code survives
         self.assertNotIn("workspacePaths", out)    # the comment marker is gone
 
     def test_preserves_code_before_inline_comment(self):
         # Stripping the comment must not eat the real code (incl. a `.harness` ref)
         # that precedes it on the same line.
-        out = chp.strip_comments("Test-Path '.harness/STOP'  # trailing note\n")
+        out = chp.strip_comments("Test-Path '.harness/STOP'  # trailing note\n", "ps1")
         self.assertIn(".harness", out)
         self.assertNotIn("trailing note", out)
 
     def test_preserves_hash_inside_single_quotes(self):
         # A `#` inside a string literal is code, not a comment leader.
-        out = chp.strip_comments("grep '#define' file\n")
+        out = chp.strip_comments("grep '#define' file\n", "sh")
         self.assertIn("#define", out)
 
     def test_preserves_hash_inside_double_quotes(self):
-        out = chp.strip_comments('git commit -m "fix #123"\n')
+        out = chp.strip_comments('git commit -m "fix #123"\n', "sh")
         self.assertIn("#123", out)
 
     def test_preserves_hash_glued_to_token(self):
         # `$#` / `${x#prefix}` — a `#` not preceded by whitespace is not a comment
         # in either shell, so it must be left intact.
-        out = chp.strip_comments("n=$#; v=${x#prefix}\n")
+        out = chp.strip_comments("n=$#; v=${x#prefix}\n", "sh")
         self.assertIn("$#", out)
         self.assertIn("${x#prefix}", out)
+
+    # ---- DEFECT 2 follow-on (post-fix /review): escape-aware stripping ----
+    def test_ps1_backtick_escaped_quote_keeps_comment_strippable(self):
+        # pwsh `" is an escaped double-quote: the string does NOT end there, so the
+        # trailing # is a real comment whose markers must be stripped. The naive
+        # tracker read `" as close+reopen and KEPT the comment (the DEFECT-2 hole).
+        out = chp.strip_comments('$label = "tag`"x"  # workspacePaths Set-Location (a lie)\n', "ps1")
+        self.assertIn("$label", out)               # code preserved
+        self.assertNotIn("workspacePaths", out)    # comment + its markers gone
+        self.assertNotIn("Set-Location", out)
+
+    def test_sh_backslash_escaped_quote_keeps_comment_strippable(self):
+        # Symmetric for bash: \" is an escaped double-quote.
+        out = chp.strip_comments('label="tag\\"x"  # workspacePaths cd (a lie)\n', "sh")
+        self.assertIn("label=", out)
+        self.assertNotIn("workspacePaths", out)
+
+    def test_ps1_doubled_quote_literal_keeps_comment_strippable(self):
+        # pwsh "" inside a double-quoted string is a literal quote, not close+open.
+        out = chp.strip_comments('$x = "say ""hi"""  # workspacePaths Set-Location (a lie)\n', "ps1")
+        self.assertIn("$x", out)
+        self.assertNotIn("workspacePaths", out)
+
+    def test_ps1_backslash_is_not_an_escape(self):
+        # LDC-5: backslash is NOT a pwsh escape. A path literal ending in \" closes
+        # the string normally, so the trailing comment is still strippable — a
+        # unified backslash rule would have mis-tracked this and KEPT the comment.
+        out = chp.strip_comments('$p = "C:\\temp\\"  # workspacePaths Set-Location (a lie)\n', "ps1")
+        self.assertIn("$p", out)
+        self.assertNotIn("workspacePaths", out)
+
+    def test_escaped_hash_outside_quotes_is_literal(self):
+        # `\#` (sh) / `` `# `` (ps1) is an escaped, literal # — not a comment leader.
+        self.assertIn("\\#literal", chp.strip_comments("echo \\#literal\n", "sh"))
+        self.assertIn("`#literal", chp.strip_comments("Write-Output `#literal\n", "ps1"))
 
 
 class TestReferencesHarness(unittest.TestCase):
@@ -228,6 +286,20 @@ class TestTwinViolations(unittest.TestCase):
         self.assertEqual(len(v), 1, f"expected exactly the .sh violation, got {v}")
         self.assertIn("the .sh twin reads", v[0])
 
+    # ---- DEFECT 2 follow-on: the escaped-quote disguise must also be caught ----
+    def test_ps1_disguised_by_backtick_escaped_quote_is_flagged(self):
+        # The marker comment trails a pwsh `" escape. Escape-aware stripping strips
+        # the comment, so the markers no longer satisfy resolution → flagged.
+        v = chp.twin_violations("kill-switch", _SH_RESOLVES, _PS1_DISGUISED_ESC)
+        self.assertEqual(len(v), 1, f"expected exactly the .ps1 violation, got {v}")
+        self.assertIn("the .ps1 twin reads", v[0])
+
+    def test_sh_disguised_by_backslash_escaped_quote_is_flagged(self):
+        # Symmetric: the marker comment trails a bash \" escape.
+        v = chp.twin_violations("kill-switch", _SH_DISGUISED_ESC, _PS1_RESOLVES)
+        self.assertEqual(len(v), 1, f"expected exactly the .sh violation, got {v}")
+        self.assertIn("the .sh twin reads", v[0])
+
 
 # ── fixture-based scan()/main() red/green ────────────────────────────────────
 class TestScanFixtures(unittest.TestCase):
@@ -259,6 +331,13 @@ class TestScanFixtures(unittest.TestCase):
         # DEFECT 2 end-to-end: the disguised bug must drive a non-zero exit, not
         # slip through to a green gate.
         _make_hook(self.root, "kill-switch", sh=_SH_RESOLVES, ps1=_PS1_DISGUISED)
+        self.assertEqual(len(chp.scan(self.root)), 1)
+        self.assertEqual(chp.main(["--hooks-root", str(self.root)]), 1)
+
+    def test_red_tree_flags_escaped_quote_disguise(self):
+        # DEFECT 2 follow-on end-to-end: the escaped-quote disguise must also drive
+        # a non-zero exit (the post-fix /review caught this slipping through green).
+        _make_hook(self.root, "kill-switch", sh=_SH_RESOLVES, ps1=_PS1_DISGUISED_ESC)
         self.assertEqual(len(chp.scan(self.root)), 1)
         self.assertEqual(chp.main(["--hooks-root", str(self.root)]), 1)
 
