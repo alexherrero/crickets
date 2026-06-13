@@ -17,5 +17,12 @@ standalone: true
 # command + `queue_status.py` bridge (delegates to agentm's shipped
 # `queue_status_lite.py` reader, minimal `.harness/` dashboard standalone) giving
 # the coordinator a read-only glance at every active plan. Read-only by contract.
-version: 0.4.0
+# 0.5.0 = two-tier named-plan staging (V5-10 sibling #1, the named-plan writer) —
+# a `stage_plan.py` helper + `/plan --stage <name>` / `/plan --activate <name>`.
+# `--stage` emits a plan into the inactive `<_harness>/queued-plans/` tier
+# (invisible to /work and /queue-status-lite); `--activate` promotes it to the
+# active `PLAN-<name>.md` with a no-clobber guard. Composed onto `resolve_plan`
+# (the staging path tracks the resolver's `_harness/`); bare /plan + the one-tier
+# `--name` write stay byte-identical.
+version: 0.5.0
 capabilities: [setup, plan, work, review, release, bugfix, documentation]
