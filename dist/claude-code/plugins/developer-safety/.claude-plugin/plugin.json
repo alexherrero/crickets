@@ -3,7 +3,7 @@
     "name": "alexherrero",
     "url": "https://github.com/alexherrero/crickets"
   },
-  "description": "Universal control + safety layer — kill-switch, steer, commit-on-stop hooks plus commit-no-coauthor / worktrees-never-auto conventions. Usable in any session; enhances developer-workflows (its hooks engage across the phase loop) when both are installed.",
+  "description": "Universal control + safety layer — kill-switch, steer, commit-on-stop hooks plus commit-no-coauthor / worktrees-operator-initiated conventions. Usable in any session; enhances developer-workflows (its hooks engage across the phase loop) when both are installed.",
   "name": "developer-safety",
-  "version": "0.1.2"
+  "version": "0.2.0"
 }

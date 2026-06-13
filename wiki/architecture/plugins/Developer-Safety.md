@@ -19,7 +19,7 @@ On Antigravity, install by path (see [Install crickets plugins](Install-Into-Pro
 | **`steer`** | hook · `PreToolUse` | inject `.harness/STEER.md` into context, then archive it — mid-run redirect |
 | **`commit-on-stop`** | hook · `Stop` | save a dirty tree to an `auto-save/<ts>` branch at session end — crash recovery (never touches your branch, never pushes) |
 | **`commit-no-coauthor`** | snippet | never append a `Co-Authored-By` trailer — the user is the sole author |
-| **`worktrees-never-auto`** | snippet | never auto-create git worktrees |
+| **`worktrees-operator-initiated`** | snippet | worktrees are operator-initiated — first-class but never autonomous |
 
 Drive the control trio with the trigger files under `.harness/` — see **[Driving the control trio](#driving-the-control-trio)** below; the full hook catalog is in [Hooks](Hooks). The snippets emit as Antigravity `rules/` and drop on Claude (where the conventions live in `CLAUDE.md`/`AGENTS.md` instead — see [Customization types](Customization-Types)).
 

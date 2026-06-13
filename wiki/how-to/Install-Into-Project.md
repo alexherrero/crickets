@@ -9,7 +9,7 @@ crickets ships as **native host plugins** generated from one source ([ADR 0013](
 | Plugin | Standalone? | What it adds |
 |---|---|---|
 | `developer-workflows` | yes (base) | the six phase commands (`/setup` `/plan` `/work` `/review` `/release` `/bugfix`) + the explorer/evaluator agents + the `harness-context` SessionStart hook (Claude-only). |
-| `developer-safety` | enhances `developer-workflows` | the kill-switch / steer / commit-on-stop hooks + the commit-no-coauthor / worktrees-never-auto conventions. |
+| `developer-safety` | enhances `developer-workflows` | the kill-switch / steer / commit-on-stop hooks + the commit-no-coauthor / worktrees-operator-initiated conventions. |
 | `code-review` | enhances `developer-workflows`' `review` | the adversarial-reviewer + cross-model adversarial-reviewer-cross agents, the `evidence-tracker` hook, and the standalone `/code-review` command. |
 | `github-ci` | requires `developer-workflows` | CI workflows + dependabot-fixer. |
 | `pii` | standalone | the PII guardrail — scrubber skill + pre-push detector. |

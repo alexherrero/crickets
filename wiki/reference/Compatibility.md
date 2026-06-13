@@ -46,7 +46,7 @@ Authoring a host-portable hook? Resolve the workspace from stdin, not `cwd` — 
 
 ## Snippet emission
 
-The `snippet` kind is an instruction fragment. The generator emits it **as an Antigravity `rules/` file** (`<plugin>/rules/<name>.md`) and **drops it on Claude Code**, which has no instruction-file primitive to land it in. So `developer-safety`'s `commit-no-coauthor` + `worktrees-never-auto` conventions ship as Antigravity rules with no Claude-Code form. See [Per-Host Paths](Per-Host-Paths).
+The `snippet` kind is an instruction fragment. The generator emits it **as an Antigravity `rules/` file** (`<plugin>/rules/<name>.md`) and **drops it on Claude Code**, which has no instruction-file primitive to land it in. So `developer-safety`'s `commit-no-coauthor` + `worktrees-operator-initiated` conventions ship as Antigravity rules with no Claude-Code form. See [Per-Host Paths](Per-Host-Paths).
 
 ## Antigravity 2.0 gaps
 

@@ -1,5 +1,5 @@
 name: Developer Safety
-description: Universal control + safety layer — kill-switch, steer, commit-on-stop hooks plus commit-no-coauthor / worktrees-never-auto conventions. Usable in any session; enhances developer-workflows (its hooks engage across the phase loop) when both are installed.
+description: Universal control + safety layer — kill-switch, steer, commit-on-stop hooks plus commit-no-coauthor / worktrees-operator-initiated conventions. Usable in any session; enhances developer-workflows (its hooks engage across the phase loop) when both are installed.
 category: Coding
 requires: []
 standalone: true
@@ -20,4 +20,12 @@ enhances: [developer-workflows]
 # throw (try/catch, mirroring the .sh twin's `||`/`if` guards); the snapshot-creating
 # calls still throw so a real write failure aborts loudly. Restores .sh/.ps1 robustness
 # parity; .sh + Claude Code behavior unchanged.
-version: 0.1.2
+# 0.2.0 = retires the `worktrees-never-auto` snippet in favor of
+# `worktrees-operator-initiated` (V5-10 sibling #2; ADR 0022). The blanket
+# "never create worktrees" prohibition became wrong once `/spawn-worker` made
+# operator-initiated worker worktrees a first-class coordinator workflow. The new
+# snippet keeps the load-bearing guarantee (no *autonomous* worktree creation) while
+# affirming that an operator-initiated worktree — `/spawn-worker`, or an explicit
+# request — is expected, not an exception. Snippet file + `name:` renamed to stay
+# matched; behavior for a session with no operator worktree request is unchanged.
+version: 0.2.0

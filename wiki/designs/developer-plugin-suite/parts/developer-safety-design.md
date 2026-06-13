@@ -22,7 +22,7 @@ estimated_scope: S
 Create `src/developer-safety/` (`standalone: true`, `requires: []`, `enhances: [developer-workflows]`) — the universal control/safety layer, usable in *any* session, workflow or not:
 
 - **Control hooks** — `kill-switch`, `steer`, `commit-on-stop` (from the `#40` `developer` seed).
-- **Safety/hygiene conventions** — `commit-no-coauthor`, `worktrees-never-auto`.
+- **Safety/hygiene conventions** — `commit-no-coauthor`, `worktrees-operator-initiated`.
 - **Bootstrap enhancer-suggestion** *(deferred here from the `enhances-schema` part, 2026-06-03)* — `bootstrap.sh` suggests installing this plugin when its enhancee (`developer-workflows`) is installed without it. Built here because this is the first point a real `enhances: [developer-workflows]` edge exists to design + test the suggestion against (it was premature/untestable in the schema part, where no group declared `enhances`).
 
 Carried **AG caveat**: Antigravity plugin hooks are observe/side-effect-only, so `kill-switch`/`steer` are Claude-only-effective; `commit-on-stop` works on both. Documented, not worked around. When installed alongside `developer-workflows`, the hooks engage across the phase loop **emergently** (session-global once installed — see `auto-enable-runtime`).
