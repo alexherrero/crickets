@@ -27,6 +27,7 @@ This page is the index. The homepage links here once instead of listing every AD
 - [ADR 0020 — Seven-section wiki taxonomy: fixed frame + per-project Architecture manifest + conditional gates](0020-seven-section-wiki-taxonomy)
 - [ADR 0021 — Per-plugin marketplace versioning sourced from `group.yaml`](0021-per-plugin-versioning)
 - [ADR 0022 — Retire `worktrees-never-auto`: worktrees first-class but operator-initiated](0022-retire-worktrees-never-auto)
+- [ADR 0023 — Gate the integrated tree, not the worker branch: merge-then-gate with hard-reset rollback](0023-gate-on-integrated-tree)
 
 ## Retrospectives
 
@@ -36,6 +37,7 @@ This page is the index. The homepage links here once instead of listing every AD
 
 <!-- maintained by the wiki tooling -->
 
+- **2026-06-13** — ADR 0023 (gate the integrated tree) added; records gating the post-merge tree (not the worker branch in isolation) and the merge-then-gate-with-hard-reset-rollback that keeps `main` never-broken when `/integrate-worker` lands a worker, with no push.
 - **2026-06-13** — ADR 0022 (retire `worktrees-never-auto`) added; records retiring the blanket "never create worktrees" prohibition for "worktrees first-class but operator-initiated" once `/spawn-worker` made worker worktrees a real workflow, keeping the no-autonomous-spawn guarantee.
 - **2026-06-11** — ADR 0021 (per-plugin versioning) added; records sourcing each plugin's marketplace version from `group.yaml` so `claude plugin update` works, plus the anti-recurrence bump guard.
 - **2026-06-11** — ADR 0020 (seven-section wiki taxonomy) added; records the fixed frame, the per-project Architecture manifest, and the two conditional-section gates.

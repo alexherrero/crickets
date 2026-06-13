@@ -69,4 +69,5 @@ After a **RED gate** or **CONFLICT** (exit `2`), confirm nothing changed:
 - [Named plans](Named-Plans#integrating-a-worker) — the lookup: `/integrate-worker`'s arguments, guards, exit codes, and the `doctor_worktrees.py` probe.
 - [Run a named plan](Run-A-Named-Plan) — author + stage + activate the plan a worker binds to.
 - [ADR 0022 — worktrees first-class but operator-initiated](0022-retire-worktrees-never-auto) — the norm that sanctions the worker worktrees this command merges and prunes.
+- [ADR 0023 — gate the integrated tree](0023-gate-on-integrated-tree) — *why* the gate runs on the merged tree and `main` hard-resets on red rather than gating the worker branch in isolation.
 - [Developer Workflows](Developer-Workflows) — the phase-loop plugin this command belongs to.
