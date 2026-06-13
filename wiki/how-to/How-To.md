@@ -17,11 +17,13 @@ Task-focused recipes for getting things done with the crickets plugins — from 
 - **[Declare a project's Architecture — architecture.yml](Declare-Architecture)** — write the per-project manifest that grows the wiki's Architecture section.
 - **[Maintain a wiki — wiki-watcher](Run-The-Wiki-Watcher)** — keep a wiki in sync with its repo, automatically.
 - **[Spawn a worker in a worktree — /spawn-worker](Spawn-A-Worker-In-A-Worktree)** — hand an activated named plan to a worker in its own isolated checkout.
+- **[Integrate a worker — /integrate-worker](Integrate-A-Worker)** — land a finished worker's branch on `main`, gated on the integrated tree passing.
 
 ## Recent changes
 
 <!-- maintained by the wiki tooling (recent-wiki-changes / the documenter) -->
 
+- **2026-06-13** — Integrate-A-Worker how-to shipped (`/integrate-worker`, lands a finished worker; gate on the integrated tree; rolls back `main` on red; never pushes).
 - **2026-06-13** — Spawn-A-Worker-In-A-Worktree how-to added (`/spawn-worker`, operator-initiated worktree per worker).
 - **2026-06-12** — See-Every-Active-Plan how-to added (`/queue-status-lite`, the read-side glance over the plan queue).
 - **2026-06-11** — Declare-Architecture how-to added (writing `wiki/architecture.yml`).

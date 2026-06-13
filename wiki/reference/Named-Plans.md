@@ -17,6 +17,7 @@ The `developer-workflows` phase commands `/work`, `/plan`, and `/review` accept 
 | `/review` | `PLAN.md` | — | singleton — unchanged |
 | `/review --name <slug>` | `PLAN-<slug>.md` | — | named pair |
 | `/spawn-worker <name>` | — (creates a worktree bound to the named plan) | — | operator-initiated worktree + `worker/<name>` branch ([Spawning a worker worktree](#spawning-a-worker-worktree)) |
+| `/integrate-worker <name>` | — | `progress-<slug>.md` appended into `progress.md` | merges `worker/<slug>` → `main` only if the integrated tree passes the full gate, then prunes ([Integrating a worker](#integrating-a-worker)) |
 
 > [!NOTE]
 > Paths above are shown by basename. The actual directory is whatever the resolver returns — `.harness/` in standalone mode, or a hosting memory layer's state dir when one is present (see [Resolution](#resolution)).
@@ -135,6 +136,61 @@ When an agentm clone is installed the bridge **delegates** to agentm's `queue_st
 > [!NOTE]
 > **Operator-initiated worktrees.** This plan retires the prior "worktrees are never auto-created" prohibition and replaces it with "worktrees are sanctioned but operator-initiated": the worker workflow creates them deliberately via `/spawn-worker`; normal sessions still never auto-spawn one. The design-decision record for this norm change lands at `/work` time (ADR 0022) — this row anticipates it.
 
+## Integrating a worker
+
+`/integrate-worker <name>` is the coordinator-side counterpart to [`/spawn-worker`](#spawning-a-worker-worktree) — it **lands** a finished worker. It closes the worker lifecycle: `/plan --stage` → `/plan --activate` → `/spawn-worker` → run `/work` in the worktree → **`/integrate-worker`**. It is **operator-initiated** and merge order is **human-decided** — it integrates the one worker you name, when you name it, and never auto-sequences merges. The task recipe is in [Integrate a worker](Integrate-A-Worker).
+
+The gate runs on the **integrated** tree (the post-merge result), not the worker branch in isolation — so an integration conflict between the worker's work and newer `main` is actually caught — and `main` is protected by a hard-reset-on-red rollback, so it is **never left broken**.
+
+| Property | Value |
+|---|---|
+| Command | `/integrate-worker <name>` |
+| Argument | `<name>` — the worker name; also the named plan slug it was spawned on; optional `--project-root <path>` |
+| Merge | `git merge --no-ff worker/<slug>` → `main` (preserves the worker's per-task commits + records an explicit integration point) |
+| Gate | `scripts/check-all.sh` (the full 8-gate battery) run on the **post-merge / integrated** tree |
+| On RED gate | hard-resets `main` back to the captured pre-merge HEAD; leaves the worktree intact for inspection; prints the gate output |
+| On merge CONFLICT | `git merge --abort`; leaves the worktree intact |
+| On GREEN | appends `progress-<slug>.md` into the singleton `progress.md` (additive — named file kept), then prunes: removes the worktree (worktree-first), then `git branch -d worker/<slug>` (safe — `--no-ff` recorded the merge) |
+| Does **not** | push `main` (local merge only — push stays the operator's act); delete/archive the vault named plan/progress pair; auto-resolve conflicts; auto-sequence merges |
+| Helper | wraps `scripts/integrate_worker.py` (inside the `developer-workflows` plugin), invoked as `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/integrate_worker.py" <name>`. Stdlib-only; mirrors `resolve_plan.py` / `spawn_worker.py`'s pure-core + injectable-backend shape |
+| Exit codes | `0` integrated · `1` graceful-skip (located resolver, no resolvable `_harness/`) · `2` loud (guard refusal · conflict aborted · red gate rolled back) |
+
+### Implementation
+
+| Component | Location | Role |
+|---|---|---|
+| `integrate()` | [`integrate_worker.py:300`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/integrate_worker.py#L300) | Pure-core `integrate(name, root, *, gate, resolver)`. Runs every guard (resolve-first), the `--no-ff` merge, the gate on the merged tree, and on green the promote-then-prune — returns the exit code. |
+| `git merge --no-ff` | [`integrate_worker.py:363`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/integrate_worker.py#L363) | The integration merge. Preserves the worker's per-task commits and records an explicit integration point; a conflict is `git merge --abort`-ed and a red gate hard-resets to the captured pre-merge HEAD. |
+| `_promote()` | [`integrate_worker.py:236`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/integrate_worker.py#L236) | Green-path, additive: appends the worker's `progress-<slug>.md` plus a one-line integration record into the singleton `progress.md` (named file kept). Runs **before** prune. |
+| `_prune()` / `_branch_safe_gone()` | [`integrate_worker.py:217`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/integrate_worker.py#L217), [`:196`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/integrate_worker.py#L196) | Green-path cleanup: removes the worktree (worktree-first), then safe-deletes the branch with `git branch -d` (not `-D` — `--no-ff` made it an ancestor of HEAD). A promote/prune failure is reported but never undoes the merge. |
+| Command wiring | [`commands/integrate-worker.md`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/commands/integrate-worker.md) | The operator-facing `/integrate-worker`. Wires the real gate (`bash scripts/check-all.sh` on the merged tree), surfaces helper output verbatim, never pushes. |
+
+Locked by `scripts/test_integrate_worker.py` — 18 hermetic tests over the guards (resolve-first, named-only, branch/worktree discovery, detached/dirty refusals), the conflict-abort and red-gate rollback paths, and the green promote-then-prune.
+
+### Pre-mutation guards
+
+All run **before** any merge — a refusal (exit 2) leaves `main` and the worktree untouched, so there is no partial integration to clean up. The command refuses when:
+
+| Condition | Behavior |
+|---|---|
+| `<name>` empty or the singleton | refuse — `<name>` must be a real named-plan slug |
+| `worker/<slug>` branch missing | refuse — nothing to integrate |
+| worktree undiscoverable | refuse — cannot locate the worker's checkout |
+| `main` working tree dirty | refuse — would entangle in-flight changes with the merge |
+| plan/progress pair unresolvable | refuse — the resolver's refusal is authoritative and propagated verbatim |
+
+### Orphaned-worktree doctor probe
+
+A read-only `doctor_worktrees.py` (operator-run) lists every `worker/<slug>` worktree and classifies each with its plan mapping. It is the cleanup complement to `/integrate-worker` — **zero mutation**; the coordinator prunes on demand.
+
+| Property | Value |
+|---|---|
+| Script | `doctor_worktrees.py` (read-only) |
+| Lists | every `worker/<slug>` worktree |
+| Classifies each | `active` · `merged-but-unpruned` · `orphaned` · `dangling-marker` |
+| Per-worktree | the worktree's plan mapping |
+| Mutates | nothing — lists and prints only; the coordinator prunes on demand |
+
 ## `/work` argument parse rule
 
 The `--name <slug>` flag selects the plan; it can appear anywhere in the arguments and **cannot collide** with the `task N` selector, a brief, a branch, or a commit range. Positional slots keep their meaning — for `/work` that's the `task N` selector. The two are independent:
@@ -191,6 +247,7 @@ The bare paths are **byte-identical** to today's literals; this is locked by an 
 
 - [Run a named plan](Run-A-Named-Plan) — the task recipe for driving `/work --name <slug>` and friends.
 - [Spawn a worker in a worktree](Spawn-A-Worker-In-A-Worktree) — the task recipe for `/spawn-worker`: hand an activated named plan to a worker in its own checkout.
+- [Integrate a worker](Integrate-A-Worker) — the task recipe for `/integrate-worker`: land a finished worker's branch on `main` only if the integrated tree still passes the gate.
 - [See every active plan](See-Every-Active-Plan) — the read-side recipe: `/queue-status-lite` for a one-glance view of the queue.
 - [Developer Workflows](Developer-Workflows) — the phase-loop plugin these commands belong to.
 - [Why phase-gating](Why-Phase-Gating) — why the loop is gated and state lives on disk.
