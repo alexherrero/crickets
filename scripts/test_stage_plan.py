@@ -18,6 +18,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
@@ -151,6 +152,100 @@ class TestActivate(unittest.TestCase):
         rc, out, err = sp.activate("", str(self.tmp), resolver=None)
         self.assertEqual(rc, 2)
         self.assertIn("named plan", err)
+
+    def test_symlink_at_active_is_refused_no_write_through(self):
+        """Regression (DEFECT 1): a symlink at the active path is a collision —
+        refused exit 2, never followed/written-through.
+
+        `Path.exists()` returns False for a *dangling* symlink, so the old
+        `active.exists()` guard let `shutil.copyfile` follow the link and write
+        the staged bytes to its target — a path OUTSIDE the harness. The
+        `os.path.lexists()` guard + the non-following `O_EXCL` create close it.
+        Exercised for a dangling link (target absent) and a live link (target
+        present), both pointing outside the harness.
+        """
+        self.staged.write_text("STAGED BYTES\n", encoding="utf-8")
+        dangling = self.tmp / "OUTSIDE-dangling.md"          # target absent
+        live = _write_stub(self.tmp / "OUTSIDE-live.md", "PRE-EXISTING\n")
+        for flavor, target in (("dangling", dangling), ("live", live)):
+            with self.subTest(flavor=flavor):
+                if self.active.is_symlink() or self.active.exists():
+                    self.active.unlink()
+                self.active.symlink_to(target)
+                rc, out, err = sp.activate("foo", str(self.tmp), resolver=None)
+                self.assertEqual(rc, 2)
+                self.assertEqual(out, "")
+                self.assertIn("already exists", err)
+                self.assertTrue(self.active.is_symlink())   # link left untouched, not deleted
+        # Neither external target was written through.
+        self.assertFalse(dangling.exists())
+        self.assertEqual(live.read_text(encoding="utf-8"), "PRE-EXISTING\n")
+
+    def test_toctou_oexcl_backstop_refuses_raced_in_file(self):
+        """DEFECT 2: the O_EXCL create is the atomic backstop for the TOCTOU
+        window. Defeat the early lexists() guard (simulate a worker landing the
+        active plan *after* the check passes) and assert the create still
+        refuses rather than clobber the file that raced in.
+        """
+        self.staged.write_text("STAGED\n", encoding="utf-8")
+        real_lexists = sp.os.path.lexists
+
+        def racy_lexists(p):
+            if Path(p) == self.active:
+                # The race: a concurrent activate/worker lands the active plan
+                # in the check→create window — but the check already saw nothing.
+                self.active.write_text("RACED-IN\n", encoding="utf-8")
+                return False
+            return real_lexists(p)
+
+        with mock.patch.object(sp.os.path, "lexists", racy_lexists):
+            rc, out, err = sp.activate("foo", str(self.tmp), resolver=None)
+        self.assertEqual(rc, 2)
+        self.assertEqual(out, "")
+        self.assertIn("already exists", err)
+        # The raced-in active plan is NOT clobbered by the staged bytes.
+        self.assertEqual(self.active.read_text(encoding="utf-8"), "RACED-IN\n")
+
+    def test_activate_uses_delegate_resolver_output_not_dot_harness(self):
+        """The "both backends" claim must hold for activate(), not just `path`:
+        with agentm present, activate copies into the resolver-derived
+        `_harness/` (here a vault-style dir with no `.harness`), never
+        <root>/.harness — mirroring the staging_path delegate test.
+        """
+        vault = self.tmp / "vault" / "_harness"
+        (vault / "queued-plans").mkdir(parents=True, exist_ok=True)
+        (vault / "queued-plans" / "PLAN-foo.md").write_text(
+            "STAGED-DELEGATE\n", encoding="utf-8")
+        plan_p, prog_p = vault / "PLAN-foo.md", vault / "progress-foo.md"
+        stub = _write_stub(
+            self.tmp / "stub_active.py",
+            "import sys\n"
+            "sys.stdout.write(" + repr(f"{plan_p}\t{prog_p}\n") + ")\n"
+            "sys.exit(0)\n",
+        )
+        rc, out, err = sp.activate("foo", str(self.tmp), resolver=stub)
+        self.assertEqual(rc, 0, err)
+        self.assertTrue(plan_p.is_file())
+        self.assertEqual(plan_p.read_text(encoding="utf-8"), "STAGED-DELEGATE\n")
+        self.assertEqual(out.strip(), str(plan_p))
+        # Derived from the resolver, NOT <root>/.harness.
+        self.assertFalse((self.tmp / ".harness" / "PLAN-foo.md").exists())
+
+    def test_staging_path_and_activate_agree_on_staged_location(self):
+        """staging_path() and activate() must derive the SAME staged path for a
+        name — guards against future drift between the two derivations.
+        """
+        rc, staged_str, err = sp.staging_path("foo", str(self.tmp), resolver=None)
+        self.assertEqual(rc, 0, err)
+        staged = Path(staged_str.strip())
+        self.assertEqual(staged, self.queued / "PLAN-foo.md")  # same as setUp's staged
+        # Plant the staged plan ONLY at staging_path()'s location, then activate
+        # must find it there (proving it reads the same derivation) and copy it.
+        staged.parent.mkdir(parents=True, exist_ok=True)
+        staged.write_text("AGREED\n", encoding="utf-8")
+        rc, out, err = sp.activate("foo", str(self.tmp), resolver=None)
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(self.active.read_text(encoding="utf-8"), "AGREED\n")
 
 
 class TestStagedIsInactive(unittest.TestCase):

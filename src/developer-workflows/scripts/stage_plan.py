@@ -44,7 +44,6 @@ from __future__ import annotations
 
 import argparse
 import os
-import shutil
 import sys
 from pathlib import Path
 
@@ -113,12 +112,34 @@ def activate(name: str, root: str, *, resolver=_AUTO) -> tuple[int, str, str]:
     staged = active.parent / _QUEUED_DIR / active.name
     if not staged.is_file():
         return (2, "", f"[stage_plan] no staged plan to activate at {staged}\n")
-    if active.exists():
-        return (2, "",
-                f"[stage_plan] active plan already exists at {active}; "
-                f"refusing to clobber\n")
+    collision = (2, "",
+                 f"[stage_plan] active plan already exists at {active}; "
+                 f"refusing to clobber\n")
+    # Path-occupancy guard, not target-existence: `os.path.lexists` reports on
+    # the link itself, so a *dangling* symlink (which `Path.exists()` misses)
+    # counts as a collision and is refused — never followed and written through
+    # to a path outside the harness.
+    if os.path.lexists(str(active)):
+        return collision
     active.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(str(staged), str(active))
+    data = staged.read_bytes()
+    # Atomic, non-following create: O_EXCL fails (EEXIST) if anything — including
+    # a symlink — already occupies the path, and never follows a symlink. This is
+    # the backstop for the TOCTOU window between the lexists check and the write:
+    # a worker that lands the active plan in that window can't be clobbered.
+    try:
+        fd = os.open(str(active), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+    except FileExistsError:
+        return collision
+    try:
+        # Write-all loop: `os.write` may short-write, so drain the buffer fully
+        # (the replaced `shutil.copyfile` looped internally) — keeps the copy
+        # byte-verbatim even on a short write.
+        view = memoryview(data)
+        while view:
+            view = view[os.write(fd, view):]
+    finally:
+        os.close(fd)
     return (0, f"{active}\n", "")
 
 
