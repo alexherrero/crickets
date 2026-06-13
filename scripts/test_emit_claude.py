@@ -107,7 +107,8 @@ class TestClaudeEmitter(unittest.TestCase):
         mk = json.loads((self.cdist / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
         self.assertEqual({p["name"] for p in mk["plugins"]},
                          {"code-review", "developer-safety",
-                          "developer-workflows", "pii", "github-ci", "wiki-maintenance"})
+                          "developer-workflows", "pii", "github-ci",
+                          "obsidian-vault", "wiki-maintenance"})
         for p in mk["plugins"]:
             self.assertEqual(p["source"], f"./plugins/{p['name']}")
             self.assertTrue((self.cdist / "plugins" / p["name"]).is_dir())

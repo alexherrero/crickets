@@ -36,7 +36,20 @@ class TestSrcModel(unittest.TestCase):
         by = {g.slug: g for g in groups}
         self.assertEqual(set(by),
                          {"code-review", "developer-safety", "developer-workflows",
-                          "github-ci", "pii", "wiki-maintenance"})
+                          "github-ci", "obsidian-vault", "pii", "wiki-maintenance"})
+        # obsidian-vault (V5-2): asset-only group — its sole payload is the
+        # re-homed `vault` storage backend under scripts/ (LC-2 — engine-consumed,
+        # not a host primitive), so it has zero discovered primitives but still
+        # carries a group asset payload and emits on every host.
+        ov = by["obsidian-vault"]
+        self.assertTrue(ov.standalone)
+        self.assertEqual(ov.requires, [])
+        self.assertEqual(ov.enhances, [])
+        self.assertEqual(ov.capabilities, ["storage-backend"])
+        self.assertEqual(ov.primitives, [])
+        self.assertTrue(ov.has_group_assets())
+        self.assertTrue(ov.supports("claude-code"))
+        self.assertTrue(ov.supports("antigravity"))
         # composition: the developer seed is retired (part 6); github-ci still requires
         # developer-workflows. wiki-maintenance flipped to standalone + an enhance during the
         # scaffold (part 1, capability-less); the documenter-wiring part tightened the enhance

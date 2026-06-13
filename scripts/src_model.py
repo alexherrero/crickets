@@ -122,9 +122,23 @@ class Group:
     # positional ctor `Group(..., primitives)` stays valid.
     version: str = "0.1.0"
 
+    def has_group_assets(self) -> bool:
+        """True when the group carries a host-agnostic group-level asset payload —
+        a `scripts/` or `templates/` dir. Such a payload is emittable (and must
+        emit, so the dist plugin actually carries it) even when the group has zero
+        host primitives: e.g. `obsidian-vault`, whose only payload is the
+        agentm-discovered storage backend under `scripts/` (LC-2 — a backend is
+        engine-consumed, not a host primitive)."""
+        if self.manifest is None:
+            return False
+        gd = self.manifest.parent
+        return (gd / "scripts").is_dir() or (gd / "templates").is_dir()
+
     def supports(self, host: str) -> bool:
-        """A group targets a host if any of its primitives do."""
-        return any(p.supports(host) for p in self.primitives)
+        """A group targets a host if any of its primitives do, or it carries a
+        host-agnostic group-level asset payload (`scripts/`/`templates/`) — those
+        are copied wholesale to every host, so an asset-only group emits on all."""
+        return any(p.supports(host) for p in self.primitives) or self.has_group_assets()
 
 
 # Transient/gitignored cruft excluded from EVERY bundled-asset copytree (group

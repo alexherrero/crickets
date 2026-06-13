@@ -1,0 +1,17 @@
+name: Obsidian Vault
+description: The Obsidian/Google-Drive vault storage backend for the agentm memory engine — re-homed out of the kernel behind the V5-1 storage seam. Ships the `vault` named backend (and, across V5-2, the vault-specific machinery) as an agentm-discovered scripts/ payload.
+category: Coding
+requires: []
+standalone: true
+enhances: []
+# The capability this plugin offers — a named storage backend the engine
+# discovers and loads. Listed so a future plugin's `enhances:` can target it.
+capabilities: [storage-backend]
+# Per-plugin marketplace version. Bump on every release that ships new/changed
+# primitives so `claude plugin update obsidian-vault@crickets` actually pulls them
+# (the marketplace entry compares this value; a static version no-ops the update).
+# 0.1.0 = V5-2 task 1 — the new group + the re-homed V5-1 `vault` backend
+# (storage_vault.py) as the agentm-facing scripts/ payload, byte-faithful per LC-1.
+# The built-in vault backend stays in the kernel through V5-2; this is the copy
+# V5-3 keeps once parallel-run proves the two identical.
+version: 0.1.0

@@ -94,7 +94,8 @@ class TestAntigravityEmitter(unittest.TestCase):
         by = {p["name"]: p for p in mk["plugins"]}
         self.assertEqual(set(by),
                          {"code-review", "developer-safety",
-                          "developer-workflows", "pii", "github-ci", "wiki-maintenance"})
+                          "developer-workflows", "pii", "github-ci",
+                          "obsidian-vault", "wiki-maintenance"})
         # wiki-maintenance re-categorized Coding → documentation in part 1; rest stay Coding
         expected_category = {"wiki-maintenance": "documentation"}
         for p in mk["plugins"]:

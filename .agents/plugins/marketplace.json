@@ -77,6 +77,21 @@
       }
     },
     {
+      "capabilities": [
+        "storage-backend"
+      ],
+      "category": "Coding",
+      "name": "obsidian-vault",
+      "policy": {
+        "authentication": "ON_INSTALL",
+        "installation": "AVAILABLE"
+      },
+      "source": {
+        "path": "./dist/antigravity/plugins/obsidian-vault",
+        "source": "local"
+      }
+    },
+    {
       "category": "Coding",
       "name": "pii",
       "policy": {
