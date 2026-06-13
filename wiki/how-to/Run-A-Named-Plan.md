@@ -53,6 +53,7 @@ Use this flow when you want to author one or more named plans **ahead of time** 
 ## Related
 
 - [Named plans](Named-Plans) — the lookup: invocation → files, the parse rule, the resolver + standalone-fallback paths.
+- [Spawn a worker in a worktree](Spawn-A-Worker-In-A-Worktree) — hand an activated named plan to a worker in its own checkout via `/spawn-worker`.
 - [Developer Workflows](Developer-Workflows) — the phase-loop plugin these commands belong to.
 - [Install crickets plugins](Install-Into-Project) — get `developer-workflows` onto your host.
 - [Why phase-gating](Why-Phase-Gating) — why the loop is gated and state lives on disk.

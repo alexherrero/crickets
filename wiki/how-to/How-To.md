@@ -16,11 +16,13 @@ Task-focused recipes for getting things done with the crickets plugins — from 
 - **[Provision a repo's wiki — wiki-init](Provision-A-Repo-Wiki)** — scaffold a repo's `wiki/` and its lint-then-publish CI from nothing.
 - **[Declare a project's Architecture — architecture.yml](Declare-Architecture)** — write the per-project manifest that grows the wiki's Architecture section.
 - **[Maintain a wiki — wiki-watcher](Run-The-Wiki-Watcher)** — keep a wiki in sync with its repo, automatically.
+- **[Spawn a worker in a worktree — /spawn-worker](Spawn-A-Worker-In-A-Worktree)** — hand an activated named plan to a worker in its own isolated checkout.
 
 ## Recent changes
 
 <!-- maintained by the wiki tooling (recent-wiki-changes / the documenter) -->
 
+- **2026-06-13** — Spawn-A-Worker-In-A-Worktree how-to reserved (pending — `/spawn-worker`, operator-initiated worktree per worker).
 - **2026-06-12** — See-Every-Active-Plan how-to added (`/queue-status-lite`, the read-side glance over the plan queue).
 - **2026-06-11** — Declare-Architecture how-to added (writing `wiki/architecture.yml`).
 - **2026-06-11** — `do/` + `get-started/` folded into `how-to/` (wiki-section-taxonomy restructure); this index merged from both.

@@ -16,6 +16,7 @@ The `developer-workflows` phase commands `/work`, `/plan`, and `/review` accept 
 | `/plan --activate <slug>` | `queued-plans/PLAN-<slug>.md` → `PLAN-<slug>.md` (promoted) | — | promotes staged → active |
 | `/review` | `PLAN.md` | — | singleton — unchanged |
 | `/review --name <slug>` | `PLAN-<slug>.md` | — | named pair |
+| `/spawn-worker <name>` | — (creates a worktree bound to the named plan) | — | operator-initiated worktree + `worker/<name>` branch ([Spawning a worker worktree](#spawning-a-worker-worktree)) |
 
 > [!NOTE]
 > Paths above are shown by basename. The actual directory is whatever the resolver returns — `.harness/` in standalone mode, or a hosting memory layer's state dir when one is present (see [Resolution](#resolution)).
@@ -117,6 +118,23 @@ When an agentm clone is installed the bridge **delegates** to agentm's `queue_st
 > [!NOTE]
 > `/queue-status-lite` adds **zero** agentm changes: it direct-shells to the *already-shipped* standalone reader — no new agentm verb. It is the read side of the multi-plan surface whose writers are the `--name`-aware `/work` / `/plan` / `/review` above.
 
+## Spawning a worker worktree
+
+`/spawn-worker <name>` gives a named plan its own isolated checkout. It is **operator-initiated** — a normal session never spawns a worktree on its own; this command is the sanctioned way to create one for a worker. It fits the coordinator flow after a plan is staged and activated: `/plan --stage` → `/plan --activate` → **`/spawn-worker`** → launch a `/work` session in the new worktree. The task recipe is in [Spawn a worker in a worktree](Spawn-A-Worker-In-A-Worktree).
+
+| Property | Value |
+|---|---|
+| Command | `/spawn-worker <name>` |
+| Argument | `<name>` — the worker name; also the named plan slug it binds to |
+| Worktree | a new `git worktree` on a fresh `worker/<name>` branch |
+| Plan binding | writes the plan name into the worktree's local `.harness/active-plan` marker, so `/work` inside the worktree resolves *its* named plan without re-passing `--name` |
+| `vault_project` | reproduces a divergent `vault_project` into the worktree as a fallback only |
+| Guard | refuses (no-clobber) if the worktree path or the `worker/<name>` branch already exists, or the name is empty/singleton |
+| Helper | wraps `scripts/spawn_worker.py` (inside the `developer-workflows` plugin), invoked as `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/spawn_worker.py" <name>`; accepts `--project-root <path>` / `--worktree-path <path>`. Stdlib-only; mirrors `resolve_plan.py`'s pure-core + injectable-backend shape. Exit codes: `0` ok (worktree path on stdout), `1` graceful-skip (located resolver, no resolvable harness), `2` loud refusal (empty/singleton/unsafe name, no-clobber path/branch collision, resolver refusal, or failed `git worktree add` — never a partial spawn) |
+
+> [!NOTE]
+> **Operator-initiated worktrees.** This plan retires the prior "worktrees are never auto-created" prohibition and replaces it with "worktrees are sanctioned but operator-initiated": the worker workflow creates them deliberately via `/spawn-worker`; normal sessions still never auto-spawn one. The design-decision record for this norm change lands at `/work` time (ADR 0022) — this row anticipates it.
+
 ## `/work` argument parse rule
 
 The `--name <slug>` flag selects the plan; it can appear anywhere in the arguments and **cannot collide** with the `task N` selector, a brief, a branch, or a commit range. Positional slots keep their meaning — for `/work` that's the `task N` selector. The two are independent:
@@ -172,6 +190,7 @@ The bare paths are **byte-identical** to today's literals; this is locked by an 
 ## Related
 
 - [Run a named plan](Run-A-Named-Plan) — the task recipe for driving `/work --name <slug>` and friends.
+- [Spawn a worker in a worktree](Spawn-A-Worker-In-A-Worktree) — the task recipe for `/spawn-worker`: hand an activated named plan to a worker in its own checkout.
 - [See every active plan](See-Every-Active-Plan) — the read-side recipe: `/queue-status-lite` for a one-glance view of the queue.
 - [Developer Workflows](Developer-Workflows) — the phase-loop plugin these commands belong to.
 - [Why phase-gating](Why-Phase-Gating) — why the loop is gated and state lives on disk.
