@@ -23,9 +23,6 @@ A **hook** is a script crickets runs at a fixed point in an agent session — be
 - **Ordering.** When several hooks share an event, they run in the order the plugin's `hooks.json` declares them — `developer-safety` registers `kill-switch` before `steer`, so a halt always pre-empts a steer.
 - **Per-host effectiveness.** On Antigravity, plugin hooks run **observe/side-effect-only**: any hook whose value depends on a veto (exit code) or an inject (stdout) is Claude-only-effective. See [Compatibility](Compatibility).
 - **Authoring a portable hook.** The two hosts invoke hooks differently — Claude Code runs them at the project root (and sets `$CLAUDE_PROJECT_DIR`); Antigravity runs them in the *plugin* dir and passes the workspace only as stdin JSON (`{"workspacePaths":["<root>"]}`). A portable hook reads stdin, parses it with a real JSON parser (top-level keys only — a `sed`/regex parser mismatches nested payloads), resolves the root as `workspacePaths[0]` → stdin `cwd` → `$CLAUDE_PROJECT_DIR` → `cwd`, then `cd`s in before any relative logic. The shipped `developer-safety` hooks do this (`scripts/test_developer_hooks_workspace.py` for the `.sh` twins, `scripts/test_developer_hooks_workspace_ps1.py` for the `.ps1` twins).
-
-> [!NOTE]
-> **Status: pending** — `check-hook-parity` gate (`.harness/PLAN.md`, task 2). A pending plan adds a `check-hook-parity` gate ([CI gates](CI-Gates)) that fails the battery if either twin references a workspace-relative `.harness/…` path without first resolving the workspace.
 - **On-disk layout.** Each hook lives in its own `hooks/<name>/` dir in the plugin: the script as both `<name>.sh` (POSIX) and `<name>.ps1` (PowerShell), its `hook.md` spec, and `settings-fragment-{bash,pwsh}.json` (the event registration merged into the host config). The host runs the script from `${CLAUDE_PLUGIN_ROOT}/hooks/<name>/…` per the manifest. ([Per-host paths](Per-Host-Paths) carries the manifest location per host.)
 
 ## See also

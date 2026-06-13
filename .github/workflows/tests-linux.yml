@@ -44,6 +44,13 @@ jobs:
         # the pre-existing check-wiki gap that let 23 structural errors
         # accumulate in the crickets wiki unnoticed before this gate landed.
         run: python3 src/wiki-maintenance/scripts/check-wiki.py --strict
+      - name: Developer-safety .sh/.ps1 hook twins stay paired (check-hook-parity)
+        # Anti-recurrence guard: a hook's .sh and .ps1 twins must stay
+        # behaviorally paired — neither may read a workspace-relative .harness/…
+        # path without first resolving the workspace from the host's hook-input
+        # contract. Pure-Python static check, runs on every OS; the .ps1
+        # *behavior* is exercised by the pwsh mirror inside the unit-test step.
+        run: python3 scripts/check-hook-parity.py
 
   syntax:
     name: syntax
