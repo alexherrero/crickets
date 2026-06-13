@@ -181,15 +181,36 @@ All run **before** any merge — a refusal (exit 2) leaves `main` and the worktr
 
 ### Orphaned-worktree doctor probe
 
-A read-only `doctor_worktrees.py` (operator-run) lists every `worker/<slug>` worktree and classifies each with its plan mapping. It is the cleanup complement to `/integrate-worker` — **zero mutation**; the coordinator prunes on demand.
+A read-only `doctor_worktrees.py` (operator-run) lists every `worker/<slug>` worktree and classifies each with its plan mapping. It is the cleanup complement to `/integrate-worker` — **zero mutation**; the coordinator prunes on demand. The probe is **anchored on worker branches** (`git for-each-ref refs/heads/worker/`) correlated with `git worktree list --porcelain`, so it reports both lingering branches with no worktree and worktrees whose directory is gone — not only the worktrees on disk.
 
 | Property | Value |
 |---|---|
-| Script | `doctor_worktrees.py` (read-only) |
-| Lists | every `worker/<slug>` worktree |
-| Classifies each | `active` · `merged-but-unpruned` · `orphaned` · `dangling-marker` |
-| Per-worktree | the worktree's plan mapping |
-| Mutates | nothing — lists and prints only; the coordinator prunes on demand |
+| Script | `doctor_worktrees.py` (read-only); optional `--project-root <path>` (default: cwd) |
+| Lists | every `worker/<slug>` worktree, plus any lingering `worker/<slug>` branch with no worktree |
+| Classifies each | `active` · `merged-but-unpruned` · `orphaned` · `dangling-marker` (mutually exclusive, precedence-ordered) |
+| Per-worktree | the worktree's plan mapping (the `.harness/active-plan` marker's bare slug) + status + a `→` detail line |
+| Integration ref | the repo's current `HEAD` (normally `main`), matching `integrate_worker.py` |
+| Mutates | nothing — every git call is a query (`list`, `for-each-ref`, `merge-base --is-ancestor`); the coordinator prunes on demand once they read the report |
+| Exit | **always `0`** — a report, not a gate |
+
+The four states, in precedence order:
+
+| Status | Means | When |
+|---|---|---|
+| `orphaned` | a leftover ref / stale registration | the branch has no worktree at all (already pruned, or never checked out), **or** its registered worktree directory is gone (git lists it as prunable) — `git worktree prune` + `git branch -d` cleans it up |
+| `dangling-marker` | the worktree cannot bind to a named plan | on disk, but no readable `.harness/active-plan` marker (missing or blank) |
+| `merged-but-unpruned` | a prune candidate | on disk, marker present, and the branch is already an ancestor of the integration ref (an integration that did not prune, or work that landed by hand) |
+| `active` | work in progress — leave it alone | on disk, marker present, branch **not** yet merged |
+
+#### Implementation
+
+| Component | Location | Role |
+|---|---|---|
+| `diagnose()` | [`doctor_worktrees.py:164`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/doctor_worktrees.py#L164) | Pure-core `diagnose(root, *, integration_ref="HEAD")`. Anchored on worker branches ([`_worker_branches`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/doctor_worktrees.py#L132)) correlated with the worktree list ([`_worktrees`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/doctor_worktrees.py#L97)), it classifies each into exactly one of the four states (precedence-ordered) and returns one `WorkerWorktree` ([`:70`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/doctor_worktrees.py#L70)) per branch. Reads the plan mapping via [`_read_marker`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/doctor_worktrees.py#L152) and the merged test via [`_is_merged`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/doctor_worktrees.py#L143). No mutation, no printing. |
+| `_format()` | [`doctor_worktrees.py:211`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/doctor_worktrees.py#L211) | Renders the report: a header tally (counts per status) plus, per worktree, its branch · status · plan slug, the worktree path (or `(no worktree)`), and a `→` detail line. Pure — formats a list into a string. |
+| `main()` | [`doctor_worktrees.py:239`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/doctor_worktrees.py#L239) | The CLI: parses `--project-root`, prints `_format(diagnose(root))`, and **returns `0` always** — a read-only diagnostic, never a gate. |
+
+Locked by `scripts/test_doctor_worktrees.py` — 7 hermetic tests over real git in throwaway temp repos: all five reachable states classified correctly (active / merged-but-unpruned / orphaned-dir-gone / orphaned-no-worktree / dangling-marker incl. blank marker), the plan mapping, and a full before/after snapshot (worktree registry + every ref + HEAD + on-disk dirs) asserting the probe leaves the repo byte-identical (read-only).
 
 ## `/work` argument parse rule
 
