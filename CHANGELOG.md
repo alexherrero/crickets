@@ -5,6 +5,28 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.4.0] — 2026-06-12 — Multi-plan writers: the phase loop targets named plans
+
+**MINOR — a net-new `developer-workflows` capability (additive; a bare `/work` is byte-identical).** The agentm V5-10 substrate shipped the *readers* of multi-plan state — `resolve_active_plan`, `queue_status_lite`, the `check-multi-plan-naming` gate, and named-plan-aware session-start hooks + `doctor` — the durable side that can *resolve* a scoped `PLAN-<slug>.md` / `progress-<slug>.md` pair from the shared vault. But nothing in the phase loop could *target* one: `/work`, `/plan`, and `/review` only ever bound the unnamed singleton pair. **This release is the behavioral writers half.** The three phases now accept an optional `--name <slug>`, resolve it through a thin bridge that *calls* the agentm engine (`resolve_plan.py` — it never reimplements path resolution), and read/write the scoped named pair instead of the singleton. A bare invocation keeps the exact prior behavior, so back-compat is load-bearing and the change is additive-only — the same contract the agentm readers held. How it's used: the [Run a named plan](https://github.com/alexherrero/crickets/wiki/Run-A-Named-Plan) how-to + the [Named Plans](https://github.com/alexherrero/crickets/wiki/Named-Plans) reference. **No paired agentm release** — the V5 substrate is committed to agentm `main` but unreleased; its formal V5 release is a separate-repo concern, and [agentm's Named-Plans page](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/Named-Plans.md) records this behavioral half as shipped.
+
+### Added
+
+- **`resolve_plan.py` — the named-plan resolver bridge** (`src/developer-workflows/scripts/resolve_plan.py`, with `scripts/test_resolve_plan.py`). A read-only client that resolves the active `(PLAN, progress)` pair for a context by calling agentm's `resolve-active-plan` CLI verb — binding by an explicit `--name <slug>` or the `.harness/active-plan` marker, and **degrading gracefully to the repo-local singleton** when the agentm engine isn't installed. It deliberately *consumes* the substrate's resolution (including the loud-error guard on a dangling marker) rather than re-deriving paths — the engine owns that contract.
+- **`/work --name <slug>`** — `/work` targets a named plan: resolves via the bridge, reads `PLAN-<slug>.md`, and appends progress to the scoped `progress-<slug>.md` (not the shared singleton).
+- **`/plan --name` + `/review --name` parity** — `/plan` authors a `PLAN-<slug>.md`; `/review` reads the named pair. All three phases speak named plans now, not just `/work`.
+- **Named-plan docs** — the [Run a named plan](https://github.com/alexherrero/crickets/wiki/Run-A-Named-Plan) how-to and the [Named Plans](https://github.com/alexherrero/crickets/wiki/Named-Plans) reference (the multi-plan model, the flat shared-vault layout, the singleton back-compat contract).
+
+### Changed
+
+- **`developer-workflows` marketplace version `0.2.0` → `0.3.0`** — `version:` bumped in `src/developer-workflows/group.yaml` and regenerated into both host `plugin.json` manifests + both marketplace surfaces; pullable via `claude plugin update developer-workflows@crickets`. The other plugins are untouched and bump independently.
+- **Named-plan selection unified to a single `--name` flag** across `/work` · `/plan` · `/review` (T4 reconciled an interim per-phase spelling to one flag, so all three phases share one surface).
+
+### Internal
+
+- **Consumes the agentm V5-10 part 1 readers** — `resolve_active_plan` + `queue_status_lite` + the `resolve-active-plan` CLI bridge agentm shipped *for* these writers. The seam is one-way (crickets calls the engine; the engine never imports the phase loop).
+- **Windows CI fix** — `json.dumps` the `resolve_plan` test config fixture so the path round-trips on Windows (`1ef34bc`).
+- Specs + bridge regenerate byte-identically into both host plugins (`generate.py check` drift-gate green); the full local battery is green (`scripts/check-all.sh` — 7/7) and CI is green across Linux/Mac/Windows on the release commit's parent (`1ef34bc`).
+
 ## [v3.3.2] — 2026-06-12 — `developer-workflows` → 0.2.0: its shipped primitives become pullable
 
 **PATCH — a distribution bump, no new code.** The first plugin to exercise the per-plugin versioning [v3.3.1] just shipped. `developer-workflows` had accumulated phase-spec refinements since its original `0.1.0` publish — the full-task-list `/work` autonomy + per-task safety pre-check, the deferred-items-to-GitHub-Project offers, and the `documenter` dispatch graceful-skip wiring — but, like every plugin under the old frozen-`0.1.0` pin, existing installs could never pull them. Bumping `developer-workflows` to `0.2.0` makes those already-shipped primitives reachable through a plain `claude plugin update developer-workflows@crickets`. No `src/` logic changed in this release beyond the `version:` field; the dist churn is the regenerated manifests + marketplace entries.
