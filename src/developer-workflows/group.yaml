@@ -71,5 +71,17 @@ standalone: true
 # window's push carried this plan's earlier commits up), so the remaining #5 tasks
 # can no longer fold into 0.9.0 — they ship as 0.10.0 so consumers on 0.9.0 can
 # `claude plugin update` to the new `translate` primitive. Tasks 4–5 fold here.
-version: 0.10.0
+# 0.11.0 = recoverability-gate autonomy doctrine (PLAN-developer-workflows-autonomy
+# part 1) — a single canonical "Recoverability gate" block inlined byte-identical
+# into the three execution commands (`work.md` / `bugfix.md` / `release.md`).
+# Because Claude Code drops instruction-file snippets at emit time, the block is
+# inlined verbatim, not shared; the stop-gate it states is **recoverability, not
+# destructiveness** (recoverable → announce + proceed; unrecoverable → pre-announce
+# + stop; uncertain → treat as unrecoverable). Per-command relaxations: /work's
+# safety pre-check narrowed to the unrecoverable set; /bugfix's `gh issue *` →
+# announce + proceed; /release's summary is a record, not a stop-and-wait barrier.
+# Guarded by two new scripts/ tests auto-discovered by the unit-tests gate — a
+# byte-identity drift test across the three copies + a carve-out conformance test
+# (worktree-initiation, PII hook + pii-scrubber, no-`Co-Authored-By` stay locked).
+version: 0.11.0
 capabilities: [setup, plan, work, review, release, bugfix, documentation]
