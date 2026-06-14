@@ -180,5 +180,33 @@ class TestWorkerRole(_ActiveRoleContract, unittest.TestCase):
         self.assertIn("/integrate-worker", _text(self.role))
 
 
+class TestProjectManagerRole(_ReadOnlyRoleContract, unittest.TestCase):
+    """`project-manager` — the read-only coordinator glance over /queue-status-lite."""
+
+    role = "project-manager"
+
+    def test_wraps_queue_status_lite(self):
+        self.assertIn("/queue-status-lite", _text(self.role))
+
+    def test_forward_references_board_sync_and_v5_11(self):
+        text = _text(self.role)
+        self.assertIn("#41", text)
+        self.assertIn("V5-11", text)
+
+    def test_is_a_glance_not_a_gate(self):
+        # LC-5: the PM advises, it does not arbitrate merge order.
+        low = _text(self.role).lower()
+        self.assertIn("glance", low)
+        self.assertIn("not a gate", low)
+
+    def test_mutates_no_state(self):
+        # Positively read-only in prose, not just by allowlist.
+        low = _text(self.role).lower()
+        self.assertTrue(
+            "mutates no state" in low or "mutating anything" in low or "mutate" in low,
+            "project-manager must state it mutates no state",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
