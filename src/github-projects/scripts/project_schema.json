@@ -47,6 +47,11 @@
       "enum": ["github-board", "local-index", "none"],
       "default": "github-board"
     },
+    "items_source": {
+      "type": "string",
+      "description": "Path to the structured, agent-maintained board-items.json (the machine projection of the project's roadmap that project_model.py parses). Relative paths resolve against this project.json's directory; omit to use the sibling board-items.json. Real local paths live in the gitignored vault copy only — never in a committed file.",
+      "examples": ["board-items.json", "<vault>/_harness/board-items.json"]
+    },
     "fields": {
       "type": "object",
       "description": "Maps the frozen board field schema (Track . Type . Priority . Start . Target . Status) onto the Project's actual field names, for installs whose board uses different labels. Omit to use the canonical names verbatim.",
