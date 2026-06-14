@@ -349,7 +349,12 @@ def _resolve_vault_path(install_prefix: Optional[Path]) -> Optional[str]:
     value = data.get("vault_path")
     if not isinstance(value, str) or not value.strip():
         return None
-    return value
+    # Normalize the same way the engine reader does
+    # (harness_memory._read_config_vault_path): strip surrounding whitespace and
+    # expand a leading `~`. Returning the raw value here would make the doctor's
+    # vault-path check emit a spurious FAIL for a `~/vault` or padded path that
+    # the live engine resolves fine — a doctor-vs-engine fidelity gap.
+    return os.path.expanduser(value.strip())
 
 
 def _format(checks: list[Check]) -> str:

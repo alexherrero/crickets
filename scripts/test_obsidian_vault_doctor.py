@@ -148,6 +148,38 @@ class DoctorVaultPureRows(unittest.TestCase):
                 with mock.patch.dict(os.environ, env, clear=True):
                     self.assertIsNone(doctor._resolve_vault_path(Path(tmp)))
 
+    def test_resolve_vault_path_expands_tilde(self) -> None:
+        # Regression (task-6 /review): a `vault_path` with a leading `~` must be
+        # expanded to $HOME — the way the engine's _read_config_vault_path returns
+        # `os.path.expanduser(raw.strip())`. The old raw `return value` handed
+        # `~/somedir` downstream verbatim, so _check_vault_path's `is_dir()` saw a
+        # literal `~` path that never exists → a spurious vault-path FAIL the live
+        # engine never produces.
+        with tempfile.TemporaryDirectory() as tmp:
+            prefix = Path(tmp)
+            (prefix / ".agentm-config.json").write_text(
+                json.dumps({"vault_path": "~/somedir"}), encoding="utf-8"
+            )
+            env = {k: v for k, v in os.environ.items() if k != "MEMORY_VAULT_PATH"}
+            with mock.patch.dict(os.environ, env, clear=True):
+                self.assertEqual(
+                    doctor._resolve_vault_path(prefix),
+                    os.path.join(os.path.expanduser("~"), "somedir"),
+                )
+
+    def test_resolve_vault_path_strips_whitespace(self) -> None:
+        # Regression (task-6 /review): surrounding whitespace on `vault_path` must
+        # be stripped (engine parity) — `"  /padded  "` resolves to `/padded`, not
+        # a padded literal that fails `is_dir()` while the engine resolves it fine.
+        with tempfile.TemporaryDirectory() as tmp:
+            prefix = Path(tmp)
+            (prefix / ".agentm-config.json").write_text(
+                json.dumps({"vault_path": "  /padded  "}), encoding="utf-8"
+            )
+            env = {k: v for k, v in os.environ.items() if k != "MEMORY_VAULT_PATH"}
+            with mock.patch.dict(os.environ, env, clear=True):
+                self.assertEqual(doctor._resolve_vault_path(prefix), "/padded")
+
     def test_main_never_crashes_on_malformed_config(self) -> None:
         # Symptom-level regression: the whole CLI path must return an int exit code
         # on a malformed on-device config (LC-3 — the doctor never crashes), not
