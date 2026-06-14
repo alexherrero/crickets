@@ -14,9 +14,27 @@ You are running the **work** phase of the developer-workflows loop. Work through
 
 > The session works the **whole task list autonomously** — the unit is the plan, not a single task. What keeps that safe is the **per-task safety pre-check**: before each task, decide whether it can be done safely and autonomously, and stop to ask if it can't (or if a clarification is needed). Single-threaded execution is the load-bearing constraint — never fan out parallel implementers; the autonomy boundary is the safety check, not the task count.
 
+<!-- BEGIN recoverability-gate · canonical · byte-identical across work.md · bugfix.md · release.md (scripts/ drift test enforces) -->
+## Recoverability gate (autonomy doctrine)
+
+Invoking this phase **is** the authorization to run it to completion. The stop-gate is **recoverability, not destructiveness or blast-radius**: a recoverable action proceeds (announced); only a genuinely unrecoverable one stops for confirmation.
+
+| Class | Examples | Behavior |
+|---|---|---|
+| **Recoverable** | `git push` / `-u` / `HEAD:`; create + push a tag; `gh release create` (deletable); `gh pr merge` (revertable); `gh issue create` / `close`; force-push to your **own un-shared** worker branch; delete a branch whose tip is still reachable | **Announce + proceed** — no confirmation wait. |
+| **Unrecoverable** | force-push rewriting **published shared** history; sole-ref delete of unmerged work; **published-tag** overwrite; immutable publish / deploy / migration | **Stop + confirm** — pre-announce (state, don't ask), then wait. |
+| **Unresolved decision** | a genuine question the design/plan never settled | **Stop + ask** — and log it as a design/plan gap (an upstream phase missed it). |
+
+**When uncertain, treat as unrecoverable** (conservative default). Pre-announcing a recoverable-but-destructive action — state what is about to happen; do not ask permission — carries over verbatim. Any summary this phase produces is a **record of what the autonomous run did**, not a stop-and-wait barrier.
+
+**Close-out autonomy.** Archiving a completed plan (`PLAN.md` → `PLAN.archive.YYYYMMDD-<slug>.md`) and the rest of close-out bookkeeping (append `progress.md`, move the ROADMAP item to Completed/SHIPPED, update staging notes) is **recoverable → autonomous** — never stop to ask approval to archive or to do close-out bookkeeping.
+
+**Carve-outs — unchanged by this doctrine.** Worker-tree initiation stays operator-initiated (`/spawn-worker` + `/integrate-worker`); the PII pre-push hook + `pii-scrubber` invocation stay mandatory; the no-`Co-Authored-By` commit rule is untouched.
+<!-- END recoverability-gate -->
+
 ## Non-negotiable constraints
 
-1. **Assume the full task list; safety-gate each task.** Work the plan's tasks autonomously, in sequence — no per-task approval. Before each task, run a safety pre-check; **stop and ask only when a task fails it (hard-to-reverse / ambiguous / scope-drifting / unverifiable) or needs a clarification** — otherwise continue to the end of the plan. Single-threaded always; never fan out parallel implementers.
+1. **Assume the full task list; safety-gate each task.** Work the plan's tasks autonomously, in sequence — no per-task approval. Before each task, run a safety pre-check; **stop and ask only when a task fails it (genuinely-unrecoverable / ambiguous / scope-drifting / unverifiable — per the recoverability gate above) or needs a clarification** — otherwise continue to the end of the plan. Single-threaded always; never fan out parallel implementers.
 2. **Gates must be green before the task is marked `[x]`.** No "I'll fix this next session" on failed gates.
 3. **Never edit or delete a failing test to make it pass.** If a test is wrong, surface it and stop.
 4. **Feed full error output back** on gate failures — do not summarize. The exact error is the signal.
@@ -43,7 +61,7 @@ Then read the **resolved `PLAN.md`** (find the first unchecked `[ ]` task, or ho
 
 ### 2. Safety pre-check (before each task)
 
-The session assumes the **full task list** — it does not ask permission per task. Before starting each task, run a go/no-go safety pre-check: **proceed autonomously if the task is safe; stop and ask only when it isn't, or when an important clarification is needed.** Triggers to stop — the task is hard to reverse or touches something destructive / external / published / security-sensitive; needs a decision that isn't locked; turns out bigger or different than the plan said (scope drift); has a verification that can't be made executable or an unmet prerequisite; or surfaces a failing test that invalidates its premise. State the trigger plainly and wait — even mid-plan. Otherwise proceed to step 3.
+The session assumes the **full task list** — it does not ask permission per task. Before starting each task, run a go/no-go safety pre-check: **proceed autonomously if the task is safe; stop and ask only when it isn't, or when an important clarification is needed.** Triggers to stop — the task performs a genuinely **unrecoverable** action (per the recoverability gate above: recoverable actions proceed announced; only force-push rewriting published shared history, sole-ref delete of unmerged work, published-tag overwrite, or an immutable deploy/migration stops); needs a decision that isn't locked (an **unresolved decision** — stop, ask, and log it as a design/plan gap); turns out bigger or different than the plan said (scope drift); has a verification that can't be made executable or an unmet prerequisite; or surfaces a failing test that invalidates its premise. State the trigger plainly and wait — even mid-plan. Otherwise proceed to step 3.
 
 ### 3. Gather context (optional)
 
@@ -94,7 +112,7 @@ When to `/review` rather than straight to the next `/work`: the task touched sec
 
 ## Failure modes to avoid
 
-- **Pushing past a failed safety pre-check.** Being in an approved run isn't a license — if a task is hard-to-reverse, ambiguous, scope-drifting, or needs a clarification, stop and ask, even mid-plan.
+- **Pushing past a failed safety pre-check.** Being in an approved run isn't a license — if a task performs a genuinely *unrecoverable* action, is ambiguous, is scope-drifting, or needs a clarification, stop and ask, even mid-plan. (A recoverable-but-destructive action is not a stop trigger — announce it and proceed.)
 - **Editing tests to make them pass.** Banned — if a test is wrong, say so and stop.
 - **Skipping failed gates** ("I'll fix it next session"). Green before `[x]`.
 - **Silently expanding scope.** Surface it; don't quietly do more than the plan says.
