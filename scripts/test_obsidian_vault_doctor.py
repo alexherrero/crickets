@@ -121,6 +121,53 @@ class DoctorVaultPureRows(unittest.TestCase):
             with mock.patch.dict(os.environ, env, clear=True):
                 self.assertIsNone(doctor._resolve_vault_path(Path(tmp)))
 
+    def test_resolve_vault_path_non_object_config_returns_none(self) -> None:
+        # Regression (review finding 1): a config that is valid JSON but NOT an
+        # object (`[]`, `42`, `"x"`, `null`) must degrade to None — the way the
+        # engine's _read_config_vault_path guards `isinstance(data, dict)` — not
+        # crash with AttributeError on `data.get`. A corrupt config is exactly what
+        # the doctor should report cleanly (vault-path FAIL), never blow up on.
+        for blob in ("[]", "42", '"just-a-string"', "null", "true"):
+            with self.subTest(blob=blob), tempfile.TemporaryDirectory() as tmp:
+                (Path(tmp) / ".agentm-config.json").write_text(blob, encoding="utf-8")
+                env = {k: v for k, v in os.environ.items() if k != "MEMORY_VAULT_PATH"}
+                with mock.patch.dict(os.environ, env, clear=True):
+                    self.assertIsNone(doctor._resolve_vault_path(Path(tmp)))
+
+    def test_resolve_vault_path_non_string_value_returns_none(self) -> None:
+        # Regression (review finding 2): a truthy non-string `vault_path` (number,
+        # array, object) must collapse to None (mirroring the engine's
+        # `isinstance(raw, str)` guard) — the old `value or None` passed it through,
+        # and `Path(42)` then raised TypeError downstream in _check_vault_path.
+        for bad in (42, ["x"], {"k": "v"}, True):
+            with self.subTest(bad=bad), tempfile.TemporaryDirectory() as tmp:
+                (Path(tmp) / ".agentm-config.json").write_text(
+                    json.dumps({"vault_path": bad}), encoding="utf-8"
+                )
+                env = {k: v for k, v in os.environ.items() if k != "MEMORY_VAULT_PATH"}
+                with mock.patch.dict(os.environ, env, clear=True):
+                    self.assertIsNone(doctor._resolve_vault_path(Path(tmp)))
+
+    def test_main_never_crashes_on_malformed_config(self) -> None:
+        # Symptom-level regression: the whole CLI path must return an int exit code
+        # on a malformed on-device config (LC-3 — the doctor never crashes), not
+        # propagate AttributeError/TypeError out of main(). Drives the real
+        # resolution (AGENTM_INSTALL_PREFIX → synthetic config), engine absent so
+        # the rows degrade to WARN/FAIL deterministically.
+        for blob in ("[]", '{"vault_path": 42}'):
+            with self.subTest(blob=blob), tempfile.TemporaryDirectory() as tmp:
+                (Path(tmp) / ".agentm-config.json").write_text(blob, encoding="utf-8")
+                env = {k: v for k, v in os.environ.items()
+                       if k not in ("MEMORY_VAULT_PATH", "AGENTM_SCRIPTS")}
+                env["AGENTM_INSTALL_PREFIX"] = tmp
+                with mock.patch.dict(os.environ, env, clear=True):
+                    with mock.patch.object(doctor, "locate_kernel_scripts", return_value=None):
+                        buf = io.StringIO()
+                        with redirect_stdout(buf):
+                            rc = doctor.main([])
+                self.assertIn(rc, (0, 1))  # an exit code, not an exception
+                self.assertIn("vault-path", buf.getvalue())
+
     def test_format_one_row_per_check(self) -> None:
         rows = [
             doctor.Check("vault-path", doctor.OK, "ok"),

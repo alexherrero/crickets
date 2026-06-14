@@ -340,8 +340,16 @@ def _resolve_vault_path(install_prefix: Optional[Path]) -> Optional[str]:
         data = json.loads(cfg.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
+    # Mirror the engine's own defensive guards (harness_memory._read_config_vault_path):
+    # a corrupt config may be valid JSON yet not an object, or carry a non-string
+    # `vault_path`. The doctor must degrade to None (→ a clean vault-path FAIL row),
+    # never crash on `data.get` (AttributeError) or `Path(<non-str>)` (TypeError).
+    if not isinstance(data, dict):
+        return None
     value = data.get("vault_path")
-    return value or None
+    if not isinstance(value, str) or not value.strip():
+        return None
+    return value
 
 
 def _format(checks: list[Check]) -> str:
