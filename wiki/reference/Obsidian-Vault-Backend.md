@@ -2,7 +2,7 @@
 # Obsidian vault backend
 
 > [!IMPORTANT]
-> **Status: pending** (V5-2). This page is a forward-declared skeleton — the `obsidian-vault` plugin is not yet built. A later `/work` task flips it to a documented surface only once the diff proves each row. Do not treat any value below as shipped; rows are reserved, not verified.
+> **Status: pending** (V5-2). This page is a forward-declared skeleton — the `obsidian-vault` plugin is built but **not yet the live backend** (V5-2 parallel-run, pre-V5-3-cutover). A later `/work` task flips it to a documented surface only once the diff proves each row. Do not treat any value below as shipped; rows are reserved, not verified.
 
 The `obsidian-vault` plugin is a crickets plugin (group version 0.1.0) that re-homes the agentm memory engine's `vault` storage backend out of the agentm kernel and into a crickets plugin. The backend is **agentm-facing**: it ships as the plugin's `scripts/` payload, the agentm engine discovers and loads it, and the host (Claude Code / Antigravity) never calls it directly. This page indexes what the backend implements, the descriptor it declares, and the discovery/lock contract it lives under.
 
@@ -11,7 +11,7 @@ The `obsidian-vault` plugin is a crickets plugin (group version 0.1.0) that re-h
 | Aspect | Value |
 |---|---|
 | Plugin slug | `obsidian-vault` |
-| Group version | 0.1.0 |
+| Group version | 0.2.0 (V5-2 task 6 — added the `vault-doctor` skill + `doctor_vault.py`) |
 | Audience | agentm engine (agentm-facing, not host-facing) |
 | Packaging | plugin `scripts/` payload — **not** a new manifest `kind:` |
 | Protocol name | `vault` |
@@ -59,9 +59,14 @@ The plugin carries the vault-specific machinery beside the backend.
 | vault probe | detection / ranking of a present vault |
 | GDrive conflict-merger | sync-conflict detection family + the whole-file merge strategy |
 | `conflict-merger-session-start` hook | session-start nudge (Claude Code only — see Host coverage) |
+| `vault-doctor` skill | operator-facing health check over `doctor_vault.py`; reachable on **both** hosts (`supported_hosts: [claude-code, antigravity]`) |
+| `doctor_vault.py` | read-only `doctor` check — three rows (`vault-path` / `backend` / `conflicts`), exit 1 only on a `FAIL`; constructs no backend, writes neither the vault nor the engine config |
 | state migration script | per-project state migration |
 
-_Component contracts pending — filled by `/work` once the task ships._
+> [!NOTE]
+> The `vault-doctor` skill and `doctor_vault.py` shipped in V5-2 task 6 and are reachable today; the remaining rows in this table stay pending until the diff proves each. The skill + doctor are the Antigravity-reachable substitute for the Claude-only session-start nudge — see [Host coverage](#host-coverage).
+
+_Remaining component contracts pending — filled by `/work` once the task ships._
 
 ## Discovery + lock contract
 
@@ -103,13 +108,11 @@ _Proof harness pending — filled by `/work` once the task ships._
 
 | Host | Conflict-merger nudge | Detector reachability |
 |---|---|---|
-| Claude Code | automatic session-start nudge fires | reachable |
-| Antigravity | no automatic nudge (no `SessionStart` event) | still reachable via the operator skill + a doctor check |
+| Claude Code | automatic session-start nudge fires (`conflict-merger-session-start` hook) | reachable — automatic + on-demand |
+| Antigravity | no automatic nudge (no `SessionStart` event) | reachable on demand via the `vault-doctor` skill + `doctor_vault.py`'s `conflicts` check |
 
 > [!NOTE]
-> On Antigravity, detection is not lost — only the automatic nudge. The detector stays reachable through the operator skill and the doctor check.
-
-_Host-coverage details pending — filled by `/work` once the task ships._
+> On Antigravity, detection is **not** lost — only the automatic nudge. The detector stays reachable through the `vault-doctor` skill (`supported_hosts: [claude-code, antigravity]`) and `doctor_vault.py`'s read-only `conflicts` check. Both shipped in V5-2 task 6. See the [Antigravity limitations register → Hooks](Antigravity-Limitations#2--hooks) for the host-gap context.
 
 ## See also
 

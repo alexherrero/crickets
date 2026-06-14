@@ -62,7 +62,7 @@
       "description": "The Obsidian/Google-Drive vault storage backend for the agentm memory engine — re-homed out of the kernel behind the V5-1 storage seam. Ships the `vault` named backend (and, across V5-2, the vault-specific machinery) as an agentm-discovered scripts/ payload.",
       "name": "obsidian-vault",
       "source": "./plugins/obsidian-vault",
-      "version": "0.1.0"
+      "version": "0.2.0"
     },
     {
       "description": "Scan diffs and the working tree for personal information (emails, personal paths, API keys, phone numbers) before commit or push.",

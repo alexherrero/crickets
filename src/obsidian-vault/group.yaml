@@ -14,4 +14,8 @@ capabilities: [storage-backend]
 # (storage_vault.py) as the agentm-facing scripts/ payload, byte-faithful per LC-1.
 # The built-in vault backend stays in the kernel through V5-2; this is the copy
 # V5-3 keeps once parallel-run proves the two identical.
-version: 0.1.0
+# 0.2.0 = V5-2 task 6 — packaging: the operator-facing `vault-doctor` skill +
+# the read-only `scripts/doctor_vault.py` health check (vault-path shape /
+# backend selection / conflict-file sweep), reachable on both hosts (the
+# Antigravity SessionStart-nudge substitute).
+version: 0.2.0

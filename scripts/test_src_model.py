@@ -41,18 +41,24 @@ class TestSrcModel(unittest.TestCase):
         # group asset under scripts/ (LC-2 — engine-consumed, not a host primitive).
         # Task 2 additionally re-homed the vault-specific conflict-merger out of the
         # kernel: scripts/vault_conflicts.py (another group asset) + the
-        # conflict-merger-session-start hook, the sole *discovered* primitive. The
-        # hook is claude-only (SessionStart has no Antigravity equivalent); the
-        # backend scripts emit on every host, so the group still supports both.
+        # conflict-merger-session-start hook. Task 6 adds the operator-facing
+        # `vault-doctor` skill (the thin packaging surface over the read-only
+        # scripts/doctor_vault.py). So two *discovered* primitives now: the
+        # claude-only hook (SessionStart has no Antigravity equivalent) + the skill
+        # (both hosts). The backend scripts emit on every host, so the group still
+        # supports both.
         ov = by["obsidian-vault"]
         self.assertTrue(ov.standalone)
         self.assertEqual(ov.requires, [])
         self.assertEqual(ov.enhances, [])
         self.assertEqual(ov.capabilities, ["storage-backend"])
         self.assertEqual({(p.name, p.kind) for p in ov.primitives},
-                         {("conflict-merger-session-start", "hook")})
-        cm = ov.primitives[0]
+                         {("conflict-merger-session-start", "hook"),
+                          ("vault-doctor", "skill")})
+        cm = {p.name: p for p in ov.primitives}["conflict-merger-session-start"]
         self.assertEqual(cm.supported_hosts, ["claude-code"])
+        doctor = {p.name: p for p in ov.primitives}["vault-doctor"]
+        self.assertEqual(sorted(doctor.supported_hosts), ["antigravity", "claude-code"])
         self.assertTrue(ov.has_group_assets())
         self.assertTrue(ov.supports("claude-code"))
         self.assertTrue(ov.supports("antigravity"))

@@ -30,6 +30,8 @@ The following is a list of Antigravity (`agy`) limitations that constrain cricke
 
 **Mitigation.** Ship the hooks Claude-effective; on Antigravity they run observe-only. A future Python sidecar (`crickets-hooks-py`?) could translate the file-based hook scripts to SDK decorator registration at agent-author boot.
 
+The `obsidian-vault` plugin's `conflict-merger-session-start` hook is a concrete instance: it fires its GDrive/DriveFS conflict-file nudge at session boot on Claude Code only — Antigravity has no `SessionStart` event, so the automatic nudge never fires. Detection is **not lost** there, only the automatic nudge: the plugin's `vault-doctor` skill (`supported_hosts: [claude-code, antigravity]`) and the read-only `doctor_vault.py` `conflicts` check are the Antigravity-reachable substitute — same detector, run on demand. See [Obsidian vault backend → Host coverage](Obsidian-Vault-Backend#host-coverage).
+
 **Re-assess when** `agy` ships a file-based or plugin-installable hook surface.
 
 ## 3 — Multi-agent orchestration
