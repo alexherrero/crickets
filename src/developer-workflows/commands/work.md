@@ -43,7 +43,7 @@ Invoking this phase **is** the authorization to run it to completion. The stop-g
 7. **Do not touch `wiki/` during implementation.** Documentation updates are phase-boundary-only.
 8. **After gates are green (before committing), dispatch the `documenter` sub-agent** with the task spec + the diff (via the `wiki-maintenance` capability probe — exit 0 dispatch, exit 1 skip). It flips matching `pending → implemented` pages and adds operational pages if the task introduced one. Resolve `OPEN QUESTIONS` before committing.
 9. **End by updating the resolved `PLAN.md` (mark `[x]`), the resolved `progress.md` (append line), and committing.**
-10. **Offer deferred items to the GitHub Project** (optional). If this session surfaced anything *out of task scope* (adjacent bug, refactor opportunity, stale doc elsewhere — not follow-ups to the current task), propose one item per finding via `gh project item-create`, batched into a single preview at phase end. Silent-skip if `.harness/project.json` absent or `gh` unavailable. **No `gh` without confirmation.** Then stop.
+10. **Sync the task to the GitHub Project board** (optional, graceful-skip). When `github-projects` is installed (capability probe) + `.harness/project.json` present + `gh` authed, emit a **Task progress** update for the just-completed task via the github-projects plugin's `project_sync.py post --type task-progress`; capture any out-of-task-scope findings (adjacent bug, refactor, stale doc elsewhere — not follow-ups to the current task) into `board-items.json` as board-backed `Backlog-item`s (**never** raw `gh project item-create` — an unbacked board issue is an orphan the `vault==board` gate flags as drift). Deterministic + idempotent → announce + proceed. Silent-skip (zero behavior change) if the plugin, `project.json`, or `gh` is absent. Then stop.
 
 ## Process
 
@@ -100,9 +100,14 @@ Probe with `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/capability_probe.py" wiki-mai
 
 One task, one commit, referencing the task. Follow project trailer conventions (check recent `git log`). **Do not add a `Co-Authored-By:` trailer** — the user is the sole author of intent, the agent is the tool. Don't use `--no-verify`; let pre-commit hooks run.
 
-### 10. Offer deferred items to the GitHub Project (optional)
+### 10. Sync the task to the GitHub Project board (graceful-skip)
 
-If `.harness/project.json` exists and `gh` is authed, consider whether this session surfaced anything **out of task scope** (an adjacent bug, a refactor, missing coverage elsewhere, a stale doc) — *not* follow-ups to the current task. Batch one item per finding into a single preview after the commit. Preview-and-ask is non-negotiable. Silent-skip if absent / nothing surfaced.
+Probe with `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/capability_probe.py" github-projects`. On **exit 1** (plugin absent, or no `CLAUDE_PLUGIN_ROOT`) skip silently — zero behavior change. On **exit 0** with `.harness/project.json` present and `gh` authed, after the commit:
+
+- **Task progress** — emit the just-completed task's progress line to its board item: `python3 "${CLAUDE_PLUGIN_ROOT}/../github-projects/scripts/project_sync.py" post --config <project.json> --type task-progress --id <task-id> --commit <SHA> --summary "<one human sentence>"`. The `--type task-progress` shortcut folds the `②Progress` line into `board-items.json` and re-renders; the renderer owns the date/SHA→link, you supply only the sentence. Per **DC-1** Tasks materialize only under the active plan.
+- **Out-of-scope findings** — anything surfaced this session that's *not* a follow-up to the current task (an adjacent bug, a refactor, missing coverage elsewhere, a stale doc) → record in `board-items.json` as a `Backlog-item` so the next sync materializes it; **never** raw `gh project item-create` (an unbacked board issue is an orphan the `vault==board` gate flags as drift).
+
+The write path is deterministic, one-way, idempotent-by-stable-id → recoverable; **announce + proceed** (preview with `--dry-run`). Silent-skip if `project.json` or `gh` is absent.
 
 ### 11. Loop or stop
 

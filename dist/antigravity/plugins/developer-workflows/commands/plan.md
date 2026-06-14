@@ -22,7 +22,7 @@ You are running the **plan** phase of the developer-workflows loop. Turn a brief
 4. **Write the plan using the PLAN.md shape** below.
 5. **Update `.harness/features.json`** only if this plan introduces net-new user-visible features.
 6. **Dispatch the `documenter` sub-agent** (via the `wiki-maintenance` capability probe — exit 0 dispatch, exit 1 skip) once `PLAN.md` is written, to create `pending` pages for tasks affecting user-visible behavior or architecture.
-7. **Offer deferred items to the GitHub Project** (optional) — scan `## Out of scope` for intentionally-deferred items (not hard non-goals); batch a single preview; **no `gh` without confirmation**; silent-skip if `.harness/project.json` absent or `gh` unavailable.
+7. **Sync the plan to the GitHub Project board** (optional, graceful-skip) — when `github-projects` is installed (capability probe) + `.harness/project.json` present + `gh` authed, record the new plan in `board-items.json` and emit its kickoff via the github-projects plugin's `project_sync.py post`; capture `## Out of scope` deferrals as board-backed `Backlog-item`/`Idea` entries in `board-items.json` (**never** a raw `gh project item-create` — an unbacked board issue is an orphan the `vault==board` gate flags as drift). Deterministic + idempotent → announce + proceed. Silent-skip (zero behavior change) if the plugin, `project.json`, or `gh` is absent.
 8. **Append one line to the resolved `progress.md`** (the scoped `progress-<slug>.md` for `--name`; the singleton for `--stage` and `--activate`, which have no run-scoped log yet).
 9. **End with a ≤5-bullet summary.** Next command is `/work`.
 
@@ -96,9 +96,14 @@ A feature is a user-visible capability (changelog-worthy); a task is a unit of w
 
 Probe with `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/capability_probe.py" wiki-maintenance`. On **exit 0** dispatch its `documenter` with the new `PLAN.md` to create/update `pending` pages for tasks affecting user-visible behavior or architecture (Feature/Subsystem pages, how-to skeletons, reference rows). It does not touch `Home.md` / `_Sidebar.md` (release-time concerns). Resolve any `OPEN QUESTIONS` before `/work`. On **exit 1** (absent, or no `CLAUDE_PLUGIN_ROOT`) skip silently.
 
-### 7. Offer deferred items to the GitHub Project (optional)
+### 7. Sync the plan to the GitHub Project board (graceful-skip)
 
-If `.harness/project.json` exists and `gh` is authed, scan `## Out of scope` for **intentionally-deferred** items (not hard non-goals) and propose one project item each, batched into a single preview. Preview-and-ask is non-negotiable — no `gh project item-create` without confirmation. Silent-skip if `project.json` absent or `gh` unavailable.
+Probe with `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/capability_probe.py" github-projects`. On **exit 1** (plugin absent, or no `CLAUDE_PLUGIN_ROOT`) skip silently — zero behavior change. On **exit 0** with `.harness/project.json` present and `gh` authed, mirror this `/plan` onto the board:
+
+- **Plan kickoff** — record the new plan in `board-items.json` (the agent-maintained item source beside `project.json`, kept current like `features.json`; `items_source` in the config may redirect it) as a `Plan` under its Feature/Sub-feature parent with its kickoff goal, then render+write it: `python3 "${CLAUDE_PLUGIN_ROOT}/../github-projects/scripts/project_sync.py" post --config <project.json> --id <plan-id>` (full re-render — kickoff is template-driven, not a `--type` flag stage). Per **DC-1** a Plan posts only once it's the active plan; a staged/future plan is recorded but not posted.
+- **Deferred items** — capture each intentionally-deferred `## Out of scope` entry into `board-items.json` as a `Backlog-item` (or `Idea`) so the next sync materializes it. Add them to the vault source, **never** raw `gh project item-create` — an item not backed by `board-items.json` is an orphan the `vault==board` gate (the `github-projects` check-all gate) flags as drift.
+
+The render+write path is deterministic, one-way, and idempotent-by-stable-id (a re-run repairs, never duplicates) → recoverable, so **announce + proceed**; preview the exact `gh` argv with `--dry-run` first. Silent-skip if `project.json` or `gh` is absent.
 
 ### 8. Stop
 

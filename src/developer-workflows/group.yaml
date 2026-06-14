@@ -83,5 +83,15 @@ standalone: true
 # Guarded by two new scripts/ tests auto-discovered by the unit-tests gate — a
 # byte-identity drift test across the three copies + a carve-out conformance test
 # (worktree-initiation, PII hook + pii-scrubber, no-`Co-Authored-By` stay locked).
-version: 0.11.0
+# 0.12.0 = github-projects board-sync phase hook-points (#41 board-sync, task 7) —
+# refines the "GitHub Project" step in `/plan` (Plan kickoff) / `/work` (Task
+# progress) / `/release` (Plan + Feature closeout) and adds a graceful-skip note to
+# `/bugfix` so each emits to a board via the github-projects plugin's
+# `project_sync.py post` when that plugin is installed (capability probe) +
+# `.harness/project.json` present + `gh` authed. Deferrals are captured into the
+# vault `board-items.json` (board-backed) instead of a raw `gh project item-create`
+# that the `vault==board` gate would flag as an orphan. Recoverable + idempotent →
+# announce + proceed; silent-skip (zero behavior change) when the plugin/config/gh
+# is absent — so developer-workflows standalone is unchanged.
+version: 0.12.0
 capabilities: [setup, plan, work, review, release, bugfix, documentation]
