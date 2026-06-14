@@ -21,8 +21,13 @@ bash scripts/check-all.sh
 | `check-syntax` | `bash -n` every `.sh` (CI also AST-parses every `.ps1`) |
 | `check-hook-parity` | Asserts every `developer-safety` hook keeps its `.sh`/`.ps1` twins behaviorally paired — neither twin may reference a workspace-relative `.harness/…` path without first resolving the workspace from the host's hook-input contract (`workspacePaths` + a `cd`/`Set-Location`). |
 | `check-no-pii` | the PII regex scanner over the whole tree (crickets is public) |
+| `conformance-suite` _(pending — V5-2)_ | **Not yet active.** Will assert the `obsidian-vault` plugin backend is GREEN on the V5-1-authored conformance suite (verb battery + byte-identical LF-exact markdown round-trip). _Filled by `/work` once the task ships._ |
+| `parallel-run` _(pending — V5-2)_ | **Not yet active.** Will assert the `obsidian-vault` plugin backend resolves byte-identically against the still-present built-in backend. _Filled by `/work` once the task ships._ |
 
 It prints a PASS/FAIL table and exits non-zero on any failure. Run it before every commit.
+
+> [!NOTE]
+> The `conformance-suite` and `parallel-run` rows above are **pending (V5-2)** — forward-declared for the `obsidian-vault` plugin and not part of the active battery yet. Their green is what will trigger the later V5-3 cutover. See [Obsidian vault backend](Obsidian-Vault-Backend).
 
 ## The CI matrix
 
@@ -53,3 +58,4 @@ When a new check earns its keep, add it in **both places**: a `run` line in `scr
 - [Modify a plugin](Modify-A-Plugin) — the edit → generate → dogfood loop the gates protect.
 - [Manifest schema](Manifest-Schema) — the contract `lint_src` enforces.
 - [PII Guardrail](PII) — the interactive layer of the PII defense the gates back-stop.
+- [Obsidian vault backend](Obsidian-Vault-Backend) — the pending plugin whose conformance-suite + parallel-run gates are forward-declared above.

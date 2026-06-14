@@ -11,6 +11,8 @@
 - [Spawn a worker in a worktree](Spawn-A-Worker-In-A-Worktree)
 - [Integrate a worker](Integrate-A-Worker)
 - [See every active plan](See-Every-Active-Plan)
+- [Run a coordinator-directed worker team](Run-A-Coordinator-Directed-Worker-Team) _(pending)_
+- [Install the vault backend](Install-The-Vault-Backend) _(pending)_
 ### 📖 [Reference](Reference)
 ### 🏛️ [Architecture](Architecture)
 ### 🧩 [Designs](Designs)
