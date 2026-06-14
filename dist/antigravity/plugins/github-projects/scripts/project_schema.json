@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/alexherrero/crickets/github-projects/project.schema.json",
+  "title": "github-projects project.json",
+  "description": "Binds a vault project to a GitHub Project board for one-way, deterministic board-sync. This file lives in the gitignored vault _harness/ and may carry the real local vault path under env — NEVER commit a populated copy into a public repo. All examples here use placeholder tokens (<owner>, <repo>, <vault>) for exactly that reason.",
+  "type": "object",
+  "required": ["vault_project", "github"],
+  "additionalProperties": false,
+  "properties": {
+    "vault_project": {
+      "type": "string",
+      "description": "The vault project slug whose roadmap/plan/progress state is synthesized onto the board (e.g. \"crickets\", \"agentm\"). project_sync.py reads this project's harness state and renders it through the per-type templates.",
+      "examples": ["crickets"]
+    },
+    "github": {
+      "type": "object",
+      "description": "The target GitHub Project (v2) board and the repo whose Issues back its items.",
+      "required": ["owner", "number"],
+      "additionalProperties": false,
+      "properties": {
+        "owner": {
+          "type": "string",
+          "description": "GitHub account that owns the Project (user or org login).",
+          "examples": ["<owner>"]
+        },
+        "number": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The Project's number — the N in /users/<owner>/projects/N.",
+          "examples": [5]
+        },
+        "url": {
+          "type": "string",
+          "description": "Canonical Project URL. Optional: link construction derives it from owner+number when omitted (never hand-typed in rendered output).",
+          "examples": ["https://github.com/users/<owner>/projects/5"]
+        },
+        "repo": {
+          "type": "string",
+          "description": "owner/name of the repo whose Issues back the board items, enabling native sub-issue nesting (Version -> Feature -> Sub-feature -> Plan -> Task) and Gantt roll-up.",
+          "examples": ["<owner>/<repo>"]
+        }
+      }
+    },
+    "project_surface": {
+      "type": "string",
+      "description": "Render target. github-board is locked and the only surface shipping in v0.1.0; local-index (a vault-native markdown render target) and none are deferred follow-up modes of the same project_sync.py.",
+      "enum": ["github-board", "local-index", "none"],
+      "default": "github-board"
+    },
+    "fields": {
+      "type": "object",
+      "description": "Maps the frozen board field schema (Track . Type . Priority . Start . Target . Status) onto the Project's actual field names, for installs whose board uses different labels. Omit to use the canonical names verbatim.",
+      "additionalProperties": false,
+      "properties": {
+        "track": {"type": "string", "default": "Track", "description": "Maps to the Track field (spans V4->V7 + Backlog + Ideas)."},
+        "type": {"type": "string", "default": "Type", "description": "Maps to the Type field (Version . Feature . Sub-feature . Plan . Task . Backlog-item . Idea . Bug)."},
+        "priority": {"type": "string", "default": "Priority", "description": "Maps to the Priority field (P-tier P0-P3, fix-first at top)."},
+        "start": {"type": "string", "default": "Start", "description": "Maps to the Start date field (YYYY-MM-DD)."},
+        "target": {"type": "string", "default": "Target", "description": "Maps to the Target date field (YYYY-MM-DD)."},
+        "status": {"type": "string", "default": "Status", "description": "Maps to the Status field."}
+      }
+    },
+    "env": {
+      "type": "object",
+      "description": "Optional path overrides resolved at sync time. Real local paths live HERE in the gitignored vault copy only — never in a committed file. Keys are environment-variable names, values are absolute paths.",
+      "additionalProperties": {"type": "string"},
+      "examples": [{"MEMORY_VAULT_PATH": "<vault>", "IDEAS_SURFACE_PATH": "<vault>/_ideas"}]
+    }
+  }
+}

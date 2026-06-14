@@ -36,7 +36,8 @@ class TestSrcModel(unittest.TestCase):
         by = {g.slug: g for g in groups}
         self.assertEqual(set(by),
                          {"code-review", "developer-safety", "developer-workflows",
-                          "github-ci", "obsidian-vault", "pii", "wiki-maintenance"})
+                          "github-ci", "github-projects", "obsidian-vault", "pii",
+                          "wiki-maintenance"})
         # obsidian-vault (V5-2): the re-homed `vault` storage backend lands as a
         # group asset under scripts/ (LC-2 — engine-consumed, not a host primitive).
         # Task 2 additionally re-homed the vault-specific conflict-merger out of the

@@ -108,7 +108,7 @@ class TestClaudeEmitter(unittest.TestCase):
         self.assertEqual({p["name"] for p in mk["plugins"]},
                          {"code-review", "developer-safety",
                           "developer-workflows", "pii", "github-ci",
-                          "obsidian-vault", "wiki-maintenance"})
+                          "github-projects", "obsidian-vault", "wiki-maintenance"})
         for p in mk["plugins"]:
             self.assertEqual(p["source"], f"./plugins/{p['name']}")
             self.assertTrue((self.cdist / "plugins" / p["name"]).is_dir())

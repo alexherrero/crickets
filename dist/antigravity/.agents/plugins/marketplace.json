@@ -78,6 +78,24 @@
     },
     {
       "capabilities": [
+        "board-sync"
+      ],
+      "category": "Coding",
+      "name": "github-projects",
+      "policy": {
+        "authentication": "ON_INSTALL",
+        "installation": "AVAILABLE"
+      },
+      "requires": [
+        "developer-workflows"
+      ],
+      "source": {
+        "path": "./plugins/github-projects",
+        "source": "local"
+      }
+    },
+    {
+      "capabilities": [
         "storage-backend"
       ],
       "category": "Coding",

@@ -57,6 +57,18 @@
     },
     {
       "capabilities": [
+        "board-sync"
+      ],
+      "dependencies": [
+        "developer-workflows"
+      ],
+      "description": "One-way, deterministic board-sync — synthesizes a vault project's roadmap/plan/progress state onto a GitHub Project board via six locked per-type templates, a single idempotent project_sync.py write path, and a vault==board drift gate. The vault stays the agent's source of truth; the board is the generated human source.",
+      "name": "github-projects",
+      "source": "./plugins/github-projects",
+      "version": "0.1.0"
+    },
+    {
+      "capabilities": [
         "storage-backend"
       ],
       "description": "The Obsidian/Google-Drive vault storage backend for the agentm memory engine — re-homed out of the kernel behind the V5-1 storage seam. Ships the `vault` named backend (and, across V5-2, the vault-specific machinery) as an agentm-discovered scripts/ payload.",
