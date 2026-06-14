@@ -79,6 +79,8 @@ def _dependencies_from_block(fm_text: str) -> list[str]:
             return _parse_inline_list(inline)
         deps = []
         for nxt in lines[i + 1:]:
+            if not nxt.strip():
+                continue  # blank line: a legal YAML continuation, not the block end
             if nxt[:1] in (" ", "\t"):
                 s = nxt.strip()
                 if s.startswith("-"):
@@ -86,7 +88,7 @@ def _dependencies_from_block(fm_text: str) -> list[str]:
                     if item:
                         deps.append(item)
                 continue
-            break  # back to column 0 → the dependencies block ended
+            break  # a non-blank line back at column 0 → a new key; the block ended
         return deps
     return []
 

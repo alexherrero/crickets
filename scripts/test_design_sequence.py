@@ -72,6 +72,19 @@ class TestParseDependencies(unittest.TestCase):
         fm = "dependencies:\n  - a\nestimated_scope: S\n"
         self.assertEqual(ds._dependencies_from_block(fm), ["a"])
 
+    def test_block_form_survives_blank_line(self):
+        # Regression (post-review bugfix 2026-06-13): a blank line between block
+        # list items is a legal YAML continuation — it must NOT terminate the list
+        # and silently drop every later edge (which silently corrupts the topo
+        # order downstream). Fails before the fix (returns ['a']).
+        fm = "dependencies:\n  - a\n\n  - b\nestimated_scope: S\n"
+        self.assertEqual(ds._dependencies_from_block(fm), ["a", "b"])
+
+    def test_block_form_survives_whitespace_only_line(self):
+        # A whitespace-only line (spaces/tabs, no items) is also a continuation.
+        fm = "dependencies:\n  - a\n   \n  - b\nestimated_scope: S\n"
+        self.assertEqual(ds._dependencies_from_block(fm), ["a", "b"])
+
     def test_strips_quotes(self):
         self.assertEqual(ds._dependencies_from_block('dependencies: ["a", "b"]\n'),
                          ["a", "b"])
@@ -219,6 +232,25 @@ class TestSequenceCLI(unittest.TestCase):
         (self.parts / "a.md").write_text(_part("a", ["b"]), encoding="utf-8")
         (self.parts / "b.md").write_text(_part("b", ["a"]), encoding="utf-8")
         self.assertEqual(ds.main(["design_sequence.py", "order", str(self.parts)]), 2)
+
+    def test_blank_line_in_block_deps_preserves_order(self):
+        # Regression (post-review bugfix 2026-06-13): a part whose dependencies are
+        # a YAML block list with a stray blank line between items must still be
+        # sequenced AFTER all its prerequisites. Before the fix the second edge was
+        # dropped and `rollout` sorted ahead of `surface`, the part it depends on.
+        block = (
+            "---\ntitle: Rollout\nstatus: draft\nvisibility: confidential\n"
+            "part_slug: rollout\ndependencies:\n  - foundations\n\n  - surface\n"
+            "estimated_scope: L\n---\n\n# rollout\n\n## Scope\n\nrollout scope\n"
+        )
+        (self.parts / "f.md").write_text(_part("foundations", []), encoding="utf-8")
+        (self.parts / "s.md").write_text(_part("surface", ["foundations"]), encoding="utf-8")
+        (self.parts / "r.md").write_text(block, encoding="utf-8")
+        rc, out, err = ds.sequence(str(self.parts))
+        self.assertEqual(rc, 0, err)
+        order = out.split()
+        self.assertEqual(order, ["foundations", "surface", "rollout"])
+        self.assertLess(order.index("surface"), order.index("rollout"))
 
 
 class TestStagePlanWiring(unittest.TestCase):

@@ -173,17 +173,54 @@ _HEADING_RE = re.compile(r"^#{1,3}[ \t]+\S", re.MULTILINE)
 _COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 
 
+def _blank_keep_newlines(s: str) -> str:
+    """Replace every non-newline char with a space — masks a region while keeping
+    its length + line offsets, so positions found in the masked text map 1:1 onto
+    the original."""
+    return re.sub(r"[^\n]", " ", s)
+
+
+def _mask_noncontent(text: str) -> str:
+    """A same-length copy of `text` with fenced code blocks and HTML comments
+    blanked out (newlines preserved).
+
+    Heading detection (`### Detailed Design` and the next-heading boundary) is a
+    line-regex; without this, a heading *inside* a ```` ``` ```` fence reads as a
+    real section, and a `##` line *inside* an HTML comment reads as the next
+    heading (truncating the body). Masking these non-content regions first — then
+    slicing the body from the ORIGINAL text by the masked offsets — fixes both
+    while leaving the residue check (which re-strips comments) untouched.
+    """
+    # Comments first (DOTALL, may span lines), so a ``` or `##` inside a comment
+    # can't toggle a fence or pose as a heading.
+    masked = _COMMENT_RE.sub(lambda m: _blank_keep_newlines(m.group(0)), text)
+    out, in_fence = [], False
+    for line in masked.splitlines(keepends=True):
+        if line.lstrip().startswith("```"):
+            in_fence = not in_fence
+            out.append(_blank_keep_newlines(line))
+        elif in_fence:
+            out.append(_blank_keep_newlines(line))
+        else:
+            out.append(line)
+    return "".join(out)
+
+
 def _detailed_design_body(text: str) -> str | None:
     """The raw body under `### Detailed Design`, or None if the heading is absent.
 
     Runs from just after the heading to the next h1–h3 heading, so `####`
-    subsections (the split unit) count as body rather than as boundaries.
+    subsections (the split unit) count as body rather than as boundaries. The
+    heading + boundary are located in a comment-/fence-masked copy (so a heading
+    inside a code fence or a `##` inside a comment can't fool the scan), but the
+    body is sliced from the original text so the residue check sees real content.
     """
-    m = _DETAILED_DESIGN_RE.search(text)
+    masked = _mask_noncontent(text)
+    m = _DETAILED_DESIGN_RE.search(masked)
     if not m:
         return None
     start = m.end()
-    nxt = _HEADING_RE.search(text, start)
+    nxt = _HEADING_RE.search(masked, start)
     return text[start:nxt.start()] if nxt else text[start:]
 
 

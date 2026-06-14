@@ -318,6 +318,34 @@ class TestDetailedDesignNonempty(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("no design doc", reason)
 
+    def test_detailed_design_inside_fenced_code_block_refused(self):
+        # Regression (post-review bugfix 2026-06-13): a `### Detailed Design`
+        # heading appearing ONLY inside a fenced code example is not a real
+        # authored section. The gate must refuse, not pass. Before the fix the
+        # in-fence heading matched and the gate returned (True, '').
+        text = (
+            "---\ntitle: A\nstatus: final\nvisibility: confidential\n---\n\n"
+            "## Design\n\n```markdown\n### Detailed Design\n\nexample text\n```\n\n"
+            "## Notes\n\nno real DD section here\n"
+        )
+        ok, reason = dd.detailed_design_nonempty(self._write(text))
+        self.assertFalse(ok)
+        self.assertIn("no '### Detailed Design'", reason)
+
+    def test_comment_only_with_hash_lines_refused(self):
+        # Regression (post-review bugfix 2026-06-13): a comment-only Detailed
+        # Design whose HTML comment contains a `##` line must be refused. Before
+        # the fix the in-comment `##` was mistaken for the next heading, truncating
+        # the body to an unterminated `<!--` the comment-stripper couldn't remove,
+        # so the residue counted as content and the gate returned (True, '').
+        text = _design_with_dd(
+            "\n\n<!-- Example layout:\n## Component A\ndescribe it.\n-->\n",
+            trailing="\n## Alternatives Considered\n\nWe weighed X.\n",
+        )
+        ok, reason = dd.detailed_design_nonempty(self._write(text))
+        self.assertFalse(ok)
+        self.assertIn("too sparse", reason)
+
 
 class TestDetailedDesignCLI(unittest.TestCase):
     """The `detailed-design` CLI: exit 0 on substantive, exit 2 on scaffold."""
