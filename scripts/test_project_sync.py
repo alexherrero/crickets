@@ -21,9 +21,13 @@ fixtures build real Item objects (and set ``.issue`` where a link must resolve).
 """
 from __future__ import annotations
 
+import contextlib
 import datetime
 import importlib.util
+import io
+import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -296,6 +300,371 @@ class TestRefusalsAndCompleteness(unittest.TestCase):
                 body = _render(item, graph=graph)
                 self.assertNotIn("{{", body)
                 self.assertNotIn("}}", body)
+
+
+_CFG = {
+    "vault_project": "crickets",
+    "github": {"owner": "o", "number": 5, "repo": "o/r",
+               "url": "https://github.com/users/o/projects/5"},
+}
+
+
+class TestConfig(unittest.TestCase):
+    def test_load_config_ok(self):
+        with tempfile.TemporaryDirectory() as t:
+            p = Path(t) / "project.json"
+            p.write_text(json.dumps(_CFG), encoding="utf-8")
+            cfg = ps.load_config(p)
+            self.assertEqual(cfg["github"]["number"], 5)
+
+    def test_load_config_rejects_missing_top_keys(self):
+        with tempfile.TemporaryDirectory() as t:
+            p = Path(t) / "project.json"
+            p.write_text(json.dumps({"vault_project": "x"}), encoding="utf-8")
+            with self.assertRaises(ps.SyncError):
+                ps.load_config(p)
+
+    def test_load_config_rejects_missing_github_number(self):
+        with tempfile.TemporaryDirectory() as t:
+            p = Path(t) / "project.json"
+            p.write_text(json.dumps({"vault_project": "x",
+                                     "github": {"owner": "o"}}), encoding="utf-8")
+            with self.assertRaises(ps.SyncError):
+                ps.load_config(p)
+
+    def test_project_repo_url(self):
+        self.assertEqual(ps.project_repo_url(_CFG), "https://github.com/o/r")
+
+    def test_project_repo_url_requires_repo(self):
+        with self.assertRaises(ps.SyncError):
+            ps.project_repo_url({"github": {"owner": "o", "number": 5}})
+
+    def test_project_url_from_cfg(self):
+        self.assertEqual(ps.project_url(_CFG),
+                         "https://github.com/users/o/projects/5")
+
+    def test_project_url_derived_when_absent(self):
+        cfg = {"github": {"owner": "o", "number": 9}}
+        self.assertEqual(ps.project_url(cfg),
+                         "https://github.com/users/o/projects/9")
+
+
+class TestArgvBuilders(unittest.TestCase):
+    def test_issue_create(self):
+        self.assertEqual(
+            ps.issue_create_argv("o/r", "Title", "Body"),
+            ["gh", "issue", "create", "--repo", "o/r",
+             "--title", "Title", "--body", "Body"])
+
+    def test_issue_edit(self):
+        self.assertEqual(
+            ps.issue_edit_argv("o/r", 7, "Body"),
+            ["gh", "issue", "edit", "7", "--repo", "o/r", "--body", "Body"])
+
+    def test_project_item_add(self):
+        self.assertEqual(
+            ps.project_item_add_argv("o", 5, "https://github.com/o/r/issues/9"),
+            ["gh", "project", "item-add", "5", "--owner", "o",
+             "--url", "https://github.com/o/r/issues/9"])
+
+    def test_project_create(self):
+        self.assertEqual(
+            ps.project_create_argv("o", "r"),
+            ["gh", "project", "create", "--owner", "o", "--title", "r"])
+
+    def test_item_edit_text_date_select(self):
+        self.assertEqual(
+            ps.project_item_edit_text_argv("P", "I", "F", "V"),
+            ["gh", "project", "item-edit", "--id", "I", "--project-id", "P",
+             "--field-id", "F", "--text", "V"])
+        self.assertEqual(
+            ps.project_item_edit_date_argv("P", "I", "F", "2026-06-14"),
+            ["gh", "project", "item-edit", "--id", "I", "--project-id", "P",
+             "--field-id", "F", "--date", "2026-06-14"])
+        self.assertEqual(
+            ps.project_item_edit_select_argv("P", "I", "F", "OPT"),
+            ["gh", "project", "item-edit", "--id", "I", "--project-id", "P",
+             "--field-id", "F", "--single-select-option-id", "OPT"])
+
+
+class TestPlanItemAction(unittest.TestCase):
+    def test_no_issue_is_create(self):
+        item = pm.Item(id="v", type="version", title="V")
+        self.assertEqual(ps.plan_item_action(item, "body").kind, "create")
+
+    def test_unchanged_body_is_noop(self):
+        item = pm.Item(id="v", type="version", title="V", issue=7)
+        a = ps.plan_item_action(item, "body", current_body="body")
+        self.assertEqual(a.kind, "noop")
+
+    def test_unchanged_modulo_whitespace_is_noop(self):
+        item = pm.Item(id="v", type="version", title="V", issue=7)
+        self.assertEqual(
+            ps.plan_item_action(item, "body\n", current_body="  body  ").kind,
+            "noop")
+
+    def test_changed_body_is_update(self):
+        item = pm.Item(id="v", type="version", title="V", issue=7)
+        self.assertEqual(
+            ps.plan_item_action(item, "new", current_body="old").kind, "update")
+
+    def test_existing_issue_unknown_state_forces_update(self):
+        # current_body=None on a materialized issue must NOT be assumed no-op.
+        item = pm.Item(id="v", type="version", title="V", issue=7)
+        self.assertEqual(ps.plan_item_action(item, "body").kind, "update")
+
+
+class TestBuildCommands(unittest.TestCase):
+    def test_noop_yields_no_commands(self):
+        a = ps.Action("noop", "v", "V", "body", 7)
+        self.assertEqual(ps.build_commands(a, _CFG), [])
+
+    def test_create_yields_issue_create(self):
+        a = ps.Action("create", "v", "V", "body", None)
+        cmds = ps.build_commands(a, _CFG)
+        self.assertEqual(len(cmds), 1)
+        self.assertEqual(cmds[0].argv, ps.issue_create_argv("o/r", "V", "body"))
+
+    def test_create_with_url_appends_item_add(self):
+        a = ps.Action("create", "v", "V", "body", None)
+        cmds = ps.build_commands(a, _CFG,
+                                 issue_url="https://github.com/o/r/issues/9")
+        self.assertEqual(len(cmds), 2)
+        self.assertEqual(cmds[1].argv,
+                         ps.project_item_add_argv("o", 5,
+                                                  "https://github.com/o/r/issues/9"))
+
+    def test_update_yields_issue_edit(self):
+        a = ps.Action("update", "v", "V", "body", 7)
+        cmds = ps.build_commands(a, _CFG)
+        self.assertEqual(cmds[0].argv, ps.issue_edit_argv("o/r", 7, "body"))
+
+
+class TestSyncItemIdempotency(unittest.TestCase):
+    def _version(self, issue=None):
+        return pm.Item(id="v5", type="version", title="V5", issue=issue,
+                       fields={"about": "the arc"})
+
+    def test_unchanged_state_is_noop_no_commands(self):
+        item = self._version(issue=7)
+        body = ps.render_item(item, "https://github.com/o/r", _TEMPLATES)
+        action, cmds = ps.sync_item(item, _CFG, _TEMPLATES, current_body=body)
+        self.assertEqual(action.kind, "noop")
+        self.assertEqual(cmds, [])
+
+    def test_stale_state_is_update(self):
+        item = self._version(issue=7)
+        action, cmds = ps.sync_item(item, _CFG, _TEMPLATES, current_body="stale")
+        self.assertEqual(action.kind, "update")
+        self.assertEqual(cmds[0].argv,
+                         ps.issue_edit_argv("o/r", 7, "**About:** the arc"))
+
+    def test_unmaterialized_is_create(self):
+        item = self._version(issue=None)
+        action, cmds = ps.sync_item(item, _CFG, _TEMPLATES)
+        self.assertEqual(action.kind, "create")
+        self.assertEqual(cmds[0].argv[:3], ["gh", "issue", "create"])
+
+
+class TestExecute(unittest.TestCase):
+    def _cmds(self):
+        return [ps.GhCommand(ps.issue_edit_argv("o/r", 7, "body"))]
+
+    def test_dry_run_prints_and_returns_without_running(self):
+        calls = []
+        buf = io.StringIO()
+        ran = ps.execute(self._cmds(), dry_run=True,
+                         runner=lambda argv: calls.append(argv), out=buf)
+        self.assertEqual(calls, [])  # nothing executed
+        self.assertIn("gh issue edit 7 --repo o/r --body body", buf.getvalue())
+        self.assertEqual(ran, ["gh issue edit 7 --repo o/r --body body"])
+
+    def test_live_runs_via_injected_runner(self):
+        calls = []
+        ps.execute(self._cmds(), dry_run=False, runner=lambda argv: calls.append(argv))
+        self.assertEqual(calls, [["gh", "issue", "edit", "7", "--repo", "o/r",
+                                  "--body", "body"]])
+
+
+class TestApplyUpdate(unittest.TestCase):
+    def test_task_progress_appends_entry(self):
+        item = pm.Item(id="t", type="task", title="T", fields={})
+        ps.apply_update(item, "task-progress", date="2026-06-14",
+                        commit="abc", summary="did x")
+        self.assertEqual(item.fields["progress"],
+                         [{"date": "2026-06-14", "sha": "abc", "progress": "did x"}])
+
+    def test_task_progress_appends_to_existing(self):
+        item = pm.Item(id="t", type="task", title="T",
+                       fields={"progress": [{"date": "2026-06-13", "sha": "old",
+                                             "progress": "p0"}]})
+        ps.apply_update(item, "task-progress", date="2026-06-14",
+                        commit="new", summary="p1")
+        self.assertEqual(len(item.fields["progress"]), 2)
+
+    def test_task_progress_requires_commit_and_summary(self):
+        item = pm.Item(id="t", type="task", title="T", fields={})
+        with self.assertRaises(ps.RenderError):
+            ps.apply_update(item, "task-progress", date="2026-06-14", summary="x")
+        with self.assertRaises(ps.RenderError):
+            ps.apply_update(item, "task-progress", date="2026-06-14", commit="x")
+
+    def test_plan_progress_summary_only(self):
+        item = pm.Item(id="p", type="plan", title="P", fields={})
+        ps.apply_update(item, "plan-progress", date="2026-06-14", summary="task done")
+        self.assertEqual(item.fields["progress"],
+                         [{"date": "2026-06-14", "progress": "task done"}])
+
+    def test_task_closeout_sets_closeout(self):
+        item = pm.Item(id="t", type="task", title="T", fields={})
+        ps.apply_update(item, "task-closeout", date="2026-06-15",
+                        commit="def", summary="shipped")
+        self.assertEqual(item.fields["closeout"],
+                         {"outcome": "shipped", "sha": "def", "date": "2026-06-15"})
+
+    def test_feature_progress_unsupported(self):
+        item = pm.Item(id="f", type="feature", title="F", fields={})
+        with self.assertRaises(ps.RenderError):
+            ps.apply_update(item, "feature-progress", date="2026-06-14",
+                            summary="x")
+
+    def test_plan_closeout_unsupported(self):
+        item = pm.Item(id="p", type="plan", title="P", fields={})
+        with self.assertRaises(ps.RenderError):
+            ps.apply_update(item, "plan-closeout", date="2026-06-14",
+                            commit="x", summary="y")
+
+    def test_kickoff_unsupported(self):
+        item = pm.Item(id="t", type="task", title="T", fields={})
+        with self.assertRaises(ps.RenderError):
+            ps.apply_update(item, "task-kickoff", date="2026-06-14", summary="x")
+
+    def test_bad_update_type(self):
+        item = pm.Item(id="t", type="task", title="T", fields={})
+        with self.assertRaises(ps.RenderError):
+            ps.apply_update(item, "garbage", date="2026-06-14")
+
+    def test_unknown_stage(self):
+        item = pm.Item(id="t", type="task", title="T", fields={})
+        with self.assertRaises(ps.RenderError):
+            ps.apply_update(item, "task-foo", date="2026-06-14")
+
+
+class TestFindItem(unittest.TestCase):
+    def _graph(self):
+        return {
+            "a": pm.Item(id="a", type="version", title="A", issue=7),
+            "b": pm.Item(id="b", type="version", title="B"),
+        }
+
+    def test_by_id(self):
+        self.assertEqual(ps.find_item(self._graph(), item_id="b").id, "b")
+
+    def test_by_issue(self):
+        self.assertEqual(ps.find_item(self._graph(), issue=7).id, "a")
+
+    def test_unknown_id_raises(self):
+        with self.assertRaises(ps.SyncError):
+            ps.find_item(self._graph(), item_id="z")
+
+    def test_unbound_issue_raises(self):
+        with self.assertRaises(ps.SyncError):
+            ps.find_item(self._graph(), issue=99)
+
+    def test_no_selector_raises(self):
+        with self.assertRaises(ps.SyncError):
+            ps.find_item(self._graph())
+
+
+class TestResolveFieldIds(unittest.TestCase):
+    def test_parses_fields_and_options(self):
+        canned = json.dumps({"fields": [
+            {"id": "F1", "name": "Track",
+             "options": [{"id": "O1", "name": "V5"},
+                         {"id": "O2", "name": "Backlog"}]},
+            {"id": "F2", "name": "Start"},
+        ]})
+        seen = {}
+
+        def runner(argv):
+            seen["argv"] = argv
+            return canned
+
+        ids = ps.resolve_field_ids(_CFG, runner=runner)
+        self.assertEqual(ids["Track"]["id"], "F1")
+        self.assertEqual(ids["Track"]["options"]["V5"], "O1")
+        self.assertEqual(ids["Start"]["options"], {})
+        self.assertEqual(seen["argv"],
+                         ["gh", "project", "field-list", "5",
+                          "--owner", "o", "--format", "json"])
+
+
+class TestCLIDryRun(unittest.TestCase):
+    """End-to-end ``main(['post', ...])`` regression tests. The unit tests above
+    drive sync_item/apply_update directly and so bypass main()'s three failure
+    surfaces: the importlib load of project_model (must register in sys.modules
+    before exec or the @dataclass under `from __future__` resolution fails), the
+    default templates dir (a SIBLING of scripts/, not a child), and selector
+    resolution. Each was a real bug a direct-call test could not catch."""
+
+    def _cfg_dir(self, items):
+        """Write project.json + sibling board-items.json into a temp dir; return
+        the temp dir handle and the config path. Caller owns the handle."""
+        t = tempfile.TemporaryDirectory()
+        d = Path(t.name)
+        (d / "project.json").write_text(json.dumps(_CFG), encoding="utf-8")
+        (d / "board-items.json").write_text(json.dumps({"items": items}),
+                                            encoding="utf-8")
+        return t, d / "project.json"
+
+    def test_post_renders_and_dry_runs(self):
+        # A version with a bound issue → an update (current body unknown ⇒ forced),
+        # rendered through the DEFAULT (sibling) templates dir, printed by --dry-run.
+        items = [{"id": "v5", "type": "version", "track": "V5", "title": "V5 arc",
+                  "about": "the unbundling", "issue": 7}]
+        t, cfg_p = self._cfg_dir(items)
+        try:
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                rc = ps.main(["post", "--config", str(cfg_p),
+                              "--issue", "7", "--dry-run"])
+            out = buf.getvalue()
+        finally:
+            t.cleanup()
+        self.assertEqual(rc, 0)
+        self.assertIn("gh issue edit 7 --repo o/r", out)
+        self.assertIn("**About:** the unbundling", out)
+
+    def test_post_missing_selector_raises(self):
+        t, cfg_p = self._cfg_dir(
+            [{"id": "v5", "type": "version", "title": "V5 arc", "about": "x"}])
+        try:
+            with self.assertRaises(ps.SyncError):
+                ps.main(["post", "--config", str(cfg_p), "--dry-run"])
+        finally:
+            t.cleanup()
+
+    def test_post_fold_progress_appears_in_body(self):
+        # --type plan-progress --summary folds a ② line into the plan's body, then
+        # re-renders it through main() end-to-end.
+        items = [
+            {"id": "v5", "type": "version", "title": "V5 arc", "issue": 7},
+            {"id": "f", "type": "feature", "parent": "v5", "title": "F", "issue": 8},
+            {"id": "p1", "type": "plan", "parent": "f", "title": "P", "issue": 9},
+        ]
+        t, cfg_p = self._cfg_dir(items)
+        try:
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                rc = ps.main(["post", "--config", str(cfg_p), "--issue", "9",
+                              "--type", "plan-progress", "--summary", "did it",
+                              "--dry-run"])
+            out = buf.getvalue()
+        finally:
+            t.cleanup()
+        self.assertEqual(rc, 0)
+        self.assertIn("gh issue edit 9 --repo o/r", out)
+        self.assertIn("(→ task): did it", out)
 
 
 if __name__ == "__main__":
