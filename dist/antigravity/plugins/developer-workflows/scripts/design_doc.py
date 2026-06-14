@@ -171,6 +171,10 @@ _DETAILED_DESIGN_RE = re.compile(r"^#{3}[ \t]+Detailed Design[ \t]*$", re.MULTIL
 # h1–h3 ends the section; `####` subsections are body (the split unit), not bounds.
 _HEADING_RE = re.compile(r"^#{1,3}[ \t]+\S", re.MULTILINE)
 _COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+# A `<!--` that is never closed: a comment to EOF (HTML/Markdown semantics —
+# everything after an unclosed `<!--` is commented out). Applied *after*
+# `_COMMENT_RE`, so the only surviving `<!--` is a genuinely dangling one.
+_OPEN_COMMENT_RE = re.compile(r"<!--.*\Z", re.DOTALL)
 
 
 def _blank_keep_newlines(s: str) -> str:
@@ -185,21 +189,31 @@ def _mask_noncontent(text: str) -> str:
     blanked out (newlines preserved).
 
     Heading detection (`### Detailed Design` and the next-heading boundary) is a
-    line-regex; without this, a heading *inside* a ```` ``` ```` fence reads as a
-    real section, and a `##` line *inside* an HTML comment reads as the next
-    heading (truncating the body). Masking these non-content regions first — then
-    slicing the body from the ORIGINAL text by the masked offsets — fixes both
-    while leaving the residue check (which re-strips comments) untouched.
+    line-regex; without this, a heading *inside* a ```` ``` ```` or ``` ~~~ ```
+    fence reads as a real section, and a `##` line *inside* an HTML comment reads
+    as the next heading (truncating the body). Masking these non-content regions
+    first — then slicing the body from the ORIGINAL text by the masked offsets —
+    fixes both while leaving the residue check (which re-strips comments)
+    untouched.
     """
-    # Comments first (DOTALL, may span lines), so a ``` or `##` inside a comment
-    # can't toggle a fence or pose as a heading.
+    # Comments first (DOTALL, may span lines), so a ``` / ~~~ / ## inside a comment
+    # can't toggle a fence or pose as a heading. Strip terminated `<!-- … -->`
+    # blocks, then a dangling `<!--`-to-EOF, so an unclosed comment is masked too.
     masked = _COMMENT_RE.sub(lambda m: _blank_keep_newlines(m.group(0)), text)
-    out, in_fence = [], False
+    masked = _OPEN_COMMENT_RE.sub(lambda m: _blank_keep_newlines(m.group(0)), masked)
+    # Track the *opening* fence marker so the matching marker closes it: ``` ``` ```
+    # and ``` ~~~ ``` are both CommonMark fences, and a fence opened with one must
+    # not be closed by the other.
+    out, fence = [], None
     for line in masked.splitlines(keepends=True):
-        if line.lstrip().startswith("```"):
-            in_fence = not in_fence
+        stripped = line.lstrip()
+        if fence is None and (stripped.startswith("```") or stripped.startswith("~~~")):
+            fence = stripped[:3]
             out.append(_blank_keep_newlines(line))
-        elif in_fence:
+        elif fence is not None and stripped.startswith(fence):
+            fence = None
+            out.append(_blank_keep_newlines(line))
+        elif fence is not None:
             out.append(_blank_keep_newlines(line))
         else:
             out.append(line)
@@ -245,8 +259,11 @@ def detailed_design_nonempty(path: str | os.PathLike) -> tuple[bool, str]:
     if body is None:
         return (False, f"{p}: no '### Detailed Design' section found; cannot translate a "
                        f"design without one. Not auto-repairing.")
+    # Strip terminated comments, then a dangling `<!--`-to-EOF, so neither a
+    # `<!-- … -->` block nor an unclosed comment counts as authored content.
+    stripped_body = _OPEN_COMMENT_RE.sub("", _COMMENT_RE.sub("", body))
     residue = []
-    for line in _COMMENT_RE.sub("", body).splitlines():
+    for line in stripped_body.splitlines():
         s = line.strip()
         if not s:
             continue

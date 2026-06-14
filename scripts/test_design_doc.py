@@ -346,6 +346,38 @@ class TestDetailedDesignNonempty(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("too sparse", reason)
 
+    def test_detailed_design_only_inside_tilde_fence_refused(self):
+        # Regression (post-review bugfix follow-on 2026-06-13): `~~~` fences are
+        # code fences too (CommonMark). A `### Detailed Design` heading appearing
+        # ONLY inside a `~~~` example block is not a real authored section. Before
+        # this fix only ``` ``` fences were masked, so the in-fence heading matched
+        # and the gate returned (True, '').
+        text = (
+            "---\ntitle: A\nstatus: final\nvisibility: confidential\n---\n\n"
+            "## Design\n\nFollow this layout:\n\n"
+            "~~~markdown\n### Detailed Design\n\n#### Component A\n*describe it*\n~~~\n\n"
+            "## Notes\n\nno real DD section here\n"
+        )
+        ok, reason = dd.detailed_design_nonempty(self._write(text))
+        self.assertFalse(ok)
+        self.assertIn("no '### Detailed Design'", reason)
+
+    def test_unterminated_comment_only_dd_refused(self):
+        # Regression (post-review bugfix follow-on 2026-06-13): an HTML comment
+        # opened with `<!--` but never closed is a comment to EOF — everything
+        # after it is commented out. It must be masked for boundary detection AND
+        # dropped from the residue. Before this fix the dangling comment was
+        # neither masked nor stripped, so its text counted as content and a
+        # comment-only Detailed Design returned (True, '').
+        text = _design_with_dd(
+            "\n\n<!-- One subsection per component (this comment is never closed)\n"
+            "#### Component A\n",
+            trailing="\n## Alternatives Considered\n\nWe weighed X.\n",
+        )
+        ok, reason = dd.detailed_design_nonempty(self._write(text))
+        self.assertFalse(ok)
+        self.assertIn("too sparse", reason)
+
 
 class TestDetailedDesignCLI(unittest.TestCase):
     """The `detailed-design` CLI: exit 0 on substantive, exit 2 on scaffold."""
