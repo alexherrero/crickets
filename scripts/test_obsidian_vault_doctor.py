@@ -155,6 +155,15 @@ class DoctorVaultPureRows(unittest.TestCase):
         # `~/somedir` downstream verbatim, so _check_vault_path's `is_dir()` saw a
         # literal `~` path that never exists → a spurious vault-path FAIL the live
         # engine never produces.
+        #
+        # The expectation mirrors the production call *exactly* —
+        # `os.path.expanduser("~/somedir")`, NOT `os.path.join(expanduser("~"),
+        # "somedir")`. On Windows `expanduser` preserves the literal `/` in the
+        # suffix (`C:\Users\me/somedir`) while `os.path.join` inserts a native `\`,
+        # so the join form spuriously fails on Windows though the two coincide on
+        # POSIX. Engine parity is the literal `expanduser` result — normalizing the
+        # separator in production would reintroduce the very doctor-vs-engine gap
+        # this test guards.
         with tempfile.TemporaryDirectory() as tmp:
             prefix = Path(tmp)
             (prefix / ".agentm-config.json").write_text(
@@ -164,7 +173,7 @@ class DoctorVaultPureRows(unittest.TestCase):
             with mock.patch.dict(os.environ, env, clear=True):
                 self.assertEqual(
                     doctor._resolve_vault_path(prefix),
-                    os.path.join(os.path.expanduser("~"), "somedir"),
+                    os.path.expanduser("~/somedir"),
                 )
 
     def test_resolve_vault_path_strips_whitespace(self) -> None:
