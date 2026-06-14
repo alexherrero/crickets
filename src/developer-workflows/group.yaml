@@ -66,5 +66,10 @@ standalone: true
 # `design_sequence.py`'s Kahn topo-sort), not agentm's no-Bash skill. The
 # host-specific external-review handoff is deferred (#5b); `sequence` reuses
 # `stage_plan.py` and never touches the singleton `PLAN.md`.
-version: 0.9.0
+# 0.10.0 = continues sibling #5 (the `/design translate` flow + the Detailed-Design
+# non-empty gate, tasks 3+). 0.9.0 reached origin/main mid-plan (a concurrent
+# window's push carried this plan's earlier commits up), so the remaining #5 tasks
+# can no longer fold into 0.9.0 — they ship as 0.10.0 so consumers on 0.9.0 can
+# `claude plugin update` to the new `translate` primitive. Tasks 4–5 fold here.
+version: 0.10.0
 capabilities: [setup, plan, work, review, release, bugfix, documentation]

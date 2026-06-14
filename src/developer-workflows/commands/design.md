@@ -133,9 +133,121 @@ Once `Status: final`, `/design author` **refuses** further invocations on that d
 
 ## `/design translate` — final doc → structural `parts/`
 
-*(Gate on `Status: final` via `design_doc.py gate` + the "Detailed Design non-empty" gate → propose a part split (one per Detailed-Design subsection; cap-of-6 soft warning + `--allow-large-design`) → interactive reshape loop → write `<doc-dir>/parts/<part-slug>.md` with inherited + part-specific frontmatter → never silent-clobber → append one Document-History row to the parent. Status stays `final`.)*
+`translate` consumes a `Status: final` design doc and produces N structural-part files at `<doc-dir>/parts/<part-slug>.md` — each a focused implementation slice small enough for one `/design sequence` → `/work` cycle. translate is **read-mostly** with respect to the parent: it appends one Document-History row and bumps `updated`, but **never changes Status** (only `/design author` and the harness `/release` do).
 
-> Full translate flow lands in task 3 of this plan.
+**Inputs.** `<slug>` (or full path — resolve via the two-path lookup in *Storage resolution*; if both exist, ask which) and `--allow-large-design` (optional — bypasses the cap-of-6 soft warning; if you reach for it twice running, split the *design* upstream instead).
+
+### Step 1 — Preconditions (two hard gates, both via the tested helper)
+
+Both gates are deterministic, so they live in `design_doc.py` — call them; never re-derive a gate in this prompt.
+
+1. **`Status: final`** — run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_doc.py" gate <path>`. Exit 0 → final, continue. Exit 2 → **halt** and surface stderr verbatim (it carries the state-specific refusal — draft/review/launched/malformed — pointing back to `/design author <slug>`). Never auto-repair.
+2. **Detailed Design non-empty** — run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_doc.py" detailed-design <path>`. Exit 0 → the section has substantive content (prose or a `####` subsection), continue. Exit 2 → **halt** and surface stderr (`Detailed Design has no content; design too sparse to translate. Author at least one Detailed Design subsection before re-running.`). This gate exists because the `### Detailed Design` subsections drive the Step-3 split heuristic — a scaffold-only section has nothing to split.
+
+These two refusals are the contract layer between `/design author` (produces the parent) and `/design sequence` (consumes `parts/`). Bypassing either loses the traceability from human-approved design to executed plans.
+
+### Step 2 — Read the design
+
+Read the full parent. Parse the 10 sections and hold for Step 3:
+
+- `## Design / ### Detailed Design` subsections — drive the part-split heuristic.
+- `## Dependencies` — each part may inherit a subset.
+- `## Quality Attributes` sub-attrs — extract the part-specific concerns into each part's Verification.
+- `## Operations` sub-sections — extract part-specific ops concerns.
+- `## Project management / ### Work estimates` — informs each part's `estimated_scope`.
+
+### Step 3 — Propose a part split
+
+Heuristics:
+
+- **Default:** one part per top-level subsection of Detailed Design.
+- **Group** tightly-coupled subsections into one part when the downstream one only makes sense given the upstream (e.g. a Security model conditional on an Infrastructure choice), or they share one deployable unit (one migration + one API surface + one runbook = one part).
+- **Split** a single subsection into multiple parts only if its scope is genuinely larger than one PLAN cycle can absorb.
+- **Cap ~6.** More than 6 → soft warning: *"This design proposes \<N\> parts (>6). Consider splitting the design itself into multiple documents — usually a clearer story than a megadesign. Re-run with `--allow-large-design` to override."* Soft only; `--allow-large-design` overrides.
+
+For each proposed part populate: **slug** (kebab-case, the filename), **title** (the part h1), **scope** (1–2 paragraphs lifted from the source subsection(s)), **dependencies** (other part slugs; empty for foundational parts), **verification criteria** (falsifiable claims from the parent's Quality Attributes / Operations / Documentation Plan rows that apply), **estimated_scope** (`S` one short `/work` session · `M` multiple sessions, single PLAN · `L` large — consider splitting).
+
+### Step 4 — Human review of the split
+
+Present the split as a table, then ask **Approve / Reshape / Cancel**:
+
+```
+Proposed split for <parent-slug> (Status: final):
+
+| # | Slug | Title | Dependencies | Est. | Source sections |
+|---|------|-------|--------------|------|-----------------|
+| 1 | foundations | Foundations: data model + access layer | (none) | M | Detailed Design §1, §2 |
+| 2 | command-surface | Command surface + status display | depends on #1 | S | Detailed Design §3 |
+| 3 | rollout | Rollout: feature flag + telemetry | depends on #1, #2 | S | Detailed Design §4 + Operations §Monitoring |
+
+Total: 3 parts. Approve / Reshape / Cancel?
+```
+
+- **Approve** → Step 5.
+- **Reshape** → enter the reshape sub-loop; re-present the table after each op; loop until Approve:
+  - `merge <slug-a> <slug-b>` — combine two parts; propose merged title/scope/verification; re-confirm.
+  - `split <slug>` — split one part into two; propose the split lines; re-confirm.
+  - `rename <old-slug> <new-slug>` — rename without changing structure.
+  - `reorder <slug-list>` — change ordering (a numbering hint for Step 5; doesn't affect dependencies).
+- **Cancel** → halt without writing anything; parent unmodified.
+
+The reshape loop is the human's primary lever — the proposed split is a starting point, not the answer.
+
+> **External review is deferred (#5b).** agentm offers a "Hand off for external review" branch here (a `proposed-split-<slug>.md` transfer file → Antigravity/Gemini reshape → resume diff-review). crickets ships the **inline** reshape loop only; this is a one-line pointer, **not** a live handoff — see *External review is deferred* above.
+
+### Step 5 — Write the part files
+
+For each approved part, write `<doc-dir>/parts/<part-slug>.md` (create `parts/` if absent):
+
+```yaml
+---
+# Inherited from parent design
+title: <part-specific title>
+status: draft
+visibility: <inherited>
+author: <inherited>
+contributors: <inherited>
+created: <today>
+updated: <today>
+last_major_revision: <today>
+
+# New part-specific fields
+parent_design: ../<parent-slug>.md
+part_slug: <slug>
+dependencies: [<other-part-slugs>]
+estimated_scope: S|M|L
+---
+
+# <Title>
+
+## Scope
+
+<1-2 paragraphs lifted from the parent's Detailed Design subsection(s).>
+
+## Dependencies
+
+<List with rationale, e.g. "depends on foundations: needs the data model + access layer before the command surface can wire up.">
+
+## Verification criteria
+
+<Bulleted falsifiable claims from the parent's Quality Attributes / Operations / Documentation Plan rows that apply to this part.>
+
+## Parent design
+
+This part implements one slice of [<parent-title>](../<parent-slug>.md) (`Status: final`). See the parent for Context, Alternatives Considered, the Quality Attributes overview, and the Operations strategy. Mid-execution scope changes to this part are appended to the parent's Document History.
+```
+
+**Never silent-clobber.** If a part file already exists (re-running translate), show the diff and ask **Overwrite / Keep existing / Cancel** per file.
+
+### Step 6 — Update the parent's Document History
+
+After all part files are written, append one row to the parent's Document History table and bump `updated` to today:
+
+```
+| <today> | Translated to N parts via /design translate: <comma-separated part slugs>. | final |
+```
+
+The parent's `Status` **stays `final`** — translate never changes Status.
 
 ## `/design sequence` — `parts/` → topo-ordered named plans
 

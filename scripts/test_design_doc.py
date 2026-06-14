@@ -225,5 +225,120 @@ class TestGateCLI(unittest.TestCase):
         self.assertEqual(dd.main(["design_doc.py", "gate", str(p)]), 2)
 
 
+# Scaffold-only Detailed Design — exactly what the template seeds (heading +
+# whole-line italic prompt + an HTML-comment block, no authored content). The
+# gate must classify this as empty.
+_SCAFFOLD = (
+    "\n"
+    "*The full design at the level a reader needs to evaluate it.*\n"
+    "\n"
+    "<!-- One subsection per major component of the design. -->\n"
+)
+
+
+def _design_with_dd(dd_body: str, *, trailing: str = "") -> str:
+    """A `final` design whose `### Detailed Design` carries `dd_body`.
+
+    `trailing` appends content *after* the Detailed Design section (under a fresh
+    `##` heading) so a test can prove the section-boundary logic doesn't let a
+    later section's content leak in and mask an empty Detailed Design.
+    """
+    return (
+        "---\ntitle: A design\nstatus: final\nvisibility: confidential\n---\n\n"
+        "## Design\n\n### Overview\n\nsome overview\n\n"
+        f"### Detailed Design{dd_body}{trailing}"
+    )
+
+
+class TestDetailedDesignNonempty(unittest.TestCase):
+    """`detailed_design_nonempty`: substantive content passes, scaffold refuses."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="dd-detail-"))
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _write(self, text: str, name: str = "doc") -> Path:
+        p = self.tmp / f"{name}.md"
+        p.write_text(text, encoding="utf-8")
+        return p
+
+    def test_scaffold_only_refused_as_too_sparse(self):
+        ok, reason = dd.detailed_design_nonempty(self._write(_design_with_dd(_SCAFFOLD)))
+        self.assertFalse(ok)
+        self.assertIn("too sparse", reason)
+
+    def test_scaffold_then_later_section_still_refused(self):
+        # The next `##` heading bounds the section: a populated later section must
+        # NOT mask an empty Detailed Design.
+        text = _design_with_dd(
+            _SCAFFOLD,
+            trailing="\n## Alternatives Considered\n\nWe considered X and rejected it.\n",
+        )
+        ok, reason = dd.detailed_design_nonempty(self._write(text))
+        self.assertFalse(ok)
+        self.assertIn("too sparse", reason)
+
+    def test_substantive_prose_passes(self):
+        text = _design_with_dd("\n\nWe persist records in a table keyed by id.\n")
+        ok, reason = dd.detailed_design_nonempty(self._write(text))
+        self.assertTrue(ok, reason)
+        self.assertEqual(reason, "")
+
+    def test_subsection_heading_passes(self):
+        # A `####` subsection is body (the split unit), not a section boundary —
+        # its presence alone is enough content to translate.
+        text = _design_with_dd("\n\n#### Data model\n\nschema details\n")
+        ok, reason = dd.detailed_design_nonempty(self._write(text))
+        self.assertTrue(ok, reason)
+
+    def test_bare_subsection_heading_passes(self):
+        # Even a bare `####` heading with no prose under it is a hangable part.
+        text = _design_with_dd("\n\n#### Data model\n")
+        ok, _ = dd.detailed_design_nonempty(self._write(text))
+        self.assertTrue(ok)
+
+    def test_whole_line_bold_is_content_not_scaffold(self):
+        # `**bold**` lines start and end with `*` but are real content — only a
+        # single-`*` italic prompt is scaffold (the `not startswith('**')` guard).
+        text = _design_with_dd("\n\n**Invariant: ids are monotonic**\n")
+        ok, _ = dd.detailed_design_nonempty(self._write(text))
+        self.assertTrue(ok)
+
+    def test_missing_section_refused(self):
+        # A doc with no `### Detailed Design` heading at all.
+        text = "---\ntitle: A\nstatus: final\n---\n\n## Design\n\n### Overview\n\nx\n"
+        ok, reason = dd.detailed_design_nonempty(self._write(text))
+        self.assertFalse(ok)
+        self.assertIn("no '### Detailed Design'", reason)
+
+    def test_missing_file_refused(self):
+        ok, reason = dd.detailed_design_nonempty(self.tmp / "nope.md")
+        self.assertFalse(ok)
+        self.assertIn("no design doc", reason)
+
+
+class TestDetailedDesignCLI(unittest.TestCase):
+    """The `detailed-design` CLI: exit 0 on substantive, exit 2 on scaffold."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="dd-detail-cli-"))
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_exit_zero_on_substantive(self):
+        p = self.tmp / "ok.md"
+        p.write_text(_design_with_dd("\n\nReal prose under Detailed Design.\n"),
+                     encoding="utf-8")
+        self.assertEqual(dd.main(["design_doc.py", "detailed-design", str(p)]), 0)
+
+    def test_exit_two_on_scaffold(self):
+        p = self.tmp / "sparse.md"
+        p.write_text(_design_with_dd(_SCAFFOLD), encoding="utf-8")
+        self.assertEqual(dd.main(["design_doc.py", "detailed-design", str(p)]), 2)
+
+
 if __name__ == "__main__":
     unittest.main()

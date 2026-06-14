@@ -231,6 +231,86 @@ class TestAuthorVerb(unittest.TestCase):
         self.assertIn("deferred (#5b)", self.low)
 
 
+class TestTranslateVerb(unittest.TestCase):
+    """Task 3: the `/design translate` body documents the full split flow.
+
+    Structural specs (the deterministic gates live in `design_doc.py`): the two
+    precondition gates routed through the helper, the part-split heuristics, the
+    cap-of-6 + override flag, the reshape ops, the never-silent-clobber prompt,
+    the part-file frontmatter, and the Status-stays-final invariant.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.text = _command_text()
+        cls.low = cls.text.lower()
+        # The translate section only — so an assertion can't be satisfied by text
+        # that actually lives in the author or sequence sections.
+        start = cls.text.index("## `/design translate`")
+        end = cls.text.index("## `/design sequence`")
+        cls.section = cls.text[start:end]
+        cls.section_low = cls.section.lower()
+
+    def test_routes_both_gates_through_the_helper(self):
+        # final gate + Detailed-Design non-empty gate, both via design_doc.py.
+        self.assertIn('design_doc.py" gate', self.section)
+        self.assertIn('design_doc.py" detailed-design', self.section)
+
+    def test_gates_halt_and_surface_stderr_on_exit_two(self):
+        self.assertIn("Exit 2", self.section)
+        self.assertTrue(
+            "halt" in self.section_low and "stderr" in self.section_low,
+            "translate must halt + surface stderr verbatim on a failed gate",
+        )
+
+    def test_documents_split_heuristics(self):
+        # Default one-per-subsection, plus the group/split refinements.
+        self.assertIn("one part per top-level subsection", self.section_low)
+        self.assertIn("group", self.section_low)
+
+    def test_documents_cap_of_six_and_override_flag(self):
+        self.assertIn(">6", self.section)
+        self.assertIn("--allow-large-design", self.section)
+        self.assertTrue(
+            "soft" in self.section_low,
+            "the cap-of-6 must be a soft warning, not a hard refusal",
+        )
+
+    def test_documents_all_reshape_ops(self):
+        for op in ("merge", "split", "rename", "reorder"):
+            self.assertIn(op, self.section_low, f"reshape op not documented: {op}")
+        # The top-level decision verbs of the review step.
+        self.assertIn("Approve / Reshape / Cancel", self.section)
+
+    def test_never_silently_clobbers_existing_parts(self):
+        self.assertTrue(
+            "never silent" in self.section_low or "never silently" in self.section_low,
+            "translate must state it never silently clobbers an existing part file",
+        )
+        self.assertIn("Overwrite / Keep existing / Cancel", self.section)
+
+    def test_part_files_carry_traceability_frontmatter(self):
+        for field in ("parent_design", "part_slug", "dependencies", "estimated_scope"):
+            self.assertIn(field, self.section, f"part frontmatter omits: {field}")
+        # Parts live beside the doc.
+        self.assertIn("parts/<part-slug>.md", self.section)
+
+    def test_appends_one_document_history_row(self):
+        self.assertIn("Document History", self.section)
+        self.assertIn("/design translate", self.section)
+
+    def test_status_stays_final_invariant(self):
+        self.assertIn("stays `final`", self.section)
+        self.assertTrue(
+            "never changes status" in self.section_low,
+            "translate must state it never changes Status",
+        )
+
+    def test_external_review_is_a_deferred_pointer_here_too(self):
+        self.assertIn("#5b", self.section)
+        self.assertIn("inline", self.section_low)
+
+
 class TestTemplate(unittest.TestCase):
     """The ported template carries the 10 sections + 11 QA sub-attrs + lifecycle."""
 

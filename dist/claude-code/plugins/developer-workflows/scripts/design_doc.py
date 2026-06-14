@@ -9,6 +9,7 @@ from agentm's no-Bash `Read/Write/Edit/Glob/Grep`-only skill.
 Two responsibilities, both stdlib-only:
 
     design_doc.py gate <path>                       # the Status:final hard gate
+    design_doc.py detailed-design <path>            # translate's non-empty-DD gate
     design_doc.py harness-root [--project-root <p>] # where confidential designs live
 
 **The `final` hard gate (`require_final`).** `/design translate` and `/design
@@ -161,6 +162,69 @@ def require_final(path: str | os.PathLike) -> tuple[bool, str]:
                    f"({'|'.join(STATUS_VALUES)}). Not auto-repairing.")
 
 
+# ── the Detailed-Design non-empty gate (translate's second precondition) ─────────
+
+# The `### Detailed Design` subsection drives translate's part-split heuristic
+# (one part per top-level subsection by default), so it must carry real content
+# — not just the template's italic prompt + HTML-comment scaffold.
+_DETAILED_DESIGN_RE = re.compile(r"^#{3}[ \t]+Detailed Design[ \t]*$", re.MULTILINE)
+# h1–h3 ends the section; `####` subsections are body (the split unit), not bounds.
+_HEADING_RE = re.compile(r"^#{1,3}[ \t]+\S", re.MULTILINE)
+_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+
+
+def _detailed_design_body(text: str) -> str | None:
+    """The raw body under `### Detailed Design`, or None if the heading is absent.
+
+    Runs from just after the heading to the next h1–h3 heading, so `####`
+    subsections (the split unit) count as body rather than as boundaries.
+    """
+    m = _DETAILED_DESIGN_RE.search(text)
+    if not m:
+        return None
+    start = m.end()
+    nxt = _HEADING_RE.search(text, start)
+    return text[start:nxt.start()] if nxt else text[start:]
+
+
+def detailed_design_nonempty(path: str | os.PathLike) -> tuple[bool, str]:
+    """(ok, reason): True iff `### Detailed Design` has substantive content.
+
+    translate's second hard gate, after `require_final`. "Substantive" = after
+    stripping the template scaffold (HTML comment blocks, whole-line italic
+    prompts `*…*`, and blank lines), something remains — prose, or a `####`
+    subsection heading the split heuristic can hang a part on. A scaffold-only
+    section halts translate (the design is too sparse to split); never
+    auto-repairs. Mirrors agentm's "Detailed Design has no content" refusal.
+    """
+    p = Path(path)
+    try:
+        text = p.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return (False, f"no design doc at {p}")
+    except OSError as exc:
+        return (False, f"cannot read {p}: {exc}")
+    body = _detailed_design_body(text)
+    if body is None:
+        return (False, f"{p}: no '### Detailed Design' section found; cannot translate a "
+                       f"design without one. Not auto-repairing.")
+    residue = []
+    for line in _COMMENT_RE.sub("", body).splitlines():
+        s = line.strip()
+        if not s:
+            continue
+        # Skip a whole-line italic prompt (template scaffold), but keep **bold**
+        # and `* bullet` lines — those are real authored content.
+        if len(s) >= 2 and s.startswith("*") and s.endswith("*") and not s.startswith("**"):
+            continue
+        residue.append(s)
+    if not residue:
+        return (False, f"{p}: Detailed Design has no content; design too sparse to "
+                       f"translate. Author at least one Detailed Design subsection "
+                       f"before re-running.")
+    return (True, "")
+
+
 # ── storage resolution ─────────────────────────────────────────────────────────
 
 def resolve_harness_root(root: str, *, resolver=_AUTO) -> tuple[int, str, str]:
@@ -213,6 +277,12 @@ def _build_parser() -> argparse.ArgumentParser:
     g = sub.add_parser("gate", help="exit 0 iff the design doc is Status: final, else 2 + reason")
     g.add_argument("path", help="path to the design doc")
 
+    d = sub.add_parser(
+        "detailed-design",
+        help="exit 0 iff the doc's '### Detailed Design' section is non-empty, else 2 + reason",
+    )
+    d.add_argument("path", help="path to the design doc")
+
     h = sub.add_parser("harness-root", help="print the resolved harness root (holds PLAN.md)")
     h.add_argument("--project-root", default=None, help="project root (default: cwd)")
     return p
@@ -222,6 +292,12 @@ def main(argv: list[str]) -> int:
     ns = _build_parser().parse_args(argv[1:])
     if ns.mode == "gate":
         ok, reason = require_final(ns.path)
+        if ok:
+            return 0
+        sys.stderr.write(f"[design_doc] {reason}\n")
+        return 2
+    if ns.mode == "detailed-design":
+        ok, reason = detailed_design_nonempty(ns.path)
         if ok:
             return 0
         sys.stderr.write(f"[design_doc] {reason}\n")
