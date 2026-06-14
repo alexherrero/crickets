@@ -64,9 +64,72 @@ This is a public repo. Never write the vault path or any PII token into a commit
 
 ## `/design author` — write + finalize a design doc
 
-*(Bootstrap → section-by-section walk → Quality-Attributes 11-sub-attr drill-down → Alternatives push-back → draft → review → final lifecycle. Refuses re-invocation after `final`. Inline review pass only; external review is the deferred #5b pointer above.)*
+`author` is the **only** verb that transitions `Status` (`draft → review → final`); it never advances past `final`. It runs in one of three modes by the target doc's existing Status: **bootstrap** (no doc yet), **authoring** (`draft`), **review pass** (`review`). Save after every section so a partial draft survives an interrupted session.
 
-> Full authoring flow lands in task 2 of this plan.
+**Inputs.** `<slug>` (filename identifier — required for a new doc, inferred from the path on resume) and `--visibility {confidential|published}` (defaults to `confidential`). Visibility routes the output path per *Storage resolution* above: `confidential` → `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_doc.py" harness-root` then `<harness>/designs/<slug>.md`; `published` → `wiki/designs/<slug>.md`. To resume, locate the doc through the same two-path lookup (if both exist, ask which); never hardcode the confidential root.
+
+### Step 1 — Bootstrap (new doc only)
+
+If the target path doesn't exist:
+
+1. Confirm the title (default: derive from the slug → title case).
+2. Copy the template at `${CLAUDE_PLUGIN_ROOT}/templates/design-doc.md` to the target path.
+3. Prefill frontmatter: `title` ← confirmed title; `status: draft`; `visibility` ← caller's choice; `author` ← read from `.git/config`'s `[user] name = …` (if unreadable/absent, **prompt** the human — never leave `author` blank); `contributors: []`; `created`/`updated`/`last_major_revision` ← today (`YYYY-MM-DD`).
+4. Seed the Document History table with the initial row: `| <today> | Initial draft created via /design author. | draft |`.
+5. Confirm the path + Status: draft, then start the section walk.
+
+If the path already exists, skip bootstrap — the doc's existing Status picks the mode (authoring on `draft`, review pass on `review`).
+
+### Step 2 — Walk sections (authoring)
+
+For each top-level section in template order — **Context → Design → Alternatives Considered → Dependencies → Migrations → Technical Debt & Risks → Quality Attributes → Project management → Operations**:
+
+1. Read the section's current state.
+2. If empty (only the italic prompt + HTML comments): present the prompt, ask *"What goes in this section?"*, accept a multi-line response.
+3. If it already has content (resume): present it, ask *"Keep / Edit / Replace?"*.
+4. Write the response in, replacing the scaffolding prompt + comments (author-facing only — they don't render once filled).
+5. Update the `updated` frontmatter field after each save.
+
+Sub-sections inside **Design** (Overview / Infrastructure / Detailed Design), **Project management** (Work estimates / Documentation Plan / Launch Plans), and **Operations** (SLAs / Monitoring and Alerting / Logging Plan / Rollback Strategy) are walked as individual children, in template order.
+
+### Step 3 — Quality Attributes drill-down (strictest discipline)
+
+Walk all **11** sub-attrs in template order: **Security → Reliability → Data Integrity → Privacy → Scalability → Latency → Abuse → Accessibility → Testability → Internationalization & Localization → Compliance**. For each:
+
+> *"<attr>: Does this design have <attr> concerns? Describe them, or 'N/A' with one sentence on why."*
+
+- **Substantive content** → write it in as-is.
+- **N/A** → must take the form `N/A: <one-sentence rationale>`. If the human answers bare `"N/A"`, **push back**: *"N/A needs a one-sentence reason. Why doesn't this design have <attr> concerns?"* The **N/A-rationale rule** is non-negotiable — forcing a conscious N/A catches blind spots early. If N/A piles up across attrs, flag it: *"Most designs have at least one concern in Reliability / Security / Testability — want to revisit?"*
+
+### Step 4 — Alternatives Considered
+
+> *"What other approaches did you consider? Why did you reject each?"*
+
+Push for at least one alternative. Only accept `N/A: only one viable approach (<justify>)` after one explicit push-back.
+
+### Step 5 — Save + Status lifecycle
+
+After all sections are filled, present a summary (sections filled, sub-attrs described vs. N/A, length), then ask the human to pick one:
+
+- **"Ready for review (Status → review)"** — transition `draft → review`; append `| <date> | Author signaled ready for review. | review |` to Document History; tell the human the next `/design author <slug>` runs the review pass.
+- **"Keep drafting"** — stay `draft`; return to the section walk.
+- **"Stop and resume later"** — save state; resume on the next `/design author <slug>`.
+
+> **External review is deferred (#5b).** Where agentm offers a "Hand off for external review" branch here, crickets ships the **inline** flow only — see *External review is deferred* above. This is a one-line pointer, **not** a live handoff flow.
+
+### Step 6 — Review pass (invoked on a `Status: review` doc)
+
+Announce review-pass mode, then walk each section (Context → … → Operations) and each Quality-Attributes sub-attr, prompting **Approve / Revise / Skip**:
+
+- **Approve** — passes unchanged (track the count).
+- **Revise** — reopen the section via the Step-2 walk (accept new content, replace).
+- **Skip** — move on (track the count).
+
+After the walk, summarize. If anything was Skipped or Revised, ask *"Some sections still need attention. Continue review pass? Or transition to final anyway?"* To finalize, ask explicitly *"Approve as final? This locks the doc and unblocks /design translate."* On `yes`: transition `review → final`; append `| <date> | Approved as final via /design author review pass. | final |`; set `last_major_revision` to today.
+
+### After `final` — refuse re-invocation
+
+Once `Status: final`, `/design author` **refuses** further invocations on that doc (it would re-open an approved design). The refusal points to the downstream verbs (`/design translate`). The only way back is the manual escape hatch: a human edits the Status field directly (`final → review`) — `author` never moves Status backwards itself, and never silently transitions in any direction.
 
 ## `/design translate` — final doc → structural `parts/`
 

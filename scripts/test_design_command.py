@@ -172,6 +172,65 @@ class TestCommandBody(unittest.TestCase):
         )
 
 
+class TestAuthorVerb(unittest.TestCase):
+    """Task 2: the `/design author` body documents the full inline authoring flow.
+
+    Structural specs only (the deterministic gate logic lives in `design_doc.py`):
+    bootstrap, the section walk, all 11 QA sub-attrs, the N/A-rationale rule, the
+    three lifecycle transitions, the post-`final` refusal, and that external review
+    is a deferred pointer rather than a live flow.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.text = _command_text()
+        cls.low = cls.text.lower()
+
+    def test_documents_bootstrap_from_template(self):
+        self.assertIn("Bootstrap", self.text)
+        # Bootstrap copies the group template via the plugin root and seeds history.
+        self.assertIn("${CLAUDE_PLUGIN_ROOT}/templates/design-doc.md", self.text)
+        self.assertIn("Initial draft created via /design author", self.text)
+
+    def test_author_field_sourced_from_git_config_never_blank(self):
+        self.assertIn(".git/config", self.text)
+        self.assertTrue(
+            "never leave" in self.low and "prompt" in self.low,
+            "author bootstrap must source author from .git/config and never leave it blank",
+        )
+
+    def test_documents_section_walk_in_template_order(self):
+        for section in ("Context", "Design", "Alternatives Considered",
+                        "Quality Attributes", "Operations"):
+            self.assertIn(section, self.text, f"author walk omits section: {section}")
+        self.assertIn("template order", self.low)
+
+    def test_walks_all_eleven_qa_subattrs(self):
+        for sub in _QA_SUBATTRS:
+            self.assertIn(sub, self.text, f"author flow omits QA sub-attr: {sub}")
+
+    def test_documents_na_rationale_rule(self):
+        self.assertIn("N/A", self.text)
+        self.assertIn("rationale", self.low)
+        self.assertTrue(
+            "push back" in self.low or "push-back" in self.low,
+            "author must push back on a bare N/A (the N/A-rationale rule)",
+        )
+
+    def test_documents_three_lifecycle_transitions(self):
+        self.assertIn("draft → review", self.text)
+        self.assertIn("review → final", self.text)
+        self.assertIn("never advances past", self.low)  # author stops at final
+
+    def test_refuses_reinvocation_after_final(self):
+        self.assertIn("refuse", self.low)  # "refuses further invocations"
+        self.assertIn("escape hatch", self.low)  # the documented manual revert
+
+    def test_external_review_is_a_deferred_pointer_not_a_flow(self):
+        # In the author flow, external review is a #5b pointer — not a live handoff.
+        self.assertIn("deferred (#5b)", self.low)
+
+
 class TestTemplate(unittest.TestCase):
     """The ported template carries the 10 sections + 11 QA sub-attrs + lifecycle."""
 
