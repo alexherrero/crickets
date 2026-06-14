@@ -1,11 +1,11 @@
 # ADR 0024 — Package `/design` as a command (tested Python helper + thin prompt), not a skill
 
 > [!NOTE]
-> Status: proposed
-> Date: 2026-06-13
+> Status: accepted
+> Date: 2026-06-13 (accepted 2026-06-14 at the `/design` v3.10.0 release)
 
 > [!IMPORTANT]
-> **Pending** (V5-10 sibling #5, `design-command`). This ADR is a forward-declared skeleton recording the packaging decision before the command is built. Sections below capture the locked calls; any `file:line` references and the final accepted/superseded status are filled at `/release`.
+> **Accepted** (V5-10 sibling #5, `design-command`, shipped `developer-workflows` 0.10.0). The command is built and released; the decision below held through the build. Implementation: `src/developer-workflows/commands/design.md` (the three-verb prompt), `src/developer-workflows/scripts/design_doc.py` (the `Status:`/frontmatter + detailed-design gates), and `src/developer-workflows/scripts/design_sequence.py` (the Kahn topological sort the `sequence` verb composes onto `stage_plan.py`).
 
 ## Context
 

@@ -7,6 +7,7 @@
 - [Declare a project's Architecture](Declare-Architecture)
 - [Maintain a wiki — wiki-watcher](Run-The-Wiki-Watcher)
 - [Review a change — code review](Use-Code-Review)
+- [Install the vault backend](Install-The-Vault-Backend) _(pending)_
 ### 📖 [Reference](Reference)
 - [Plugin anatomy](Plugin-Anatomy)
 - [Repo layout](Repo-Layout)
@@ -19,6 +20,7 @@
 - [Hooks](Hooks)
 - [Evaluator](Evaluator)
 - [Antigravity Limitations](Antigravity-Limitations)
+- [Obsidian vault backend](Obsidian-Vault-Backend) _(pending)_
 - [Wiki Watch Config](Wiki-Watch-Config)
 - [Style-learning loop](Style-Learning-Loop)
 - [Modify a plugin](Modify-A-Plugin)
