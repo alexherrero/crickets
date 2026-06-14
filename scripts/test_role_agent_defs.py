@@ -106,6 +106,23 @@ class _ReadOnlyRoleContract(_RoleManifestContract):
         self.assertFalse(leaked, f"{self.role} read-only allowlist leaks mutating tool(s): {sorted(leaked)}")
 
 
+class _ActiveRoleContract(_RoleManifestContract):
+    """An active role executes the loop — it must NOT be constrained read-only.
+
+    Either it omits `tools:` entirely (= all tools, the correct shape for an
+    active role) or its allowlist includes at least one mutating tool.
+    """
+
+    def test_is_active_not_read_only(self):
+        if "tools" not in self.fm:
+            return  # omitting tools = full access — correct for an active role
+        granted = set(_tools(self.fm))
+        self.assertTrue(
+            granted & _MUTATING_TOOLS,
+            f"{self.role} is active but declares a read-only allowlist {sorted(granted)}",
+        )
+
+
 class TestResearcherRole(_ReadOnlyRoleContract, unittest.TestCase):
     """`researcher` — the read-only brief-research front; a thin pointer at explorer."""
 
@@ -125,6 +142,42 @@ class TestResearcherRole(_ReadOnlyRoleContract, unittest.TestCase):
             or ("vendor" in low and "port" in low),
             "researcher must state it does not vendor/port the global research agent",
         )
+
+
+class TestTechLeadRole(_ActiveRoleContract, unittest.TestCase):
+    """`tech-lead` — the active brief-to-plan author; /plan floor, /design forward-ref."""
+
+    role = "tech-lead"
+
+    def test_plan_is_the_current_floor(self):
+        self.assertIn("/plan", _text(self.role))
+
+    def test_design_is_forward_referenced_not_shipped(self):
+        # The /design reference must be framed as not-yet-shipped (sibling #5),
+        # never as a current capability.
+        text = _text(self.role)
+        low = text.lower()
+        self.assertIn("/design", text)
+        self.assertIn("not yet shipped", low)
+        self.assertIn("sibling #5", low)
+        self.assertIn("forward-reference", low)
+
+
+class TestWorkerRole(_ActiveRoleContract, unittest.TestCase):
+    """`worker` — the active autonomous executor; one per worktree, marker-bound."""
+
+    role = "worker"
+
+    def test_works_a_named_plan(self):
+        self.assertIn("/work", _text(self.role))
+
+    def test_binds_via_worktree_active_plan_marker(self):
+        low = _text(self.role).lower()
+        self.assertIn("active-plan", low)
+        self.assertIn("worktree", low)
+
+    def test_integrates_back(self):
+        self.assertIn("/integrate-worker", _text(self.role))
 
 
 if __name__ == "__main__":
