@@ -191,18 +191,30 @@ def find_note_block(lines: list[str], window: int = 25) -> tuple[int, str] | Non
 
 def extract_wiki_links(text: str) -> list[tuple[int, str, str]]:
     """Yield (lineno, label, href) for every markdown link that looks like
-    a wiki-internal page reference (no slash, no scheme)."""
+    a wiki-internal page reference (no slash, no scheme). Links inside an
+    inline code span or a fenced code block are skipped — there they are
+    illustrative markup (a template literal, a usage example), not a
+    navigable reference, so resolving them is a false positive. Mirrors how
+    parse_headings / word_count / rule_o exempt code spans + fences (the
+    documented exemption — see the module header)."""
     out: list[tuple[int, str, str]] = []
-    for m in LINK_RE.finditer(text):
-        href = m.group(2)
-        if "/" in href or href.startswith(("http://", "https://", "#", "mailto:")):
+    in_fence = False
+    for line_no, raw in enumerate(text.splitlines(), start=1):
+        if FENCE_RE.match(raw):
+            in_fence = not in_fence
             continue
-        line_no = text[:m.start()].count("\n") + 1
-        page = href.split("#", 1)[0]
-        if page.endswith(".md"):
-            page = page[:-3]
-        if page:
-            out.append((line_no, m.group(1), page))
+        if in_fence:
+            continue
+        prose = _INLINE_CODE_RE.sub("", raw)
+        for m in LINK_RE.finditer(prose):
+            href = m.group(2)
+            if "/" in href or href.startswith(("http://", "https://", "#", "mailto:")):
+                continue
+            page = href.split("#", 1)[0]
+            if page.endswith(".md"):
+                page = page[:-3]
+            if page:
+                out.append((line_no, m.group(1), page))
     return out
 
 

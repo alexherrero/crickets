@@ -102,5 +102,48 @@ class NavRuleJTest(unittest.TestCase):
         self.assertFalse(any("complete sitemap" in i.message for i in issues))
 
 
+class ExtractWikiLinksFenceTest(unittest.TestCase):
+    """rule (h) resolves wiki-internal links by basename — but a link-shaped
+    literal inside a fenced code block or an inline code span is illustrative
+    markup (a template, a usage example), not a navigable reference. Extracting
+    it makes rule (h) false-positive on an unresolvable target. These guard the
+    documented code-span/fence exemption that parse_headings / word_count / rule_o
+    already honor.
+    """
+
+    def _pages(self, text):
+        return [page for _, _, page in cw.extract_wiki_links(text)]
+
+    def test_plain_prose_link_is_extracted(self):
+        self.assertEqual(self._pages("see [Foo](Foo) for more"), ["Foo"])
+
+    def test_link_inside_fenced_block_is_skipped(self):
+        text = "intro\n\n```\n[label](Unresolvable)\n```\n\noutro\n"
+        self.assertEqual(self._pages(text), [],
+                         "a link inside a fence is illustrative, not navigable")
+
+    def test_link_inside_inline_code_span_is_skipped(self):
+        self.assertEqual(self._pages("the literal `[x](Nope)` is an example"), [])
+
+    def test_template_literal_with_placeholder_target_is_skipped(self):
+        # The exact GitHub-Projects.md Task-lifecycle regression: a {{placeholder}}
+        # link target inside a code fence must not be reported as a broken link.
+        text = (
+            "The thread:\n\n```\n"
+            "**② {{date}}** ([`{{sha}}`]({{commit_url}})): {{progress}}\n"
+            "```\n"
+        )
+        self.assertEqual(self._pages(text), [])
+
+    def test_links_resume_after_closing_fence(self):
+        text = "```\n[A](InFence)\n```\n\nthen [B](RealPage) here\n"
+        self.assertEqual(self._pages(text), ["RealPage"],
+                         "fence toggling must restore extraction after it closes")
+
+    def test_external_links_still_skipped(self):
+        text = "[home](https://example.com) and [anchor](#sec) and [Foo](Foo)"
+        self.assertEqual(self._pages(text), ["Foo"])
+
+
 if __name__ == "__main__":
     unittest.main()

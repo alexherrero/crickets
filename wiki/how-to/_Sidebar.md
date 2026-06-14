@@ -14,6 +14,7 @@
 - [See every active plan](See-Every-Active-Plan)
 - [Run a coordinator-directed worker team](Run-A-Coordinator-Directed-Worker-Team) _(pending)_
 - [Install the vault backend](Install-The-Vault-Backend) _(pending)_
+- [Sync a project board](Sync-A-Project-Board)
 ### 📖 [Reference](Reference)
 ### 🏛️ [Architecture](Architecture)
 ### 🧩 [Designs](Designs)

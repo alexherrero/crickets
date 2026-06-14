@@ -28,7 +28,7 @@
 | 🔁 **Run a phase-gated dev process** — plan → work → review → release | [developer-workflows](Developer-Workflows) | [evaluator](Evaluator) · [spawn a worker worktree](Spawn-A-Worker-In-A-Worktree) · [integrate a worker](Integrate-A-Worker) |
 | 🔎 **Review a change adversarially** — any diff or PR, no `/work` cycle | [code-review](Code-Review) | [code review](Use-Code-Review) |
 | 🛡️ **Guard quality + secrets** — control + recovery hooks, a PII scan on push | [developer-safety](Developer-Safety) | [operator-control hooks](Developer-Safety) · [PII guardrail](PII) |
-| 📋 **Plan & track a project** — roadmaps, plans, boards | `coming soon` (V5) | — |
+| 📋 **Plan & track a project** — vault roadmaps + plans synthesized to a GitHub board | [github-projects](GitHub-Projects) | [sync a board](Sync-A-Project-Board) · [one-way synthesis](One-Way-Vault-To-Board-Synthesis) |
 
 ## 📖 Look up a detail
 

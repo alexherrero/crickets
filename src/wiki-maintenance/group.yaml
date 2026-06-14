@@ -11,8 +11,10 @@ standalone: true
 # them (the marketplace entry compares this value; a static version no-ops the
 # update). 0.2.0 = first bump past the original 0.1.0 — covers wiki-init,
 # wiki-sync.yml, the single-sourced check-wiki.py, and the seven-section composer
-# shipped since 0.1.0.
-version: 0.2.0
+# shipped since 0.1.0. 0.2.1 = check-wiki.py fix — extract_wiki_links now skips
+# fenced code blocks + inline code spans, so a link-shaped template literal (e.g.
+# a `]({{placeholder}})` example) is no longer a false-positive broken-link error.
+version: 0.2.1
 enhances:
   - group: developer-workflows
     capability: documentation

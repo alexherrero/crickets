@@ -21,6 +21,7 @@
 - [Named plans](Named-Plans)
 - [Coordinator roles](Coordinator-Roles) _(pending)_
 - [Obsidian vault backend](Obsidian-Vault-Backend) _(pending)_
+- [GitHub Projects](GitHub-Projects)
 ### 🏛️ [Architecture](Architecture)
 ### 🧩 [Designs](Designs)
 ### 💡 [Explanation](Explanation)

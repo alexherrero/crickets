@@ -28,6 +28,8 @@ This page is the index. The homepage links here once instead of listing every AD
 - [ADR 0021 — Per-plugin marketplace versioning sourced from `group.yaml`](0021-per-plugin-versioning)
 - [ADR 0022 — Retire `worktrees-never-auto`: worktrees first-class but operator-initiated](0022-retire-worktrees-never-auto)
 - [ADR 0023 — Gate the integrated tree, not the worker branch: merge-then-gate with hard-reset rollback](0023-gate-on-integrated-tree)
+- [ADR 0024 — Package `/design` as a command (tested Python helper + thin prompt), not a skill](0024-design-as-command)
+- [ADR 0025 — One-way vault → GitHub-Project board synthesis (`github-projects`)](0025-board-sync-vault-to-project)
 
 ## Retrospectives
 
@@ -37,6 +39,8 @@ This page is the index. The homepage links here once instead of listing every AD
 
 <!-- maintained by the wiki tooling -->
 
+- **2026-06-14** — ADR 0025 (board-sync vault→project) added; records the `github-projects` plugin's one-way deterministic synthesis — DC-1 materialization (feature-and-up always; Plan/Task active-plan-only), DC-2 frozen six-field set (only `Type`/`project_surface` code-enforced; `Track`/`Priority`/`Status` free-form), DC-4 single idempotent render+write path, silent-source stripping on the public board, and `requires: developer-workflows` (vault path from config, not a hard agentm dependency).
+- **2026-06-14** — ADR 0024 (design as command) added; records packaging the crickets `/design` port as a command (tested Python helper + thin prompt) wired onto `stage_plan.py`, not a no-Bash skill — a divergent port of the agentm skill (ADR 0004), not a supersession.
 - **2026-06-13** — ADR 0023 (gate the integrated tree) added; records gating the post-merge tree (not the worker branch in isolation) and the merge-then-gate-with-hard-reset-rollback that keeps `main` never-broken when `/integrate-worker` lands a worker, with no push.
 - **2026-06-13** — ADR 0022 (retire `worktrees-never-auto`) added; records retiring the blanket "never create worktrees" prohibition for "worktrees first-class but operator-initiated" once `/spawn-worker` made worker worktrees a real workflow, keeping the no-autonomous-spawn guarantee.
 - **2026-06-11** — ADR 0021 (per-plugin versioning) added; records sourcing each plugin's marketplace version from `group.yaml` so `claude plugin update` works, plus the anti-recurrence bump guard.
