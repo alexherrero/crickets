@@ -47,5 +47,14 @@ standalone: true
 # throwaway temp repos — never the real battery). Ships a read-only
 # `doctor_worktrees.py` probe that lists + classifies worker worktrees (Risk #6).
 # Local merge only — no push (LC-L). developer-safety untouched (LC-O).
-version: 0.7.0
+# 0.8.0 = role-agent-defs (V5-10 sibling #4, the team roster) — four loose
+# `agents/` role-defs composing onto the phase loop as thin skins (LC-6): the
+# read-only `researcher` (a thin pointer at `explorer` + light `WebFetch`,
+# forward-referencing the operator's global deep-research agent when present),
+# the active `tech-lead` (`/design`→`/plan` author, `/design` forward-referenced)
+# and `worker` (`/work <named-plan>`, one per worktree), and the read-only
+# `project-manager` (a glance over `/queue-status-lite`, forward-referencing
+# board-sync + the V5-11 chief-of-staff layer). No new engine, no net-new
+# sub-agent — the researcher gap is collapsed to a pure thin skin.
+version: 0.8.0
 capabilities: [setup, plan, work, review, release, bugfix, documentation]
