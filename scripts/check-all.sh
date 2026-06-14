@@ -5,7 +5,8 @@
 #   bash scripts/check-all.sh
 #
 # Mirrors CI's deterministic gates: lint_src · unit tests · generate drift ·
-# version bump · check-wiki --strict · check-syntax · hook-parity · check-no-pii.
+# version bump · check-wiki --strict · check-syntax · hook-parity · check-no-pii ·
+# board sync (graceful-skips when no .harness/project.json or no gh).
 # (Host plugin validation — `claude/agy plugin validate` — needs those CLIs and
 # runs as a separate CI step.)
 #
@@ -41,6 +42,7 @@ run "check-wiki"     python3 src/wiki-maintenance/scripts/check-wiki.py --strict
 run "check-syntax"   bash scripts/check-syntax.sh
 run "hook-parity"    python3 scripts/check-hook-parity.py
 run "check-no-pii"   bash scripts/check-no-pii.sh --all
+run "board sync"     python3 src/github-projects/scripts/check_project_sync.py
 
 echo
 echo "════════════════ check-all ════════════════"

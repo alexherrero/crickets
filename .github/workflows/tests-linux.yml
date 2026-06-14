@@ -51,6 +51,12 @@ jobs:
         # contract. Pure-Python static check, runs on every OS; the .ps1
         # *behavior* is exercised by the pwsh mirror inside the unit-test step.
         run: python3 scripts/check-hook-parity.py
+      - name: github-projects vault==board drift gate (graceful-skip)
+        # The D-④ correctness gate. In CI there's no .harness/project.json (the
+        # board binding lives in the gitignored vault), so it graceful-skips and
+        # stays green — it earns its keep in a board-synced checkout. Linux-only:
+        # it's a deterministic Python gate, no per-OS portability surface.
+        run: python3 src/github-projects/scripts/check_project_sync.py
 
   syntax:
     name: syntax
