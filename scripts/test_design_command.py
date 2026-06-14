@@ -311,6 +311,100 @@ class TestTranslateVerb(unittest.TestCase):
         self.assertIn("inline", self.section_low)
 
 
+class TestSequenceVerb(unittest.TestCase):
+    """Task 4: the `/design sequence` body documents the full topo→plans flow.
+
+    Structural specs (the deterministic ordering lives in `design_sequence.py`):
+    the final-gate precondition, the topo-sort routed through the helper, the
+    crickets divergence (named-plan tiers, never the singleton), the part→PLAN
+    mapping with traceability frontmatter, the `stage_plan.py` wiring (first
+    activated, rest queued), the never-silent-clobber prompt, and the
+    Status-stays-final invariant.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.text = _command_text()
+        cls.low = cls.text.lower()
+        # The sequence section only (runs to EOF) — so an assertion can't be
+        # satisfied by text that lives in the author or translate sections.
+        start = cls.text.index("## `/design sequence`")
+        cls.section = cls.text[start:]
+        cls.section_low = cls.section.lower()
+
+    def test_final_gate_is_a_precondition_via_the_helper(self):
+        self.assertIn('design_doc.py" gate', self.section)
+        self.assertIn("Exit 2", self.section)
+        self.assertTrue(
+            "halt" in self.section_low and "stderr" in self.section_low,
+            "sequence must halt + surface stderr verbatim on a failed gate",
+        )
+
+    def test_topo_sort_routed_through_the_helper(self):
+        # Ordering is deterministic + falsifiable → the tested helper, never
+        # hand-ordered in the prompt.
+        self.assertIn('design_sequence.py" order', self.section)
+        self.assertIn("alphabetical tie-break", self.section_low)
+
+    def test_cycle_and_missing_dep_refusals_surfaced(self):
+        self.assertIn("cycle", self.section_low)
+        self.assertIn("missing dependency", self.section_low)
+        self.assertTrue(
+            "never guess" in self.section_low or "never guess an order" in self.section_low,
+            "sequence must refuse rather than guess an order past a graph failure",
+        )
+
+    def test_crickets_divergence_never_the_singleton(self):
+        self.assertIn("crickets divergence", self.section_low)
+        self.assertTrue(
+            "never" in self.section_low and "singleton" in self.section_low,
+            "sequence must state it never touches the singleton PLAN.md",
+        )
+        # The divergence is explicitly contrasted with agentm's behaviour.
+        self.assertIn("agentm", self.section_low)
+
+    def test_wires_through_stage_plan_first_activated_rest_queued(self):
+        self.assertIn("stage_plan.py", self.section)
+        self.assertIn("activate", self.section_low)
+        self.assertIn("queued-plans", self.section)
+        self.assertIn("PLAN-<doc-slug>-<first-part-slug>.md", self.section)
+
+    def test_activate_is_guarded_against_clobber(self):
+        self.assertTrue(
+            "guarded" in self.section_low,
+            "activate must be documented as guarded (no-clobber)",
+        )
+        self.assertIn("Overwrite / Keep existing / Cancel", self.section)
+        self.assertTrue(
+            "never silent" in self.section_low or "never silently" in self.section_low,
+            "sequence must state it never silently clobbers an existing plan",
+        )
+
+    def test_part_to_plan_mapping_is_documented(self):
+        # The mapping table from a part file to a /plan-shaped body.
+        for marker in ("# Plan:", "## Goal", "## Tasks", "## Verification strategy"):
+            self.assertIn(marker, self.section, f"PLAN-body mapping omits: {marker}")
+
+    def test_plan_traceability_frontmatter(self):
+        for field in ("parent_design_doc", "parent_part_slug"):
+            self.assertIn(field, self.section, f"PLAN frontmatter omits: {field}")
+
+    def test_generated_plans_start_in_planning_status(self):
+        # Sequence emits draft plans the human refines with /plan before /work.
+        self.assertIn("planning", self.section_low)
+        self.assertIn("/plan", self.section)
+
+    def test_appends_one_document_history_row(self):
+        self.assertIn("Document History", self.section)
+        self.assertIn("/design sequence", self.section)
+
+    def test_status_stays_final_invariant(self):
+        self.assertTrue(
+            "never changes status" in self.section_low or "stays `final`" in self.section_low,
+            "sequence must state it never changes Status",
+        )
+
+
 class TestTemplate(unittest.TestCase):
     """The ported template carries the 10 sections + 11 QA sub-attrs + lifecycle."""
 

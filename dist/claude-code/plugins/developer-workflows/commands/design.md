@@ -251,6 +251,69 @@ The parent's `Status` **stays `final`** — translate never changes Status.
 
 ## `/design sequence` — `parts/` → topo-ordered named plans
 
-*(Gate on `Status: final` + non-empty `parts/` → validate part frontmatter → topo-sort via `design_sequence.py` (Kahn + alphabetical tie-break, cycle + missing-dep detection) → map each part to a PLAN body → write via `stage_plan.py`: the first part `activate` → `PLAN-<doc-slug>-<part-slug>.md`, the rest `path` → `queued-plans/`. Named-plan tiers only — **never** the singleton `PLAN.md`. Carry `parent_design_doc` + `parent_part_slug` frontmatter for traceability; append the Document-History row.)*
+`sequence` consumes the populated `<doc-dir>/parts/` (translate's output) and generates one **named** plan per part, in dependency order, via the shipped `stage_plan.py` writer. This is the bridge from the design phase to the execution phase: after `sequence`, the first part is the active named plan and the rest are queued, ready for `/work`. Like translate, `sequence` is read-mostly with respect to the parent (one Document-History row, bump `updated`) and **never changes Status**.
 
-> Full sequence flow lands in task 4 of this plan.
+**The crickets divergence — named-plan tiers, never the singleton.** agentm's skill writes the first part to the singleton `.harness/PLAN.md`. crickets does **not**: it stages every part as a *named* plan via `stage_plan.py`, so an unrelated active `PLAN.md` is never clobbered. The first part (topo-order) is `activate`d → `PLAN-<doc-slug>-<part-slug>.md`; the rest are written to their staging `path` under `queued-plans/`. The singleton `PLAN.md` is **never** touched.
+
+**Inputs.** `<slug>` (or full path — same two-path lookup as translate).
+
+### Step 1 — Preconditions (the same final gate + a non-empty `parts/`)
+
+1. **`Status: final`** — run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_doc.py" gate <path>`. Exit 0 → continue; exit 2 → **halt** and surface stderr (the state-specific refusal pointing back to `/design author <slug>`). Never auto-repair.
+2. **`parts/` exists and validates** — the topo-sort helper (Step 2) is the gate: it refuses (exit 2) on a missing/empty `parts/` directory or any part with invalid frontmatter (missing `part_slug`, missing `dependencies` key, an `estimated_scope` not in `S|M|L`, or a duplicate slug). Surface its stderr verbatim — a refusal means *run `/design translate` first* (or fix the named part).
+
+### Step 2 — Topological sort (the tested helper)
+
+Ordering is deterministic + falsifiable, so it lives in `design_sequence.py` — call it; never hand-order parts in this prompt:
+
+```
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_sequence.py" order <doc-dir>/parts
+```
+
+It reads `parts/*.md`, builds the dependency DAG keyed by `part_slug`, and **Kahn topo-sorts with an alphabetical tie-break** (so the same parts always yield the same order — `queued-plans/` never churns across re-runs). Exit 0 prints the ordered slugs, one per line — the first line is the part to activate, the rest queue in order. Exit 2 halts with a concrete message on a **cycle** (`dependency cycle detected: a → b → a`) or a **missing dependency** (`part 'x' depends on 'y' which does not exist in parts/`). Surface stderr verbatim; never guess an order past a refusal.
+
+### Step 3 — Map each part to a PLAN body
+
+For each part (in the helper's order), generate a `/plan`-shaped PLAN body from the part file + parent design. The mapping:
+
+| PLAN section | Source |
+|---|---|
+| `# Plan: <title>` | the part's h1 title + ` (from design <doc-slug>)` |
+| `**Status:** planning` | always `planning` — these are draft plans the human refines with `/plan` before `/work` |
+| `**Created:**` | today |
+| `**Brief:**` | the part's `## Scope` |
+| `## Goal` | the part's Verification criteria, rephrased as user-visible outcomes |
+| `## Constraints` | the parent's Quality-Attributes concerns that apply to this part |
+| `## Out of scope` | the other part slugs ("see `PLAN-<doc-slug>-<other-slug>.md`") + the parent's Out-of-scope items |
+| `## Tasks` | a **draft** decomposition from the part's Scope/Detailed-Design source — each `### N.` with a one-sentence What + Verification. Note in the body that the human runs `/plan` against this to refine before `/work`. |
+| `## Risks / open questions` | the parent's Technical Debt & Risks + part-specific concerns |
+| `## Verification strategy` | the part's Verification criteria verbatim |
+| `## Locked design calls` | a pointer back to the parent design + the key decisions from its Alternatives Considered |
+
+Carry two traceability fields in the PLAN frontmatter so a later `/release` can match a finished plan back to its source part:
+
+```yaml
+parent_design_doc: <relative path to the design doc>
+parent_part_slug: <the part's part_slug>
+```
+
+### Step 4 — Write via `stage_plan.py` (first activated, rest queued — never the singleton)
+
+The named-plan name for each part is `<doc-slug>-<part-slug>`. Use the shipped writer; **never** write `PLAN.md` directly.
+
+- **First part (topo-order):**
+  1. Get the staging path: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/stage_plan.py" path <doc-slug>-<first-part-slug>` → write the PLAN body there.
+  2. Activate it: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/stage_plan.py" activate <doc-slug>-<first-part-slug>` → promotes it to the active `PLAN-<doc-slug>-<first-part-slug>.md`. `activate` is **guarded** — exit 2 if an active plan of that name already exists; surface it, never clobber.
+- **Each remaining part:** get its staging `path` (`stage_plan.py path <doc-slug>-<part-slug>`) and write the PLAN body there — it stays inert in `queued-plans/`, invisible to `/work` until a coordinator activates it.
+
+If a staged or active file already exists on a re-run, show the diff and ask **Overwrite / Keep existing / Cancel** per file — **never silent-clobber** (mirrors translate's Step 5).
+
+### Step 5 — Update the parent's Document History
+
+Append one row and bump `updated` to today; Status stays `final`:
+
+```
+| <today> | Sequenced into N plans via /design sequence; first active (PLAN-<doc-slug>-<first-part-slug>.md), N-1 queued in queued-plans/. | final |
+```
+
+After `sequence`, the design hand-off is complete — the rest is the normal `/work` → `/review` → `/release` loop on the generated named plans.
