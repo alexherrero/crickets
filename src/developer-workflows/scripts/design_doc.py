@@ -184,6 +184,37 @@ def _blank_keep_newlines(s: str) -> str:
     return re.sub(r"[^\n]", " ", s)
 
 
+def _fence_open(line: str) -> tuple[str, int] | None:
+    """If `line` opens a fenced code block, return (marker_char, run_length); else None.
+
+    A CommonMark opening fence is an (optionally indented) run of ≥3 backticks or
+    ≥3 tildes. A backtick fence's info string may not contain a backtick (§4.5);
+    a tilde fence's is unrestricted. Returning the run length lets the caller close
+    only on a matching-char run that is at least as long — so a 4-backtick fence
+    that *shows* an inner 3-backtick block isn't closed early.
+    """
+    s = line.lstrip(" \t")
+    if not s or s[0] not in "`~":
+        return None
+    ch = s[0]
+    n = len(s) - len(s.lstrip(ch))
+    if n < 3:
+        return None
+    if ch == "`" and "`" in s[n:]:  # backtick info string may not contain a backtick
+        return None
+    return (ch, n)
+
+
+def _fence_closes(line: str, ch: str, n: int) -> bool:
+    """True iff `line` closes a fence opened with `n` × `ch`.
+
+    A closing fence is a run of the same character, at least as long as the
+    opener, followed only by whitespace (no info string) — CommonMark §4.5.
+    """
+    s = line.strip()
+    return len(s) >= n and s == ch * len(s)
+
+
 def _mask_noncontent(text: str) -> str:
     """A same-length copy of `text` with fenced code blocks and HTML comments
     blanked out (newlines preserved).
@@ -201,22 +232,24 @@ def _mask_noncontent(text: str) -> str:
     # blocks, then a dangling `<!--`-to-EOF, so an unclosed comment is masked too.
     masked = _COMMENT_RE.sub(lambda m: _blank_keep_newlines(m.group(0)), text)
     masked = _OPEN_COMMENT_RE.sub(lambda m: _blank_keep_newlines(m.group(0)), masked)
-    # Track the *opening* fence marker so the matching marker closes it: ``` ``` ```
-    # and ``` ~~~ ``` are both CommonMark fences, and a fence opened with one must
-    # not be closed by the other.
-    out, fence = [], None
+    # Track the opening fence as (char, run-length) so it closes only on a run of
+    # the same character at least as long — CommonMark §4.5. ``` ``` ``` and
+    # ``` ~~~ ``` are both fences; a 4-backtick fence that *shows* an inner
+    # 3-backtick block must not be closed by that inner line, and a fence opened
+    # with one marker char must not be closed by the other.
+    out, fence = [], None  # fence: (marker_char, run_length) while open, else None
     for line in masked.splitlines(keepends=True):
-        stripped = line.lstrip()
-        if fence is None and (stripped.startswith("```") or stripped.startswith("~~~")):
-            fence = stripped[:3]
-            out.append(_blank_keep_newlines(line))
-        elif fence is not None and stripped.startswith(fence):
-            fence = None
-            out.append(_blank_keep_newlines(line))
-        elif fence is not None:
-            out.append(_blank_keep_newlines(line))
+        if fence is None:
+            opened = _fence_open(line)
+            if opened is not None:
+                fence = opened
+                out.append(_blank_keep_newlines(line))
+            else:
+                out.append(line)
         else:
-            out.append(line)
+            out.append(_blank_keep_newlines(line))
+            if _fence_closes(line, fence[0], fence[1]):
+                fence = None
     return "".join(out)
 
 

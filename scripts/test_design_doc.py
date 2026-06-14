@@ -378,6 +378,36 @@ class TestDetailedDesignNonempty(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("too sparse", reason)
 
+    def test_detailed_design_only_inside_nested_fence_refused(self):
+        # Regression (post-review bugfix follow-on 2026-06-13): a 4-backtick fence
+        # wrapping an example 3-backtick block (the idiomatic way to *show* a fenced
+        # block in Markdown) must stay fully masked. Before the CommonMark
+        # fence-length fix the opener was truncated to 3 chars and the inner
+        # 3-backtick line closed it early, un-masking an example `### Detailed
+        # Design` that then matched as the real section.
+        text = (
+            "---\ntitle: A\nstatus: final\nvisibility: confidential\n---\n\n"
+            "## Design\n\nAuthors should follow this template:\n\n"
+            "````markdown\n```\n### Detailed Design\n\nDescribe each component here.\n"
+            "````\n\n## Notes\n\nNo real Detailed Design section in this doc.\n"
+        )
+        ok, reason = dd.detailed_design_nonempty(self._write(text))
+        self.assertFalse(ok)
+        self.assertIn("no '### Detailed Design'", reason)
+
+    def test_detailed_design_with_nested_fence_example_passes(self):
+        # False-refuse guard for the fence-length fix: a *real* Detailed Design
+        # whose body shows a nested 4-backtick fence example alongside prose is
+        # substantive and must pass — the masking is for boundary detection only;
+        # the body is still sliced from the original text.
+        text = _design_with_dd(
+            "\n\nWe persist records in a table keyed by id.\n\n"
+            "````markdown\n```\nexample fenced block\n```\n````\n",
+            trailing="\n## Alternatives Considered\n\nWe weighed X.\n",
+        )
+        ok, reason = dd.detailed_design_nonempty(self._write(text))
+        self.assertTrue(ok, reason)
+
 
 class TestDetailedDesignCLI(unittest.TestCase):
     """The `detailed-design` CLI: exit 0 on substantive, exit 2 on scaffold."""
