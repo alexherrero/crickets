@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""The two cross-repo edges of the re-homed vault backend (V5-2 task 3).
+"""The cross-repo edges of the re-homed vault backend (V5-2 tasks 3–4).
 
-Two things this proves, from the crickets (plugin) side:
+Three things this proves, from the crickets (plugin) side:
 
   1. **No vendored lock.** There is no second `vault_lock.py` anywhere in the
      `obsidian-vault` plugin tree (LC-3): the backend imports the *single* kernel
@@ -18,14 +18,27 @@ Two things this proves, from the crickets (plugin) side:
      imports `storage_seam` + `vault_lock` from the kernel (LC-3), so this half
      locates the sibling agentm clone and **graceful-skips** when none is reachable
      (keeping crickets CI deterministic).
+
+  3. **First-run adoption is invisible (task 4, LC-4).** Driving the real
+     `backend_selection.select_backend` against a *synthetic* on-device config
+     (`storage.backend = vault` + an in-place `vault_path`) and the real plugin:
+     selection resolves `vault` to the *plugin* seeded from that path (the same
+     `projects/<slug>/…` layout the built-in served), the `.agentm-config.json`
+     stays **byte-identical** (the plugin reads `vault_path`, never writes the
+     kernel's config), and no migration prompt fires / no device-local root is
+     created (adopted in place, never demoted). Same locate-or-skip discipline.
 """
 from __future__ import annotations
 
+import io
+import json
 import os
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PLUGIN_GROUP = REPO_ROOT / "src" / "obsidian-vault"
@@ -140,6 +153,142 @@ class VaultPluginDiscoveryEdge(unittest.TestCase):
             content = "alpha\nbeta\ngamma\n"
             backend.write(loc, content)
             self.assertEqual(backend.read(loc), content)
+
+
+@unittest.skipUnless(PLUGIN_BACKEND.is_file(), f"{PLUGIN_BACKEND} not present")
+class FirstRunAdoptionEdge(unittest.TestCase):
+    """V5-2 task 4 — the invisible handoff: the plugin adopts the in-place `vault_path`.
+
+    The adoption *mechanism* shipped in task 3 (`select_backend` reads
+    `harness_memory.vault_path()` and seeds the plugin from it). This proves the
+    handoff is **invisible** end-to-end, driving the real agentm `select_backend`
+    against the real plugin with a synthetic on-device config — never the
+    operator's real `~/.claude/.agentm-config.json` or vault. Graceful-skips when
+    no sibling agentm clone is reachable, like the discovery edge above.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        agentm_scripts = _locate_agentm_scripts()
+        if agentm_scripts is None:
+            raise unittest.SkipTest(
+                "agentm kernel clone not found (set AGENTM_SCRIPTS or check out "
+                "../agentm) — adoption edge skipped to keep CI deterministic"
+            )
+        if str(agentm_scripts) not in sys.path:
+            sys.path.insert(0, str(agentm_scripts))
+        # Free the shared `vault` slot before the kernel's import-time self-register
+        # (`backend_selection` → `storage_vault`) so it registers clean past the
+        # duplicate guard — see the discovery edge above for why this is a
+        # single-process test artifact, never a production path.
+        import storage_seam  # noqa: E402
+
+        storage_seam.registry._backends.pop(PROTOCOL_NAME, None)
+        import backend_selection  # noqa: E402
+        import storage_vault as kernel_vault  # noqa: E402
+
+        cls.bs = backend_selection
+        cls.seam = storage_seam
+        cls.kernel_backend = kernel_vault.VaultBackend
+
+    def setUp(self) -> None:
+        # Normalize the shared registry to the kernel built-in so `select_backend`'s
+        # `registry.get('vault')` guard passes deterministically regardless of test
+        # ordering (a sibling loader may leave a plugin class in the slot).
+        self.seam.registry.register(PROTOCOL_NAME, self.kernel_backend, clobber=True)
+        self._tmp = tempfile.TemporaryDirectory()
+        tmp = Path(self._tmp.name)
+        # The on-device install prefix carrying the operator's *existing* V4/V5-1
+        # state — `storage.backend = vault` + a `vault_path` — exactly what the
+        # plugin installs *into*. The `projects/` subdir keeps the resolved layout
+        # on the post-V4 name (no legacy-rename warning to confound the output check).
+        self.prefix = tmp / "prefix"
+        self.prefix.mkdir()
+        self.vault = tmp / "vault"
+        (self.vault / "projects").mkdir(parents=True)
+        self.lock = tmp / "lock"
+        self.lock.mkdir()
+        # A device-local root that must NEVER be created — adoption is in place,
+        # never a demotion (the never-demote invariant, proved on the adoption path).
+        self.device_root = tmp / "device-local-root"
+        self.config_path = self.prefix / ".agentm-config.json"
+        self.config_path.write_text(
+            json.dumps({"storage.backend": "vault", "vault_path": str(self.vault)}),
+            encoding="utf-8",
+        )
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def _select_under_config(self):
+        """Run the real `select_backend` against the synthetic config + real plugin.
+
+        Hermetic env: `$AGENTM_INSTALL_PREFIX` points *both* config reads (the
+        `storage.backend` selection and the `vault_path` seed) at the synthetic
+        prefix; `$MEMORY_VAULT_PATH` is cleared so the config's `vault_path` *key*
+        is the source — proving in-place adoption, not an env override; and
+        `$OBSIDIAN_VAULT_SCRIPTS` is cleared (the plugin is injected explicitly).
+        stdout+stderr are captured to assert no migration prompt fires.
+        """
+        out, err = io.StringIO(), io.StringIO()
+        with mock.patch.dict(
+            os.environ, {"AGENTM_INSTALL_PREFIX": str(self.prefix)}, clear=False
+        ):
+            os.environ.pop("MEMORY_VAULT_PATH", None)
+            os.environ.pop("OBSIDIAN_VAULT_SCRIPTS", None)
+            with redirect_stdout(out), redirect_stderr(err):
+                backend = self.bs.select_backend(
+                    install_prefix=self.prefix,
+                    device_local_root=self.device_root,
+                    vault_lock_root=self.lock,
+                    vault_plugin_scripts=PLUGIN_SCRIPTS,
+                )
+        return backend, out.getvalue() + err.getvalue()
+
+    def test_selection_resolves_vault_to_the_plugin_reading_the_configured_path(self) -> None:
+        backend, _ = self._select_under_config()
+        # The *plugin*, not the kernel built-in — and a real StorageBackend.
+        self.assertNotIsInstance(backend, self.kernel_backend)
+        self.assertIsInstance(backend, self.seam.StorageBackend)
+        self.assertEqual(type(backend).__name__, "VaultBackend")
+        # Seeded from the in-place config `vault_path` — the same root the built-in had.
+        self.assertEqual(backend.root, self.vault)
+        # The same projects/<slug>/… layout: a write lands under <vault>/projects/...
+        loc = backend.resolve("projects", "demo", "note.md")
+        backend.write(loc, "alpha\nbeta\n")
+        on_disk = self.vault / "projects" / "demo" / "note.md"
+        self.assertTrue(
+            on_disk.is_file(),
+            "the plugin did not resolve the built-in's projects/<slug> layout",
+        )
+        self.assertEqual(on_disk.read_text(encoding="utf-8"), "alpha\nbeta\n")
+
+    def test_config_is_byte_identical_after_selection(self) -> None:
+        before = self.config_path.read_bytes()
+        self._select_under_config()
+        after = self.config_path.read_bytes()
+        self.assertEqual(
+            before,
+            after,
+            "selection mutated the kernel's config file — LC-4: the plugin reads "
+            "`vault_path`, it never writes the kernel's config",
+        )
+
+    def test_adoption_fires_no_migration_prompt_and_never_demotes(self) -> None:
+        backend, output = self._select_under_config()
+        self.assertIsInstance(backend, self.seam.StorageBackend)
+        self.assertNotIn(
+            "migrat",
+            output.lower(),
+            f"a migration prompt fired during the invisible handoff: {output!r}",
+        )
+        # Adopted in place: no data move, and the device-local root is never created
+        # (selection resolved the plugin, it did not demote to device-local).
+        self.assertFalse(
+            self.device_root.exists(),
+            "adoption created a device-local root — it demoted instead of adopting "
+            "the vault in place",
+        )
 
 
 if __name__ == "__main__":
