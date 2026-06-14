@@ -108,6 +108,15 @@ class TestFmtDate(unittest.TestCase):
         with self.assertRaises(ps.RenderError):
             ps.fmt_date(20260614)
 
+    def test_impossible_calendar_date_rejected(self):
+        # DEFECT 3 regression: a structurally-valid (YYYY-MM-DD-shaped) but
+        # calendrically-impossible date must be rejected, not passed through
+        # verbatim — board-items.json is agent-authored, so a typo'd month/day
+        # should fail loudly rather than reach the board.
+        for bad in ("2026-13-99", "2026-02-30", "2026-00-10"):
+            with self.subTest(value=bad), self.assertRaises(ps.RenderError):
+                ps.fmt_date(bad)
+
 
 class TestFill(unittest.TestCase):
     def test_basic_substitution(self):
@@ -213,6 +222,40 @@ class TestGoldenRenders(unittest.TestCase):
             "**③ Outcome:** done  ·  **Shipped:** [v0.1.0](https://github.com/o/r/releases/tag/v0.1.0)  ·  "
             "**Deferred:** the translate pass → [Spanish pass](https://github.com/o/r/issues/99)",
             body)
+
+    def test_feature_deferred_survives_without_target(self):
+        # DEFECT 1 regression: deferred prose present, NO deferred_target. The
+        # human-authored deferral must render even when nothing is linked — it
+        # must not vanish along with the (absent) link. Before the fix, fill()
+        # dropped the whole `**Deferred:** {{deferred}} → {{deferred_link}}`
+        # clause because deferred_link resolved to None.
+        feat = pm.Item(id="f3", type="feature", title="F3", fields={
+            "kickoff": {"goal": "g", "why_matters": "w"},
+            "closeout": {"outcome": "done", "release": "v0.1.0",
+                         "deferred": "the auth rework"},
+        })
+        body = _render(feat)
+        self.assertIn(
+            "**③ Outcome:** done  ·  **Shipped:** [v0.1.0](https://github.com/o/r/releases/tag/v0.1.0)  ·  "
+            "**Deferred:** the auth rework",
+            body)
+        self.assertNotIn("None", body)
+        self.assertNotIn("→", body)  # no orphaned arrow when there's nothing to link
+
+    def test_feature_deferred_survives_unmaterialized_target(self):
+        # DEFECT 1 regression: deferred_target given, but its issue isn't
+        # materialized yet (the normal DC-1 state for a future target) — the
+        # prose must still render; only the `→ link` is omitted.
+        target = pm.Item(id="d2", type="feature", title="Later", issue=None)
+        feat = pm.Item(id="f4", type="feature", title="F4", fields={
+            "kickoff": {"goal": "g", "why_matters": "w"},
+            "closeout": {"outcome": "done", "release": "v0.1.0",
+                         "deferred": "the translate pass", "deferred_target": "d2"},
+        })
+        body = _render(feat, graph={"d2": target, "f4": feat})
+        self.assertIn("**Deferred:** the translate pass", body)
+        self.assertNotIn("None", body)
+        self.assertNotIn("→", body)
 
     def test_version(self):
         v = pm.Item(id="v5", type="version", title="V5",

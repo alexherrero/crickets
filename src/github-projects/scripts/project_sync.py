@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import datetime
 import re
 import shlex
 import subprocess
@@ -95,6 +96,10 @@ def fmt_date(value) -> str:
     if hasattr(value, "strftime"):
         return value.strftime("%Y-%m-%d")
     if isinstance(value, str) and _DATE_RE.match(value):
+        try:
+            datetime.date.fromisoformat(value)  # reject impossible calendar dates
+        except ValueError:
+            raise RenderError(f"date must be YYYY-MM-DD (or a date), got {value!r}")
         return value
     raise RenderError(f"date must be YYYY-MM-DD (or a date), got {value!r}")
 
@@ -179,12 +184,19 @@ def _closeout_values(t, co, repo_url, graph) -> dict:
             "date": fmt_date(co["date"]),
         }
     # feature / sub-feature — release_links is one-or-more, joined; deferred optional.
+    # The deferral link is folded INTO the deferred value (not a separate template
+    # placeholder): the human-authored `deferred` prose must survive even when the
+    # target has no materialized issue yet — appending `→ <link>` only when one
+    # resolves, never dropping the whole clause for an absent optional link.
     releases = co.get("releases") or ([co["release"]] if co.get("release") else [])
+    deferred = co.get("deferred")
+    deferred_link = _entity_link(graph, repo_url, co.get("deferred_target"))
+    if deferred and deferred_link:
+        deferred = f"{deferred} → {deferred_link}"
     return {
         "outcome": co["outcome"],
         "release_links": " · ".join(release_link(repo_url, r) for r in releases),
-        "deferred": co.get("deferred"),
-        "deferred_link": _entity_link(graph, repo_url, co.get("deferred_target")),
+        "deferred": deferred,
     }
 
 

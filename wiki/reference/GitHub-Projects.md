@@ -94,7 +94,7 @@ Every materialized item carries the same six fields (DC-2), in this order. These
 | Type | Template file(s) | Structure (placeholders) |
 |---|---|---|
 | Version | `version.md` | `**About:** {{about}}` |
-| Feature | `feature-{kickoff,progress,closeout}.md` | kickoff `{{goal}} · {{why_matters}}`; progress `{{date}}: {{plan_goal}} shipped ({{version}})`; closeout `{{outcome}}` · Shipped `{{release_links}}` · Deferred `{{deferred}}`→`{{deferred_link}}` |
+| Feature | `feature-{kickoff,progress,closeout}.md` | kickoff `{{goal}} · {{why_matters}}`; progress `{{date}}: {{plan_goal}} shipped ({{version}})`; closeout `{{outcome}}` · Shipped `{{release_links}}` · Deferred `{{deferred}}` (the renderer appends `→` the issue link when the deferral target is materialized) |
 | Sub-feature | `sub-feature-{kickoff,progress,closeout}.md` | same shape as Feature |
 | Plan | `plan-{kickoff,progress,closeout}.md` | kickoff `{{goal}} · {{done_when}}`; progress `{{date}} (→ {{task_link}}): {{progress}}`; closeout `{{outcome}}` · Shipped `{{shipped_link}}` · `{{date}}` |
 | Task | `task-{kickoff,progress,closeout}.md` | the `①→②→③` lifecycle thread (below) |

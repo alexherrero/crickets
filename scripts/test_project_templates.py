@@ -34,10 +34,10 @@ EXPECTED: dict[str, set[str]] = {
     "plan-closeout": {"outcome", "shipped_link", "date"},
     "feature-kickoff": {"goal", "why_matters"},
     "feature-progress": {"date", "plan_goal", "version"},
-    "feature-closeout": {"outcome", "release_links", "deferred", "deferred_link"},
+    "feature-closeout": {"outcome", "release_links", "deferred"},
     "sub-feature-kickoff": {"goal", "why_matters"},
     "sub-feature-progress": {"date", "plan_goal", "version"},
-    "sub-feature-closeout": {"outcome", "release_links", "deferred", "deferred_link"},
+    "sub-feature-closeout": {"outcome", "release_links", "deferred"},
     "version": {"about"},
     "backlog-item": {"what", "why_matters", "priority", "priority_reason"},
     "backlog-item-promotion": {"promoted_link", "date"},
@@ -46,9 +46,12 @@ EXPECTED: dict[str, set[str]] = {
 
 # Rule 6 partition: the deterministic helper owns these (dates, SHAs, links it
 # resolves from stable ids); the model supplies the human sentences in the rest.
+# (The deferral link is no longer a template placeholder — _closeout_values folds
+# the resolved `→ <link>` into the `deferred` value so the prose survives an
+# absent/unmaterialized target; see project_sync.py DEFECT-1 fix.)
 RENDERER = {
     "date", "sha", "commit_url", "landed_link", "shipped_link",
-    "task_link", "version", "release_links", "deferred_link", "promoted_link",
+    "task_link", "version", "release_links", "promoted_link",
 }
 MODEL = {
     "goal", "done_when", "progress", "outcome", "why_matters", "plan_goal",

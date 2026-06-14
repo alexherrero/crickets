@@ -7,7 +7,11 @@ standalone: false
 # rationale). 0.1.0 = first cut of the github-projects group (roadmap #41 /
 # catalog #8): the plugin scaffold + the PII-safe project.json schema. The
 # render path (project_model.py / project_sync.py), the vault==board gate, the
-# phase-hook emission, and the inaugural backfill land in later 0.1.0-plan tasks
-# and ship under this same minor until the first release bump.
-version: 0.1.0
+# phase-hook emission, and the inaugural backfill land in later 0.1.0-plan tasks.
+# 0.1.1 = end-of-plan /review fix (DEFECT 1): _closeout_values folds the deferral
+# `→ <link>` into the `deferred` value (dropping the {{deferred_link}} template
+# placeholder) so the operator's deferred prose survives an absent/unmaterialized
+# target instead of being silently dropped with the whole clause; + fmt_date now
+# rejects impossible calendar dates (DEFECT 3).
+version: 0.1.1
 capabilities: [board-sync]
