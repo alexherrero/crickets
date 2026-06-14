@@ -23,6 +23,21 @@ real agentm machinery imported from the located sibling clone:
      disk; locator resolution and ``list``/``exists``/``info`` agree. The empty
      diff *is* LC-5.
 
+  3. **Behavioral contract — the CAS the byte suite can't see** (``PluginVsBuiltinBehavioralContract``).
+     Proofs 1–2 establish byte-faithfulness under quiescent single-writer access —
+     a strictly weaker claim than the byte-*and-behavior* faithfulness V5-3's
+     deletion of the built-in rests on. A plugin whose ``write`` was degraded to
+     ``atomic_write`` *only* (device-local-equivalent) passes every case above
+     green. This proof closes that gap: the plugin's public ``write`` must **bite**
+     on a concurrent modification (raise :class:`ConcurrentModificationError`,
+     driven deterministically by interposing a foreign write into the CAS window),
+     run against both implementations for behavioral parity; and the plugin must
+     advertise the built-in's exact ``capabilities`` + ``conflict_strategy``
+     (``concurrent_writers=True`` / ``"whole-file"``, pinned to literals). Homed
+     here, not in the universal kernel suite, because the seam's ``write`` exposes
+     no CAS precondition — a universal check would need a frozen-seam-API extension
+     (DC-7); see the class docstring.
+
 All of it locates the sibling agentm clone and **graceful-skips** when none is
 reachable, so crickets CI stays deterministic (the kernel suite is agentm-homed;
 it runs live wherever ``../agentm`` is checked out — e.g. the operator's machine).
@@ -44,6 +59,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PLUGIN_GROUP = REPO_ROOT / "src" / "obsidian-vault"
@@ -97,6 +113,11 @@ if _AGENTM_AVAILABLE:
     import storage_conformance as _sc  # noqa: E402
     import storage_vault as _kernel_vault  # noqa: E402  (the kernel built-in)
     from storage_conformance import ConformanceSuite, run_conformance  # noqa: E402
+
+    # The vault's distinguishing safety vocabulary — the CAS raise the byte-only
+    # universal suite never exercises. Single-sourced from its canonical home
+    # (vault_lock), the same module both the plugin and the built-in import.
+    from vault_lock import ConcurrentModificationError  # noqa: E402
 
     # Whatever the prior import ordering across the discover run, leave the shared
     # `vault` slot holding the built-in so sibling modules that call
@@ -346,6 +367,124 @@ class PluginVsBuiltinParallelRun(_PluginBackendCase, unittest.TestCase):
                 builtin.info(builtin.resolve(*parts)).size,
                 f"info.size disagreed for {parts!r}",
             )
+
+
+@unittest.skipUnless(_AGENTM_AVAILABLE, _SKIP_REASON)
+class PluginVsBuiltinBehavioralContract(_PluginBackendCase, unittest.TestCase):
+    """The behavior the byte-only conformance suite structurally cannot assert.
+
+    LC-5's green authorizes V5-3 to **delete** the built-in, on the premise that
+    the plugin is byte-*and-behavior* faithful. The V5-1 ``UNIVERSAL_CHECKS`` are
+    single-writer / byte-round-trip only — they never touch ``vault_mutex``, the
+    content-hash CAS, or :class:`ConcurrentModificationError`. So a plugin whose
+    ``write`` was degraded to ``atomic_write`` *only* (device-local-equivalent —
+    dropping the whole load-bearing difference) passes every conformance + parallel
+    -run case **green**. This class closes that gap with the two checks the suite
+    can't express, both deterministic and public-API-driven:
+
+      1. **The CAS bites end-to-end** (``test_*_write_bites_on_concurrent_modification``).
+         The vault's CAS only fires when the on-disk bytes change *between* the two
+         reads ``write`` makes under the mutex (the pre-write hash capture and the
+         re-check in ``_cas_atomic_write``) — a concurrency window the public verbs
+         cannot reach single-threaded. We force a non-mutex writer (Drive sync /
+         another device) into exactly that window by interposing on
+         ``Path.read_bytes`` — the same deterministic technique agentm's own
+         ``test_storage_vault`` uses end-to-end — and require the public ``write``
+         to **raise** and leave the foreign bytes intact. Run against *both*
+         implementations: the built-in case anchors the harness as non-vacuous and
+         proves the plugin matches the built-in's behavior, not merely "raises".
+
+      2. **Identical advertised contract** (``test_*_advertise_identical_contract``).
+         ``capabilities`` + ``conflict_strategy`` must be byte-equal between plugin
+         and built-in, with the vault's real profile (``concurrent_writers=True``,
+         ``conflict_strategy="whole-file"``) **pinned to literals** — so a *both*-
+         degraded pair (each lying its way to device-local's all-False floor) cannot
+         pass on parity alone. Together with (1) the mutant is boxed in: degrade the
+         ``write`` and (1) reds; downgrade the advertisement to dodge (1) and (2)
+         reds.
+
+    Why crickets-side and not the agentm kernel suite: the seam's
+    ``write(locator, content)`` has no ``expected_hash`` parameter, so there is no
+    public, implementation-agnostic way to drive a CAS from the *universal* suite —
+    the working trigger is the ``Path.read_bytes`` interposition, which is specific
+    to this backend's read pattern (a future etag/fcntl backend would differ). A
+    universal kernel check would require extending the frozen seam API (DC-7); that
+    is out of scope for closing this gap. So the behavioral proof lives where the
+    implementation is known — mirroring where agentm homes its own CAS test.
+    """
+
+    def _assert_write_cas_bites(self, backend) -> None:
+        """Force a foreign write into ``backend.write``'s CAS window; require the raise.
+
+        ``write`` reads the target twice under the mutex: once to capture the
+        ``expected`` hash, once to re-check in the CAS just before the atomic land.
+        Interpose on ``Path.read_bytes`` to land ``b"v2-foreign"`` *between* those
+        two reads (after the first, before the second): the re-read then sees
+        ``v2-foreign`` ≠ ``expected=hash(v1)`` → :class:`ConcurrentModificationError`,
+        so the blind ``v3-mine`` overwrite is refused and the foreign write survives.
+        A degrade to ``atomic_write``-only has no second read / no CAS, so it would
+        clobber silently and this assertion would red — the regression bite.
+        """
+        loc = backend.resolve("a.md")
+        backend.write(loc, "v1")
+        target = backend._path(loc)
+        real_read_bytes = Path.read_bytes
+        reads = {"n": 0}
+
+        def _foreign_write_between_reads(self_path: Path):
+            data = real_read_bytes(self_path)
+            if self_path == target:
+                reads["n"] += 1
+                if reads["n"] == 1:  # after the pre-write read, before the CAS re-read
+                    target.write_bytes(b"v2-foreign")
+            return data
+
+        with mock.patch.object(Path, "read_bytes", _foreign_write_between_reads):
+            with self.assertRaises(ConcurrentModificationError):
+                backend.write(loc, "v3-mine")
+        # The interposition must actually have opened the window (not a vacuous pass):
+        # both reads happened, and the foreign write — not our refused v3 — survives.
+        self.assertGreaterEqual(reads["n"], 2, "the CAS window never opened — the harness is miswired")
+        self.assertEqual(
+            backend.read(loc),
+            "v2-foreign",
+            "the refused write must not clobber the foreign write the CAS protected",
+        )
+
+    def test_plugin_write_bites_on_concurrent_modification(self) -> None:
+        # The regression bite: a degraded (atomic_write-only) plugin would NOT raise.
+        self._assert_write_cas_bites(self._make_plugin_backend())
+
+    def test_builtin_write_bites_on_concurrent_modification(self) -> None:
+        # Behavioral parity anchor: the same harness against the untouched built-in
+        # proves it is non-vacuous and that the plugin matches the built-in's bite.
+        self._assert_write_cas_bites(self._make_builtin_backend())
+
+    def test_plugin_and_builtin_advertise_identical_contract(self) -> None:
+        plugin = self._make_plugin_backend()
+        builtin = self._make_builtin_backend()
+        # Parity: the plugin advertises the built-in's exact capability profile.
+        self.assertEqual(
+            plugin.capabilities,
+            builtin.capabilities,
+            "plugin and built-in must advertise identical capabilities",
+        )
+        self.assertEqual(
+            plugin.conflict_strategy,
+            builtin.conflict_strategy,
+            "plugin and built-in must advertise the same conflict strategy",
+        )
+        # Absolute pin: a *both*-degraded pair would match each other but not these
+        # literals — the vault's real synced/multi-writer profile, not the floor.
+        self.assertTrue(
+            plugin.capabilities.concurrent_writers,
+            "the vault plugin must declare concurrent_writers (the mutex makes N writers safe)",
+        )
+        self.assertEqual(
+            plugin.conflict_strategy,
+            "whole-file",
+            "the vault plugin must name the GDrive whole-file conflict strategy, not the 'none' floor",
+        )
 
 
 if __name__ == "__main__":

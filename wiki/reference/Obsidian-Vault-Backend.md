@@ -92,8 +92,12 @@ The backend must pass two checks before the later V5-3 cutover is triggered.
 |---|---|
 | Conformance suite | GREEN on the V5-1-authored suite — verb battery + byte-identical LF-exact markdown round-trip |
 | Parallel-run | byte-identical resolution against the still-present built-in backend |
+| Behavioral contract | `write` **bites** on a concurrent modification (raises `ConcurrentModificationError` via the content-hash CAS) + the plugin advertises the built-in's exact `capabilities` / `conflict_strategy` — asserted against both backends for parity |
 
 _Proof harness pending — filled by `/work` once the task ships._
+
+> [!WARNING]
+> **Conformance-suite green proves byte-faithfulness, not the concurrency contract.** The V5-1 suite's `UNIVERSAL_CHECKS` are single-writer / byte-round-trip only — they never exercise the `vault_mutex` / content-hash CAS / `ConcurrentModificationError`. A backend degraded to `atomic_write`-only (dropping the load-bearing CAS) passes every conformance + parallel-run case GREEN. Because V5-3 deletes the built-in backend on the strength of this gate, the cutover gate must **also** assert the behavioral contract — the CAS bite + capability parity in the row above. The universal suite can't carry the CAS check itself: the frozen seam's `write(locator, content)` exposes no CAS precondition (DC-7), so crickets adds it as a backend-specific check, not a kernel-suite extension.
 
 ## Host coverage
 
