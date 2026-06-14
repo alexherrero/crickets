@@ -18,9 +18,9 @@ The `developer-workflows` phase commands `/work`, `/plan`, and `/review` accept 
 | `/review --name <slug>` | `PLAN-<slug>.md` | — | named pair |
 | `/spawn-worker <name>` | — (creates a worktree bound to the named plan) | — | operator-initiated worktree + `worker/<name>` branch ([Spawning a worker worktree](#spawning-a-worker-worktree)) |
 | `/integrate-worker <name>` | — | `progress-<slug>.md` appended into `progress.md` | merges `worker/<slug>` → `main` only if the integrated tree passes the full gate, then prunes ([Integrating a worker](#integrating-a-worker)) |
-| `/design author [<slug>]` | the design doc (not a PLAN) | — | **pending** (V5-10 #5) — walks the 10-section template, drives `draft → review → final` ([The `/design` command](#the-design-command)) |
-| `/design translate` | `<doc-dir>/parts/<part-slug>.md` (writes parts, reads the doc) | — | **pending** — gates on `Status: final`, splits the doc into structural parts |
-| `/design sequence` | `PLAN-<doc-slug>-<part-slug>.md` (active) + `queued-plans/PLAN-<doc-slug>-<part-slug>.md` (staged) | — | **pending** — one named plan per part via `stage_plan.py`; never touches the singleton `PLAN.md` |
+| `/design author [<slug>]` | the design doc (not a PLAN) | — | walks the 10-section template, drives `draft → review → final` ([The `/design` command](#the-design-command)) |
+| `/design translate` | `<doc-dir>/parts/<part-slug>.md` (writes parts, reads the doc) | — | gates on `Status: final`, splits the doc into structural parts |
+| `/design sequence` | `PLAN-<doc-slug>-<part-slug>.md` (active) + `queued-plans/PLAN-<doc-slug>-<part-slug>.md` (staged) | — | one named plan per part via `stage_plan.py`; never touches the singleton `PLAN.md` |
 
 > [!NOTE]
 > Paths above are shown by basename. The actual directory is whatever the resolver returns — `.harness/` in standalone mode, or a hosting memory layer's state dir when one is present (see [Resolution](#resolution)).
@@ -37,16 +37,19 @@ The `developer-workflows` phase commands `/work`, `/plan`, and `/review` accept 
 
 ## The `/design` command
 
-> [!IMPORTANT]
-> **Status: pending** (V5-10 sibling #5, `design-command`). Forward-declared — `/design` is not yet built. The rows below describe the planned surface; a later `/work` task fills in shipped `file:line` references. The task recipe is in [Author a design](Author-A-Design).
+`/design` is the **upstream authoring step** of the phase loop — it starts *earlier* than `/plan`. Use it when the problem is ambiguous, multi-stakeholder, or has cross-cutting Quality-Attributes / Operations concerns; use `/plan` for an already-settled design. It is packaged as a **command** (not a skill), consistent with the rest of the all-commands phase loop, and is implemented as two tested stdlib-only Python helpers plus a thin command prompt (see [ADR 0024](0024-design-as-command)). The task recipe is in [Author a design](Author-A-Design).
 
-`/design` is the **upstream authoring step** of the phase loop — it starts *earlier* than `/plan`. Use it when the problem is ambiguous, multi-stakeholder, or has cross-cutting Quality-Attributes / Operations concerns; use `/plan` for an already-settled design. It is packaged as a **command** (not a skill), consistent with the rest of the all-commands phase loop, and is implemented as a tested Python helper plus a thin command prompt (see [ADR 0024](0024-design-as-command)).
+| Surface | Location |
+|---|---|
+| Command prompt | [`commands/design.md`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/commands/design.md) — the three sub-verb flows (interactive, human-judgment) |
+| Gate + storage helper | [`scripts/design_doc.py`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/design_doc.py) — `require_final()` the `Status: final` gate, `detailed_design_nonempty()`, frontmatter parser, harness-root / published-path resolution |
+| Topo-sort helper | [`scripts/design_sequence.py`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/design_sequence.py) — Kahn topo-sort with alphabetical tie-break, part-frontmatter validation |
 
-| Sub-verb | Reads | Writes | Gate |
+| Sub-verb | Reads | Writes | Gate (helper) |
 |---|---|---|---|
 | `/design author [<slug>]` | the design doc (on re-invoke) | the design doc | refuses re-invocation once `Status: final`; only `author` transitions Status |
-| `/design translate` | a `Status: final` design doc | `<doc-dir>/parts/<part-slug>.md` | hard-gates on `Status: final` |
-| `/design sequence` | the populated `<doc-dir>/parts/` | one named plan per part (see below) | — |
+| `/design translate` | a `Status: final` design doc | `<doc-dir>/parts/<part-slug>.md` | `design_doc.py gate` (`Status: final`) **and** `design_doc.py detailed-design` (non-empty `### Detailed Design`); both exit 2 + reason on failure |
+| `/design sequence` | the populated `<doc-dir>/parts/` | one named plan per part (see below) | `design_doc.py gate` + non-empty validated `parts/`; ordering via `design_sequence.py order` (exit 2 on cycle / missing-dep) |
 
 ### `/design author`
 
@@ -82,7 +85,7 @@ The `developer-workflows` phase commands `/work`, `/plan`, and `/review` accept 
 
 | Visibility | Design doc home |
 |---|---|
-| `confidential` | `<resolved-harness>/designs/<slug>.md` — harness root resolved via `resolve_plan.py` (storage-agnostic); not committed |
+| `confidential` | `<resolved-harness>/designs/<slug>.md` — harness root resolved via `design_doc.py harness-root` (composes onto the `resolve_plan.py` resolver; storage-agnostic); not committed |
 | `published` | `wiki/designs/<slug>.md` — committed (the crickets path, **not** agentm's `wiki/explanation/designs/`) |
 
 > [!NOTE]

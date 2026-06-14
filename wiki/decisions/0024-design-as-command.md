@@ -19,6 +19,7 @@ A canonical `/design` already exists in agentm as a **SKILL** with a no-Bash too
 - How does `/design sequence` emit plans without colliding with the singleton `PLAN.md` or re-implementing harness-path resolution?
 - No-Bash prompt-only (agentm idiom) or tested Python helper + thin prompt (crickets idiom)?
 - What is in scope for this plan, and what is explicitly deferred?
+- Does [ADR 0004](0004-design-skill.md) get a `superseded-by-0024` note, or is "divergent port" the right relationship? **Resolved: divergent port — 0004 stays `accepted`, no supersession.** 0004 is the historical origin of the conventions 0024 *inherits* (the 10-section template §2, the Status lifecycle §4, the visibility routing §5); a supersession flip would wrongly void them. And the skill 0004 records already left crickets for agentm in v2.0.0, so there is no live crickets decision for 0024 to supersede — only a port to record. See *Related* below.
 
 ## Decision
 
@@ -73,7 +74,7 @@ _Skeleton — filled at `/release`._
 
 ## Related
 
-- [ADR 0004 — design skill](0004-design-skill.md) — the agentm-side `/design` skill this command ports; the no-Bash allowlist (§8), the 10-section template (§2), the Status lifecycle (§4), and the visibility routing (§5) originate there. The skill moved to agentm in v2.0.0; this ADR records the crickets *command* port's packaging divergence.
+- [ADR 0004 — design skill](0004-design-skill.md) — the agentm-side `/design` skill this command ports; the no-Bash allowlist (§8), the 10-section template (§2), the Status lifecycle (§4), and the visibility routing (§5) originate there. The skill moved to agentm in v2.0.0; this ADR records the crickets *command* port's packaging divergence. **This is a divergent port, not a supersession:** 0004 stays `accepted` and is **not** flagged `superseded-by-0024`, because 0024 *inherits* its template / Status-lifecycle / visibility conventions rather than replacing them — and there is no live crickets decision left to supersede once the skill itself moved to agentm. The two ADRs coexist: 0004 owns the agentm skill, 0024 owns the crickets command port.
 - [Author a design](Author-A-Design) — the how-to recipe for the three sub-verbs.
 - [Named plans](Named-Plans) — the reference for the phase-loop command surface and the `stage_plan.py` writer `/design sequence` rides on.
 - The agentm V5-10 design — the source of the sibling build order; sibling #1 (`multi-plan-behavioral`) shipped `stage_plan.py`, which this command composes onto.
