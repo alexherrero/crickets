@@ -56,5 +56,15 @@ standalone: true
 # `project-manager` (a glance over `/queue-status-lite`, forward-referencing
 # board-sync + the V5-11 chief-of-staff layer). No new engine, no net-new
 # sub-agent — the researcher gap is collapsed to a pure thin skin.
-version: 0.8.0
+# 0.9.0 = design-command (V5-10 sibling #5) — packages agentm's canonical `design`
+# skill into a `/design` command: author a 10-section design doc (draft → review →
+# final), translate a final doc into structural `parts/`, then sequence those parts
+# into a topo-ordered set of named plans (first activated, rest queued) via the
+# shipped `stage_plan.py` writer — completing the `/design`→`/plan` authoring arc
+# `tech-lead` forward-references. Crickets idiom: thin command prompt + tested
+# stdlib-only helpers (`design_doc.py`'s final-gate + harness-root resolution;
+# `design_sequence.py`'s Kahn topo-sort), not agentm's no-Bash skill. The
+# host-specific external-review handoff is deferred (#5b); `sequence` reuses
+# `stage_plan.py` and never touches the singleton `PLAN.md`.
+version: 0.9.0
 capabilities: [setup, plan, work, review, release, bugfix, documentation]

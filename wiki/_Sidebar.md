@@ -70,3 +70,4 @@
 - [0021 — per-plugin versioning](0021-per-plugin-versioning)
 - [0022 — retire worktrees-never-auto](0022-retire-worktrees-never-auto)
 - [0023 — gate the integrated tree](0023-gate-on-integrated-tree)
+- [0024 — design as command](0024-design-as-command) _(pending)_

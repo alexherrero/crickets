@@ -18,6 +18,9 @@ The `developer-workflows` phase commands `/work`, `/plan`, and `/review` accept 
 | `/review --name <slug>` | `PLAN-<slug>.md` | — | named pair |
 | `/spawn-worker <name>` | — (creates a worktree bound to the named plan) | — | operator-initiated worktree + `worker/<name>` branch ([Spawning a worker worktree](#spawning-a-worker-worktree)) |
 | `/integrate-worker <name>` | — | `progress-<slug>.md` appended into `progress.md` | merges `worker/<slug>` → `main` only if the integrated tree passes the full gate, then prunes ([Integrating a worker](#integrating-a-worker)) |
+| `/design author [<slug>]` | the design doc (not a PLAN) | — | **pending** (V5-10 #5) — walks the 10-section template, drives `draft → review → final` ([The `/design` command](#the-design-command)) |
+| `/design translate` | `<doc-dir>/parts/<part-slug>.md` (writes parts, reads the doc) | — | **pending** — gates on `Status: final`, splits the doc into structural parts |
+| `/design sequence` | `PLAN-<doc-slug>-<part-slug>.md` (active) + `queued-plans/PLAN-<doc-slug>-<part-slug>.md` (staged) | — | **pending** — one named plan per part via `stage_plan.py`; never touches the singleton `PLAN.md` |
 
 > [!NOTE]
 > Paths above are shown by basename. The actual directory is whatever the resolver returns — `.harness/` in standalone mode, or a hosting memory layer's state dir when one is present (see [Resolution](#resolution)).
@@ -31,6 +34,59 @@ The `developer-workflows` phase commands `/work`, `/plan`, and `/review` accept 
 | `/review` | optional `--name <slug>` (anywhere in args) | resolves + reads the named pair for adversarial critique |
 
 `/setup`, `/release`, and `/bugfix` do **not** take a plan name in this plan — they remain singleton-only.
+
+## The `/design` command
+
+> [!IMPORTANT]
+> **Status: pending** (V5-10 sibling #5, `design-command`). Forward-declared — `/design` is not yet built. The rows below describe the planned surface; a later `/work` task fills in shipped `file:line` references. The task recipe is in [Author a design](Author-A-Design).
+
+`/design` is the **upstream authoring step** of the phase loop — it starts *earlier* than `/plan`. Use it when the problem is ambiguous, multi-stakeholder, or has cross-cutting Quality-Attributes / Operations concerns; use `/plan` for an already-settled design. It is packaged as a **command** (not a skill), consistent with the rest of the all-commands phase loop, and is implemented as a tested Python helper plus a thin command prompt (see [ADR 0024](0024-design-as-command)).
+
+| Sub-verb | Reads | Writes | Gate |
+|---|---|---|---|
+| `/design author [<slug>]` | the design doc (on re-invoke) | the design doc | refuses re-invocation once `Status: final`; only `author` transitions Status |
+| `/design translate` | a `Status: final` design doc | `<doc-dir>/parts/<part-slug>.md` | hard-gates on `Status: final` |
+| `/design sequence` | the populated `<doc-dir>/parts/` | one named plan per part (see below) | — |
+
+### `/design author`
+
+| Property | Value |
+|---|---|
+| Template | 10 sections: Context → Design → Alternatives Considered → Dependencies → Migrations → Technical Debt & Risks → Quality Attributes → Project management → Operations → Document History |
+| Quality-Attributes drill-down | 11 sub-attrs, each described or marked `N/A: <one-sentence reason>` |
+| Status lifecycle | `draft → review → final` (only `author` transitions Status; never backwards via the command) |
+| Review | inline pass — approve / revise / skip per section |
+| Refusal | refuses re-invocation after the doc reaches `Status: final` |
+
+### `/design translate`
+
+| Property | Value |
+|---|---|
+| Gate | refuses unless the doc is `Status: final` |
+| Default split | one part per Detailed-Design subsection, capped at ~6 parts |
+| Reshape | interactive — merge / split / rename / reorder before writing |
+| Output | structural part files at `<doc-dir>/parts/<part-slug>.md` |
+
+### `/design sequence`
+
+| Property | Value |
+|---|---|
+| Input | the populated `<doc-dir>/parts/` |
+| Ordering | topo-sort, deterministic; alphabetical tie-break |
+| Writer | the already-shipped `stage_plan.py` (sibling #1) — `/design` does not re-derive harness paths |
+| First part | **activated** as `PLAN-<doc-slug>-<part-slug>.md` |
+| Remaining parts | **staged** into `queued-plans/PLAN-<doc-slug>-<part-slug>.md` |
+| Singleton `PLAN.md` | **never touched** |
+
+### Storage
+
+| Visibility | Design doc home |
+|---|---|
+| `confidential` | `<resolved-harness>/designs/<slug>.md` — harness root resolved via `resolve_plan.py` (storage-agnostic); not committed |
+| `published` | `wiki/designs/<slug>.md` — committed (the crickets path, **not** agentm's `wiki/explanation/designs/`) |
+
+> [!NOTE]
+> **Deferred (not in this plan, do not expect):** the external-review handoff (Antigravity / Gemini transfer-context flow), and the `final → launched` auto-transition + queued-plan auto-promotion on `/release`.
 
 ## Two-tier named-plan staging
 
@@ -266,6 +322,7 @@ The bare paths are **byte-identical** to today's literals; this is locked by an 
 
 ## Related
 
+- [Author a design](Author-A-Design) — the task recipe for the upstream `/design` authoring step (`author` → `translate` → `sequence`).
 - [Run a named plan](Run-A-Named-Plan) — the task recipe for driving `/work --name <slug>` and friends.
 - [Spawn a worker in a worktree](Spawn-A-Worker-In-A-Worktree) — the task recipe for `/spawn-worker`: hand an activated named plan to a worker in its own checkout.
 - [Integrate a worker](Integrate-A-Worker) — the task recipe for `/integrate-worker`: land a finished worker's branch on `main` only if the integrated tree still passes the gate.

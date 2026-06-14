@@ -7,6 +7,7 @@
 - [Declare a project's Architecture](Declare-Architecture)
 - [Maintain a wiki — wiki-watcher](Run-The-Wiki-Watcher)
 - [Review a change — code review](Use-Code-Review)
+- [Author a design](Author-A-Design) _(pending)_
 - [Run a named plan](Run-A-Named-Plan)
 - [Spawn a worker in a worktree](Spawn-A-Worker-In-A-Worktree)
 - [Integrate a worker](Integrate-A-Worker)
