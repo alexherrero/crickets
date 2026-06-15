@@ -205,6 +205,39 @@ class TestIncrementalTranscriptReader(unittest.TestCase):
             tmp.unlink(missing_ok=True)
             _cache.unlink(missing_ok=True)
 
+    def test_truncated_transcript_resets_cache(self):
+        """Regression: transcript truncation (e.g. /compact) must not return stale cost."""
+        line1 = (
+            b'{"type":"assistant","message":{"model":"claude-haiku-4-5","usage":'
+            b'{"input_tokens":400,"cache_creation_input_tokens":0,'
+            b'"cache_read_input_tokens":0,"output_tokens":50}}}\n'
+        )
+        with tempfile.NamedTemporaryFile(mode="wb", suffix=".jsonl", delete=False) as f:
+            f.write(line1)
+            tmp = Path(f.name)
+
+        sid = "test-truncation-stale-001"
+        slm._cache_path(sid).unlink(missing_ok=True)
+        try:
+            data = self._make_data(str(tmp), session_id=sid)
+            stats1 = slm._get_session_stats(data)
+            self.assertIsNotNone(stats1)
+            self.assertGreater(stats1["total_cost"], 0)
+
+            # Truncate the file — simulates /compact rewriting the transcript
+            with open(tmp, "wb"):
+                pass
+
+            stats2 = slm._get_session_stats(data)
+            if stats2 is not None:
+                self.assertAlmostEqual(
+                    stats2.get("total_cost", 0.0), 0.0, places=6,
+                    msg="Stale cached cost returned after transcript truncation"
+                )
+        finally:
+            tmp.unlink(missing_ok=True)
+            slm._cache_path(sid).unlink(missing_ok=True)
+
     def test_cache_invalidated_on_path_change(self):
         """Changing transcript_path resets the cache."""
         sid = "test-path-change-001"

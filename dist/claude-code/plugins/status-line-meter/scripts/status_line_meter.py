@@ -105,8 +105,12 @@ def _get_session_stats(data: dict) -> dict | None:
 
         with open(tp, "rb") as fh:
             current_size = fh.seek(0, 2)
-            if current_size <= last_pos:
+            if current_size == last_pos:
                 return state if state else None
+            if current_size < last_pos:
+                # File shrank — transcript was truncated or compacted; reset.
+                state = {}
+                last_pos = 0
             fh.seek(last_pos)
             new_bytes = fh.read(current_size - last_pos)
 

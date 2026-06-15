@@ -12,4 +12,6 @@ enhances:
 # 0.1.0 = initial plugin: status_line_meter.py (used-%, floor-share badge, 5h-window
 # cost) with incremental transcript reader, /tmp cache keyed by session_id, and
 # runtime-discovery of token-audit's pricing.py (graceful-skip when absent).
-version: 0.1.0
+# 0.1.1 = fix: transcript truncation (e.g. /compact) reset — `current_size < last_pos`
+# now resets the incremental reader to offset 0 instead of returning stale cached totals.
+version: 0.1.1
