@@ -117,6 +117,8 @@ Under `--stage`, lead the line with `staged` (`/plan --stage — staged plan "<t
 
 Summarize in ≤5 bullets: the goal, task count, biggest risk, next command (`/work` to start task 1, or `/plan --activate <slug>` when this was a `--stage` author).
 
+After `progress.md` is written, run `/clear` rather than `/compact`. State is on disk; a compaction summary re-bills on every later turn.
+
 ## Failure modes to avoid
 
 - **Premature coding** — write it as a task; handle it in `/work`.
