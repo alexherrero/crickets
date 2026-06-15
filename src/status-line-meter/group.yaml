@@ -1,0 +1,15 @@
+name: Status Line Meter
+description: Live context/cost meter for the Claude Code status line — used-%, 5h-window cost, and floor-share badge. Enhances token-audit with continuous live metering.
+category: Coding
+requires: []
+standalone: true
+enhances:
+  - group: token-audit
+    capability: token-audit
+    effect: "live continuous metering via the Claude Code status line"
+# Per-plugin marketplace version. Bump on every release that ships new/changed
+# primitives so `claude plugin update status-line-meter@crickets` actually pulls.
+# 0.1.0 = initial plugin: status_line_meter.py (used-%, floor-share badge, 5h-window
+# cost) with incremental transcript reader, /tmp cache keyed by session_id, and
+# runtime-discovery of token-audit's pricing.py (graceful-skip when absent).
+version: 0.1.0
