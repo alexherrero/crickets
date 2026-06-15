@@ -680,9 +680,11 @@ class TestIntegratePrepare(unittest.TestCase):
         scripts = self.repo / "scripts"
         scripts.mkdir(parents=True, exist_ok=True)
         # A stub prepare script echoes its $1 (the pre-merge SHA) + exits 0.
-        (scripts / "integrate-prepare.sh").write_text(
-            '#!/usr/bin/env bash\necho "prepare ran with sha=$1"\nexit 0\n',
-            encoding="utf-8")
+        # write_bytes (not write_text): a .sh must be LF — write_text's default
+        # CRLF translation on Windows would turn `exit 0` into `exit 0\r`, which
+        # bash rejects as a non-numeric arg. Bytes are written verbatim.
+        (scripts / "integrate-prepare.sh").write_bytes(
+            b'#!/usr/bin/env bash\necho "prepare ran with sha=$1"\nexit 0\n')
         rc, out = iw._artifact_prepare(str(self.repo), "abc123")
         self.assertEqual(rc, 0, out)
         self.assertIn("prepare ran with sha=abc123", out)
@@ -690,11 +692,48 @@ class TestIntegratePrepare(unittest.TestCase):
     def test_default_prepare_surfaces_script_failure(self):
         scripts = self.repo / "scripts"
         scripts.mkdir(parents=True, exist_ok=True)
-        (scripts / "integrate-prepare.sh").write_text(
-            "#!/usr/bin/env bash\necho 'boom' >&2\nexit 7\n", encoding="utf-8")
+        (scripts / "integrate-prepare.sh").write_bytes(
+            b"#!/usr/bin/env bash\necho 'boom' >&2\nexit 7\n")
         rc, out = iw._artifact_prepare(str(self.repo), "abc123")
         self.assertEqual(rc, 7)
         self.assertIn("boom", out)
+
+
+class TestPosixBashResolver(unittest.TestCase):
+    """`_posix_bash` must dodge the Windows WSL `bash.exe` stub (CI regression).
+
+    The GitHub windows-2025 runner puts `C:\\Windows\\System32\\bash.exe` (the WSL
+    launcher) on PATH; with no distro installed it exits 1 ("no installed
+    distributions"), which spuriously reddened the gate/prepare. The resolver
+    prefers Git-for-Windows bash. `name`/`candidates`/`which` are injected so this
+    branch is exercised on any host.
+    """
+
+    def test_posix_host_returns_plain_bash(self):
+        self.assertEqual(iw._posix_bash(name="posix"), "bash")
+
+    def test_windows_prefers_existing_git_bash_candidate(self):
+        with tempfile.TemporaryDirectory() as d:
+            real = Path(d) / "bash.exe"
+            real.write_text("", encoding="utf-8")
+            got = iw._posix_bash(name="nt", candidates=(str(real),),
+                                 which=lambda _n: r"C:\Windows\System32\bash.exe")
+            self.assertEqual(got, str(real))
+
+    def test_windows_skips_system32_wsl_stub_from_path(self):
+        # No Git candidate exists; PATH lookup yields the WSL stub → reject it.
+        got = iw._posix_bash(name="nt", candidates=(),
+                             which=lambda _n: r"C:\Windows\System32\bash.exe")
+        self.assertEqual(got, "bash")
+
+    def test_windows_accepts_non_system32_path_bash(self):
+        got = iw._posix_bash(name="nt", candidates=(),
+                             which=lambda _n: r"C:\tools\msys64\usr\bin\bash.exe")
+        self.assertEqual(got, r"C:\tools\msys64\usr\bin\bash.exe")
+
+    def test_windows_falls_back_to_bash_when_nothing_found(self):
+        got = iw._posix_bash(name="nt", candidates=(), which=lambda _n: None)
+        self.assertEqual(got, "bash")
 
 
 class TestMainCLI(unittest.TestCase):

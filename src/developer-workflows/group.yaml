@@ -142,5 +142,25 @@ standalone: true
 # squash/rebase + no force-push + linear history) + the serialized-single-writer
 # model documented with its re-audit trigger. ADR 0029 records the decision (own ADR,
 # cross-references ADR 0022-supersession ADR 0028).
-version: 0.20.0
+# 0.20.0 = single-writer artifact integration (Model A, worktree-pr-loop plan, part 3,
+# task 2) — concurrent worker branches commit src + `dist/` regenerated at the *current*
+# (unbumped) version and defer ONLY the `group.yaml` bump to a serialized integrator, so
+# cross-plugin `marketplace.json` collisions are structurally impossible. `integrate_worker.py`
+# gains an injectable `prepare` hook: the default `_artifact_prepare` runs the project's
+# `scripts/integrate-prepare.sh` on the freshly-merged tree, BEFORE the gate; a failed or
+# raising prepare rolls the merge back (rc 2) and the gate never runs. Absent the script it
+# no-ops (rc 0) — pre-Model-A repos are unchanged. `check-version-bump.py` becomes branch-
+# aware (a `worker/` branch, or `$VERSION_BUMP_DEFER` truthy, downgrades a missing bump to
+# advisory). The `dist-sync` gate stays fully authoritative everywhere (UNTOUCHED). crickets
+# ships the concrete `integrate_prepare.py` (diff-slugs → bump → regen → commit) + a thin
+# `integrate-prepare.sh` wrapper. ADR 0030 records the decision.
+# 0.20.1 = Windows bash-stub portability fix the OS matrix caught in the unreleased 0.20.0.
+# The gate (`check-all.sh`) + the artifact-prepare hook (`integrate-prepare.sh`) run via
+# `bash`; on the windows-2025 runner plain `bash` resolves to `System32\bash.exe` — the WSL
+# launcher, which exits 1 ("no installed distributions") when no distro is present,
+# spuriously reddening both. New `_posix_bash()` resolver prefers Git-for-Windows bash over
+# the WSL stub (a no-op on POSIX), wired into both helpers; 5 resolver tests cover it. The
+# two stub-script test writes switch to `write_bytes` so the `.sh` is LF — `write_text`
+# CRLF-translates on Windows, which turns `exit 0` into a non-numeric `exit 0\r`.
+version: 0.20.1
 capabilities: [setup, plan, work, review, release, bugfix, documentation]

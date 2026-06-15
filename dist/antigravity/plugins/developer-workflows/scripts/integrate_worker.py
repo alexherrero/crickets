@@ -59,6 +59,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import shutil
 import subprocess
 import sys
 from datetime import datetime
@@ -280,6 +281,39 @@ def _promote(named_progress: Path | None, root: str | os.PathLike, branch: str,
 
 # ── default production gate (never used by tests — see module docstring) ────────
 
+_WIN_GIT_BASH = (
+    r"C:\Program Files\Git\bin\bash.exe",
+    r"C:\Program Files\Git\usr\bin\bash.exe",
+    r"C:\Program Files (x86)\Git\bin\bash.exe",
+)
+
+
+def _posix_bash(*, name: str | None = None, candidates=_WIN_GIT_BASH,
+                which=shutil.which) -> str:
+    """Resolve a *real* POSIX bash, avoiding the Windows WSL `bash.exe` stub.
+
+    Both the gate (`check-all.sh`) and the artifact-prepare hook
+    (`integrate-prepare.sh`) are shell entrypoints run via `bash`. On Windows,
+    plain `bash` on PATH is usually `C:\\Windows\\System32\\bash.exe` — the WSL
+    launcher, which exits non-zero ("Windows Subsystem for Linux has no installed
+    distributions") when no distro is present, spuriously failing the gate/prepare.
+    Git for Windows ships a genuine bash; prefer it. On POSIX hosts plain `bash`
+    is already correct, so this is a no-op there.
+
+    `name` / `candidates` / `which` are injected only by tests (the module's
+    pure-core + injectable-backend idiom); production calls take the defaults.
+    """
+    if (os.name if name is None else name) != "nt":
+        return "bash"
+    for candidate in candidates:
+        if Path(candidate).is_file():
+            return candidate
+    found = which("bash")
+    if found and "\\system32\\" not in found.lower():
+        return found
+    return "bash"  # last resort — let it fail loudly with its own message
+
+
 def _check_all_gate(root: str | os.PathLike) -> tuple[int, str]:
     """Run the repo's `scripts/check-all.sh` battery on the integrated tree.
 
@@ -293,7 +327,7 @@ def _check_all_gate(root: str | os.PathLike) -> tuple[int, str]:
         return (127, f"[integrate_worker] gate script not found: {script}\n")
     try:
         r = subprocess.run(
-            ["bash", str(script)],
+            [_posix_bash(), str(script)],
             cwd=str(root),
             capture_output=True,
             text=True,
@@ -339,7 +373,7 @@ def _artifact_prepare(root: str | os.PathLike, pre_sha: str) -> tuple[int, str]:
                    f"({'/'.join(_PREPARE_SCRIPT)} absent) — skipping.\n")
     try:
         r = subprocess.run(
-            ["bash", str(script), pre_sha],
+            [_posix_bash(), str(script), pre_sha],
             cwd=str(root),
             capture_output=True,
             text=True,
