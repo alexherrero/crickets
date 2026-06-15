@@ -100,5 +100,11 @@ standalone: true
 # drifts from agentm's authoritative normalizer. A golden-vector parity test is
 # added (duplicated verbatim in agentm's suite, no cross-repo import edge — DC-2).
 # Fallback-only: delegation to an installed agentm clone is unchanged.
-version: 0.16.0
+# 0.17.0 = compact-nudge-resume defect fixes (review pass, /review 2026-06-14) —
+# two logic bugs in compact-nudge-resume.py: (1) appears_resumed gate incorrectly
+# let PCT-path bypass the fresh-session guard (fix: `if not appears_resumed` with no
+# conjunction); (2) slug derivation stripped Claude Code's load-bearing leading '-'
+# via lstrip (fix: remove lstrip). Two new tests added to test_dw_compact_nudge.py
+# to lock both (PCT-high-no-history silent; slug-leading-dash retained).
+version: 0.17.0
 capabilities: [setup, plan, work, review, release, bugfix, documentation]

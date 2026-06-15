@@ -72,15 +72,15 @@ def main() -> None:
         session_id = os.environ.get("CLAUDE_SESSION_ID", "")
         cwd = payload.get("cwd", "") or os.getcwd()
         if session_id and cwd:
-            slug = Path(cwd).as_posix().replace("/", "-").lstrip("-")
+            slug = Path(cwd).as_posix().replace("/", "-")
             jsonl_path = Path.home() / ".claude" / "projects" / slug / f"{session_id}.jsonl"
 
     # ── Resumed-session gate — must have at least one prior assistant turn ───────
     assistant_count = _count_assistant_lines(jsonl_path) if jsonl_path else 0
     appears_resumed = assistant_count > 0
 
-    # No signal of any kind AND no JSONL history → silent (fresh session)
-    if not appears_resumed and context_pct is None:
+    # No prior assistant turns → fresh session; always silent regardless of PCT
+    if not appears_resumed:
         sys.exit(0)
 
     # ── Decide whether to nudge ─────────────────────────────────────────────────

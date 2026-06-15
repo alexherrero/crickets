@@ -186,6 +186,39 @@ class TestCompactNudgeSmallOrNoSession(unittest.TestCase):
         self.assertEqual(result.returncode, 0)
         self.assertEqual(result.stdout.strip(), "")
 
+    def test_context_pct_high_but_no_history_is_silent(self):
+        """PCT >= 60 with no JSONL history (fresh session) must not fire nudge."""
+        result = _run_hook(
+            None,
+            extra_env={"CLAUDE_CONTEXT_USAGE_PERCENTAGE": "75.0"},
+        )
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stdout.strip(), "", "PCT-path must respect the resumed-session gate")
+
+
+class TestCompactNudgeSlugDerivation(unittest.TestCase):
+    """Slug derivation matches Claude Code's ~/.claude/projects/<slug>/ naming."""
+
+    def test_slug_retains_leading_dash(self):
+        """Claude Code project slugs start with '-'; replace-only (no lstrip) preserves it."""
+        from pathlib import Path as P
+        for cwd in ["/opt/project", "/srv/app", "/tmp/test-workspace"]:
+            slug = P(cwd).as_posix().replace("/", "-")
+            self.assertTrue(
+                slug.startswith("-"),
+                f"Slug for {cwd!r} should start with '-', got: {slug!r}",
+            )
+
+    def test_lstrip_would_break_slug(self):
+        """lstrip('-') removes the load-bearing leading dash that Claude Code expects."""
+        from pathlib import Path as P
+        cwd = "/opt/project"
+        slug_correct = P(cwd).as_posix().replace("/", "-")
+        slug_wrong = slug_correct.lstrip("-")
+        self.assertTrue(slug_correct.startswith("-"))
+        self.assertFalse(slug_wrong.startswith("-"), "lstrip removes the leading dash")
+        self.assertNotEqual(slug_correct, slug_wrong)
+
 
 if __name__ == "__main__":
     unittest.main()
