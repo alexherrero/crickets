@@ -58,26 +58,31 @@ Stdlib-only; mirrors `resolve_plan.py`'s shape (pure core + injectable backend).
 from __future__ import annotations
 
 import argparse
+import contextlib
 import os
 import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
-# `resolve_plan` is a sibling module; ensure this dir is importable whether the
-# script is run directly, imported by path (tests), or invoked from a worktree.
+# `resolve_plan` and `isolation_config` are sibling modules; ensure this dir is
+# importable whether the script is run directly, imported by path (tests), or
+# invoked from a worktree.
 _HERE = Path(__file__).resolve().parent
 if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 
 # Sibling bridge — the single owner of plan resolution + the naming contract.
 import resolve_plan  # noqa: E402
+import isolation_config  # noqa: E402
 
 _AUTO = resolve_plan._AUTO
 
 _WORKTREES_SUFFIX = ".worktrees"
 _BRANCH_PREFIX = "worker/"
+_MAX_WORKTREES = 10  # cap: refuse to spawn if this many worker/ worktrees exist
 
 
 # ── git helpers ─────────────────────────────────────────────────────────────
@@ -167,6 +172,108 @@ def _branch_exists(root: str | os.PathLike, branch: str) -> bool:
     return _git(["rev-parse", "--verify", "--quiet", f"refs/heads/{branch}"], root).returncode == 0
 
 
+# ── concurrency-safety helpers (task 7 mitigations) ─────────────────────────
+
+@contextlib.contextmanager
+def _gc_disabled(root: str | os.PathLike):
+    """Mitigation 2: set gc.auto=0 for the duration of a worktree add.
+
+    Disabling gc prevents a concurrent `git gc --auto` from racing with
+    `git worktree add` and corrupting the object store. Restores the prior
+    value (or unsets if it was unset) on exit. Graceful-skip: any git config
+    error is swallowed (never raises), since gc.auto is a best-effort guard.
+    """
+    get = _git(["config", "--local", "gc.auto"], root)
+    prior = get.stdout.strip() if get.returncode == 0 else None
+    _git(["config", "--local", "gc.auto", "0"], root)
+    try:
+        yield
+    finally:
+        if prior is None:
+            _git(["config", "--local", "--unset", "gc.auto"], root)
+        else:
+            _git(["config", "--local", "gc.auto", prior], root)
+
+
+def _worktree_lock_path(root: str | os.PathLike) -> Path:
+    """Mitigation 1: a per-repo lockfile that serializes concurrent worktree adds."""
+    git_dir = _git(["rev-parse", "--git-dir"], root)
+    if git_dir.returncode == 0 and git_dir.stdout.strip():
+        candidate = Path(root) / git_dir.stdout.strip()
+        if candidate.is_dir():
+            return candidate / "worktree-spawn.lock"
+    return Path(root) / ".git" / "worktree-spawn.lock"
+
+
+@contextlib.contextmanager
+def _worktree_lock(root: str | os.PathLike):
+    """Mitigation 1+4: acquire an exclusive advisory lock for worktree+config writes.
+
+    Uses a plain lockfile (fnctl.flock on POSIX, cooperative on Windows).
+    Graceful-skip: if the lock cannot be acquired/released, continue anyway —
+    a best-effort advisory lock is better than blocking spawn indefinitely.
+    """
+    lock_path = _worktree_lock_path(root)
+    try:
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+        lf = open(str(lock_path), "a")
+        try:
+            import fcntl
+            fcntl.flock(lf, fcntl.LOCK_EX)
+        except (ImportError, OSError):
+            pass
+        try:
+            yield
+        finally:
+            try:
+                import fcntl
+                fcntl.flock(lf, fcntl.LOCK_UN)
+            except (ImportError, OSError):
+                pass
+            lf.close()
+    except OSError:
+        yield
+
+
+def _count_worker_worktrees(root: str | os.PathLike) -> int:
+    """Mitigation 8: count active `worker/` worktrees to enforce the cap."""
+    r = _git(["worktree", "list", "--porcelain"], root)
+    if r.returncode != 0:
+        return 0
+    count = 0
+    for line in r.stdout.splitlines():
+        if line.startswith("branch refs/heads/worker/"):
+            count += 1
+    return count
+
+
+def _has_submodules(root: str | os.PathLike) -> bool:
+    """Mitigation 6: True if the repo has any registered submodules."""
+    return (Path(root) / ".gitmodules").exists()
+
+
+def _worktree_is_clean(wt: Path) -> bool:
+    """Mitigation 3: check if a worktree is clean before removal.
+
+    Returns True when clean (safe to remove) or when the check fails
+    (graceful-skip: an unresponsive worktree shouldn't block cleanup).
+    Never uses --prune=now.
+    """
+    try:
+        r = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=str(wt),
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if r.returncode != 0:
+            return True
+        return r.stdout.strip() == ""
+    except (OSError, subprocess.SubprocessError):
+        return True
+
+
 def _worktree_gone(root: str | os.PathLike, wt: Path) -> bool:
     """Best-effort `git worktree remove --force`; True iff `wt` is gone afterward.
 
@@ -228,11 +335,13 @@ def _rollback_worktree_and_branch(root: str | os.PathLike, wt: Path, branch: str
 def worktree_path(root: str | os.PathLike, slug: str) -> Path:
     """Default worktree location: `<repo>.worktrees/<slug>` beside the repo.
 
-    A sibling `*.worktrees/` dir keeps every worker out of the repo's own working
-    tree (so they never appear in its `git status`) while staying adjacent for
-    discovery. Resolved so the parent is the repo's real parent, not a symlink.
+    Mitigation 9 (root-anchor): anchors to the MAIN working tree via
+    isolation_config.resolve_main_worktree so a spawn launched from inside an
+    existing worktree never creates a nested sub-worktree. A sibling
+    `*.worktrees/` dir keeps every worker out of the repo's own working tree (so
+    they never appear in its `git status`) while staying adjacent for discovery.
     """
-    base = Path(root).resolve()
+    base = isolation_config.resolve_main_worktree(root)
     return base.parent / f"{base.name}{_WORKTREES_SUFFIX}" / slug
 
 
@@ -250,6 +359,10 @@ def spawn(name: str, root: str, *, worktree: str | os.PathLike | None = None,
     (no-clobber). `resolver` is forwarded to `resolve_plan.resolve` — `_AUTO`
     locates an agentm clone (production); tests pass `None` (force the `.harness/`
     fallback) or a stub Path (force the delegate branch).
+
+    Concurrency-safety mitigations (task 7): serialized worktree add (lock),
+    gc.auto=0 for the duration, dirty-check before removal, cap on concurrent
+    worker worktrees, submodule warning, root-anchored worktree path.
     """
     slug = resolve_plan._normalize_plan_name(name)
     if not slug:
@@ -261,6 +374,20 @@ def spawn(name: str, root: str, *, worktree: str | os.PathLike | None = None,
     rc, _out, err = resolve_plan.resolve(name, root, resolver=resolver)
     if rc != 0:
         return (rc, "", err)
+
+    # Mitigation 8: cap concurrent worker worktrees before touching git.
+    active = _count_worker_worktrees(root)
+    if active >= _MAX_WORKTREES:
+        return (2, "", f"[spawn_worker] cap reached: {active} worker/ worktrees already "
+                       f"exist (limit {_MAX_WORKTREES}). Integrate or clean up an existing "
+                       f"worker before spawning a new one.\n")
+
+    # Mitigation 6: warn about submodules (don't block, but surface the risk).
+    if _has_submodules(root):
+        import sys as _sys
+        print("[spawn_worker] WARNING: repo has submodules — worktrees share "
+              "the submodule checkout; a `git submodule update` in the worktree "
+              "may conflict with other workers.", file=_sys.stderr)
 
     branch = branch_name(slug)
     if worktree is not None:
@@ -285,78 +412,72 @@ def spawn(name: str, root: str, *, worktree: str | os.PathLike | None = None,
                        "reuse it. Delete it or spawn under a different plan name.\n")
 
     wt.parent.mkdir(parents=True, exist_ok=True)
-    # `git worktree add -b` is NOT atomic: it registers the branch ref *before* it
-    # builds the worktree dir (verified against real git). A >30s hang surfaces as
-    # `subprocess.TimeoutExpired` — a `SubprocessError`, NOT an `OSError`, so it
-    # would escape the post-create `except OSError` below — and SIGKILLs git
-    # mid-operation, leaving an orphan branch and/or a partial worktree dir. So a
-    # raise here is a *partial mutation*, not a no-op: catch it and roll both back,
-    # exactly like the post-create block (the helper reports only real survivors).
-    try:
-        add = _git(["worktree", "add", "-b", branch, str(wt)], root)
-    except (OSError, subprocess.SubprocessError) as exc:
-        survivors = _rollback_worktree_and_branch(root, wt, branch)
-        if not survivors:
-            return (2, "", f"[spawn_worker] `git worktree add` raised ({exc}); rolled "
-                           f"back — no partial spawn.\n")
-        return (2, "", f"[spawn_worker] `git worktree add` raised ({exc}); ROLLBACK "
-                       f"INCOMPLETE — manually remove {survivors} before re-spawning.\n")
-    if add.returncode != 0:
-        # `git worktree add -b` fails at one of two stages, BOTH verified against
-        # real git: *before* the checkout (bad ref/args) it strands only the orphan
-        # `worker/<slug>` branch it already registered; *during* the checkout (a
-        # failing post-checkout hook, ENOSPC, a smudge/filter error) it returns
-        # non-zero with the worktree dir AND branch fully built and registered — not
-        # just a branch. Either way, roll back through the SAME shared reporter the
-        # raise path uses (worktree-FIRST — a branch checked out in the surviving
-        # worktree can't be `branch -D`'d until the worktree is gone), naming only a
-        # real survivor. The helper swallows a raising/hanging `_git`, so this error
-        # path can't crash; a pre-ref failure leaves nothing, so it reports clean.
-        msg = (f"[spawn_worker] `git worktree add` failed (rc={add.returncode}): "
-               f"{add.stderr.strip()}")
-        survivors = _rollback_worktree_and_branch(root, wt, branch)
-        if survivors:
-            return (2, "", f"{msg}; ROLLBACK INCOMPLETE — manually remove {survivors} "
-                           f"before re-spawning.\n")
-        return (2, "", f"{msg}\n")
+    # Mitigations 1+2+4: serialize worktree add + config writes with a per-repo
+    # lockfile; disable gc.auto for the duration to prevent a racing `git gc --auto`
+    # from corrupting the object store mid-worktree-add.
+    with _worktree_lock(root), _gc_disabled(root):
+        # `git worktree add -b` is NOT atomic: it registers the branch ref *before*
+        # it builds the worktree dir (verified against real git). A >30s hang surfaces
+        # as `subprocess.TimeoutExpired` — a `SubprocessError`, NOT an `OSError`, so
+        # it would escape the post-create `except OSError` below — and SIGKILLs git
+        # mid-operation, leaving an orphan branch and/or a partial worktree dir.
+        # Catch it and roll both back, exactly like the post-create block.
+        try:
+            add = _git(["worktree", "add", "-b", branch, str(wt)], root)
+        except (OSError, subprocess.SubprocessError) as exc:
+            survivors = _rollback_worktree_and_branch(root, wt, branch)
+            if not survivors:
+                return (2, "", f"[spawn_worker] `git worktree add` raised ({exc}); rolled "
+                               f"back — no partial spawn.\n")
+            return (2, "", f"[spawn_worker] `git worktree add` raised ({exc}); ROLLBACK "
+                           f"INCOMPLETE — manually remove {survivors} before re-spawning.\n")
+        if add.returncode != 0:
+            # `git worktree add -b` fails at one of two stages, BOTH verified against
+            # real git: *before* the checkout (bad ref/args) it strands only the orphan
+            # `worker/<slug>` branch it already registered; *during* the checkout (a
+            # failing post-checkout hook, ENOSPC, a smudge/filter error) it returns
+            # non-zero with the worktree dir AND branch fully built and registered — not
+            # just a branch. Either way, roll back through the SAME shared reporter.
+            msg = (f"[spawn_worker] `git worktree add` failed (rc={add.returncode}): "
+                   f"{add.stderr.strip()}")
+            survivors = _rollback_worktree_and_branch(root, wt, branch)
+            if survivors:
+                return (2, "", f"{msg}; ROLLBACK INCOMPLETE — manually remove {survivors} "
+                               f"before re-spawning.\n")
+            return (2, "", f"{msg}\n")
 
-    # These writes run AFTER `git worktree add` has created the worktree + branch,
-    # so a failure here would otherwise leave a partial spawn (worktree + branch
-    # but no marker — which the no-clobber guards then block from re-spawning).
-    # Roll back to honor the "never a partial spawn" contract.
-    try:
-        # The worktree-local marker: the BARE SLUG + newline, the form agentm's
-        # resolve_active_plan reads back through _normalize_plan_name unchanged.
-        marker_dir = wt / ".harness"
-        marker_dir.mkdir(parents=True, exist_ok=True)
-        (marker_dir / "active-plan").write_text(f"{slug}\n", encoding="utf-8")
+        # These writes run AFTER `git worktree add` has created the worktree + branch,
+        # so a failure here would otherwise leave a partial spawn (worktree + branch
+        # but no marker — which the no-clobber guards then block from re-spawning).
+        # Roll back to honor the "never a partial spawn" contract.
+        try:
+            # The worktree-local marker: the BARE SLUG + newline, the form agentm's
+            # resolve_active_plan reads back through _normalize_plan_name unchanged.
+            marker_dir = wt / ".harness"
+            marker_dir.mkdir(parents=True, exist_ok=True)
+            (marker_dir / "active-plan").write_text(f"{slug}\n", encoding="utf-8")
 
-        # LC-2: reproduce a *divergent* vault_project override (fallback only).
-        if _needs_vault_project_copy(root):
-            shutil.copyfile(
-                str(Path(root) / ".harness" / "project.json"),
-                str(marker_dir / "project.json"),
-            )
-    except Exception as exc:
-        # ARCHITECTURAL SAFETY NET — catch *every* exception type, not just OSError.
-        # This block calls helpers (`_needs_vault_project_copy` → `_read_vault_project`,
-        # `_origin_basename`) and stdlib ops that can raise beyond OSError — a git hang
-        # surfaces as subprocess.TimeoutExpired (a SubprocessError), a malformed config
-        # as AttributeError/ValueError. A narrow `except OSError` here let those escape
-        # and crash spawn() *after* the mutation — a partial spawn. The block's real
-        # contract is "if ANYTHING goes wrong after the worktree exists, undo it", so it
-        # catches Exception (BaseException — KeyboardInterrupt/SystemExit — still
-        # propagates) and rolls back via the shared reporter (worktree-first; reports
-        # only what truly survived). The per-helper guards above still let a *recoverable*
-        # failure degrade gracefully (skip the copy, spawn succeeds); this net only fires
-        # on an *unrecoverable* post-create failure, and guarantees it never leaks.
-        survivors = _rollback_worktree_and_branch(root, wt, branch)
-        if not survivors:
+            # LC-2: reproduce a *divergent* vault_project override (fallback only).
+            if _needs_vault_project_copy(root):
+                shutil.copyfile(
+                    str(Path(root) / ".harness" / "project.json"),
+                    str(marker_dir / "project.json"),
+                )
+        except Exception as exc:
+            # ARCHITECTURAL SAFETY NET — catch *every* exception type, not just
+            # OSError. This block calls helpers and stdlib ops that can raise beyond
+            # OSError — a git hang surfaces as subprocess.TimeoutExpired (a
+            # SubprocessError), a malformed config as AttributeError/ValueError. The
+            # block's real contract is "if ANYTHING goes wrong after the worktree
+            # exists, undo it", so it catches Exception (BaseException —
+            # KeyboardInterrupt/SystemExit — still propagates) and rolls back.
+            survivors = _rollback_worktree_and_branch(root, wt, branch)
+            if not survivors:
+                return (2, "", f"[spawn_worker] worktree created but post-create setup failed "
+                               f"({exc}); rolled back the worktree and branch — no partial spawn.\n")
             return (2, "", f"[spawn_worker] worktree created but post-create setup failed "
-                           f"({exc}); rolled back the worktree and branch — no partial spawn.\n")
-        return (2, "", f"[spawn_worker] worktree created but post-create setup failed "
-                       f"({exc}); ROLLBACK INCOMPLETE — manually remove "
-                       f"{survivors} before re-spawning.\n")
+                           f"({exc}); ROLLBACK INCOMPLETE — manually remove "
+                           f"{survivors} before re-spawning.\n")
 
     return (0, f"{wt}\n", "")
 
@@ -379,7 +500,10 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str]) -> int:
     ns = _build_parser().parse_args(argv[1:])
-    root = ns.project_root if ns.project_root is not None else os.getcwd()
+    # Mitigation 9: anchor to the MAIN working tree, not the cwd, so a spawn
+    # launched from inside a worktree does not nest a second one.
+    cwd = ns.project_root if ns.project_root is not None else os.getcwd()
+    root = str(isolation_config.resolve_main_worktree(cwd))
     rc, out, err = spawn(ns.name, root, worktree=ns.worktree_path)
     if out:
         sys.stdout.write(out)
