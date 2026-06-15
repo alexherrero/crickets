@@ -1,0 +1,10 @@
+{
+  "enhances": [
+    {
+      "capability": "review",
+      "effect": "/review dispatches the adversarial reviewers (failing test / DEFECT: file:line / NO ISSUES FOUND)",
+      "group": "developer-workflows"
+    }
+  ],
+  "version": "0.1.0"
+}

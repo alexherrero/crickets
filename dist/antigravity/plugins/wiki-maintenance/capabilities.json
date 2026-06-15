@@ -1,0 +1,10 @@
+{
+  "enhances": [
+    {
+      "capability": "documentation",
+      "effect": "phase commands dispatch the documenter to author/repair wiki pages at phase boundaries",
+      "group": "developer-workflows"
+    }
+  ],
+  "version": "0.2.1"
+}

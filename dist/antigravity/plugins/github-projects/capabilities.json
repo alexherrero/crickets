@@ -1,0 +1,6 @@
+{
+  "capabilities": [
+    "board-sync"
+  ],
+  "version": "0.1.2"
+}

@@ -1,0 +1,6 @@
+{
+  "capabilities": [
+    "storage-backend"
+  ],
+  "version": "0.2.0"
+}
