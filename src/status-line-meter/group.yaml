@@ -14,4 +14,6 @@ enhances:
 # runtime-discovery of token-audit's pricing.py (graceful-skip when absent).
 # 0.1.1 = fix: transcript truncation (e.g. /compact) reset — `current_size < last_pos`
 # now resets the incremental reader to offset 0 instead of returning stale cached totals.
-version: 0.1.1
+# 0.1.2 = fix(windows): _cache_path used hardcoded /tmp/ which doesn't exist on Windows;
+# replaced with tempfile.gettempdir() so cache writes succeed on all platforms.
+version: 0.1.2

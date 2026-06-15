@@ -243,6 +243,7 @@ class TestIncrementalTranscriptReader(unittest.TestCase):
         sid = "test-path-change-001"
         _cache = slm._cache_path(sid)
         _cache.unlink(missing_ok=True)
+        tmp = None  # guard: only set if NamedTemporaryFile succeeds
 
         try:
             data1 = self._make_data(str(_FIXTURE_TRANSCRIPT), session_id=sid)
@@ -263,7 +264,8 @@ class TestIncrementalTranscriptReader(unittest.TestCase):
                 self.assertAlmostEqual(stats2.get("total_cost", 0.0), 0.0, places=6)
         finally:
             _cache.unlink(missing_ok=True)
-            tmp.unlink(missing_ok=True)
+            if tmp is not None:
+                tmp.unlink(missing_ok=True)
 
 
 class TestRenderWithTranscript(unittest.TestCase):

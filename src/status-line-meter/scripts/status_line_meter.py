@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import json
 import sys
+import tempfile
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
@@ -55,7 +56,7 @@ if _TA_SCRIPTS.is_dir():
 # ---------------------------------------------------------------------------
 
 def _cache_path(session_id: str) -> Path:
-    return Path(f"/tmp/crickets_slm_{session_id}.json")
+    return Path(tempfile.gettempdir()) / f"crickets_slm_{session_id}.json"
 
 
 def _read_usage(rec: dict) -> tuple[int, int, int, int]:
