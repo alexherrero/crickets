@@ -208,7 +208,7 @@ The gate runs on the **integrated** tree (the post-merge result), not the worker
 | Command | `/integrate-worker <name>` |
 | Argument | `<name>` — the worker name; also the named plan slug it was spawned on; optional `--project-root <path>` |
 | Merge | `git merge --no-ff worker/<slug>` → `main` (preserves the worker's per-task commits + records an explicit integration point) |
-| Gate | `scripts/check-all.sh` (the full 8-gate battery) run on the **post-merge / integrated** tree |
+| Gate | `scripts/check-all.sh` (the full 10-gate battery) run on the **post-merge / integrated** tree |
 | On RED gate | hard-resets `main` back to the captured pre-merge HEAD; leaves the worktree intact for inspection; prints the gate output |
 | On merge CONFLICT | `git merge --abort`; leaves the worktree intact |
 | On GREEN | appends `progress-<slug>.md` into the singleton `progress.md` (additive — named file kept), then prunes: removes the worktree (worktree-first), then `git branch -d worker/<slug>` (safe — `--no-ff` recorded the merge) |

@@ -17,6 +17,8 @@ Building parallelizes; **integrating does not**. Run workers N-wide in their own
 
 When you publish the integrated branch (step 4 below), go **through branch protection and required CI** — push the branch, wait for the required checks to go green, then squash-merge the PR. **Never** land it with a protection bypass such as `gh pr merge --admin`: that was the anti-pattern from the first concurrent run (a worker admin-merged past the very protection it had authored), and the integration flow now forbids it. A squash-merge through the protected path is recoverable (revertable) — announce it and proceed; the bypass is not on the table.
 
+**Worker branches defer the version bump — the integrator owns it.** A `worker/<slug>` branch commits its `src/` change plus `dist/` regenerated **at the version already on `main`** (it does not bump `group.yaml` `version:`), so disjoint-plugin branches never touch the shared `marketplace.json` version registry and cannot collide on it. The serialized integrator does the bump + `marketplace.json` + final regen once, from current `main`, one landing at a time — making generated-artifact production a single serialized writer ([ADR 0030](0030-generated-artifact-single-writer)). The build-time `version-bump` gate is therefore advisory on a worker branch and authoritative on `main`; the `dist-sync` gate stays authoritative everywhere.
+
 ## Steps
 
 1. **Stand on the integration branch with a clean tree.** From the repo root (not inside the worktree), check out the integration branch — normally `main` — and make sure its working tree is clean (`git status` shows nothing to commit). A dirty tree is a hard refusal: commit or stash any in-flight changes first. Confirm the worker's `/work` session is finished and its `worker/<slug>` branch holds the per-task commits.
@@ -38,7 +40,7 @@ When you publish the integrated branch (step 4 below), go **through branch prote
 
 ## Outcomes
 
-The integration runs `scripts/check-all.sh` (the full 8-gate battery) on the **post-merge / integrated** tree — not the worker branch in isolation — so an integration conflict between the worker's work and newer `main` is actually caught. There are three outcomes:
+The integration runs `scripts/check-all.sh` (the full 10-gate battery) on the **post-merge / integrated** tree — not the worker branch in isolation — so an integration conflict between the worker's work and newer `main` is actually caught. There are three outcomes:
 
 | Outcome | What `/integrate-worker` does | Your worktree | Exit |
 |---|---|---|---|

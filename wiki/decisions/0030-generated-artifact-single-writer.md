@@ -48,7 +48,7 @@ Because no branch ever changes a version line, the cross-plugin `marketplace.jso
 
 This is **tighter than the constraint anticipated.** The plan permitted relaxing `dist-sync` to be branch-aware *if* the chosen model deferred regeneration. By deferring **only the bump** (workers still regenerate `dist/` at the current version), `dist-sync` needs **no** change and stays authoritative everywhere — the only gate that becomes branch-aware is `version-bump`, whose entire job is to demand a bump the integrator now owns. The "never weaken `dist-sync` on `main`" constraint is satisfied by leaving it untouched.
 
-The branch-aware signal for `version-bump` is a **deferred-bump worker context** — the `worker/<slug>` branch convention or an explicit defer marker/env, composing with the gate's existing `$VERSION_BUMP_BASE` CI input. The exact signal is fixed in implementation (this ADR locks the *contract*, not the wiring).
+The branch-aware signal for `version-bump` is a **deferred-bump worker context** — the `worker/<slug>` branch convention or an explicit defer marker/env, composing with the gate's existing `$VERSION_BUMP_BASE` CI input. **As shipped** (`check-version-bump.py`'s `is_deferred_bump_context()`): a `worker/`-prefixed branch **or** a truthy `$VERSION_BUMP_DEFER` downgrades a missing bump to an advisory pass (rc 0); on `main` (no worker branch, no defer flag) the gate stays fully authoritative. This ADR locked the *contract*; the wiring above is the implementation that satisfied it.
 
 ### Own ADR (not folded)
 
