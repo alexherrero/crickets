@@ -776,5 +776,56 @@ class TestFailedAddRollback(unittest.TestCase):
         self.assertNotIn("the worktree", err)
 
 
+class TestSpawnPreflightReconcile(unittest.TestCase):
+    """LC-6 defense-in-depth: a direct `/spawn-worker` onto an already-shipped plan
+    no-ops (exit 3) before any worktree is created — `/plan --activate` is the
+    primary chokepoint, this is the backstop. The resolved active plan's
+    `expected_artifacts` are checked against the repo root."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="sw-reconcile-"))
+        self.repo = self.tmp / "repo"
+        _init_repo(self.repo)
+        self.harness = self.repo / ".harness"
+        self.harness.mkdir(parents=True, exist_ok=True)
+        # Standalone resolve returns <root>/.harness/PLAN-foo.md (existence not
+        # required by the resolver) — plant a plan there for the reconcile to read.
+        self.plan = self.harness / "PLAN-foo.md"
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _declare(self, *arts: str):
+        inline = ", ".join(arts)
+        self.plan.write_text(
+            f"---\nexpected_artifacts: [{inline}]\n---\n# Plan: foo\n", encoding="utf-8")
+
+    def test_already_shipped_plan_refused_before_any_worktree(self):
+        self._declare("shipped.txt")
+        (self.repo / "shipped.txt").write_text("done\n", encoding="utf-8")
+        rc, out, err = sw.spawn("foo", str(self.repo), resolver=None)
+        self.assertEqual(rc, 3)
+        self.assertEqual(out, "")
+        self.assertIn("already shipped — nothing to do", err)
+        # Nothing created: no worktree, no branch.
+        self.assertFalse(sw.worktree_path(self.repo, "foo").exists())
+        self.assertFalse(sw._branch_exists(self.repo, "worker/foo"))
+
+    def test_pending_plan_with_missing_artifact_spawns_normally(self):
+        self._declare("not-yet.txt")  # artifact absent → lane has work → proceed
+        rc, out, err = sw.spawn("foo", str(self.repo), resolver=None)
+        self.assertEqual(rc, 0, err)
+        self.assertTrue(sw.worktree_path(self.repo, "foo").is_dir())
+        self.assertTrue(sw._branch_exists(self.repo, "worker/foo"))
+
+    def test_plan_without_expected_artifacts_spawns_normally(self):
+        # Back-compat: no opt-in → the guard is dormant, spawn behaves as before.
+        self.plan.write_text("# Plan: foo\n", encoding="utf-8")
+        rc, out, err = sw.spawn("foo", str(self.repo), resolver=None)
+        self.assertEqual(rc, 0, err)
+        self.assertTrue(sw.worktree_path(self.repo, "foo").is_dir())
+
+
 if __name__ == "__main__":
     unittest.main()

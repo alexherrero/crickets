@@ -252,6 +252,75 @@ class TestActivate(unittest.TestCase):
         self.assertEqual(self.active.read_text(encoding="utf-8"), "AGREED\n")
 
 
+class TestActivatePreflightReconcile(unittest.TestCase):
+    """LC-6: `activate` no-ops (exit 3) on an already-shipped slug; proceeds on a
+    pending one. The guard reads the STAGED plan's `expected_artifacts` frontmatter
+    and checks each against the project ROOT (the repo, not the harness)."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="sp-reconcile-"))
+        self.harness = self.tmp / ".harness"
+        self.queued = self.harness / "queued-plans"
+        self.queued.mkdir(parents=True, exist_ok=True)
+        self.staged = self.queued / "PLAN-foo.md"
+        self.active = self.harness / "PLAN-foo.md"
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _stage(self, *arts: str):
+        inline = ", ".join(arts)
+        self.staged.write_text(
+            f"---\nexpected_artifacts: [{inline}]\n---\n# Plan: foo\n", encoding="utf-8")
+
+    def _touch(self, rel: str):
+        p = self.tmp / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text("shipped\n", encoding="utf-8")
+
+    def test_already_shipped_slug_is_a_noop_exit_3_writes_nothing(self):
+        # Both declared artifacts already exist under root → already shipped.
+        self._stage("src/new_a.py", "wiki/0099-x.md")
+        self._touch("src/new_a.py")
+        self._touch("wiki/0099-x.md")
+        rc, out, err = sp.activate("foo", str(self.tmp), resolver=None)
+        self.assertEqual(rc, 3)
+        self.assertEqual(out, "")
+        self.assertIn("already shipped — nothing to do", err)
+        # The benign no-op writes nothing — no active plan is created.
+        self.assertFalse(self.active.exists())
+
+    def test_pending_slug_with_missing_artifacts_activates_normally(self):
+        # One artifact missing → the lane still has work → activate as usual (rc 0).
+        self._stage("src/new_a.py", "src/new_b.py")
+        self._touch("src/new_a.py")  # only one of the two exists
+        rc, out, err = sp.activate("foo", str(self.tmp), resolver=None)
+        self.assertEqual(rc, 0, err)
+        self.assertTrue(self.active.is_file())
+        self.assertEqual(out.strip(), str(self.active))
+
+    def test_plan_without_expected_artifacts_is_unaffected(self):
+        # Back-compat: a staged plan that does not opt in activates byte-for-byte
+        # as before, even though unrelated files exist in the repo.
+        self.staged.write_text("# Plan: foo\n\n**Status:** planning\n", encoding="utf-8")
+        self._touch("src/whatever.py")
+        rc, out, err = sp.activate("foo", str(self.tmp), resolver=None)
+        self.assertEqual(rc, 0, err)
+        self.assertTrue(self.active.is_file())
+
+    def test_reconcile_runs_before_the_collision_guard(self):
+        # If the work is already shipped AND an active plan exists, "already
+        # shipped" is the reported outcome (exit 3) — the more informative,
+        # forward-looking signal — and the in-flight active is left untouched.
+        self._stage("src/new_a.py")
+        self._touch("src/new_a.py")
+        self.active.write_text("ACTIVE-IN-FLIGHT\n", encoding="utf-8")
+        rc, out, err = sp.activate("foo", str(self.tmp), resolver=None)
+        self.assertEqual(rc, 3)
+        self.assertIn("already shipped — nothing to do", err)
+        self.assertEqual(self.active.read_text(encoding="utf-8"), "ACTIVE-IN-FLIGHT\n")
+
+
 class TestStagedIsInactive(unittest.TestCase):
     """The load-bearing invariant: a staged plan is invisible to the queue reader."""
 

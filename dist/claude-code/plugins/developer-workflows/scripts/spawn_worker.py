@@ -43,6 +43,10 @@ Exit codes (aligned with `resolve_plan.py`, so the backends stay transparent):
     0 — worktree created; its path is on stdout.
     1 — graceful-skip: propagated from a located resolver (agentm present, no
         resolvable `_harness/`).
+    3 — pre-flight reconcile no-op (LC-6): the resolved plan's declared
+        `expected_artifacts` already exist on `main`, so the lane is already
+        shipped — refused before any mutation, nothing created. Benign, not an
+        error; dormant unless the plan opts in via the frontmatter key.
     2 — loud: empty/singleton/unsafe name, a pre-existing worktree path or
         branch (no-clobber), a resolver refusal (dangling marker / unsafe slug),
         a failed `git worktree add`, or a post-create setup failure. Never a
@@ -77,6 +81,9 @@ if str(_HERE) not in sys.path:
 # Sibling bridge — the single owner of plan resolution + the naming contract.
 import resolve_plan  # noqa: E402
 import isolation_config  # noqa: E402
+# Pre-flight reconcile (LC-6): a defense-in-depth guard so a worker can't be spawned
+# directly onto a plan whose work already shipped, even bypassing `/plan --activate`.
+import preflight_reconcile  # noqa: E402
 
 _AUTO = resolve_plan._AUTO
 
@@ -374,6 +381,18 @@ def spawn(name: str, root: str, *, worktree: str | os.PathLike | None = None,
     rc, _out, err = resolve_plan.resolve(name, root, resolver=resolver)
     if rc != 0:
         return (rc, "", err)
+
+    # Pre-flight reconcile (LC-6), defense-in-depth: if the resolved active plan
+    # declares `expected_artifacts` and every one already exists on `main`, the lane
+    # is already shipped — refuse with a benign no-op (exit 3) before creating any
+    # worktree. `/plan --activate` is the primary chokepoint; this catches a direct
+    # `/spawn-worker` onto an already-shipped plan. Dormant unless the plan opts in.
+    active_plan = _out.split("\t", 1)[0].strip()
+    if active_plan:
+        shipped, present = preflight_reconcile.already_shipped(active_plan, root)
+        if shipped:
+            return (preflight_reconcile.SHIPPED_NOOP, "",
+                    preflight_reconcile.shipped_message(name, present))
 
     # Mitigation 8: cap concurrent worker worktrees before touching git.
     active = _count_worker_worktrees(root)

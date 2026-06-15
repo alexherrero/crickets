@@ -172,5 +172,15 @@ standalone: true
 # the integration flow never carries the admin branch-protection bypass (LC-3); the command
 # spec records the serialize lock + protected-path landing contract. Integration stays a
 # LOCAL merge (it never pushes); the operator lands through branch protection + required CI.
-version: 0.20.2
+# 0.20.3 = pre-flight reconcile against already-shipped lanes (worktree-pr-loop plan, part 3,
+# task 4). New `preflight_reconcile.py` helper: a staged/active plan that declares the net-new
+# files it ships under an `expected_artifacts:` frontmatter list is "already shipped" iff EVERY
+# listed path already exists on `main` (a repo-local existence check — the integration branch's
+# tree IS main in the single-writer flow, no git subprocess). `stage_plan.py activate` and
+# `spawn_worker.py spawn` now consult it before mutating and return exit 3 ("already shipped —
+# nothing to do", nothing written) on a redundant launch — the direct fix for the run's wasted
+# V5-4 lane (LC-6). Benign no-op, distinct from the loud-2 / skip-1 codes; dormant unless a plan
+# opts in (absent the key → byte-identical behavior, fully back-compat). `/plan --activate` is
+# the primary chokepoint; `/spawn-worker` runs the same reconcile as a defense-in-depth backstop.
+version: 0.20.3
 capabilities: [setup, plan, work, review, release, bugfix, documentation]

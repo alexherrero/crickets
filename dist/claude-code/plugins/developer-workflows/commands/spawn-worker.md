@@ -28,6 +28,7 @@ You are running **spawn-worker** — the worktree step of the coordinator flow. 
    > Worktree ready at `<path>` on branch `worker/<name>`. Start the worker with: `cd <path>` then run `/work` — the worktree-local marker binds it to `PLAN-<name>.md`, no `--name` needed.
 3. **On exit 2 — surface the refusal and stop.** Show the helper's stderr (named-only / no-clobber / resolver refusal / failed `git worktree add`). Do not retry with a mutated name or path to dodge the guard; the guard is the contract. If the path or branch already exists, the operator chooses whether to remove it or pick a different name.
 4. **On exit 1 — graceful-skip.** A located agentm resolver reported no resolvable `_harness/` (e.g. the project isn't bound to a vault). Report it plainly; spawn nothing.
+5. **On exit 3 — already shipped, benign no-op (LC-6).** The resolved plan declares `expected_artifacts` and every one already exists on `main`, so the lane is already shipped — the helper refused **before any mutation** (no worktree, no branch). Report the `already shipped — nothing to do` message and stop; this is the defense-in-depth backstop to `/plan --activate`'s reconcile, not an error to retry past. The work is done; pick a different plan.
 
 ## What this command does not do
 

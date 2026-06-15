@@ -37,6 +37,10 @@ Exit codes (aligned with `resolve_plan.py` so the surface is transparent):
     0 — ok; the resolved path (or the activated path) is on stdout.
     1 — graceful-skip propagated from the resolver (agentm present, no `_harness/`).
     2 — loud: empty/unsafe name, missing staged plan, or active-plan collision.
+    3 — `activate` only: pre-flight reconcile no-op (LC-6) — the staged plan's
+        declared `expected_artifacts` already exist on `main`, so the lane is
+        already shipped. Benign (nothing written), not an error; the operator does
+        not proceed to `/work` / `/spawn-worker`. Absent the key, never fires.
 
 Stdlib-only; mirrors `resolve_plan.py`'s shape (pure core + injectable resolver).
 """
@@ -56,6 +60,10 @@ if str(_HERE) not in sys.path:
 # (tests inject `resolver=None` to force the `.harness/` fallback, or a stub Path
 # to force the delegate branch — exactly as on `resolve_plan`/`queue_status`).
 import resolve_plan  # noqa: E402
+# The cheap pre-flight reconcile (LC-6): refuse to activate a lane whose declared
+# artifacts already exist on `main`. Read-only — it only reads the staged plan's
+# frontmatter and tests path existence; it never mutates.
+import preflight_reconcile  # noqa: E402
 
 _AUTO = resolve_plan._AUTO
 
@@ -104,6 +112,12 @@ def activate(name: str, root: str, *, resolver=_AUTO) -> tuple[int, str, str]:
     the staged file is absent or an active `PLAN-<name>.md` already exists. On
     success the bytes are copied verbatim (fresh mtime) and the active path is
     emitted; the staged copy is left in place (activation is a copy, not a move).
+
+    Pre-flight reconcile (LC-6): before the collision/write, if the staged plan
+    declares `expected_artifacts` and every one already exists on `main` (under
+    `root`), the lane is already shipped — return exit 3 (`SHIPPED_NOOP`) with a
+    benign "already shipped — nothing to do" message and write nothing. The guard is
+    dormant unless the plan opts in via the frontmatter key, so this is back-compat.
     """
     rc, active_str, err = _active_plan_path(name, root, resolver=resolver)
     if rc != 0:
@@ -112,6 +126,16 @@ def activate(name: str, root: str, *, resolver=_AUTO) -> tuple[int, str, str]:
     staged = active.parent / _QUEUED_DIR / active.name
     if not staged.is_file():
         return (2, "", f"[stage_plan] no staged plan to activate at {staged}\n")
+    # Pre-flight reconcile (LC-6): if the staged plan declares the net-new artifacts
+    # it ships and every one already exists on `main` (under `root`), the lane is
+    # already shipped — refuse the redundant activation with a benign no-op (exit 3,
+    # nothing written) rather than spinning up a worker for done work. Read the
+    # *staged* frontmatter (the bytes we are about to copy); check existence against
+    # the repo `root`, not the harness. Dormant unless the plan opts in.
+    shipped, present = preflight_reconcile.already_shipped(staged, root)
+    if shipped:
+        return (preflight_reconcile.SHIPPED_NOOP, "",
+                preflight_reconcile.shipped_message(name, present))
     collision = (2, "",
                  f"[stage_plan] active plan already exists at {active}; "
                  f"refusing to clobber\n")
