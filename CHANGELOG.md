@@ -5,6 +5,21 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.15.1] — 2026-06-15 — Patch: `finalize_unit.py` exit-code contract + `pr_helpers.py` pii-guard step rc
+
+**PATCH — two post-release bugfixes in `developer-workflows 0.18.1`, found by adversarial `/review` on v3.15.0.** No behavior change on the happy path (exit 0). Callers that relied on exit 1/2 as a retry signal get correct semantics: exit 1 = push landed (branch on remote); exit 2 = nothing pushed (safe to retry).
+
+### Fixed
+
+- **`finalize_unit.py` exit-code contract** (`developer-workflows 0.18.1`, issue #27): `main()` used `result.action` as a proxy for failure severity — two defects resulted. **DEFECT 1** (`scripts/finalize_unit.py:121-125`): when the PR path ran `git push` (rc=0) then a failing `gh pr create`, `action == "pr"` fell through to `return 2` ("nothing pushed"); the branch was already on the remote — callers retrying on exit 2 would push twice. **DEFECT 2**: when `finalize_direct` failed on a rejected push, `action == "direct"` → `return 1` ("graceful-skip"); nothing landed, callers silently missed the failure. Fix: `push_landed = any(name == "push" and rc == 0 for name, rc in result.steps); return 1 if push_landed else 2`. Five regression tests in `TestFinalizeUnitMainExitCodes` (two were RED before the fix).
+- **`pr_helpers.py` pii-guard step always recorded `rc=0`** (review finding on `339fb77`): `finalize_pr()` and `finalize_direct()` appended `("pii-guard", 0)` unconditionally before calling `pii_guard()`, so a blocked guard incorrectly recorded a passing rc in `result.steps`. Fix: `pii_ok = pii_guard(repo_root); steps.append(("pii-guard", 0 if pii_ok else 1))`. The exit-code fix in `main()` is unaffected (it checks for `("push", rc=0)`, not the pii-guard step), but the regression test for the PII-blocked path now reflects what `pr_helpers` actually produces.
+
+### Internal
+
+- **7 files changed** (finalize_unit.py ×2 hosts + src, pr_helpers.py ×2 hosts + src, test_finalize_unit.py, group.yaml + marketplace manifests). Commits `339fb77` + `488d6a7`. check-all 9/9 PASS; CI green Mac/Linux/Windows.
+- **Adversarial `/review` confirmed clean** — zero additional findings on the fix commits.
+- **11 tests green** (6 pre-existing `TestFinalizeUnit*` + 5 new `TestFinalizeUnitMainExitCodes`).
+
 ## [v3.15.0] — 2026-06-14 — Worktree-per-plan isolation: the dev loop auto-spawns a `worker/<slug>` worktree per plan unit
 
 **MINOR — a net-new isolation layer in `developer-workflows` + an `isolation` schema field in `github-projects` (additive; default-ON but config-gated; every existing workflow is byte-identical until an operator opts in via `project.json`).** The `/work` and `/bugfix` phase commands now auto-spawn a `worker/<slug>` git worktree per plan unit when `isolation.mode: worktree-per-plan` (the code default), and close it out via the new `finalize_unit.py` (PII guard → push → `gh pr create`, with a graceful direct-push fallback when `gh` is unavailable). The **precedence cascade** is `--no-isolate` > `project.json` > code-default-ON. Config opt-in in `project.json` counts as **operator authority** ([ADR 0028](https://github.com/alexherrero/crickets/wiki/0028-worktree-authority-config-opt-in)), partially superseding ADR 0022's "explicit command only" framing; the recoverability-gate carve-out is updated byte-identically across all three execution commands and protected by the existing drift + conformance guard tests. `spawn_worker.py` gains eight concurrency mitigations (lock file, cap at 10 worker trees, GC-disabled window, submodule guard, clean-tree check) plus a **root-anchor fix** (`git rev-parse --git-common-dir`) that prevents nested-worktree mis-routing. PR helpers are duplicated from `wiki_watch_dispatch.py` via the **duplicate-with-drift-test** pattern (a cross-plugin import is structurally unavailable when plugin version dirs diverge). The global `~/.claude/CLAUDE.md` § Worktrees rule is updated under explicit operator authorization. **No paired agentm release** — this is a pure `developer-workflows` / `github-projects` surface change.
