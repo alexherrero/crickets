@@ -58,6 +58,7 @@ Stdlib-only; mirrors `spawn_worker.py`'s shape (pure core + injectable backend).
 from __future__ import annotations
 
 import argparse
+import contextlib
 import os
 import shutil
 import subprocess
@@ -387,10 +388,83 @@ def _artifact_prepare(root: str | os.PathLike, pre_sha: str) -> tuple[int, str]:
 _DEFAULT_PREPARE = _artifact_prepare
 
 
+# ── serialize integration (build N-wide, integrate one-at-a-time: LC-1/LC-5) ────
+
+def _integrate_lock_path(root: str | os.PathLike) -> Path:
+    """Per-repo lockfile that serializes concurrent integrations.
+
+    Mirrors `spawn_worker`'s worktree-add lock but a *separate* file: build fans
+    out N-wide (each spawn serializes only its own worktree add), while integration
+    lands **one at a time** through this lock. The integrator is the single writer
+    of the shared integration branch + version registry (ADR 0030), so a second
+    `/integrate-worker` blocks here rather than racing on `main`.
+    """
+    git_dir = _git(["rev-parse", "--git-dir"], root)
+    if git_dir.returncode == 0 and git_dir.stdout.strip():
+        candidate = Path(root) / git_dir.stdout.strip()
+        if candidate.is_dir():
+            return candidate / "integrate.lock"
+    return Path(root) / ".git" / "integrate.lock"
+
+
+@contextlib.contextmanager
+def _integrate_lock(root: str | os.PathLike):
+    """Hold an exclusive advisory lock for the duration of one integration.
+
+    `fcntl.flock(LOCK_EX)` on POSIX — a second integration **blocks** until the
+    first lands or rolls back (serialized, never raced); a cooperative no-op where
+    `fcntl` is unavailable (Windows). Graceful-skip: if the lockfile cannot be
+    created the integration proceeds anyway — a best-effort advisory lock must
+    never wedge integration shut. Injected into `integrate()` (mirrors the `gate`
+    / `prepare` seams) so tests drive serialization without real flock.
+    """
+    lock_path = _integrate_lock_path(root)
+    try:
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+        lf = open(str(lock_path), "a")
+        try:
+            import fcntl
+            fcntl.flock(lf, fcntl.LOCK_EX)
+        except (ImportError, OSError):
+            pass
+        try:
+            yield
+        finally:
+            try:
+                import fcntl
+                fcntl.flock(lf, fcntl.LOCK_UN)
+            except (ImportError, OSError):
+                pass
+            lf.close()
+    except OSError:
+        yield
+
+
+_DEFAULT_LOCK = _integrate_lock
+
+
 # ── core ──────────────────────────────────────────────────────────────────────
 
-def integrate(name: str, root: str, *, gate=_DEFAULT_GATE,
-              resolver=_AUTO, prepare=_DEFAULT_PREPARE) -> tuple[int, str, str]:
+def integrate(name: str, root: str, *, gate=_DEFAULT_GATE, resolver=_AUTO,
+              prepare=_DEFAULT_PREPARE, lock=_DEFAULT_LOCK) -> tuple[int, str, str]:
+    """Serialize the landing (LC-1/LC-5), then integrate one worker.
+
+    Build fans out N-wide; **integration is single-writer**. `lock(root)` is an
+    exclusive advisory lock held across the whole merge → prepare → gate →
+    consolidate critical section, so a second concurrent integration blocks rather
+    than racing on the shared integration branch + version registry (ADR 0030).
+    `lock` is injectable (mirrors `gate` / `prepare`) so tests drive serialization
+    without real flock; production takes the `fcntl.flock`-backed default. The
+    landing stays **local** — `integrate_worker.py` never pushes and never bypasses
+    branch protection; publishing the integrated branch through protection + CI is
+    the operator's act (`/release`).
+    """
+    with lock(root):
+        return _integrate_locked(name, root, gate=gate, resolver=resolver, prepare=prepare)
+
+
+def _integrate_locked(name: str, root: str, *, gate=_DEFAULT_GATE,
+                      resolver=_AUTO, prepare=_DEFAULT_PREPARE) -> tuple[int, str, str]:
     """Merge `worker/<slug>` into the integration branch, gated on the merged tree.
 
     Pure core, injectable backend. Guards run before any mutation; the merge +

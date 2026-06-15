@@ -162,5 +162,15 @@ standalone: true
 # the WSL stub (a no-op on POSIX), wired into both helpers; 5 resolver tests cover it. The
 # two stub-script test writes switch to `write_bytes` so the `.sh` is LF — `write_text`
 # CRLF-translates on Windows, which turns `exit 0` into a non-numeric `exit 0\r`.
-version: 0.20.1
+# 0.20.2 = deterministic, protection-respecting integration (worktree-pr-loop plan, part 3,
+# task 3). `integrate_worker.py` now serializes the landing: an injectable `_integrate_lock`
+# (default `fcntl.flock(LOCK_EX)` on `.git/integrate.lock`, a cooperative no-op on Windows,
+# graceful-skip on OSError) is held across the whole merge → prepare → gate → consolidate
+# critical section, so a second concurrent `/integrate-worker` blocks rather than racing on
+# the shared integration branch + version registry — build N-wide, integrate one-at-a-time
+# (LC-1/LC-5). A standing conformance test (`test_integration_no_admin_bypass.py`) pins that
+# the integration flow never carries the admin branch-protection bypass (LC-3); the command
+# spec records the serialize lock + protected-path landing contract. Integration stays a
+# LOCAL merge (it never pushes); the operator lands through branch protection + required CI.
+version: 0.20.2
 capabilities: [setup, plan, work, review, release, bugfix, documentation]

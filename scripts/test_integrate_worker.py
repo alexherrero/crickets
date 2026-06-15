@@ -736,6 +736,94 @@ class TestPosixBashResolver(unittest.TestCase):
         self.assertEqual(got, "bash")
 
 
+class TestIntegrateSerializeLock(unittest.TestCase):
+    """Integration is serialized — build N-wide, integrate one-at-a-time (LC-1/LC-5).
+
+    `integrate()` holds an exclusive advisory lock across the whole merge → gate
+    critical section so a second concurrent integration blocks rather than racing
+    on the shared integration branch + version registry (ADR 0030). The lock is
+    injectable (mirrors `gate`/`prepare`); the default is `fcntl.flock`-backed.
+    """
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="iw-lock-"))
+        self.repo = self.tmp / "repo"
+        _init_repo(self.repo)
+        _seed_progress(self.repo / ".harness", worker="w\n", mainline="m\n")
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_lock_is_held_across_the_merge_and_gate(self):
+        # The post-merge gate must run strictly inside the lock — proving the lock
+        # wraps the mutation, not just bracketing a no-op.
+        events = []
+
+        @contextlib.contextmanager
+        def recording_lock(root):
+            events.append("lock-enter")
+            try:
+                yield
+            finally:
+                events.append("lock-exit")
+
+        def recording_gate(root):
+            events.append("gate")
+            return (0, "green\n")
+
+        _add_worker(self.repo, self.tmp)
+        rc, out, err = iw.integrate("foo", str(self.repo), gate=recording_gate,
+                                    resolver=None, lock=recording_lock)
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(events, ["lock-enter", "gate", "lock-exit"],
+                         "the integrated-tree gate must run while the lock is held")
+
+    def test_lock_wraps_even_an_early_refusal(self):
+        # The lock brackets the whole body, so even a name-only refusal acquires +
+        # releases it (no early-return path slips past the serialize point).
+        events = []
+
+        @contextlib.contextmanager
+        def recording_lock(root):
+            events.append("enter")
+            try:
+                yield
+            finally:
+                events.append("exit")
+
+        rc, out, err = iw.integrate("", str(self.repo), gate=_green_gate,
+                                    resolver=None, lock=recording_lock)
+        self.assertEqual(rc, 2)
+        self.assertEqual(events, ["enter", "exit"])
+
+    def test_lock_path_is_a_separate_file_under_the_git_dir(self):
+        # A separate file from spawn_worker's worktree-spawn.lock: build serializes
+        # only its own worktree add; integration serializes the landing.
+        p = iw._integrate_lock_path(str(self.repo))
+        self.assertEqual(p.name, "integrate.lock")
+        self.assertTrue(str(p).endswith(str(Path(".git") / "integrate.lock")), str(p))
+
+    def test_default_lock_is_exclusive(self):
+        # The real default lock genuinely serializes: while one integration holds
+        # it, a second acquirer cannot take it (it would block). Proven with a
+        # non-blocking probe so the test never hangs.
+        try:
+            import fcntl
+        except ImportError:
+            self.skipTest("fcntl unavailable (Windows) — the advisory lock is a "
+                          "cooperative no-op there")
+        lock_path = iw._integrate_lock_path(str(self.repo))
+        with iw._integrate_lock(str(self.repo)):
+            with open(str(lock_path), "a") as second:
+                with self.assertRaises(OSError):  # BlockingIOError ⊂ OSError
+                    fcntl.flock(second, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        # released after the context — a non-blocking acquire now succeeds.
+        with open(str(lock_path), "a") as third:
+            fcntl.flock(third, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            fcntl.flock(third, fcntl.LOCK_UN)
+
+
 class TestMainCLI(unittest.TestCase):
     """End-to-end main() over the fallback backend with the REAL default gate."""
 

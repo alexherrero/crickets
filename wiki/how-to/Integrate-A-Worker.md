@@ -9,7 +9,13 @@ Use `/integrate-worker <name>` when a worker has finished its plan and you — t
 `<name>` is the same activated named-plan slug the worker was spawned on (`foo`, `PLAN-foo`, and `PLAN-foo.md` all normalize to `foo`). Merge **order is human-decided**: the command integrates the one worker you name, when you name it — it never auto-sequences merges across workers. For the full command surface (arguments, guards, exit codes), see [Named plans](Named-Plans#integrating-a-worker).
 
 > [!IMPORTANT]
-> Three guarantees this command holds: **`main` is never left broken** (a red gate on the integrated tree hard-resets `main` back to where it started), it **never pushes** (the merge is local — pushing stays your act), and progress promotion is **additive** (the worker's `progress-<slug>.md` is appended into the mainline `progress.md`, never deleted; the vault named-plan pair is left untouched).
+> Four guarantees this command holds: **`main` is never left broken** (a red gate on the integrated tree hard-resets `main` back to where it started), it **never pushes** (the merge is local — pushing stays your act), progress promotion is **additive** (the worker's `progress-<slug>.md` is appended into the mainline `progress.md`, never deleted; the vault named-plan pair is left untouched), and **integration is serialized** — it lands one worker at a time. Build fans out N-wide; integration is single-writer (an advisory `.git/integrate.lock` is held across the merge + gate, so a second concurrent `/integrate-worker` blocks rather than racing on `main`).
+
+## Serialized, protection-respecting landing
+
+Building parallelizes; **integrating does not**. Run workers N-wide in their own worktrees, but land them **one at a time** — `/integrate-worker` holds a per-repo advisory lock for the duration of each landing, so a second concurrent integration waits for the first to finish (or roll back) instead of racing on the shared integration branch and version registry. The integrator is the single writer of `marketplace.json` + `dist/` (see [ADR 0030](0030-generated-artifact-single-writer)).
+
+When you publish the integrated branch (step 4 below), go **through branch protection and required CI** — push the branch, wait for the required checks to go green, then squash-merge the PR. **Never** land it with a protection bypass such as `gh pr merge --admin`: that was the anti-pattern from the first concurrent run (a worker admin-merged past the very protection it had authored), and the integration flow now forbids it. A squash-merge through the protected path is recoverable (revertable) — announce it and proceed; the bypass is not on the table.
 
 ## Steps
 
