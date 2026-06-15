@@ -64,8 +64,11 @@ _END = "<!-- END recoverability-gate -->"
 # Load-bearing carve-out fragments that MUST appear (verbatim) in the doctrine
 # block of every execution command. Removing any is a relaxation, not a reword.
 _CARVEOUT_FRAGMENTS = (
-    "Worker-tree initiation stays operator-initiated "
-    "(`/spawn-worker` + `/integrate-worker`)",
+    # Refined (worktree-per-plan plan, task 5): authority = explicit command OR
+    # durable config opt-in; silent authority-free auto-spawn still forbidden.
+    "Worker-tree initiation requires operator authority — either an explicit "
+    "`/spawn-worker` command or a durable `isolation.mode: worktree-per-plan` "
+    "config opt-in; silent authority-free auto-spawn stays forbidden",
     "the PII pre-push hook + `pii-scrubber` invocation stay mandatory",
     "the no-`Co-Authored-By` commit rule is untouched",
 )
@@ -89,14 +92,29 @@ _DOCTRINE_BODY_FRAGMENTS = (
     "immutable publish / deploy / migration",
 )
 
+# Per-file authority markers: what each worktree command must say about
+# initiation authority. spawn-worker gained config-opt-in as a second valid
+# authority form (worktree-per-plan plan, task 5); integrate-worker stays
+# operator-initiated-only (config opt-in does not auto-integrate).
+_WORKTREE_AUTHORITY_MARKERS = {
+    "spawn-worker.md": "Operator authority required.",
+    "integrate-worker.md": "Operator-initiated only.",
+}
+
 # The worktree commands must keep a *negative-polarity* prohibition, per file.
 # Asserting the bare substring `"autonomous"` is polarity-blind — it matches
 # "spawn ... autonomously" just as well as "never spawn ... autonomously". Pin
 # the actual prohibition sentence so an inversion fails the guard.
+# spawn-worker: updated to "without operator authority" since config-opt-in is
+# valid authority — "autonomously" alone would incorrectly reject config spawns.
 _WORKTREE_NEGATIVE_POLARITY = {
-    "spawn-worker.md": "Never spawn a worktree autonomously",
+    "spawn-worker.md": "Never spawn a worktree without operator authority",
     "integrate-worker.md": "Never integrate a worker autonomously",
 }
+
+# For spawn-worker, assert the config-opt-in path is positively named — pins
+# the positive case: config opt-in IS operator authority, not just explicit cmd.
+_SPAWN_WORKER_CONFIG_OPT_IN = "isolation.mode: worktree-per-plan"
 
 
 def _read(name: str) -> str:
@@ -163,22 +181,37 @@ class TestRecoverabilityGateCarveouts(unittest.TestCase):
         )
 
     def test_worktree_commands_stay_operator_initiated(self):
-        for name, prohibition in _WORKTREE_NEGATIVE_POLARITY.items():
+        # Per-file authority markers: spawn-worker gained config-opt-in as a
+        # second valid form; integrate-worker stays operator-initiated-only.
+        for name, marker in _WORKTREE_AUTHORITY_MARKERS.items():
             text = _read(name)
             self.assertIn(
-                "Operator-initiated only.",
+                marker,
                 text,
-                f"{name} lost its 'Operator-initiated only.' constraint.",
+                f"{name} lost its authority constraint ({marker!r}).",
             )
-            # Negative polarity — `"autonomous"` alone matches either polarity;
-            # pin the prohibition sentence so an inversion fails the guard.
+            # Negative polarity — pin the prohibition sentence so an inversion
+            # from "never" to "may" fails the guard.
+            prohibition = _WORKTREE_NEGATIVE_POLARITY[name]
             self.assertIn(
                 prohibition,
                 text,
-                f"{name} lost its never-autonomous prohibition "
-                f"({prohibition!r}) — the worktree carve-out must not be "
-                f"inverted from 'never' to 'may'.",
+                f"{name} lost its prohibition ({prohibition!r}) — the worktree "
+                f"carve-out must not be inverted from 'never' to 'may'.",
             )
+
+        # Positive case: spawn-worker must name the config-opt-in authority path.
+        # A test that only asserts the negative (silent spawn forbidden) without
+        # asserting the positive (config opt-in IS valid) would allow a future
+        # edit to silently remove the config path while keeping the prohibition.
+        spawn_worker = _read("spawn-worker.md")
+        self.assertIn(
+            _SPAWN_WORKER_CONFIG_OPT_IN,
+            spawn_worker,
+            f"spawn-worker.md must name the config-opt-in authority path "
+            f"({_SPAWN_WORKER_CONFIG_OPT_IN!r}) — the refined invariant permits "
+            f"both explicit-command AND durable-config-opt-in as operator authority.",
+        )
 
 
 if __name__ == "__main__":
