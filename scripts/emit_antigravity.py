@@ -89,6 +89,18 @@ class AntigravityEmitter(HostEmitter):
         copy_group_scripts(group, plugin_dir)
         copy_group_templates(group, plugin_dir)
 
+        # capabilities.json sidecar — persists capabilities:/enhances: alongside
+        # the plugin.json so the agentm resolver can read them after `agy plugin
+        # install <path>` (agy has no marketplace registry; plugin.json stays thin).
+        # Only emitted when the group declares at least one capability or enhance.
+        if group.capabilities or group.enhances:
+            sidecar: dict = {"version": group.version}
+            if group.capabilities:
+                sidecar["capabilities"] = list(group.capabilities)
+            if group.enhances:
+                sidecar["enhances"] = enhances_to_json(group.enhances)
+            write_utf8(plugin_dir / "capabilities.json", dump_json(sidecar))
+
         entry = {
             "name": group.slug,
             "source": {"source": "local", "path": f"./plugins/{group.slug}"},

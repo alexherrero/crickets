@@ -186,7 +186,7 @@ class TestAntigravityEmitter(unittest.TestCase):
             (src / "cr").mkdir(parents=True)
             (src / "cr" / "group.yaml").write_text(
                 "name: CR\ndescription: d\nstandalone: true\nrequires: []\n"
-                "capabilities: [x]\nenhances: [wf]\n", encoding="utf-8")
+                "capabilities: [x]\nenhances: [wf]\nversion: 1.2.0\n", encoding="utf-8")
             group = src_model.load_groups(src)[0]
             dist = Path(t) / "dist"
             entry = emit_antigravity.AntigravityEmitter().emit_group(group, dist)
@@ -197,6 +197,26 @@ class TestAntigravityEmitter(unittest.TestCase):
             pj = json.loads((dist / "plugins" / "cr" / "plugin.json").read_text(encoding="utf-8"))
             self.assertNotIn("enhances", pj)
             self.assertNotIn("capabilities", pj)
+            # capabilities.json sidecar IS emitted alongside plugin.json
+            sidecar = json.loads(
+                (dist / "plugins" / "cr" / "capabilities.json").read_text(encoding="utf-8"))
+            self.assertEqual(sidecar["capabilities"], ["x"])
+            self.assertEqual(sidecar["enhances"], [{"group": "wf"}])
+            self.assertEqual(sidecar["version"], "1.2.0")
+
+    def test_no_capabilities_sidecar_when_neither_declared(self):
+        src_model = sys.modules["src_model"]
+        with tempfile.TemporaryDirectory() as t:
+            src = Path(t) / "src"
+            (src / "bare").mkdir(parents=True)
+            (src / "bare" / "group.yaml").write_text(
+                "name: Bare\ndescription: d\nstandalone: true\nrequires: []\n",
+                encoding="utf-8")
+            group = src_model.load_groups(src)[0]
+            dist = Path(t) / "dist"
+            emit_antigravity.AntigravityEmitter().emit_group(group, dist)
+            # no capabilities/enhances → no sidecar emitted
+            self.assertFalse((dist / "plugins" / "bare" / "capabilities.json").exists())
 
     def test_command_emitted(self):
         # a discovered `command` primitive lands in the native commands/ subdir
