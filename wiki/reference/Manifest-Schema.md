@@ -73,8 +73,10 @@ The generator finds a primitive by walking a group's `<kind>/` subdir for a mani
 | `command` | `commands/<name>.md` |
 | `hook` | `hooks/<name>/hook.md` |
 | `snippet` | `snippets/<name>.md` |
+| `output-style` | `output-styles/<name>.md` |
+| `rule` | `rules/<name>.md` |
 
-The other enum values (`mcp-server`, `status-line`, `output-style`, `workflow`, `rule`, `settings-fragment`) are valid `kind`s but have no discovery path or instance yet. A group's `scripts/` dir is a **group asset**, not a kind — copied verbatim to `<plugin>/scripts/` and referenced as `${CLAUDE_PLUGIN_ROOT}/scripts/<name>` on Claude Code, or the relative `scripts/<name>` on Antigravity (which runs from inside the plugin dir).
+The other enum values (`mcp-server`, `status-line`, `workflow`, `settings-fragment`) are valid `kind`s but have no discovery path or instance yet. A group's `scripts/` dir is a **group asset**, not a kind — copied verbatim to `<plugin>/scripts/` and referenced as `${CLAUDE_PLUGIN_ROOT}/scripts/<name>` on Claude Code, or the relative `scripts/<name>` on Antigravity (which runs from inside the plugin dir).
 
 ## Validation
 

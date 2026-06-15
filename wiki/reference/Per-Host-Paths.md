@@ -29,9 +29,16 @@ See [Hooks](Hooks) for what each `hooks/<name>/` dir contains and how hooks run 
 
 The generator mirrors the source layout. A skill authored at `src/<group>/skills/<name>/SKILL.md` emits to `dist/<host>/plugins/<group>/skills/<name>/SKILL.md` for each host in its `supported_hosts`; agents, commands, hooks, and snippets follow the same `src/<group>/<kind-dir>/…` → in-plugin-path rule. A group's `scripts/` dir copies wholesale to the plugin. Run `python3 scripts/generate.py build` after editing `src/` — see [Modify a plugin](Modify-A-Plugin).
 
-## Kinds not emitted yet
+## In-plugin paths for all emitted kinds
 
-crickets ships the five kinds above — `skill`, `agent`, `command`, `hook`, `snippet`. The `kind` enum also allows `mcp-server`, `status-line`, `output-style`, `workflow`, `rule`, and `settings-fragment`, but no primitive uses them today, so the generator emits none. The full enum lives in [Manifest Schema](Manifest-Schema).
+Paths are relative to the plugin root, `dist/<host>/plugins/<group>/`.
+
+| Kind | Claude Code | Antigravity |
+|---|---|---|
+| `output-style` | `output-styles/<name>.md` | `output-styles/<name>.md` |
+| `rule` | `rules/<name>.md` | `rules/<name>.md` |
+
+These two ship as of v3.13–3.14 (`developer-workflows` ships `terse` and `edit-over-write`). The `kind` enum also allows `mcp-server`, `status-line`, `workflow`, and `settings-fragment`, but no primitive uses them today. The full enum lives in [Manifest Schema](Manifest-Schema).
 
 ## Related
 

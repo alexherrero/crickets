@@ -1,11 +1,8 @@
 # ADR 0026 — Phase-aware model routing in developer-workflows
 
 > [!NOTE]
-> Status: proposed
-> Date: 2026-06-14 (proposed at Part D plan creation)
-
-> [!IMPORTANT]
-> **Proposed** — under construction in Part D (agentm #46, task 1). Will flip to `accepted` once `check-all.sh` is green and the task lands.
+> Status: accepted
+> Date: 2026-06-14
 
 ## Context
 

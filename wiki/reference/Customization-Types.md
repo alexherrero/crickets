@@ -11,8 +11,10 @@ The primitive **kinds** crickets recognizes via each primitive's `kind` field. Y
 | `agent` | `agents/<name>.md` | specialized sub-agent for fan-out work | both |
 | `hook` | `hooks/<name>/` | script the host runs at a session event ([Hooks](Hooks)) | both — observe-only on Antigravity |
 | `snippet` | `snippets/<name>.md` | standing instruction fragment — emits as an Antigravity `rules/` file; Claude plugins can't ship instruction files, so it's dropped and the convention is carried directly in `CLAUDE.md` / `AGENTS.md` instead | Antigravity |
+| `output-style` | `output-styles/<name>.md` | named output-style — agent reads it when referenced by name (e.g. `terse`); adjusts verbosity or format | both |
+| `rule` | `rules/<name>.md` | standing behavioral rule — merged into the agent's context as a persistent instruction (e.g. `edit-over-write`) | both |
 
-These five ship today. The `kind` enum also reserves `mcp-server`, `status-line`, `output-style`, `workflow`, `rule`, and `settings-fragment` — no primitive uses them yet, so the generator emits none. The full enum lives in [Manifest Schema](Manifest-Schema).
+These seven ship today. The `kind` enum also reserves `mcp-server`, `status-line`, `workflow`, and `settings-fragment` — no primitive uses them yet, so the generator emits none. The full enum lives in [Manifest Schema](Manifest-Schema).
 
 > [!NOTE]
 > **Group-level `scripts/` is not a `kind`.** A `src/<group>/scripts/` dir holds verbatim helper scripts (e.g. `code-review/scripts/cross-review.sh`, `developer-workflows/scripts/capability_probe.py`) — no frontmatter, no `kind`, not discovered as a primitive. The generator copies the whole dir wholesale (excluding `__pycache__`) into the plugin at `<plugin>/scripts/`, both hosts. A primitive references a bundled script through the host's plugin path — `${CLAUDE_PLUGIN_ROOT}/scripts/<name>` on Claude Code, or a **relative** `scripts/<name>` on Antigravity, which runs primitives from inside the plugin dir and sets no plugin-root variable. See [`src/SCHEMA.md`](https://github.com/alexherrero/crickets/blob/main/src/SCHEMA.md) § Group-level assets.

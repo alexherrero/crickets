@@ -10,6 +10,7 @@
   - [GitHub CI](GitHub-CI)
   - [Wiki Maintenance](Wiki-Maintenance)
   - [PII Guardrail](PII)
+  - Token Audit · Status Line Meter
 - [Customization model](Customization-Model)
 - [Build & distribution](Build-And-Distribution)
 - [Host adapters](Host-Adapters)

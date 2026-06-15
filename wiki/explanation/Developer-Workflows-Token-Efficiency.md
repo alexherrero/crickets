@@ -1,8 +1,8 @@
 # Developer-Workflows token efficiency
 
 > [!NOTE]
-> Status: pending
-> Plan: Part D — Phase-aware model routing + Tier-1 lever codification (agentm #46)
+> Status: implemented
+> Shipped: crickets v3.14.0, developer-workflows v0.13.0–v0.17.0, 2026-06-14
 > Last updated: 2026-06-14
 
 > [!IMPORTANT]

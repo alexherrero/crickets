@@ -16,23 +16,31 @@ On Antigravity, install by path (see [Install crickets plugins](Install-Into-Pro
 | Primitive | Kind | What it does |
 |---|---|---|
 | **`/setup`** | command | first-time scaffold — feature list + `init.sh`, once per project |
-| **`/plan`** | command | turn a brief into `PLAN.md` tasks + verification criteria (no code written) |
-| **`/work`** | command | implement **one** task from the plan, update `progress.md`, stop |
+| **`/plan`** | command | turn a brief into `PLAN.md` tasks + verification criteria (no code written); appends `/clear`-not-`/compact` reminder |
+| **`/work`** | command | implement the plan's task list autonomously, gated by a per-task safety check, update `progress.md` |
 | **`/review`** | command | adversarial critique — a failing test or a line-number defect, not prose |
-| **`/release`** | command | pre-merge gate — clean tree, gates green, changelog updated |
+| **`/release`** | command | pre-merge gate — clean tree, gates green, changelog updated; appends `/clear`-not-`/compact` reminder |
 | **`/bugfix`** | command | the Report → Analyze → Fix → Verify pipeline (used instead of plan+work for bugs) |
 | **`/queue-status-lite`** | command | read-only glance over the plan queue — lists every active plan in `_harness/` with its `Status:` + last progress line; surfaces, never mutates ([Named plans](Named-Plans)) |
+| **`worker`** | agent · `model: claude-opus-4-8` | active executor role — the autonomous `/work` persona, one per worktree; binds to its named plan via the worktree-local `.harness/active-plan` marker |
 | **`explorer`** | agent | read-only codebase fan-out — answers "where does this live / how does it work" without spending main-loop context |
+| **`researcher`** | agent · `model: claude-sonnet-4-6` | research sub-agent — cheaper model by default; delegates deep research tasks from worker or plan |
+| **`tech-lead`** | agent · `model: claude-sonnet-4-6` | tech-lead sub-agent — cheaper model by default; handles architecture review tasks from worker |
 | **`evaluator`** | agent | read-only rubric grader — `PASS` / `NEEDS_WORK` from a fresh context that never saw the build ([Evaluator](Evaluator)) |
-| **`harness-context-session-start`** | hook · `SessionStart` | surfaces `.harness/PLAN.md` + `progress.md` at session boot so the agent reads the plan first (Claude-only — `SessionStart` has no Antigravity event) |
+| **`harness-context-session-start`** | hook · `SessionStart` | surfaces `.harness/PLAN.md` + `progress.md` at session boot so the agent reads the plan first (Claude-only) |
+| **`compact-nudge-resume`** | hook · `UserPromptSubmit` | on every user prompt, injects a `/clear`-over-`/compact` nudge when context ≥ 60% or > 400 assistant turns; silent no-op below threshold or on a fresh session (Claude-only) |
+| **`terse`** | output-style | silence inter-tool narration; preserve the full end-of-task status report — the end-of-task summary is never trimmed |
+| **`edit-over-write`** | rule | prefer `Edit` to `Write` for existing files (5× billed-output rationale); `Write` only for new files or near-total rewrites |
 
 The six phase commands run the loop; the canonical phase **methodology** (what each phase must and must not do) lives in agentm's [phase specs](https://github.com/alexherrero/agentm/tree/main/harness/phases). `/queue-status-lite` is the odd one out — a read-only **status** command, not a phase gate: it surfaces the plan queue and decides nothing, leaving the operator to choose what to `/work` next. `capability_probe.py` is the internal helper that lets sibling plugins detect this one for graceful-skip.
+
+The three typed agents (`worker`, `researcher`, `tech-lead`) carry explicit `model:` defaults as token-efficiency levers — Opus for the autonomous executor, Sonnet for the research and review sub-agents. The `terse` output-style and `edit-over-write` rule ship as named primitives so any session can opt in without repeating the instruction text.
 
 ## How it composes
 
 - **Standalone** — installs and works on its own; `requires: []`.
 - **The base others enhance** — `developer-safety`'s control hooks and `code-review`'s reviewer engage across `/plan` · `/work` · `/review` · `/release` when installed alongside it. They detect it via the capability probe and graceful-skip when it's absent.
-- **Hosts** — both. The six phase commands + `/queue-status-lite` + two agents are host-symmetric; only the `harness-context` hook is Claude-only ([Antigravity limitations](Antigravity-Limitations)).
+- **Hosts** — both. The six phase commands + `/queue-status-lite` + agents + output-style + rule are host-symmetric; `harness-context` and `compact-nudge-resume` hooks are Claude-only ([Antigravity limitations](Antigravity-Limitations)).
 
 ## Why it works
 

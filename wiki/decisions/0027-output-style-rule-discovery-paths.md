@@ -1,11 +1,8 @@
 # ADR 0027 — Discovery paths for `output-style` and `rule` primitives within a plugin group
 
 > [!NOTE]
-> Status: proposed
-> Date: 2026-06-14 (proposed at Part D plan creation)
-
-> [!IMPORTANT]
-> **Proposed** — under construction in Part D (agentm #46, tasks 2 and 3). Will flip to `accepted` once the generator patch lands, `lint_src.py` passes on the new subdirs, and `check-all.sh` is green.
+> Status: accepted
+> Date: 2026-06-14
 
 ## Context
 

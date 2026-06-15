@@ -7,12 +7,13 @@ A **hook** is a script crickets runs at a fixed point in an agent session — be
 | Hook | Plugin | Event | What it does | Details |
 |---|---|---|---|---|
 | `harness-context` | `developer-workflows` | `SessionStart` | surfaces `.harness/PLAN.md` + `progress.md` at boot so the agent reads the plan first | [spec](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/hooks/harness-context-session-start/hook.md) |
+| `compact-nudge-resume` | `developer-workflows` | `UserPromptSubmit` | on every user prompt, checks context size (PCT≥60% or >400 assistant turns) and injects an `additionalContext` nudge toward `/clear` over `/compact`; silent no-op on a fresh session or below threshold | [spec](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/hooks/compact-nudge-resume/hook.md) |
 | `kill-switch` | `developer-safety` | `PreToolUse` | halts the next tool call when `.harness/STOP` exists | [how to use](Developer-Safety#driving-the-control-trio) |
 | `steer` | `developer-safety` | `PreToolUse` | injects `.harness/STEER.md` into context, then archives it | [how to use](Developer-Safety#driving-the-control-trio) |
 | `commit-on-stop` | `developer-safety` | `Stop` | saves a dirty tree to an `auto-save/<ts>` branch for crash recovery | [how to use](Developer-Safety#driving-the-control-trio) |
 | `evidence-tracker` | `code-review` | `PreToolUse` | blocks flipping a `PLAN.md` task to `[x]` until evidence for it is recorded (default-FAIL `/work` gate) | [spec](https://github.com/alexherrero/crickets/blob/main/src/code-review/hooks/evidence-tracker/hook.md) |
 
-**Hosts:** `harness-context` and `evidence-tracker` are Claude-only. The `developer-safety` trio install on both hosts but run **observe-only on Antigravity** (no veto/inject) — see [Compatibility](Compatibility).
+**Hosts:** `harness-context`, `compact-nudge-resume`, and `evidence-tracker` are Claude-only. The `developer-safety` trio install on both hosts but run **observe-only on Antigravity** (no veto/inject) — see [Compatibility](Compatibility).
 
 > The **Details** links point at how each hook operates — the `developer-safety` trio at the [Developer Safety](Developer-Safety) plugin page's control-trio section, the rest at their hook spec.
 

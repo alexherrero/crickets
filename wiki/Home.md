@@ -29,6 +29,7 @@
 | 🔎 **Review a change adversarially** — any diff or PR, no `/work` cycle | [code-review](Code-Review) | [code review](Use-Code-Review) |
 | 🛡️ **Guard quality + secrets** — control + recovery hooks, a PII scan on push | [developer-safety](Developer-Safety) | [operator-control hooks](Developer-Safety) · [PII guardrail](PII) |
 | 📋 **Plan & track a project** — vault roadmaps + plans synthesized to a GitHub board | [github-projects](GitHub-Projects) | [sync a board](Sync-A-Project-Board) · [one-way synthesis](One-Way-Vault-To-Board-Synthesis) |
+| 💰 **Audit & watch token spend** — per-turn cost breakdown + live status-line meter | [token-audit + status-line-meter](Plugins) | `/token-audit` command · live `↑K↓K $0.xx [62%]` badge |
 
 ## 📖 Look up a detail
 
