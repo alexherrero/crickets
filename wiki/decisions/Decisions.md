@@ -33,6 +33,7 @@ This page is the index. The homepage links here once instead of listing every AD
 - [ADR 0026 — Phase-aware model routing in developer-workflows](0026-phase-aware-model-routing) _(proposed, Part D pending)_
 - [ADR 0027 — Discovery paths for `output-style` and `rule` primitives](0027-output-style-rule-discovery-paths) _(proposed, Part D pending)_
 - [ADR 0028 — Worktree authority broadened: config opt-in is operator authority for auto-spawn](0028-worktree-authority-config-opt-in)
+- [ADR 0029 — Concurrent-release coordination: tag-from-main, branch protection, single writer](0029-concurrent-release-coordination)
 
 ## Retrospectives
 
