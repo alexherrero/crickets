@@ -1,7 +1,7 @@
 # ADR 0022 — Retire `worktrees-never-auto`: worktrees first-class but operator-initiated
 
 > [!NOTE]
-> Status: accepted
+> Status: partially superseded by [ADR 0028](0028-worktree-authority-config-opt-in.md) (2026-06-14) — only *how* operator authority is expressed changed; the core invariant (no silent authority-free spawn) is intact
 > Date: 2026-06-13
 
 ## Context
