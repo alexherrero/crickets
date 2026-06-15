@@ -91,8 +91,9 @@ def finalize_pr(
 
     # PII guard MUST precede the push — the pre-push hook is the enforcer;
     # this is the in-engine pre-check so we never push flagged content.
-    steps.append(("pii-guard", 0))
-    if not pii_guard(repo_root):
+    pii_ok = pii_guard(repo_root)
+    steps.append(("pii-guard", 0 if pii_ok else 1))
+    if not pii_ok:
         return DispatchResult(ok=False, action="pr", reason="PII guard blocked the push",
                               branch=branch, commit=commit, steps=steps)
 
@@ -127,8 +128,9 @@ def finalize_direct(
         return DispatchResult(ok=False, action="direct", reason="nothing to commit / commit failed",
                               steps=steps)
     commit = _head_sha(run, repo_root)
-    steps.append(("pii-guard", 0))
-    if not pii_guard(repo_root):
+    pii_ok = pii_guard(repo_root)
+    steps.append(("pii-guard", 0 if pii_ok else 1))
+    if not pii_ok:
         return DispatchResult(ok=False, action="direct", reason="PII guard blocked the push",
                               commit=commit, steps=steps)
     rc, out = run(["git", "push"], repo_root); steps.append(("push", rc))
