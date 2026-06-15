@@ -5,6 +5,7 @@ kind: agent
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
 install_scope: either
+model: claude-sonnet-4-6
 ---
 
 # tech-lead — the brief-to-plan author

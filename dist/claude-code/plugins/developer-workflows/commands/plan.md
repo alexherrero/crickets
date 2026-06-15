@@ -12,6 +12,8 @@ You are running the **plan** phase of the developer-workflows loop. Turn a brief
 
 **Brief from the user:** $ARGUMENTS
 
+> **Recommended model for this phase:** Sonnet 4.6 (`claude-sonnet-4-6`) — lighter model for planning and authoring. Override with `/model` if needed.
+
 > **Standalone + storage-agnostic.** State is plain `.harness/<file>` unless a hosting memory layer redirects it. A plan exists so a later `/work` session has a shared contract (not a verbal understanding that evaporates with context), scope is fixed before you're deep in code, and verification is pre-negotiated — the single biggest lever on review quality.
 
 ## Non-negotiable constraints
@@ -116,6 +118,8 @@ Do **not** start implementing — that's `/work`. Append one line to the resolve
 Under `--stage`, lead the line with `staged` (`/plan --stage — staged plan "<title>" with N tasks`) so the coordinator's log distinguishes inert plans from active ones.
 
 Summarize in ≤5 bullets: the goal, task count, biggest risk, next command (`/work` to start task 1, or `/plan --activate <slug>` when this was a `--stage` author).
+
+After `progress.md` is written, run `/clear` rather than `/compact`. State is on disk; a compaction summary re-bills on every later turn.
 
 ## Failure modes to avoid
 

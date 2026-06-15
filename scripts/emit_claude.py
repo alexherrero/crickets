@@ -79,6 +79,8 @@ class ClaudeEmitter(HostEmitter):
                 self._emit_hook(prim, plugin_dir, hooks)
             elif kind == "output-style":
                 self._copy_component(prim, plugin_dir / "output-styles")
+            elif kind == "rule":
+                self._copy_component(prim, plugin_dir / "rules")
             elif kind == "mcp-server":
                 self._merge_mcp(prim, mcp_servers)
             elif kind == "snippet":

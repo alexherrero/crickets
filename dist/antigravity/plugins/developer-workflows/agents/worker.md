@@ -5,6 +5,7 @@ kind: agent
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
 install_scope: either
+model: claude-opus-4-8
 ---
 
 # worker — the autonomous executor

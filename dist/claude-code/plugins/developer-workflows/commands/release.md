@@ -55,3 +55,5 @@ Invoking this phase **is** the authorization to run it to completion. The stop-g
 - Setting `passes: true` speculatively.
 - Stopping to ask before a *recoverable* push / tag / merge (the recoverability gate says announce + proceed) — or, conversely, proceeding on a genuinely *unrecoverable* action without pre-announcing and confirming.
 - Releasing past a red CI.
+
+After `progress.md` is written and the release is complete, run `/clear` rather than `/compact`. State is on disk; a compaction summary re-bills on every later turn.

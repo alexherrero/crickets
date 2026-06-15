@@ -12,6 +12,8 @@ You are running the **design** command — the upstream authoring step of the de
 
 **Arguments:** $ARGUMENTS
 
+> **Recommended model for this phase:** Sonnet 4.6 (`claude-sonnet-4-6`) — lighter model for planning and authoring. Override with `/model` if needed.
+
 > **Three verbs, one pipeline.** `/design author` (write + finalize a design doc) → `/design translate` (split a final doc into structural `parts/`) → `/design sequence` (topo-order the parts into named plans). The pipeline is strictly ordered by a single hard gate — `Status: final` — which only a human approval can set. Each verb is documented in its own section below.
 
 ## Dispatch

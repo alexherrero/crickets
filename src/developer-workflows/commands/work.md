@@ -12,6 +12,8 @@ You are running the **work** phase of the developer-workflows loop. Work through
 
 **Argument (if any):** $ARGUMENTS
 
+> **Recommended model for this phase:** Opus 4.8 (`claude-opus-4-8`) — strong model for autonomous task execution. Override with `/model` if needed.
+
 > The session works the **whole task list autonomously** — the unit is the plan, not a single task. What keeps that safe is the **per-task safety pre-check**: before each task, decide whether it can be done safely and autonomously, and stop to ask if it can't (or if a clarification is needed). Single-threaded execution is the load-bearing constraint — never fan out parallel implementers; the autonomy boundary is the safety check, not the task count.
 
 <!-- BEGIN recoverability-gate · canonical · byte-identical across work.md · bugfix.md · release.md (scripts/ drift test enforces) -->

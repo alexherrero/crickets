@@ -28,9 +28,11 @@ PRIMITIVE_KINDS = {
     "hook": ("hooks/*/hook.md", lambda p: p.parent.name),
     "agent": ("agents/*.md", lambda p: p.stem),
     "command": ("commands/*.md", lambda p: p.stem),
+    "output-style": ("output-styles/*.md", lambda p: p.stem),
+    "rule": ("rules/*.md", lambda p: p.stem),
     "snippet": ("snippets/*.md", lambda p: p.stem),
 }
-KNOWN_KIND_DIRS = {"skills", "hooks", "agents", "commands", "snippets", "mcp", "rules", "scripts", "templates"}
+KNOWN_KIND_DIRS = {"skills", "hooks", "agents", "commands", "snippets", "mcp", "output-styles", "rules", "scripts", "templates"}
 # `scripts/` and `templates/` are NOT primitive kinds — they're group-level asset
 # dirs copied verbatim into the emitted plugin (e.g. code-review's cross-review.sh;
 # wiki-maintenance's wiki-sync.yml + section-template library). Listed

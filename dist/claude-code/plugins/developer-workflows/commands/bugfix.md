@@ -12,6 +12,8 @@ You are running the **bugfix** pipeline of the developer-workflows loop. Bugs ha
 
 **Bug report from user:** $ARGUMENTS
 
+> **Recommended model for this phase:** Opus 4.8 (`claude-opus-4-8`) — strong model for autonomous task execution. Override with `/model` if needed.
+
 <!-- BEGIN recoverability-gate · canonical · byte-identical across work.md · bugfix.md · release.md (scripts/ drift test enforces) -->
 ## Recoverability gate (autonomy doctrine)
 
