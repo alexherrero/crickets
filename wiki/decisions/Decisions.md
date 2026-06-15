@@ -34,6 +34,7 @@ This page is the index. The homepage links here once instead of listing every AD
 - [ADR 0027 — Discovery paths for `output-style` and `rule` primitives](0027-output-style-rule-discovery-paths) _(proposed, Part D pending)_
 - [ADR 0028 — Worktree authority broadened: config opt-in is operator authority for auto-spawn](0028-worktree-authority-config-opt-in)
 - [ADR 0029 — Concurrent-release coordination: tag-from-main, branch protection, single writer](0029-concurrent-release-coordination)
+- [ADR 0030 — Generated artifacts have a single writer: defer the version bump to the serialized integrator](0030-generated-artifact-single-writer)
 
 ## Retrospectives
 
@@ -43,6 +44,7 @@ This page is the index. The homepage links here once instead of listing every AD
 
 <!-- maintained by the wiki tooling -->
 
+- **2026-06-15** — ADR 0030 (generated-artifact single writer) added; records deferring the version bump to the serialized integrator (Model A — defer-bump-only) so concurrent worker branches never write the shared `marketplace.json` registry, removing the cross-plugin collision class seen in the first concurrent run. `dist-sync` stays fully authoritative everywhere; only `version-bump` becomes branch-aware. Extends ADR 0029's single-writer model from tags to generated artifacts.
 - **2026-06-14** — ADR 0028 (worktree authority broadened) added; records that a durable `isolation.mode: worktree-per-plan` config opt-in IS operator authority for worktree creation, partially superseding ADR 0022's "explicit command only" framing; ADR 0023 untouched; prohibition updated to "without operator authority" (not "autonomously").
 - **2026-06-14** — ADR 0026 (phase-aware model routing) + ADR 0027 (output-style/rule discovery paths) proposed for Part D (agentm #46); both pending implementation.
 - **2026-06-14** — ADR 0025 (board-sync vault→project) added; records the `github-projects` plugin's one-way deterministic synthesis — DC-1 materialization (feature-and-up always; Plan/Task active-plan-only), DC-2 frozen six-field set (only `Type`/`project_surface` code-enforced; `Track`/`Priority`/`Status` free-form), DC-4 single idempotent render+write path, silent-source stripping on the public board, and `requires: developer-workflows` (vault path from config, not a hard agentm dependency).
