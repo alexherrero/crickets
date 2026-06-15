@@ -93,5 +93,12 @@ standalone: true
 # that the `vault==board` gate would flag as an orphan. Recoverable + idempotent →
 # announce + proceed; silent-skip (zero behavior change) when the plugin/config/gh
 # is absent — so developer-workflows standalone is unchanged.
-version: 0.12.0
+# 0.12.1 = plan-name normalizer parity fix (2026-06-13 adversarial-audit finding
+# ML2). The standalone `.harness/` fallback in resolve_plan.py now strips the
+# `PLAN-` prefix *before* testing for the singleton — so "PLAN-PLAN.md" resolves to
+# the singleton, matching agentm — and rejects a NUL-byte slug, closing the two
+# drifts from agentm's authoritative normalizer. A golden-vector parity test is
+# added (duplicated verbatim in agentm's suite, no cross-repo import edge — DC-2).
+# Fallback-only: delegation to an installed agentm clone is unchanged.
+version: 0.12.1
 capabilities: [setup, plan, work, review, release, bugfix, documentation]

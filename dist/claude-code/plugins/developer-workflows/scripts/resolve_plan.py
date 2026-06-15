@@ -58,14 +58,20 @@ def _normalize_plan_name(name: str) -> str:
     "" / "PLAN" / "PLAN.md" → ""  (singleton);  "foo" / "PLAN-foo" / "PLAN-foo.md"
     → "foo". This is the same surface the agentm verb accepts, kept here only so
     the standalone fallback agrees with the delegated backend on what a name means.
+
+    Step order mirrors agentm's `_normalize_plan_name` exactly — strip `.md`, strip
+    the `PLAN-` prefix, *then* test for the singleton — so an edge form like
+    "PLAN-PLAN.md" reduces to the singleton on both sides rather than to a named
+    "PLAN" plan here and the singleton there. (Parity fix — 2026-06-13 adversarial
+    audit finding ML2; golden vectors in test_resolve_plan.py guard the agreement.)
     """
     slug = (name or "").strip()
     if slug.endswith(".md"):
         slug = slug[:-3]
-    if slug == "PLAN":
-        return ""
     if slug.startswith("PLAN-"):
         slug = slug[len("PLAN-"):]
+    if not slug or slug == "PLAN":
+        return ""
     return slug
 
 
@@ -73,11 +79,14 @@ def _is_safe_plan_slug(slug: str) -> bool:
     """True iff `slug` is a single path component (no traversal, no separators).
 
     The fallback's only safety obligation — agentm owns the richer guard when
-    present. Rejects "", ".", "..", and anything containing a path separator.
+    present. Rejects "", ".", "..", a NUL byte, and anything containing a path
+    separator. (The NUL-byte rejection matches agentm's guard — 2026-06-13
+    adversarial audit finding ML2; without it a "foo\x00" slug slipped through
+    here but not there.)
     """
     if not slug or slug in (".", ".."):
         return False
-    if "/" in slug or "\\" in slug:
+    if "/" in slug or "\\" in slug or "\x00" in slug:
         return False
     if os.sep in slug or (os.altsep and os.altsep in slug):
         return False
