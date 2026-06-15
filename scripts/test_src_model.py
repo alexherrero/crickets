@@ -37,7 +37,7 @@ class TestSrcModel(unittest.TestCase):
         self.assertEqual(set(by),
                          {"code-review", "developer-safety", "developer-workflows",
                           "github-ci", "github-projects", "obsidian-vault", "pii",
-                          "wiki-maintenance"})
+                          "token-audit", "wiki-maintenance"})
         # obsidian-vault (V5-2): the re-homed `vault` storage backend lands as a
         # group asset under scripts/ (LC-2 — engine-consumed, not a host primitive).
         # Task 2 additionally re-homed the vault-specific conflict-merger out of the
@@ -231,7 +231,7 @@ class TestSrcModel(unittest.TestCase):
         groups = src_model.load_groups(_ROOT / "src")
         by = {g.slug: g for g in groups}
         cmd_groups = {g.slug for g in groups for p in g.primitives if p.kind == "command"}
-        self.assertEqual(cmd_groups, {"developer-workflows", "code-review", "wiki-maintenance"})
+        self.assertEqual(cmd_groups, {"developer-workflows", "code-review", "wiki-maintenance", "token-audit"})
         dw_cmds = {p.name for p in by["developer-workflows"].primitives if p.kind == "command"}
         self.assertIn("plan", dw_cmds)
         cr_cmds = {p.name for p in by["code-review"].primitives if p.kind == "command"}

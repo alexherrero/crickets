@@ -83,6 +83,15 @@
       "version": "0.1.0"
     },
     {
+      "capabilities": [
+        "token-audit"
+      ],
+      "description": "Deterministic transcript-JSONL cost analyzer — per-message cost curve, 5h rolling window, floor breakdown, and cache-read vs cache-write vs fresh-input split. Prerequisite for Part C (status-line meter) and Part G (heat-based floor).",
+      "name": "token-audit",
+      "source": "./dist/claude-code/plugins/token-audit",
+      "version": "0.1.0"
+    },
+    {
       "description": "Opinionated, template-driven wiki maintenance — the wiki-author authoring/learning skill, the documenter agent, the diataxis-evaluator, recent-wiki-changes, and the check-wiki.py linter. Maintains a wiki in the operator's voice; enhances developer-workflows' phase-boundary documentation when both are installed.",
       "enhances": [
         {

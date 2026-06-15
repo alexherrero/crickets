@@ -122,6 +122,21 @@
       }
     },
     {
+      "capabilities": [
+        "token-audit"
+      ],
+      "category": "Coding",
+      "name": "token-audit",
+      "policy": {
+        "authentication": "ON_INSTALL",
+        "installation": "AVAILABLE"
+      },
+      "source": {
+        "path": "./plugins/token-audit",
+        "source": "local"
+      }
+    },
+    {
       "category": "documentation",
       "enhances": [
         {

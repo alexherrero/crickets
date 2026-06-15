@@ -1,0 +1,18 @@
+name: Token Audit
+description: Deterministic transcript-JSONL cost analyzer — per-message cost curve, 5h rolling window, floor breakdown, and cache-read vs cache-write vs fresh-input split. Prerequisite for Part C (status-line meter) and Part G (heat-based floor).
+category: Coding
+requires: []
+standalone: true
+# Per-plugin marketplace version. Bump on every release that ships new/changed
+# primitives so `claude plugin update token-audit@crickets` actually pulls them.
+# 0.1.0 = initial plugin: pricing.py (one pricing table, reusable by Part C) +
+# analyzer.py (streaming JSONL reader, per-message cost, 5h rolling window,
+# floor breakdown, cache split with "% served from cache") + /token-audit command
+# (headline + per-message table + window sums + floor, --by-phase flag for phase
+# attribution from /plan|/work|/review|/release|/bugfix markers). Schema verified
+# 2026-06-14 against real Claude Code 1.x JSONL: input_tokens /
+# cache_creation_input_tokens / cache_read_input_tokens / output_tokens all present;
+# cache_creation.ephemeral_5m_input_tokens and ephemeral_1h_input_tokens tracked
+# but priced at the same rate (TODO: distinguish when Part C needs it).
+version: 0.1.0
+capabilities: [token-audit]
