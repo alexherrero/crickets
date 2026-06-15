@@ -57,6 +57,13 @@ jobs:
         # stays green — it earns its keep in a board-synced checkout. Linux-only:
         # it's a deterministic Python gate, no per-OS portability surface.
         run: python3 src/github-projects/scripts/check_project_sync.py
+      - name: Tag-reachability gate (all tags must be on main)
+        # Concurrent-release coordination backstop: tags must point to commits
+        # reachable from main, not worker/plan-branch tips. Graceful-skip when
+        # neither 'main' nor 'origin/main' resolves (fresh repos, non-main
+        # default-branch names). In CI the full history is available (fetch-depth: 0
+        # above), so origin/main resolves and the gate is live.
+        run: python3 scripts/check_tag_reachability.py
 
   syntax:
     name: syntax

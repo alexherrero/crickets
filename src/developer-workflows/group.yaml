@@ -133,5 +133,14 @@ standalone: true
 # nothing landed. Fix: use DispatchResult.steps to detect push rc=0 directly;
 # push_landed=True → exit 1 (partial, branch on remote), False → exit 2 (nothing
 # pushed). 5 new regression tests in test_finalize_unit.py (2 were RED before the fix).
-version: 0.18.1
+# 0.19.0 = concurrent-release coordination (worktree-pr-loop plan, part 2) — three
+# hardening layers that make the force-push-on-shared-tag trap structurally
+# unreachable: (1) `check_tag_reachability.py` gate added to `check-all.sh` and CI
+# (tags must point to main-reachable commits; graceful-skip when main is absent); (2)
+# `/release` step 7 mandates a pre-tag reachability check before `gh release create`;
+# (3) `main` branch-protection requirements documented (required CI status checks +
+# squash/rebase + no force-push + linear history) + the serialized-single-writer
+# model documented with its re-audit trigger. ADR 0029 records the decision (own ADR,
+# cross-references ADR 0022-supersession ADR 0028).
+version: 0.19.0
 capabilities: [setup, plan, work, review, release, bugfix, documentation]
