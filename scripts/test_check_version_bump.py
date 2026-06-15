@@ -9,11 +9,15 @@ merge-base diff behavior — the regression that keeps a concurrent advance on
 """
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
+import os
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 _HERE = Path(__file__).resolve().parent
 
@@ -222,6 +226,126 @@ class TestDiffPathsMergeBase(unittest.TestCase):
         changed = cvb.changed_plugin_slugs(cvb._diff_paths(self.base_branch))
         self.assertIn("bar", changed)      # branch's own (uncommitted) change seen
         self.assertNotIn("foo", changed)   # main's post-fork advance NOT blamed here
+
+
+class TestIsDeferredBumpContext(unittest.TestCase):
+    """Pure logic for the deferred-bump (worker) context detection (ADR 0030).
+
+    Under Model A, a `worker/<slug>` branch defers its version bump to the
+    serialized integrator, so an absent bump there is advisory, not a failure.
+    The explicit `$VERSION_BUMP_DEFER` env wins over the branch heuristic (the
+    CI-topology re-audit hook the ADR names).
+    """
+
+    def test_worker_branch_is_deferred(self):
+        self.assertTrue(cvb.is_deferred_bump_context("worker/foo", {}))
+        self.assertTrue(cvb.is_deferred_bump_context("worker/some-long-slug", {}))
+
+    def test_main_and_other_branches_are_not(self):
+        for branch in ("main", "feature/x", "release/1.0", "worker", "myworker/x"):
+            with self.subTest(branch=branch):
+                self.assertFalse(cvb.is_deferred_bump_context(branch, {}), branch)
+
+    def test_none_branch_is_not_deferred(self):
+        self.assertFalse(cvb.is_deferred_bump_context(None, {}))
+
+    def test_env_forces_on_even_off_worker(self):
+        for val in ("1", "true", "TRUE", "Yes", "on", "  on  "):
+            with self.subTest(val=val):
+                self.assertTrue(
+                    cvb.is_deferred_bump_context("main", {"VERSION_BUMP_DEFER": val}), val)
+
+    def test_env_forces_off_even_on_worker(self):
+        # An explicit env value wins over the branch heuristic — off / empty /
+        # garbage all resolve to "not deferred", overriding a `worker/` branch.
+        for val in ("0", "false", "no", "off", "", "banana"):
+            with self.subTest(val=val):
+                self.assertFalse(
+                    cvb.is_deferred_bump_context("worker/foo", {"VERSION_BUMP_DEFER": val}), val)
+
+
+class TestDeferralEndToEnd(unittest.TestCase):
+    """The version-bump gate is advisory in a worker context, FAIL otherwise (ADR 0030).
+
+    A real git repo where a plugin's src/ changed but its `version:` did NOT move:
+    on a `worker/<slug>` branch (or with `$VERSION_BUMP_DEFER` set) `main()` treats
+    the absent bump as advisory (rc 0); on a `feature/<x>` branch the same state
+    fails (rc 1). Drives the full `main()` path, including the CI-PR-safe branch
+    resolution — so the env signals are isolated per case (`$GITHUB_HEAD_REF` /
+    `$VERSION_BUMP_DEFER` popped so the local checked-out branch is what's read).
+    """
+
+    def _git(self, *args):
+        subprocess.run(["git", "-C", str(self.repo), *args],
+                       check=True, capture_output=True, text=True)
+
+    def _write(self, relpath, text):
+        p = self.repo / relpath
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(text, encoding="utf-8")
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.repo = Path(self._tmp.name)
+        self._git("init", "-q")
+        self._git("config", "user.email", "t@example.com")
+        self._git("config", "user.name", "Test")
+        self._write("src/foo/group.yaml", "name: foo\nversion: 0.1.0\n")
+        self._write("src/foo/skills/foo/SKILL.md", "v1\n")
+        self._git("add", "-A")
+        self._git("commit", "-qm", "M")
+        self.base_branch = subprocess.run(
+            ["git", "-C", str(self.repo), "rev-parse", "--abbrev-ref", "HEAD"],
+            check=True, capture_output=True, text=True).stdout.strip()
+        self._orig_root = cvb.ROOT
+        cvb.ROOT = self.repo  # _git()/_diff_paths()/_resolve_branch_name() run cwd=ROOT
+
+    def tearDown(self):
+        cvb.ROOT = self._orig_root
+        self._tmp.cleanup()
+
+    def _change_foo_without_bump(self, branch):
+        """On a fresh `branch` off base, change foo's src but leave its version."""
+        self._git("checkout", "-q", "-b", branch)
+        self._write("src/foo/skills/foo/SKILL.md", "v2-no-bump\n")
+        self._git("commit", "-qam", "edit foo, no version bump")
+
+    def _run_main(self):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            rc = cvb.main(["--base", self.base_branch])
+        return rc, out.getvalue()
+
+    def test_worker_branch_makes_absent_bump_advisory(self):
+        self._change_foo_without_bump("worker/foo")
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("GITHUB_HEAD_REF", None)
+            os.environ.pop("VERSION_BUMP_DEFER", None)
+            rc, out = self._run_main()
+        self.assertEqual(rc, 0, out)
+        self.assertIn("deferred-bump worker context", out)
+        self.assertIn("foo", out)
+
+    def test_feature_branch_still_fails(self):
+        self._change_foo_without_bump("feature/x")
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("GITHUB_HEAD_REF", None)
+            os.environ.pop("VERSION_BUMP_DEFER", None)
+            rc, out = self._run_main()
+        self.assertEqual(rc, 1, out)
+        self.assertIn("FAIL", out)
+        self.assertIn("foo", out)
+
+    def test_env_defer_makes_absent_bump_advisory_off_worker(self):
+        # Even on a non-worker branch, $VERSION_BUMP_DEFER=1 asserts the context
+        # (the CI-topology re-audit hook), so the absent bump is advisory.
+        self._change_foo_without_bump("feature/x")
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("GITHUB_HEAD_REF", None)
+            os.environ["VERSION_BUMP_DEFER"] = "1"
+            rc, out = self._run_main()
+        self.assertEqual(rc, 0, out)
+        self.assertIn("deferred-bump worker context", out)
 
 
 if __name__ == "__main__":

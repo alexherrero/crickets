@@ -142,5 +142,5 @@ standalone: true
 # squash/rebase + no force-push + linear history) + the serialized-single-writer
 # model documented with its re-audit trigger. ADR 0029 records the decision (own ADR,
 # cross-references ADR 0022-supersession ADR 0028).
-version: 0.19.0
+version: 0.20.0
 capabilities: [setup, plan, work, review, release, bugfix, documentation]

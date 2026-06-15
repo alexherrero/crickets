@@ -578,6 +578,125 @@ class TestIntegrateMergeRaises(unittest.TestCase):
         self.assertEqual(_git(self.repo, "rev-parse", "HEAD").stdout.strip(), pre)
 
 
+class TestIntegratePrepare(unittest.TestCase):
+    """ADR 0030: the artifact-prepare step runs on the merged tree BEFORE the gate.
+
+    The single-writer integrator bumps the deferred version(s) + regenerates the
+    shared registry between the merge and the gate. A prepare that fails (or
+    raises) rolls the merge back exactly like a red gate — a half-applied bump
+    must never land. The production default (`_artifact_prepare`) runs the
+    project's `scripts/integrate-prepare.sh` if present, else no-ops (rc 0) so the
+    pre-Model-A flow is unchanged.
+    """
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="iw-prep-"))
+        self.repo = self.tmp / "repo"
+        _init_repo(self.repo)
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_prepare_runs_on_merged_tree_before_gate(self):
+        # The prepare writes a file on the merged tree + commits; the gate then
+        # asserts that file is present — proving prepare ran first, on the merged
+        # tree, and its commit is part of what the gate sees.
+        _seed_progress(self.repo / ".harness", worker="w\n", mainline="m\n")
+        _add_worker(self.repo, self.tmp)
+        order = []
+
+        def committing_prepare(root, pre_sha):
+            order.append("prepare")
+            (Path(root) / "BUMPED.txt").write_text("bumped\n", encoding="utf-8")
+            _git(Path(root), "add", "BUMPED.txt")
+            _git(Path(root), "commit", "-q", "-m", "chore: bump (stub prepare)")
+            return (0, "[stub prepare] bumped\n")
+
+        def asserting_gate(root):
+            order.append("gate")
+            present = (Path(root) / "BUMPED.txt").is_file()
+            return (0 if present else 1, f"gate saw BUMPED.txt={present}\n")
+
+        rc, out, err = iw.integrate("foo", str(self.repo), gate=asserting_gate,
+                                    prepare=committing_prepare, resolver=None)
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(order, ["prepare", "gate"], "prepare must run before the gate")
+        # The prepare's commit is on main (its file survives in the working tree).
+        self.assertTrue((self.repo / "BUMPED.txt").is_file())
+        self.assertIn("chore: bump (stub prepare)", _git(self.repo, "log", "--oneline").stdout)
+
+    def test_failing_prepare_rolls_back_and_skips_gate(self):
+        _add_worker(self.repo, self.tmp)
+        pre = _git(self.repo, "rev-parse", "HEAD").stdout.strip()
+        gate_called = []
+
+        def red_prepare(root, pre_sha):
+            return (3, "[stub prepare] bump failed: garbage version\n")
+
+        def tracking_gate(root):
+            gate_called.append(True)
+            return (0, "should not run\n")
+
+        rc, out, err = iw.integrate("foo", str(self.repo), gate=tracking_gate,
+                                    prepare=red_prepare, resolver=None)
+        self.assertEqual(rc, 2)
+        self.assertEqual(out, "")
+        self.assertIn("artifact-prepare FAILED", err)
+        self.assertIn("bump failed", err)  # the prepare output is surfaced
+        self.assertEqual(gate_called, [], "the gate must NOT run after a failed prepare")
+        # main hard-reset to the pre-merge HEAD — zero commits added.
+        self.assertEqual(_git(self.repo, "rev-parse", "HEAD").stdout.strip(), pre)
+        self.assertFalse(iw._merge_in_progress(self.repo))
+        # The worktree + branch are intact for the operator to inspect.
+        self.assertTrue((self.tmp / "wt-foo").is_dir())
+        self.assertTrue(iw._branch_exists(self.repo, "worker/foo"))
+
+    def test_prepare_that_raises_is_treated_as_red(self):
+        _add_worker(self.repo, self.tmp)
+        pre = _git(self.repo, "rev-parse", "HEAD").stdout.strip()
+
+        def boom_prepare(root, pre_sha):
+            raise RuntimeError("prepare process crashed")
+
+        rc, out, err = iw.integrate("foo", str(self.repo), gate=_green_gate,
+                                    prepare=boom_prepare, resolver=None)
+        self.assertEqual(rc, 2)
+        self.assertEqual(out, "")
+        self.assertIn("artifact-prepare", err)
+        # Rolled back, worktree intact — a raising prepare never leaves a merge.
+        self.assertEqual(_git(self.repo, "rev-parse", "HEAD").stdout.strip(), pre)
+        self.assertTrue((self.tmp / "wt-foo").is_dir())
+
+    def test_default_prepare_no_ops_without_script(self):
+        # _artifact_prepare is the production default; a repo with no
+        # scripts/integrate-prepare.sh must no-op (rc 0) so the pre-Model-A flow
+        # (and every gate-only test) is unchanged.
+        rc, out = iw._artifact_prepare(str(self.repo), "deadbeef")
+        self.assertEqual(rc, 0)
+        self.assertIn("no artifact-prepare step", out)
+
+    def test_default_prepare_runs_present_script_with_pre_sha(self):
+        scripts = self.repo / "scripts"
+        scripts.mkdir(parents=True, exist_ok=True)
+        # A stub prepare script echoes its $1 (the pre-merge SHA) + exits 0.
+        (scripts / "integrate-prepare.sh").write_text(
+            '#!/usr/bin/env bash\necho "prepare ran with sha=$1"\nexit 0\n',
+            encoding="utf-8")
+        rc, out = iw._artifact_prepare(str(self.repo), "abc123")
+        self.assertEqual(rc, 0, out)
+        self.assertIn("prepare ran with sha=abc123", out)
+
+    def test_default_prepare_surfaces_script_failure(self):
+        scripts = self.repo / "scripts"
+        scripts.mkdir(parents=True, exist_ok=True)
+        (scripts / "integrate-prepare.sh").write_text(
+            "#!/usr/bin/env bash\necho 'boom' >&2\nexit 7\n", encoding="utf-8")
+        rc, out = iw._artifact_prepare(str(self.repo), "abc123")
+        self.assertEqual(rc, 7)
+        self.assertIn("boom", out)
+
+
 class TestMainCLI(unittest.TestCase):
     """End-to-end main() over the fallback backend with the REAL default gate."""
 

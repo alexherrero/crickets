@@ -55,6 +55,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC_DIRNAME = "src"
+_WORKER_BRANCH_PREFIX = "worker/"
 
 _VERSION_RE = re.compile(r"^version:\s*(.+?)\s*$", re.MULTILINE)
 
@@ -166,6 +167,30 @@ def find_unbumped(changed_slugs, base_version, cur_version) -> list[str]:
     return sorted(offenders)
 
 
+def is_deferred_bump_context(branch_name: str | None, env) -> bool:
+    """True iff the version bump is *deferred to the serialized integrator* (ADR 0030).
+
+    Under the Model A defer-bump-only model, a `worker/<slug>` branch commits
+    src + dist regenerated at the *current* version and does NOT bump — the
+    serialized integrator owns the bump (and the shared marketplace.json
+    registry), so the cross-plugin registry collision is structurally gone. In
+    that context an absent bump is *expected*, so this guard treats it as an
+    advisory pass rather than a failure (the integrator's own check-all run, on
+    the non-worker integration branch, enforces the bump for real).
+
+    Signal precedence — the explicit env wins so a CI topology that loses the
+    branch name (ADR 0030's named re-audit trigger) can still assert the context:
+      1. ``$VERSION_BUMP_DEFER`` set: ``1``/``true``/``yes``/``on`` → True;
+         ``0``/``false``/``no``/``off`` (or anything else) → False;
+      2. branch name starts with ``worker/`` → True;
+      3. otherwise → False.
+    """
+    explicit = env.get("VERSION_BUMP_DEFER")
+    if explicit is not None:
+        return explicit.strip().lower() in {"1", "true", "yes", "on"}
+    return bool(branch_name) and branch_name.startswith(_WORKER_BRANCH_PREFIX)
+
+
 # ── git plumbing ────────────────────────────────────────────────────────────
 def _git(args, **kw):
     return subprocess.run(
@@ -180,6 +205,25 @@ def _resolve_base(explicit: str | None) -> str | None:
         if _git(["rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"]).returncode == 0:
             return ref
     return None
+
+
+def _resolve_branch_name(env=None) -> str | None:
+    """The current branch name, resolved CI-PR-safely.
+
+    GitHub Actions checks out a *detached* HEAD for ``pull_request`` events but
+    sets ``$GITHUB_HEAD_REF`` to the PR's source branch — so prefer it (ADR 0030
+    names exactly this: a checkout that loses the branch name falls back to an
+    explicit env signal). Then the local symbolic ref. Returns None when detached
+    with no env hint (a plain ``push`` build on `main` has neither, which is
+    correct — `main` is not a deferred-bump context).
+    """
+    env = os.environ if env is None else env
+    head_ref = env.get("GITHUB_HEAD_REF")
+    if head_ref and head_ref.strip():
+        return head_ref.strip()
+    res = _git(["rev-parse", "--abbrev-ref", "HEAD"])
+    name = res.stdout.strip()
+    return name if res.returncode == 0 and name and name != "HEAD" else None
 
 
 def _merge_base(base: str) -> str:
@@ -243,6 +287,15 @@ def main(argv=None) -> int:
         cur_version=_cur_group_yaml,
     )
     if offenders:
+        branch = _resolve_branch_name()
+        if is_deferred_bump_context(branch, os.environ):
+            ctx = f"branch {branch!r}" if branch else "$VERSION_BUMP_DEFER"
+            print("check-version-bump: deferred-bump worker context "
+                  f"({ctx}) — the version bump is owned by the serialized "
+                  "integrator (ADR 0030); treating the absent bump as advisory. "
+                  "Pending the integrator's bump on the integration branch: "
+                  f"{', '.join(offenders)}.")
+            return 0
         print("check-version-bump: FAIL — these plugins changed shipped content "
               f"(src/<plugin>/**) vs {base} but did not bump their group.yaml "
               "`version:`. Consumers on the old version can't `claude plugin "

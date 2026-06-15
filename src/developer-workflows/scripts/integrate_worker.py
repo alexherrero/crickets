@@ -307,23 +307,74 @@ def _check_all_gate(root: str | os.PathLike) -> tuple[int, str]:
 _DEFAULT_GATE = _check_all_gate
 
 
+# ── default production artifact-prepare (single-writer integration, ADR 0030) ───
+
+_PREPARE_SCRIPT = ("scripts", "integrate-prepare.sh")
+
+
+def _artifact_prepare(root: str | os.PathLike, pre_sha: str) -> tuple[int, str]:
+    """Run the project's artifact-prepare step on the merged tree, if it has one.
+
+    The single-writer-integration model (ADR 0030): a worker branch commits
+    src + generated artifacts at the *current* version and defers the version
+    bump; the serialized integrator is the single writer of the shared version
+    registry. A project that produces such a registry (e.g. crickets'
+    `marketplace.json` + committed `dist/`) supplies `scripts/integrate-prepare.sh`,
+    which — run here, on the freshly-merged tree, BEFORE the gate — bumps every
+    plugin whose `src/` the merge changed, regenerates the artifacts from current
+    `main`, and commits, so the version-bump gate passes on the integrated tree.
+
+    The pre-merge SHA is passed as `$1` so the step can diff the merge's
+    contribution. When the script is absent this is a graceful no-op (rc 0) —
+    back-compat for projects whose workers bump on their own branch (no shared
+    registry to serialize). A missing-script no-op keeps every pre-Model-A repo,
+    and every test that injects only a gate, behaving exactly as before.
+
+    THE PRODUCTION DEFAULT ONLY — tests inject a stub `prepare` (see the
+    `gate` precedent in the module docstring); do not hard-code this call.
+    """
+    script = Path(root) / Path(*_PREPARE_SCRIPT)
+    if not script.is_file():
+        return (0, f"[integrate_worker] no artifact-prepare step "
+                   f"({'/'.join(_PREPARE_SCRIPT)} absent) — skipping.\n")
+    try:
+        r = subprocess.run(
+            ["bash", str(script), pre_sha],
+            cwd=str(root),
+            capture_output=True,
+            text=True,
+            timeout=600,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        return (1, f"[integrate_worker] artifact-prepare failed to run: {exc}\n")
+    return (r.returncode, r.stdout + r.stderr)
+
+
+_DEFAULT_PREPARE = _artifact_prepare
+
+
 # ── core ──────────────────────────────────────────────────────────────────────
 
 def integrate(name: str, root: str, *, gate=_DEFAULT_GATE,
-              resolver=_AUTO) -> tuple[int, str, str]:
+              resolver=_AUTO, prepare=_DEFAULT_PREPARE) -> tuple[int, str, str]:
     """Merge `worker/<slug>` into the integration branch, gated on the merged tree.
 
     Pure core, injectable backend. Guards run before any mutation; the merge +
-    gate + rollback never leave `main` broken or lose a commit. On green the merge
-    stands and the green path consolidates: it promotes the worker's progress into
-    mainline progress (additive) then prunes the worktree + now-merged branch.
-    Consolidation is best-effort — a promotion or prune failure is reported on
-    stderr but NEVER undoes the verified merge (rc stays 0).
+    prepare + gate + rollback never leave `main` broken or lose a commit. On green
+    the merge stands and the green path consolidates: it promotes the worker's
+    progress into mainline progress (additive) then prunes the worktree +
+    now-merged branch. Consolidation is best-effort — a promotion or prune failure
+    is reported on stderr but NEVER undoes the verified merge (rc stays 0).
 
     `gate(root) -> (rc, output)` is injected so tests drive green/red without the
-    real battery. `resolver` is forwarded to `resolve_plan.resolve` (`_AUTO`
-    locates an agentm clone; tests pass `None` for the `.harness/` fallback or a
-    stub Path for the delegate branch).
+    real battery. `prepare(root, pre_sha) -> (rc, output)` is the single-writer
+    artifact step (ADR 0030): run on the merged tree BEFORE the gate, it bumps the
+    deferred version(s) + regenerates the shared registry so the gate passes on the
+    integrated tree; it defaults to a graceful no-op when the project has no such
+    step. A failed prepare rolls the merge back exactly like a red gate — the bump
+    is part of the integration, so a botched bump must never half-land. `resolver`
+    is forwarded to `resolve_plan.resolve` (`_AUTO` locates an agentm clone; tests
+    pass `None` for the `.harness/` fallback or a stub Path for the delegate branch).
     """
     slug = resolve_plan._normalize_plan_name(name)
     if not slug:
@@ -396,9 +447,32 @@ def integrate(name: str, root: str, *, gate=_DEFAULT_GATE,
                        f"{pre[:9]}; inspect it by hand. The worktree is untouched.\n"
                        + (f"\ngit said:\n{detail}\n" if detail else ""))
 
-    # The merge committed: HEAD is now the integration merge commit. Gate the
-    # *integrated* tree (LC-I). A gate that itself raises is treated as red — we
-    # never leave a merge unverified.
+    # The merge committed: HEAD is now the integration merge commit. Before the
+    # gate, run the single-writer artifact-prepare step (ADR 0030): the worker
+    # deferred its version bump, so the integrator bumps the affected plugin(s) +
+    # regenerates the shared registry HERE, on the merged tree, so the version-bump
+    # gate passes. A prepare that fails (or raises) rolls the merge back exactly
+    # like a red gate — a half-applied bump must never land. A project with no
+    # prepare step no-ops (rc 0), so this is invisible to the pre-Model-A flow.
+    try:
+        prc, poutput = prepare(root, pre)
+    except Exception as exc:  # a raising prepare is a failed prepare
+        prc, poutput = (1, f"[integrate_worker] artifact-prepare raised: {exc}\n")
+    if prc != 0:
+        restored = _restore_to(root, pre)
+        tail = poutput.strip()
+        if restored:
+            return (2, "", f"[integrate_worker] artifact-prepare FAILED (rc={prc}) on the "
+                           f"merged tree; rolled {target!r} back to {pre[:9]} (zero commits "
+                           f"added). The worktree is untouched.\n"
+                           + (f"\nprepare output:\n{tail}\n" if tail else ""))
+        return (2, "", f"[integrate_worker] artifact-prepare FAILED (rc={prc}) on the merged "
+                       f"tree, but ROLLBACK INCOMPLETE — {target!r} is NOT back at {pre[:9]}; "
+                       "inspect it by hand. The worktree is untouched.\n"
+                       + (f"\nprepare output:\n{tail}\n" if tail else ""))
+
+    # Gate the *integrated* tree (LC-I) — now carrying the integrator's bump. A
+    # gate that itself raises is treated as red — we never leave a merge unverified.
     try:
         grc, goutput = gate(root)
     except Exception as exc:  # a raising gate is a failed gate
