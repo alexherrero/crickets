@@ -12,6 +12,8 @@ You are running the **review** phase of the developer-workflows loop. Review is 
 
 **Scope (if any):** $ARGUMENTS — if empty, review the most recently-completed task.
 
+> **Recommended model for this phase:** Sonnet 4.6 (`claude-sonnet-4-6`) — lighter model for planning and review. Override with `/model` if needed.
+
 > **Thin by design.** The adversarial reviewers themselves (e.g. crickets `code-review`: `adversarial-reviewer` + cross-model `adversarial-reviewer-cross`) live in a **separate plugin** so review can also run standalone outside any `/work` cycle. When that plugin is present, `/review` engages it; when absent, `/review` runs the deterministic gates and notes the lighter pass — a clean **graceful-skip, never an error**.
 
 ## Non-negotiable constraints

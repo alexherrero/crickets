@@ -12,6 +12,8 @@ You are running the **plan** phase of the developer-workflows loop. Turn a brief
 
 **Brief from the user:** $ARGUMENTS
 
+> **Recommended model for this phase:** Sonnet 4.6 (`claude-sonnet-4-6`) — lighter model for planning and authoring. Override with `/model` if needed.
+
 > **Standalone + storage-agnostic.** State is plain `.harness/<file>` unless a hosting memory layer redirects it. A plan exists so a later `/work` session has a shared contract (not a verbal understanding that evaporates with context), scope is fixed before you're deep in code, and verification is pre-negotiated — the single biggest lever on review quality.
 
 ## Non-negotiable constraints

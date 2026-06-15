@@ -100,5 +100,5 @@ standalone: true
 # drifts from agentm's authoritative normalizer. A golden-vector parity test is
 # added (duplicated verbatim in agentm's suite, no cross-repo import edge — DC-2).
 # Fallback-only: delegation to an installed agentm clone is unchanged.
-version: 0.14.0
+version: 0.15.0
 capabilities: [setup, plan, work, review, release, bugfix, documentation]
