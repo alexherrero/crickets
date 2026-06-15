@@ -60,6 +60,12 @@ Write findings under `## Analysis` (Reproduction / Root cause `file:line` / Why 
 
 ### 3. Fix
 
+**Isolation check (operator-authority-gated):** if `.harness/project.json` has `isolation.mode: worktree-per-plan` (durable operator opt-in), run:
+```
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/isolation_config.py" check [--project-root <root>]
+```
+Exit 0 → auto-spawn a worktree: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/spawn_worker.py" <slug>`, announce the spawn, proceed from inside the new worktree. Exit 1 → no worktree needed (single-owner guard or mode=direct). Silently skip this check when `CLAUDE_PLUGIN_ROOT` is unset.
+
 Implement under `/work` discipline, plus two bugfix rules:
 - **Regression test first** — it fails against the current code and passes after the fix.
 - **Minimal scope** — adjacent issues go on the backlog, not in this fix.

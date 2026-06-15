@@ -61,6 +61,22 @@ It emits one tab-separated line, `<plan_path>\t<progress_path>` — the **resolv
 
 Then read the **resolved `PLAN.md`** (find the first unchecked `[ ]` task, or honor the `task N` selector); the **resolved `progress.md`** (was a prior session interrupted — resume or restart?); `AGENTS.md` / `CLAUDE.md` (commit style, test runner, conventions).
 
+### 1.5. Check isolation mode + auto-spawn (first run only, skip on resume)
+
+**Skip this step if resuming a plan already in progress** (first task is `[x]`).
+
+Run the isolation check — **operator authority required**: this step fires only when the operator enabled `isolation.mode: worktree-per-plan` in `.harness/project.json` (a durable config opt-in), or passed `--isolate` explicitly. It never runs silently without that authority.
+
+```
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/isolation_config.py" check [--no-isolate if $ARGUMENTS contains --no-isolate] [--project-root <root>]
+```
+
+- **Exit 0** (should auto-spawn): run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/spawn_worker.py" <slug>` (the plan's slug). On success the helper prints the new worktree path; **announce the spawn** ("Auto-spawning worktree at `<path>` — operator config-gated"), then proceed from inside the new worktree for all subsequent steps.
+- **Exit 1** (no auto-spawn): proceed directly — no worktree needed (mode is `direct`, no config, or single-owner guard fired because we're already inside a worktree).
+- Any non-zero from `spawn_worker.py` → surface stderr and stop. Do not retry.
+
+**Note:** `--no-isolate` in `$ARGUMENTS` is the command-arg override that wins over any config setting.
+
 ### 2. Safety pre-check (before each task)
 
 The session assumes the **full task list** — it does not ask permission per task. Before starting each task, run a go/no-go safety pre-check: **proceed autonomously if the task is safe; stop and ask only when it isn't, or when an important clarification is needed.** Triggers to stop — the task performs a genuinely **unrecoverable** action (per the recoverability gate above: recoverable actions proceed announced; only force-push rewriting published shared history, sole-ref delete of unmerged work, published-tag overwrite, or an immutable deploy/migration stops); needs a decision that isn't locked (an **unresolved decision** — stop, ask, and log it as a design/plan gap); turns out bigger or different than the plan said (scope drift); has a verification that can't be made executable or an unmet prerequisite; or surfaces a failing test that invalidates its premise. State the trigger plainly and wait — even mid-plan. Otherwise proceed to step 3.
@@ -116,6 +132,23 @@ The write path is deterministic, one-way, idempotent-by-stable-id → recoverabl
 After the commit, **loop back to step 2** for the next unchecked task — same session, same context — running the plan autonomously. Stop only when the plan is done (no `[ ]` left) or a safety pre-check fires / a clarification is needed (stop mid-plan and ask). Run an inline `/review` first when a just-finished task was high-risk. Return a ≤5-bullet summary: tasks completed this session; why it stopped (plan done / safety stop); files changed; gates (green per task, or N iterations + why); next.
 
 When to `/review` rather than straight to the next `/work`: the task touched security/auth/payments/persistence; it was the last task in the plan; the plan's Risks flagged this area; or the change feels brittle. Skip review for routine changes (new tests, pure refactors, docs, scaffolding) — the next `/work` runs gates anyway.
+
+### 12. Finalize the unit (when plan is done, isolation mode only)
+
+**Only when:** the last task is now `[x]` AND step 1.5 auto-spawned a worktree (i.e. isolation mode is active). Skip entirely for direct mode (the tasks already committed on main).
+
+Run the finalization helper — **recoverable, announce + proceed**:
+
+```
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/finalize_unit.py" <slug> [--project-root <root>] [--title "<plan title>"] [--no-pr if $ARGUMENTS contains --no-pr]
+```
+
+The helper reads `isolation.integration` from `.harness/project.json` and acts accordingly:
+- **`pull-request` (default):** PII guard → push `worker/<slug>` → `gh pr create`. **`gh pr create` is recoverable** (the PR can be closed/reverted) → announce + proceed.
+- **`direct-push`:** PII guard → push on current branch (no PR).
+- **`gh` unavailable / unauthenticated / no remote:** fall back to direct push + announce the downgrade. A completed unit of work is **never hard-stopped** by a missing `gh` — the push always goes through.
+
+Announce what's about to happen before running. A non-zero exit from the helper is a hard stop — surface the full error output.
 
 ## Failure modes to avoid
 
