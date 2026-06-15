@@ -70,6 +70,25 @@
       "description": "Optional path overrides resolved at sync time. Real local paths live HERE in the gitignored vault copy only — never in a committed file. Keys are environment-variable names, values are absolute paths.",
       "additionalProperties": {"type": "string"},
       "examples": [{"MEMORY_VAULT_PATH": "<vault>", "IDEAS_SURFACE_PATH": "<vault>/_ideas"}]
+    },
+    "isolation": {
+      "type": "object",
+      "description": "Controls whether the developer-workflows loop spawns a git worktree per plan and how it finalizes (PR vs direct push). Defaults to worktree-per-plan + pull-request when absent; a malformed or wrong-type block degrades safely to the default.",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "description": "worktree-per-plan (default-ON) spawns an isolated git worktree for each plan unit; direct commits on the current branch (pre-design behavior). worktree-per-task is reserved for a future conditional per-task isolation mode.",
+          "enum": ["worktree-per-plan", "direct", "worktree-per-task"],
+          "default": "worktree-per-plan"
+        },
+        "integration": {
+          "type": "string",
+          "description": "pull-request (default) opens a PR when the plan unit completes; direct-push commits directly on the plan branch without opening a PR.",
+          "enum": ["pull-request", "direct-push"],
+          "default": "pull-request"
+        }
+      }
     }
   }
 }

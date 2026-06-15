@@ -23,7 +23,7 @@ Invoking this phase **is** the authorization to run it to completion. The stop-g
 
 | Class | Examples | Behavior |
 |---|---|---|
-| **Recoverable** | `git push` / `-u` / `HEAD:`; create + push a tag; `gh release create` (deletable); `gh pr merge` (revertable); `gh issue create` / `close`; force-push to your **own un-shared** worker branch; delete a branch whose tip is still reachable | **Announce + proceed** — no confirmation wait. |
+| **Recoverable** | `git push` / `-u` / `HEAD:`; create + push a tag; `gh release create` (deletable); `gh pr create` (closeable); `gh pr merge` (revertable); `gh issue create` / `close`; force-push to your **own un-shared** worker branch; delete a branch whose tip is still reachable | **Announce + proceed** — no confirmation wait. |
 | **Unrecoverable** | force-push rewriting **published shared** history; sole-ref delete of unmerged work; **published-tag** overwrite; immutable publish / deploy / migration | **Stop + confirm** — pre-announce (state, don't ask), then wait. |
 | **Unresolved decision** | a genuine question the design/plan never settled | **Stop + ask** — and log it as a design/plan gap (an upstream phase missed it). |
 
@@ -31,7 +31,7 @@ Invoking this phase **is** the authorization to run it to completion. The stop-g
 
 **Close-out autonomy.** Archiving a completed plan (`PLAN.md` → `PLAN.archive.YYYYMMDD-<slug>.md`) and the rest of close-out bookkeeping (append `progress.md`, move the ROADMAP item to Completed/SHIPPED, update staging notes) is **recoverable → autonomous** — never stop to ask approval to archive or to do close-out bookkeeping.
 
-**Carve-outs — unchanged by this doctrine.** Worker-tree initiation stays operator-initiated (`/spawn-worker` + `/integrate-worker`); the PII pre-push hook + `pii-scrubber` invocation stay mandatory; the no-`Co-Authored-By` commit rule is untouched.
+**Carve-outs — unchanged by this doctrine.** Worker-tree initiation requires operator authority — either an explicit `/spawn-worker` command or a durable `isolation.mode: worktree-per-plan` config opt-in; silent authority-free auto-spawn stays forbidden; `/integrate-worker` stays operator-initiated; the PII pre-push hook + `pii-scrubber` invocation stay mandatory; the no-`Co-Authored-By` commit rule is untouched.
 <!-- END recoverability-gate -->
 
 ## Non-negotiable constraints
@@ -60,6 +60,22 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/resolve_plan.py" [<slug>]
 It emits one tab-separated line, `<plan_path>\t<progress_path>` — the **resolved pair** every later step reads and writes. Bare (no `--name`) resolves to the singleton `.harness/PLAN.md` / `.harness/progress.md`, **byte-identical** to the historic behavior. A **non-zero exit is a hard stop** — surface its stderr and stop; never fall back to the singleton on a dangling binding (that would silently bind the worker to the wrong plan). If `CLAUDE_PLUGIN_ROOT` is unset, treat the pair as the singleton.
 
 Then read the **resolved `PLAN.md`** (find the first unchecked `[ ]` task, or honor the `task N` selector); the **resolved `progress.md`** (was a prior session interrupted — resume or restart?); `AGENTS.md` / `CLAUDE.md` (commit style, test runner, conventions).
+
+### 1.5. Check isolation mode + auto-spawn (first run only, skip on resume)
+
+**Skip this step if resuming a plan already in progress** (first task is `[x]`).
+
+Run the isolation check — **operator authority required**: this step fires only when the operator enabled `isolation.mode: worktree-per-plan` in `.harness/project.json` (a durable config opt-in), or passed `--isolate` explicitly. It never runs silently without that authority.
+
+```
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/isolation_config.py" check [--no-isolate if $ARGUMENTS contains --no-isolate] [--project-root <root>]
+```
+
+- **Exit 0** (should auto-spawn): run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/spawn_worker.py" <slug>` (the plan's slug). On success the helper prints the new worktree path; **announce the spawn** ("Auto-spawning worktree at `<path>` — operator config-gated"), then proceed from inside the new worktree for all subsequent steps.
+- **Exit 1** (no auto-spawn): proceed directly — no worktree needed (mode is `direct`, no config, or single-owner guard fired because we're already inside a worktree).
+- Any non-zero from `spawn_worker.py` → surface stderr and stop. Do not retry.
+
+**Note:** `--no-isolate` in `$ARGUMENTS` is the command-arg override that wins over any config setting.
 
 ### 2. Safety pre-check (before each task)
 
@@ -116,6 +132,23 @@ The write path is deterministic, one-way, idempotent-by-stable-id → recoverabl
 After the commit, **loop back to step 2** for the next unchecked task — same session, same context — running the plan autonomously. Stop only when the plan is done (no `[ ]` left) or a safety pre-check fires / a clarification is needed (stop mid-plan and ask). Run an inline `/review` first when a just-finished task was high-risk. Return a ≤5-bullet summary: tasks completed this session; why it stopped (plan done / safety stop); files changed; gates (green per task, or N iterations + why); next.
 
 When to `/review` rather than straight to the next `/work`: the task touched security/auth/payments/persistence; it was the last task in the plan; the plan's Risks flagged this area; or the change feels brittle. Skip review for routine changes (new tests, pure refactors, docs, scaffolding) — the next `/work` runs gates anyway.
+
+### 12. Finalize the unit (when plan is done, isolation mode only)
+
+**Only when:** the last task is now `[x]` AND step 1.5 auto-spawned a worktree (i.e. isolation mode is active). Skip entirely for direct mode (the tasks already committed on main).
+
+Run the finalization helper — **recoverable, announce + proceed**:
+
+```
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/finalize_unit.py" <slug> [--project-root <root>] [--title "<plan title>"] [--no-pr if $ARGUMENTS contains --no-pr]
+```
+
+The helper reads `isolation.integration` from `.harness/project.json` and acts accordingly:
+- **`pull-request` (default):** PII guard → push `worker/<slug>` → `gh pr create`. **`gh pr create` is recoverable** (the PR can be closed/reverted) → announce + proceed.
+- **`direct-push`:** PII guard → push on current branch (no PR).
+- **`gh` unavailable / unauthenticated / no remote:** fall back to direct push + announce the downgrade. A completed unit of work is **never hard-stopped** by a missing `gh` — the push always goes through.
+
+Announce what's about to happen before running. A non-zero exit from the helper is a hard stop — surface the full error output.
 
 ## Failure modes to avoid
 

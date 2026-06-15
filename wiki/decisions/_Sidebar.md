@@ -30,3 +30,4 @@
 - [0023 — gate the integrated tree](0023-gate-on-integrated-tree)
 - [0024 — design as command](0024-design-as-command)
 - [0025 — board-sync vault→project](0025-board-sync-vault-to-project)
+- [0028 — worktree authority config opt-in](0028-worktree-authority-config-opt-in)

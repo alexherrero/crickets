@@ -16,7 +16,7 @@ Invoking this phase **is** the authorization to run it to completion. The stop-g
 
 | Class | Examples | Behavior |
 |---|---|---|
-| **Recoverable** | `git push` / `-u` / `HEAD:`; create + push a tag; `gh release create` (deletable); `gh pr merge` (revertable); `gh issue create` / `close`; force-push to your **own un-shared** worker branch; delete a branch whose tip is still reachable | **Announce + proceed** — no confirmation wait. |
+| **Recoverable** | `git push` / `-u` / `HEAD:`; create + push a tag; `gh release create` (deletable); `gh pr create` (closeable); `gh pr merge` (revertable); `gh issue create` / `close`; force-push to your **own un-shared** worker branch; delete a branch whose tip is still reachable | **Announce + proceed** — no confirmation wait. |
 | **Unrecoverable** | force-push rewriting **published shared** history; sole-ref delete of unmerged work; **published-tag** overwrite; immutable publish / deploy / migration | **Stop + confirm** — pre-announce (state, don't ask), then wait. |
 | **Unresolved decision** | a genuine question the design/plan never settled | **Stop + ask** — and log it as a design/plan gap (an upstream phase missed it). |
 
@@ -24,7 +24,7 @@ Invoking this phase **is** the authorization to run it to completion. The stop-g
 
 **Close-out autonomy.** Archiving a completed plan (`PLAN.md` → `PLAN.archive.YYYYMMDD-<slug>.md`) and the rest of close-out bookkeeping (append `progress.md`, move the ROADMAP item to Completed/SHIPPED, update staging notes) is **recoverable → autonomous** — never stop to ask approval to archive or to do close-out bookkeeping.
 
-**Carve-outs — unchanged by this doctrine.** Worker-tree initiation stays operator-initiated (`/spawn-worker` + `/integrate-worker`); the PII pre-push hook + `pii-scrubber` invocation stay mandatory; the no-`Co-Authored-By` commit rule is untouched.
+**Carve-outs — unchanged by this doctrine.** Worker-tree initiation requires operator authority — either an explicit `/spawn-worker` command or a durable `isolation.mode: worktree-per-plan` config opt-in; silent authority-free auto-spawn stays forbidden; `/integrate-worker` stays operator-initiated; the PII pre-push hook + `pii-scrubber` invocation stay mandatory; the no-`Co-Authored-By` commit rule is untouched.
 <!-- END recoverability-gate -->
 
 ## Non-negotiable constraints

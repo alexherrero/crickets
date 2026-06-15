@@ -21,7 +21,7 @@ Invoking this phase **is** the authorization to run it to completion. The stop-g
 
 | Class | Examples | Behavior |
 |---|---|---|
-| **Recoverable** | `git push` / `-u` / `HEAD:`; create + push a tag; `gh release create` (deletable); `gh pr merge` (revertable); `gh issue create` / `close`; force-push to your **own un-shared** worker branch; delete a branch whose tip is still reachable | **Announce + proceed** — no confirmation wait. |
+| **Recoverable** | `git push` / `-u` / `HEAD:`; create + push a tag; `gh release create` (deletable); `gh pr create` (closeable); `gh pr merge` (revertable); `gh issue create` / `close`; force-push to your **own un-shared** worker branch; delete a branch whose tip is still reachable | **Announce + proceed** — no confirmation wait. |
 | **Unrecoverable** | force-push rewriting **published shared** history; sole-ref delete of unmerged work; **published-tag** overwrite; immutable publish / deploy / migration | **Stop + confirm** — pre-announce (state, don't ask), then wait. |
 | **Unresolved decision** | a genuine question the design/plan never settled | **Stop + ask** — and log it as a design/plan gap (an upstream phase missed it). |
 
@@ -29,7 +29,7 @@ Invoking this phase **is** the authorization to run it to completion. The stop-g
 
 **Close-out autonomy.** Archiving a completed plan (`PLAN.md` → `PLAN.archive.YYYYMMDD-<slug>.md`) and the rest of close-out bookkeeping (append `progress.md`, move the ROADMAP item to Completed/SHIPPED, update staging notes) is **recoverable → autonomous** — never stop to ask approval to archive or to do close-out bookkeeping.
 
-**Carve-outs — unchanged by this doctrine.** Worker-tree initiation stays operator-initiated (`/spawn-worker` + `/integrate-worker`); the PII pre-push hook + `pii-scrubber` invocation stay mandatory; the no-`Co-Authored-By` commit rule is untouched.
+**Carve-outs — unchanged by this doctrine.** Worker-tree initiation requires operator authority — either an explicit `/spawn-worker` command or a durable `isolation.mode: worktree-per-plan` config opt-in; silent authority-free auto-spawn stays forbidden; `/integrate-worker` stays operator-initiated; the PII pre-push hook + `pii-scrubber` invocation stay mandatory; the no-`Co-Authored-By` commit rule is untouched.
 <!-- END recoverability-gate -->
 
 ## Non-negotiables
@@ -59,6 +59,12 @@ Find the **root cause**, not the first plausible one.
 Write findings under `## Analysis` (Reproduction / Root cause `file:line` / Why it happened / Scope / Fix strategy). If the root cause is actually a **design flaw**, **stop** and escalate to `/plan` — patching a symptom of a design flaw creates two bugs. Post the Analysis to the tracking issue as a comment (announce + proceed; skip silently if no issue).
 
 ### 3. Fix
+
+**Isolation check (operator-authority-gated):** if `.harness/project.json` has `isolation.mode: worktree-per-plan` (durable operator opt-in), run:
+```
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/isolation_config.py" check [--project-root <root>]
+```
+Exit 0 → auto-spawn a worktree: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/spawn_worker.py" <slug>`, announce the spawn, proceed from inside the new worktree. Exit 1 → no worktree needed (single-owner guard or mode=direct). Silently skip this check when `CLAUDE_PLUGIN_ROOT` is unset.
 
 Implement under `/work` discipline, plus two bugfix rules:
 - **Regression test first** — it fails against the current code and passes after the fix.

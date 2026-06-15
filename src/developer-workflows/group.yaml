@@ -106,5 +106,24 @@ standalone: true
 # conjunction); (2) slug derivation stripped Claude Code's load-bearing leading '-'
 # via lstrip (fix: remove lstrip). Two new tests added to test_dw_compact_nudge.py
 # to lock both (PCT-high-no-history silent; slug-leading-dash retained).
-version: 0.17.0
+# 0.18.0 = worktree-per-plan isolation (worktree-pr-loop plan, part 1) — auto-spawn
+# a `worker/<slug>` git worktree per plan unit (default ON, config-gated OFF). Two-
+# field `isolation` block in `.harness/project.json`: `mode` (worktree-per-plan |
+# direct) + `integration` (pull-request | direct-push). Graceful reader mirrors
+# `_read_vault_project()`. Precedence: --no-isolate > project.json > code-default-ON.
+# Lifted PR helpers (`finalize_pr` / `finalize_direct` / `prepare_branch` /
+# `check_gh_available`) from wiki-maintenance via duplicate-with-drift-test (probe #3
+# found cross-plugin import unavailable). `finalize_unit.py` closes a plan unit:
+# PII guard → push `worker/<slug>` → `gh pr create` (recoverable) or falls back to
+# direct push when `gh` is unavailable/unauthenticated. `work.md` + `bugfix.md` gain
+# step 1.5 (isolation check + auto-spawn) and step 12 (finalize the unit). Eight
+# concurrency mitigations in `spawn_worker.py` (serialize `worktree add`, gc.auto=0,
+# no --prune=now, dirty-check, cap at 10, submodule warning). Root-anchor fix: path
+# derives from `resolve_main_worktree()` (git rev-parse --git-common-dir), so spawn
+# from inside an existing worktree never nests. Single-owner guard: auto-spawn skips
+# when already inside a worktree the loop did not create. Carve-out refined (ADR 0028):
+# config opt-in IS operator authority; prohibition updated to "without operator
+# authority". `gh pr create` added to Recoverable row. Global ~/.claude/CLAUDE.md
+# § Worktrees updated (self-mod gate, operator-authorized, dev-setup commit d98261d).
+version: 0.18.0
 capabilities: [setup, plan, work, review, release, bugfix, documentation]

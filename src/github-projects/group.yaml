@@ -13,5 +13,9 @@ standalone: false
 # placeholder) so the operator's deferred prose survives an absent/unmaterialized
 # target instead of being silently dropped with the whole clause; + fmt_date now
 # rejects impossible calendar dates (DEFECT 3).
-version: 0.1.1
+# 0.1.2 = isolation block added to project_schema.json — two-field `isolation`
+# object (`mode` ∈ {worktree-per-plan, direct, worktree-per-task}; `integration`
+# ∈ {pull-request, direct-push}) with `additionalProperties: false`. Consumed by
+# the developer-workflows loop's `isolation_config.py` reader.
+version: 0.1.2
 capabilities: [board-sync]

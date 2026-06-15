@@ -1,6 +1,6 @@
 ---
 name: spawn-worker
-description: Operator-initiated — give a named plan its own isolated checkout by spawning a worker git worktree on a fresh worker/<name> branch, pre-bound to that plan. Never autonomous.
+description: Operator-authority-required — give a named plan its own isolated checkout by spawning a worker git worktree on a fresh worker/<name> branch, pre-bound to that plan. Spawning without operator authority is forbidden.
 kind: command
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
@@ -12,11 +12,11 @@ You are running **spawn-worker** — the worktree step of the coordinator flow. 
 
 **Arguments:** $ARGUMENTS — the first token is `<name>` (the worker name, which is also the activated named-plan slug it binds to). Optionally `--project-root <path>` (default: cwd) and `--worktree-path <path>` (default: `<repo>.worktrees/<name>` beside the repo).
 
-> **Operator-initiated, never autonomous** (the V5-10 design call; ADR 0022). A normal session never spawns a worktree on its own — that prohibition stands. This command is the *sanctioned* exception: when the **operator** invokes it, creating the worktree IS the initiation. It fits the coordinator flow after a plan is staged and activated: `/plan --stage` → `/plan --activate` → **`/spawn-worker`** → launch a `/work` session in the new worktree. Do not invoke it speculatively or as a side effect of another task.
+> **Operator authority required — never without it** (the V5-10 design call; ADR 0022; refined by the worktree-per-plan plan). Authority = an explicit invocation of this command OR a durable `isolation.mode: worktree-per-plan` config opt-in in `.harness/project.json`. A session never spawns a worktree without operator authority — no silent auto-spawn. This command is the *explicit-command* path: when the **operator** invokes it, creating the worktree IS the initiation. It fits the coordinator flow after a plan is staged and activated: `/plan --stage` → `/plan --activate` → **`/spawn-worker`** → launch a `/work` session in the new worktree. Do not invoke it speculatively or as a side effect of another task.
 
 ## Non-negotiable constraints
 
-1. **Operator-initiated only.** Run this exclusively when the operator asks for it. Never spawn a worktree autonomously, never as cleanup or convenience for another task.
+1. **Operator authority required.** Authority = an explicit invocation of this command OR a durable `isolation.mode: worktree-per-plan` config opt-in. Never spawn a worktree without operator authority — no silent auto-spawn, never as cleanup or convenience for another task.
 2. **Named plans only — the singleton is refused.** `<name>` must be a real named-plan slug (`foo`, `PLAN-foo`, `PLAN-foo.md` all → `foo`). An empty or singleton name exits 2; the singleton plan cannot be handed to a worker.
 3. **No-clobber, no partial spawn — the helper owns it.** Every guard runs *before* any mutation: a pre-existing worktree path (even a dangling symlink) or `worker/<name>` branch exits 2 with stderr and creates **nothing**. A non-zero plan resolve (unsafe slug, dangling marker, missing/empty `PLAN-<name>.md`) is authoritative and propagated — the worktree is never created for a plan that doesn't resolve. Do not work around a refusal; report it.
 4. **Surface the helper's output verbatim.** On success the helper prints the new worktree path on stdout; on refusal it prints the reason on stderr. Show the operator what the helper said — do not paraphrase the path or invent a reason.
