@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/compact-nudge-resume/compact-nudge-resume.py",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

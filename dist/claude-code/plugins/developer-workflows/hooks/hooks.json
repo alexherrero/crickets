@@ -11,6 +11,18 @@
         ],
         "matcher": ".*"
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/compact-nudge-resume/compact-nudge-resume.py",
+            "timeout": 5,
+            "type": "command"
+          }
+        ],
+        "matcher": ".*"
+      }
     ]
   }
 }
