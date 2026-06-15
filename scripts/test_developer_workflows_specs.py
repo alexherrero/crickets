@@ -183,5 +183,47 @@ class TestQueueStatusLiteSpec(unittest.TestCase):
             self.assertTrue(p.is_file(), f"missing dist command for {host}: {p}")
 
 
+class TestTagSerializationContracts(unittest.TestCase):
+    """`/release` is the sole tag writer; `/work` and `/bugfix` must not create tags.
+
+    Concurrent-release coordination guarantee: two plans landing simultaneously
+    cannot race on tag creation because only `/release` tags `main` HEAD. These
+    specs lock the behavioral contract so a future edit can't silently add tag
+    creation to `/work` or `/bugfix`, or remove the sole-writer doc from `/release`.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.work = _read("work.md")
+        cls.bugfix = _read("bugfix.md")
+        cls.release = _read("release.md")
+
+    def test_work_does_not_create_tags(self):
+        # /work must explicitly prohibit tag creation — not just be silent about it.
+        low = self.work.lower()
+        self.assertIn("do not create tags", low,
+                      "/work must state it does not create tags")
+
+    def test_bugfix_does_not_create_tags(self):
+        low = self.bugfix.lower()
+        self.assertIn("do not create tags", low,
+                      "/bugfix must state it does not create tags")
+
+    def test_release_is_sole_tag_writer(self):
+        # /release must document that it is the sole tag writer in the loop.
+        low = self.release.lower()
+        self.assertIn("sole tag writer", low,
+                      "/release must document the sole-tag-writer invariant")
+
+    def test_release_documents_reaudit_trigger(self):
+        # The escalation path (release-please/changesets) is the re-audit trigger
+        # when the serialized-single-writer model's ceiling is reached.
+        low = self.release.lower()
+        self.assertIn("re-audit", low,
+                      "/release must name the re-audit trigger for the single-writer model")
+        self.assertIn("release-please", low,
+                      "/release must name release-please as the escalation path")
+
+
 if __name__ == "__main__":
     unittest.main()
