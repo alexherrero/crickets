@@ -6,9 +6,10 @@ Called at the end of a `/work` or `/bugfix` session when all tasks are done.
 
     finalize_unit.py <slug> [--project-root <path>] [--title <text>] [--body <text>] [--no-pr]
 
-Exit 0: finalization succeeded.
-Exit 1: graceful-skip (gh unavailable, no remote — direct push announced).
-Exit 2: hard failure (nothing pushed).
+Exit 0: finalization succeeded (PR opened, or direct push committed).
+Exit 1: partial success — push landed but PR creation failed; or direct-push
+        fallback announced (gh unavailable). Branch is on the remote.
+Exit 2: hard failure — nothing pushed (push rejected, PII blocked, commit failed).
 
 The gh-unavailable fallback is the contract: a completed unit of work MUST
 reach the remote (push) even when gh is not available; only the PR-open step
@@ -120,9 +121,10 @@ def main(argv: list[str]) -> int:
 
     if result.ok:
         return 0
-    if result.action == "direct" and not result.ok:
-        return 1
-    return 2
+    # Use steps to distinguish "push landed" (exit 1, partial success — branch on
+    # remote but PR failed or fallback announced) from "nothing pushed" (exit 2).
+    push_landed = any(name == "push" and rc == 0 for name, rc in result.steps)
+    return 1 if push_landed else 2
 
 
 if __name__ == "__main__":

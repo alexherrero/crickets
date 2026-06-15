@@ -125,5 +125,13 @@ standalone: true
 # config opt-in IS operator authority; prohibition updated to "without operator
 # authority". `gh pr create` added to Recoverable row. Global ~/.claude/CLAUDE.md
 # § Worktrees updated (self-mod gate, operator-authorized, dev-setup commit d98261d).
-version: 0.18.0
+# 0.18.1 = finalize_unit.py exit-code contract fix (post-release bugfix, issue #27).
+# main() used result.action as a proxy for failure severity instead of checking
+# whether the push step succeeded. Two defects: (1) push-ok/PR-create-fail → exit 2
+# ("nothing pushed") but branch was on the remote — callers retrying on exit 2 got a
+# duplicate push; (2) push-rejected direct path → exit 1 ("graceful-skip") but
+# nothing landed. Fix: use DispatchResult.steps to detect push rc=0 directly;
+# push_landed=True → exit 1 (partial, branch on remote), False → exit 2 (nothing
+# pushed). 5 new regression tests in test_finalize_unit.py (2 were RED before the fix).
+version: 0.18.1
 capabilities: [setup, plan, work, review, release, bugfix, documentation]

@@ -184,5 +184,85 @@ class TestFinalizeUnitDirectPath(unittest.TestCase):
             self.assertEqual(result.action, "direct")
 
 
+class TestFinalizeUnitMainExitCodes(unittest.TestCase):
+    """Regression tests for exit-code contract in main() — fixes for DEFECT 1 + DEFECT 2
+    found by adversarial review (2026-06-15, issue #27).
+
+    Tests patch finalize_unit() to return a pre-canned DispatchResult so that
+    main()'s exit-code decision logic is exercised in isolation.
+    """
+
+    def _result(self, ok: bool, action: str, steps: list) -> "DispatchResult":
+        import pr_helpers as ph
+        r = ph.DispatchResult(ok=ok, action=action)
+        r.steps = steps
+        return r
+
+    def test_push_ok_pr_create_fails_returns_exit1(self):
+        """DEFECT 1 regression: push landed, gh pr create failed → exit 1, not 2.
+
+        Exit 2 = 'nothing pushed'; branch IS on the remote after push. Returning
+        exit 2 here causes callers to retry and push again (duplicate push).
+        """
+        result = self._result(
+            ok=False, action="pr",
+            steps=[("add", 0), ("commit", 0), ("pii-guard", 0), ("push", 0), ("pr-create", 1)],
+        )
+        from unittest.mock import patch
+        with patch.object(fu, "finalize_unit", return_value=result):
+            ec = fu.main(["prog", "testslug", "--project-root", "/tmp"])
+        self.assertEqual(ec, 1,
+            "push landed but PR failed → exit 1 (partial success), not exit 2 (nothing pushed)")
+
+    def test_push_rejected_returns_exit2(self):
+        """DEFECT 2 regression: push rejected (direct path) → exit 2, not 1.
+
+        Exit 1 = 'partial success / graceful-skip'; nothing reached the remote.
+        Returning exit 1 here causes callers to silently miss the push failure.
+        """
+        result = self._result(
+            ok=False, action="direct",
+            steps=[("add", 0), ("commit", 0), ("pii-guard", 0), ("push", 1)],
+        )
+        from unittest.mock import patch
+        with patch.object(fu, "finalize_unit", return_value=result):
+            ec = fu.main(["prog", "testslug", "--project-root", "/tmp"])
+        self.assertEqual(ec, 2,
+            "push rejected → exit 2 (nothing pushed), not exit 1 (graceful-skip)")
+
+    def test_pr_push_itself_fails_returns_exit2(self):
+        """PR path push rejected → nothing on remote → exit 2."""
+        result = self._result(
+            ok=False, action="pr",
+            steps=[("add", 0), ("commit", 0), ("pii-guard", 0), ("push", 1)],
+        )
+        from unittest.mock import patch
+        with patch.object(fu, "finalize_unit", return_value=result):
+            ec = fu.main(["prog", "testslug", "--project-root", "/tmp"])
+        self.assertEqual(ec, 2, "PR path push failed → exit 2 (nothing on remote)")
+
+    def test_pii_blocked_no_push_step_returns_exit2(self):
+        """PII guard blocked before push — steps has no push entry → exit 2."""
+        result = self._result(
+            ok=False, action="pr",
+            steps=[("add", 0), ("commit", 0), ("pii-guard", 1)],
+        )
+        from unittest.mock import patch
+        with patch.object(fu, "finalize_unit", return_value=result):
+            ec = fu.main(["prog", "testslug", "--project-root", "/tmp"])
+        self.assertEqual(ec, 2, "PII blocked → no push happened → exit 2")
+
+    def test_success_returns_exit0(self):
+        """Happy path: result.ok=True → exit 0 regardless of steps."""
+        result = self._result(
+            ok=True, action="pr",
+            steps=[("add", 0), ("commit", 0), ("pii-guard", 0), ("push", 0), ("pr-create", 0)],
+        )
+        from unittest.mock import patch
+        with patch.object(fu, "finalize_unit", return_value=result):
+            ec = fu.main(["prog", "testslug", "--project-root", "/tmp"])
+        self.assertEqual(ec, 0)
+
+
 if __name__ == "__main__":
     unittest.main()
