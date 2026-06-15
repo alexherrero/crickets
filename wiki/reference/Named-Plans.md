@@ -193,7 +193,9 @@ When an agentm clone is installed the bridge **delegates** to agentm's `queue_st
 | Helper | wraps `scripts/spawn_worker.py` (inside the `developer-workflows` plugin), invoked as `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/spawn_worker.py" <name>`; accepts `--project-root <path>` / `--worktree-path <path>`. Stdlib-only; mirrors `resolve_plan.py`'s pure-core + injectable-backend shape. Exit codes: `0` ok (worktree path on stdout), `1` graceful-skip (located resolver, no resolvable harness), `2` loud refusal (empty/singleton/unsafe name, no-clobber path/branch collision, resolver refusal, or failed `git worktree add` — never a partial spawn) |
 
 > [!NOTE]
-> **Operator-initiated worktrees.** This retires the prior "worktrees are never auto-created" prohibition and replaces it with "worktrees are sanctioned but operator-initiated": the worker workflow creates them deliberately via `/spawn-worker`; normal sessions still never auto-spawn one. The design-decision record for this norm change is [ADR 0022](0022-retire-worktrees-never-auto).
+> **Operator authority, two forms.** Worker worktrees require operator authority — either an explicit `/spawn-worker` command (where the invocation is the authority) or a durable `isolation.mode: worktree-per-plan` config opt-in in `.harness/project.json` (where the config field is the authority). Silent authority-free auto-spawn stays forbidden. The explicit-command decision is in [ADR 0022](0022-retire-worktrees-never-auto); the config-opt-in extension is in [ADR 0028](0028-worktree-authority-config-opt-in).
+>
+> With `isolation.mode: worktree-per-plan` set, `/work` and `/bugfix` auto-spawn a `worker/<slug>` worktree at step 1.5 (isolation check) and finalize it (push + open PR) at the plan's end via `finalize_unit.py`. The `isolation_config.should_auto_isolate()` check is the authority gate; `is_inside_worktree()` prevents nested spawns.
 
 ## Integrating a worker
 

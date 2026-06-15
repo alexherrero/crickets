@@ -4,7 +4,16 @@
 > **Goal:** Give a named plan its own isolated workspace — a `git worktree` on a fresh `worker/<name>` branch, pre-bound to that plan — so a `/work` session run inside it resolves *its* plan without re-passing `--name`, and several workers can run concurrently without colliding in one checkout.
 > **Prereqs:** the `developer-workflows` plugin installed ([Install crickets plugins](Install-Into-Project)); an **activated** named plan to bind the worker to (author + activate it first — see [Run a named plan](Run-A-Named-Plan)); a clean working tree (no in-flight changes the new worktree would inherit).
 
-Use `/spawn-worker <name>` when a coordinator has staged and activated a named plan and wants to hand it to a worker in its own checkout. It is the worktree step of the coordinator flow: `/plan --stage` → `/plan --activate` → **`/spawn-worker`** → launch a `/work` session in the new worktree. Worktrees are **operator-initiated** — a normal session never spawns one on its own; this command is the sanctioned way to create one. For the full command surface (arguments, the per-worktree plan marker, the guards), see [Named plans](Named-Plans#spawning-a-worker-worktree).
+There are two operator-authority paths to a worker worktree:
+
+| Path | When to use |
+|---|---|
+| **`/spawn-worker <name>`** (explicit command) | Coordinator flow: stage + activate a named plan, then hand it to a worker in its own checkout. The command invocation itself is the operator authority. |
+| **Config-gated auto-spawn** (`isolation.mode: worktree-per-plan` in `.harness/project.json`) | Set once; every subsequent `/work` or `/bugfix` run auto-spawns a `worker/<slug>` worktree at step 1.5 and finalizes it (push + PR) at the plan's end. The config field is the operator authority — see [ADR 0028](0028-worktree-authority-config-opt-in). |
+
+Both paths are operator authority. Silent authority-free spawn (no command, no config opt-in) stays forbidden per [ADR 0028](0028-worktree-authority-config-opt-in).
+
+This page covers the **explicit-command path**. For the config-gated path, set `isolation.mode: worktree-per-plan` in `.harness/project.json` and run `/work` normally — the isolation check and auto-spawn run automatically. For the full command surface (arguments, the per-worktree plan marker, the guards), see [Named plans](Named-Plans#spawning-a-worker-worktree).
 
 ## Steps
 
