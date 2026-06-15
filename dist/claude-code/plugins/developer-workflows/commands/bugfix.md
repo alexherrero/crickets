@@ -39,6 +39,7 @@ Invoking this phase **is** the authorization to run it to completion. The stop-g
 - **`/review` on every bugfix.** Bugs are evidence of code you already got wrong once — fresh skeptical eyes matter more, not less.
 - **Minimal scope.** Fix the bug, not adjacent issues. "While I'm in here" turns a one-line fix into a regression.
 - **`gh issue *` runs under the recoverability gate.** `gh issue create` / `comment` / `close` are recoverable (editable, reopenable) → **announce + proceed**, no preview-and-ask wait; the issue is still the bug's posterity record. Graceful-skip the whole issue track if `gh` is unavailable, the origin isn't GitHub, or the user opts out (then `.harness/PLAN.md` alone is the record; note the skip in `## Report`).
+- **Do not create tags.** Tag creation is reserved for `/release` — the sole tag writer that tags `main` HEAD after CI-green. Creating a tag during `/bugfix` would point to a branch tip, not a main commit, violating the tag-reachability guarantee and the concurrent-release serialization model.
 
 ## Four phases, in order
 

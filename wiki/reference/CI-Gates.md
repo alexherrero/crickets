@@ -21,6 +21,7 @@ bash scripts/check-all.sh
 | `check-syntax` | `bash -n` every `.sh` (CI also AST-parses every `.ps1`) |
 | `check-hook-parity` | Asserts every `developer-safety` hook keeps its `.sh`/`.ps1` twins behaviorally paired — neither twin may reference a workspace-relative `.harness/…` path without first resolving the workspace from the host's hook-input contract (`workspacePaths` + a `cd`/`Set-Location`). |
 | `check-no-pii` | the PII regex scanner over the whole tree (crickets is public) |
+| `tag-reachability` | all git tags must point to commits reachable from `main` — concurrent-release coordination backstop; graceful-skip when `main` doesn't resolve (fresh repos, non-main default-branch names) |
 | `conformance-suite` _(pending — V5-2)_ | **Not yet active.** Will assert the `obsidian-vault` plugin backend is GREEN on the V5-1-authored conformance suite (verb battery + byte-identical LF-exact markdown round-trip). _Filled by `/work` once the task ships._ |
 | `parallel-run` _(pending — V5-2)_ | **Not yet active.** Will assert the `obsidian-vault` plugin backend resolves byte-identically against the still-present built-in backend. _Filled by `/work` once the task ships._ |
 

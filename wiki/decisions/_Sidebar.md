@@ -33,3 +33,4 @@
 - [0026 — phase-aware model routing](0026-phase-aware-model-routing)
 - [0027 — output-style/rule discovery paths](0027-output-style-rule-discovery-paths)
 - [0028 — worktree authority config opt-in](0028-worktree-authority-config-opt-in)
+- [0029 — concurrent-release coordination](0029-concurrent-release-coordination)
