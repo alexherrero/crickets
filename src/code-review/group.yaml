@@ -1,5 +1,10 @@
 name: Code Review
-description: Standalone adversarial code review of any diff or PR — the adversarial-reviewer (+ cross-model Gemini) agents, the evidence-tracker hook, and a /code-review command. Enhances developer-workflows' review capability when both are installed.
+description: Standalone adversarial code review of any diff or PR — the adversarial-reviewer (+ cross-model Gemini) agents, the evidence-tracker hook, a /code-review command, a /simplify command, and security-review + testing-strategy skills. Enhances developer-workflows' review capability when both are installed.
+# 0.2.0 = skill enrichment batch: /simplify command (Chesterton's Fence + Rule of 500),
+# security-review skill (three-tier boundary: LLM API / persistence / system execution),
+# testing-strategy skill (DAMP over DRY + Beyonce Rule + Prove-It pattern),
+# security-auditor agent, test-engineer agent.
+version: 0.2.0
 category: Coding
 requires: []
 standalone: true

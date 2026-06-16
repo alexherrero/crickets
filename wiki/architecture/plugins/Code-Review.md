@@ -19,6 +19,11 @@ On Antigravity, install by path (see [Install crickets plugins](Install-Into-Pro
 | **`adversarial-reviewer`** | agent | in-process critic — output is a failing test, a `DEFECT: file:line`, or `NO ISSUES FOUND`; prose-only critiques are rejected |
 | **`adversarial-reviewer-cross`** | agent | cross-model critic — shells out to the Gemini CLI for a second opinion, and **falls back** to the in-process reviewer when `gemini` is absent |
 | **`evidence-tracker`** | hook · `PreToolUse` | default-FAIL evidence gate for `/work` — blocks flipping a `PLAN.md` task to `[x]` until a read matching that task is recorded (Claude-only) |
+| **`/simplify`** | command | cleanup pass over a diff — Chesterton's Fence + Rule of 500 guard + rationalization table; reports, then optionally applies |
+| **`security-review`** | skill | three-tier boundary system for security analysis: interface tier, trust tier, verification tier |
+| **`testing-strategy`** | skill | DAMP + Beyonce Rule test-design heuristics: deterministic, anti-fragile, meaningful, proportionate |
+| **`security-auditor`** | agent | sub-agent dispatched by `security-review`; scans a diff or file set for security boundary violations |
+| **`test-engineer`** | agent | sub-agent dispatched by `testing-strategy`; generates DAMP-conformant test scaffolding |
 
 `cross-review.sh` is the Gemini shell-out behind the cross-model reviewer.
 

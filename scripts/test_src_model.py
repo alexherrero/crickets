@@ -235,7 +235,7 @@ class TestSrcModel(unittest.TestCase):
         dw_cmds = {p.name for p in by["developer-workflows"].primitives if p.kind == "command"}
         self.assertIn("plan", dw_cmds)
         cr_cmds = {p.name for p in by["code-review"].primitives if p.kind == "command"}
-        self.assertEqual(cr_cmds, {"code-review"})
+        self.assertEqual(cr_cmds, {"code-review", "simplify"})
         wm_cmds = {p.name for p in by["wiki-maintenance"].primitives if p.kind == "command"}
         self.assertEqual(wm_cmds, {"recent-wiki-changes", "wiki-watch", "wiki-init"})
 
