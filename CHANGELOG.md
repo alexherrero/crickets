@@ -5,6 +5,26 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.17.0] — 2026-06-16 — Minor: code-review skill enrichment batch + /doubt (`code-review 0.2.0`)
+
+**MINOR — `code-review 0.1.0 → 0.2.0`: six new primitives in the code-review plugin.** No breaking changes; all existing workflows (`/code-review`, `adversarial-reviewer`, `adversarial-reviewer-cross`, `evidence-tracker`) are byte-identical. New primitives are opt-in: invoke them explicitly or dispatch them from your own review workflow.
+
+### Added
+
+- **`/simplify` command** (`code-review`) — targeted code simplification with two named load-bearing principles: Chesterton's Fence ("before removing any code, be able to state in one sentence why it is there") and the Rule of 500 ("a function or file over 500 lines is a signal to investigate, not a mandate to split"). Ships with a 3-row Common Rationalizations table and a Verification checklist.
+- **`security-review` skill** (`code-review`) — structured threat modeling via the three-tier boundary model: Tier 1 LLM API boundary (prompt injection / untrusted model output), Tier 2 Persistence boundary (durable writes, hard to roll back), Tier 3 System execution boundary (shell commands, lateral movement). Required output: `VULNERABILITY file:line [Tier N — <tier name>]` with exploit path, or `NO ISSUES FOUND` with per-tier confirmation. Ships with a 3-row Common Rationalizations table.
+- **`testing-strategy` skill** (`code-review`) — test coverage audit via three named principles: Beyonce Rule ("if you liked it, then you should have put a test on it — uncovered behavior is behavior you've agreed to change silently"), DAMP over DRY ("tests read like specs, not production code; duplication intentional"), and Prove-It Pattern ("every behavioral claim backed by a falsifying test"). Required output: `MISSING-TEST description:behavior`, or `COVERAGE ADEQUATE` with explicit Beyonce Rule audit list. Ships with a 4-row Common Rationalizations table.
+- **`security-auditor` agent** (`code-review`) — Security Engineer sub-agent modeled on `adversarial-reviewer`. Framing: "assume the code is vulnerable; find the boundary crossing that isn't validated." Works the three-tier boundary model in order. Required output: `VULNERABILITY file:line [Tier N — <tier name>]` with one-sentence exploit path, or `NO ISSUES FOUND` with one sentence per tier. Prose-only critiques rejected.
+- **`test-engineer` agent** (`code-review`) — QA Specialist sub-agent modeled on `adversarial-reviewer`. Framing: "assume the test suite has gaps; find the behavior with no test." Applies Beyonce Rule, Prove-It Pattern, and DAMP assessment. Required output: `MISSING-TEST <description>:<behavior>` with one sentence, or `COVERAGE ADEQUATE` with (a) claims audited and (b) one sentence per claim confirming the falsifying test. Prose-only observations rejected.
+- **`/doubt` command** (`code-review`) — in-flight adversarial decision review before a decision stands. Five-step CLAIM→EXTRACT→DOUBT→RECONCILE→STOP loop. CLAIM (why the decision matters) is private and never reaches the reviewer — only ARTIFACT + CONTRACT are dispatched. Findings classified into: `contract-misread` / `valid+actionable` / `valid-tradeoff` / `noise`. Hard 3-cycle cap; doubt theater (≥2 cycles, zero `valid+actionable` findings) escalates immediately. Interactive sessions offer cross-model escalation; non-interactive contexts announce skip. Ships with a 5-row Common Rationalizations table and a Red Flags list.
+
+### Internal
+
+- **`code-review` `0.1.0 → 0.2.0`** — first minor version bump for the plugin; `skills/` subdir introduced under `src/code-review/` (generator already handled the pattern via `src/<plugin>/skills/<name>/SKILL.md`). Marketplace + capabilities.json regenerated for both hosts.
+- **Output token alignment fix** (`security-review` SKILL.md) — Step 3 and Verification checklist used `[Tier N]`; corrected to `[Tier N — <tier name>]` to match the `security-auditor` agent's output contract. Found and fixed by adversarial `/review` (commit `1dbb842`).
+- **`/doubt` how-to page** added to wiki (`wiki/how-to/Use-Doubt-Review.md`); **`/simplify` how-to page** added (`wiki/how-to/Simplify-A-Diff.md`). `_Sidebar.md` and `wiki/Home.md` updated. Code-Review plugin architecture page updated with all 6 new primitives.
+- **9 commits** across two integrated worker plans (`rationalization-tables` context carry-over + `code-review-doubt`) and the singleton plan (skill enrichment batch).
+
 ## [v3.16.1] — 2026-06-15 — Patch: duplicate guard refinement + /work and /spec wording fixes (`developer-workflows 0.21.2`)
 
 **PATCH — two commits, three fixes found by post-release adversarial review.** No behavior change on the happy path; the duplicate guard is strictly more permissive (allows interrupted close-out recovery instead of always hard-stopping).

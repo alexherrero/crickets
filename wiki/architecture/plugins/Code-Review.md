@@ -20,7 +20,8 @@ On Antigravity, install by path (see [Install crickets plugins](Install-Into-Pro
 | **`adversarial-reviewer-cross`** | agent | cross-model critic — shells out to the Gemini CLI for a second opinion, and **falls back** to the in-process reviewer when `gemini` is absent |
 | **`evidence-tracker`** | hook · `PreToolUse` | default-FAIL evidence gate for `/work` — blocks flipping a `PLAN.md` task to `[x]` until a read matching that task is recorded (Claude-only) |
 | **`/simplify`** | command | cleanup pass over a diff — Chesterton's Fence + Rule of 500 guard + rationalization table; reports, then optionally applies |
-| **`security-review`** | skill | three-tier boundary system for security analysis: interface tier, trust tier, verification tier |
+| **`/doubt`** | command | in-flight adversarial review before a decision stands — CLAIM→EXTRACT→DOUBT→RECONCILE→STOP loop, hard 3-cycle cap |
+| **`security-review`** | skill | three-tier boundary model for security analysis: LLM API boundary, persistence boundary, system execution boundary |
 | **`testing-strategy`** | skill | DAMP + Beyonce Rule test-design heuristics: deterministic, anti-fragile, meaningful, proportionate |
 | **`security-auditor`** | agent | sub-agent dispatched by `security-review`; scans a diff or file set for security boundary violations |
 | **`test-engineer`** | agent | sub-agent dispatched by `testing-strategy`; generates DAMP-conformant test scaffolding |
@@ -40,7 +41,9 @@ A reviewer primed to **assume bugs exist** finds real ones; demanding a failing 
 ## Related
 
 - [First code review](01-First-Code-Review) — the tutorial.
-- [Review a change](Use-Code-Review) — the how-to.
+- [Review a change](Use-Code-Review) — the how-to for `/code-review`.
+- [Simplify a diff](Simplify-A-Diff) — the how-to for `/simplify`.
+- [In-flight decision review](Use-Doubt-Review) — the how-to for `/doubt`.
 - [Why adversarial review](Why-Adversarial-Review) — why the assume-bugs framing works.
 - [Developer Workflows](Developer-Workflows) — the base plugin this enhances at `/review`.
 - [Hooks](Hooks) · [Plugin anatomy](Plugin-Anatomy) — the evidence-tracker catalog entry + the shared plugin structure.

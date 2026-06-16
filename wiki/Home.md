@@ -26,7 +26,7 @@
 |---|---|---|
 | 🪶 **Maintain a wiki** — Diátaxis shape, your house voice, doc-watching | [wiki-maintenance](Wiki-Maintenance) | [style-learning loop](Style-Learning-Loop) · [wiki-watcher](Run-The-Wiki-Watcher) |
 | 🔁 **Run a phase-gated dev process** — interview → spec → plan → work → review → release | [developer-workflows](Developer-Workflows) | [/interview-me](Developer-Workflows) · [/spec](Developer-Workflows) · [evaluator](Evaluator) · [spawn a worker worktree](Spawn-A-Worker-In-A-Worktree) · [integrate a worker](Integrate-A-Worker) |
-| 🔎 **Review a change adversarially** — any diff or PR, no `/work` cycle | [code-review](Code-Review) | [code review](Use-Code-Review) · [in-flight decision review](Use-Doubt-Review) |
+| 🔎 **Review a change adversarially** — any diff or PR, no `/work` cycle | [code-review](Code-Review) | [code review](Use-Code-Review) · [simplify a diff](Simplify-A-Diff) · [in-flight decision review](Use-Doubt-Review) · [security-review skill](Code-Review) · [testing-strategy skill](Code-Review) |
 | 🛡️ **Guard quality + secrets** — control + recovery hooks, a PII scan on push | [developer-safety](Developer-Safety) | [operator-control hooks](Developer-Safety) · [PII guardrail](PII) |
 | 📋 **Plan & track a project** — vault roadmaps + plans synthesized to a GitHub board | [github-projects](GitHub-Projects) | [sync a board](Sync-A-Project-Board) · [one-way synthesis](One-Way-Vault-To-Board-Synthesis) |
 | 💰 **Audit & watch token spend** — per-turn cost breakdown + live status-line meter | [token-audit + status-line-meter](Plugins) | `/token-audit` command · live `↑K↓K $0.xx [62%]` badge |
