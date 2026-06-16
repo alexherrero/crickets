@@ -58,9 +58,10 @@ Determine: compulsory or advisory? Run a grep and type-check to enumerate every 
 For compulsory deprecations:
 
 1. Update every caller to the new interface or remove the call entirely.
-2. Delete the deprecated interface.
-3. Run the full test suite. If a test fails, it found a caller you missed — fix it, do not skip it.
-4. Confirm no remaining references: `grep -r "deprecated_symbol" .` returns nothing.
+2. Apply the Beyonce Rule **before deleting**: `grep -r "deprecated_symbol" .` — are there callers beyond those in step 1? Run the test suite with the code temporarily removed (local change only, do not commit). If tests fail, there are callers you missed — fix them and return to step 1.
+3. Delete the deprecated interface (confirmed dead by the check in step 2).
+4. Run the full test suite. If a test fails, it found a caller you missed — fix it, do not skip it.
+5. Confirm no remaining references: `grep -r "deprecated_symbol" .` returns nothing.
 
 ### Step 3 — Advisory: mark, notify, date
 
@@ -71,13 +72,13 @@ For advisory deprecations:
 3. Set a published removal date. Without a date, the deprecation window is infinite.
 4. Update the public changelog and notify downstream consumers through your standard communication channel.
 
-### Step 4 — Zombie check
+### Step 4 — Zombie check (advisory removal)
 
-For any code you are about to remove: apply the Beyonce Rule before deleting.
+For advisory deprecations, before removing the code at the end of the deprecation window:
 
-1. `grep -r "function_name" .` — are there callers you missed?
-2. Run the test suite with the code removed (in a temporary local change). If tests pass, either the code is truly dead or behavior is uncovered.
-3. If tests pass and no callers exist: remove the code. If tests fail: the code has real callers — go back to step 2.
+1. `grep -r "function_name" .` — are there callers that adopted the interface during the deprecation window?
+2. Run the test suite with the code removed (in a temporary local change). If tests pass, the code is truly dead.
+3. If tests pass and no callers exist: remove the code and proceed to Step 5. If tests fail: new callers exist — extend the deprecation window, notify the callers you found, and do not remove yet.
 
 ### Step 5 — Verify and commit
 

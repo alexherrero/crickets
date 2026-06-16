@@ -77,7 +77,7 @@ For each RED metric: define an alert on the user-visible symptom (error rate abo
 
 ### Step 6 — Verify
 
-Before committing: confirm that a successful and a failing request each produce the expected log event, at least one RED metric emits a non-zero value, and a trace span is recorded for the critical path.
+Before committing: confirm that a successful and a failing request each produce the expected log event, at least one RED metric emits a non-zero value, and a trace span is recorded for the critical path. Additionally, scan the written log entries for secrets or PII — confirm that no token, password, user credential, or personal identifier appears in any log event. Verify that every alert definition targets a user-visible symptom (error rate, latency) rather than an infrastructure metric (CPU, memory, disk).
 
 ## Common Rationalizations
 

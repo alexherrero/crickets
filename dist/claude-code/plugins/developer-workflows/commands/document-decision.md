@@ -53,7 +53,7 @@ Before writing the ADR, state the decision in one sentence: "We are choosing X t
 
 ### Step 2 — Draft the ADR before implementing
 
-Open the ADR file now, before writing any code. The format is the `adr-shape` convention in your CLAUDE.md; follow it exactly. A brief orientation for new adopters:
+Open the ADR file now, before writing any code. The format is in the `### CHANGELOG + ADR shapes` section of your CLAUDE.md; follow it exactly. A brief orientation for new adopters:
 
 The ADR opens with a `> [!NOTE]` block carrying `Status: accepted | superseded | rejected` and the date. It has four sections:
 
@@ -62,7 +62,7 @@ The ADR opens with a `> [!NOTE]` block carrying `Status: accepted | superseded |
 - **Consequences** — positive bullets (what this enables); negative bullets (what this costs or forecloses); load-bearing assumptions with explicit re-audit triggers (e.g. "re-audit if X changes").
 - **Related** — cross-refs to other ADRs, plans, or design docs.
 
-For the exact section order, formatting, and conventions, follow the `adr-shape` convention in your CLAUDE.md. The format is owned there; this command adds the trigger and execution steps.
+For the exact section order, formatting, and conventions, follow the `### CHANGELOG + ADR shapes` section of your CLAUDE.md. The format is owned there; this command adds the trigger and execution steps.
 
 ### Step 3 — Fill "why not the alternative" for every load-bearing call
 
@@ -78,7 +78,7 @@ Only now write the code. The ADR is done; the decision is settled. If you discov
 
 ### Step 6 — Link from CHANGELOG
 
-In the CHANGELOG entry for this release, add a link to the ADR. The format per the `changelog-shape` convention: the ADR link appears in the narrative or as a cross-reference. The reader of the CHANGELOG must be able to find the ADR without a git blame.
+In the CHANGELOG entry for this release, add a link to the ADR. Per the `### CHANGELOG + ADR shapes` section of your CLAUDE.md: the ADR link appears in the narrative or as a cross-reference. The reader of the CHANGELOG must be able to find the ADR without a git blame.
 
 ### Step 7 — Verify
 

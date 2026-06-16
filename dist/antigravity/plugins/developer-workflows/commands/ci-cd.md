@@ -95,6 +95,7 @@ After any change:
 2. Run against a passing input — confirm the pipeline completes end-to-end.
 3. Confirm the failure notification reaches the right place.
 4. Confirm no gate has `continue-on-error: true` that should block.
+5. Close the feedback loop end-to-end: commit a fix for the failure you triggered in step 1, re-run the pipeline, and confirm that the pipeline goes green and merge becomes unblocked. A loop that fires notifications but never unblocks on a fix is a broken loop.
 
 ## Common Rationalizations
 

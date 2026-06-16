@@ -189,5 +189,13 @@ standalone: true
 # lifecycle + monitoring-before-shipping), /ci-cd (Shift Left + Faster is Safer +
 # quality gate pipeline + failure feedback loops), /document-decision (ADR trigger
 # workflow — WHEN + HOW, references the adr-shape convention, does not redefine it).
-version: 0.22.0
+# 0.22.1 = post-review fixes (review pass 2026-06-16) — four behavioral defects
+# found by adversarial reviewer: (1) deprecate.md zombie check now runs before
+# compulsory deletion (was ordering-inverted); (2) deprecate.md advisory zombie
+# failure recovery fixed ("go back to step 2" → extend window/notify new callers);
+# (3) observe.md step 6 now verifies alert-symptom targeting and no-PII in logs;
+# (4) ci-cd.md step 7 closes the feedback loop end-to-end (commit fix, re-run,
+# confirm merge unblocks); (5) document-decision.md "adr-shape" / "changelog-shape"
+# names replaced with the actual CLAUDE.md section heading "CHANGELOG + ADR shapes".
+version: 0.22.1
 capabilities: [setup, plan, work, review, release, bugfix, documentation]
