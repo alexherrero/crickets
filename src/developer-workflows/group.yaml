@@ -182,5 +182,12 @@ standalone: true
 # V5-4 lane (LC-6). Benign no-op, distinct from the loud-2 / skip-1 codes; dormant unless a plan
 # opts in (absent the key → byte-identical behavior, fully back-compat). `/plan --activate` is
 # the primary chokepoint; `/spawn-worker` runs the same reconcile as a defense-in-depth backstop.
-version: 0.21.2
+# 0.22.0 = Ship-phase commands — five new commands covering what happens after
+# merging: /observe (structured logging + RED metrics + OTel tracing + symptom-
+# based alerting), /deprecate (code-as-liability + compulsory vs advisory +
+# Beyonce Rule zombie-code removal), /launch (pre-launch checklist + feature-flag
+# lifecycle + monitoring-before-shipping), /ci-cd (Shift Left + Faster is Safer +
+# quality gate pipeline + failure feedback loops), /document-decision (ADR trigger
+# workflow — WHEN + HOW, references the adr-shape convention, does not redefine it).
+version: 0.22.0
 capabilities: [setup, plan, work, review, release, bugfix, documentation]

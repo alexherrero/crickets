@@ -52,3 +52,4 @@ The command surfaces common rationalizations as red flags ([`observe.md` lines 8
 
 - [Developer Workflows plugin](Developer-Workflows) — the plugin that ships `/observe`.
 - [How to run a pre-launch readiness gate with /launch](Add-Launch-Readiness-Gate) — the companion gate that confirms observability is wired before first production rollout.
+- [Manifest schema](Manifest-Schema) — command primitive frontmatter reference

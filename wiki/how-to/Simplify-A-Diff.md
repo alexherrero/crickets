@@ -58,3 +58,4 @@ Run `/simplify` **after a feature lands**, not before — you need the tests gre
 - [In-flight decision review](Use-Doubt-Review) — `/doubt` for pre-commit decisions
 - [Why adversarial review](Why-Adversarial-Review) — the adversarial framing behind the `code-review` plugin
 - [Install crickets plugins](Install-Into-Project) — get the `code-review` plugin onto your host
+- [Manifest schema](Manifest-Schema) — command primitive frontmatter reference

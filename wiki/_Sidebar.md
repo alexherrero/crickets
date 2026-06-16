@@ -9,6 +9,11 @@
 - [Review a change — code review](Use-Code-Review)
 - [Simplify a diff — /simplify](Simplify-A-Diff)
 - [In-flight decision review — /doubt](Use-Doubt-Review)
+- [Add observability — /observe](Add-Observability-With-Observe)
+- [Deprecate a surface — /deprecate](Deprecate-A-Surface-With-Deprecate)
+- [Launch readiness gate — /launch](Add-Launch-Readiness-Gate)
+- [Author a CI/CD pipeline — /ci-cd](Author-A-CICD-Pipeline)
+- [Record an architectural decision — /document-decision](Record-An-Architectural-Decision)
 - [Install the vault backend](Install-The-Vault-Backend) _(pending)_
 ### 📖 [Reference](Reference)
 - [Plugin anatomy](Plugin-Anatomy)

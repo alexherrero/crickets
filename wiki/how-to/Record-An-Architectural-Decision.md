@@ -1,13 +1,10 @@
 # How to record an architectural decision with /document-decision
 
-> [!IMPORTANT]
-> **Status: pending** (developer-workflows Ship phase). This is a forward-declared skeleton — `/document-decision` does not yet exist. Step bodies are reserved, not written; a later `/work` task fills them from the shipped diff. Do not follow these steps yet.
-
 > [!NOTE]
 > **Goal:** Decide when an architectural decision warrants an ADR, draft it before implementing (so the rationale is honest, not retrofitted), answer "why not the alternative" for each call, and link the ADR from the CHANGELOG.
-> **Prereqs:** the `developer-workflows` plugin installed at a version that ships `/document-decision` ([Install crickets plugins](Install-Into-Project)); a decision worth recording — see "When to use this" below. _Exact prereqs filled by `/work` once the task ships._
+> **Prereqs:** the `developer-workflows` plugin installed at a version that ships `/document-decision` ([Install crickets plugins](Install-Into-Project)).
 
-`/document-decision` is an ADR trigger workflow: it enforces **when** to write (before implementing) and **how** to execute (mandatory "why not the alternative" per call; link from CHANGELOG). It references the ADR shape convention in the project's `CLAUDE.md` and does not redefine the format — the format is fixed.
+`/document-decision` is an ADR trigger workflow: it enforces **when** to write (before implementing) and **how** to execute (mandatory "why not the alternative" per call; link from CHANGELOG). It references the ADR shape convention in your `CLAUDE.md` and does not redefine the format — the format is owned by the `adr-shape` convention.
 
 ## When to use this
 
@@ -15,46 +12,66 @@ Reach for `/document-decision` when any of the following are true:
 
 - **Architectural decision** — the choice affects the structure, boundaries, or load-bearing assumptions of the codebase.
 - **Public API change** — an interface external callers depend on is being added, changed, or removed.
-- **Non-obvious behavior change** — the code does something that would surprise a future reader or a code-reviewer; the decision log is the explanation.
+- **Non-obvious behavior change** — the code does something that would surprise a future reader; the decision log is the explanation.
+- **Proactive "why not"** — the obvious alternative will be suggested in review; write the ADR now so the discussion doesn't recur.
 
 **Do not use** `/document-decision` for mechanical changes (renaming, formatting, routine dependency bumps), bug fixes with a single correct solution, or decisions that are self-evident from the diff.
 
 ## Steps
 
-1. Invoke the command **before implementing** the decision:
+1. **State the decision in one sentence** before opening the ADR file:
+
+   > "We are choosing X to accomplish Y."
+
+   If you cannot state it in one sentence, the decision is not yet clear enough to implement or document.
+
+2. **Invoke before writing any code:**
 
    ```text
-   /document-decision
+   /document-decision <one-sentence description of the decision>
    ```
 
-   _Filled by `/work` once the task ships._
+   The command walks you through drafting the ADR before any implementation starts ([`src/developer-workflows/commands/document-decision.md`](../src/developer-workflows/commands/document-decision.md)).
 
-2. Name the decision and the context that makes it non-obvious.
+3. **Open the ADR file and fill Context.** Write what question this decision resolves and what was true that made it necessary. Include the open questions the decision closes.
 
-   _Filled by `/work` once the task ships._
+4. **Fill Decision — with explicit "why not the alternative" per call.** For every load-bearing choice:
+   - State what was decided and why.
+   - Name the strongest alternative you considered and why you rejected it. *"We chose X over Y because Z; we did not choose Y because Q."*
+   - If an alternative was not considered, note that too.
 
-3. Write the Decision section: what was decided and, for each considered alternative, why it was rejected ("why not the alternative").
+5. **Fill Consequences.** Three parts:
+   - Positive bullets — what this enables.
+   - Negative bullets — what this costs or forecloses.
+   - Load-bearing assumptions with **re-audit triggers** — e.g. "re-audit if [assumption] changes." At least one trigger is required.
 
-   _Filled by `/work` once the task ships._
+6. **Link the ADR from the CHANGELOG.** In the CHANGELOG entry for the release that ships this decision, add a link to the ADR. Without the link, the ADR will not be found by someone reading the changelog months later.
 
-4. Write the Consequences section: positive bullets, negative bullets, and load-bearing assumptions with re-audit triggers.
-
-   _Filled by `/work` once the task ships._
-
-5. Link the new ADR from the CHANGELOG entry for the release that ships the decision.
-
-   _Filled by `/work` once the task ships._
+7. **Verify** all sections are complete before merging (see Verify below).
 
 ## Verify
 
-_Filled by `/work` once the task ships._
+- [ ] Decision stated in one sentence before starting.
+- [ ] ADR drafted **before** any implementation code committed.
+- [ ] All four sections complete: Context, Decision, Consequences, Related.
+- [ ] "Why not the alternative" present for every load-bearing call in Decision.
+- [ ] At least one re-audit trigger named in Consequences.
+- [ ] CHANGELOG entry for this release links to the ADR.
+- [ ] ADR `Status` field set: `accepted`, `superseded`, or `rejected`.
+- [ ] No placeholder text remaining in any section.
 
 ## Troubleshooting
 
-_Filled by `/work` once the task ships._
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| "I can't state the decision in one sentence" | The decision is not yet settled | Stop; clarify the tradeoff before writing the ADR or any code |
+| "I wrote the ADR after implementing — the 'why not' section feels forced" | Decision was made before the ADR was opened | Note the commit where the decision actually happened; for future decisions, draft the ADR first |
+| CHANGELOG was written but doesn't link the ADR | Skipped step 6 | Add the ADR link to the CHANGELOG entry before the release ships |
+| ADR Consequences has no re-audit triggers | Decision treated as permanent | Add at least one concrete condition that would make the decision wrong |
 
 ## See also
 
 - [Developer Workflows plugin](Developer-Workflows) — the plugin that ships `/document-decision`.
-- [Decisions](../../decisions/Decisions) — the ADR index for this project.
+- [Manifest schema](Manifest-Schema) — command primitive frontmatter reference.
+- [Decisions](decisions/Decisions) — the ADR index for this project.
 - [How to author a design with /design](Author-A-Design) — if the decision is part of a larger design, author the design first; ADRs record the non-obvious calls within it.

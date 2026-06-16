@@ -81,3 +81,4 @@ Common rationalizations that signal something is wrong (from `src/developer-work
 - [Developer Workflows plugin](Developer-Workflows) — the plugin that ships `/launch`.
 - [How to instrument code with /observe](Add-Observability-With-Observe) — observability must be wired before `/launch` passes.
 - [How to author CI/CD pipelines with /ci-cd](Author-A-CICD-Pipeline) — the pipeline authoring companion.
+- [Manifest schema](Manifest-Schema) — command primitive frontmatter reference

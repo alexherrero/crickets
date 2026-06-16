@@ -64,3 +64,4 @@ The command flags common rationalizations as red flags ([`deprecate.md` lines 97
 
 - [Developer Workflows plugin](Developer-Workflows) — the plugin that ships `/deprecate`.
 - [How to document a decision with /document-decision](Record-An-Architectural-Decision) — if the deprecation implies a design decision, record it.
+- [Manifest schema](Manifest-Schema) — command primitive frontmatter reference
