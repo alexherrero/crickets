@@ -1,5 +1,8 @@
 # How to record an architectural decision with /document-decision
 
+> [!IMPORTANT]
+> **Status: implemented** — `/document-decision` shipped in `src/developer-workflows/commands/document-decision.md`.
+
 > [!NOTE]
 > **Goal:** Decide when an architectural decision warrants an ADR, draft it before implementing (so the rationale is honest, not retrofitted), answer "why not the alternative" for each call, and link the ADR from the CHANGELOG.
 > **Prereqs:** the `developer-workflows` plugin installed at a version that ships `/document-decision` ([Install crickets plugins](Install-Into-Project)).
