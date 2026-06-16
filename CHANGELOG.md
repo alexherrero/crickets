@@ -5,6 +5,20 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.16.1] — 2026-06-15 — Patch: duplicate guard refinement + /work and /spec wording fixes (`developer-workflows 0.21.2`)
+
+**PATCH — two commits, three fixes found by post-release adversarial review.** No behavior change on the happy path; the duplicate guard is strictly more permissive (allows interrupted close-out recovery instead of always hard-stopping).
+
+### Fixed
+
+- **Duplicate guard progress.md check** (`work.md`, `0.21.2`) — `Status: done` check now inspects `progress.md` for a final task-completion line before hard-stopping. If none is found, the plan's close-out was interrupted: resume close-out steps (steps 7–12) rather than refusing. Avoids a dead-end when a session crashes between the last `[x]` flip and the progress append.
+- **`## Common Rationalizations` heading level** (`work.md`) — demoted from H2 to H3 (`###`) so it stays correctly inside `## Process` as a sub-step of the safety pre-check, not a spurious top-level sibling of `## Recoverability gate`.
+- **`/spec` → `/plan` handoff wording** (`spec.md`) — removed false claim that `/plan` auto-reads `SPEC.md`; replaced with accurate language: pass the spec's content (or its resolved questions) as the brief when invoking `/plan`; the interview step is shorter because scope is already resolved.
+
+### Internal
+
+- `developer-workflows` `0.21.1 → 0.21.2`. Dist/ regenerated for both hosts (spec.md missed in the v3.16.0 build, now updated). 2 commits (`614e23d`, `3c90bc1`).
+
 ## [v3.16.0] — 2026-06-15 — Minor: self-amending loop, /interview-me + /spec, anti-rationalization tables, duplicate guard
 
 **MINOR — `developer-workflows 0.19.0 → 0.21.1`: three feature clusters shipped across the autonomy-self-amending-loop and rationalization-tables plans, plus one direct fix.** No breaking changes; every existing workflow is byte-identical unless the new commands are explicitly invoked. Paired with `emit-antigravity` gaining `capabilities.json` sidecars.
