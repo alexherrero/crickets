@@ -62,6 +62,13 @@ It emits one tab-separated line, `<plan_path>\t<progress_path>` — the **resolv
 
 Then read the **resolved `PLAN.md`** (find the first unchecked `[ ]` task, or honor the `task N` selector); the **resolved `progress.md`** (was a prior session interrupted — resume or restart?); `AGENTS.md` / `CLAUDE.md` (commit style, test runner, conventions).
 
+**Duplicate guard (run before anything else).** After reading PLAN.md, check two conditions and stop on either:
+
+1. **Status: done** — if the plan's `**Status:**` line is `done`, stop immediately: *"DUPLICATE GUARD: plan is already `Status: done` — it was completed by another session. Refuse to re-run. If the previous output is wrong, reset the Status field manually and re-invoke."*
+2. **Live-worker branch (named plans only)** — if a plan slug is available (from `--name` or the worktree-local `.harness/active-plan` marker), run `git ls-remote --heads origin "worker/<slug>"`. If it returns a non-empty line, stop: *"DUPLICATE GUARD: branch `worker/<slug>` already exists on origin — another worker session is likely active on this plan. If that session was interrupted, run `git push origin --delete worker/<slug>` then re-invoke."*
+
+Both checks are read-only. A clean plan (not done, no live branch) passes both silently.
+
 ### 1.5. Check isolation mode + auto-spawn (first run only, skip on resume)
 
 **Skip this step if resuming a plan already in progress** (first task is `[x]`).

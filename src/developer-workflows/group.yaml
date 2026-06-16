@@ -182,5 +182,5 @@ standalone: true
 # V5-4 lane (LC-6). Benign no-op, distinct from the loud-2 / skip-1 codes; dormant unless a plan
 # opts in (absent the key → byte-identical behavior, fully back-compat). `/plan --activate` is
 # the primary chokepoint; `/spawn-worker` runs the same reconcile as a defense-in-depth backstop.
-version: 0.21.0
+version: 0.21.1
 capabilities: [setup, plan, work, review, release, bugfix, documentation]

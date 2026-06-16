@@ -16,7 +16,9 @@ On Antigravity, install by path (see [Install crickets plugins](Install-Into-Pro
 | Primitive | Kind | What it does |
 |---|---|---|
 | **`/setup`** | command | first-time scaffold — feature list + `init.sh`, once per project |
-| **`/plan`** | command | turn a brief into `PLAN.md` tasks + verification criteria (no code written); appends `/clear`-not-`/compact` reminder |
+| **`/interview-me`** | command | hypothesis-driven one-Q-at-a-time brief extraction; stops at ≥95% confidence; non-interactive contexts excluded |
+| **`/spec`** | command | writes a 6-section PRD (Objectives, Commands/UX, Structure, Code Style, Testing Plan, Out-of-Scope Boundaries) to `.harness/SPEC.md` before any planning; `/plan` reads it as structured input |
+| **`/plan`** | command | turn a brief into `PLAN.md` tasks + verification criteria (no code written); reads `SPEC.md` when present; appends `/clear`-not-`/compact` reminder |
 | **`/work`** | command | implement the plan's task list autonomously, gated by a per-task safety check, update `progress.md` |
 | **`/review`** | command | adversarial critique — a failing test or a line-number defect, not prose |
 | **`/release`** | command | pre-merge gate — clean tree, gates green, changelog updated; appends `/clear`-not-`/compact` reminder |
