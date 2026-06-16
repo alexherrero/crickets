@@ -16,6 +16,10 @@ You are running the **plan** phase of the developer-workflows loop. Turn a brief
 
 > **Standalone + storage-agnostic.** State is plain `.harness/<file>` unless a hosting memory layer redirects it. A plan exists so a later `/work` session has a shared contract (not a verbal understanding that evaporates with context), scope is fixed before you're deep in code, and verification is pre-negotiated — the single biggest lever on review quality.
 
+## When to use
+
+If the brief is underspecified, run `/interview-me` first. If it's a non-trivial feature, run `/spec` first to produce `SPEC.md`, then pass `SPEC.md` to `/plan`.
+
 ## Non-negotiable constraints
 
 1. **Do not write any application code.** Implementation is the `/work` phase.
