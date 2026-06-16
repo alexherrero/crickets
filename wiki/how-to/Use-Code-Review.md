@@ -45,6 +45,7 @@ The cross-model pass sends your diff to the **Gemini CLI → Google**. Treat it 
 
 ## See also
 
+- [In-flight decision review — /doubt](Use-Doubt-Review) — use `/doubt` instead when you want to challenge a decision *before* you write the code.
 - [Install crickets plugins](Install-Into-Project) — get the `code-review` plugin onto your host.
 - [Installing and using the code-review plugin](01-First-Code-Review) — the hands-on first run, if you haven't done one.
 - [Evaluator](Evaluator) — PASS / NEEDS_WORK grading against a rubric (a different reviewer role).
