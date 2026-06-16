@@ -105,3 +105,11 @@ Next: `/release` if this was the only thing in flight, else `/work` or `/plan` f
 - **No regression test** — non-negotiable; if you can't write one, you don't understand the bug yet.
 - **Expanding scope** — adjacent issues go on the backlog.
 - **Skipping `/review`** — the area already produced one bug; it deserves more scrutiny, not less.
+
+## Common Rationalizations
+
+| Excuse | Why it's wrong |
+|---|---|
+| "I'll add the regression test later" | Later never comes; the regression test is the proof the bug is fixed, not an optional add-on. |
+| "The test was too strict, I loosened the assertion" | A looser assertion is not a fix — it is a hidden failure. Fix the implementation. |
+| "I understand the root cause, I'll skip root-cause analysis" | Write it down; unstated assumptions become the next bug. |

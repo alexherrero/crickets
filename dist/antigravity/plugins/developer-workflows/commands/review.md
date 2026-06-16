@@ -38,3 +38,10 @@ You are running the **review** phase of the developer-workflows loop. Review is 
 ## When the deeper reviewer is absent
 
 `/review` still earns its keep — gates are the floor. Report: *"gates green; no adversarial reviewer installed — add a code-review capability for a deeper pass."* This is the expected standalone behavior, not a failure.
+
+## Common Rationalizations
+
+| Excuse | Why it's wrong |
+|---|---|
+| "The code looks fine, no defect found" | Correct output is 'NO ISSUES FOUND after thorough examination', not 'looks fine'. Examine, don't glance. |
+| "I'll write prose feedback instead of a file:line defect" | Prose-only critiques are rejected. Return a failing test, DEFECT file:line, or explicit NO ISSUES FOUND. |
