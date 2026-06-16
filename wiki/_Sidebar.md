@@ -7,6 +7,7 @@
 - [Declare a project's Architecture](Declare-Architecture)
 - [Maintain a wiki — wiki-watcher](Run-The-Wiki-Watcher)
 - [Review a change — code review](Use-Code-Review)
+- [In-flight decision review — /doubt](Use-Doubt-Review)
 - [Install the vault backend](Install-The-Vault-Backend) _(pending)_
 ### 📖 [Reference](Reference)
 - [Plugin anatomy](Plugin-Anatomy)

@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Adversarial review of any diff or PR — standalone, no /work cycle. Dispatches the cross-model + in-process adversarial reviewers; reports a failing test, a DEFECT file:line, or NO ISSUES FOUND. Never fixes.
+description: Adversarial review of any diff or PR — standalone, no /work cycle. Dispatches the cross-model + in-process adversarial reviewers; reports a failing test, a DEFECT file:line, or NO ISSUES FOUND. Never fixes. For in-flight review of a specific decision before it stands, use /doubt instead.
 kind: command
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
