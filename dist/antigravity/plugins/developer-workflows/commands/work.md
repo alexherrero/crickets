@@ -82,6 +82,14 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/isolation_config.py" check [--no-isolate 
 
 The session assumes the **full task list** — it does not ask permission per task. Before starting each task, run a go/no-go safety pre-check: **proceed autonomously if the task is safe; stop and ask only when it isn't, or when an important clarification is needed.** Triggers to stop — the task performs a genuinely **unrecoverable** action (per the recoverability gate above: recoverable actions proceed announced; only force-push rewriting published shared history, sole-ref delete of unmerged work, published-tag overwrite, or an immutable deploy/migration stops); needs a decision that isn't locked (an **unresolved decision** — stop, ask, and log it as a design/plan gap); turns out bigger or different than the plan said (scope drift); has a verification that can't be made executable or an unmet prerequisite; or surfaces a failing test that invalidates its premise. State the trigger plainly and wait — even mid-plan. Otherwise proceed to step 3.
 
+## Common Rationalizations
+
+| Excuse | Why it's wrong |
+|---|---|
+| "This task is small enough to skip the pre-check" | The pre-check exists precisely for tasks you're confident about — confidence is when blind spots hide. |
+| "I'll run verification after the whole plan is done" | Verification gates are per-task; batch verification misses regressions introduced mid-plan. |
+| "The test is wrong, not the code" | First reproduce the test's intent independently; delete only if the intent is wrong, never because it makes the code fail. |
+
 ### 3. Gather context (optional)
 
 If the task touches unfamiliar code, dispatch the `explorer` sub-agent for read-only fan-out ("Where is X handled? What tests exist for Y? Return file:line references."). Fan out only for multiple independent questions — for one question, just read.

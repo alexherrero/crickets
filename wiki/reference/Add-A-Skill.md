@@ -40,6 +40,50 @@ A skill lives **inside a plugin group** — `src/<group>/skills/<name>/SKILL.md`
 - **Host-specific** — narrow `supported_hosts` (e.g. `[claude-code]`); the generator emits the skill only for the listed hosts.
 - **Supporting files** — a skill can ship more than `SKILL.md`. A file used only by this skill lives in its own dir (`skills/<name>/…`, referenced by a relative path); a helper shared across the plugin's primitives goes in the group's `scripts/` (referenced via `${CLAUDE_PLUGIN_ROOT}/scripts/<name>` — see [Per-host paths](Per-Host-Paths)).
 
+## Anatomy Patterns
+
+Two optional sections that make mandatory steps harder to skip and observable failures harder to ignore. Add them when a skill has either property.
+
+### Common Rationalizations table
+
+A two-column table mapping agent excuses to immediate refutations. Include this in any skill that has mandatory steps the agent might rationalize skipping under pressure (confidence, time, apparent obviousness).
+
+Format:
+
+```markdown
+## Common Rationalizations
+
+| Excuse | Why it's wrong |
+|---|---|
+| "<excuse the agent tells itself>" | "<why the excuse is wrong>" |
+```
+
+Example row (from `/work`):
+
+| Excuse | Why it's wrong |
+|---|---|
+| "This task is small enough to skip the pre-check" | The pre-check exists precisely for tasks you're confident about — confidence is when blind spots hide. |
+
+The table fires at invocation time, in context — stronger than always-load conventions because it's read in the same turn as the step it guards.
+
+### Red Flags
+
+A bulleted list of observable signs the skill is being violated. Include this in any skill with failure modes that are recognizable from the outside (e.g. from a review pass or an operator watching progress).
+
+Format:
+
+```markdown
+## Red Flags
+
+- <Observable sign that the skill is being violated.>
+```
+
+Example bullet (from `/work`):
+
+- Agent marks `[x]` before gates are green.
+
+Red Flags serve a different purpose than Rationalizations: they help reviewers and operators catch violations after the fact, not prevent them in-context.
+
 ## Related
 
 - [Add a plugin](Add-A-Plugin) — create a new plugin group to house the skill.
