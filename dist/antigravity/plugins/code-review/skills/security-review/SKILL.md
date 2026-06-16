@@ -54,7 +54,7 @@ For each tier that the diff touches, apply the tier's check questions above. For
 
 ### Step 3 — Report findings
 
-For each finding: `VULNERABILITY <file>:<line> [Tier N]` — one sentence stating what is unvalidated and what an attacker can do with it. For each tier that passes: one sentence confirming what was checked and why it passes.
+For each finding: `VULNERABILITY <file>:<line> [Tier N — <tier name>]` — one sentence stating what is unvalidated and what an attacker can do with it. For each tier that passes: one sentence confirming what was checked and why it passes.
 
 If no tier-relevant code was found: `NO ISSUES FOUND` — state which tiers were checked and why each was not applicable or passed.
 
@@ -71,6 +71,6 @@ If no tier-relevant code was found: `NO ISSUES FOUND` — state which tiers were
 Before reporting complete:
 
 - [ ] All three tiers were checked, or explicitly marked not applicable with a reason.
-- [ ] Every finding is `VULNERABILITY file:line [Tier N]` with a one-sentence exploit path.
+- [ ] Every finding is `VULNERABILITY file:line [Tier N — <tier name>]` with a one-sentence exploit path.
 - [ ] `NO ISSUES FOUND` includes explicit tier-by-tier confirmation.
 - [ ] No prose-only findings ("consider sanitizing input") — every finding names the specific line.
