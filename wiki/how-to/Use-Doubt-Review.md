@@ -98,3 +98,4 @@ After each cycle confirm:
 - [Review a change after it's written](Use-Code-Review) — `/code-review` for post-hoc diff review
 - [Install crickets plugins](Install-Into-Project) — get the `code-review` plugin installed
 - [Why adversarial review](Why-Adversarial-Review) — the reasoning behind the adversarial stance
+- [Manifest schema](../reference/Manifest-Schema) — command primitive frontmatter reference
