@@ -5,6 +5,32 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.16.0] — 2026-06-15 — Minor: self-amending loop, /interview-me + /spec, anti-rationalization tables, duplicate guard
+
+**MINOR — `developer-workflows 0.19.0 → 0.21.1`: three feature clusters shipped across the autonomy-self-amending-loop and rationalization-tables plans, plus one direct fix.** No breaking changes; every existing workflow is byte-identical unless the new commands are explicitly invoked. Paired with `emit-antigravity` gaining `capabilities.json` sidecars.
+
+### Added
+
+- **`/interview-me` command** (`developer-workflows`) — hypothesis-driven one-question-at-a-time brief extraction; builds confidence incrementally; stops when ≥ 95% certain of scope; excludes non-interactive contexts automatically. Feeds directly into `/spec` or `/plan`.
+- **`/spec` command** (`developer-workflows`) — writes a 6-section PRD (Objectives, Commands/UX, Structure, Code Style, Testing Plan, Out-of-Scope Boundaries) to `.harness/SPEC.md` before any planning; `/plan` reads it as structured input when present.
+- **Self-amending loop** (`developer-workflows 0.20.x`) — autonomous correction cycle: disposition classifier (kernel-defect vs operator-tuning), amend-and-ship orchestration with CI-before-tag wiring, correction quality gate (MASTER #20 composition seam), and end-to-end dogfood seed validation. Closes the loop between a failing task and a re-shipped artifact without operator intervention. See [ADR 0030](https://github.com/alexherrero/crickets/wiki/0030-generated-artifact-single-writer).
+- **Single-writer artifact integration** (`developer-workflows`, ADR 0030) — `integrate_worker.py` serializes worker merges onto `main`; concurrent-release coordination (tags-from-main, branch protection, single-writer contract for generated artifacts); pre-flight reconcile against already-shipped lanes; no-bypass conformance guard. Extends part 2 (PR #28) into a full single-writer architecture.
+- **`capabilities.json` sidecar** (`emit-antigravity`) — each plugin now emits a `capabilities.json` beside `plugin.json`, surfacing declared capabilities for host-side discovery without parsing the full manifest.
+- **Anti-rationalization tables** (`developer-workflows 0.21.0`) — `## Common Rationalizations` two-column tables added to `/work` (3 rows), `/bugfix` (3 rows), and `/review` (2 rows). Excuses fire at invocation time, in-context, making step-skipping rationalizations visible and immediately refuted.
+- **Anatomy Patterns section** (`wiki/reference/Add-A-Skill.md`) — documents the Rationalizations table format and Red Flags list format with concrete examples from `/work`, so future skill authors can add both patterns.
+
+### Fixed
+
+- **Duplicate guard in `/work` step 1** (`developer-workflows 0.21.1`) — if a second session starts on a plan already `Status: done`, or finds `worker/<slug>` already on the remote (another session live), it now stops with a `DUPLICATE GUARD` message rather than silently re-doing the work.
+- **`_posix_bash` resolver — WSL bash stub** (`developer-workflows 0.20.1`) — Windows Subsystem for Linux ships a `/usr/bin/bash` stub that returns exit 0 but is not a real bash; the resolver now detects and skips it.
+- **`capabilities.json` sidecars left untracked** (`emit-antigravity`) — generator now stages the sidecar in the same pass as `plugin.json`.
+
+### Internal
+
+- **`developer-workflows` `0.19.0 → 0.21.1`** — autonomy self-amending loop + /interview-me + /spec + anti-rationalization tables + duplicate guard. Regenerated into both host dist/ trees.
+- **ADR 0030 authored and finalized** — generated-artifact single-writer contract; `integrate-worker` single-writer binding.
+- **19 commits** across two integrated worker plans (`developer-workflows-autonomy-self-amending-loop`, `rationalization-tables`) + one direct fix.
+
 ## [v3.15.1] — 2026-06-15 — Patch: `finalize_unit.py` exit-code contract + `pr_helpers.py` pii-guard step rc
 
 **PATCH — two post-release bugfixes in `developer-workflows 0.18.1`, found by adversarial `/review` on v3.15.0.** No behavior change on the happy path (exit 0). Callers that relied on exit 1/2 as a retry signal get correct semantics: exit 1 = push landed (branch on remote); exit 2 = nothing pushed (safe to retry).
