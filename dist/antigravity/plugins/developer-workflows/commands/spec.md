@@ -20,7 +20,7 @@ You are running the **spec** phase of the developer-workflows loop. Write a PRD 
 
 A spec answers: what are we building, what does the user see and type, how is it structured, how is it tested, and what are we explicitly not building? It does not answer how individual tasks are sequenced — that's `/plan`.
 
-The output is a `SPEC.md` file in `.harness/` (or the vault `_harness/` in dogfood context). `/plan` reads `SPEC.md` as structured input when it is present; a plan written from a spec is more reliable than one written from a verbal brief because the scope decisions are already made and recorded.
+The output is a `SPEC.md` file in `.harness/` (or the vault `_harness/` in dogfood context). A plan written from a spec is more reliable than one written from a verbal brief because the scope decisions are already made and recorded — pass the SPEC.md content (or its resolved questions) as the brief when invoking `/plan`.
 
 ## When to Use
 
@@ -38,7 +38,7 @@ The output is a `SPEC.md` file in `.harness/` (or the vault `_harness/` in dogfo
 
 ## The Six Required Sections
 
-A valid `SPEC.md` must contain all six sections. A `/plan` run that finds a `SPEC.md` missing any section treats it as incomplete and surfaces the gap before proceeding.
+A valid `SPEC.md` must contain all six sections. Before handing off to `/plan`, verify all six are present and non-empty — a spec with blank sections signals false confidence and is worse than no spec.
 
 ### 1. Objectives
 
@@ -102,7 +102,7 @@ After writing, walk each section and ask the user: **Approve / Revise / Note for
 
 ### Step 5 — Hand off to `/plan`
 
-When all six sections are approved and there are no open questions: suggest `/plan` with the path to `SPEC.md` as input. `/plan` reads `SPEC.md` and uses it as the structured brief — the interview step in `/plan` is skipped when a clean spec is present.
+When all six sections are approved and there are no open questions: suggest `/plan` with the confirmed spec content as the brief. Because the spec has already resolved the scope, objectives, and out-of-scope boundaries, `/plan`'s interview step will be short — the agent can derive most answers from the spec rather than asking.
 
 ## Common Rationalizations
 
@@ -128,4 +128,4 @@ Before handing off to `/plan`:
 - [ ] Testing plan names any gaps explicitly.
 - [ ] No open questions remain in the `## Open questions` appendix (or the appendix is absent).
 - [ ] User has approved all six sections.
-- [ ] `/plan` can proceed with `SPEC.md` as structured input.
+- [ ] `/plan` has been invoked with the spec's confirmed content as the brief.
