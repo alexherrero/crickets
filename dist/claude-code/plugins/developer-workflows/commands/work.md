@@ -64,7 +64,7 @@ Then read the **resolved `PLAN.md`** (find the first unchecked `[ ]` task, or ho
 
 **Duplicate guard (run before anything else).** After reading PLAN.md, check two conditions and stop on either:
 
-1. **Status: done** — if the plan's `**Status:**` line is `done`, stop immediately: *"DUPLICATE GUARD: plan is already `Status: done` — it was completed by another session. Refuse to re-run. If the previous output is wrong, reset the Status field manually and re-invoke."*
+1. **Status: done** — if the plan's `**Status:**` line is `done`, check `progress.md` for a final task completion line (e.g. `completed task N`). If found, stop immediately: *"DUPLICATE GUARD: plan is `Status: done` and close-out is complete — it was completed by another session. If the previous output is wrong, reset the Status field manually and re-invoke."* If no task completion line exists in `progress.md`, treat it as an interrupted close-out: proceed with a warning *"Plan is Status: done but close-out appears incomplete — resuming close-out steps only (no re-implementation)."* and jump directly to step 7 (update PLAN.md / progress.md) then steps 9–12.
 2. **Live-worker branch (named plans only)** — if a plan slug is available (from `--name` or the worktree-local `.harness/active-plan` marker), run `git ls-remote --heads origin "worker/<slug>"`. If it returns a non-empty line, stop: *"DUPLICATE GUARD: branch `worker/<slug>` already exists on origin — another worker session is likely active on this plan. If that session was interrupted, run `git push origin --delete worker/<slug>` then re-invoke."*
 
 Both checks are read-only. A clean plan (not done, no live branch) passes both silently.
@@ -89,7 +89,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/isolation_config.py" check [--no-isolate 
 
 The session assumes the **full task list** — it does not ask permission per task. Before starting each task, run a go/no-go safety pre-check: **proceed autonomously if the task is safe; stop and ask only when it isn't, or when an important clarification is needed.** Triggers to stop — the task performs a genuinely **unrecoverable** action (per the recoverability gate above: recoverable actions proceed announced; only force-push rewriting published shared history, sole-ref delete of unmerged work, published-tag overwrite, or an immutable deploy/migration stops); needs a decision that isn't locked (an **unresolved decision** — stop, ask, and log it as a design/plan gap); turns out bigger or different than the plan said (scope drift); has a verification that can't be made executable or an unmet prerequisite; or surfaces a failing test that invalidates its premise. State the trigger plainly and wait — even mid-plan. Otherwise proceed to step 3.
 
-## Common Rationalizations
+### Common Rationalizations
 
 | Excuse | Why it's wrong |
 |---|---|
