@@ -1,0 +1,12 @@
+{
+  "author": {
+    "name": "alexherrero",
+    "url": "https://github.com/alexherrero/crickets"
+  },
+  "dependencies": [
+    "developer-workflows"
+  ],
+  "description": "Day-to-day testing principles — tests-are-sacred, verification-first, and the 3-layer pyramid — for Developer-tier users.",
+  "name": "testing-conventions",
+  "version": "0.1.0"
+}
