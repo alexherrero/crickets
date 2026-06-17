@@ -123,6 +123,21 @@
     },
     {
       "category": "Coding",
+      "name": "releasing-conventions",
+      "policy": {
+        "authentication": "ON_INSTALL",
+        "installation": "AVAILABLE"
+      },
+      "requires": [
+        "developer-workflows"
+      ],
+      "source": {
+        "path": "./plugins/releasing-conventions",
+        "source": "local"
+      }
+    },
+    {
+      "category": "Coding",
       "enhances": [
         {
           "capability": "token-audit",

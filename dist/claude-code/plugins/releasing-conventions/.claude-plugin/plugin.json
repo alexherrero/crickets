@@ -1,0 +1,12 @@
+{
+  "author": {
+    "name": "alexherrero",
+    "url": "https://github.com/alexherrero/crickets"
+  },
+  "dependencies": [
+    "developer-workflows"
+  ],
+  "description": "Ship-release workflow and release discipline — pre-release checklist, changelog-shape convention, and paired-release discipline for cross-repo coordinated releases.",
+  "name": "releasing-conventions",
+  "version": "0.1.1"
+}

@@ -3,4 +3,4 @@ description: Ship-release workflow and release discipline — pre-release checkl
 category: Coding
 requires: [developer-workflows]
 standalone: false
-version: 0.1.0
+version: 0.1.1

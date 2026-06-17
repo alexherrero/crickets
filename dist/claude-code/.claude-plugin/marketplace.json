@@ -83,6 +83,15 @@
       "version": "0.1.0"
     },
     {
+      "dependencies": [
+        "developer-workflows"
+      ],
+      "description": "Ship-release workflow and release discipline — pre-release checklist, changelog-shape convention, and paired-release discipline for cross-repo coordinated releases.",
+      "name": "releasing-conventions",
+      "source": "./plugins/releasing-conventions",
+      "version": "0.1.1"
+    },
+    {
       "description": "Live context/cost meter for the Claude Code status line — used-%, 5h-window cost, and floor-share badge. Enhances token-audit with continuous live metering.",
       "enhances": [
         {
