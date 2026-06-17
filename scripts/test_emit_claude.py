@@ -107,7 +107,7 @@ class TestClaudeEmitter(unittest.TestCase):
     def test_marketplace_lists_all_with_resolving_sources(self):
         mk = json.loads((self.cdist / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
         self.assertEqual({p["name"] for p in mk["plugins"]},
-                         {"code-review", "developer-safety",
+                         {"code-review", "design-docs", "developer-safety",
                           "developer-workflows", "pii", "github-ci",
                           "github-projects", "obsidian-vault",
                           "releasing-conventions", "status-line-meter",
