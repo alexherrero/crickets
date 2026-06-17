@@ -97,6 +97,7 @@ class TestAntigravityEmitter(unittest.TestCase):
                           "developer-workflows", "pii", "github-ci",
                           "github-projects", "obsidian-vault",
                           "releasing-conventions", "status-line-meter",
+                          "testing-conventions",
                           "token-audit", "wiki-maintenance"})
         # wiki-maintenance re-categorized Coding → documentation in part 1; rest stay Coding
         expected_category = {"wiki-maintenance": "documentation"}

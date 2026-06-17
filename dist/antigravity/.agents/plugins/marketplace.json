@@ -141,6 +141,21 @@
       }
     },
     {
+      "category": "Coding",
+      "name": "testing-conventions",
+      "policy": {
+        "authentication": "ON_INSTALL",
+        "installation": "AVAILABLE"
+      },
+      "requires": [
+        "developer-workflows"
+      ],
+      "source": {
+        "path": "./plugins/testing-conventions",
+        "source": "local"
+      }
+    },
+    {
       "capabilities": [
         "token-audit"
       ],

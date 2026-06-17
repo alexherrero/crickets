@@ -38,7 +38,7 @@ class TestSrcModel(unittest.TestCase):
                          {"code-review", "developer-safety", "developer-workflows",
                           "github-ci", "github-projects", "obsidian-vault", "pii",
                           "releasing-conventions", "status-line-meter",
-                          "token-audit", "wiki-maintenance"})
+                          "testing-conventions", "token-audit", "wiki-maintenance"})
         # obsidian-vault (V5-2): the re-homed `vault` storage backend lands as a
         # group asset under scripts/ (LC-2 — engine-consumed, not a host primitive).
         # Task 2 additionally re-homed the vault-specific conflict-merger out of the
