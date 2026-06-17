@@ -1,0 +1,6 @@
+name: Testing Conventions
+description: Day-to-day testing principles — tests-are-sacred, verification-first, and the 3-layer pyramid — for Developer-tier users.
+category: Coding
+requires: [developer-workflows]
+standalone: false
+version: 0.1.0
