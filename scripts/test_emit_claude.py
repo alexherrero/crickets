@@ -110,7 +110,8 @@ class TestClaudeEmitter(unittest.TestCase):
                          {"code-review", "developer-safety",
                           "developer-workflows", "pii", "github-ci",
                           "github-projects", "obsidian-vault",
-                          "status-line-meter", "testing-conventions",
+                          "releasing-conventions", "status-line-meter",
+                          "testing-conventions",
                           "token-audit", "wiki-maintenance"})
         for p in mk["plugins"]:
             self.assertEqual(p["source"], f"./plugins/{p['name']}")

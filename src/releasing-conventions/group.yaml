@@ -1,0 +1,6 @@
+name: Releasing Conventions
+description: Ship-release workflow and release discipline — pre-release checklist, changelog-shape convention, and paired-release discipline for cross-repo coordinated releases.
+category: Coding
+requires: [developer-workflows]
+standalone: false
+version: 0.1.0

@@ -85,14 +85,16 @@ class TestBuildClean(unittest.TestCase):
             self.assertEqual(sorted(seen),
                              ["code-review", "developer-safety",
                               "developer-workflows", "github-ci", "github-projects",
-                              "obsidian-vault", "pii", "status-line-meter",
-                              "testing-conventions", "token-audit", "wiki-maintenance"])
+                              "obsidian-vault", "pii", "releasing-conventions",
+                              "status-line-meter", "testing-conventions",
+                              "token-audit", "wiki-maintenance"])
             mk = json.loads((dist / "claude-code" / "marketplace.json").read_text())
             self.assertEqual({e["name"] for e in mk["plugins"]},
                              {"code-review", "developer-safety",
                               "developer-workflows", "github-ci", "github-projects",
-                              "obsidian-vault", "pii", "status-line-meter",
-                              "testing-conventions", "token-audit", "wiki-maintenance"})
+                              "obsidian-vault", "pii", "releasing-conventions",
+                              "status-line-meter", "testing-conventions",
+                              "token-audit", "wiki-maintenance"})
 
     def test_clean_removes_dist(self):
         with tempfile.TemporaryDirectory() as t:
@@ -130,8 +132,9 @@ class TestCheck(unittest.TestCase):
         self.assertEqual(ds["plugins"],
                          ["code-review", "developer-safety",
                           "developer-workflows", "github-ci", "github-projects",
-                          "obsidian-vault", "pii", "status-line-meter",
-                          "testing-conventions", "token-audit", "wiki-maintenance"])
+                          "obsidian-vault", "pii", "releasing-conventions",
+                          "status-line-meter", "testing-conventions",
+                          "token-audit", "wiki-maintenance"])
 
     def test_changed_file_fails(self):
         f = next(self.dist.rglob("plugin.json"))
