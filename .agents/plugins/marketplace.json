@@ -25,6 +25,21 @@
     },
     {
       "category": "Coding",
+      "name": "design-docs",
+      "policy": {
+        "authentication": "ON_INSTALL",
+        "installation": "AVAILABLE"
+      },
+      "requires": [
+        "developer-workflows"
+      ],
+      "source": {
+        "path": "./dist/antigravity/plugins/design-docs",
+        "source": "local"
+      }
+    },
+    {
+      "category": "Coding",
       "enhances": [
         {
           "group": "developer-workflows"
