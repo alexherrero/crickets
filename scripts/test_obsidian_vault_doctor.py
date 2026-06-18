@@ -336,7 +336,7 @@ class DoctorVaultWithEngine(unittest.TestCase):
         self.assertEqual(rows["conflicts"].status, doctor.OK, rows["conflicts"].detail)
 
     def test_vault_path_warns_on_shapeless_dir(self) -> None:
-        # A real dir with no _meta/repos.json + no personal-private/ → not a vault.
+        # A real dir with no _meta/repos.json + no personal/ → not a vault.
         with tempfile.TemporaryDirectory() as plain:
             rows = {r.name: r for r in self._diagnose(vault_path=plain)}
         self.assertEqual(rows["vault-path"].status, doctor.WARN)

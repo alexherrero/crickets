@@ -148,7 +148,7 @@ class TestWritePathRoundTrip(unittest.TestCase):
                 vault / "projects" / "_global" / "wiki-style"
                 / f"{_STAMP}-peacock-words.md")
             self.assertNotIn("_always-load", str(written))
-            self.assertFalse((vault / "personal-private" / "_always-load").exists())
+            self.assertFalse((vault / "personal" / "_always-load").exists())
             # Round-trips through the resolver's reader.
             lessons = sr.read_scope_lessons(written.parent, "global")
             self.assertEqual([lz.trigger for lz in lessons], ["peacock-words"])
