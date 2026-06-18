@@ -152,7 +152,7 @@ Once all gates are green: edit the **resolved `PLAN.md`** to mark the task `[x]`
 
 ### 8. Update the wiki (post-gates, graceful-skip)
 
-Probe with `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/capability_probe.py" wiki-maintenance`. On **exit 0** dispatch its `documenter` with the task's title + What + Verification and the diff — it flips `pending → implemented` **only if the diff proves it** (speculative flips are worse than missed ones), fills `## Implementation` with real `file:line` refs, and adds how-to pages for new operational concerns. Resolve `OPEN QUESTIONS` before committing; `NO CHANGES` is fine. On **exit 1** (absent, or no `CLAUDE_PLUGIN_ROOT`) skip silently. Not invoked during step 4.
+Check availability: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/find_capability.py" wiki-maintenance`. On **exit 0** dispatch its `documenter` with the task's title + What + Verification and the diff — it flips `pending → implemented` **only if the diff proves it** (speculative flips are worse than missed ones), fills `## Implementation` with real `file:line` refs, and adds how-to pages for new operational concerns. Resolve `OPEN QUESTIONS` before committing; `NO CHANGES` is fine. On **exit 1** (unavailable, or no `CLAUDE_PLUGIN_ROOT`) skip silently. Not invoked during step 4.
 
 ### 9. Commit
 
@@ -160,7 +160,7 @@ One task, one commit, referencing the task. Follow project trailer conventions (
 
 ### 10. Sync the task to the GitHub Project board (graceful-skip)
 
-Probe with `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/capability_probe.py" github-projects`. On **exit 1** (plugin absent, or no `CLAUDE_PLUGIN_ROOT`) skip silently — zero behavior change. On **exit 0** with `.harness/project.json` present and `gh` authed, after the commit:
+Check availability: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/find_capability.py" board-sync`. On **exit 1** (unavailable, or no `CLAUDE_PLUGIN_ROOT`) skip silently — zero behavior change. On **exit 0** with `.harness/project.json` present and `gh` authed, after the commit:
 
 - **Task progress** — emit the just-completed task's progress line to its board item: `python3 "${CLAUDE_PLUGIN_ROOT}/../github-projects/scripts/project_sync.py" post --config <project.json> --type task-progress --id <task-id> --commit <SHA> --summary "<one human sentence>"`. The `--type task-progress` shortcut folds the `②Progress` line into `board-items.json` and re-renders; the renderer owns the date/SHA→link, you supply only the sentence. Per **DC-1** Tasks materialize only under the active plan.
 - **Out-of-scope findings** — anything surfaced this session that's *not* a follow-up to the current task (an adjacent bug, a refactor, missing coverage elsewhere, a stale doc) → record in `board-items.json` as a `Backlog-item` so the next sync materializes it; **never** raw `gh project item-create` (an unbacked board issue is an orphan the `vault==board` gate flags as drift).

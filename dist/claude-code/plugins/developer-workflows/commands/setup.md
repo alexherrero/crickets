@@ -158,7 +158,7 @@ Run `bash .harness/init.sh`. Confirm it exits 0. If not, fix it now — every la
 
 ### 8. Populate the wiki scaffold (graceful-skip)
 
-Probe with `bash "${CLAUDE_PLUGIN_ROOT}/scripts/capability_probe.py" wiki-maintenance`. On **exit 0** (the crickets `wiki-maintenance` plugin — which ships the `documenter` — is installed + enabled) dispatch its `documenter` to fill any `wiki/` seed pages (Getting-Started, Runbook, Product-Intent, Overview, Home, _Sidebar) from the inventory + interview, and resolve any `OPEN QUESTIONS`. On **exit 1** (absent, or graceful-skip on a host that doesn't set `CLAUDE_PLUGIN_ROOT`) skip silently.
+Check availability: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/find_capability.py" wiki-maintenance`. On **exit 0** (the crickets `wiki-maintenance` plugin — which ships the `documenter` — is installed + enabled) dispatch its `documenter` to fill any `wiki/` seed pages (Getting-Started, Runbook, Product-Intent, Overview, Home, _Sidebar) from the inventory + interview, and resolve any `OPEN QUESTIONS`. On **exit 1** (unavailable, or graceful-skip when agentm is absent or `CLAUDE_PLUGIN_ROOT` unset) skip silently.
 
 ### 9. Offer GitHub Project creation (optional)
 

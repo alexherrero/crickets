@@ -4,10 +4,13 @@ description: Standalone adversarial code review of any diff or PR — the advers
 # security-review skill (three-tier boundary: LLM API / persistence / system execution),
 # testing-strategy skill (DAMP over DRY + Beyonce Rule + Prove-It pattern),
 # security-auditor agent, test-engineer agent.
-version: 0.2.0
+# 0.2.1 = declare capabilities: [adversarial-review] so the agentm V5-8 capability
+# resolver can answer "is adversarial-review available?" (LC-5 cutover).
+version: 0.2.1
 category: Coding
 requires: []
 standalone: true
+capabilities: [adversarial-review]
 enhances:
   - group: developer-workflows
     capability: review

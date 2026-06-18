@@ -8,6 +8,9 @@
   },
   "plugins": [
     {
+      "capabilities": [
+        "adversarial-review"
+      ],
       "description": "Standalone adversarial code review of any diff or PR — the adversarial-reviewer (+ cross-model Gemini) agents, the evidence-tracker hook, a /code-review command, a /simplify command, and security-review + testing-strategy skills. Enhances developer-workflows' review capability when both are installed.",
       "enhances": [
         {
@@ -18,7 +21,7 @@
       ],
       "name": "code-review",
       "source": "./dist/claude-code/plugins/code-review",
-      "version": "0.2.0"
+      "version": "0.2.1"
     },
     {
       "dependencies": [
@@ -53,7 +56,7 @@
       "description": "The phase-gated developer loop — /setup /plan /work /review /release /bugfix — extracted from agentm as a standalone native plugin. The base other dev plugins enhance.",
       "name": "developer-workflows",
       "source": "./dist/claude-code/plugins/developer-workflows",
-      "version": "0.23.0"
+      "version": "0.24.0"
     },
     {
       "dependencies": [
@@ -132,6 +135,9 @@
       "version": "0.1.0"
     },
     {
+      "capabilities": [
+        "wiki-maintenance"
+      ],
       "description": "Opinionated, template-driven wiki maintenance — the wiki-author authoring/learning skill, the documenter agent, the diataxis-evaluator, recent-wiki-changes, and the check-wiki.py linter. Maintains a wiki in the operator's voice; enhances developer-workflows' phase-boundary documentation when both are installed.",
       "enhances": [
         {
@@ -142,7 +148,7 @@
       ],
       "name": "wiki-maintenance",
       "source": "./dist/claude-code/plugins/wiki-maintenance",
-      "version": "0.2.2"
+      "version": "0.2.3"
     }
   ]
 }

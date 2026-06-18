@@ -33,7 +33,7 @@ _CMDS = _ROOT / "src" / "developer-workflows" / "commands"
 # guard against (it survived only because the probe is graceful-skip).
 _RESOLVE_PY = 'python3 "${CLAUDE_PLUGIN_ROOT}/scripts/resolve_plan.py"'
 _RESOLVE_BASH = 'bash "${CLAUDE_PLUGIN_ROOT}/scripts/resolve_plan.py"'
-_PROBE_BASH = 'bash "${CLAUDE_PLUGIN_ROOT}/scripts/capability_probe.py"'
+_PROBE_BASH = 'bash "${CLAUDE_PLUGIN_ROOT}/scripts/find_capability.py"'
 _QUEUE_PY = 'python3 "${CLAUDE_PLUGIN_ROOT}/scripts/queue_status.py"'
 _QUEUE_BASH = 'bash "${CLAUDE_PLUGIN_ROOT}/scripts/queue_status.py"'
 

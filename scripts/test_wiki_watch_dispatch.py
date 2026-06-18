@@ -258,18 +258,5 @@ class TestAudit(unittest.TestCase):
             self.assertEqual(dsp.read_audit(Path(td) / "wiki-watch"), [])
 
 
-class TestProbeCapability(unittest.TestCase):
-    def test_none_when_probe_not_locatable(self):
-        import os
-        saved = os.environ.pop("AGENTM_SCRIPTS_DIR", None)
-        try:
-            # capability_probe.py is not co-located with the wiki-watch scripts, and
-            # the env candidate is cleared -> None (graceful; the skill proceeds).
-            self.assertIsNone(dsp.probe_capability("wiki-maintenance"))
-        finally:
-            if saved is not None:
-                os.environ["AGENTM_SCRIPTS_DIR"] = saved
-
-
 if __name__ == "__main__":
     unittest.main()

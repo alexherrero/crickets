@@ -67,8 +67,8 @@ class TestClaudeEmitter(unittest.TestCase):
             self.assertTrue(d.get("description"))
             self.assertEqual(d["version"], declared[slug])
         # Concrete anchor for the per-plugin-semver fix: wiki-maintenance was
-        # bumped past the original 0.1.0 (0.2.2 = V5-3 Part 1 group rename).
-        self.assertEqual(self._plugin_json("wiki-maintenance")["version"], "0.2.2")
+        # bumped past the original 0.1.0 (0.2.3 = V5-8 LC-5 probe retirement).
+        self.assertEqual(self._plugin_json("wiki-maintenance")["version"], "0.2.3")
         self.assertEqual(self._plugin_json("pii")["version"], "0.1.0")
 
     def test_dependencies_from_requires(self):

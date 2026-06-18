@@ -96,25 +96,8 @@ def plan_dispatch(
 
 
 # ----------------------------------------------------------------------------
-# Capability probe + documenter context (reuse the shipped pattern; don't reimplement)
+# Documenter context (the task-4 skill feeds this to the documenter sub-agent)
 # ----------------------------------------------------------------------------
-
-def probe_capability(slug: str = "wiki-maintenance") -> Optional[bool]:
-    """Best-effort reuse of developer-workflows' capability_probe.py: True/False if
-    the probe runs, None when it can't be located. The documenter lives IN
-    wiki-maintenance, so a None probe (can't locate the cross-plugin script) is not
-    fatal — the task-4 skill proceeds, since wiki-watch running implies the plugin
-    is installed. Mirrors the shipped /review -> code-review probe-dispatch idiom."""
-    script = cfg.find_agentm_script("capability_probe.py")
-    if script is None:
-        return None
-    try:
-        res = subprocess.run([sys.executable, str(script), slug],
-                             capture_output=True, text=True, timeout=30)
-    except (OSError, subprocess.SubprocessError):
-        return None
-    return res.returncode == 0
-
 
 def build_documenter_context(
     *, repo_root: str, wiki_target: str, candidates, dispatch_mode: str,

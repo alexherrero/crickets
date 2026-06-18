@@ -101,11 +101,11 @@ A feature is a user-visible capability (changelog-worthy); a task is a unit of w
 
 ### 6. Declare future state in the wiki (graceful-skip)
 
-Probe with `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/capability_probe.py" wiki-maintenance`. On **exit 0** dispatch its `documenter` with the new `PLAN.md` to create/update `pending` pages for tasks affecting user-visible behavior or architecture (Feature/Subsystem pages, how-to skeletons, reference rows). It does not touch `Home.md` / `_Sidebar.md` (release-time concerns). Resolve any `OPEN QUESTIONS` before `/work`. On **exit 1** (absent, or no `CLAUDE_PLUGIN_ROOT`) skip silently.
+Check availability: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/find_capability.py" wiki-maintenance`. On **exit 0** dispatch its `documenter` with the new `PLAN.md` to create/update `pending` pages for tasks affecting user-visible behavior or architecture (Feature/Subsystem pages, how-to skeletons, reference rows). It does not touch `Home.md` / `_Sidebar.md` (release-time concerns). Resolve any `OPEN QUESTIONS` before `/work`. On **exit 1** (unavailable, or no `CLAUDE_PLUGIN_ROOT`) skip silently.
 
 ### 7. Sync the plan to the GitHub Project board (graceful-skip)
 
-Probe with `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/capability_probe.py" github-projects`. On **exit 1** (plugin absent, or no `CLAUDE_PLUGIN_ROOT`) skip silently — zero behavior change. On **exit 0** with `.harness/project.json` present and `gh` authed, mirror this `/plan` onto the board:
+Check availability: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/find_capability.py" board-sync`. On **exit 1** (unavailable, or no `CLAUDE_PLUGIN_ROOT`) skip silently — zero behavior change. On **exit 0** with `.harness/project.json` present and `gh` authed, mirror this `/plan` onto the board:
 
 - **Plan kickoff** — record the new plan in `board-items.json` (the agent-maintained item source beside `project.json`, kept current like `features.json`; `items_source` in the config may redirect it) as a `Plan` under its Feature/Sub-feature parent with its kickoff goal, then render+write it: `python3 "${CLAUDE_PLUGIN_ROOT}/../github-projects/scripts/project_sync.py" post --config <project.json> --id <plan-id>` (full re-render — kickoff is template-driven, not a `--type` flag stage). Per **DC-1** a Plan posts only once it's the active plan; a staged/future plan is recorded but not posted.
 - **Deferred items** — capture each intentionally-deferred `## Out of scope` entry into `board-items.json` as a `Backlog-item` (or `Idea`) so the next sync materializes it. Add them to the vault source, **never** raw `gh project item-create` — an item not backed by `board-items.json` is an orphan the `vault==board` gate (the `github-projects` check-all gate) flags as drift.

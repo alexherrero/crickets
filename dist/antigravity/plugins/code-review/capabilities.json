@@ -1,4 +1,7 @@
 {
+  "capabilities": [
+    "adversarial-review"
+  ],
   "enhances": [
     {
       "capability": "review",
@@ -6,5 +9,5 @@
       "group": "developer-workflows"
     }
   ],
-  "version": "0.2.0"
+  "version": "0.2.1"
 }

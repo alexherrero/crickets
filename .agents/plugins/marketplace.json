@@ -5,6 +5,9 @@
   "name": "crickets",
   "plugins": [
     {
+      "capabilities": [
+        "adversarial-review"
+      ],
       "category": "Coding",
       "enhances": [
         {
@@ -201,6 +204,9 @@
       }
     },
     {
+      "capabilities": [
+        "wiki-maintenance"
+      ],
       "category": "documentation",
       "enhances": [
         {
