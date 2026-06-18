@@ -133,3 +133,5 @@ After `progress.md` is written, run `/clear` rather than `/compact`. State is on
 - **Verification hand-waving** — "manual QA" is a fallback, not a primary check.
 - **Overwriting an in-flight plan** without asking.
 - **Forgetting `progress.md`** — the next session won't know what happened.
+- **Recoverability-gate mismatch** — planning a task step that stops for push/tag/release confirmation after the operator's invocation already granted authorization. The invocation *is* the authorization; recoverable actions proceed announced, only unrecoverable ones stop.
+- **Close-out approval gate** — writing a plan task that pauses for explicit approval before archiving a completed plan, appending `progress.md`, or moving a ROADMAP item. Close-out bookkeeping is autonomous by contract.

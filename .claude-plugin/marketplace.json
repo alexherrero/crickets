@@ -53,7 +53,7 @@
       "description": "The phase-gated developer loop — /setup /plan /work /review /release /bugfix — extracted from agentm as a standalone native plugin. The base other dev plugins enhance.",
       "name": "developer-workflows",
       "source": "./dist/claude-code/plugins/developer-workflows",
-      "version": "0.22.1"
+      "version": "0.22.2"
     },
     {
       "dependencies": [
@@ -83,7 +83,7 @@
       "description": "The Obsidian/Google-Drive vault storage backend for the agentm memory engine — re-homed out of the kernel behind the V5-1 storage seam. Ships the `vault` named backend (and, across V5-2, the vault-specific machinery) as an agentm-discovered scripts/ payload.",
       "name": "obsidian-vault",
       "source": "./dist/claude-code/plugins/obsidian-vault",
-      "version": "0.2.0"
+      "version": "0.3.0"
     },
     {
       "description": "Scan diffs and the working tree for personal information (emails, personal paths, API keys, phone numbers) before commit or push.",
@@ -142,7 +142,7 @@
       ],
       "name": "wiki-maintenance",
       "source": "./dist/claude-code/plugins/wiki-maintenance",
-      "version": "0.2.1"
+      "version": "0.2.2"
     }
   ]
 }

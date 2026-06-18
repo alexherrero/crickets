@@ -64,6 +64,15 @@ The host-specific external-review handoff (the Antigravity/Gemini transfer-conte
 
 This is a public repo. Never write the vault path or any PII token into a committed file; the helpers resolve confidential paths at runtime so nothing host-specific is baked in.
 
+### Behavioral contract (developer-workflows commands)
+
+When a design covers a developer-workflows command or agent lifecycle step, verify these two checklist items before finalizing:
+
+1. **Recoverability-gate compliance** — does the command treat invocation as authorization to run to completion? Recoverable actions (push, tag, gh release, create) must proceed announced; only genuinely unrecoverable ones stop. A design step that inserts "summarize and wait" after each recoverable action is a contract defect.
+2. **Close-out autonomy** — are close-out and bookkeeping steps (plan archiving, `progress.md` appends, ROADMAP moves) autonomous — never gated on explicit approval? If a step pauses for confirmation before archiving a completed artifact or writing a log entry, that is a defect.
+
+These items are derived from `corrections.md` seeds via the upstream-guardrail mechanism (developer-workflows-autonomy part 3).
+
 ## `/design author` — write + finalize a design doc
 
 `author` is the **only** verb that transitions `Status` (`draft → review → final`); it never advances past `final`. It runs in one of three modes by the target doc's existing Status: **bootstrap** (no doc yet), **authoring** (`draft`), **review pass** (`review`). Save after every section so a partial draft survives an interrupted session.

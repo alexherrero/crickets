@@ -197,5 +197,12 @@ standalone: true
 # (4) ci-cd.md step 7 closes the feedback loop end-to-end (commit fix, re-run,
 # confirm merge unblocks); (5) document-decision.md "adr-shape" / "changelog-shape"
 # names replaced with the actual CLAUDE.md section heading "CHANGELOG + ADR shapes".
-version: 0.22.1
+# 0.22.2 = upstream-guardrail checklist items (developer-workflows-autonomy part 3) —
+# adds two behavioral-contract checklist items to design.md (new "Behavioral contract"
+# shared convention) and plan.md (two new "Failure modes to avoid" bullets) derived
+# from the two corrections.md kernel-defect seeds: recoverability-gate compliance
+# (invocation = authorization; recoverable actions proceed announced) and close-out
+# autonomy (archiving + bookkeeping never gated on approval). Closes the upstream
+# learning loop so future /design + /plan runs catch this class of gap at authoring time.
+version: 0.22.2
 capabilities: [setup, plan, work, review, release, bugfix, documentation]
