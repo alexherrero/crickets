@@ -164,7 +164,7 @@ def resolve_style(
         vp = Path(vault_path)
         # Project-keyed stores live under the top-level `projects/` root (the
         # canonical post-V4#26 layout agentm + the live vault use) — NOT under
-        # `personal-private/`, which is for personal, non-project-keyed data.
+        # `personal/`, which is for personal, non-project-keyed data.
         # `_global` is a reserved pseudo-project for cross-project on-demand
         # conventions. See agentm ADR 0010 (vault internal taxonomy).
         gdir = vp / "projects" / "_global" / "wiki-style"

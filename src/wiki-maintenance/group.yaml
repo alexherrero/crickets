@@ -14,7 +14,9 @@ standalone: true
 # shipped since 0.1.0. 0.2.1 = check-wiki.py fix — extract_wiki_links now skips
 # fenced code blocks + inline code spans, so a link-shaped template literal (e.g.
 # a `]({{placeholder}})` example) is no longer a false-positive broken-link error.
-version: 0.2.1
+# 0.2.2 = V5-3 Part 1 task 4 — vault group rename: personal-private → personal
+# (agentmemory_conventions.py, relocate.py, style_resolver.py updated).
+version: 0.2.2
 enhances:
   - group: developer-workflows
     capability: documentation

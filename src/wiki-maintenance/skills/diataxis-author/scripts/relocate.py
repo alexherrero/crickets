@@ -3,7 +3,7 @@
 # (wiki-maintenance part 3/5, style-learning-loop, task 4).
 #
 # Moves the operator's GLOBAL wiki/Diataxis conventions out of the always-load
-# tier (`<vault>/personal-private/_always-load/diataxis-*.md`, injected into
+# tier (`<vault>/personal/_always-load/diataxis-*.md`, injected into
 # EVERY session's context) into the on-demand global store the resolver reads
 # (`<vault>/projects/_global/wiki-style/*.md`) — so they load only when authoring.
 #
@@ -14,7 +14,7 @@
 # byte-identical verify (--cleanup, gated by --yes / TTY confirm). Idempotent.
 #
 # `_global` is a reserved cross-project pseudo-project under the top-level
-# `projects/` root (NOT under personal-private/ — that root is personal,
+# `projects/` root (NOT under personal/ — that root is personal,
 # non-project-keyed data; its `_always-load/` subset is the always-injected
 # globals). See agentm ADR 0010 (vault internal taxonomy). Stdlib-only.
 
@@ -53,7 +53,7 @@ def _resolve_vault(arg_path: str | None) -> Path | None:
 
 
 def _always_load_dir(vault: Path) -> Path:
-    return vault / "personal-private" / "_always-load"
+    return vault / "personal" / "_always-load"
 
 
 def _global_wiki_style_dir(vault: Path) -> Path:

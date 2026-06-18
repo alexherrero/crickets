@@ -2,7 +2,7 @@
 # agentmemory_conventions.py — AgentMemory read + write integration
 # for the diataxis-author skill (plan #13 part 5).
 #
-# Read-side: globs `<vault>/personal-private/_always-load/diataxis-*.md`
+# Read-side: globs `<vault>/personal/_always-load/diataxis-*.md`
 # at invocation; parses simple `key: value` lines from each entry's
 # frontmatter + body to build a conventions dict. Per-repo override at
 # `<repo>/wiki/.diataxis-conventions.md` takes precedence when present.
@@ -119,7 +119,7 @@ def load_conventions(
 
     Priority (highest to lowest):
       1. Per-repo `<wiki_root>/.diataxis-conventions.md`
-      2. Vault `<vault>/personal-private/_always-load/diataxis-*.md` (any entry)
+      2. Vault `<vault>/personal/_always-load/diataxis-*.md` (any entry)
       3. ADR 0004 hardcoded defaults
     """
     # Start with defaults.
@@ -129,7 +129,7 @@ def load_conventions(
     if vault_path is None:
         vault_path = _resolve_vault_path()
     if vault_path:
-        always_load_dir = vault_path / "personal-private" / "_always-load"
+        always_load_dir = vault_path / "personal" / "_always-load"
         if always_load_dir.exists():
             for entry in sorted(always_load_dir.glob(f"{_ALWAYS_LOAD_PREFIX}*.md")):
                 out.update(_parse_always_load_entry(entry))
@@ -169,7 +169,7 @@ def confirm_save_convention(
         return None
     # Compute target path.
     slug = re.sub(r"[^a-z0-9-]", "-", key.lower()).strip("-")
-    target = vault_path / "personal-private" / "_always-load" / f"{_ALWAYS_LOAD_PREFIX}{slug}.md"
+    target = vault_path / "personal" / "_always-load" / f"{_ALWAYS_LOAD_PREFIX}{slug}.md"
     # Mode resolution (matches MEMORY_REVIEW_MODE pattern from existing scripts).
     if mode is None:
         mode = os.environ.get("MEMORY_REVIEW_MODE", "interactive").strip().lower()
@@ -218,7 +218,7 @@ def confirm_save_convention(
             kind="convention",
             slug=f"{_ALWAYS_LOAD_PREFIX}{slug}",
             body=body,
-            group="personal-private",
+            group="personal",
             always_load=True,
             tags=["diataxis", "convention", "auto-captured"],
         )
@@ -234,7 +234,7 @@ def confirm_save_convention(
             f"created: {today}\n"
             f"updated: {today}\n"
             "tags: [diataxis, convention, auto-captured]\n"
-            "group: personal-private\n"
+            "group: personal\n"
             f"slug: {_ALWAYS_LOAD_PREFIX}{slug}\n"
             "always_load: true\n"
             "---\n"
@@ -286,7 +286,7 @@ def lesson_target(
 
     Project-keyed stores live under the top-level `projects/` root (canonical
     post-V4#26 layout; see agentm ADR 0010 vault internal taxonomy) — NOT under
-    `personal-private/` (that root is for personal, non-project-keyed data; its
+    `personal/` (that root is for personal, non-project-keyed data; its
     `_always-load/` subset is the always-injected globals). `_global` is the
     reserved cross-project pseudo-project.
 

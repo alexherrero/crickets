@@ -18,4 +18,6 @@ capabilities: [storage-backend]
 # the read-only `scripts/doctor_vault.py` health check (vault-path shape /
 # backend selection / conflict-file sweep), reachable on both hosts (the
 # Antigravity SessionStart-nudge substitute).
-version: 0.2.0
+# 0.3.0 = V5-3 Part 1 task 4 — vault group rename: personal-private → personal
+# (3-part lockstep; doctor_vault.py message string updated to match).
+version: 0.3.0

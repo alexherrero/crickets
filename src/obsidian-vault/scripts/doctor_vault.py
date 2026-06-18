@@ -7,7 +7,7 @@ backend is wired up and healthy (the design's plugin `doctor` surface, §6):
 
   1. **vault-path** — the configured ``vault_path`` resolves to a *real*
      MemoryVault (the ``vault_probe`` shape: ``_meta/repos.json`` or a
-     ``personal-private/`` dir), recovering a nested ``Obsidian/AgentMemory`` via
+     ``personal/`` dir), recovering a nested ``Obsidian/AgentMemory`` via
      its parent the same way the installer does.
   2. **backend** — selection resolves the ``vault`` protocol to *this* plugin
      (not the kernel built-in, not a silent demotion to device-local), routed
@@ -186,7 +186,7 @@ def _check_vault_path(
                 "vault-path",
                 WARN,
                 f"vault_path {root} exists but lacks MemoryVault shape "
-                "(no _meta/repos.json or personal-private/) — is it the right dir?",
+                "(no _meta/repos.json or personal/) — is it the right dir?",
             ),
             refined,
         )
