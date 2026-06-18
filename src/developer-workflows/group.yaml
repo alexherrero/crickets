@@ -204,5 +204,16 @@ standalone: true
 # (invocation = authorization; recoverable actions proceed announced) and close-out
 # autonomy (archiving + bookkeeping never gated on approval). Closes the upstream
 # learning loop so future /design + /plan runs catch this class of gap at authoring time.
-version: 0.22.2
+# 0.23.0 = worktree-per-task mode (worktree-pr-loop part 4) — activates the
+# operator-declared per-task isolation mode. Independence is declared in PLAN.md with
+# `- **Isolated:** true` on a task; the new task_isolation.py helper reads the flag
+# (parse_task_flags / should_isolate_task / CLI check). work.md gains step 2.5:
+# per-task isolation check mid-loop — exit 0 spawns a task worktree via spawn_worker,
+# task commits inside it, merges back with git merge --no-ff, worktree pruned; exit 1
+# runs directly. Knobs are independent: per-task execution isolation does not force
+# per-task PRs (plan-level integration setting still controls step 12). schema
+# description updated from "reserved" to the active contract. N× CI cost and
+# per-task override rate documented as the re-audit trigger. 16 new tests in
+# test_task_isolation.py covering parse, flag, missing-file, knob-independence.
+version: 0.23.0
 capabilities: [setup, plan, work, review, release, bugfix, documentation]

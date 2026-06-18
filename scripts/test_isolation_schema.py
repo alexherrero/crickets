@@ -93,7 +93,7 @@ class TestIsolationConformance(unittest.TestCase):
         cfg = {**_base_cfg(), "isolation": {"mode": "direct", "integration": "direct-push"}}
         self.assertEqual(conforms(cfg, _SCHEMA), [])
 
-    def test_reserved_worktree_per_task_conforms(self):
+    def test_worktree_per_task_conforms(self):
         cfg = {**_base_cfg(), "isolation": {"mode": "worktree-per-task"}}
         self.assertEqual(conforms(cfg, _SCHEMA), [])
 

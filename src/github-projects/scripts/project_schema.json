@@ -78,7 +78,7 @@
       "properties": {
         "mode": {
           "type": "string",
-          "description": "worktree-per-plan (default-ON) spawns an isolated git worktree for each plan unit; direct commits on the current branch (pre-design behavior). worktree-per-task is reserved for a future conditional per-task isolation mode.",
+          "description": "worktree-per-plan (default-ON) spawns an isolated git worktree per plan unit; direct commits on the current branch (pre-design behavior); worktree-per-task spawns a per-task worktree for each operator-declared-isolated task (Isolated: true in PLAN.md) — execution isolation without forcing per-task PRs.",
           "enum": ["worktree-per-plan", "direct", "worktree-per-task"],
           "default": "worktree-per-plan"
         },

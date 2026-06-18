@@ -17,5 +17,8 @@ standalone: false
 # object (`mode` ∈ {worktree-per-plan, direct, worktree-per-task}; `integration`
 # ∈ {pull-request, direct-push}) with `additionalProperties: false`. Consumed by
 # the developer-workflows loop's `isolation_config.py` reader.
-version: 0.1.2
+# 0.1.3 = worktree-per-task mode active — schema description updated from
+# "reserved for a future conditional per-task isolation mode" to the live contract:
+# per-task spawning for operator-declared-isolated tasks (Isolated: true in PLAN.md).
+version: 0.1.3
 capabilities: [board-sync]

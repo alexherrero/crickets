@@ -85,6 +85,8 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/isolation_config.py" check [--no-isolate 
 
 **Note:** `--no-isolate` in `$ARGUMENTS` is the command-arg override that wins over any config setting.
 
+**`worktree-per-task` mode does NOT trigger a per-plan auto-spawn here.** When `isolation.mode` is `worktree-per-task`, this check returns exit 1 (no plan-level worktree). Per-task worktrees are spawned mid-loop in step 2.5, one per operator-declared-isolated task.
+
 ### 2. Safety pre-check (before each task)
 
 The session assumes the **full task list** — it does not ask permission per task. Before starting each task, run a go/no-go safety pre-check: **proceed autonomously if the task is safe; stop and ask only when it isn't, or when an important clarification is needed.** Triggers to stop — the task performs a genuinely **unrecoverable** action (per the recoverability gate above: recoverable actions proceed announced; only force-push rewriting published shared history, sole-ref delete of unmerged work, published-tag overwrite, or an immutable deploy/migration stops); needs a decision that isn't locked (an **unresolved decision** — stop, ask, and log it as a design/plan gap); turns out bigger or different than the plan said (scope drift); has a verification that can't be made executable or an unmet prerequisite; or surfaces a failing test that invalidates its premise. State the trigger plainly and wait — even mid-plan. Otherwise proceed to step 3.
@@ -96,6 +98,28 @@ The session assumes the **full task list** — it does not ask permission per ta
 | "This task is small enough to skip the pre-check" | The pre-check exists precisely for tasks you're confident about — confidence is when blind spots hide. |
 | "I'll run verification after the whole plan is done" | Verification gates are per-task; batch verification misses regressions introduced mid-plan. |
 | "The test is wrong, not the code" | First reproduce the test's intent independently; delete only if the intent is wrong, never because it makes the code fail. |
+
+### 2.5. Per-task isolation check (worktree-per-task mode only)
+
+**Only when** `isolation.mode` is `worktree-per-task` AND the safety pre-check passed. Skip for all other modes.
+
+Read the isolation mode:
+```
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/isolation_config.py" read [--project-root <root>]
+```
+
+If `mode` is `worktree-per-task`, run the task isolation check before starting this task:
+```
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/task_isolation.py" check <plan_path> <task_num>
+```
+
+- **Exit 0** (task is isolated): spawn a per-task worktree for this task — `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/spawn_worker.py" <plan-slug>-task-<N>`. Announce: *"Spawning per-task worktree for task N — operator-declared isolated (N× CI cost)."* Proceed with steps 3–9 from inside the task worktree. After step 9 (commit): merge the task branch back with `git merge --no-ff <task-branch>` from the plan's main context, then prune with `git worktree remove <path>` + `git branch -d <task-branch>`. Resume the task loop in the plan's main context.
+- **Exit 1** (task is not isolated): proceed directly in the current context — no worktree spawned.
+- **Exit 2** or any error from `task_isolation.py`: surface stderr and stop.
+
+**Cost note:** per-task worktrees multiply CI minutes by the number of isolated tasks (N× CI). This is the documented tradeoff — execution isolation + rollback granularity vs. pipeline minutes. The per-task override rate is the re-audit trigger: if it stays near zero, the feature isn't earning its cost.
+
+**Knob separation:** per-task execution isolation is independent of merge granularity. Task worktrees merge back into the plan's main branch; the plan-level `integration` setting (step 12) still controls whether the finished plan lands as one PR or a direct push. Running tasks in separate worktrees does not force per-task PRs.
 
 ### 3. Gather context (optional)
 

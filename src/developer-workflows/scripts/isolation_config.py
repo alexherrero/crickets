@@ -123,8 +123,9 @@ def should_auto_isolate(root: str | os.PathLike, *,
       - arg_no_isolate is True (command-arg wins)
       - is_inside_worktree(root) is True (single-owner guard — the loop owns
         isolation OR defers to an existing worktree, never both)
-      - project.json isolation.mode is 'direct' or 'worktree-per-task'
-        (only 'worktree-per-plan' triggers auto-spawn)
+      - project.json isolation.mode is 'direct' (only 'worktree-per-plan'
+        triggers auto-spawn; 'worktree-per-task' uses per-task spawning
+        mid-loop via task_isolation.py, not a plan-level spawn here)
 
     Returns True (default-ON) when:
       - no command-arg override
