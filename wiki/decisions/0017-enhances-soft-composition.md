@@ -37,13 +37,15 @@ The monolithic `developer` seed splits into **`developer-workflows`** (the phase
 
 **Why is the *workflow* the base (not a conventions blob)?** The phase loop is the load-bearing thing other plugins enhance; naming it `developer-workflows` matches the operator's original "engineering-process" intent and gives `enhances:` a precise target.
 
-### 3. Two enabling modes + a local probe that hands off to an agentm host API
+### 3. Two enabling modes + capability-keyed resolution via the agentm host API
 
-`enhances:` is declarative; enabling happens two ways. **Emergent** (safety → workflows): once installed, session-global hooks fire regardless — no detection needed. **Conditional dispatch** (the general pattern: a phase command probes for an enhancer and dispatches it iff present, else continues — graceful-skip, never a hang). The first instance is code-review → workflows' `/review`: `/review` runs a **deterministic local probe** (`capability_probe.py`, a host-CLI query) and dispatches the adversarial pass iff code-review is installed, else runs gates only. The same pattern then wired the **documenter** across the five `developer-workflows` phase commands (`/setup` `/plan` `/work` `/review` `/release` `/bugfix`): each probes `capability_probe.py wiki-maintenance` and dispatches the `documenter` on exit-0, graceful-skips on exit-1 (shipped in wiki-maintenance part 2, "documenter-wiring").
+`enhances:` is declarative; enabling happens two ways. **Emergent** (safety → workflows): once installed, session-global hooks fire regardless — no detection needed. **Conditional dispatch** (the general pattern: a phase command checks for an enhancer and dispatches it iff present, else continues — graceful-skip, never a hang). The first instance is code-review → workflows' `/review`: `/review` queries the capability resolver and dispatches the adversarial pass iff the `adversarial-review` capability is available, else runs gates only. The same pattern wires the **documenter** across all six `developer-workflows` phase commands (`/setup` `/plan` `/work` `/review` `/release` `/bugfix`): each queries `find_capability.py wiki-maintenance` and dispatches the `documenter` on exit-0, graceful-skips on exit-1.
 
-The local probe is the **interim fallback**. The permanent home is a generalized **capability-discovery API in `agentm`** (the plugin *host* aggregates installed plugins' declared `capabilities:` and answers "is X available?") — tracked as agentm **V5-8**. The runtime contract is identical either way (a deterministic yes/no + graceful-skip), so the swap is transparent.
+**Implementation:** `find_capability.py` is a thin bridge bundled with developer-workflows that discovers agentm's `capability_resolver.py` via best-effort path-fallback (the `find_agentm_script` pattern, first used in wiki-maintenance). When agentm is absent, it exits 1 (unavailable) — same graceful-skip contract, no hard dep on agentm (DC-2: siblings not layers).
 
-**Why a local probe now instead of waiting for the host API?** So the suite ships unblocked. **Why generalize to the host?** Each plugin hand-rolling an install-dir probe is duplication; the host is the only component that authoritatively knows what's installed.
+**History:** the original implementation used `capability_probe.py` (slug-keyed, a host-CLI query). It shipped with the suite so the suite could ship unblocked, and was explicitly marked "interim — retires when agentm V5-8 lands." With agentm V5-8 shipped (`e7b9139`, 2026-06-15) and this ADR amendment (2026-06-18, crickets `ad2c2ed`), the local slug-keyed probe is **retired** and the capability-keyed resolver is the live path.
+
+**Why generalize to the host?** Each plugin hand-rolling an install-dir probe is duplication; the capability resolver is the only component that authoritatively knows what's installed across both Claude Code and Antigravity.
 
 ## Consequences
 
@@ -58,14 +60,14 @@ The local probe is the **interim fallback**. The permanent home is a generalized
 **Negative / accepted debt**
 
 - `enhances:` is a **crickets-only** concept — tooling-resolved, not host-resolved (neither host has native soft-composition).
-- The **local probe is duplicated debt** until agentm V5-8 lands.
+- ~~The **local probe is duplicated debt** until agentm V5-8 lands.~~ **Resolved (2026-06-18):** `capability_probe.py` retired; `find_capability.py` + agentm capability resolver is the live path.
 - **Parallel-run duplication**: agentm keeps its baked-in workflow/agent/hook copies until the V5 ⑤ slim — a window of two sources of truth.
 - **Host limitations carried, not worked around**: Antigravity plugin hooks are observe/side-effect-only (kill-switch/steer/evidence-tracker are Claude-only-effective; commit-on-stop works on both); Claude drops `snippet` instruction files (conventions reach only Antigravity `rules/` + the operator-global config).
 
 **Load-bearing assumptions + re-audit triggers**
 
 - *Hosts lack native soft-composition.* **Re-audit if** a host ships an `enhances`-like primitive (mirrors ADR 0013's hard-dep trigger) — then drop the tooling-resolved layer.
-- *The host capability-discovery API will land (agentm V5-8).* **Re-audit when** V5-8 ships — retire `capability_probe.py`; `/review` queries the host.
+- ~~*The host capability-discovery API will land (agentm V5-8).*~~ **Triggered + resolved (2026-06-18):** V5-8 shipped; `capability_probe.py` retired; all phase commands query `find_capability.py` → agentm capability resolver.
 - *Antigravity hooks stay observe-only.* **Re-audit if** Antigravity ships hook-veto / reads hook stdout — then kill-switch/steer/evidence-tracker become AG-effective.
 - *`capabilities:` named in an `enhances` edge stay in sync with the target's declared list.* Guarded by `lint_src` at build; **re-audit if** that cross-check is ever relaxed.
 
