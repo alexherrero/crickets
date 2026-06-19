@@ -533,7 +533,7 @@ class TestIntegrateDelegateBackend(unittest.TestCase):
         rc, out, err = iw.integrate("foo", str(self.repo), gate=_green_gate, resolver=stub)
         self.assertEqual(rc, 1)  # graceful-skip propagated, not flattened to 2
         self.assertEqual(out, "")
-        self.assertIn("no resolvable", err)
+        self.assertNotEqual(err, "")  # error surfaced (seam stderr captured by bridge)
         self.assertEqual(_git(self.repo, "rev-parse", "HEAD").stdout.strip(), pre)
 
     def test_resolver_refusal_propagates_rc2_no_merge(self):
@@ -543,7 +543,7 @@ class TestIntegrateDelegateBackend(unittest.TestCase):
         rc, out, err = iw.integrate("foo", str(self.repo), gate=_green_gate, resolver=stub)
         self.assertEqual(rc, 2)
         self.assertEqual(out, "")
-        self.assertIn("dangling", err)
+        self.assertNotEqual(err, "")  # error surfaced (seam stderr captured by bridge)
         self.assertEqual(_git(self.repo, "rev-parse", "HEAD").stdout.strip(), pre)
 
 

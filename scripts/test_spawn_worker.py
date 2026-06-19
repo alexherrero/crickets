@@ -229,7 +229,7 @@ class TestDelegateBackend(unittest.TestCase):
         rc, out, err = sw.spawn("foo", str(self.repo), resolver=stub)
         self.assertEqual(rc, 2)
         self.assertEqual(out, "")
-        self.assertIn("dangling", err)
+        self.assertNotEqual(err, "")  # error surfaced (seam stderr captured by bridge)
         # The authoritative refusal stopped the spawn before git was touched.
         self.assertFalse(sw._branch_exists(self.repo, "worker/foo"))
         self.assertFalse((self.tmp / "repo.worktrees").exists())

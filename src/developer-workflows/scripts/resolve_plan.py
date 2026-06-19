@@ -8,25 +8,23 @@ learn *which* plan pair a session owns, so they can target a named
     resolve_plan.py [<name>] [--project-root <path>]
     # stdout: "<plan_path>\t<progress_path>"  (one tab-separated line)
 
-**Two backends, one contract.** When an agentm source clone is installed this is
-a thin **bridge** to agentm's `harness_memory.py resolve-active-plan` verb — the
-single owner of precedence (explicit name → `.harness/active-plan` marker →
-singleton), slug-safety, vault redirection, and the dangling-marker loud-error.
-The bridge re-emits the verb's line verbatim and **propagates** its exit code; it
-never re-derives resolution. When **no** agentm clone is found, developer-workflows
+**Two backends, one contract.** When agentm's process seam is discoverable this
+is a thin **bridge** to `process_seam.py state-path` — the V5-4 designed
+interface. The bridge makes two seam calls (plan, then progress), reassembles
+the tab-separated pair, and **propagates** exit codes; it never re-derives
+resolution. When the seam is **absent** (agentm not installed), developer-workflows
 still works standalone via a plain `.harness/` fallback (bare → `PLAN.md` /
 `progress.md`; named → `PLAN-<name>.md` / `progress-<name>.md`, flat).
 
-**Risk #7 — no silent singleton fallback.** A *located* agentm resolver is
-authoritative: if it exits non-zero (a dangling marker or an unsafe slug), the
-bridge surfaces that exit + stderr and emits **no** pair. The `.harness/` fallback
-fires **only** when no agentm clone exists at all — never to paper over a resolver
-that ran and refused. That distinction is what keeps a worker from silently
-binding to the wrong plan.
+**Risk #7 — no silent singleton fallback.** A *located* seam is authoritative:
+if it exits non-zero (a dangling marker or an unsafe slug), the bridge surfaces
+that exit + stderr and emits **no** pair. The `.harness/` fallback fires **only**
+when no seam is discoverable — never to paper over a seam that ran and refused.
+That distinction is what keeps a worker from silently binding to the wrong plan.
 
-Exit codes (identical to the agentm verb, so the two backends are transparent):
+Exit codes (identical on both backends, so the two are transparent):
     0 — resolved; the pair is on stdout.
-    1 — graceful-skip: agentm present but no resolvable `_harness/` dir.
+    1 — graceful-skip: seam present but no resolvable `_harness/` dir.
     2 — loud: dangling marker or unsafe plan slug. Never a singleton fallback.
 
 Stdlib-only; mirrors `capability_probe.py`'s shape (pure core + injectable I/O).
@@ -34,19 +32,35 @@ Stdlib-only; mirrors `capability_probe.py`'s shape (pure core + injectable I/O).
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import os
-import subprocess
 import sys
 from pathlib import Path
 
-# Same interpreter that runs this bridge runs the agentm resolver — avoids a
-# PATH `python3` that differs from the one developer-workflows was launched with.
-_PY = sys.executable or "python3"
+# Load the seam bridge from the same scripts/ directory (crickets-internal; not
+# a cross-repo import — DC-2 prohibits importing agentm's process_seam.py
+# directly, not find_process_seam.py which lives here in crickets).
+def _load_bridge():
+    here = Path(__file__).resolve().parent
+    spec = importlib.util.spec_from_file_location(
+        "find_process_seam", here / "find_process_seam.py"
+    )
+    if not spec or not spec.loader:
+        return None
+    mod = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(mod)
+    except Exception:
+        return None
+    return mod
 
-# Sentinel: `resolve(resolver=_AUTO)` (the default, and what main() uses) locates
-# an agentm clone; tests pass `resolver=<stub path>` to force the delegate branch
-# or `resolver=None` to force the standalone `.harness/` fallback.
+
+_bridge = _load_bridge()
+
+# Sentinel: `resolve(seam=_AUTO)` (the default, and what main() uses) locates
+# the seam; tests pass `seam=<stub path>` to force the delegate branch or
+# `seam=None` to force the standalone `.harness/` fallback.
 _AUTO = object()
 
 
@@ -56,8 +70,8 @@ def _normalize_plan_name(name: str) -> str:
     """A plan name in any accepted form → the bare slug, or "" for the singleton.
 
     "" / "PLAN" / "PLAN.md" → ""  (singleton);  "foo" / "PLAN-foo" / "PLAN-foo.md"
-    → "foo". This is the same surface the agentm verb accepts, kept here only so
-    the standalone fallback agrees with the delegated backend on what a name means.
+    → "foo". This is the same surface the seam accepts, kept here only so the
+    standalone fallback agrees with the delegated backend on what a name means.
 
     Step order mirrors agentm's `_normalize_plan_name` exactly — strip `.md`, strip
     the `PLAN-` prefix, *then* test for the singleton — so an edge form like
@@ -100,15 +114,17 @@ def _plan_pair(slug: str) -> tuple[str, str]:
     return (f"PLAN-{slug}.md", f"progress-{slug}.md")
 
 
-# ── locating the agentm resolver (mirrors the session-start hook) ──────────────
+# ── agentm-clone lookup (retained for queue_status.py; not used by resolve()) ──
 
-def locate_resolver(*, config_path: str | os.PathLike | None = None,
-                    home: str | os.PathLike | None = None) -> Path | None:
+def locate_resolver(*, config_path=None, home=None) -> "Path | None":
     """The agentm `harness_memory.py`, or None when no clone is installed.
 
-    Mirrors the agentm session-start hook exactly: the recorded source clone in
-    `~/.claude/.agentm-config.json` (`source_clones.agentm`) first, then the
-    conventional `~/Antigravity/agentm/scripts/harness_memory.py` fallback.
+    Retained for `queue_status.py`, which calls this to locate the agentm scripts
+    directory (and finds `queue_status_lite.py` beside it). `resolve()` no longer
+    uses this function — it discovers the process seam via `find_process_seam`.
+
+    Mirrors the agentm session-start hook: recorded `source_clones.agentm` first,
+    then the conventional `~/Antigravity/agentm/scripts/harness_memory.py` fallback.
     `config_path` and `home` are injectable for tests.
     """
     home_dir = Path(home) if home is not None else Path.home()
@@ -129,16 +145,30 @@ def locate_resolver(*, config_path: str | os.PathLike | None = None,
 
 # ── the two backends ───────────────────────────────────────────────────────────
 
-def _delegate(resolver: Path, name: str, root: str) -> tuple[int, str, str]:
-    """Shell to the agentm verb and propagate (rc, stdout, stderr) verbatim."""
-    cmd = [_PY, str(resolver), "resolve-active-plan", "--project-root", str(root)]
-    if name:
-        cmd += ["--plan", name]
-    try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
-    except Exception as exc:  # the resolver path existed but would not run
-        return (2, "", f"[resolve_plan] could not invoke agentm resolver: {exc}\n")
-    return (r.returncode, r.stdout, r.stderr)
+def _delegate(seam: Path, name: str, root: str) -> tuple[int, str, str]:
+    """Delegate to the V5-4 process seam and reassemble (rc, stdout, stderr).
+
+    Two seam calls: `state-path plan` then `state-path progress`. The seam
+    handles named-plan resolution (V5-10 aware) when agentm is present.
+    """
+    if _bridge is None:
+        return (2, "", "[resolve_plan] internal error: bridge not loaded\n")
+
+    slug = _normalize_plan_name(name)
+    extra: list[str] = []
+    if slug:
+        extra += ["--plan", slug]
+    extra += ["--cwd", str(root)]
+
+    plan_out, plan_rc = _bridge.run_state_path("plan", extra, seam=seam)
+    if plan_rc != 0:
+        return (plan_rc, "", f"[resolve_plan] seam state-path plan failed (exit {plan_rc})\n")
+
+    prog_out, prog_rc = _bridge.run_state_path("progress", extra, seam=seam)
+    if prog_rc != 0:
+        return (prog_rc, "", f"[resolve_plan] seam state-path progress failed (exit {prog_rc})\n")
+
+    return (0, f"{plan_out}\t{prog_out}\n", "")
 
 
 def _fallback(name: str, root: str) -> tuple[int, str, str]:
@@ -151,18 +181,24 @@ def _fallback(name: str, root: str) -> tuple[int, str, str]:
     return (0, f"{base / plan_fn}\t{base / prog_fn}\n", "")
 
 
-def resolve(name: str, root: str, *, resolver=_AUTO) -> tuple[int, str, str]:
-    """Core: delegate to a located agentm resolver, else fall back to `.harness/`.
+def resolve(name: str, root: str, *, seam=_AUTO, resolver=_AUTO) -> tuple[int, str, str]:
+    """Core: delegate to the V5-4 process seam, else fall back to `.harness/`.
 
-    `resolver` defaults to `_AUTO` (locate an agentm clone). A located resolver is
-    authoritative — its result, including a non-zero exit, is returned as-is; the
-    fallback fires *only* when no clone is found (`resolver is None`).
+    `seam` defaults to `_AUTO` (locate the seam via find_process_seam). A located
+    seam is authoritative — its result, including a non-zero exit, is returned
+    as-is; the fallback fires *only* when the seam is absent (`seam is None`).
+
+    `resolver` is a backward-compat alias for `seam` — callers that previously
+    forwarded an injectable harness_memory path can now forward a process_seam
+    path (or None for fallback) via the same keyword without source changes.
     """
-    if resolver is _AUTO:
-        resolver = locate_resolver()
-    if resolver is None:
+    if seam is _AUTO and resolver is not _AUTO:
+        seam = resolver  # backward-compat alias: resolver= → seam=
+    if seam is _AUTO:
+        seam = _bridge.find_seam() if _bridge is not None else None
+    if seam is None:
         return _fallback(name, root)
-    return _delegate(resolver, name, root)
+    return _delegate(seam, name, root)
 
 
 # ── CLI ────────────────────────────────────────────────────────────────────────
