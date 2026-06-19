@@ -198,10 +198,12 @@ class FirstRunAdoptionEdge(unittest.TestCase):
         self.seam.registry.register(PROTOCOL_NAME, self.kernel_backend, clobber=True)
         self._tmp = tempfile.TemporaryDirectory()
         tmp = Path(self._tmp.name)
-        # The on-device install prefix carrying the operator's *existing* V4/V5-1
-        # state — `storage.backend = vault` + a `vault_path` — exactly what the
-        # plugin installs *into*. The `projects/` subdir keeps the resolved layout
-        # on the post-V4 name (no legacy-rename warning to confound the output check).
+        # The on-device install prefix carrying the operator's *existing* state —
+        # `storage.backend = vault` + the plugin-namespaced `plugins.obsidian-vault.vault_path`
+        # key (post-V5-7 migration format). V5-7 migrates the legacy flat `vault_path` key to
+        # this form on first read; using the already-migrated format here keeps the adoption
+        # invisible (no migration prompt fires). The `projects/` subdir keeps the resolved
+        # layout on the post-V4 name (no legacy-rename warning to confound the output check).
         self.prefix = tmp / "prefix"
         self.prefix.mkdir()
         self.vault = tmp / "vault"
@@ -213,7 +215,10 @@ class FirstRunAdoptionEdge(unittest.TestCase):
         self.device_root = tmp / "device-local-root"
         self.config_path = self.prefix / ".agentm-config.json"
         self.config_path.write_text(
-            json.dumps({"storage.backend": "vault", "vault_path": str(self.vault)}),
+            json.dumps({
+                "storage.backend": "vault",
+                "plugins.obsidian-vault.vault_path": str(self.vault),
+            }),
             encoding="utf-8",
         )
 

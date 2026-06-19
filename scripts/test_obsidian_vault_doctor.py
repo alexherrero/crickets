@@ -297,11 +297,16 @@ class DoctorVaultWithEngine(unittest.TestCase):
         (self.vault / "_meta" / "repos.json").write_text("{}", encoding="utf-8")
         (self.vault / "projects").mkdir()
         # A synthetic on-device config selecting the vault backend + the in-place path.
+        # Uses the post-V5-7 plugin-namespaced key so _read_config_vault_path() does
+        # not fire the migration (which would mutate the file and break read-only tests).
         self.prefix = tmp / "prefix"
         self.prefix.mkdir()
         self.config = self.prefix / ".agentm-config.json"
         self.config.write_text(
-            json.dumps({"storage.backend": "vault", "vault_path": str(self.vault)}),
+            json.dumps({
+                "storage.backend": "vault",
+                "plugins.obsidian-vault.vault_path": str(self.vault),
+            }),
             encoding="utf-8",
         )
         # Hermetic env: point the engine's vault_path() read at the synthetic config,
