@@ -56,7 +56,7 @@
       "description": "The phase-gated developer loop — /setup /plan /work /review /release /bugfix — extracted from agentm as a standalone native plugin. The base other dev plugins enhance.",
       "name": "developer-workflows",
       "source": "./dist/claude-code/plugins/developer-workflows",
-      "version": "0.24.0"
+      "version": "0.25.0"
     },
     {
       "dependencies": [
