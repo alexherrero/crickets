@@ -220,5 +220,5 @@ standalone: true
 # capability_probe.py to capability-keyed find_capability.py (new script, same
 # exit-code contract: 0=available, 1=unavailable, graceful-skip when agentm absent).
 # capability_probe.py deleted; find_capability.py added.
-version: 0.24.0
+version: 0.25.0
 capabilities: [setup, plan, work, review, release, bugfix, documentation]
