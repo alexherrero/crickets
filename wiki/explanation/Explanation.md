@@ -9,7 +9,7 @@ The principles behind crickets — why adversarial review, deterministic gates, 
 - **[Why adversarial review](Why-Adversarial-Review)** — why the reviewer is primed to assume bugs exist.
 - **[Why deterministic gates run first](Why-Deterministic-Gates)** — why executable checks precede LLM judgment.
 - **[Why phase-gating](Why-Phase-Gating)** — why one phase per session, with state on disk.
-- **[Developer-Workflows token efficiency](Developer-Workflows-Token-Efficiency)** — the four token-efficiency levers in `developer-workflows` v0.13.0 (phase-aware routing, Terse style, Edit-over-Write rule, compact-nudge hook). Status: pending (Part D, agentm #46).
+- **[Developer-Workflows token efficiency](Developer-Workflows-Token-Efficiency)** — the four token-efficiency levers in `developer-workflows` v0.13.0 (phase-aware routing, Terse style, Edit-over-Write rule, compact-nudge hook). Status: implemented.
 
 ## Recent changes
 

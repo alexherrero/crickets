@@ -309,9 +309,9 @@ Named-plan resolution is **not** reimplemented in `developer-workflows`. The com
 | Args | optional positional `name`; `--project-root PATH` (default cwd) |
 | Output | one line, tab-separated: `<plan_path>\t<progress_path>` |
 | On dangling marker / unsafe slug | non-zero exit + stderr message (never a singleton fallback) |
-| Delegate target | agentm `harness_memory.py resolve-active-plan` when locatable; else the standalone fallback |
+| Delegate target | agentm `process_seam.py state-path` (via `find_process_seam.py`) when the seam is discoverable; else the standalone fallback |
 
-The `--name <slug>` flag is a **command-level** convention: `/work`, `/plan`, and `/review` parse it out of their arguments and pass the extracted slug **positionally** to this bridge — the bridge's own CLI takes the name as a positional argument, not a flag. The bridge locates agentm the same way the session-start hook does: `~/.claude/.agentm-config.json` → `source_clones.agentm`, falling back to `~/Antigravity/agentm/scripts/harness_memory.py`.
+The `--name <slug>` flag is a **command-level** convention: `/work`, `/plan`, and `/review` parse it out of their arguments and pass the extracted slug **positionally** to this bridge — the bridge's own CLI takes the name as a positional argument, not a flag. The bridge discovers agentm's process seam via `find_process_seam.py` (path-fallback: `$AGENTM_SCRIPTS_DIR` → co-located → `~/Antigravity/agentm/scripts/`); it issues two `process_seam.py state-path` calls (one for plan, one for progress) and reassembles the tab-separated output. `locate_resolver()` is retained in `resolve_plan.py` as a compatibility alias for `queue_status.py`'s agentm-scripts-dir lookup only — it is no longer used for plan resolution itself (V5-4, `developer-workflows` 0.25.0).
 
 ## Standalone fallback (no agentm installed)
 

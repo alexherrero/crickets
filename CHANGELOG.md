@@ -5,6 +5,25 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.22.0] — 2026-06-18 — Minor: V5-4 process-seam adoption (`developer-workflows 0.25.0`)
+
+**MINOR — `developer-workflows 0.24.0 → 0.25.0`: V5-4 process-seam adoption.** `resolve_plan.py` previously bridged directly to `agentm/scripts/harness_memory.py resolve-active-plan` — an informal reach-in predating the V5-4 process seam. Now that the seam has shipped in agentm (`process_seam.py`, agentm v5.2.0), the informal bridge is retired in favour of the designed interface. A new `find_process_seam.py` script (DC-2 compliant — best-effort discovery, graceful-skip to exit 1 when agentm absent) discovers `process_seam.py` via path-fallback, and `resolve_plan.py` now makes two seam calls (`state-path plan` + `state-path progress`) and reassembles the tab-separated pair. The output contract and exit codes are unchanged (callers see `<plan_path>\t<progress_path>` on stdout; exit 0/1/2); the seam-vs-fallback switch is fully internal.
+
+### Added
+
+- **`developer-workflows` 0.25.0** — `find_process_seam.py`: V5-4 seam discovery bridge. Discovers agentm's `process_seam.py` via `$AGENTM_SCRIPTS_DIR` → co-located sibling → `~/Antigravity/agentm/scripts/` path-fallback (mirrors `find_capability.py`'s DC-2 pattern). CLI: `find_process_seam.py state-path {plan|progress} [--plan SLUG] [--cwd ROOT]`. Exit 1 when seam absent; graceful-skip, never hangs. Injectable `seam=` path for tests.
+
+### Changed
+
+- **`developer-workflows` 0.25.0** — `resolve_plan.py` migrated from `harness_memory.py resolve-active-plan` to two `find_process_seam.py state-path` calls. `locate_resolver()` retained for `queue_status.py`'s agentm-scripts-dir lookup. Backward-compat `resolver=` alias in `resolve()` so downstream callers (design_doc, stage_plan, spawn_worker, integrate_worker) need no source changes.
+
+### Internal
+
+- `test_find_process_seam.py` (16 tests): discovery via `$AGENTM_SCRIPTS_DIR` / co-located / conventional / absent; `run_state_path` plan+progress propagation; main() CLI usage; seam-absent graceful exits.
+- `test_resolve_plan.py` updated: `harness_memory.py` stubs replaced with `find_process_seam.py` seam stubs; four delegate tests confirm tab-separated pair output and Risk #7 invariant.
+- `test_design_doc.py`, `test_spawn_worker.py`, `test_integrate_worker.py`: stub-stderr assertions updated to `assertNotEqual(err, "")` (bridge generates its own error message rather than propagating seam stderr verbatim).
+- `test_obsidian_vault_discovery.py` + `test_obsidian_vault_doctor.py`: fixture configs updated to the post-V5-7 plugin-namespaced key (`plugins.obsidian-vault.vault_path`) so agentm V5-7's first-read migration does not fire during the test run.
+
 ## [v3.21.0] — 2026-06-18 — Minor: `pii-patterns` proactive rule for `pii` (`pii 0.2.0`)
 
 **MINOR — `pii 0.1.0 → 0.2.0`: new `pii-patterns` rule.** The PII guardrail gains a proactive complement to its reactive scrubber skill. Where `pii-scrubber` catches real values that slipped into a diff, `pii-patterns` teaches the agent never to write them in the first place: use RFC 2606 domains for emails, `$HOME`/`~` for personal paths, env-var references for API keys, and the 555-01xx range for phone numbers. Fires while writing committed content, not in `.harness/` or runtime config. When a real value is found, it surfaces it to the operator and proposes a stand-in before invoking `pii-scrubber`.
