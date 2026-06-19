@@ -3,3 +3,7 @@ description: Scan diffs and the working tree for personal information (emails, p
 category: Coding
 requires: []
 standalone: true
+# 0.1.0 = initial versioned release (version: field previously absent).
+# 0.2.0 = add pii-patterns rule: proactive stand-in conventions so the
+#          pii-scrubber skill and pre-push hook never have to catch these patterns.
+version: 0.2.0

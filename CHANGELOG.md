@@ -5,6 +5,19 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.21.0] — 2026-06-18 — Minor: `pii-patterns` proactive rule for `pii` (`pii 0.2.0`)
+
+**MINOR — `pii 0.1.0 → 0.2.0`: new `pii-patterns` rule.** The PII guardrail gains a proactive complement to its reactive scrubber skill. Where `pii-scrubber` catches real values that slipped into a diff, `pii-patterns` teaches the agent never to write them in the first place: use RFC 2606 domains for emails, `$HOME`/`~` for personal paths, env-var references for API keys, and the 555-01xx range for phone numbers. Fires while writing committed content, not in `.harness/` or runtime config. When a real value is found, it surfaces it to the operator and proposes a stand-in before invoking `pii-scrubber`.
+
+### Added
+
+- **`pii` 0.2.0** — `pii-patterns` rule: proactive stand-in conventions so the `pii-scrubber` skill and pre-push hook never have to catch real emails, personal paths, API keys, or phone numbers. Covers: emails → RFC 2606 (`example.com`/`example.org`/`example.net`); paths → `$HOME` / `~` / `<placeholder>`; API keys → env-var references or `<API_KEY>`; phone → 555-01xx reserved range. Applies to committed content only (not `.harness/` or runtime values).
+
+### Internal
+
+- `test_emit_claude.py` version anchor updated: `pii` → `0.2.0`.
+- `test_src_model.py` primitive-count anchor updated: `pii` → 2 (skill + rule).
+
 ## [v3.20.0] — 2026-06-18 — Minor: `recoverability` skill for `developer-safety` (`developer-safety 0.3.0`)
 
 **MINOR — `developer-safety 0.2.0 → 0.3.0`: new `recoverability` skill.** The autonomy doctrine that governs every phase command (`/work`, `/bugfix`, `/release`) now ships as a standing skill that is active in every session, not only inside a named phase.

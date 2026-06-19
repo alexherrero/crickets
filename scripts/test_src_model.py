@@ -92,7 +92,7 @@ class TestSrcModel(unittest.TestCase):
         self.assertEqual(by["pii"].requires, [])
         self.assertTrue(by["pii"].standalone)
         self.assertFalse(by["github-ci"].standalone)
-        self.assertEqual(len(by["pii"].primitives), 1)
+        self.assertEqual(len(by["pii"].primitives), 2)  # 0.2.0: skill + pii-patterns rule
         # developer-workflows: standalone base; the six phase capabilities (setup..bugfix)
         # plus 'documentation' — added by wiki-maintenance's documenter-wiring part so that
         # plugin's enhance can target capability: documentation (the deferred half of part-1 DC-1).
