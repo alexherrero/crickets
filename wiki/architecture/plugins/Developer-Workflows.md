@@ -37,9 +37,14 @@ On Antigravity, install by path (see [Install crickets plugins](Install-Into-Pro
 | **`harness-context-session-start`** | hook · `SessionStart` | surfaces `.harness/PLAN.md` + `progress.md` at session boot so the agent reads the plan first (Claude-only) |
 | **`compact-nudge-resume`** | hook · `UserPromptSubmit` | on every user prompt, injects a `/clear`-over-`/compact` nudge when context ≥ 60% or > 400 assistant turns; silent no-op below threshold or on a fresh session (Claude-only) |
 | **`terse`** | output-style | silence inter-tool narration; preserve the full end-of-task status report — the end-of-task summary is never trimmed |
+| **`/design`** | command | author → translate → sequence a design doc into a topo-ordered set of named plans; the upstream step above `/plan` ([how-to](Author-A-Design)) |
+| **`/spawn-worker`** | command | give a named plan its own isolated checkout — spawns a `worker/<name>` git worktree pre-bound to that plan; operator-authority required ([how-to](Spawn-A-Worker-In-A-Worktree)) |
+| **`/integrate-worker`** | command | land a finished worker branch on the integration branch once the full battery passes, fold its progress into mainline, prune worktree + branch; operator-initiated, never autonomous, never pushes ([how-to](Integrate-A-Worker)) |
 | **`edit-over-write`** | rule | prefer `Edit` to `Write` for existing files (5× billed-output rationale); `Write` only for new files or near-total rewrites |
 
-The six phase commands run the loop; the canonical phase **methodology** (what each phase must and must not do) lives in agentm's [phase specs](https://github.com/alexherrero/agentm/tree/main/harness/phases). `/queue-status-lite` is the odd one out — a read-only **status** command, not a phase gate: it surfaces the plan queue and decides nothing, leaving the operator to choose what to `/work` next. `capability_probe.py` is the internal helper that lets sibling plugins detect this one for graceful-skip. The five Ship-phase commands (`/observe`, `/deprecate`, `/launch`, `/ci-cd`, `/document-decision`) are shipped; each has a companion how-to page with complete steps and a verify checklist.
+The six phase commands run the loop; the canonical phase **methodology** (what each phase must and must not do) lives in agentm's [phase specs](https://github.com/alexherrero/agentm/tree/main/harness/phases). `/queue-status-lite` is the odd one out — a read-only **status** command, not a phase gate: it surfaces the plan queue and decides nothing, leaving the operator to choose what to `/work` next. `find_capability.py` is the internal bridge that lets sibling plugins detect capabilities this plugin provides, via the agentm capability resolver. The five Ship-phase commands (`/observe`, `/deprecate`, `/launch`, `/ci-cd`, `/document-decision`) are shipped; each has a companion how-to page with complete steps and a verify checklist.
+
+`/work` supports two worktree isolation modes set in `.harness/project.json` (`isolation.mode`): **`worktree-per-plan`** spawns a plan worktree at plan start (via `/spawn-worker`); **`worktree-per-task`** spawns a per-task worktree mid-loop for each task marked `**Isolated:** true` in `PLAN.md`, merges it back with `--no-ff`, then prunes it. Both modes are operator-declared — the agent never auto-spawns. See [Run isolated tasks](Run-Isolated-Tasks).
 
 The three typed agents (`worker`, `researcher`, `tech-lead`) carry explicit `model:` defaults as token-efficiency levers — Opus for the autonomous executor, Sonnet for the research and review sub-agents. The `terse` output-style and `edit-over-write` rule ship as named primitives so any session can opt in without repeating the instruction text.
 
@@ -58,6 +63,7 @@ Discrete `plan → work → review → release` gates beat freestyling the whole
 - [agentm phase specs](https://github.com/alexherrero/agentm/tree/main/harness/phases) — the canonical methodology behind each command.
 - [Evaluator](Evaluator) — the `/review` rubric grader's dispatch contract.
 - [Named plans](Named-Plans) · [See every active plan](See-Every-Active-Plan) — the multi-plan surface: the `--name` writers + the `/queue-status-lite` read-side glance.
+- [Spawn a worker in a worktree](Spawn-A-Worker-In-A-Worktree) · [Run isolated tasks](Run-Isolated-Tasks) · [Integrate a worker](Integrate-A-Worker) — the worktree lifecycle: plan-level isolation, per-task isolation, and merging back.
 - [Developer Safety](Developer-Safety) · [Plugin anatomy](Plugin-Anatomy) — the sibling safety plugin + the shared plugin structure.
 - [Why phase-gating](Why-Phase-Gating) — why the loop is gated.
 - [Developer Plugin Suite design](developer-plugin-suite) — the developer-workflows / safety / code-review split.

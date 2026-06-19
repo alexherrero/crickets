@@ -11,6 +11,7 @@
 - [Author a design](Author-A-Design) _(pending)_
 - [Run a named plan](Run-A-Named-Plan)
 - [Spawn a worker in a worktree](Spawn-A-Worker-In-A-Worktree)
+- [Run isolated tasks](Run-Isolated-Tasks)
 - [Configure main branch protection](Configure-Main-Branch-Protection)
 - [Integrate a worker](Integrate-A-Worker)
 - [See every active plan](See-Every-Active-Plan)
