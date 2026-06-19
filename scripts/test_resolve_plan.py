@@ -2,16 +2,15 @@
 """Tests for src/developer-workflows/scripts/resolve_plan.py (multi-plan writers T2).
 
 The bridge has two backends with one contract: **delegate** to agentm's
-`resolve-active-plan` verb when a clone is installed, else a standalone
-`.harness/` **fallback**. Every test is hermetic — the delegate branch is
-exercised with a planted *stub* resolver and the locator with an injected `home`,
-so nothing here depends on a real agentm clone (CI runs with none).
+process seam (`state-path plan` + `state-path progress`) when discoverable,
+else a standalone `.harness/` **fallback**. Every test is hermetic — the
+delegate branch is exercised with a planted *stub* seam and the fallback via
+`seam=None`, so nothing here depends on a real agentm clone (CI runs with none).
 """
 from __future__ import annotations
 
 import importlib.util
 import io
-import json
 import contextlib
 import shutil
 import sys
@@ -36,7 +35,7 @@ rp = _load()
 
 
 def _write_stub(path: Path, body: str) -> Path:
-    """A throwaway resolver script that stands in for agentm's verb."""
+    """A throwaway seam stub that stands in for agentm's process_seam.py."""
     path.write_text(body, encoding="utf-8")
     return path
 
@@ -64,7 +63,7 @@ class TestNameMapping(unittest.TestCase):
 
 
 class TestFallback(unittest.TestCase):
-    """No agentm clone (`resolver=None`) → plain `.harness/` resolution."""
+    """No seam (`seam=None`) → plain `.harness/` resolution."""
 
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="rp-fallback-"))
@@ -78,23 +77,23 @@ class TestFallback(unittest.TestCase):
 
     def test_a_bare_is_byte_identical_singleton(self):
         # The load-bearing invariant: bare resolves to the unchanged singleton pair.
-        rc, out, err = rp.resolve("", str(self.tmp), resolver=None)
+        rc, out, err = rp.resolve("", str(self.tmp), seam=None)
         self.assertEqual(rc, 0)
         self.assertEqual(err, "")
         self.assertEqual(out.strip(), self._pair("PLAN.md", "progress.md"))
 
     def test_b_named_pair(self):
-        rc, out, _ = rp.resolve("foo", str(self.tmp), resolver=None)
+        rc, out, _ = rp.resolve("foo", str(self.tmp), seam=None)
         self.assertEqual(rc, 0)
         self.assertEqual(out.strip(), self._pair("PLAN-foo.md", "progress-foo.md"))
 
     def test_b_named_accepts_filename_form(self):
-        rc, out, _ = rp.resolve("PLAN-foo.md", str(self.tmp), resolver=None)
+        rc, out, _ = rp.resolve("PLAN-foo.md", str(self.tmp), seam=None)
         self.assertEqual(rc, 0)
         self.assertEqual(out.strip(), self._pair("PLAN-foo.md", "progress-foo.md"))
 
     def test_c_unsafe_slug_rejected_no_path(self):
-        rc, out, err = rp.resolve("../etc", str(self.tmp), resolver=None)
+        rc, out, err = rp.resolve("../etc", str(self.tmp), seam=None)
         self.assertEqual(rc, 2)
         self.assertEqual(out, "")
         self.assertNotIn(".harness", out)
@@ -102,7 +101,13 @@ class TestFallback(unittest.TestCase):
 
 
 class TestDelegation(unittest.TestCase):
-    """A located resolver is authoritative — its line and exit code pass through."""
+    """A located seam is authoritative — its paths and exit code pass through.
+
+    Stubs stand in for process_seam.py: they receive
+    `state-path {plan|progress} [--plan SLUG] [--cwd ROOT]` and return one
+    absolute path per call (or an error exit code). resolve_plan.py makes two
+    calls and assembles the tab-separated pair.
+    """
 
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="rp-delegate-"))
@@ -111,28 +116,31 @@ class TestDelegation(unittest.TestCase):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def test_d_returns_stub_pair_unchanged(self):
+        # Stub returns one path per verb; resolve_plan reassembles the pair.
         stub = _write_stub(
             self.tmp / "stub_ok.py",
-            "import sys\nsys.stdout.write('/v/PLAN-foo.md\\t/v/progress-foo.md\\n')\n"
+            "import sys\n"
+            "which = sys.argv[2]\n"
+            "sys.stdout.write('/v/PLAN-foo.md\\n' if which == 'plan' else '/v/progress-foo.md\\n')\n"
             "sys.exit(0)\n",
         )
-        rc, out, err = rp.resolve("foo", str(self.tmp), resolver=stub)
+        rc, out, err = rp.resolve("foo", str(self.tmp), seam=stub)
         self.assertEqual(rc, 0)
-        self.assertEqual(out, "/v/PLAN-foo.md\t/v/progress-foo.md\n")
         self.assertEqual(err, "")
+        self.assertEqual(out, "/v/PLAN-foo.md\t/v/progress-foo.md\n")
 
-    def test_d_passes_plan_and_root_through(self):
-        # Prove the bridge forwards --plan and --project-root to the resolver.
+    def test_d_passes_plan_and_cwd_through(self):
+        # Bridge forwards --plan and --cwd to each seam call.
         stub = _write_stub(
             self.tmp / "stub_echo.py",
-            "import sys\nsys.stdout.write('\\t'.join(sys.argv[1:]))\nsys.exit(0)\n",
+            "import sys\nsys.stdout.write(' '.join(sys.argv[1:]))\nsys.exit(0)\n",
         )
-        rc, out, _ = rp.resolve("bar", "/proj/root", resolver=stub)
+        rc, out, _ = rp.resolve("bar", "/proj/root", seam=stub)
         self.assertEqual(rc, 0)
-        self.assertIn("resolve-active-plan", out)
+        self.assertIn("state-path", out)
         self.assertIn("--plan", out)
         self.assertIn("bar", out)
-        self.assertIn("--project-root", out)
+        self.assertIn("--cwd", out)
         self.assertIn("/proj/root", out)
 
     def test_d_bare_omits_plan_flag(self):
@@ -140,84 +148,35 @@ class TestDelegation(unittest.TestCase):
             self.tmp / "stub_echo2.py",
             "import sys\nsys.stdout.write(' '.join(sys.argv[1:]))\nsys.exit(0)\n",
         )
-        rc, out, _ = rp.resolve("", str(self.tmp), resolver=stub)
+        rc, out, _ = rp.resolve("", str(self.tmp), seam=stub)
         self.assertEqual(rc, 0)
         self.assertNotIn("--plan", out)
 
     def test_e_dangling_exit_propagates_no_singleton_fallback(self):
-        # Risk #7 across the second hop: a resolver that ran and refused must NOT
-        # degrade to the singleton — its non-zero exit + stderr surface verbatim.
+        # Risk #7 across the second hop: a seam that ran and refused must NOT
+        # degrade to the singleton — its non-zero exit surfaces and no pair emitted.
         stub = _write_stub(
             self.tmp / "stub_dangling.py",
             "import sys\n"
-            "sys.stderr.write('[harness_memory] dangling .harness/active-plan marker\\n')\n"
+            "sys.stderr.write('[process_seam] dangling .harness/active-plan marker\\n')\n"
             "sys.exit(2)\n",
         )
-        rc, out, err = rp.resolve("", str(self.tmp), resolver=stub)
+        rc, out, err = rp.resolve("", str(self.tmp), seam=stub)
         self.assertEqual(rc, 2)
         self.assertEqual(out, "")
-        self.assertNotIn("PLAN.md", out)      # never the singleton
-        self.assertIn("active-plan", err)
+        self.assertNotIn("PLAN.md", out)   # never the singleton
+        self.assertNotEqual(err, "")       # error is surfaced
 
     def test_e_graceful_skip_exit_one_propagates(self):
-        # rc 1 (agentm present, no resolvable _harness/) also passes through — the
-        # fallback is for *no clone*, never for a clone that returned a signal.
+        # rc 1 (seam present, no resolvable _harness/) also passes through — the
+        # fallback is for *absent seam*, never for a seam that returned a signal.
         stub = _write_stub(
             self.tmp / "stub_skip.py",
             "import sys\nsys.exit(1)\n",
         )
-        rc, out, _ = rp.resolve("", str(self.tmp), resolver=stub)
+        rc, out, _ = rp.resolve("", str(self.tmp), seam=stub)
         self.assertEqual(rc, 1)
         self.assertEqual(out, "")
-
-
-class TestLocateResolver(unittest.TestCase):
-    """The agentm-clone lookup mirrors the session-start hook (config → fallback)."""
-
-    def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp(prefix="rp-locate-"))
-
-    def tearDown(self):
-        shutil.rmtree(self.tmp, ignore_errors=True)
-
-    def _make_clone(self, root: Path) -> Path:
-        (root / "scripts").mkdir(parents=True, exist_ok=True)
-        hm = root / "scripts" / "harness_memory.py"
-        hm.write_text("# stub\n", encoding="utf-8")
-        return hm
-
-    def test_none_when_no_config_and_no_conventional_clone(self):
-        # Injected empty home → neither the config nor ~/Antigravity/agentm exists.
-        self.assertIsNone(
-            rp.locate_resolver(config_path=self.tmp / "absent.json", home=self.tmp)
-        )
-
-    def test_found_via_config_source_clone(self):
-        clone = self.tmp / "clones" / "agentm"
-        hm = self._make_clone(clone)
-        cfg = self.tmp / "cfg.json"
-        cfg.write_text(
-            json.dumps({"source_clones": {"agentm": str(clone)}}), encoding="utf-8"
-        )
-        self.assertEqual(rp.locate_resolver(config_path=cfg, home=self.tmp), hm)
-
-    def test_found_via_conventional_fallback(self):
-        # No config, but ~/Antigravity/agentm/scripts/harness_memory.py exists.
-        hm = self._make_clone(self.tmp / "Antigravity" / "agentm")
-        self.assertEqual(
-            rp.locate_resolver(config_path=self.tmp / "absent.json", home=self.tmp), hm
-        )
-
-    def test_config_clone_missing_file_falls_through_to_none(self):
-        # source_clones names a dir with no harness_memory.py, no conventional clone.
-        cfg = self.tmp / "cfg.json"
-        cfg.write_text('{"source_clones": {"agentm": "/nope/nowhere"}}', encoding="utf-8")
-        self.assertIsNone(rp.locate_resolver(config_path=cfg, home=self.tmp))
-
-    def test_malformed_config_is_graceful(self):
-        cfg = self.tmp / "cfg.json"
-        cfg.write_text("{not json", encoding="utf-8")
-        self.assertIsNone(rp.locate_resolver(config_path=cfg, home=self.tmp))
 
 
 class TestMainCLI(unittest.TestCase):
@@ -226,12 +185,12 @@ class TestMainCLI(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="rp-main-"))
         # Force the fallback deterministically regardless of the real machine's
-        # agentm install by pointing the auto-locator at an empty home.
-        self._saved = rp.locate_resolver
-        rp.locate_resolver = lambda **_k: None
+        # agentm install by stubbing out find_seam on the loaded bridge.
+        self._saved = rp._bridge.find_seam
+        rp._bridge.find_seam = lambda: None
 
     def tearDown(self):
-        rp.locate_resolver = self._saved
+        rp._bridge.find_seam = self._saved
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def _run(self, *argv: str) -> tuple[int, str, str]:

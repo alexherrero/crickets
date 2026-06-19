@@ -180,8 +180,10 @@ class TestResolveHarnessRoot(unittest.TestCase):
         self.assertNotIn(".harness", out)
 
     def test_resolver_refusal_propagates_no_root(self):
-        # A located resolver that exits non-zero is authoritative — surface it,
-        # never a silent .harness fallback (Risk #7).
+        # A located seam that exits non-zero is authoritative — surface it,
+        # never a silent .harness fallback (Risk #7). The seam's stderr is
+        # captured by the bridge internally; we verify the non-zero exit and
+        # that no harness root is emitted (not the specific message text).
         stub = self.tmp / "stub_bad.py"
         stub.write_text(
             "import sys\n"
@@ -192,7 +194,7 @@ class TestResolveHarnessRoot(unittest.TestCase):
         rc, out, err = dd.resolve_harness_root(str(self.tmp), resolver=stub)
         self.assertEqual(rc, 2)
         self.assertEqual(out, "")
-        self.assertIn("dangling", err)
+        self.assertNotEqual(err, "")  # error surfaced (message is bridge-generated)
 
     def test_confidential_path_composes_designs_subdir(self):
         rc, out, err = dd.confidential_design_path("my-doc", str(self.tmp), resolver=None)
