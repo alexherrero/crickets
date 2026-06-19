@@ -5,6 +5,20 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.20.0] — 2026-06-18 — Minor: `recoverability` skill for `developer-safety` (`developer-safety 0.3.0`)
+
+**MINOR — `developer-safety 0.2.0 → 0.3.0`: new `recoverability` skill.** The autonomy doctrine that governs every phase command (`/work`, `/bugfix`, `/release`) now ships as a standing skill that is active in every session, not only inside a named phase.
+
+The `recoverability` skill encodes the core principle — the stop-gate is **reversibility, not destructiveness or blast-radius** — plus the three-class action table (recoverable → announce + proceed; unrecoverable → stop + confirm; unresolved decision → stop + ask), the close-out-autonomy rule (archiving, progress appends, and ROADMAP moves are always autonomous), and the carve-outs that the doctrine does not relax (worker-tree authority, PII hook, commit authorship). It also names the phase hooks as the in-flight enforcement layer so the skill and hooks are legible as a complementary pair.
+
+### Added
+
+- **`developer-safety 0.3.0`** — `recoverability` skill: the reversibility-first autonomy doctrine as a standing per-session instruction. Classifies actions as recoverable (announce + proceed), unrecoverable (stop + confirm), or unresolved-decision (stop + ask + log gap); covers close-out-autonomy; lists carve-outs; cross-references the `kill-switch` / `steer` / `commit-on-stop` hooks as the runtime enforcement layer.
+
+### Internal
+
+- `Developer-Safety.md` architecture page updated: `recoverability` added to the primitives table; new **Recoverability skill** section summarising the doctrine and its relationship to the hooks.
+
 ## [v3.19.0] — 2026-06-18 — Minor: three catalog plugins + capability-probe retirement (`developer-workflows 0.24.0`, `testing-conventions 0.1.0`, `releasing-conventions 0.1.1`, `design-docs 0.1.0`)
 
 **MINOR — three new catalog plugins + `developer-workflows 0.23.0 → 0.24.0`:** the slug-keyed `capability_probe.py` is retired in favour of the agentm V5-8 capability resolver (LC-5 downstream), and three new convention/workflow plugins ship their first release.

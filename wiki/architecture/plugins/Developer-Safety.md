@@ -20,6 +20,7 @@ On Antigravity, install by path (see [Install crickets plugins](Install-Into-Pro
 | **`commit-on-stop`** | hook · `Stop` | save a dirty tree to an `auto-save/<ts>` branch at session end — crash recovery (never touches your branch, never pushes) |
 | **`commit-no-coauthor`** | snippet | never append a `Co-Authored-By` trailer — the user is the sole author |
 | **`worktrees-operator-initiated`** | snippet | worktrees are operator-initiated — first-class but never autonomous |
+| **`recoverability`** | skill | autonomy doctrine — classify every action as recoverable or unrecoverable; proceed on the former, stop on the latter |
 
 Drive the control trio with the trigger files under `.harness/` — see **[Driving the control trio](#driving-the-control-trio)** below; the full hook catalog is in [Hooks](Hooks). The snippets emit as Antigravity `rules/` and drop on Claude (where the conventions live in `CLAUDE.md`/`AGENTS.md` instead — see [Customization types](Customization-Types)).
 
@@ -61,6 +62,20 @@ The hook never modifies your current branch or pushes — recovery is always you
 **On Antigravity** the hooks run observe-only (no veto/inject). Approximate them with an always-on rule (`.agents/rules/operator-control.md`) that, before each step, checks `.harness/STOP` (halt) and `.harness/STEER.md` (apply + rename), and saves a dirty tree to an `auto-save/<ts>` branch at the end — best-effort, since the agent has to remember to check.
 
 **Troubleshooting.** A hook didn't fire → confirm `claude plugin list` shows `developer-safety` (re-sync with `claude plugin install developer-safety@crickets`; the hooks run from the plugin, not `.claude/hooks/`). `.harness/STOP` ignored → it must be a regular file (`touch`, not `mkdir`), resolved against the repo root. No `auto-save` branch → a silent no-op when git is absent, you're not in a work tree, or the tree is already clean.
+
+## Recoverability skill
+
+The `recoverability` skill is the **pre-action discipline** that complements the hooks' in-flight controls. It encodes the autonomy doctrine: the stop-gate is **reversibility, not destructiveness or blast-radius**.
+
+| Class | Behavior |
+|---|---|
+| **Recoverable** — `git push`, `gh pr create`, `gh release create`, force-push to your own un-shared branch | **Announce + proceed** — no confirmation wait |
+| **Unrecoverable** — force-push rewriting published shared history, sole-ref branch delete, published-tag overwrite, immutable deploy | **Stop + confirm** — pre-announce, then wait |
+| **Unresolved decision** — a question the plan never settled | **Stop + ask** — and log it as a design/plan gap |
+
+When uncertain, treat as unrecoverable (conservative default). Close-out bookkeeping (archiving a completed plan, updating progress files, moving ROADMAP items) is always recoverable → autonomous.
+
+The skill ships the same classification table as the recoverability gate in `developer-workflows` `/work` · `/bugfix` · `/release`, but as a **standing instruction active in every session** — not just during a named phase. The hooks are the runtime enforcement; this skill is the pre-action judgment layer.
 
 ## How it composes
 

@@ -28,4 +28,4 @@ enhances: [developer-workflows]
 # affirming that an operator-initiated worktree — `/spawn-worker`, or an explicit
 # request — is expected, not an exception. Snippet file + `name:` renamed to stay
 # matched; behavior for a session with no operator worktree request is unchanged.
-version: 0.2.0
+version: 0.3.0
