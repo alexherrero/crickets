@@ -22,6 +22,9 @@
 - [Coordinator roles](Coordinator-Roles) _(pending)_
 - [Obsidian vault backend](Obsidian-Vault-Backend) _(pending)_
 - [GitHub Projects](GitHub-Projects)
+- [Testing Conventions](Testing-Conventions)
+- [Releasing Conventions](Releasing-Conventions)
+- [Design Docs](Design-Docs)
 ### 🏛️ [Architecture](Architecture)
 ### 🧩 [Designs](Designs)
 ### 💡 [Explanation](Explanation)

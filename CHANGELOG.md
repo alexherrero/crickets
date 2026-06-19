@@ -5,6 +5,30 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.19.0] — 2026-06-18 — Minor: three catalog plugins + capability-probe retirement (`developer-workflows 0.24.0`, `testing-conventions 0.1.0`, `releasing-conventions 0.1.1`, `design-docs 0.1.0`)
+
+**MINOR — three new catalog plugins + `developer-workflows 0.23.0 → 0.24.0`:** the slug-keyed `capability_probe.py` is retired in favour of the agentm V5-8 capability resolver (LC-5 downstream), and three new convention/workflow plugins ship their first release.
+
+**`developer-workflows 0.24.0` — capability-probe retirement (LC-5):** `capability_probe.py` deleted from `src/` and both `dist/` copies; replaced by `find_capability.py` — a thin bridge that discovers agentm's `capability_resolver.py` via best-effort path-fallback (DC-2: siblings not layers; graceful-skip to exit 1 when agentm absent). All 9 phase-command call-sites (`/review`, `/work`, `/plan`, `/release`, `/setup`, `/bugfix`) migrated from slug-keyed queries (`code-review`, `wiki-maintenance`, `github-projects`) to capability-keyed queries (`adversarial-review`, `wiki-maintenance`, `board-sync`). The `capabilities:` field is now declared on `code-review` (v0.2.1, `adversarial-review`) and `wiki-maintenance` (v0.2.3, `wiki-maintenance`). ADR 0017 §3 amended: `find_capability.py` is now the live path; the probe-retirement re-audit trigger is resolved.
+
+### Added
+
+- **`testing-conventions` 0.1.0** — `no-skip-tests` rule (any skip/xfail marker requires an exact-technical-blocker comment + issue link; "flaky" and "TODO" are explicitly rejected) and `testing-conventions` skill (three day-to-day principles: tests-are-sacred, verification-first, 3-layer pyramid — each with concrete worked examples). Requires `developer-workflows`. [Reference](https://github.com/alexherrero/crickets/wiki/Testing-Conventions).
+- **`releasing-conventions` 0.1.1** — `version-bump-required` rule (fires when a primitive-touching diff lacks a `group.yaml` version bump; acknowledges the ADR 0030 concurrent-worker exception) and `ship-release` skill (pre-release checklist, changelog shape, paired-release discipline, version-bump policy). Requires `developer-workflows`. [Reference](https://github.com/alexherrero/crickets/wiki/Releasing-Conventions).
+- **`design-docs` 0.1.0** — `adr` skill (the 5-section ADR shape with mandatory "why not the alternative" per call and explicit re-audit triggers; complements the `/document-decision` workflow trigger in `developer-workflows`) and `/design` command wrapper (surfaces the author → translate → sequence pipeline for design-docs marketplace users; implementation lives in `developer-workflows`). Requires `developer-workflows`. [Reference](https://github.com/alexherrero/crickets/wiki/Design-Docs).
+
+### Changed
+
+- **`developer-workflows` 0.24.0** — `capability_probe.py` retired; `find_capability.py` is the live capability-resolution path (see above). `test_capability_probe.py` deleted; `TestProbeCapability` class removed from `test_wiki_watch_dispatch.py`. `probe_capability()` in `wiki_watch_dispatch.py` deleted (vestigial tautological self-check).
+- **`code-review` 0.2.1** — added `capabilities: [adversarial-review]` declaration so the agentm V5-8 capability resolver can answer "is `adversarial-review` available?" (LC-5 cutover).
+- **`wiki-maintenance` 0.2.3** — added `capabilities: [wiki-maintenance]` declaration (LC-5 cutover).
+
+### Internal
+
+- Wiki: three new reference pages (`Testing-Conventions`, `Releasing-Conventions`, `Design-Docs`); `Home.md` updated with entries for all three new plugins; sidebar updated.
+- ADR 0017 §3 rewritten to name `find_capability.py` as the live path; debt bullet struck through; re-audit trigger marked resolved.
+- `wiki/reference/Customization-Types.md`, `GitHub-Projects.md`, `Sync-A-Project-Board.md` updated to reference `find_capability.py`.
+
 ## [v3.18.0] — 2026-06-16 — Minor: five Ship-phase commands (`developer-workflows 0.22.1`)
 
 **MINOR — `developer-workflows 0.21.2 → 0.22.1`: five new commands covering the Ship phase** — what happens between `/release` (the merge gate) and production. No breaking changes; all existing commands are byte-identical. New commands are standalone; none requires changes to existing workflows.

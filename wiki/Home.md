@@ -30,6 +30,9 @@
 | 🛡️ **Guard quality + secrets** — control + recovery hooks, a PII scan on push | [developer-safety](Developer-Safety) | [operator-control hooks](Developer-Safety) · [PII guardrail](PII) |
 | 📋 **Plan & track a project** — vault roadmaps + plans synthesized to a GitHub board | [github-projects](GitHub-Projects) | [sync a board](Sync-A-Project-Board) · [one-way synthesis](One-Way-Vault-To-Board-Synthesis) |
 | 💰 **Audit & watch token spend** — per-turn cost breakdown + live status-line meter | [token-audit + status-line-meter](Plugins) | `/token-audit` command · live `↑K↓K $0.xx [62%]` badge |
+| 🧪 **Keep testing discipline standing** — skip-marker rule + 3-principle testing skill | [testing-conventions](Testing-Conventions) | `no-skip-tests` rule · `testing-conventions` skill |
+| 🚢 **Ship releases reliably** — version-bump rule + pre-release checklist skill | [releasing-conventions](Releasing-Conventions) | `version-bump-required` rule · `ship-release` skill |
+| 📐 **Author design docs + ADRs** — `/design` pipeline and the ADR format skill | [design-docs](Design-Docs) | `adr` skill · [author a design](Author-A-Design) · [record a decision](Record-An-Architectural-Decision) |
 
 ## 📖 Look up a detail
 
