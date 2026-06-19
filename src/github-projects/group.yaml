@@ -20,5 +20,8 @@ standalone: false
 # 0.1.3 = worktree-per-task mode active — schema description updated from
 # "reserved for a future conditional per-task isolation mode" to the live contract:
 # per-task spawning for operator-declared-isolated tasks (Isolated: true in PLAN.md).
-version: 0.1.3
+# 0.1.4 = check_project_sync.py: skip "missing" drift for vault items whose
+# referenced issue is closed (Done-feature history); adds fetch_closed_issue_numbers()
+# + closed_issue_numbers param to compute_drift (backward-compatible).
+version: 0.1.4
 capabilities: [board-sync]

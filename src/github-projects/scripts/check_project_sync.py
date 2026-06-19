@@ -53,7 +53,8 @@ def _siblings():
 
 # ── pure diff ─────────────────────────────────────────────────────────────────
 def compute_drift(graph, cfg, templates_dir, board_bodies, *,
-                  pm, ps, active_plans=None, public=True) -> list:
+                  pm, ps, active_plans=None, public=True,
+                  closed_issue_numbers=None) -> list:
     """Return a list of human-readable drift lines; empty == in sync.
 
     ``board_bodies`` is a ``{issue_number: body}`` snapshot of the live board.
@@ -62,7 +63,13 @@ def compute_drift(graph, cfg, templates_dir, board_bodies, *,
     board body (``update``). A board issue backed by no materialized item is an
     ``orphan`` — the board is generated, never hand-maintained, so an unclaimed
     issue is itself drift. Pure: no network, no clock, deterministic order.
+
+    ``closed_issue_numbers`` is an optional set of known-closed issue numbers.
+    A vault item whose issue is closed is expected (Done feature, history
+    preserved) — not "missing" drift. Callers that inject a board snapshot for
+    tests may omit this; the live path fetches it from ``gh``.
     """
+    closed = closed_issue_numbers or set()
     drift = []
     repo_url = ps.project_repo_url(cfg)
     materialized = pm.materialize(graph, active_plans=active_plans or set())
@@ -74,6 +81,8 @@ def compute_drift(graph, cfg, templates_dir, board_bodies, *,
             drift.append(f"create  {item.type}:{item.id} — not yet on the board")
             continue
         if item.issue not in board_bodies:
+            if item.issue in closed:
+                continue  # closed issue — Done feature preserved as history
             drift.append(f"missing {item.type}:{item.id} — issue "
                          f"#{item.issue} not found on the board")
             continue
@@ -113,6 +122,20 @@ def fetch_board_bodies(cfg, runner=None) -> dict:
     return {row["number"]: row.get("body", "") for row in data}
 
 
+def fetch_closed_issue_numbers(cfg, runner=None) -> set:
+    """Return the set of closed issue numbers so vault items pointing at closed
+    issues are not flagged as 'missing' drift — a Done feature's closed issue
+    is expected history, not an error."""
+    runner = runner or _run_gh
+    repo = cfg.get("github", {}).get("repo")
+    if not repo:
+        return set()
+    raw = runner(["gh", "issue", "list", "--repo", repo, "--state", "closed",
+                  "--json", "number", "--limit", "1000"])
+    data = json.loads(raw) if isinstance(raw, str) else raw
+    return {row["number"] for row in data}
+
+
 # ── CLI ───────────────────────────────────────────────────────────────────────
 def _default_config() -> Path:
     # Repo-relative; absent in any repo that doesn't use the plugin → skip.
@@ -146,9 +169,11 @@ def main(argv=None, *, runner=None, fetch=None) -> int:
     templates_dir = Path(__file__).resolve().parent.parent / "templates"
 
     board = fetch(cfg) if fetch is not None else fetch_board_bodies(cfg, runner=runner)
+    closed = set() if fetch is not None else fetch_closed_issue_numbers(cfg, runner=runner)
     drift = compute_drift(graph, cfg, templates_dir, board, pm=pm, ps=ps,
                           active_plans=set(args.active_plans),
-                          public=not args.private)
+                          public=not args.private,
+                          closed_issue_numbers=closed)
     if drift:
         print("check_project_sync: FAIL — vault and board out of sync:")
         for line in drift:

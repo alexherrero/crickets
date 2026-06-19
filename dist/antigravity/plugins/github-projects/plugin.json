@@ -5,5 +5,5 @@
   },
   "description": "One-way, deterministic board-sync — synthesizes a vault project's roadmap/plan/progress state onto a GitHub Project board via six locked per-type templates, a single idempotent project_sync.py write path, and a vault==board drift gate. The vault stays the agent's source of truth; the board is the generated human source.",
   "name": "github-projects",
-  "version": "0.1.3"
+  "version": "0.1.4"
 }
