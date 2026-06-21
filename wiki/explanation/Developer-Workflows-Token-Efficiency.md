@@ -67,13 +67,13 @@ Source locations (pending):
 ## Notes
 
 - **Parity with the global directive is the spec.** The operator's `~/.claude/CLAUDE.md` token-discipline block (2026-06-13) is authoritative; any divergence in these primitives is a defect.
-- **`output-styles/` and `rules/` are new subdirs within the `developer-workflows` plugin group** — `generate.py` and `lint_src.py` may need generator patches to discover them (task 2 audits first). See [ADR 0027](0027-output-style-rule-discovery-paths) for the discovery-path decision.
+- **`output-styles/` and `rules/` are new subdirs within the `developer-workflows` plugin group** — `generate.py` and `lint_src.py` may need generator patches to discover them (task 2 audits first). See [ADR 0027](developer-plugin-suite) for the discovery-path decision.
 - **Compact-nudge context signal:** `CLAUDE_CONTEXT_USAGE_PERCENTAGE` availability is confirmed at build; JSONL line-count proxy is the documented fallback.
 
 ## Related
 
 - [ADR 0026](0026-phase-aware-model-routing) — the routing-defaults design decision
-- [ADR 0027](0027-output-style-rule-discovery-paths) — the `output-style`/`rule` discovery-path decision
+- [ADR 0027](developer-plugin-suite) — the `output-style`/`rule` discovery-path decision
 - [Customization types](../reference/Customization-Types) — what each primitive kind is
 - [Manifest Schema](../reference/Manifest-Schema) — frontmatter contract including `model:` and the discovery table
 - [Hooks](../reference/Hooks) — the hook catalog and how `UserPromptSubmit` events work

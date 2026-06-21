@@ -80,6 +80,6 @@ Routing defaults are user-visible behavior; they warrant a minor bump from `0.12
 ## Related
 
 - [Developer-Workflows token efficiency](../explanation/Developer-Workflows-Token-Efficiency) — the parent feature page
-- [ADR 0027](0027-output-style-rule-discovery-paths) — the `output-style`/`rule` discovery-path decision (companion in Part D)
+- [ADR 0027](developer-plugin-suite) — the `output-style`/`rule` discovery-path decision (companion in Part D)
 - [Customization types](../reference/Customization-Types) — `agent` kind and how `model:` applies
 - [Manifest Schema](../reference/Manifest-Schema) — frontmatter fields including `model:`
