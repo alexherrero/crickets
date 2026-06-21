@@ -7,6 +7,7 @@
 **Architecture (Agent M)** — [in the agentm wiki ↗](https://github.com/alexherrero/agentm/wiki/memoryvault)
 
 **Crickets**
+- [Crickets — High Level Design](crickets-hld)
 - [Crickets v3.0 — Native Host Plugins](crickets-v3-native-plugins)
   - [foundations](foundations)
   - [generator-claude](generator-claude)

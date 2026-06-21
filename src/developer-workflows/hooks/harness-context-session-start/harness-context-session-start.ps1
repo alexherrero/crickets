@@ -25,6 +25,19 @@ try {
     } else {
         [Console]::Error.WriteLine("[harness-context] no .harness/PLAN.md + progress.md at $cwd - skipped")
     }
+
+    # Surface launched design paths (Hook 6 — paths only, bounded, <=4). Mirrors
+    # the .sh twin: inject governing-design *paths*, never their body.
+    $designsDir = Join-Path $cwd 'wiki/designs'
+    if (Test-Path -LiteralPath $designsDir -PathType Container) {
+        $designs = Get-ChildItem -LiteralPath $designsDir -Filter '*.md' -File -ErrorAction SilentlyContinue |
+            Where-Object { (Get-Content -LiteralPath $_.FullName -TotalCount 20 -ErrorAction SilentlyContinue) -match '^status:\s*launched' } |
+            Select-Object -First 4
+        if ($designs) {
+            Write-Output "[developer-workflows] Governing designs (launched) - /plan + /review resolve the governing one:"
+            foreach ($d in $designs) { Write-Output ("  design: " + $d.FullName) }
+        }
+    }
 } catch { }
 
 exit 0

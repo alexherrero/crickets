@@ -4,6 +4,7 @@ category: Coding
 requires: []
 standalone: true
 enhances: [developer-workflows]
+capabilities: [recoverability]
 # Per-plugin marketplace version. Bump on every release that ships new/changed
 # primitives so `claude plugin update developer-safety@crickets` actually pulls
 # them (the marketplace entry compares this value; a static version no-ops the
@@ -28,4 +29,5 @@ enhances: [developer-workflows]
 # affirming that an operator-initiated worktree — `/spawn-worker`, or an explicit
 # request — is expected, not an exception. Snippet file + `name:` renamed to stay
 # matched; behavior for a session with no operator worktree request is unchanged.
-version: 0.3.0
+# 0.3.1 = declare capabilities: [recoverability] (AG Phase-2 capability-declaration hygiene).
+version: 0.3.1

@@ -24,15 +24,21 @@
       "version": "0.2.1"
     },
     {
+      "capabilities": [
+        "design"
+      ],
       "dependencies": [
         "developer-workflows"
       ],
       "description": "Design-doc and ADR authoring — the /design command (author → translate → sequence) and the ADR skill for capturing architectural decisions with re-audit triggers.",
       "name": "design-docs",
       "source": "./plugins/design-docs",
-      "version": "0.1.0"
+      "version": "0.1.1"
     },
     {
+      "capabilities": [
+        "recoverability"
+      ],
       "description": "Universal control + safety layer — kill-switch, steer, commit-on-stop hooks plus commit-no-coauthor / worktrees-operator-initiated conventions. Usable in any session; enhances developer-workflows (its hooks engage across the phase loop) when both are installed.",
       "enhances": [
         {
@@ -41,7 +47,7 @@
       ],
       "name": "developer-safety",
       "source": "./plugins/developer-safety",
-      "version": "0.3.0"
+      "version": "0.3.1"
     },
     {
       "capabilities": [
@@ -56,16 +62,19 @@
       "description": "The phase-gated developer loop — /setup /plan /work /review /release /bugfix — extracted from agentm as a standalone native plugin. The base other dev plugins enhance.",
       "name": "developer-workflows",
       "source": "./plugins/developer-workflows",
-      "version": "0.25.0"
+      "version": "0.26.0"
     },
     {
+      "capabilities": [
+        "ci-repair"
+      ],
       "dependencies": [
         "developer-workflows"
       ],
       "description": "CI workflows + dependency-update tooling — the dependabot-fixer skill that repairs breakage on Dependabot PRs.",
       "name": "github-ci",
       "source": "./plugins/github-ci",
-      "version": "0.1.0"
+      "version": "0.1.1"
     },
     {
       "capabilities": [
@@ -89,21 +98,30 @@
       "version": "0.3.0"
     },
     {
+      "capabilities": [
+        "privacy"
+      ],
       "description": "Scan diffs and the working tree for personal information (emails, personal paths, API keys, phone numbers) before commit or push.",
       "name": "pii",
       "source": "./plugins/pii",
-      "version": "0.2.0"
+      "version": "0.2.1"
     },
     {
+      "capabilities": [
+        "releasing-conventions"
+      ],
       "dependencies": [
         "developer-workflows"
       ],
       "description": "Ship-release workflow and release discipline — pre-release checklist, changelog-shape convention, and paired-release discipline for cross-repo coordinated releases.",
       "name": "releasing-conventions",
       "source": "./plugins/releasing-conventions",
-      "version": "0.1.1"
+      "version": "0.1.2"
     },
     {
+      "capabilities": [
+        "status-line-meter"
+      ],
       "description": "Live context/cost meter for the Claude Code status line — used-%, 5h-window cost, and floor-share badge. Enhances token-audit with continuous live metering.",
       "enhances": [
         {
@@ -114,16 +132,19 @@
       ],
       "name": "status-line-meter",
       "source": "./plugins/status-line-meter",
-      "version": "0.1.2"
+      "version": "0.1.3"
     },
     {
+      "capabilities": [
+        "testing-conventions"
+      ],
       "dependencies": [
         "developer-workflows"
       ],
       "description": "Day-to-day testing principles — tests-are-sacred, verification-first, and the 3-layer pyramid — for Developer-tier users.",
       "name": "testing-conventions",
       "source": "./plugins/testing-conventions",
-      "version": "0.1.0"
+      "version": "0.1.1"
     },
     {
       "capabilities": [

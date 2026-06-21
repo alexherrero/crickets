@@ -14,7 +14,8 @@ group.yaml:
   - required: `name`, `description`, `standalone`.
   - `standalone` is a bool; `requires` (default []) is a list of existing group slugs.
   - invariant: `standalone: true` ⟺ `requires: []`.
-  - `capabilities` (default []) is a list of strings.
+  - `capabilities` is a REQUIRED, non-empty list of strings (AG Phase-2 hygiene:
+    every plugin declares what it provides, so the resolver is complete).
   - `enhances` (default []) is a list; each entry (a group slug, or
     `{group, capability?, effect}`) targets an existing group, is not the plugin
     itself, is not also in `requires`, and any named `capability` is declared in
@@ -125,10 +126,16 @@ def lint_tree(src: Path) -> list[str]:
             err(gy, f"invariant violated: standalone={d['standalone']} with requires={requires} "
                     f"(must be: standalone ⟺ requires:[])", _line_of(gy, "standalone"))
 
-        # capabilities: a list of strings (the names enhances entries may target)
+        # capabilities: a NON-EMPTY list of strings — every plugin declares what it
+        # provides, so the resolver can answer "is <capability> available?" (AG Phase-2
+        # capability-declaration hygiene). The names are also the targets enhances may point at.
         caps = d.get("capabilities")
-        if caps is not None and not (isinstance(caps, list) and all(isinstance(c, str) for c in caps)):
+        if caps is None:
+            err(gy, "missing required field 'capabilities' (every plugin must declare what it provides)")
+        elif not (isinstance(caps, list) and all(isinstance(c, str) for c in caps)):
             err(gy, f"'capabilities' must be a list of strings (got {caps!r})", _line_of(gy, "capabilities"))
+        elif not caps:
+            err(gy, "'capabilities' must be non-empty (declare what this plugin provides)", _line_of(gy, "capabilities"))
 
         # enhances: soft-composition edges — validated; orthogonal to requires/standalone
         enhances = d.get("enhances")

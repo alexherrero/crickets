@@ -18,7 +18,7 @@ One per `src/<group>/`. The group **slug** is the folder name (not a field).
 | `category` | no | string | Marketplace category (e.g. `Coding`). Default: `Coding`. |
 | `requires` | no | list of group slugs | Other groups this plugin depends on (**hard** dependency). Default: `[]`. Each entry must be an existing `src/<slug>/`. |
 | `standalone` | **yes** | bool | Whether the plugin is independently installable (#42 dual-mode). |
-| `capabilities` | no | list of strings | The capabilities this plugin offers (e.g. `[setup, plan, work, review, release, bugfix]`), so other plugins' `enhances:` can target one by name. Default: `[]`. |
+| `capabilities` | **yes** | non-empty list of strings | The capabilities this plugin offers (e.g. `[setup, plan, work, review, release, bugfix]`), so other plugins' `enhances:` can target one by name and the resolver can answer "is `<capability>` available?". Required + non-empty since AG Phase-2 capability-declaration hygiene — every plugin declares what it provides. Capability name ≠ plugin name (e.g. `code-review` declares `[adversarial-review]`). |
 | `enhances` | no | list | **Soft** composition: groups this plugin augments when both are installed. Each entry is either a group slug (shorthand) or `{group, capability?, effect}`. Default: `[]`. Declarative metadata — the runtime engages via a capability probe, not a host primitive. |
 
 **Invariant (lint-enforced):** `standalone: true` ⟺ `requires: []`. A plugin that requires another is *integrated*, not standalone; one that requires nothing is standalone. (`requires` non-empty ⇒ `standalone: false`.)

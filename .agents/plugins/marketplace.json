@@ -27,6 +27,9 @@
       }
     },
     {
+      "capabilities": [
+        "design"
+      ],
       "category": "Coding",
       "name": "design-docs",
       "policy": {
@@ -42,6 +45,9 @@
       }
     },
     {
+      "capabilities": [
+        "recoverability"
+      ],
       "category": "Coding",
       "enhances": [
         {
@@ -80,6 +86,9 @@
       }
     },
     {
+      "capabilities": [
+        "ci-repair"
+      ],
       "category": "Coding",
       "name": "github-ci",
       "policy": {
@@ -128,6 +137,9 @@
       }
     },
     {
+      "capabilities": [
+        "privacy"
+      ],
       "category": "Coding",
       "name": "pii",
       "policy": {
@@ -140,6 +152,9 @@
       }
     },
     {
+      "capabilities": [
+        "releasing-conventions"
+      ],
       "category": "Coding",
       "name": "releasing-conventions",
       "policy": {
@@ -155,6 +170,9 @@
       }
     },
     {
+      "capabilities": [
+        "status-line-meter"
+      ],
       "category": "Coding",
       "enhances": [
         {
@@ -174,6 +192,9 @@
       }
     },
     {
+      "capabilities": [
+        "testing-conventions"
+      ],
       "category": "Coding",
       "name": "testing-conventions",
       "policy": {

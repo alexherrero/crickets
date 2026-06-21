@@ -3,4 +3,6 @@ description: Design-doc and ADR authoring — the /design command (author → tr
 category: Coding
 requires: [developer-workflows]
 standalone: false
-version: 0.1.0
+capabilities: [design]
+# 0.1.1 = declare capabilities: [design] (AG Phase-2 capability-declaration hygiene).
+version: 0.1.1

@@ -7,6 +7,7 @@ The architecture behind crickets and Agent M — the high-level design docs that
 
 **Crickets**
 
+- **[Crickets — High Level Design](crickets-hld)** — the live parent design: the fourteen-capability toolbox, build-once-generate-everywhere, and composition onto agentm. Reconciles the two designs below.
 - **[Crickets v3.0 — Native Host Plugins](crickets-v3-native-plugins)** — the `src/` → generate → `dist/` model.
 - **[Developer Plugin Suite](developer-plugin-suite)** — the developer-workflows / safety / code-review split + `enhances:`.
 - **[Wiki Maintenance](wiki-maintenance-design)** — the diataxis-author + documenter + wiki-watcher system.

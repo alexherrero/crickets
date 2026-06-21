@@ -31,6 +31,7 @@ If the brief is underspecified, run `/interview-me` first. If it's a non-trivial
 7. **Sync the plan to the GitHub Project board** (optional, graceful-skip) — when `github-projects` is installed (capability probe) + `.harness/project.json` present + `gh` authed, record the new plan in `board-items.json` and emit its kickoff via the github-projects plugin's `project_sync.py post`; capture `## Out of scope` deferrals as board-backed `Backlog-item`/`Idea` entries in `board-items.json` (**never** a raw `gh project item-create` — an unbacked board issue is an orphan the `vault==board` gate flags as drift). Deterministic + idempotent → announce + proceed. Silent-skip (zero behavior change) if the plugin, `project.json`, or `gh` is absent.
 8. **Append one line to the resolved `progress.md`** (the scoped `progress-<slug>.md` for `--name`; the singleton for `--stage` and `--activate`, which have no run-scoped log yet).
 9. **End with a ≤5-bullet summary.** Next command is `/work`.
+10. **Ground the plan in its governing design (Hook 2, design-doc §6).** Before decomposing, resolve the living design that governs this work and read a **bounded** slice of it (frontmatter + `## Locked design calls`, ≈400-line cap — **never the whole arc**); cite it in the plan's `## Locked design calls` + `parent_design_doc:` frontmatter, or assert greenfield. Graceful-skip when agentm is absent. See step 1b.
 
 ## Process
 
@@ -45,6 +46,14 @@ Read `PLAN.md` (in flight? continuing or replacing — ask, don't overwrite) and
 - **`--stage <slug> <brief>`** — author the plan to the **inactive** staging path that `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/stage_plan.py" path <slug>` prints (`<_harness>/queued-plans/PLAN-<slug>.md`), *instead of* the active path. The written plan is **inert** — invisible to `/work` and `/queue-status-lite` — so a coordinator can pre-author a batch of worker plans, one file each. The rest of `$ARGUMENTS` is the brief; every read/write below targets the **staging path** (step 4 writes the plan there; step 8 logs to the singleton `progress.md`, since no run-scoped `progress-<slug>.md` exists until the plan is activated and first worked).
 - **`--activate <slug>`** — a **promote-only** verb, *not* an authoring run: copy the staged `queued-plans/PLAN-<slug>.md` onto the active `PLAN-<slug>.md` via `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/stage_plan.py" activate <slug>`, report the activated path, append an `activated plan "<slug>"` line to the singleton `progress.md`, and **stop — `--activate` bypasses steps 2–8 entirely** (no interview, no decompose, no plan write). The guarded copy refuses (writes nothing) when an active `PLAN-<slug>.md` already exists *or* the staged file is missing — that exit 2 + stderr is a hard stop (Risk #7). The operator runs `/work --name <slug>` next.
   - **Pre-flight reconcile (LC-6) — exit 3 is a benign no-op, not an error.** Before the copy, `activate` runs a cheap reconcile: if the staged plan declares the net-new files it ships under an `expected_artifacts:` frontmatter list and **every one already exists on `main`**, the lane is **already shipped** — `activate` exits **3** with `already shipped — nothing to do` and writes nothing. Treat exit 3 as "report the message and stop — do **not** activate or `/spawn-worker`"; it means the work is done, not that something failed. The guard is **dormant unless the plan opts in** (no `expected_artifacts` → activates exactly as before). A coordinator staging a batch declares each plan's net-new artifacts (e.g. `expected_artifacts: [src/foo/new_helper.py, wiki/decisions/0099-x.md]`) so a sibling lane that already shipped that work isn't re-launched. `/spawn-worker` runs the same reconcile as a backstop.
+
+### 1b. Ground in the governing design (Hook 2 · design-doc §6)
+
+Before decomposing, resolve the **living design that governs this work** and read a *bounded* slice — so the plan is built on the locked architectural calls, not in ignorance of them.
+
+1. **Resolve.** Pick the plan's primary target (a representative repo-relative path the work will touch, or a known `area:` name) and run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/find_governing_design.py" <target>`. **Exit 0** → it prints the governing design's repo-relative path. **Exit 1** → greenfield (no design governs this) *or* agentm absent — both mean "no design to read"; proceed as greenfield. Deterministic; any failure resolves to greenfield, never a hang. (The bridge passes `--root` = cwd so it resolves *this* repo's `wiki/designs/`.)
+2. **Bounded read — never the whole arc.** On exit 0, read **only** the design's YAML frontmatter **and** its `## Locked design calls` section — cap ≈400 lines. A folded arc can be tens of thousands of tokens; reading it whole on every `/plan` blows the token floor the operator just trimmed. If the design has no `## Locked design calls` section, read the frontmatter + at most the first ≈400 lines.
+3. **Cite or assert greenfield.** Set the plan's `parent_design_doc:` frontmatter to the resolved path (omit when greenfield), and in `## Locked design calls` either record the locked calls this plan must honor (cite the design) or write `Greenfield — no governing design.` Set `touches_architecture: true` when the work changes architecture the design governs, else `false` (the Hook 3 gate keys off it).
 
 ### 2. Interview, if ambiguous
 
@@ -65,6 +74,11 @@ Each task is: **small enough** one `/work` session finishes it (≈ one PR); **i
 Author to the **resolved PLAN path** — the staged `queued-plans/PLAN-<slug>.md` under `--stage`, the active `PLAN-<slug>.md` under `--name`, else the singleton `.harness/PLAN.md`. Same shape either way:
 
 ```markdown
+---
+parent_design_doc: <repo-relative path to the governing design — omit if greenfield>
+touches_architecture: true | false
+---
+
 # Plan: <short title>
 
 **Status:** planning | in-progress | done
@@ -80,6 +94,9 @@ Author to the **resolved PLAN path** — the staged `queued-plans/PLAN-<slug>.md
 ## Out of scope
 - <explicit non-goal>
 
+## Locked design calls
+<Hook 2: the locked architectural calls from `parent_design_doc` this plan must honor (cite the design path), or "Greenfield — no governing design.">
+
 ## Tasks
 
 ### 1. <Task title>
@@ -94,6 +111,11 @@ Author to the **resolved PLAN path** — the staged `queued-plans/PLAN-<slug>.md
 ## Verification strategy
 <Which deterministic gates apply + project-specific extras.>
 ```
+
+### 4b. Self-check grounding (Hook 3 · design-doc §6.3)
+
+Run the deterministic plan-grounding gate on the plan you just wrote:
+`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/check-plan-grounding.py" <resolved-plan-path>`. **Exit 1** means the plan set `touches_architecture: true` but carries neither a `parent_design_doc:` nor a non-empty `## Locked design calls` — fix it (revisit step 1b) before `/work`. **Exit 0** = grounded, or the plan isn't architecture-touching (nothing to enforce). The gate is keyed off the explicit flag, never an inference.
 
 ### 5. Update `features.json` if appropriate
 

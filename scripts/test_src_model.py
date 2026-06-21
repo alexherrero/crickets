@@ -141,13 +141,19 @@ class TestSrcModel(unittest.TestCase):
             self.assertEqual(src_model.load_groups(Path(t) / "nope"), [])
 
     def test_backcompat_no_enhances_capabilities(self):
-        # groups that declare neither field → both default to empty lists
-        # (wiki-maintenance now carries a capability-less enhance, so it's no longer
-        # a no-enhances example — its enhance is asserted in test_real_tree_shape)
-        by = {g.slug: g for g in src_model.load_groups(_ROOT / "src")}
-        for slug in ("pii", "github-ci"):
-            self.assertEqual(by[slug].enhances, [])
-            self.assertEqual(by[slug].capabilities, [])
+        # a group that declares neither field → both default to empty lists.
+        # (Real src plugins all declare capabilities since AG Phase-2 hygiene, so
+        # src_model's backcompat default is exercised with a synthetic fixture; the
+        # non-empty requirement is enforced by lint_src, not the model.)
+        with tempfile.TemporaryDirectory() as t:
+            src = Path(t) / "src"
+            (src / "bare").mkdir(parents=True)
+            (src / "bare" / "group.yaml").write_text(
+                "name: Bare\ndescription: d\nrequires: []\nstandalone: true\n",
+                encoding="utf-8")
+            by = {g.slug: g for g in src_model.load_groups(src)}
+            self.assertEqual(by["bare"].enhances, [])
+            self.assertEqual(by["bare"].capabilities, [])
 
     def test_enhances_and_capabilities_roundtrip(self):
         with tempfile.TemporaryDirectory() as t:

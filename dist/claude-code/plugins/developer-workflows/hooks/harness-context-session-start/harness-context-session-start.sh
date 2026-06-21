@@ -45,4 +45,19 @@ else
     echo "[harness-context] no .harness/PLAN.md + progress.md at $EVENT_CWD — skipped" >&2
 fi
 
+# ── Surface launched design paths (Hook 6 — paths only, bounded, ≤4) ────────────
+# Inject the *paths* of governing designs (status: launched) the way PLAN.md is
+# injected above — never their body (that would regress the per-call floor). /plan
+# + /review resolve the specific governing design via find_governing_design.py.
+DESIGNS_DIR="$EVENT_CWD/wiki/designs"
+if [[ -d "$DESIGNS_DIR" ]]; then
+    DESIGNS="$(grep -lE '^status:[[:space:]]*launched' "$DESIGNS_DIR"/*.md 2>/dev/null | head -4)"
+    if [[ -n "$DESIGNS" ]]; then
+        echo "[developer-workflows] Governing designs (launched) — /plan + /review resolve the governing one:"
+        while IFS= read -r d; do
+            [[ -n "$d" ]] && echo "  design: $d"
+        done <<< "$DESIGNS"
+    fi
+fi
+
 exit 0
