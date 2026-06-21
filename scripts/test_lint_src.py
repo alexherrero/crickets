@@ -37,7 +37,8 @@ class TestLintSrc(unittest.TestCase):
         d.mkdir(parents=True, exist_ok=True)
         if body is None:
             body = (f"name: {name}\ndescription: d\n"
-                    f"standalone: {str(standalone).lower()}\nrequires: {requires or []}\n")
+                    f"standalone: {str(standalone).lower()}\nrequires: {requires or []}\n"
+                    f"capabilities: [cap]\n")
         (d / "group.yaml").write_text(body, encoding="utf-8")
         return d
 
@@ -106,6 +107,7 @@ class TestLintSrc(unittest.TestCase):
         self._group("wf", body="name: WF\ndescription: d\nstandalone: true\n"
                                 "requires: []\ncapabilities: [review, work]\n")
         self._group("cr", body="name: CR\ndescription: d\nstandalone: true\nrequires: []\n"
+                               "capabilities: [cr-cap]\n"
                                "enhances:\n  - group: wf\n    capability: review\n    effect: x\n")
         self.assertEqual(lint_src.lint_tree(self.src), [])
 
@@ -141,6 +143,18 @@ class TestLintSrc(unittest.TestCase):
                                "requires: []\ncapabilities: [1, 2]\n")
         errs = lint_src.lint_tree(self.src)
         self.assertTrue(any("'capabilities' must be a list of strings" in e for e in errs), errs)
+
+    def test_missing_capabilities_fails(self):
+        # AG Phase-2 hygiene: every plugin must declare what it provides.
+        self._group("wf", body="name: WF\ndescription: d\nstandalone: true\nrequires: []\n")
+        errs = lint_src.lint_tree(self.src)
+        self.assertTrue(any("missing required field 'capabilities'" in e for e in errs), errs)
+
+    def test_empty_capabilities_fails(self):
+        self._group("wf", body="name: WF\ndescription: d\nstandalone: true\n"
+                               "requires: []\ncapabilities: []\n")
+        errs = lint_src.lint_tree(self.src)
+        self.assertTrue(any("'capabilities' must be non-empty" in e for e in errs), errs)
 
 
 if __name__ == "__main__":

@@ -3,4 +3,7 @@ description: Ship-release workflow and release discipline — pre-release checkl
 category: Coding
 requires: [developer-workflows]
 standalone: false
-version: 0.1.1
+capabilities: [releasing-conventions]
+# 0.1.2 = declare capabilities: [releasing-conventions] (AG Phase-2 hygiene;
+#          transitional self-name — merges into `conventions` with resolver aliasing in Phase-3).
+version: 0.1.2

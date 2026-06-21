@@ -7,6 +7,7 @@ enhances:
   - group: token-audit
     capability: token-audit
     effect: "live continuous metering via the Claude Code status line"
+capabilities: [status-line-meter]
 # Per-plugin marketplace version. Bump on every release that ships new/changed
 # primitives so `claude plugin update status-line-meter@crickets` actually pulls.
 # 0.1.0 = initial plugin: status_line_meter.py (used-%, floor-share badge, 5h-window
@@ -16,4 +17,6 @@ enhances:
 # now resets the incremental reader to offset 0 instead of returning stale cached totals.
 # 0.1.2 = fix(windows): _cache_path used hardcoded /tmp/ which doesn't exist on Windows;
 # replaced with tempfile.gettempdir() so cache writes succeed on all platforms.
-version: 0.1.2
+# 0.1.3 = declare capabilities: [status-line-meter] (AG Phase-2 hygiene;
+#          transitional self-name — absorbed by token-audit in Phase-3).
+version: 0.1.3

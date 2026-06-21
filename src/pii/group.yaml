@@ -3,7 +3,10 @@ description: Scan diffs and the working tree for personal information (emails, p
 category: Coding
 requires: []
 standalone: true
+capabilities: [privacy]
 # 0.1.0 = initial versioned release (version: field previously absent).
 # 0.2.0 = add pii-patterns rule: proactive stand-in conventions so the
 #          pii-scrubber skill and pre-push hook never have to catch these patterns.
-version: 0.2.0
+# 0.2.1 = declare capabilities: [privacy] (AG Phase-2 hygiene; capability name ≠
+#          plugin name — the pii→privacy plugin rename is Phase-3).
+version: 0.2.1

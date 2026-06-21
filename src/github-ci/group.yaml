@@ -3,3 +3,8 @@ description: CI workflows + dependency-update tooling — the dependabot-fixer s
 category: Coding
 requires: [developer-workflows]
 standalone: false
+capabilities: [ci-repair]
+# Per-plugin marketplace version. 0.1.1 = first explicit version + declare
+# capabilities: [ci-repair] (AG Phase-2 capability-declaration hygiene); supersedes
+# the implicit 0.1.0 default so `claude plugin update github-ci@crickets` pulls it.
+version: 0.1.1
