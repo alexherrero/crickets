@@ -9,6 +9,12 @@ updated: 2026-06-10
 last_major_revision: 2026-06-10
 prd:
 project: https://github.com/users/alexherrero/projects/5
+kind: design
+scope: feature
+area: crickets/wiki
+governs:
+  - src/wiki-maintenance/scripts/wiki_init.py
+parent: wiki-maintenance-design.md
 ---
 
 <!--
@@ -174,4 +180,12 @@ The init is git-reversible in the target (it only adds files); the retirement is
 |---|---|---|
 | 2026-06-10 | Authored from the v3.2.0 dogfood feedback (provision-not-just-author) + the live `~/.claude` shadowing investigation (systemic, supersession-gated retirement); drafted against the 10-section template with the 2026-06-09 conventions. Operator review: two changes applied — the publish job is opinionated-named **`[W] Update Wiki`** (matching crickets' own), and `wiki-init` **warns about billed Actions minutes when the target isn't public** — and the design **approved → final**. Voice deferred to the #14 dogfood (corpus piece logged). The blog-repo dogfood validates + may amend; approval doesn't wait on it. Translated to **4 parts** via `/design translate` (operator-approved split **B**, honest deps): `wiki-sync-template` · `wiki-init` · `standalone-retirement` · `docs-adr`. Sequenced into 4 plans via `/design sequence` (Kahn topo order: `standalone-retirement` → `wiki-sync-template` → `wiki-init` → `docs-adr`); first active at vault `_harness/PLAN.md`, 3 queued at `_harness/designs/wiki-maintenance-provisioning/queued-plans/`. | final |
 | 2026-06-10 | **Dogfood reconciliation** (build-vs-design drift, pre-`docs-adr`). **Drift 1:** the two shipped CI workflows ran independently — a broken wiki published anyway because lint was a tripwire, not a gate. Merged `wiki-lint` into `wiki-sync` as one lint-then-publish workflow (`update-wiki` `needs: lint-wiki`); fixed crickets' own job likewise (commit `c336f37`, CI green). **Drift 2 (this edit):** §3 re-locked from "reference, don't vendor" to the as-built **split** — reference via `${CLAUDE_PLUGIN_ROOT}` on the agent path, vendor-with-`--resync-gate` for CI because GitHub Actions has no such var. Removed the fictional `--vendor` opt-in (CI vendors by necessity). §Tech-Debt #1 single-source debt marked resolved (one hand-maintained gate in the plugin; repo-root copy removed). Status unchanged — reconciliation, not a new decision. | final |
-| 2026-06-10 | **Launched.** The final part (`docs-adr`, 4/4) completed: how-to [Provision a repo's wiki](Provision-A-Repo-Wiki) (`8363efd`), plugin-page + Wiki-design updates (`040557b`), and [ADR 0019](0019-wiki-provisioning) recording the gate-distribution split + supersession-gated retirement (`a321adc`). All four parts shipped + CI-green; `[W] Update Wiki` dogfooded the lint-then-publish workflow end-to-end. **Status final → launched.** | launched |
+| 2026-06-10 | **Launched.** The final part (`docs-adr`, 4/4) completed: how-to [Provision a repo's wiki](Provision-A-Repo-Wiki) (`8363efd`), plugin-page + Wiki-design updates (`040557b`), and [ADR 0019](wiki-maintenance-provisioning) recording the gate-distribution split + supersession-gated retirement (`a321adc`). All four parts shipped + CI-green; `[W] Update Wiki` dogfooded the lint-then-publish workflow end-to-end. **Status final → launched.** | launched |
+
+## Amendment log
+
+*Folded decision history (AG Phase-2 C4 — record retired into this design; git holds the full ADR text).*
+
+**2026-06-21 (C4 fold) — ADR 0019 retired into this design (AG Phase 2).** The agentm/crickets ADR model was retired (AG design-doc §5); ADR 0019 (wiki provisioning) folded here and deleted via `migrate-adr.py` (inbound links repointed, index/sidebars pruned). Stamped `area: crickets/wiki` (child of [wiki-maintenance-design](wiki-maintenance-design)), `governs: src/wiki-maintenance/scripts/wiki_init.py`. *Why not keep it as an ADR:* the append-only model forces a chain-read; the living body is the single source.
+
+**2026-06-10 — wiki provisioning: gate-distribution split + supersession-gated retirement (was ADR 0019).** `wiki-init` makes provisioning one idempotent, preview-first action. Two load-bearing calls: **(1) gate distribution is a split** — the agent runs `check-wiki.py` *by reference* (`${CLAUDE_PLUGIN_ROOT}/...`, upgrades for free) while CI *vendors* a copy into `.github/scripts/` (GitHub runners have no `${CLAUDE_PLUGIN_ROOT}`), re-synced via `--resync-gate`; **(2) supersession-gated retirement** — installing crickets plugins removes only the `~/.claude/` standalones an *installed* crickets plugin supersedes, matched by name **and** crickets provenance, preview-first/dry-run-default. *Why not vendor-everywhere / reference-everywhere / blind-removal / name-only matching:* vendoring rots on the next move; a referenced CI gate can't resolve a path; blind removal would delete agentm-native `design`/`memory`/`doctor`; name-only could remove a same-named non-provided standalone. *Re-audit trigger:* GitHub Actions exposing a runner-visible plugin path (CI could reference, retire the vendor half), or a host ceasing to export `${CLAUDE_PLUGIN_ROOT}`.

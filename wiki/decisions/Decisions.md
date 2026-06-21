@@ -16,7 +16,6 @@ This page is the index. The homepage links here once instead of listing every AD
 - [ADR 0012 — device-wide-by-default](0012-device-wide-by-default)
 - [ADR 0014 — #40 install-decoupling](0014-install-decoupling)
 - [ADR 0016 — Project surface split](0016-project-surface-split)
-- [ADR 0019 — Wiki provisioning: gate-distribution split + supersession-gated retirement](0019-wiki-provisioning)
 - [ADR 0020 — Seven-section wiki taxonomy: fixed frame + per-project Architecture manifest + conditional gates](0020-seven-section-wiki-taxonomy)
 - [ADR 0021 — Per-plugin marketplace versioning sourced from `group.yaml`](0021-per-plugin-versioning)
 - [ADR 0022 — Retire `worktrees-never-auto`: worktrees first-class but operator-initiated](0022-retire-worktrees-never-auto)

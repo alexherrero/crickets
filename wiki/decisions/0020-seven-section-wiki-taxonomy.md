@@ -68,4 +68,4 @@ Five of the seven sections are always scaffolded. Two are conditional: **Archite
 - [Declare a project's Architecture](Declare-Architecture) — the how-to for writing `wiki/architecture.yml`.
 - [Wiki design](wiki-design) — the umbrella wiki system this frame restructures; Detailed Design #1 carries the as-built frame.
 - [ADR 0018 — per-folder sidebars](wiki-maintenance-design) — the intent-folder IA this frame supersedes in spirit (`get-started/do/why/plugins` → the fixed seven); its nearest-sidebar + two-level reachability model still holds.
-- [ADR 0019 — wiki provisioning](0019-wiki-provisioning) — `wiki-init` scaffolds the frame and reads the manifest.
+- [ADR 0019 — wiki provisioning](wiki-maintenance-provisioning) — `wiki-init` scaffolds the frame and reads the manifest.
