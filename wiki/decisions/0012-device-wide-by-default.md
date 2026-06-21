@@ -119,10 +119,10 @@ v3.x MINOR releases ship with deprecation warnings on every legacy-path read fal
 
 - [`device-wide-architecture.md`](https://github.com/alexherrero/agentm/wiki/device-wide-architecture) — the HLD this ADR locks decisions for
 - [`agent-memory-evolution.md`](https://github.com/alexherrero/agentm/wiki/agent-memory-evolution) — the V1 → V6 evolution context
-- [ADR 0001](0001-crickets-purpose) — original crickets/agentm split (this ADR shifts the boundary per V4 #36)
+- [ADR 0001](crickets-hld) — original crickets/agentm split (this ADR shifts the boundary per V4 #36)
 - [ADR 0002](0002-evaluator-design) — sub-agent-as-skill pattern preserved per design call
 - [ADR 0006](0006-gemini-cli-host-removal) — historical context for the `agentm requires crickets; crickets standalone` asymmetry
-- [ADR 0007](0007-memoryvault-discovery) — auto-context dispatcher (`harness_memory.py`) that this design extends
+- [ADR 0007](crickets-hld) — auto-context dispatcher (`harness_memory.py`) that this design extends
 - [ADR 0009](0009-evidence-tracker-hook) — evidence-tracker stays `[claude-code]`-only; per-cwd `.evidence-reads` carve-out preserved
 - [ADR 0011](0011-antigravity-2-host-support) — `.agents/` (plural) dispatch path that this design inherits
 - agentm `.harness/ROADMAP-AgentMemoryV4.md` — V4 build sequencing (#31 design → #36 reorg → #26 state → #30 install → #35 documenter → #32 auto-detect → #33 cleanup → #34 aesthetic → #25 audit → ...)

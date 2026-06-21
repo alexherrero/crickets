@@ -58,4 +58,4 @@ The following are **explicitly out of #40** and tracked for bucket ④:
 - [crickets-v3-native-plugins](../designs/crickets-v3-native-plugins) — the HLD; design Decision 3 (architecture-only + proof scope)
 - [ADR 0013](0013-bundles-native-plugins) — the native-plugin model #40 proved
 - [ADR 0014](0014-install-decoupling) — the install decoupling delivered alongside the proof
-- [ADR 0001](0001-crickets-purpose) — the original crickets/agentm split that #36 + this ADR continue to shape
+- [ADR 0001](crickets-hld) — the original crickets/agentm split that #36 + this ADR continue to shape

@@ -29,7 +29,7 @@ crickets is a public repo that generates everything it ships and has to work on 
 
 ### Background
 
-The ways this repo breaks are mechanical — generated output drifting from source, an OS-specific script failure, a personal detail in a public commit, a wiki link rotting — and mechanical failures are exactly what scripts catch best. Hand-run checks get skipped; an automatic gate doesn't. That's the project's standing posture: deterministic checks decide whether something ships, and LLM judgment only advises. The battery grew gate by gate as each failure class showed up — the drift gate arrived with the v3.0 generator ([crickets-v3-native-plugins](crickets-v3-native-plugins), replacing the old byte-parity check that died with the v2 installer), and the PII gates date back to the repo going public ([ADR 0001](0001-crickets-purpose)).
+The ways this repo breaks are mechanical — generated output drifting from source, an OS-specific script failure, a personal detail in a public commit, a wiki link rotting — and mechanical failures are exactly what scripts catch best. Hand-run checks get skipped; an automatic gate doesn't. That's the project's standing posture: deterministic checks decide whether something ships, and LLM judgment only advises. The battery grew gate by gate as each failure class showed up — the drift gate arrived with the v3.0 generator ([crickets-v3-native-plugins](crickets-v3-native-plugins), replacing the old byte-parity check that died with the v2 installer), and the PII gates date back to the repo going public ([ADR 0001](crickets-hld)).
 
 The same checks run in two places: locally as `bash scripts/check-all.sh` before each commit, and on GitHub on every push and pull request. Running in both places drives two of the design's rules. The battery can't depend on anything that exists only on one machine — it's plain Python and bash, no host CLIs — and a new check is always added to both places at once, so a local green means the same thing as a CI green. The flip side: work isn't *done* on a local pass; it's done when GitHub agrees (the wake-on-CI convention).
 
@@ -188,7 +188,7 @@ Every wiki page documenting this system:
 
 ### Launch Plans
 
-Already launched: the PII guardrails since **v0.1.0** ([ADR 0001](0001-crickets-purpose), 2026-05-12); the drift gate + the battery's current core since **v3.0.0** (2026-06-01); the system in the shape described here since **v3.1.0** (2026-06-04).
+Already launched: the PII guardrails since **v0.1.0** ([ADR 0001](crickets-hld), 2026-05-12); the drift gate + the battery's current core since **v3.0.0** (2026-06-01); the system in the shape described here since **v3.1.0** (2026-06-04).
 
 ## Operations
 

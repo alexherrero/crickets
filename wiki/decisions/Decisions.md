@@ -7,12 +7,10 @@ This page is the index. The homepage links here once instead of listing every AD
 
 ## Records
 
-- [ADR 0001 — crickets purpose, scope, public-with-PII-guardrails](0001-crickets-purpose)
 - [ADR 0002 — evaluator sub-agent design](0002-evaluator-design)
 - [ADR 0003 — base operator-control hooks](0003-base-operator-hooks)
 - [ADR 0004 — design skill: human-facing design pipeline → agent execution handoff](0004-design-skill)
 - [ADR 0006 — Gemini CLI host removal](0006-gemini-cli-host-removal)
-- [ADR 0007 — MemoryVault Discovery + Mining](0007-memoryvault-discovery)
 - [ADR 0008 — diataxis-author skill](0008-diataxis-author)
 - [ADR 0009 — evidence-tracker hook](0009-evidence-tracker-hook)
 - [ADR 0011 — Antigravity 2.0 host support](0011-antigravity-2-host-support)

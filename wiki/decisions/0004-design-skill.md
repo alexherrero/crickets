@@ -1,7 +1,7 @@
 # ADR 0004 — Design skill: human-facing design pipeline → agent execution handoff
 
 > [!NOTE]
-> **Status:** accepted · **Date:** 2026-05-15 · **Related:** [ADR 0001 — crickets purpose](0001-crickets-purpose.md) · [ADR 0002 — evaluator design](0002-evaluator-design.md) · [ADR 0003 — base operator-control hooks](0003-base-operator-hooks.md) · [agentm ADR 0006 — crickets split](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0006-crickets-split.md)
+> **Status:** accepted · **Date:** 2026-05-15 · **Related:** [ADR 0001 — crickets purpose](crickets-hld) · [ADR 0002 — evaluator design](0002-evaluator-design.md) · [ADR 0003 — base operator-control hooks](0003-base-operator-hooks.md) · [agentm ADR 0006 — crickets split](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0006-crickets-split.md)
 
 ## Context
 
@@ -126,7 +126,7 @@ Each structural part gets its own `PLAN.md` file. First part topologically activ
 
 ### §7 — Skill ships in `crickets`, not the harness
 
-`/design` is customization-shaped (an authoring + translation skill that produces artifacts the harness consumes) — not phase-shaped (the harness owns the phase-gated workflow). Per [ADR 0001](0001-crickets-purpose.md) (crickets purpose) and agentm ADR 0006 (the split), customizations live in toolkit; phases live in harness.
+`/design` is customization-shaped (an authoring + translation skill that produces artifacts the harness consumes) — not phase-shaped (the harness owns the phase-gated workflow). Per [ADR 0001](crickets-hld) (crickets purpose) and agentm ADR 0006 (the split), customizations live in toolkit; phases live in harness.
 
 The harness gains a small `/release` lifecycle hook (§1b, v2.3.0) for plan promotion + Status transition, but no `/design` slash command. Users install crickets alongside the harness to get the skill.
 
@@ -247,7 +247,7 @@ This amendment ships in toolkit v0.8.1 + paired harness v2.3.1 (the harness adds
 - [10-section design-doc template](../../skills/design/templates/design-doc.md) — locked verbatim 2026-05-14
 - [How to use the design skill (Agent M wiki)](https://github.com/alexherrero/agentm/wiki/Use-The-Design-Skill) — practical recipe. The skill moved to Agent M in v2.0.0 (V4 #36 reorg).
 - [agentm `/release` §1b](https://github.com/alexherrero/agentm/blob/main/harness/phases/05-release.md) — harness-side plan promotion + Status transition hook (v2.3.0)
-- [ADR 0001 — crickets purpose](0001-crickets-purpose.md) — sibling-repo + customization-vs-phase split decision
+- [ADR 0001 — crickets purpose](crickets-hld) — sibling-repo + customization-vs-phase split decision
 - [ADR 0002 — evaluator design](0002-evaluator-design.md) — fresh-context grader consumed by `/review` during stage 5 execution
 - [ADR 0003 — base operator-control hooks](0003-base-operator-hooks.md) — kill-switch / steer / commit-on-stop consumed by stage 5 execution
 - [ROADMAP item #6](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md) — locally-stored roadmap context (gitignored; see plan #6 in `.harness/PLAN.archive.<date>.md` after plan close for the full task breakdown + locked design calls)

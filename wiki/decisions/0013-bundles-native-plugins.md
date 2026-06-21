@@ -70,5 +70,5 @@ A group's `requires:` emits differently per host. Claude gets native `dependenci
 - [ADR 0006](0006-gemini-cli-host-removal) — the split + adapter-duplication this design avoids recreating
 - [ADR 0014](0014-install-decoupling) — retiring the bespoke installer that this model replaces
 - [ADR 0015](0015-partial-revision-36) — the #36 catalog moves deferred past this proof
-- [ADR 0001](0001-crickets-purpose) — crickets purpose + public-with-PII-guardrails posture
+- [ADR 0001](crickets-hld) — crickets purpose + public-with-PII-guardrails posture
 - [Compatibility](../reference/Compatibility) — the per-host hook + component support matrix

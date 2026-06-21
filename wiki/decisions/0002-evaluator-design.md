@@ -119,4 +119,4 @@ Per ADR 0011, the sub-agent-as-skill pattern remains the correct dispatch for `k
 - [Per-Host Paths](Per-Host-Paths) — where the evaluator lands per host.
 - [evaluator agent spec](https://github.com/alexherrero/crickets/blob/main/agents/evaluator.md) — the canonical body.
 - [agentm `/review` §3b](https://github.com/alexherrero/agentm/blob/main/harness/phases/04-review.md) — the harness-side dispatch documentation.
-- [ADR 0001 — crickets purpose](0001-crickets-purpose) — the sibling-repo decision that put this customization here vs. in the harness.
+- [ADR 0001 — crickets purpose](crickets-hld) — the sibling-repo decision that put this customization here vs. in the harness.

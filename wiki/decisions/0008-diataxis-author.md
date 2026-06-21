@@ -3,7 +3,7 @@
 > [!NOTE]
 > **Status:** accepted
 > **Date:** 2026-05-22
-> **Related:** [Parent design — diataxis-author](../designs/diataxis-author.md) · [agentm ADR 0004 — Diátaxis Documentation Spec](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0004-diataxis-documentation-spec.md) · [ADR 0001 — crickets purpose](0001-crickets-purpose) · [ADR 0007 — MemoryVault Discovery + Mining](0007-memoryvault-discovery) (the sub-agent dispatch pattern this ADR reuses) · [ROADMAP item #13](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md)
+> **Related:** [Parent design — diataxis-author](../designs/diataxis-author.md) · [agentm ADR 0004 — Diátaxis Documentation Spec](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0004-diataxis-documentation-spec.md) · [ADR 0001 — crickets purpose](crickets-hld) · [ADR 0007 — MemoryVault Discovery + Mining](crickets-hld) (the sub-agent dispatch pattern this ADR reuses) · [ROADMAP item #13](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md)
 
 > [!NOTE]
 > **Amendment (2026-06-06).** The convention write-back path described below has since *split* by lesson kind. As of the wiki-maintenance part-3 style-learning-loop and [agentm ADR 0010 — vault internal taxonomy](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0010-vault-internal-taxonomy.md), the skill's **voice/style lessons** are no longer captured to `_always-load`: they are written to the on-demand store `<vault>/projects/_global/wiki-style/<date>-<trigger>.md` and composed at draft time by `style_resolver.py` (never auto-loaded). Only the **structural-naming conventions** (the kebab-case-in-this-repo example in Q2 below, written by `confirm_save_convention`) legitimately remain in the always-load store. So where the Decision and Q2 text say global entries land at `_always-load/diataxis-*.md`, read that as: structural-naming → always-load (unchanged); voice/style → the on-demand `projects/_global/wiki-style/` store. See the [Style-learning loop](Style-Learning-Loop) reference for the live capture flow and `/diataxis relocate` (the preview-first migration off `_always-load`). `Status: accepted` is preserved — this amends, it does not supersede.
@@ -92,8 +92,8 @@ Matches `/memory`'s established pattern (save / evolve / reflect / promote / sea
 
 - [Parent design — diataxis-author](../designs/diataxis-author.md) — full architectural context including all 8 Detailed Design subsections + Tech Debt + Quality Attributes + Migrations.
 - [agentm ADR 0004 — Diátaxis Documentation Spec](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0004-diataxis-documentation-spec.md) — canonical Diátaxis spec this skill enforces (upstream).
-- [ADR 0007 — MemoryVault Discovery + Mining](0007-memoryvault-discovery) — precedent for the orchestration-skill + worker-sub-agent + scoped-write-allowlist architectural pattern this skill mirrors.
-- [ADR 0001 — crickets purpose](0001-crickets-purpose) — upstream for the stdlib-only / no-new-third-party-deps convention all skill scripts follow.
+- [ADR 0007 — MemoryVault Discovery + Mining](crickets-hld) — precedent for the orchestration-skill + worker-sub-agent + scoped-write-allowlist architectural pattern this skill mirrors.
+- [ADR 0001 — crickets purpose](crickets-hld) — upstream for the stdlib-only / no-new-third-party-deps convention all skill scripts follow.
 - [Use Diataxis Author how-to (Agent M wiki)](https://github.com/alexherrero/agentm/wiki/Use-Diataxis-Author) — operator-facing how-to. The skill moved to Agent M in v2.0.0 (V4 #36 reorg) along with the operational docs.
 - [`diataxis-evaluator` sub-agent](../../../agents/diataxis-evaluator.md) — read-only Tier-2 worker; zero-write-scope architectural enforcement.
 - [ROADMAP item #13](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md) — the roadmap entry that triggered this design.

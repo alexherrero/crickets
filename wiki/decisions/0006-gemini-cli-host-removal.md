@@ -3,7 +3,7 @@
 > [!NOTE]
 > **Status:** accepted
 > **Date:** 2026-05-17
-> **Related:** [ADR 0001 — crickets purpose](0001-crickets-purpose) (amended 2026-05-17) · [ADR 0002 — evaluator design](0002-evaluator-design) (amended 2026-05-17) · [ADR 0004 — design skill](0004-design-skill) (amended 2026-05-17 for the external-review-handoff option; this ADR is the parallel host-scope amendment) · [ROADMAP item #15](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md) · [Plan #15](https://github.com/alexherrero/agentm/blob/main/.harness/PLAN.archive.20260517-gemini-cli-removal.md) (post-completion)
+> **Related:** [ADR 0001 — crickets purpose](crickets-hld) (amended 2026-05-17) · [ADR 0002 — evaluator design](0002-evaluator-design) (amended 2026-05-17) · [ADR 0004 — design skill](0004-design-skill) (amended 2026-05-17 for the external-review-handoff option; this ADR is the parallel host-scope amendment) · [ROADMAP item #15](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md) · [Plan #15](https://github.com/alexherrero/agentm/blob/main/.harness/PLAN.archive.20260517-gemini-cli-removal.md) (post-completion)
 
 ## Context
 
@@ -74,7 +74,7 @@ Concretely:
 ## Related
 
 - [ROADMAP item #15](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md) — the roadmap entry that triggered this plan
-- [ADR 0001 — crickets purpose](0001-crickets-purpose) — amended 2026-05-17 to note the host-scope reduction
+- [ADR 0001 — crickets purpose](crickets-hld) — amended 2026-05-17 to note the host-scope reduction
 - [ADR 0002 — evaluator design](0002-evaluator-design) — amended 2026-05-17 to note the evaluator's host-scope change
 - [ADR 0004 — design skill](0004-design-skill) — amended 2026-05-16 for external-review-handoff option; the v0.9.0 host-scope reduction applies to the design skill too (the manifest sweep in task 2 dropped gemini-cli from `skills/design/SKILL.md`)
 - [Per-Host Paths reference](../../reference/Per-Host-Paths) — destination table now 2-column
