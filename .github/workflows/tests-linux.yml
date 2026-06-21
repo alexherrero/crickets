@@ -26,6 +26,10 @@ jobs:
         run: pip install pyyaml
       - name: Lint src/ source-of-truth tree (group.yaml + primitive frontmatter)
         run: python3 scripts/lint_src.py
+      - name: Capability/plugin names obey the AG naming rule (check-capability-naming)
+        # AG Phase-2 conformance gate: bans the reserved -workflows suffix (except
+        # the developer-workflows spine) and Opinion names as capability/plugin names.
+        run: python3 scripts/check-capability-naming.py
       - name: Unit tests (scripts/ — lint_src, src_model, generate, …)
         run: cd scripts && python3 -m unittest discover -p 'test_*.py'
       - name: Generated dist/ in sync with src/ (generate.py check)
