@@ -112,6 +112,11 @@ touches_architecture: true | false
 <Which deterministic gates apply + project-specific extras.>
 ```
 
+### 4b. Self-check grounding (Hook 3 · design-doc §6.3)
+
+Run the deterministic plan-grounding gate on the plan you just wrote:
+`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/check-plan-grounding.py" <resolved-plan-path>`. **Exit 1** means the plan set `touches_architecture: true` but carries neither a `parent_design_doc:` nor a non-empty `## Locked design calls` — fix it (revisit step 1b) before `/work`. **Exit 0** = grounded, or the plan isn't architecture-touching (nothing to enforce). The gate is keyed off the explicit flag, never an inference.
+
 ### 5. Update `features.json` if appropriate
 
 A feature is a user-visible capability (changelog-worthy); a task is a unit of work — **not 1:1**. Scaffolding/refactors produce no feature entry. `passes: true` is set later by `/review`, never by `/plan`. Err toward fewer feature entries.
