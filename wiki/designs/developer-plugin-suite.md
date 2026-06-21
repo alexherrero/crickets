@@ -20,6 +20,8 @@ project: https://github.com/users/alexherrero/projects/5
 
 # Developer Plugin Suite — workflows · safety · code-review + the `enhances:` composition schema
 
+> **Reconciled by the [crickets HLD](crickets-hld)** — the live crickets parent design. The developer-workflows / safety / code-review split + the `enhances:` schema specified here stand; the "six plugins" identity-line is superseded by the current set (fourteen capabilities at target, thirteen shipping today).
+
 ## Context
 
 ### Objective

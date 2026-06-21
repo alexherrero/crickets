@@ -22,6 +22,8 @@ project:
 
 # Crickets v3.0 — Native Host Plugins from a Single Source of Truth
 
+> **Reconciled by the [crickets HLD](crickets-hld)** — the live crickets parent design. The `src/`→generate→`dist/` model specified here stands; the plugin-count framing is superseded by the current set (fourteen capabilities at target, thirteen shipping today).
+
 ## Context
 
 ### Objective
