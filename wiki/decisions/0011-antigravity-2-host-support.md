@@ -103,7 +103,7 @@ Considered. Rejected because:
 
 ## Related
 
-- [ADR 0001](0001-crickets-purpose) — the customization manifest schema this ADR extends.
+- [ADR 0001](crickets-hld) — the customization manifest schema this ADR extends.
 - [ADR 0002](0002-evaluator-design) — sub-agent-as-skill pattern (confirmed unchanged for 2.0).
 - [ADR 0006](0006-gemini-cli-host-removal) — Gemini CLI removal; this ADR clarifies that Antigravity CLI is a separate host, not a revival.
 - [ADR 0009](0009-evidence-tracker-hook) — hook design; re-audit trigger met by this ADR with outcome "hooks stay claude-code-only."

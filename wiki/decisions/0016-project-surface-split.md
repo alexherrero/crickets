@@ -108,6 +108,6 @@ The split executed as:
 
 - [agentm ADR 0008 — Project surface split (sibling)](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0008-project-surface-split.md) — the agentm-side mirror of this ADR.
 - [ADR 0014 — install-decoupling (#40)](0014-install-decoupling) — the install-coupling retirement that made the Project split structurally clean (and shipped with crickets v3.0.0 as part of the same paired-pair trigger).
-- [ADR 0013 — bundles = native host plugins](0013-bundles-native-plugins) — the native-plugins architecture that gave the bundle catalog its own surface to populate.
-- [ADR 0015 — #36 partial revision](0015-partial-revision-36) — the bundle-skill move (design / diataxis-author / ship-release agentm→crickets) that populates the bundle catalog this Project tracks.
+- [ADR 0013 — bundles = native host plugins](crickets-v3-native-plugins) — the native-plugins architecture that gave the bundle catalog its own surface to populate.
+- [ADR 0015 — #36 partial revision](crickets-v3-native-plugins) — the bundle-skill move (design / diataxis-author / ship-release agentm→crickets) that populates the bundle catalog this Project tracks.
 - `ROADMAP-MASTER.md § Project surface split` (in the operator's vault) — the locked operator-stated framing this ADR records.

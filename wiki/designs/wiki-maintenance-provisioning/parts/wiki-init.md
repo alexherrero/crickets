@@ -19,7 +19,7 @@ estimated_scope: M-L
 
 ## Scope
 
-Build `wiki-init` — a plugin command (an agent action, since plugins have no target-repo install hook) that provisions a target repo's wiki. It scaffolds the [intent-folder IA](0018-per-folder-sidebars) (a sensible default subset — `get-started/ how-to/ reference/ explanation/`, extensible via `--sections`), each folder with a `_Sidebar.md` and a section-index landing built from the template library; drops the `wiki-sync.yml` from `wiki-sync-template` into `.github/workflows/`; and wires the bundled gate into the target's CI.
+Build `wiki-init` — a plugin command (an agent action, since plugins have no target-repo install hook) that provisions a target repo's wiki. It scaffolds the [intent-folder IA](wiki-maintenance-design) (a sensible default subset — `get-started/ how-to/ reference/ explanation/`, extensible via `--sections`), each folder with a `_Sidebar.md` and a section-index landing built from the template library; drops the `wiki-sync.yml` from `wiki-sync-template` into `.github/workflows/`; and wires the bundled gate into the target's CI.
 
 It is **idempotent + preview-first**: it detects an existing `wiki/` and fills only what's missing — never overwrites an operator-authored page; `--preview` writes nothing and prints the plan. Before it writes the workflow it runs the **non-public cost warning**: check the target's visibility, and if the repo isn't public, warn that GitHub Actions minutes are billed for private repos (the publish + lint workflows consume them) — public repos run free, so the warning fires only when relevant, and the operator confirms before the workflow lands.
 

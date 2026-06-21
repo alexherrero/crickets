@@ -7,31 +7,20 @@ This page is the index. The homepage links here once instead of listing every AD
 
 ## Records
 
-- [ADR 0001 — crickets purpose, scope, public-with-PII-guardrails](0001-crickets-purpose)
 - [ADR 0002 — evaluator sub-agent design](0002-evaluator-design)
 - [ADR 0003 — base operator-control hooks](0003-base-operator-hooks)
 - [ADR 0004 — design skill: human-facing design pipeline → agent execution handoff](0004-design-skill)
 - [ADR 0006 — Gemini CLI host removal](0006-gemini-cli-host-removal)
-- [ADR 0007 — MemoryVault Discovery + Mining](0007-memoryvault-discovery)
-- [ADR 0008 — diataxis-author skill](0008-diataxis-author)
 - [ADR 0009 — evidence-tracker hook](0009-evidence-tracker-hook)
 - [ADR 0011 — Antigravity 2.0 host support](0011-antigravity-2-host-support)
 - [ADR 0012 — device-wide-by-default](0012-device-wide-by-default)
-- [ADR 0013 — bundles are native host plugins](0013-bundles-native-plugins)
 - [ADR 0014 — #40 install-decoupling](0014-install-decoupling)
-- [ADR 0015 — #36 partial-revision](0015-partial-revision-36)
 - [ADR 0016 — Project surface split](0016-project-surface-split)
-- [ADR 0017 — Soft composition (`enhances:`) + the developer split + capability probe](0017-enhances-soft-composition)
-- [ADR 0018 — Per-folder sidebars: intent-grouped wiki folders with collapse/expand nav](0018-per-folder-sidebars)
-- [ADR 0019 — Wiki provisioning: gate-distribution split + supersession-gated retirement](0019-wiki-provisioning)
-- [ADR 0020 — Seven-section wiki taxonomy: fixed frame + per-project Architecture manifest + conditional gates](0020-seven-section-wiki-taxonomy)
-- [ADR 0021 — Per-plugin marketplace versioning sourced from `group.yaml`](0021-per-plugin-versioning)
 - [ADR 0022 — Retire `worktrees-never-auto`: worktrees first-class but operator-initiated](0022-retire-worktrees-never-auto)
 - [ADR 0023 — Gate the integrated tree, not the worker branch: merge-then-gate with hard-reset rollback](0023-gate-on-integrated-tree)
 - [ADR 0024 — Package `/design` as a command (tested Python helper + thin prompt), not a skill](0024-design-as-command)
 - [ADR 0025 — One-way vault → GitHub-Project board synthesis (`github-projects`)](0025-board-sync-vault-to-project)
 - [ADR 0026 — Phase-aware model routing in developer-workflows](0026-phase-aware-model-routing) _(proposed, Part D pending)_
-- [ADR 0027 — Discovery paths for `output-style` and `rule` primitives](0027-output-style-rule-discovery-paths) _(proposed, Part D pending)_
 - [ADR 0028 — Worktree authority broadened: config opt-in is operator authority for auto-spawn](0028-worktree-authority-config-opt-in)
 - [ADR 0029 — Concurrent-release coordination: tag-from-main, branch protection, single writer](0029-concurrent-release-coordination)
 - [ADR 0030 — Generated artifacts have a single writer: defer the version bump to the serialized integrator](0030-generated-artifact-single-writer)

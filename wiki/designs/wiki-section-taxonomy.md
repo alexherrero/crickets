@@ -9,6 +9,12 @@ updated: 2026-06-11
 last_major_revision: 2026-06-11
 prd:
 project: https://github.com/users/alexherrero/projects/5
+kind: design
+scope: feature
+area: crickets/wiki
+governs:
+  - src/wiki-maintenance/scripts/check-wiki.py
+parent: wiki-maintenance-design.md
 ---
 
 <!--
@@ -40,7 +46,7 @@ Two gaps drove the redesign. There was nowhere for a project's **structural comp
 
 The taxonomy has two halves that change independently. The **frame** is a fixed, ordered set of seven top-level sections — How-to, Reference, Architecture, Designs, Explanation, Decisions, Operational — shared by every project. Two are **conditional**: Architecture appears only when the project declares one; Operational only when the wiki isn't public. The other five are always present.
 
-The **Architecture contents** are per-project. Rather than hard-code sub-sections, the generator reads a small per-repo manifest (`wiki/architecture.yml`) listing each large component as `{slug, title, summary, overview-page}`, scaffolds an `architecture/<slug>/` folder per entry, and renders a nested, grouped Architecture block in the sidebar — the one genuinely new render mechanic, a third nesting level on top of the per-folder-sidebar model ([ADR 0018](0018-per-folder-sidebars)). A few components recur across the operator's sibling repos (host-adapters, the sibling-interface, distribution); those ship as **optional pillar toggles** so a project gets them with one keyword, while everything else is free-form.
+The **Architecture contents** are per-project. Rather than hard-code sub-sections, the generator reads a small per-repo manifest (`wiki/architecture.yml`) listing each large component as `{slug, title, summary, overview-page}`, scaffolds an `architecture/<slug>/` folder per entry, and renders a nested, grouped Architecture block in the sidebar — the one genuinely new render mechanic, a third nesting level on top of the per-folder-sidebar model ([ADR 0018](wiki-maintenance-design)). A few components recur across the operator's sibling repos (host-adapters, the sibling-interface, distribution); those ship as **optional pillar toggles** so a project gets them with one keyword, while everything else is free-form.
 
 Two renames close an earlier Diátaxis experiment: `do→How-to` (reversing `do→Do`) and `why→Explanation` (reversing `why→Why-It-Works`), with Get-Started/Tutorials folding into How-to. Architecture is understanding-oriented and sits *before* Designs: each Architecture page links *down* to its design, and the per-feature designs also list in their own Designs section after Architecture. Reference keeps the lookup tables (Manifest-Schema, Per-Host-Paths, Compatibility); Architecture pages link *out* to that detail rather than duplicating it.
 
@@ -85,7 +91,7 @@ The generator expands each `pillars:` toggle to its known template, scaffolds `a
 
 #### 3. The nested sub-section render (third nesting level)
 
-The sidebar model ([ADR 0018](0018-per-folder-sidebars)) is two levels today (root lists sections; each folder lists its pages). Architecture adds a third — the root Architecture entry expands into its components:
+The sidebar model ([ADR 0018](wiki-maintenance-design)) is two levels today (root lists sections; each folder lists its pages). Architecture adds a third — the root Architecture entry expands into its components:
 
 ```
 ### 🏛️ [Architecture](Architecture)
@@ -128,3 +134,11 @@ The Detailed Design's five subsections map onto the translate split: **frame · 
 | 2026-06-10 | Authored via `/design author` from the settled taxonomy discussion (7-section frame · per-project Architecture manifest · nested render · visibility gate · two dogfoods). Lightweight shape — N/A-for-this-change sections omitted, their load-bearing points folded into Design/Risks. Operator approved the lighter draft; **draft → review → final** in one pass. Translated to **6 parts** via `/design translate` (split verbatim from the design's DD mapping): `static-frame` · `architecture-manifest` · `render-and-gate` · `crickets-dogfood` · `agentm-dogfood` · `docs-adr`. | final |
 | 2026-06-10 | Sequenced into 6 `PLAN.md` via `/design sequence` (topo order static-frame → architecture-manifest → render-and-gate → crickets-dogfood → agentm-dogfood → docs-adr). `static-frame` activated as the vault `_harness/PLAN.md`; the other 5 queued to `_harness/designs/wiki-section-taxonomy/queued-plans/`. Ready for `/work`. | final |
 | 2026-06-11 | **final → launched.** All 6 parts shipped + their PLAN.md archived: `static-frame` (DEFAULT_SECTIONS/_FOLDER_MODE reshaped to the seven sections), `architecture-manifest` (`wiki/architecture.yml` reader + PILLAR_TEMPLATES + fail-closed parse), `render-and-gate` (nested third-level Architecture sidebar + the has_architecture/renders_operational gates), `crickets-dogfood` (crickets' own wiki restructured to the frame), `agentm-dogfood` (agentm's wiki rewritten against it), `docs-adr` (README §3 authoring spec · the Declare-Architecture how-to · the wiki-design weave-in · **ADR 0020**). The seven-section frame, the per-project Architecture manifest, and the two conditional gates are the shipped taxonomy; ADR 0020 records the calls. No further queued plans — the design is closed. | launched |
+
+## Amendment log
+
+*Folded decision history (AG Phase-2 C4 — record retired into this design; git holds the full ADR text).*
+
+**2026-06-21 (C4 fold) — ADR 0020 retired into this design (AG Phase 2).** The agentm/crickets ADR model was retired (AG design-doc §5); ADR 0020 (the seven-section wiki taxonomy) folded here and deleted via `migrate-adr.py` (inbound links repointed, index/sidebars pruned). Stamped `area: crickets/wiki` (child of [wiki-maintenance-design](wiki-maintenance-design)), `governs: src/wiki-maintenance/scripts/check-wiki.py` (the gate that enforces this taxonomy). *Why not keep it as an ADR:* the append-only model forces a chain-read; the living body is the single source.
+
+**2026-06-11 — seven-section wiki taxonomy: fixed frame + per-project Architecture manifest + conditional gates (was ADR 0020).** A **fixed seven-section frame in fixed order** — How-to · Reference · Architecture · Designs · Explanation · Decisions · Operational — scaffolded by `wiki_init.py`'s `DEFAULT_SECTIONS` and allow-listed by `check-wiki`'s `_FOLDER_MODE`; it **supersedes (in spirit) the intent-folder IA** of the per-folder-sidebar decision (see [wiki-maintenance-design](wiki-maintenance-design)), keeping that design's nearest-`_Sidebar.md` + two-level reachability. **Architecture** comes from a per-project `wiki/architecture.yml` manifest (`components:` of `{slug,title,summary,overview}` + optional `pillars:` toggles), read by the generator for order/landings/nested sidebar. **Two conditional sections:** Architecture renders on declaration; Operational renders on **audience (visibility)**, not per-page sensitivity (public wikis suppress it). *Why not per-repo improvised folders / Diátaxis-type-only / hard-coded architecture / always-present sections / sensitivity-gated Operational:* improvisation drifts with no source of truth; Diátaxis modes don't cover Architecture/Designs/Decisions/Operational; a hard-coded architecture list is wrong for every repo but one; stub sections are noise; sensitivity is the per-page PII gate's job, not the section frame's. *Re-audit trigger:* a recurring doc type with no home (add a section) or a universally-empty section (drop it); the `{slug,title,summary,overview}` shape proving too thin/thick.

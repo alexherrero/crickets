@@ -9,6 +9,12 @@ updated: 2026-06-10
 last_major_revision: 2026-06-10
 prd:
 project: https://github.com/users/alexherrero/projects/5
+kind: design
+scope: feature
+area: crickets/wiki
+governs:
+  - src/wiki-maintenance/scripts/wiki_init.py
+parent: wiki-maintenance-design.md
 ---
 
 <!--
@@ -30,7 +36,7 @@ The wiki-maintenance plugin authors and maintains wiki content, but it doesn't s
 
 The gap surfaced the moment the plugin shipped (v3.2.0): the next question was "point it at the blog repo and have everything set up," and there's no answer — authoring works, provisioning doesn't. A consumer today hand-copies `check-wiki.py` and `wiki-sync.yml` and builds the intent-folders by hand; each copy drifts from the source the next release moves.
 
-The pieces already exist — they're just not assembled for a target. The plugin **bundles `check-wiki.py`** (reachable at `${CLAUDE_PLUGIN_ROOT}/scripts/check-wiki.py`), the intent-folder IA + per-folder-sidebar conventions are locked ([ADR 0018](0018-per-folder-sidebars) + the [Wiki design](wiki-design)), and crickets' own 72-line `.github/workflows/wiki-sync.yml` is the proven publisher. What's missing is the wiring that drops them into a repo. The constraint that shapes the whole design: a plugin runs *inside an agent session*, so "init" is an agent-driven command, not a host install hook (Antigravity has no install hook at all).
+The pieces already exist — they're just not assembled for a target. The plugin **bundles `check-wiki.py`** (reachable at `${CLAUDE_PLUGIN_ROOT}/scripts/check-wiki.py`), the intent-folder IA + per-folder-sidebar conventions are locked ([ADR 0018](wiki-maintenance-design) + the [Wiki design](wiki-design)), and crickets' own 72-line `.github/workflows/wiki-sync.yml` is the proven publisher. What's missing is the wiring that drops them into a repo. The constraint that shapes the whole design: a plugin runs *inside an agent session*, so "init" is an agent-driven command, not a host install hook (Antigravity has no install hook at all).
 
 There's also a correctness debt to clear as part of provisioning *correctly*. The v3 plugin model left the pre-v3 install's `~/.claude/` standalones in place, **shadowing the plugin** — confirmed systemic (every plugin, not just wiki: the phase commands, `explorer`, the reviewers, `recent-wiki-changes`, and the wiki trio all had stale symlinks into agentm). Retiring them is selective: remove only what an *installed plugin now supersedes*, never the genuinely-standalone skills (`design`, `memory`, `doctor`, `last30days`). The V5 ⑤ slim deletes agentm's source copies; this design owns the `~/.claude/` symlink side.
 
@@ -68,7 +74,7 @@ Add `templates/workflows/wiki-sync.yml` — crickets' own 72-line workflow, para
 
 #### 2. The `wiki-init` action
 
-Scaffolds the [intent-folder IA](0018-per-folder-sidebars): the section folders (a sensible default subset — `get-started/ how-to/ reference/ explanation/`, extensible), each with a `_Sidebar.md` and a section-index landing built from the template library. **Idempotent + preview-first**: it detects an existing `wiki/` and fills only what's missing — never overwrites an operator-authored page. `--preview` writes nothing and prints the plan; `--sections` selects the folder set.
+Scaffolds the [intent-folder IA](wiki-maintenance-design): the section folders (a sensible default subset — `get-started/ how-to/ reference/ explanation/`, extensible), each with a `_Sidebar.md` and a section-index landing built from the template library. **Idempotent + preview-first**: it detects an existing `wiki/` and fills only what's missing — never overwrites an operator-authored page. `--preview` writes nothing and prints the plan; `--sections` selects the folder set.
 
 **Non-public cost warning.** Before it writes the workflow, the init checks the target's visibility; if the repo **isn't public**, it warns that GitHub Actions minutes are **billed for private repos** — the wiki-sync publish + the `check-wiki` gate both consume them. Public repos run Actions free, so the warning fires only when it's relevant; the operator confirms before the workflow lands.
 
@@ -96,7 +102,7 @@ Extend the reconcile to the primitive level. For each **installed** crickets plu
 ## Dependencies
 
 - The plugin's **bundled assets** (`scripts/check-wiki.py`, the template library) + the new `templates/workflows/wiki-sync.yml`.
-- The **IA conventions** ([ADR 0018](0018-per-folder-sidebars) + the [Wiki design](wiki-design)) the scaffold materializes.
+- The **IA conventions** ([ADR 0018](wiki-maintenance-design) + the [Wiki design](wiki-design)) the scaffold materializes.
 - The **`reconcile_plugins.py`** pattern (shipped 2026-06-10) the retirement extends to the primitive level.
 - The **V5 ⑤ slim** — the source-side counterpart (it deletes agentm's baked-in copies; this owns the `~/.claude/` symlink side). Coordinate so the two don't double-handle.
 - The target repo: **GitHub Actions** + a wiki enabled for the publish half.
@@ -174,4 +180,12 @@ The init is git-reversible in the target (it only adds files); the retirement is
 |---|---|---|
 | 2026-06-10 | Authored from the v3.2.0 dogfood feedback (provision-not-just-author) + the live `~/.claude` shadowing investigation (systemic, supersession-gated retirement); drafted against the 10-section template with the 2026-06-09 conventions. Operator review: two changes applied — the publish job is opinionated-named **`[W] Update Wiki`** (matching crickets' own), and `wiki-init` **warns about billed Actions minutes when the target isn't public** — and the design **approved → final**. Voice deferred to the #14 dogfood (corpus piece logged). The blog-repo dogfood validates + may amend; approval doesn't wait on it. Translated to **4 parts** via `/design translate` (operator-approved split **B**, honest deps): `wiki-sync-template` · `wiki-init` · `standalone-retirement` · `docs-adr`. Sequenced into 4 plans via `/design sequence` (Kahn topo order: `standalone-retirement` → `wiki-sync-template` → `wiki-init` → `docs-adr`); first active at vault `_harness/PLAN.md`, 3 queued at `_harness/designs/wiki-maintenance-provisioning/queued-plans/`. | final |
 | 2026-06-10 | **Dogfood reconciliation** (build-vs-design drift, pre-`docs-adr`). **Drift 1:** the two shipped CI workflows ran independently — a broken wiki published anyway because lint was a tripwire, not a gate. Merged `wiki-lint` into `wiki-sync` as one lint-then-publish workflow (`update-wiki` `needs: lint-wiki`); fixed crickets' own job likewise (commit `c336f37`, CI green). **Drift 2 (this edit):** §3 re-locked from "reference, don't vendor" to the as-built **split** — reference via `${CLAUDE_PLUGIN_ROOT}` on the agent path, vendor-with-`--resync-gate` for CI because GitHub Actions has no such var. Removed the fictional `--vendor` opt-in (CI vendors by necessity). §Tech-Debt #1 single-source debt marked resolved (one hand-maintained gate in the plugin; repo-root copy removed). Status unchanged — reconciliation, not a new decision. | final |
-| 2026-06-10 | **Launched.** The final part (`docs-adr`, 4/4) completed: how-to [Provision a repo's wiki](Provision-A-Repo-Wiki) (`8363efd`), plugin-page + Wiki-design updates (`040557b`), and [ADR 0019](0019-wiki-provisioning) recording the gate-distribution split + supersession-gated retirement (`a321adc`). All four parts shipped + CI-green; `[W] Update Wiki` dogfooded the lint-then-publish workflow end-to-end. **Status final → launched.** | launched |
+| 2026-06-10 | **Launched.** The final part (`docs-adr`, 4/4) completed: how-to [Provision a repo's wiki](Provision-A-Repo-Wiki) (`8363efd`), plugin-page + Wiki-design updates (`040557b`), and [ADR 0019](wiki-maintenance-provisioning) recording the gate-distribution split + supersession-gated retirement (`a321adc`). All four parts shipped + CI-green; `[W] Update Wiki` dogfooded the lint-then-publish workflow end-to-end. **Status final → launched.** | launched |
+
+## Amendment log
+
+*Folded decision history (AG Phase-2 C4 — record retired into this design; git holds the full ADR text).*
+
+**2026-06-21 (C4 fold) — ADR 0019 retired into this design (AG Phase 2).** The agentm/crickets ADR model was retired (AG design-doc §5); ADR 0019 (wiki provisioning) folded here and deleted via `migrate-adr.py` (inbound links repointed, index/sidebars pruned). Stamped `area: crickets/wiki` (child of [wiki-maintenance-design](wiki-maintenance-design)), `governs: src/wiki-maintenance/scripts/wiki_init.py`. *Why not keep it as an ADR:* the append-only model forces a chain-read; the living body is the single source.
+
+**2026-06-10 — wiki provisioning: gate-distribution split + supersession-gated retirement (was ADR 0019).** `wiki-init` makes provisioning one idempotent, preview-first action. Two load-bearing calls: **(1) gate distribution is a split** — the agent runs `check-wiki.py` *by reference* (`${CLAUDE_PLUGIN_ROOT}/...`, upgrades for free) while CI *vendors* a copy into `.github/scripts/` (GitHub runners have no `${CLAUDE_PLUGIN_ROOT}`), re-synced via `--resync-gate`; **(2) supersession-gated retirement** — installing crickets plugins removes only the `~/.claude/` standalones an *installed* crickets plugin supersedes, matched by name **and** crickets provenance, preview-first/dry-run-default. *Why not vendor-everywhere / reference-everywhere / blind-removal / name-only matching:* vendoring rots on the next move; a referenced CI gate can't resolve a path; blind removal would delete agentm-native `design`/`memory`/`doctor`; name-only could remove a same-named non-provided standalone. *Re-audit trigger:* GitHub Actions exposing a runner-visible plugin path (CI could reference, retire the vendor half), or a host ceasing to export `${CLAUDE_PLUGIN_ROOT}`.

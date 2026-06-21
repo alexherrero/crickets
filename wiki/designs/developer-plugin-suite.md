@@ -9,6 +9,13 @@ updated: 2026-06-04
 last_major_revision: 2026-06-04
 prd:
 project: https://github.com/users/alexherrero/projects/5
+kind: design
+scope: feature
+area: crickets/composition
+governs:
+  - src/developer-workflows/scripts/find_capability.py
+  - scripts/suggest_enhancers.py
+parent: crickets-hld.md
 ---
 
 <!--
@@ -207,7 +214,7 @@ Shipped as **6 parts** across crickets 3.x: enhances-schema · developer-workflo
 - **This published HLD-child design** (the "why"/architecture of the suite).
 - Per-plugin **how-tos** under crickets `wiki/how-to/` (install + use each; the standalone `/code-review`; the `enhances:` composition).
 - Update `wiki/reference/Manifest-Schema.md` for `enhances:` + `capabilities:`; extend the Compatibility page (tooling-resolved composition + AG observe-only nuance).
-- **[ADR 0017](0017-enhances-soft-composition)** (shipped): the `enhances:` soft-composition schema + the three-way split decision + the probe → V5-8 hand-off.
+- **[ADR 0017](developer-plugin-suite)** (shipped): the `enhances:` soft-composition schema + the three-way split decision + the probe → V5-8 hand-off.
 
 ### Launch Plans
 
@@ -238,3 +245,13 @@ Highly reversible. Each plugin is an additive native plugin — uninstall remove
 | 2026-06-03 | Designed **and built** in one day. Authored via `/design author` (scope locked across the prior discussion: 3 plugins + the `enhances:` schema), approved as final, translated + sequenced into 6 parts — then **all 6 parts built**: `enhances-schema` (model · lint · emitters · the Manifest-Schema wiki ref; the bootstrap enhancer-suggestion deferred to part 3); `developer-workflows` (6 self-contained phase commands + the explorer/evaluator agents + the Claude-only harness-context hook; the generator gained `command` discovery; dogfood fixed a latent part-1 emitter defect — `capabilities`/`enhances` emit to the marketplace entry only); `developer-safety` (the control hooks + 2 snippet conventions; the generator gained `snippet` discovery; `suggest_enhancers.py` landed); `code-review` (the adversarial agents + `evidence-tracker` + `/code-review`; group-level `scripts/` bundling); `auto-enable-runtime` (`capability_probe.py` wiring the thin `/review`; a `__pycache__` leak caught by CI); `seed-retirement` (`src/developer/` deleted, siblings re-pointed, the 6-plugin world dogfood-proven — bucket ④ build complete). | final |
 | 2026-06-04 | **Wave `/release` — launched.** All 6 parts shipped + CI green; the wave-boundary docs landed (Compatibility host-matrix + snippet emission, the `/code-review` how-to, the corrected snippet rows, the go-forward install/develop how-tos); ADR 0017 (the `enhances:` soft-composition + 3-way split + probe→V5-8 hand-off); CHANGELOG v3.1.0. Status `final → launched`. This ships the **Developer base** — the **first** of bucket ④'s three critical plugins (Wiki/docs #4 + project-management #41 remain). The slim of agentm's now-duplicated **dev-loop** baked-in copies (the ⑤ V5 slim's first portion) is unblocked by this wave's dogfood proof. | launched |
 | 2026-06-09 | Content reviewed against shipped reality (no separate Testing plugin landed → test conventions reframed; design-time tense → shipped; estimates → the 6 parts that landed; ADR 0017 cited). 10-section structure unchanged. | launched |
+
+## Amendment log
+
+*Folded decision history (AG Phase-2 C4 — records retired into this composition design; git holds the full ADR text).*
+
+**2026-06-21 (C4 fold) — ADRs 0017 + 0027 retired into this design (AG Phase 2).** The agentm/crickets ADR model was retired (AG design-doc §5); ADR 0017 (`enhances:` soft composition + the three-way developer split + capability-keyed resolution) + ADR 0027 (output-style/rule discovery paths) folded here and deleted via `migrate-adr.py` (inbound links repointed, index/sidebars pruned). This design was stamped as the `crickets/composition` area owner (`governs:` the `find_capability.py` bridge + `suggest_enhancers.py`). *Why not keep them as ADRs:* the append-only model forces a chain-read; the living body is the single source. *Re-audit trigger:* a host shipping native soft-composition (drop the tooling-resolved `enhances:` layer), or a second group needing an output-style/rule.
+
+**2026-06-04 — soft composition (`enhances:`), the three-way developer split, capability-keyed resolution (was ADR 0017).** A new optional `enhances: [{group, capability?, effect}]` `group.yaml` field declares "augment X when both are installed," orthogonal to hard `requires:`/`standalone:`, declared **on the enhancer** (keeps the enhancee's manifest closed to edit); `lint_src` validates the edge. The monolithic `developer` seed split three ways — **developer-workflows** (the phase loop, the base) · **developer-safety** (control hooks + safety conventions) · **code-review** (adversarial review) — composing via `enhances:`, none `requires:` another. Two enabling modes: **emergent** (safety hooks fire session-global once installed) + **conditional dispatch** (a phase command dispatches an enhancer iff present, else graceful-skip). *Resolution:* `find_capability.py` (a developer-workflows bridge) discovers agentm's `capability_resolver.py` by path-fallback, exit-1 when agentm absent (DC-2: siblings not layers). *Amended 2026-06-18 (`ad2c2ed`):* the interim slug-keyed `capability_probe.py` **retired** once agentm V5-8 shipped (`e7b9139`) — the capability-keyed resolver is the live path. *Why not hard `requires:` / `enhanced_by:` on the enhancee / agent-judgment:* a hard dep denies standalone use; `enhanced_by:` re-opens the enhancee to edits; agent-judgment is non-reproducible (composition must be deterministic + testable). *Re-audit trigger:* a host shipping an `enhances`-like primitive; Antigravity gaining hook-veto.
+
+**2026-06-14 — output-style + rule discovery paths within developer-workflows (was ADR 0027).** The first concrete `output-style` (`terse`) + `rule` (`edit-over-write`) instances live as `output-styles/` + `rules/` **subdirs inside `src/developer-workflows/`**, not new top-level groups — they're dev-loop-specific token-discipline levers with no meaning outside the loop, sharing its version lifecycle; plural-hyphenated subdir names matching the `kind` enum; single-file primitives (no companion scripts, unlike `hooks/<name>/`). *Why not new top-level groups / a `requires:`-sibling:* neither lever is independently useful — subdirness is the right container, not an installable pair. *Re-audit trigger:* a second group adding an output-style/rule, or one needing a runtime script (would need the dir-plus-file pattern).

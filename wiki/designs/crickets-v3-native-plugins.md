@@ -9,6 +9,15 @@ updated: 2026-06-02
 last_major_revision: 2026-06-01
 prd:
 project:
+kind: design
+scope: feature
+area: crickets/build-system
+governs:
+  - scripts/generate.py
+  - scripts/src_model.py
+  - scripts/emit_claude.py
+  - scripts/emit_antigravity.py
+parent: crickets-hld.md
 ---
 
 <!--
@@ -63,7 +72,7 @@ No runtime services — crickets is a build-time tool plus a static distribution
 
 **Layout: folder-per-group** *(Decision 1).* The source of truth is organized as one folder per functional group — `src/developer-workflows/`, `src/developer-safety/`, `src/code-review/`, `src/github-ci/`, `src/pii/`, `src/wiki-maintenance/` — each holding its own primitive folders (`skills/`, `agents/`, `hooks/`, `commands/`, `scripts/`). A primitive's group is simply the folder it lives in, so the grouping is legible straight from the tree. Cross-plugin relationships (e.g. `github-ci` building on `developer-workflows`) are expressed by **plugin dependencies at generation time**, not by a primitive belonging to two groups, so no file is duplicated. This choice is invisible to end users: the generator emits one named plugin per group and lists them in the host marketplaces regardless of source layout.
 
-**Group manifest.** Because group = folder, group-level metadata lives in a per-group manifest (e.g. `src/github-ci/group.yaml`): `name`, `description`, `category`, `standalone:` (bool — independently installable), `requires:` (groups this one hard-depends on), and `enhances:` (soft augmentation — added in [ADR 0017](0017-enhances-soft-composition)). Each primitive folder keeps its own frontmatter (`kind`, `supported_hosts`). This separates "what this plugin is" (group manifest) from "what this primitive is" (primitive frontmatter).
+**Group manifest.** Because group = folder, group-level metadata lives in a per-group manifest (e.g. `src/github-ci/group.yaml`): `name`, `description`, `category`, `standalone:` (bool — independently installable), `requires:` (groups this one hard-depends on), and `enhances:` (soft augmentation — added in [ADR 0017](developer-plugin-suite)). Each primitive folder keeps its own frontmatter (`kind`, `supported_hosts`). This separates "what this plugin is" (group manifest) from "what this primitive is" (primitive frontmatter).
 
 #### Generator
 
@@ -102,7 +111,7 @@ CLI: `generate.py build` (write `dist/`), `generate.py check` (build to a temp d
 - **Claude Code** — native: the dependent plugin's `plugin.json` gets `dependencies: [<base>]` (semver), so installing `github-ci` auto-installs `developer-workflows`. Host-resolved, single copy.
 - **Antigravity** — thin: the dependent plugin carries **only its own** primitives; the generator records the dependency in the group manifest + the plugin's README + the marketplace entry, and documents "install `developer-workflows` first." No inlining, so base + dependents never double-register a hook or collide a command.
 - **`standalone:` groups** (`pii`) declare no `requires:` and ship self-contained on both hosts — #42's "works standalone" mode.
-- **`enhances:` groups** (`developer-safety`, `code-review`, `wiki-maintenance`) are standalone too, but soft-augment `developer-workflows` at its phase boundaries when both are installed (capability-probed; graceful-skip otherwise) — #42's "integrated" mode, generalized by [ADR 0017](0017-enhances-soft-composition).
+- **`enhances:` groups** (`developer-safety`, `code-review`, `wiki-maintenance`) are standalone too, but soft-augment `developer-workflows` at its phase boundaries when both are installed (capability-probed; graceful-skip otherwise) — #42's "integrated" mode, generalized by [ADR 0017](developer-plugin-suite).
 
 **Load-bearing assumption + re-audit trigger:** Antigravity's native cross-plugin dependency support is *unconfirmed* (research could not read the live `plugin.json` schema). The generator emits AG thin-separate today; **re-audit on first AG dogfood** — if Antigravity exposes a `dependencies`-equivalent field, switch the AG emitter to native deps so both hosts auto-resolve and the "install Developer first" doc step disappears.
 
@@ -130,7 +139,7 @@ The one-liner and the manual path are **documented how-tos** (see Documentation 
 
 **Deleted (clean break, v3.0 major):** `install.sh` / `install.ps1` dispatch; the crickets copy of `lib/install/`; `sync-lib.sh`; `check-lib-parity.sh`; the old top-level primitive dirs (`skills/`, `agents/`, `hooks/`) — their contents migrate into `src/<group>/`. **agentm keeps its own `lib/install/`**; decoupling means crickets stops mirroring it (the generator is repo-agnostic, so agentm can adopt it later — out of #40 scope).
 
-**Proof scope** *(Decision 3).* #40 proved the architecture by emitting crickets' **existing** primitives as real plugins on both hosts and dogfooding install: `pii-scrubber` → the standalone `pii` plugin; the control hooks (`commit-on-stop` / `kill-switch` / `steer`) + the evaluators → grouped plugins. The full developer-base composition and the #36 skill move (`diataxis-author` → `wiki-maintenance`) **landed in bucket ④**: #40 recorded the intent in the "#36 partial revision" ADR ([ADR 0015](0015-partial-revision-36)) and deferred the relocations, which subsequently shipped.
+**Proof scope** *(Decision 3).* #40 proved the architecture by emitting crickets' **existing** primitives as real plugins on both hosts and dogfooding install: `pii-scrubber` → the standalone `pii` plugin; the control hooks (`commit-on-stop` / `kill-switch` / `steer`) + the evaluators → grouped plugins. The full developer-base composition and the #36 skill move (`diataxis-author` → `wiki-maintenance`) **landed in bucket ④**: #40 recorded the intent in the "#36 partial revision" ADR ([ADR 0015](crickets-v3-native-plugins)) and deferred the relocations, which subsequently shipped.
 
 ## Alternatives Considered
 
@@ -228,7 +237,7 @@ Shipped as **6 parts**: foundations · generator-claude · antigravity-emitter �
 
 ### Documentation Plan
 
-- **ADRs (shipped):** [0013](0013-bundles-native-plugins) (bundles = native host plugins) · [0014](0014-install-decoupling) · [0015](0015-partial-revision-36) (the deferred moves).
+- **ADRs (shipped):** [0013](crickets-v3-native-plugins) (bundles = native host plugins) · [0014](0014-install-decoupling) · [0015](crickets-v3-native-plugins) (the deferred moves).
 - **wiki/how-to:** "Install crickets plugins" — covering all three modes (one-line default, marketplace, manual pick-and-choose) per host; "Develop a crickets plugin locally" (the dev loop).
 - **wiki/reference:** the SoT manifest schema; the per-host mapping table.
 - **wiki/explanation:** this design, published at `Status: final`.
@@ -262,3 +271,13 @@ Reversible by git: reverting the v3.0 release commit restores the v2 `install.sh
 |---|---|---|
 | 2026-06-01 | Authored, locked, and finalized via `/design author` in one day: Context + Design drafted from the #40 discussion + verified host research; Decisions 1–3 locked (folder-per-group SoT · thin-separate AG composition · proof scope with the #36 moves deferred to ④); the review pass added the three install modes; approved as final, published, translated to 6 parts (foundations · generator-claude · antigravity-emitter · ci-gate · distribution-clean-break · dogfood-proof-docs), and sequenced into 6 plans (foundations active, 5 queued). | final |
 | 2026-06-09 | Content updated to the **shipped** architecture (the six real plugins, per-host `dist/`, `enhances:` composition, the catalog that landed). 10-section structure unchanged. | launched |
+
+## Amendment log
+
+*Folded decision history (AG Phase-2 C4 — records retired into this build-system design; git holds the full ADR text).*
+
+**2026-06-21 (C4 fold) — ADRs 0013 + 0015 retired into this design (AG Phase 2).** The agentm/crickets ADR model was retired (AG design-doc §5); ADR 0013 (bundles are native host plugins) + ADR 0015 (#36 partial-revision — proof scope) folded here and deleted via `migrate-adr.py` (inbound links repointed, index/sidebars pruned). This design was stamped as the `crickets/build-system` area owner (`governs:` the generator + emitters). *Why not keep them as ADRs:* the append-only model forces a chain-read; the living body is the single source. *Re-audit trigger:* a host plugin/marketplace schema change (regenerate + dogfood), or catalog-completion work needing generator changes.
+
+**2026-06-02 — bundles are native host plugins, generated from one source (was ADR 0013).** One source of truth under `src/<group>/` + a deterministic stdlib-only `generate.py` emits native per-host plugins into committed `dist/{claude-code,antigravity}/`; functional grouping (folder) is the unit of distribution; cross-plugin reuse is generation-time dependencies, never a duplicated primitive; a `generate.py check` drift gate makes determinism load-bearing. Antigravity composition is **thin-separate** (no native deps — confirmed at the #40 dogfood: `agy` 1.0.2 has no dependency resolution); Claude uses native `dependencies`. *Why not hand-author per-host / generate-at-install / trust-manual-rebuild:* each recreates adapter drift, breaks the static marketplace + auditable diff, or lets generated output silently drift. *Re-audit trigger:* a host plugin-manifest/marketplace schema change, or a host requiring nondeterministic output.
+
+**2026-06-02 — #36 partial-revision: #40 proves the architecture, defers the catalog (was ADR 0015).** #40 proved the model on crickets' existing primitives (4 groups / 7 primitives — every emitter path) + dogfooded install on both hosts; the #36 skill relocations (`design`→Design-docs, `diataxis-author`→Wiki, `ship-release`→Releasing) + the full catalog (Testing/Releasing/knowledge) were explicitly deferred to bucket ④. *Why record the boundary as a contract:* so a reader of the sparse post-#40 catalog sees it was partially-revised on purpose, not abandoned. *Re-audit trigger:* the first genuinely-new bucket-④ bundle (does a new primitive kind / host mapping need generator rework?), or the crickets/agentm split shifting again before ④ executes.

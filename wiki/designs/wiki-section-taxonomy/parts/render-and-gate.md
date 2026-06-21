@@ -21,7 +21,7 @@ estimated_scope: M
 
 Two render-layer changes:
 
-1. **The third nesting level (DD §3).** The root `_Sidebar.md` Architecture entry expands into its declared components, each linking to its overview page — a third level on top of the existing two-level per-folder-sidebar model ([ADR 0018](0018-per-folder-sidebars)). Per-component folders still get their own `_Sidebar.md` for the pages *within* a component (GitHub Wiki renders the nearest sidebar). This is the only new render mechanic.
+1. **The third nesting level (DD §3).** The root `_Sidebar.md` Architecture entry expands into its declared components, each linking to its overview page — a third level on top of the existing two-level per-folder-sidebar model ([ADR 0018](wiki-maintenance-design)). Per-component folders still get their own `_Sidebar.md` for the pages *within* a component (GitHub Wiki renders the nearest sidebar). This is the only new render mechanic.
 2. **The Operational visibility gate (DD §4).** Operational renders only when `--visibility != public` — both `private` and `internal` are non-public (the distinction is audience, not content-sensitivity; both get Operational); `public` and `unknown` suppress it.
 
 ## Dependencies
