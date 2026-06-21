@@ -5,7 +5,7 @@
 
 ## Context
 
-The wiki system ([Wiki design](wiki-design), [ADR 0018](0018-per-folder-sidebars)) had a structure, a linter, a publisher, and three maintenance loops — but no **provisioning** step. Standing a new repo's wiki up meant hand-copying files, which is exactly the drift the operator flagged: a moved `check-wiki.py` rots every copy. `wiki-init` makes provisioning one idempotent, preview-first action ([how-to](Provision-A-Repo-Wiki)).
+The wiki system ([Wiki design](wiki-design), [ADR 0018](wiki-maintenance-design)) had a structure, a linter, a publisher, and three maintenance loops — but no **provisioning** step. Standing a new repo's wiki up meant hand-copying files, which is exactly the drift the operator flagged: a moved `check-wiki.py` rots every copy. `wiki-init` makes provisioning one idempotent, preview-first action ([how-to](Provision-A-Repo-Wiki)).
 
 Two of its calls were load-bearing and non-obvious enough to record here: **how the bundled `check-wiki.py` gate reaches a target's CI**, and **how the install retires the `~/.claude/` standalones crickets plugins now supersede** without deleting ones it shouldn't.
 
@@ -64,5 +64,5 @@ Installing crickets plugins should clean up the `~/.claude/` standalones they no
 
 - [Provisioning design](wiki-maintenance-provisioning) — the full design; §3 the gate-distribution split, §4 the retirement.
 - [Provision a repo's wiki](Provision-A-Repo-Wiki) — the how-to that walks `wiki-init`.
-- [Wiki design](wiki-design) · [ADR 0018 — per-folder sidebars](0018-per-folder-sidebars) — the wiki system + IA this provisions.
+- [Wiki design](wiki-design) · [ADR 0018 — per-folder sidebars](wiki-maintenance-design) — the wiki system + IA this provisions.
 - [ADR 0013 — bundles are native host plugins](crickets-v3-native-plugins) — the plugin model the retirement reconciles against the `~/.claude/` standalones.

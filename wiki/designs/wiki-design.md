@@ -29,7 +29,7 @@ The crickets wiki is the project's documentation, written in `wiki/` in the repo
 
 ### Background
 
-Machine-maintained docs rot in two ways: structurally (broken links, mixed page types, orphaned pages) and tonally (generic AI prose nobody wants to read). The wiki system attacks both — a deterministic linter (`check-wiki.py`) for structure, and a template + voice layer (the [wiki-maintenance plugin](Wiki-Maintenance)'s authoring engine) for tone. The information architecture itself was reworked on 2026-06-08 ([ADR 0018](0018-per-folder-sidebars)) after the original flat layout outgrew its single sidebar.
+Machine-maintained docs rot in two ways: structurally (broken links, mixed page types, orphaned pages) and tonally (generic AI prose nobody wants to read). The wiki system attacks both — a deterministic linter (`check-wiki.py`) for structure, and a template + voice layer (the [wiki-maintenance plugin](Wiki-Maintenance)'s authoring engine) for tone. The information architecture itself was reworked on 2026-06-08 ([ADR 0018](wiki-maintenance-design)) after the original flat layout outgrew its single sidebar.
 
 The publishing environment drives most of the design. GitHub wikis resolve page links **by basename**, **case-insensitively**, and render the **nearest** `_Sidebar.md` to the page being viewed. Those three behaviors give us the collapse/expand navigation trick (one sidebar per folder) — and the failure mode the linter exists for: two pages whose names differ only in case silently clobber each other when published.
 
@@ -78,7 +78,7 @@ Seven sections in a fixed order, named for what the reader wants: How-to · Refe
 
 #### 2. Sidebars — the nearest-wins trick
 
-GitHub renders the `_Sidebar.md` **nearest** to the current page. The root sidebar (rendered on Home) shows all sections expanded one level; each folder's sidebar expands only its own section and collapses the rest to linked headings. The effect is two-level navigation on a platform that only supports one sidebar — verified live against the rendered wiki when it shipped ([ADR 0018](0018-per-folder-sidebars) records the call and its load-bearing assumption).
+GitHub renders the `_Sidebar.md` **nearest** to the current page. The root sidebar (rendered on Home) shows all sections expanded one level; each folder's sidebar expands only its own section and collapses the rest to linked headings. The effect is two-level navigation on a platform that only supports one sidebar — verified live against the rendered wiki when it shipped ([ADR 0018](wiki-maintenance-design) records the call and its load-bearing assumption).
 
 #### 3. Naming rules
 
@@ -120,7 +120,7 @@ Three loops, all reusing the same writer (the `documenter` agent, hard-scoped to
 
 ## Migrations
 
-- **2026-06-08 — flat → intent-grouped** ([ADR 0018](0018-per-folder-sidebars)): pages moved into section folders; per-folder sidebars added; section index landings created; `check-wiki.py` gained folder-mode defaults, the `index` mode, and the mode-hint comment. Verified against the live rendered wiki.
+- **2026-06-08 — flat → intent-grouped** ([ADR 0018](wiki-maintenance-design)): pages moved into section folders; per-folder sidebars added; section index landings created; `check-wiki.py` gained folder-mode defaults, the `index` mode, and the mode-hint comment. Verified against the live rendered wiki.
 - **2026-06-09 — case-collision renames:** the `-design` suffix convention applied to five design pages whose basenames collided case-insensitively with user-facing pages; rule-g made case-insensitive (it caught the second collision the moment it landed).
 - **2026-06-09 — the Agent-M design docs relocated** to the agentm wiki (they document the sibling system); crickets pages re-pointed.
 - **2026-06-11 — intent-folders → seven-section frame** ([section taxonomy](wiki-section-taxonomy)): the pass-1 reader-intent folders were reconciled to the fixed seven — `get-started/` + `do/` → `how-to/`, `why/` → `explanation/`, `plugins/` → `architecture/plugins/`; `architecture/`, `designs/`, `decisions/`, and (non-public wikis only) `operational/` round out the frame. Architecture gained a per-project `wiki/architecture.yml` manifest and a third sidebar nesting level; Architecture and Operational became the two conditional sections.
@@ -165,7 +165,7 @@ Deferred but real: the section-template system must eventually support multiple 
 
 Every wiki page documenting this system:
 
-- **[ADR 0018](0018-per-folder-sidebars)** — the IA decision (per-folder sidebars + intent grouping) with its load-bearing assumption.
+- **[ADR 0018](wiki-maintenance-design)** — the IA decision (per-folder sidebars + intent grouping) with its load-bearing assumption.
 - **[CI gates](CI-Gates)** — where `check-wiki --strict` runs; the deploy job's place in the workflow table lives here in the [CI design](continuous-integration)'s sibling sense.
 - **[Style-learning loop](Style-Learning-Loop)** — the voice layer's reference.
 - **[Run the wiki-watcher](Run-The-Wiki-Watcher)** + **[Wiki Watch Config](Wiki-Watch-Config)** — the async maintenance loop.
@@ -176,7 +176,7 @@ Every wiki page documenting this system:
 
 ### Launch Plans
 
-Already launched: the publish pipeline has mirrored `wiki/` since the repo's early releases; the intent-grouped IA + per-folder sidebars + section landings since **2026-06-08** ([ADR 0018](0018-per-folder-sidebars)); the case-insensitive guards + `-design` convention since **2026-06-09**.
+Already launched: the publish pipeline has mirrored `wiki/` since the repo's early releases; the intent-grouped IA + per-folder sidebars + section landings since **2026-06-08** ([ADR 0018](wiki-maintenance-design)); the case-insensitive guards + `-design` convention since **2026-06-09**.
 
 ## Operations
 

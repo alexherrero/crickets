@@ -40,7 +40,7 @@ Two gaps drove the redesign. There was nowhere for a project's **structural comp
 
 The taxonomy has two halves that change independently. The **frame** is a fixed, ordered set of seven top-level sections — How-to, Reference, Architecture, Designs, Explanation, Decisions, Operational — shared by every project. Two are **conditional**: Architecture appears only when the project declares one; Operational only when the wiki isn't public. The other five are always present.
 
-The **Architecture contents** are per-project. Rather than hard-code sub-sections, the generator reads a small per-repo manifest (`wiki/architecture.yml`) listing each large component as `{slug, title, summary, overview-page}`, scaffolds an `architecture/<slug>/` folder per entry, and renders a nested, grouped Architecture block in the sidebar — the one genuinely new render mechanic, a third nesting level on top of the per-folder-sidebar model ([ADR 0018](0018-per-folder-sidebars)). A few components recur across the operator's sibling repos (host-adapters, the sibling-interface, distribution); those ship as **optional pillar toggles** so a project gets them with one keyword, while everything else is free-form.
+The **Architecture contents** are per-project. Rather than hard-code sub-sections, the generator reads a small per-repo manifest (`wiki/architecture.yml`) listing each large component as `{slug, title, summary, overview-page}`, scaffolds an `architecture/<slug>/` folder per entry, and renders a nested, grouped Architecture block in the sidebar — the one genuinely new render mechanic, a third nesting level on top of the per-folder-sidebar model ([ADR 0018](wiki-maintenance-design)). A few components recur across the operator's sibling repos (host-adapters, the sibling-interface, distribution); those ship as **optional pillar toggles** so a project gets them with one keyword, while everything else is free-form.
 
 Two renames close an earlier Diátaxis experiment: `do→How-to` (reversing `do→Do`) and `why→Explanation` (reversing `why→Why-It-Works`), with Get-Started/Tutorials folding into How-to. Architecture is understanding-oriented and sits *before* Designs: each Architecture page links *down* to its design, and the per-feature designs also list in their own Designs section after Architecture. Reference keeps the lookup tables (Manifest-Schema, Per-Host-Paths, Compatibility); Architecture pages link *out* to that detail rather than duplicating it.
 
@@ -85,7 +85,7 @@ The generator expands each `pillars:` toggle to its known template, scaffolds `a
 
 #### 3. The nested sub-section render (third nesting level)
 
-The sidebar model ([ADR 0018](0018-per-folder-sidebars)) is two levels today (root lists sections; each folder lists its pages). Architecture adds a third — the root Architecture entry expands into its components:
+The sidebar model ([ADR 0018](wiki-maintenance-design)) is two levels today (root lists sections; each folder lists its pages). Architecture adds a third — the root Architecture entry expands into its components:
 
 ```
 ### 🏛️ [Architecture](Architecture)

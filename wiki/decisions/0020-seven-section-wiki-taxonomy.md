@@ -5,7 +5,7 @@
 
 ## Context
 
-[ADR 0018](0018-per-folder-sidebars) gave the wiki intent-grouped folders (`get-started/ · do/ · reference/ · why/ · designs/ · decisions/`) and per-folder sidebars. That solved navigation but left the **taxonomy itself open-ended**: each repo improvised its own folder set at provisioning time, so the section list drifted across repos and had no single source `wiki-init` could scaffold or `check-wiki` could enforce. Reader-intent names (`do/`, `why/`) also read as placeholders rather than a deliberate frame, and there was nowhere structured for a project's **architecture** to live — `plugins/` was a crickets-specific bolt-on, not a general bucket.
+[ADR 0018](wiki-maintenance-design) gave the wiki intent-grouped folders (`get-started/ · do/ · reference/ · why/ · designs/ · decisions/`) and per-folder sidebars. That solved navigation but left the **taxonomy itself open-ended**: each repo improvised its own folder set at provisioning time, so the section list drifted across repos and had no single source `wiki-init` could scaffold or `check-wiki` could enforce. Reader-intent names (`do/`, `why/`) also read as placeholders rather than a deliberate frame, and there was nowhere structured for a project's **architecture** to live — `plugins/` was a crickets-specific bolt-on, not a general bucket.
 
 The [wiki-section-taxonomy design](wiki-section-taxonomy) closes that: one fixed frame, scaffolded by `wiki_init.py`'s `DEFAULT_SECTIONS` and allow-listed by `check-wiki`'s `_FOLDER_MODE`, dogfooded by restructuring both crickets and agentm (parts 4–5). This ADR records the three load-bearing calls.
 
@@ -67,5 +67,5 @@ Five of the seven sections are always scaffolded. Two are conditional: **Archite
 - [Wiki Section Taxonomy](wiki-section-taxonomy) — the design this ADR records; the six parts that shipped + dogfooded the frame.
 - [Declare a project's Architecture](Declare-Architecture) — the how-to for writing `wiki/architecture.yml`.
 - [Wiki design](wiki-design) — the umbrella wiki system this frame restructures; Detailed Design #1 carries the as-built frame.
-- [ADR 0018 — per-folder sidebars](0018-per-folder-sidebars) — the intent-folder IA this frame supersedes in spirit (`get-started/do/why/plugins` → the fixed seven); its nearest-sidebar + two-level reachability model still holds.
+- [ADR 0018 — per-folder sidebars](wiki-maintenance-design) — the intent-folder IA this frame supersedes in spirit (`get-started/do/why/plugins` → the fixed seven); its nearest-sidebar + two-level reachability model still holds.
 - [ADR 0019 — wiki provisioning](0019-wiki-provisioning) — `wiki-init` scaffolds the frame and reads the manifest.

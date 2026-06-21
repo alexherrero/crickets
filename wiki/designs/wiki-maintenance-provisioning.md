@@ -30,7 +30,7 @@ The wiki-maintenance plugin authors and maintains wiki content, but it doesn't s
 
 The gap surfaced the moment the plugin shipped (v3.2.0): the next question was "point it at the blog repo and have everything set up," and there's no answer — authoring works, provisioning doesn't. A consumer today hand-copies `check-wiki.py` and `wiki-sync.yml` and builds the intent-folders by hand; each copy drifts from the source the next release moves.
 
-The pieces already exist — they're just not assembled for a target. The plugin **bundles `check-wiki.py`** (reachable at `${CLAUDE_PLUGIN_ROOT}/scripts/check-wiki.py`), the intent-folder IA + per-folder-sidebar conventions are locked ([ADR 0018](0018-per-folder-sidebars) + the [Wiki design](wiki-design)), and crickets' own 72-line `.github/workflows/wiki-sync.yml` is the proven publisher. What's missing is the wiring that drops them into a repo. The constraint that shapes the whole design: a plugin runs *inside an agent session*, so "init" is an agent-driven command, not a host install hook (Antigravity has no install hook at all).
+The pieces already exist — they're just not assembled for a target. The plugin **bundles `check-wiki.py`** (reachable at `${CLAUDE_PLUGIN_ROOT}/scripts/check-wiki.py`), the intent-folder IA + per-folder-sidebar conventions are locked ([ADR 0018](wiki-maintenance-design) + the [Wiki design](wiki-design)), and crickets' own 72-line `.github/workflows/wiki-sync.yml` is the proven publisher. What's missing is the wiring that drops them into a repo. The constraint that shapes the whole design: a plugin runs *inside an agent session*, so "init" is an agent-driven command, not a host install hook (Antigravity has no install hook at all).
 
 There's also a correctness debt to clear as part of provisioning *correctly*. The v3 plugin model left the pre-v3 install's `~/.claude/` standalones in place, **shadowing the plugin** — confirmed systemic (every plugin, not just wiki: the phase commands, `explorer`, the reviewers, `recent-wiki-changes`, and the wiki trio all had stale symlinks into agentm). Retiring them is selective: remove only what an *installed plugin now supersedes*, never the genuinely-standalone skills (`design`, `memory`, `doctor`, `last30days`). The V5 ⑤ slim deletes agentm's source copies; this design owns the `~/.claude/` symlink side.
 
@@ -68,7 +68,7 @@ Add `templates/workflows/wiki-sync.yml` — crickets' own 72-line workflow, para
 
 #### 2. The `wiki-init` action
 
-Scaffolds the [intent-folder IA](0018-per-folder-sidebars): the section folders (a sensible default subset — `get-started/ how-to/ reference/ explanation/`, extensible), each with a `_Sidebar.md` and a section-index landing built from the template library. **Idempotent + preview-first**: it detects an existing `wiki/` and fills only what's missing — never overwrites an operator-authored page. `--preview` writes nothing and prints the plan; `--sections` selects the folder set.
+Scaffolds the [intent-folder IA](wiki-maintenance-design): the section folders (a sensible default subset — `get-started/ how-to/ reference/ explanation/`, extensible), each with a `_Sidebar.md` and a section-index landing built from the template library. **Idempotent + preview-first**: it detects an existing `wiki/` and fills only what's missing — never overwrites an operator-authored page. `--preview` writes nothing and prints the plan; `--sections` selects the folder set.
 
 **Non-public cost warning.** Before it writes the workflow, the init checks the target's visibility; if the repo **isn't public**, it warns that GitHub Actions minutes are **billed for private repos** — the wiki-sync publish + the `check-wiki` gate both consume them. Public repos run Actions free, so the warning fires only when it's relevant; the operator confirms before the workflow lands.
 
@@ -96,7 +96,7 @@ Extend the reconcile to the primitive level. For each **installed** crickets plu
 ## Dependencies
 
 - The plugin's **bundled assets** (`scripts/check-wiki.py`, the template library) + the new `templates/workflows/wiki-sync.yml`.
-- The **IA conventions** ([ADR 0018](0018-per-folder-sidebars) + the [Wiki design](wiki-design)) the scaffold materializes.
+- The **IA conventions** ([ADR 0018](wiki-maintenance-design) + the [Wiki design](wiki-design)) the scaffold materializes.
 - The **`reconcile_plugins.py`** pattern (shipped 2026-06-10) the retirement extends to the primitive level.
 - The **V5 ⑤ slim** — the source-side counterpart (it deletes agentm's baked-in copies; this owns the `~/.claude/` symlink side). Coordinate so the two don't double-handle.
 - The target repo: **GitHub Actions** + a wiki enabled for the publish half.
