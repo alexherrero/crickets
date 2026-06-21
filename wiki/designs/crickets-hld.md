@@ -5,19 +5,21 @@ visibility: published
 author: Alex Herrero
 contributors: []
 created: 2026-06-19
-updated: 2026-06-20
+updated: 2026-06-21
 last_major_revision: 2026-06-20
 prd:
 project: https://github.com/users/alexherrero/projects/5
 kind: design
 scope: arc
 reconciles: developer-plugin-suite.md, crickets-v3-native-plugins.md
-# governs:/area:/shape: stamped in C0.2 (AG Phase-2), pending agentm A1's
-# governs:/area: convention + the confirmed area: taxonomy.
+governs:
+  - src
+  - scripts
+area: crickets
 ---
 
 > [!NOTE]
-> **LAUNCHED — the live crickets parent design** (lifted into tracked `wiki/designs/` 2026-06-20, AG Phase-2 C0). Framed around crickets' capability model; the mechanics live in sub-designs under `children/` (seeded, authored in Phase 3). **Reconciles** the earlier `developer-plugin-suite.md` + `crickets-v3-native-plugins.md` — their "three"/"six"-plugin identity-lines are superseded. Built on design-doc Appendix C; inherits the shared beliefs from the [Foundations HLD](https://github.com/alexherrero/agentm/wiki/agentm-foundations-hld) by reference, and composes onto the person — the [agentm HLD](https://github.com/alexherrero/agentm/wiki/agentm-hld). *(The `governs:`/`area:`/`shape:` governance keys are stamped in C0.2, once agentm A1's convention is stable.)*
+> **LAUNCHED — the live crickets parent design** (lifted into tracked `wiki/designs/` 2026-06-20, AG Phase-2 C0). Framed around crickets' capability model; the mechanics live in sub-designs under `children/` (seeded, authored in Phase 3). **Reconciles** the earlier `developer-plugin-suite.md` + `crickets-v3-native-plugins.md` — their "three"/"six"-plugin identity-lines are superseded. Built on design-doc Appendix C; inherits the shared beliefs from the [Foundations HLD](https://github.com/alexherrero/agentm/wiki/agentm-foundations-hld) by reference, and composes onto the person — the [agentm HLD](https://github.com/alexherrero/agentm/wiki/agentm-hld). Governance keys stamped: `governs: [src, scripts]`, `area: crickets` (AG Phase-2 C0.2).
 
 # Crickets — the toolbox the assistant picks up
 
@@ -99,6 +101,8 @@ The mechanics live in sub-designs, so this HLD stays high-level.
 - per-component source paths (scripts, ADRs, manifests) live in the sub-designs above
 
 ## Amendment log
+
+**2026-06-21 (C0.2) — stamped governance keys: `governs: [src, scripts]`, `area: crickets`.** AG Phase-2 C0.2. `governs: src` + `governs: scripts` match the same pattern as the agentm HLD (`[scripts, harness]`) — broad directory prefixes the parent HLD owns; Phase-3 sub-designs will narrow with capability-specific prefixes and the resolver will automatically prefer them (most-specific-wins). `area: crickets` is a crickets-local taxonomy value (not one of agentm's substrate-side `foundations·agentm·memory·experience·opinions·personas`); child areas (e.g. `developer-workflows`, `wiki-maintenance`) will seed in Phase 3. `shape:` is not stamped on design docs per the governance contract (it is the SHAPE axis for host-loaded primitives, not design artifacts). With these keys the crickets bridge (`find_governing_design.py --root <crickets>`) now resolves `src/…` and `scripts/…` targets to `wiki/designs/crickets-hld.md` instead of greenfield. **Why not a more specific area name:** the parent HLD governs the whole crickets plugin layer; Phase-3 sub-designs will introduce narrower areas. *Re-audit trigger:* when Phase-3 sub-designs are authored, narrow `governs:` patterns in each and seed child areas; the parent HLD's patterns can then be tightened or removed if every sub-design covers its slice.
 
 **2026-06-20 (lift) — lifted into tracked `wiki/designs/`; `status: proposed → launched`.** AG Phase-2 C0. Moved from the vault `hld-drafts/` to `wiki/designs/crickets-hld.md` as the live crickets parent design; frontmatter took the tracked-design convention plus `kind: design` / `scope: arc`. Cross-repo links to the agentm Foundations + agentm HLDs were rewritten to `github.com/alexherrero/agentm/wiki/…` URLs (they resolve once agentm lifts its parents — A0); the still-seeded cross-cutting children (build-system, composition) are now plain-text references pending their Phase-3 authoring (a launched wiki page must not link to unpublished pages). Up-pointers added on `developer-plugin-suite.md` + `crickets-v3-native-plugins.md`. **Why not stamp `governs:`/`area:`/`shape:` now:** that convention is agentm A1's substrate deliverable — stamping before it locks risks the two repos diverging; deferred to C0.2. *Re-audit trigger:* stamp the governance keys when A1's convention + the area taxonomy are confirmed; confirm the agentm-wiki URLs resolve once A0 lands.
 
