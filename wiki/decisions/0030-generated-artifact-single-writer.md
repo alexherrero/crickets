@@ -3,7 +3,7 @@
 > [!NOTE]
 > Status: accepted
 > Date: 2026-06-15
-> Relates to: [ADR 0029](0029-concurrent-release-coordination.md) (concurrent-release coordination — single tag writer), [ADR 0028](0028-worktree-authority-config-opt-in.md) (per-plan worktree isolation), [ADR 0023](0023-gate-on-integrated-tree.md) (merge-then-gate), [ADR 0021](0021-per-plugin-versioning.md) (per-plugin versioning + the bump guard)
+> Relates to: [ADR 0029](0029-concurrent-release-coordination.md) (concurrent-release coordination — single tag writer), [ADR 0028](0028-worktree-authority-config-opt-in.md) (per-plan worktree isolation), [ADR 0023](0023-gate-on-integrated-tree.md) (merge-then-gate), [ADR 0021](continuous-integration) (per-plugin versioning + the bump guard)
 
 ## Context
 
@@ -88,5 +88,5 @@ Generated-artifact contention is a distinct concern from tag coordination (0029)
 
 - [ADR 0029](0029-concurrent-release-coordination.md) — the single tag writer this extends to generated artifacts
 - [ADR 0023](0023-gate-on-integrated-tree.md) — the merge-then-gate the integrator runs on the post-merge tree
-- [ADR 0021](0021-per-plugin-versioning.md) — per-plugin versioning + the `check-version-bump.py` guard that becomes branch-aware here
+- [ADR 0021](continuous-integration) — per-plugin versioning + the `check-version-bump.py` guard that becomes branch-aware here
 - [CI gates](../reference/CI-Gates.md) — the `dist-sync` + `version-bump` gates in the gate table

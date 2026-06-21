@@ -104,5 +104,5 @@ The vault roadmap may name a *silent source* (attribution meaningful in the priv
 - [Sync a project board](Sync-A-Project-Board) — the operator recipe for a sync + the inaugural backfill.
 - [One-way vault-to-board synthesis](One-Way-Vault-To-Board-Synthesis) — the narrative *why* this ADR formalizes (the two-sources/one-direction shape and the meta-loop).
 - [ADR 0016 — Project surface split](0016-project-surface-split) — the `project_surface` enum this plugin consumes; `github-board` here is the surface that split reserved.
-- [ADR 0021 — per-plugin versioning](0021-per-plugin-versioning) — why `github-projects` carries its own `group.yaml` version (`0.1.0`) independent of `developer-workflows`.
+- [ADR 0021 — per-plugin versioning](continuous-integration) — why `github-projects` carries its own `group.yaml` version (`0.1.0`) independent of `developer-workflows`.
 - [Developer Workflows](Developer-Workflows) — the base plugin this one requires; its `/plan` · `/work` · `/release` · `/bugfix` commands emit the board updates.

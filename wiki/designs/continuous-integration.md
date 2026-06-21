@@ -1,6 +1,6 @@
 ---
 title: Continuous Integration Design
-status: final
+status: launched
 visibility: published
 author: Alex Herrero
 contributors: []
@@ -9,6 +9,13 @@ updated: 2026-06-09
 last_major_revision: 2026-06-09
 prd: <none — codified retroactively from the shipped CI surface: check-all.sh + the 5 workflows + the ci-gate part of crickets-v3-native-plugins + the PII guardrail layers>
 project:
+kind: design
+scope: feature
+area: crickets/github-ci
+governs:
+  - scripts/check-all.sh
+  - scripts/check-version-bump.py
+parent: crickets-hld.md
 ---
 
 <!--
@@ -208,3 +215,12 @@ CI config is repo-versioned: a bad workflow or gate change reverts by git like a
 |---|---|---|
 | 2026-06-09 | Codified retroactively from the shipped CI surface and driven to its current shape the same day. **Two operator review rounds:** plain title; 4-sentence Objective; 3-paragraph Background; de-jargoned Overview; platform-first Infrastructure (Actions framework → jobs chart → triggers chart → guarantees → coverage); wiki publishing reclassified as **deployment, not CI** (→ the new [Wiki design](wiki-design)); operating conventions + Monitoring made **agent-explicit**; N/A sections omitted; PM slimmed to doc-plan + launch dates. **Four hardening paydowns landed:** `test_ci_consistency.py` (the both-places rule + the aggregate's filename list, enforced from inside the battery); every action **SHA-pinned**; filename-coupling comments; the `validate` job extended to **all three OSes** (`PYTHONUTF8` pinned on Windows). **Accuracy fixes en route:** host `plugin validate` is dogfood-time, not CI; the aggregate couples by workflow **filename**. **Two live catches:** a SHA digit-run tripping the phone regex (→ the line-level PII allowlist) and Windows' first `validate` run exposing the generator's text-mode newline translation (→ `write_utf8` byte writes — the Reliability proof point). Conventions from the review codified into the design template + the global voice overlay. | draft |
 | 2026-06-10 | Operator green-light → **final**. Build order locked: this builds **last** (after wiki-init + the wiki-design tweaks). | final |
+| 2026-06-21 | **final → launched** (AG Phase-2 C4). Flipped to `launched` so the design participates in `governs:` resolution — it documents the *shipped* CI surface (`check-all.sh` + the workflows). Stamped `area: crickets/github-ci`, `governs: [scripts/check-all.sh, scripts/check-version-bump.py]`. | launched |
+
+## Amendment log
+
+*Folded decision history (AG Phase-2 C4 — record retired into this design; git holds the full ADR text).*
+
+**2026-06-21 (C4 fold) — ADR 0021 retired into this design (AG Phase 2).** The agentm/crickets ADR model was retired (AG design-doc §5); ADR 0021 (per-plugin marketplace versioning) folded here and deleted via `migrate-adr.py` (inbound links repointed, index/sidebars pruned). This design was flipped `final → launched` + stamped `area: crickets/github-ci`, `governs: [scripts/check-all.sh, scripts/check-version-bump.py]`. *Why not keep it as an ADR:* the append-only model forces a chain-read; the living body is the single source.
+
+**2026-06-11 — per-plugin marketplace versioning sourced from `group.yaml` (was ADR 0021).** Each plugin owns a `version:` in its `src/<slug>/group.yaml` (parsed by `src_model.Group`, written by both emitters into `plugin.json` + the Claude marketplace entry) — replacing the frozen `PLUGIN_VERSION = "0.1.0"` constant that made `claude plugin update` a permanent no-op (the version never advanced, so existing installs could never pull new primitives). An anti-recurrence gate, `check-version-bump.py`, fails when `src/<slug>/**` changed vs the base ref without a **strict SemVer increase** (content diffed from the merge-base, version compared against the base tip; graceful-skip when the base is unresolvable); wired into `check-all.sh` + the CI `validate` job. *Why not the repo-level pin / one global version / a side registry / trust-the-author / mere-inequality:* the pin is the bug; a global version couples unrelated plugins into spurious churn; a registry is a second source to drift; author vigilance isn't a gate; inequality would admit downgrades + garbage values. *Re-audit trigger:* Claude changing the update trigger (e.g. content-hash), the publish model moving off `dist/`-on-`main`, or Antigravity shipping a marketplace-version-driven `agy plugin update`.

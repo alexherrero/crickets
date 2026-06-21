@@ -16,7 +16,6 @@ This page is the index. The homepage links here once instead of listing every AD
 - [ADR 0012 — device-wide-by-default](0012-device-wide-by-default)
 - [ADR 0014 — #40 install-decoupling](0014-install-decoupling)
 - [ADR 0016 — Project surface split](0016-project-surface-split)
-- [ADR 0021 — Per-plugin marketplace versioning sourced from `group.yaml`](0021-per-plugin-versioning)
 - [ADR 0022 — Retire `worktrees-never-auto`: worktrees first-class but operator-initiated](0022-retire-worktrees-never-auto)
 - [ADR 0023 — Gate the integrated tree, not the worker branch: merge-then-gate with hard-reset rollback](0023-gate-on-integrated-tree)
 - [ADR 0024 — Package `/design` as a command (tested Python helper + thin prompt), not a skill](0024-design-as-command)
