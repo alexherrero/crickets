@@ -68,7 +68,6 @@
 - [0012 — device-wide-by-default](0012-device-wide-by-default)
 - [0014 — #40 install-decoupling](0014-install-decoupling)
 - [0016 — Project surface split](0016-project-surface-split)
-- [0020 — seven-section taxonomy](0020-seven-section-wiki-taxonomy)
 - [0021 — per-plugin versioning](0021-per-plugin-versioning)
 - [0022 — retire worktrees-never-auto](0022-retire-worktrees-never-auto)
 - [0023 — gate the integrated tree](0023-gate-on-integrated-tree)
