@@ -6,7 +6,7 @@
 
 ## Context
 
-Crickets ships six native host plugins generated from one source-of-truth tree (`src/<slug>/`) into a committed `dist/` ([ADR 0013](0013-bundles-native-plugins)). Each emitted `plugin.json` and each `marketplace.json` entry carries a `version:`. Until now that value was a single hardcoded module constant — `PLUGIN_VERSION = "0.1.0"` — duplicated in both host emitters (`scripts/emit_claude.py`, `scripts/emit_antigravity.py`) and written verbatim into all six plugins. It was **never bumped**: the CHANGELOG framed it explicitly and repeatedly as *"plugins stay `0.1.0` per the repo-level versioning model"* — the repo is versioned via git tags (v3.x) + a Keep-a-Changelog `CHANGELOG.md`, and the plugins were deliberately pinned beneath that.
+Crickets ships six native host plugins generated from one source-of-truth tree (`src/<slug>/`) into a committed `dist/` ([ADR 0013](crickets-v3-native-plugins)). Each emitted `plugin.json` and each `marketplace.json` entry carries a `version:`. Until now that value was a single hardcoded module constant — `PLUGIN_VERSION = "0.1.0"` — duplicated in both host emitters (`scripts/emit_claude.py`, `scripts/emit_antigravity.py`) and written verbatim into all six plugins. It was **never bumped**: the CHANGELOG framed it explicitly and repeatedly as *"plugins stay `0.1.0` per the repo-level versioning model"* — the repo is versioned via git tags (v3.x) + a Keep-a-Changelog `CHANGELOG.md`, and the plugins were deliberately pinned beneath that.
 
 The pin turned out to break the one operation that matters to a consumer. `claude plugin update <slug>@crickets` decides whether to pull by comparing the marketplace `version:` against what's installed. With the version frozen at `0.1.0`, the comparison is always `0.1.0 == 0.1.0` → a permanent no-op. So a machine that installed `wiki-maintenance` at `0.1.0` could **never** pull the primitives shipped since (wiki-init, `wiki-sync.yml`, the single-sourced `check-wiki.py`, the seven-section composer) without a manual uninstall + reinstall. The published content was unreachable to existing installs — the plugins shipped new primitives that `claude plugin update` would never deliver.
 
@@ -65,6 +65,6 @@ A deterministic gate fails when anything under `src/<slug>/**` changed versus a 
 
 ## Related
 
-- [ADR 0013](0013-bundles-native-plugins) — bundles are native host plugins generated from one source of truth; defines the `plugin.json` / `marketplace.json` this ADR versions.
+- [ADR 0013](crickets-v3-native-plugins) — bundles are native host plugins generated from one source of truth; defines the `plugin.json` / `marketplace.json` this ADR versions.
 - [ADR 0014](0014-install-decoupling) — the install-decoupling that made `dist/`-on-`main` the consumer-facing distribution surface.
 - `CHANGELOG.md` — the forward-looking entry that records the policy reversal for human release notes.

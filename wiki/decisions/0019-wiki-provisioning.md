@@ -65,4 +65,4 @@ Installing crickets plugins should clean up the `~/.claude/` standalones they no
 - [Provisioning design](wiki-maintenance-provisioning) — the full design; §3 the gate-distribution split, §4 the retirement.
 - [Provision a repo's wiki](Provision-A-Repo-Wiki) — the how-to that walks `wiki-init`.
 - [Wiki design](wiki-design) · [ADR 0018 — per-folder sidebars](0018-per-folder-sidebars) — the wiki system + IA this provisions.
-- [ADR 0013 — bundles are native host plugins](0013-bundles-native-plugins) — the plugin model the retirement reconciles against the `~/.claude/` standalones.
+- [ADR 0013 — bundles are native host plugins](crickets-v3-native-plugins) — the plugin model the retirement reconciles against the `~/.claude/` standalones.

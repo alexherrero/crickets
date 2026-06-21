@@ -6,7 +6,7 @@
 
 ## Context
 
-[ADR 0006](0006-gemini-cli-host-removal) carved crickets out of agentm but kept the two repos' `lib/install/` layer **byte-identical**, propagated by `agentm/scripts/sync-lib.sh` and enforced by a `check-lib-parity.sh` CI gate. ADR 0006 recorded the load-bearing assumption explicitly: *"`lib/install/` byte-identity holds… if drift becomes chronic, we revisit submodules or extract a third repo."* By v3.0 that drift had become chronic (repeated catch-up `sync-lib` passes), and the v3.x catalog could not be built cleanly on top of the bespoke dispatch installer. #40 is that re-audit firing. This ADR records how it resolved and the cross-repo coordination it required. Architecture context: [ADR 0013](0013-bundles-native-plugins); HLD: [crickets-v3-native-plugins](../designs/crickets-v3-native-plugins).
+[ADR 0006](0006-gemini-cli-host-removal) carved crickets out of agentm but kept the two repos' `lib/install/` layer **byte-identical**, propagated by `agentm/scripts/sync-lib.sh` and enforced by a `check-lib-parity.sh` CI gate. ADR 0006 recorded the load-bearing assumption explicitly: *"`lib/install/` byte-identity holds… if drift becomes chronic, we revisit submodules or extract a third repo."* By v3.0 that drift had become chronic (repeated catch-up `sync-lib` passes), and the v3.x catalog could not be built cleanly on top of the bespoke dispatch installer. #40 is that re-audit firing. This ADR records how it resolved and the cross-repo coordination it required. Architecture context: [ADR 0013](crickets-v3-native-plugins); HLD: [crickets-v3-native-plugins](../designs/crickets-v3-native-plugins).
 
 **Open questions the decision resolves:**
 
@@ -54,18 +54,18 @@ Delivered as a single **crickets v3.0** major. The break is cross-repo (agentm p
 
 - **Breaking change (v3.0 major).** Anyone on a v2.x install must migrate to native plugins.
 - **The migration was a manual coordinated step** for the operator's live machine (install native → remove symlinks → delete old dirs), done across sessions.
-- **The dogfood surfaced an Antigravity host limitation** (plugin hooks can't veto/inject) — out of crickets' control, documented (see [ADR 0013](0013-bundles-native-plugins) + [Compatibility](../reference/Compatibility)).
+- **The dogfood surfaced an Antigravity host limitation** (plugin hooks can't veto/inject) — out of crickets' control, documented (see [ADR 0013](crickets-v3-native-plugins) + [Compatibility](../reference/Compatibility)).
 
 ### Load-bearing assumptions + re-audit triggers
 
 1. **agentm's `lib/install/` stays self-contained.** agentm's `check-lib-parity.sh` reads only its own tree (verified at decouple). Re-audit if agentm's install model changes such that it again wants to share code with crickets.
 2. **Operators install from native marketplaces.** Re-audit if either host drops or substantially changes plugin install (the three install modes would need rework).
-3. **The Antigravity observe-only-hook limitation persists.** Same re-audit trigger as [ADR 0013](0013-bundles-native-plugins) assumption 2 — re-check if Antigravity ships hook-veto support.
+3. **The Antigravity observe-only-hook limitation persists.** Same re-audit trigger as [ADR 0013](crickets-v3-native-plugins) assumption 2 — re-check if Antigravity ships hook-veto support.
 
 ## Related
 
 - [ADR 0006](0006-gemini-cli-host-removal) — the split this revises; the lib-sync re-audit this ADR closes
-- [ADR 0013](0013-bundles-native-plugins) — the native-plugin model that replaces the installer
-- [ADR 0015](0015-partial-revision-36) — the #36 catalog moves deferred past this decoupling
+- [ADR 0013](crickets-v3-native-plugins) — the native-plugin model that replaces the installer
+- [ADR 0015](crickets-v3-native-plugins) — the #36 catalog moves deferred past this decoupling
 - [crickets-v3-native-plugins](../designs/crickets-v3-native-plugins) — the HLD (Launch Plans: clean break, single major)
 - [Compatibility](../reference/Compatibility) — per-host support matrix incl. the AG hook limitation
