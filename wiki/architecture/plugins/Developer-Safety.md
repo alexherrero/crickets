@@ -48,7 +48,7 @@ Use the existing helper at src/utils.py:format_record() instead of writing a new
 EOF
 ```
 
-To **halt *and* redirect**, write `STEER.md` first, then `touch .harness/STOP`. `kill-switch` is declared before `steer` in the plugin's `hooks.json`, so the halt always wins; when you `rm` STOP, the next call passes kill-switch and then `steer` injects the redirect. (Re-audit on every Claude Code release — this relies on declaration-ordered firing; rationale in [ADR 0003](0003-base-operator-hooks).)
+To **halt *and* redirect**, write `STEER.md` first, then `touch .harness/STOP`. `kill-switch` is declared before `steer` in the plugin's `hooks.json`, so the halt always wins; when you `rm` STOP, the next call passes kill-switch and then `steer` injects the redirect. (Re-audit on every Claude Code release — this relies on declaration-ordered firing; rationale in [ADR 0003](crickets-developer-safety).)
 
 **Recover crashed work** — `commit-on-stop` saved each dirty turn to a branch:
 
@@ -90,7 +90,7 @@ The primitives compose into a safety net: **operator-controllable** (kill-switch
 ## Related
 
 - [Hooks](Hooks) — the hook catalog + per-host effectiveness.
-- [ADR 0003 — base operator hooks](0003-base-operator-hooks) — the design rationale + re-audit triggers.
+- [ADR 0003 — base operator hooks](crickets-developer-safety) — the design rationale + re-audit triggers.
 - [Plugin anatomy](Plugin-Anatomy) — what a crickets plugin is + its structure.
 - [Install crickets plugins](Install-Into-Project) — all three install modes.
 - [Developer Plugin Suite design](developer-plugin-suite) — the developer-workflows / safety / code-review split.

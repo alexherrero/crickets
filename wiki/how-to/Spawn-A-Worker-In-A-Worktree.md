@@ -9,9 +9,9 @@ There are two operator-authority paths to a worker worktree:
 | Path | When to use |
 |---|---|
 | **`/spawn-worker <name>`** (explicit command) | Coordinator flow: stage + activate a named plan, then hand it to a worker in its own checkout. The command invocation itself is the operator authority. |
-| **Config-gated auto-spawn** (`isolation.mode: worktree-per-plan` in `.harness/project.json`) | Set once; every subsequent `/work` or `/bugfix` run auto-spawns a `worker/<slug>` worktree at step 1.5 and finalizes it (push + PR) at the plan's end. The config field is the operator authority — see [ADR 0028](0028-worktree-authority-config-opt-in). |
+| **Config-gated auto-spawn** (`isolation.mode: worktree-per-plan` in `.harness/project.json`) | Set once; every subsequent `/work` or `/bugfix` run auto-spawns a `worker/<slug>` worktree at step 1.5 and finalizes it (push + PR) at the plan's end. The config field is the operator authority — see [ADR 0028](crickets-developer-safety). |
 
-Both paths are operator authority. Silent authority-free spawn (no command, no config opt-in) stays forbidden per [ADR 0028](0028-worktree-authority-config-opt-in).
+Both paths are operator authority. Silent authority-free spawn (no command, no config opt-in) stays forbidden per [ADR 0028](crickets-developer-safety).
 
 This page covers the **explicit-command path**. For the config-gated path, set `isolation.mode: worktree-per-plan` in `.harness/project.json` and run `/work` normally — the isolation check and auto-spawn run automatically. For the full command surface (arguments, the per-worktree plan marker, the guards), see [Named plans](Named-Plans#spawning-a-worker-worktree).
 

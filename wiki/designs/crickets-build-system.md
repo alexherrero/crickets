@@ -75,6 +75,12 @@ The *definition* is single-source; the *generation* is deliberately **partial** 
 
 ## Amendment log
 
+**2026-06-24 — folded ADRs 0012 / 0014 into this design (AG Phase 4, move-and-retire).**
+
+**0012 — Device-wide harness install + vault-backed state by default (2026-05-26).** `--scope user` (device-wide into `~/.claude/`) becomes the default install. Harness state moves from `<project>/.harness/` to `<vault>/projects/<slug>/_harness/`. Project resolution via a composable resolver chain. Auto-detect bootstrap on first session. agentm bundles crickets in its one-liner; crickets stands alone. Hard-cut deprecation of legacy paths at agentm v4.0.0. Why not per-project-default: clutter in every repo, install drift, tools are operator-scoped not project-scoped. Why not database: vault stays markdown-canonical + filesystem-only. Why not shared install-bundle repo: adds a third repo and complicates discovery. *Re-audit triggers:* GDrive sync lag >30 s; >100 projects or >200 always-load entries; multi-operator use case; Antigravity forks its surface across desktop/CLI.
+
+**0014 — Install decoupling: retire install.sh + agentm↔crickets lib-sync (2026-06-02).** Delete `install.sh`/`install.ps1`, `lib/install/`, `check-lib-parity.sh` from crickets; replace with native host plugin systems. agentm keeps its own `lib/install/`; repos decouple at install time. Three install modes: bootstrap.sh, marketplace, manual. Delivered as crickets v3.0 major. Why not extract `lib/install/` into a shared repo/submodule: preserves bespoke installer that native plugins make unnecessary and adds a third repo. Why not gradual deprecation: no external consumers; clean major-version cut is cheaper. *Re-audit triggers:* agentm's install model changes to again want shared code with crickets; either host drops or substantially changes plugin install; Antigravity gains hook-veto support.
+
 **2026-06-21 — authored, reviewed, and finalized.**
 
 Migrated from the crickets HLD (the build-pipeline mechanics), deepened against the live code, conformed to the abbreviated-design template (Objective / Overview / Design) with a pipeline diagram in Overview, then taken through an operator edit pass (trimmed banner + Objective meta). Documents the write-once-generate-everywhere model: one `src/<group>/` source → the deterministic `generate.py` → a native plugin per host, drift-gated by `generate.py check` and installed by `bootstrap.sh`; honest about partial per-host generation (named skips, not full parity).

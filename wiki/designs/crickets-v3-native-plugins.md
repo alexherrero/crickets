@@ -237,7 +237,7 @@ Shipped as **6 parts**: foundations · generator-claude · antigravity-emitter �
 
 ### Documentation Plan
 
-- **ADRs (shipped):** [0013](crickets-v3-native-plugins) (bundles = native host plugins) · [0014](0014-install-decoupling) · [0015](crickets-v3-native-plugins) (the deferred moves).
+- **ADRs (shipped):** [0013](crickets-v3-native-plugins) (bundles = native host plugins) · [0014](crickets-build-system) · [0015](crickets-v3-native-plugins) (the deferred moves).
 - **wiki/how-to:** "Install crickets plugins" — covering all three modes (one-line default, marketplace, manual pick-and-choose) per host; "Develop a crickets plugin locally" (the dev loop).
 - **wiki/reference:** the SoT manifest schema; the per-host mapping table.
 - **wiki/explanation:** this design, published at `Status: final`.

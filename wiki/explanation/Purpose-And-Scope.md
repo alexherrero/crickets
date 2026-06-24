@@ -40,7 +40,7 @@ Sibling repos, cloned side by side (`~/Antigravity/agentm/`, `~/Antigravity/cric
     src/<group>/  →  generate.py  →  dist/<host>/plugins/<group>/
 ```
 
-They're **decoupled** — independent release cycles, and no shared install code ([ADR 0014](0014-install-decoupling) retired the old byte-synced `lib/install/`). Both are public, with the same PII guardrails (the pre-push hook + `check-no-pii.sh` + gitleaks).
+They're **decoupled** — independent release cycles, and no shared install code ([ADR 0014](crickets-build-system) retired the old byte-synced `lib/install/`). Both are public, with the same PII guardrails (the pre-push hook + `check-no-pii.sh` + gitleaks).
 
 ## Non-goals
 

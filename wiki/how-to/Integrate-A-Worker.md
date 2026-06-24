@@ -13,11 +13,11 @@ Use `/integrate-worker <name>` when a worker has finished its plan and you — t
 
 ## Serialized, protection-respecting landing
 
-Building parallelizes; **integrating does not**. Run workers N-wide in their own worktrees, but land them **one at a time** — `/integrate-worker` holds a per-repo advisory lock for the duration of each landing, so a second concurrent integration waits for the first to finish (or roll back) instead of racing on the shared integration branch and version registry. The integrator is the single writer of `marketplace.json` + `dist/` (see [ADR 0030](0030-generated-artifact-single-writer)).
+Building parallelizes; **integrating does not**. Run workers N-wide in their own worktrees, but land them **one at a time** — `/integrate-worker` holds a per-repo advisory lock for the duration of each landing, so a second concurrent integration waits for the first to finish (or roll back) instead of racing on the shared integration branch and version registry. The integrator is the single writer of `marketplace.json` + `dist/` (see [ADR 0030](crickets-development-lifecycle)).
 
 When you publish the integrated branch (step 4 below), go **through branch protection and required CI** — push the branch, wait for the required checks to go green, then squash-merge the PR. **Never** land it with a protection bypass such as `gh pr merge --admin`: that was the anti-pattern from the first concurrent run (a worker admin-merged past the very protection it had authored), and the integration flow now forbids it. A squash-merge through the protected path is recoverable (revertable) — announce it and proceed; the bypass is not on the table.
 
-**Worker branches defer the version bump — the integrator owns it.** A `worker/<slug>` branch commits its `src/` change plus `dist/` regenerated **at the version already on `main`** (it does not bump `group.yaml` `version:`), so disjoint-plugin branches never touch the shared `marketplace.json` version registry and cannot collide on it. The serialized integrator does the bump + `marketplace.json` + final regen once, from current `main`, one landing at a time — making generated-artifact production a single serialized writer ([ADR 0030](0030-generated-artifact-single-writer)). The build-time `version-bump` gate is therefore advisory on a worker branch and authoritative on `main`; the `dist-sync` gate stays authoritative everywhere.
+**Worker branches defer the version bump — the integrator owns it.** A `worker/<slug>` branch commits its `src/` change plus `dist/` regenerated **at the version already on `main`** (it does not bump `group.yaml` `version:`), so disjoint-plugin branches never touch the shared `marketplace.json` version registry and cannot collide on it. The serialized integrator does the bump + `marketplace.json` + final regen once, from current `main`, one landing at a time — making generated-artifact production a single serialized writer ([ADR 0030](crickets-development-lifecycle)). The build-time `version-bump` gate is therefore advisory on a worker branch and authoritative on `main`; the `dist-sync` gate stays authoritative everywhere.
 
 ## Steps
 
@@ -76,6 +76,6 @@ After a **RED gate** or **CONFLICT** (exit `2`), confirm nothing changed:
 - [Spawn a worker in a worktree](Spawn-A-Worker-In-A-Worktree) — the open of the lifecycle this command closes: hand an activated named plan to a worker in its own checkout.
 - [Named plans](Named-Plans#integrating-a-worker) — the lookup: `/integrate-worker`'s arguments, guards, exit codes, and the `doctor_worktrees.py` probe.
 - [Run a named plan](Run-A-Named-Plan) — author + stage + activate the plan a worker binds to.
-- [ADR 0022 — worktrees first-class but operator-initiated](0022-retire-worktrees-never-auto) — the norm that sanctions the worker worktrees this command merges and prunes.
-- [ADR 0023 — gate the integrated tree](0023-gate-on-integrated-tree) — *why* the gate runs on the merged tree and `main` hard-resets on red rather than gating the worker branch in isolation.
+- [ADR 0022 — worktrees first-class but operator-initiated](crickets-developer-safety) — the norm that sanctions the worker worktrees this command merges and prunes.
+- [ADR 0023 — gate the integrated tree](crickets-development-lifecycle) — *why* the gate runs on the merged tree and `main` hard-resets on red rather than gating the worker branch in isolation.
 - [Developer Workflows](Developer-Workflows) — the phase-loop plugin this command belongs to.

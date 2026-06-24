@@ -60,5 +60,5 @@ Requires `developer-workflows` as a base. Both plugins must be enabled for the c
 - [How to author a design](Author-A-Design) — the step-by-step guide for `/design author → translate → sequence`.
 - [How to record an architectural decision](Record-An-Architectural-Decision) — the step-by-step guide for `/document-decision` (the ADR workflow trigger).
 - [developer-workflows plugin](Developer-Workflows) — owns the `/design` and `/document-decision` implementations.
-- [ADR 0024](0024-design-as-command) — why `/design` lives in `developer-workflows` and `design-docs` wraps it.
+- [ADR 0024](crickets-development-lifecycle) — why `/design` lives in `developer-workflows` and `design-docs` wraps it.
 - [Customization Types](Customization-Types) — what `kind: skill` and `kind: command` are.

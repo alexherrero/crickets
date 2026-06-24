@@ -72,7 +72,7 @@ Source locations (pending):
 
 ## Related
 
-- [ADR 0026](0026-phase-aware-model-routing) — the routing-defaults design decision
+- [ADR 0026](crickets-development-lifecycle) — the routing-defaults design decision
 - [ADR 0027](developer-plugin-suite) — the `output-style`/`rule` discovery-path decision
 - [Customization types](../reference/Customization-Types) — what each primitive kind is
 - [Manifest Schema](../reference/Manifest-Schema) — frontmatter contract including `model:` and the discovery table

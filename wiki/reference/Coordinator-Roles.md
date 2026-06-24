@@ -49,7 +49,7 @@ The brief-to-plan authoring persona (full tool access): it turns a brief into an
 - `/plan --stage <slug>` — stage a plan into the inactive `queued-plans/` tier (invisible to `/work` and `/queue-status-lite`).
 - `/plan --activate <slug>` — promote a staged plan to the active `PLAN-<slug>.md` (no-clobber guarded).
 
-This lets `tech-lead` queue several plans and activate them one at a time, feeding the worker pool without singleton collisions. After it stages and activates a named plan, the **operator** runs `/spawn-worker <slug>` (operator-initiated, never autonomous — [ADR 0022](0022-retire-worktrees-never-auto)) to hand the plan to a worktree; `tech-lead` produces plans, it does not spawn worktrees.
+This lets `tech-lead` queue several plans and activate them one at a time, feeding the worker pool without singleton collisions. After it stages and activates a named plan, the **operator** runs `/spawn-worker <slug>` (operator-initiated, never autonomous — [ADR 0022](crickets-developer-safety)) to hand the plan to a worktree; `tech-lead` produces plans, it does not spawn worktrees.
 
 > [!IMPORTANT]
 > **`/design` is a forward-reference.** The richer author → translate → sequence authoring path (`/design`) is **not yet shipped** — it is V5-10 sibling #5 (Design-docs packaging). `tech-lead` forward-references it and must not claim it exists; its current floor is `/plan` (shipped). When sibling #5 lands, `/design` becomes the upstream step and `/plan` remains the floor it sequences down to.

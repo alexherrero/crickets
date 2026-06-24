@@ -1,0 +1,57 @@
+{
+  "decisions_dir": "wiki/decisions",
+  "index_files": [
+    "wiki/decisions/Decisions.md",
+    "wiki/decisions/_Sidebar.md",
+    "wiki/_Sidebar.md"
+  ],
+  "folds": [
+    {
+      "into_stem": "crickets-developer-safety",
+      "into": "wiki/designs/crickets-developer-safety.md",
+      "adrs": [
+        "0003-base-operator-hooks",
+        "0009-evidence-tracker-hook",
+        "0028-worktree-authority-config-opt-in",
+        "0022-retire-worktrees-never-auto"
+      ]
+    },
+    {
+      "into_stem": "crickets-development-lifecycle",
+      "into": "wiki/designs/crickets-development-lifecycle.md",
+      "adrs": [
+        "0004-design-skill",
+        "0023-gate-on-integrated-tree",
+        "0024-design-as-command",
+        "0026-phase-aware-model-routing",
+        "0002-evaluator-design",
+        "0029-concurrent-release-coordination",
+        "0030-generated-artifact-single-writer"
+      ]
+    },
+    {
+      "into_stem": "crickets-github-projects",
+      "into": "wiki/designs/crickets-github-projects.md",
+      "adrs": [
+        "0016-project-surface-split",
+        "0025-board-sync-vault-to-project"
+      ]
+    },
+    {
+      "into_stem": "crickets-hld",
+      "into": "wiki/designs/crickets-hld.md",
+      "adrs": [
+        "0006-gemini-cli-host-removal",
+        "0011-antigravity-2-host-support"
+      ]
+    },
+    {
+      "into_stem": "crickets-build-system",
+      "into": "wiki/designs/crickets-build-system.md",
+      "adrs": [
+        "0012-device-wide-by-default",
+        "0014-install-decoupling"
+      ]
+    }
+  ]
+}

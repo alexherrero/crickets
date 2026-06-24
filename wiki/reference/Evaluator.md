@@ -101,6 +101,6 @@ On NEEDS_WORK the FAIL lines name the failing items; route to `/work` (small fix
 
 ## Related
 
-- [ADR 0002 — evaluator design](0002-evaluator-design) — why the tight allowlist, the caller-supplied rubric, and coexisting with `adversarial-reviewer`.
+- [ADR 0002 — evaluator design](crickets-development-lifecycle) — why the tight allowlist, the caller-supplied rubric, and coexisting with `adversarial-reviewer`.
 - [evaluator agent spec](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/agents/evaluator.md) — the canonical body (input/output contracts, full failure modes).
 - [Customization types](Customization-Types) — what `kind: agent` is.
