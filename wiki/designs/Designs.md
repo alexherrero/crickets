@@ -24,7 +24,6 @@ The architecture behind crickets and Agent M — the high-level design docs that
   - [privacy](crickets-privacy) — PII + extensible data-protection layer.
   - [research](crickets-research) — deep research.
   - [diagnostics](crickets-diagnostics) — observability / troubleshooting.
-- **[diataxis-author](diataxis-author)** — the authoring + style-learning skill.
 
 **Architecture (Agent M)**
 
@@ -35,6 +34,7 @@ The architecture behind crickets and Agent M — the high-level design docs that
 
 <!-- maintained by the wiki tooling -->
 
+- **2026-06-24** — AG Wave 2: the eight superseded designs (developer-plugin-suite, crickets-v3-native-plugins, the six wiki/CI designs) subsumed into the living children; diataxis-author vault-archived. `wiki/designs/` is now canonical-only.
 - **2026-06-24** — AG Phase 3: 15 crickets child designs lifted (all content-final); crickets-hld.md re-synced (thirteen capabilities, rename ledger, 3 amendment entries).
 - **2026-06-08** — moved to `designs/`; this index added.
 - **2026-06-09** — Continuous Integration + Wiki designs added; the four earlier designs updated to shipped reality; Wiki Maintenance is now launched.

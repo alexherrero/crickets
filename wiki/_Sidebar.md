@@ -44,7 +44,6 @@
 **Architecture (Agent M)** — [in the agentm wiki ↗](https://github.com/alexherrero/agentm/wiki/memoryvault)
 
 **Crickets**
-- [diataxis-author — Diátaxis wiki authoring + maintenance](diataxis-author)
 ### 💡 [Explanation](Explanation)
 - [Purpose and scope](Purpose-And-Scope)
 - [Why adversarial review](Why-Adversarial-Review)
