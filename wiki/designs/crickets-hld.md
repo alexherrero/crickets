@@ -5,7 +5,7 @@ visibility: published
 author: Alex Herrero
 contributors: []
 created: 2026-06-19
-updated: 2026-06-21
+updated: 2026-06-24
 last_major_revision: 2026-06-20
 prd:
 project: https://github.com/users/alexherrero/projects/5
@@ -19,7 +19,7 @@ area: crickets/architecture
 ---
 
 > [!NOTE]
-> **LAUNCHED — the live crickets parent design** (lifted into tracked `wiki/designs/` 2026-06-20, AG Phase-2 C0). Framed around crickets' capability model; the mechanics live in sub-designs under `children/` (seeded, authored in Phase 3). **Reconciles** the earlier `developer-plugin-suite.md` + `crickets-v3-native-plugins.md` — their "three"/"six"-plugin identity-lines are superseded. Built on design-doc Appendix C; inherits the shared beliefs from the [Foundations HLD](https://github.com/alexherrero/agentm/wiki/agentm-foundations-hld) by reference, and composes onto the person — the [agentm HLD](https://github.com/alexherrero/agentm/wiki/agentm-hld). Governance keys stamped: `governs: [src/**, scripts/**]`, `area: crickets/architecture` (AG Phase-2 C0.2).
+> **LAUNCHED — the live crickets parent design** (lifted into tracked `wiki/designs/` 2026-06-20, AG Phase-2 C0; all sub-designs content-final 2026-06-24, AG Phase 3). **Reconciles** the earlier `developer-plugin-suite.md` + `crickets-v3-native-plugins.md` — their "three"/"six"-plugin identity-lines are superseded. Built on design-doc Appendix C; inherits the shared beliefs from the [Foundations HLD](https://github.com/alexherrero/agentm/wiki/agentm-foundations-hld) by reference, and composes onto the person — the [agentm HLD](https://github.com/alexherrero/agentm/wiki/agentm-hld). Governance keys stamped: `governs: [src/**, scripts/**]`, `area: crickets/architecture` (AG Phase-2 C0.2).
 
 # Crickets — the toolbox the assistant picks up
 
@@ -36,71 +36,77 @@ This doc is about the toolbox: the capabilities it implements, how a capability 
 
 ## The capabilities
 
-crickets is **fourteen capabilities** — each a self-contained plugin, each written once and generated for every host (next section). A capability is a named ability with a handful of primitives inside it — commands, agents, skills, hooks. *(Thirteen ship today; `research`, `diagnostics`, and `lifecycle` are newly designed.)* A few examples:
+crickets is **thirteen capabilities** — each a self-contained plugin, each written once and generated for every host (next section). A capability is a named ability with a handful of primitives inside it — commands, agents, skills, hooks. *(All thirteen ship today; `research` and `diagnostics` are newly designed. Several reached their final names: `developer-workflows` → `development-lifecycle`, `github-ci` → `maintenance`, `pii` → `privacy`, `wiki-maintenance` → `wiki`, `design-docs` → `design`, `testing`+`releasing` merged → `conventions`, `status-line-meter` folded into `token-audit`; the once-separate `lifecycle` capability folded into the spine.)* A few examples:
 
-- **`developer-workflows`** (the phase loop) — the phase commands (`/plan`, `/work`, `/review`, `/release`, `/bugfix`, `/setup`), the agent-defs that run them (worker, tech-lead, project-manager), and the phase hooks.
+- **`development-lifecycle`** (the phase loop) — the phase commands (`/plan`, `/work`, `/review`, `/release`, `/bugfix`, `/setup`, plus `/launch`, `/deprecate`, `/retire`), the agent-defs that run them (worker, tech-lead, the Planner (TPM) coordinator), and the phase hooks.
 - **`code-review`** — the adversarial-reviewer agent (plus a cross-model variant), the `/code-review` command, and the cross-review shell-out.
 - **`developer-safety`** — the recoverability skill, the commit-on-stop hook, and the gate carve-out tests.
 
 The capability *name* is the plugin name; the makeup is what's inside. A capability is really just a **shell with a name** — the work lives in the primitives it holds:
 
-![Developer Workflows — one example of a capability: a named shell holding its commands, agents, and hooks](diagrams/crickets-capability-example.svg)
+![development-lifecycle — one example of a capability: a named shell holding its commands, agents, and hooks](diagrams/crickets-capability-example.svg)
 
-*A capability is a shell that holds primitives. Here, `developer-workflows` holds its commands, agents, and hooks — every capability is the same shape, just a different name and a different set of primitives.*
+*A capability is a shell that holds primitives. Here, `development-lifecycle` holds its commands, agents, and hooks — every capability is the same shape, just a different name and a different set of primitives.*
 
 **Capabilities build on each other.** The same primitive can sit in more than one capability, and a capability can lean on another — it may **depend on** one (it won't run without it) or be **enhanced by** one (it works alone, but does more when the other is present). Those depend-and-enhance links come, in part, from primitives being shared or building on each other.
 
 **They can lean on an opinion, too.** A capability — or a single primitive — can depend on or be enhanced by one of agentm's named [opinions](https://github.com/alexherrero/agentm/wiki/agentm-hld) (*what "done" looks like*, *what "good" looks like*), the same way it leans on another capability. When the opinion is present it shapes the work; when it's absent, the capability degrades gracefully and carries on.
 
-Crickets is fourteen capabilities. Full details are available below and in the composition sub-design *(seeded — Phase 3)*.
+Crickets is thirteen capabilities. Full details are available below and in the [composition sub-design](crickets-composition.md).
 
 ## How a capability is composed
 
-A capability is written **once** and runs on **many platforms**. You author it in one place — the capability's primitives — and a build step renders it into the native shape each host expects, so the same capability runs on Claude Code, Antigravity, and any host added later. Different hosts support different primitive types, so a host may get only the subset of a capability's primitives it can express. *(The build pipeline — the single source, the per-host generator, the drift gate — is the build-system sub-design *(seeded — Phase 3)*.)*
+A capability is written **once** and runs on **many platforms**. You author it in one place — the capability's primitives — and a build step renders it into the native shape each host expects, so the same capability runs on Claude Code, Antigravity, and any host added later. Different hosts support different primitive types, so a host may get only the subset of a capability's primitives it can express. *(The build pipeline — the single source, the per-host generator, the drift gate — is the [build-system sub-design](crickets-build-system.md).)*
 
 ## Roles
 
-Roles aren't a thing in crickets. What looks like a role — *worker*, *reviewer*, *tech-lead* — is a **persona**, which is an agentm concept; crickets only supplies the tools (capabilities and their primitives) a persona wields. See the [agentm Personas design](https://github.com/alexherrero/agentm/wiki/agentm-hld) for how primitives and capabilities get composed into a stance and wired to opinions. *(The transitional shape of today's role-style agent-defs lives in the composition sub-design *(seeded — Phase 3)*.)*
+Roles aren't a thing in crickets. What looks like a role — *worker*, *reviewer*, *tech-lead* — is a **persona**, which is an agentm concept; crickets only supplies the tools (capabilities and their primitives) a persona wields. See the [agentm Personas design](https://github.com/alexherrero/agentm/wiki/agentm-hld) for how primitives and capabilities get composed into a stance and wired to opinions. *(The transitional shape of today's role-style agent-defs lives in the [composition sub-design](crickets-composition.md).)*
 
 ## How crickets composes onto agentm
 
-Two things compose here, both **one-way**. Capabilities compose with **each other** by name — one names what it depends on or enhances, and the toolbox wires them at runtime, so any subset installs and runs. And the whole toolbox composes onto **agentm**: crickets leans on agentm, agentm never leans on crickets. A bare agentm is whole on its own; remove a tool — or the substrate — and what's left degrades gracefully rather than breaking. *(The resolver, the bridge to agentm, and how the one-way rule is held are the composition sub-design *(seeded — Phase 3)*.)*
+Two things compose here, both **one-way**. Capabilities compose with **each other** by name — one names what it depends on or enhances, and the toolbox wires them at runtime, so any subset installs and runs. And the whole toolbox composes onto **agentm**: crickets leans on agentm, agentm never leans on crickets. A bare agentm is whole on its own; remove a tool — or the substrate — and what's left degrades gracefully rather than breaking. *(The resolver, the bridge to agentm, and how the one-way rule is held are the [composition sub-design](crickets-composition.md).)*
 
 ## Sub-designs
 
 The mechanics live in sub-designs, so this HLD stays high-level.
 
 **Cross-cutting:**
-- **Build system** *(seeded — Phase 3)* — the single source, the per-host generator, the drift gate, host-subset coverage.
-- **Composition** *(seeded — Phase 3)* — capability↔capability and capability↔opinion (depends/enhances), the full relationship map, the one-way arrow onto agentm, and the role-retirement detail.
+- [Build system](crickets-build-system.md) — the single source, the per-host generator, the drift gate, host-subset coverage.
+- [Composition](crickets-composition.md) — capability↔capability and capability↔opinion (depends/enhances), the full relationship map, the one-way arrow onto agentm, and the role-retirement detail.
+- [Model + effort routing](https://github.com/alexherrero/agentm/wiki/agentm-model-effort-routing) — the model × effort tier scale (T0…T4, with Claude + Gemini equivalents), the persona→tier map, and the `tier:` persona-manifest axis. *(An agentm-parented cross-cutting design — it sits up under the [agentm HLD](https://github.com/alexherrero/agentm/wiki/agentm-hld); its enforcement surface is here, the agent-defs that carry the `model:` + `effort:` frontmatter.)*
 
-**One per capability** *(the consolidated target set — follow-up, not yet written; one design each):*
+**One per capability** *(the consolidated set — each design is now authored + content-final, 2026-06-24):*
 
 | Capability | What it is |
 |---|---|
-| developer-workflows | the phase loop — setup / plan / work / review / release / bugfix (the spine; sheds the design + post-merge commands) |
+| development-lifecycle | the spine — a feature's whole life: setup / plan / work / review / release / bugfix + launch / deprecate / retire (renamed from `developer-workflows`; sheds the design + observability + CI commands) |
 | code-review | adversarial review |
 | design | design authoring — abbreviated / full / architecture rungs |
 | developer-safety | the recoverability gate |
 | wiki | docs upkeep |
-| github-projects | board-sync |
-| github-ci | CI / dependabot (+ `/ci-cd`) |
-| conventions | conventions for anything that needs them (testing + releasing first) |
+| github-projects | board-sync — vault → board, ≥4 levels deep, a per-commit comment trail; the write path is driven by the Planner (TPM) persona |
+| maintenance | keep the shipped codebase healthy — dependency repair + currency, CVE, tech-debt, + a tentative `content-refresh` (renamed from `github-ci`) |
+| conventions | the base-standards shell — 8 domains: testing · releasing · ci · code-quality · agentic-engineering · reliability · coding · documentation (the `documentation` domain owns the Diátaxis structure `wiki` enforces) |
 | obsidian-vault | the storage backend |
 | token-audit | token metering (absorbs `status-line-meter`) |
 | privacy | privacy / data protection — `pii` first, extensible (e.g. secret-leak prevention, redaction) |
 | research | deep research *(new)* |
 | diagnostics | observability / troubleshooting *(new)* |
-| lifecycle | feature go-live + sunset — `/launch` + `/deprecate` *(new)* |
 
 ## References
 
 - design-doc **Appendix C** — the ratified crickets Overview this HLD expands (the input spec, not a sibling)
 - [Foundations HLD](https://github.com/alexherrero/agentm/wiki/agentm-foundations-hld) — the shared beliefs, inherited by reference; [agentm HLD](https://github.com/alexherrero/agentm/wiki/agentm-hld) — the person (personas, opinions) crickets composes onto
-- `wiki/designs/developer-plugin-suite.md` + `crickets-v3-native-plugins.md` — the launched designs this HLD **reconciles** (their "three"/"six"-plugin identity-lines are superseded by the current set — fourteen capabilities at target, thirteen shipping today)
+- `wiki/designs/developer-plugin-suite.md` + `crickets-v3-native-plugins.md` — the launched designs this HLD **reconciles** (their "three"/"six"-plugin identity-lines are superseded by the current set — thirteen capabilities at target, thirteen shipping today)
 - per-component source paths (scripts, ADRs, manifests) live in the sub-designs above
 
 ## Amendment log
+
+**2026-06-24 — reconciled to the now-final child designs.** All 14 AG child designs are content-final, so the body is brought current: the worked example + caption use `development-lifecycle` (the renamed spine, not `developer-workflows`); the capabilities note completes the rename ledger; the capability rows name the facts that landed in review — `github-projects` (≥4 depth floor · per-commit comment trail · driven by the **Planner (TPM)** persona), `maintenance` (+ the tentative `content-refresh` primitive), `conventions` (the 8-domain base-standards shell, incl. the new **documentation** domain that owns the Diátaxis structure `wiki` enforces); the "per-capability sub-designs not yet written" caveat is closed; and the new cross-cutting **[model + effort routing](https://github.com/alexherrero/agentm/wiki/agentm-model-effort-routing)** design (the model × effort tier scale + the `tier:` persona-manifest axis — agentm-parented) is named in Sub-designs. Why not rewrite the 06-20/06-22 entries' "fourteen": they are history (the target *was* 14 then; the 06-22 entry records the merge to 13) — the body is the current truth. **Re-audit trigger:** at the Phase-3 lift, regenerate `diagrams/crickets-capability-example.svg` (relabelled `development-lifecycle` ✓) and re-sync the launched parent copy (this entry ✓).
+
+**2026-06-23 — `github-ci` → `maintenance` reframe (operator).** `github-ci` is renamed-in-place and broadened to **`maintenance`** — keep the shipped codebase healthy: dependency repair + currency, CVE/security patching, tech-debt inventory ([maintenance sub-design](crickets-maintenance.md)). Count stays 13 (a rename). The load-bearing call: **the repair lives in `maintenance`, the analysis in `diagnostics`** — `dependabot-fixer` is recast as a caller of the diagnose engine. The sub-designs table + the [composition](crickets-composition.md) map are reconciled; the `github-ci` stub is retired. **Re-audit trigger:** recast `dependabot-fixer` onto the diagnose engine when diagnostics ships.
+
+**2026-06-22 — lifecycle merged into the spine; target 14 → 13 (operator).** The separate `lifecycle` capability is withdrawn: rather than split `/launch` + `/deprecate` + `/retire` into their own plugin, the spine is renamed `developer-workflows` → **`development-lifecycle`** and owns the feature's whole arc (plan → release → launch → deprecate → retire). Why not keep it separate: `/launch` is the step right after `/release`, so splitting adjacent lifecycle steps across two plugins was an artificial seam; the genuinely-distinct concerns still leave the spine (`/observe` → diagnostics, `/ci-cd` → maintenance, design family → design, `researcher` → research). The spine drops the `-workflows` suffix (its reserved use dissolves) and the `developer-` prefix (the exception narrows to `developer-safety`). Sub-designs table is now the thirteen; the [composition](crickets-composition.md) map is reconciled. **Re-audit trigger:** when `github-ci` is reframed as `maintenance` (queued), update the table + map again.
 
 **2026-06-21 (C4 fold) — ADRs 0001 + 0007 retired into this HLD (AG Phase 2).** The agentm/crickets ADR model was retired (AG design-doc §5); ADR 0001 (crickets purpose / public-with-PII-guardrails framing) and ADR 0007 (MemoryVault discovery + mining) folded into this parent HLD and deleted via `migrate-adr.py` (inbound links repointed here, index + sidebars pruned). Their decision history is preserved in the two dated entries at the **foot** of this log. *Why not keep them as ADRs:* the append-only model forces a chain-read to reach live truth; one living body collapses the chain. *Re-audit trigger:* if the crickets↔agentm split, the public-repo posture, or the adapt-don't-import enforcement is revisited, amend the relevant section here rather than reviving a record.
 

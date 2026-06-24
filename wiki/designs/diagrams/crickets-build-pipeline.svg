@@ -1,0 +1,45 @@
+<svg viewBox="0 0 740 292" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#7A8290"/></marker>
+    <marker id="arA" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#C8961E"/></marker>
+  </defs>
+  <rect x="6" y="6" width="728" height="280" rx="16" fill="#ffffff" stroke="#E3E3E8" stroke-width="1.5"/>
+  <text x="370" y="34" text-anchor="middle" font-size="14.5" font-weight="700" fill="#2E3470">How a capability is built — one source, every host</text>
+
+  <!-- drift gate (dashed return) -->
+  <path d="M494,116 V92 H260 V124" fill="none" stroke="#C8961E" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#arA)"/>
+  <text x="377" y="86" text-anchor="middle" font-size="9" font-style="italic" fill="#B5651A">drift gate · generate.py check: committed dist must match a fresh regen (CI)</text>
+
+  <!-- single source -->
+  <text x="92" y="112" text-anchor="middle" font-size="8.5" font-style="italic" fill="#8A8FB5">single source</text>
+  <rect x="24" y="124" width="136" height="60" rx="10" fill="#EEF0FA" stroke="#5563A8" stroke-width="1.6"/>
+  <text x="92" y="150" text-anchor="middle" font-size="12" font-weight="700" fill="#2E3470">src/&lt;group&gt;/</text>
+  <text x="92" y="167" text-anchor="middle" font-size="9" fill="#6E73A0">group.yaml + primitives</text>
+
+  <path d="M160,154 L190,154" fill="none" stroke="#7A8290" stroke-width="1.4" marker-end="url(#ar)"/>
+
+  <!-- generator -->
+  <text x="260" y="112" text-anchor="middle" font-size="8.5" font-style="italic" fill="#6FA083">the generator · deterministic</text>
+  <rect x="192" y="124" width="136" height="60" rx="10" fill="#E9F6EE" stroke="#3A9D5D" stroke-width="1.7"/>
+  <text x="260" y="150" text-anchor="middle" font-size="12" font-weight="700" fill="#1E5435">generate.py</text>
+  <text x="260" y="167" text-anchor="middle" font-size="9" fill="#4E7A60">via src_model.py</text>
+
+  <!-- branch to emitters -->
+  <path d="M328,154 H362" fill="none" stroke="#7A8290" stroke-width="1.4"/>
+  <path d="M362,154 V136 H394" fill="none" stroke="#7A8290" stroke-width="1.4" marker-end="url(#ar)"/>
+  <path d="M362,154 V184 H394" fill="none" stroke="#7A8290" stroke-width="1.4" marker-end="url(#ar)"/>
+
+  <rect x="396" y="116" width="196" height="40" rx="9" fill="#ffffff" stroke="#C4C8DA" stroke-width="1"/>
+  <text x="494" y="140" text-anchor="middle" font-size="10" fill="#2E3470">emit_claude → dist/claude-code/</text>
+  <rect x="396" y="164" width="196" height="40" rx="9" fill="#ffffff" stroke="#C4C8DA" stroke-width="1"/>
+  <text x="494" y="188" text-anchor="middle" font-size="10" fill="#2E3470">emit_antigravity → dist/antigravity/</text>
+
+  <!-- converge to install -->
+  <path d="M592,136 H610 V154 H622" fill="none" stroke="#7A8290" stroke-width="1.4" marker-end="url(#ar)"/>
+  <path d="M592,184 H610 V154 H622" fill="none" stroke="#7A8290" stroke-width="1.4" marker-end="url(#ar)"/>
+  <rect x="622" y="130" width="96" height="48" rx="9" fill="#EEF0FA" stroke="#5563A8" stroke-width="1.4"/>
+  <text x="670" y="150" text-anchor="middle" font-size="10.5" font-weight="700" fill="#2E3470">bootstrap</text>
+  <text x="670" y="166" text-anchor="middle" font-size="8.5" fill="#6E73A0">per-host install</text>
+
+  <text x="370" y="232" text-anchor="middle" font-size="9.5" font-style="italic" fill="#8A8FB5">Authored once in the source; generated, drift-gated, and installed natively on every host — with named skips where a host can't represent a primitive.</text>
+</svg>

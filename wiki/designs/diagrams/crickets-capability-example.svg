@@ -3,7 +3,7 @@
 
   <!-- the capability shell -->
   <rect x="20" y="22" width="676" height="344" rx="12" fill="#FCFCFE" stroke="#5563A8" stroke-width="1.7"/>
-  <text x="38" y="50" font-size="16" font-weight="700" fill="#2E3470">developer-workflows</text>
+  <text x="38" y="50" font-size="16" font-weight="700" fill="#2E3470">development-lifecycle</text>
   <text x="38" y="69" font-size="11" font-style="italic" fill="#6E73A0">one example of a capability — a named shell that holds primitives</text>
 
   <!-- commands -->
