@@ -56,7 +56,7 @@ The structural component map — five components, each a folder under **Architec
 
 **Architecture (Agent M)** — the substrate crickets runs on. These are Agent M's; see its design docs rather than re-reading them here.
 
-- **Agent M memory** — the MemoryVault store, the device-wide architecture, and the memory-OS unbundling. → [Agent M design docs](https://github.com/alexherrero/agentm). Background: [MemoryVault](https://github.com/alexherrero/agentm/wiki/memoryvault) · [memory evolution](https://github.com/alexherrero/agentm/wiki/agent-memory-evolution) · [device-wide](https://github.com/alexherrero/agentm/wiki/device-wide-architecture) · [memory-OS](https://github.com/alexherrero/agentm/wiki/memory-os-architecture).
+- **Agent M memory** — the MemoryVault store, the device-wide architecture, and the memory-OS unbundling. → [Agent M design docs](https://github.com/alexherrero/agentm). Background: [MemoryVault](https://github.com/alexherrero/agentm/wiki/memoryvault) · [memory evolution](https://github.com/alexherrero/agentm/wiki/agentm-hld) · [device-wide](https://github.com/alexherrero/agentm/wiki/agentm-foundations-hld) · [memory-OS](https://github.com/alexherrero/agentm/wiki/agentm-hld).
 
 **Plugins (Crickets)** — what each adds, in plain terms.
 

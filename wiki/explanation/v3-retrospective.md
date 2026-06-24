@@ -106,7 +106,7 @@ Pattern: don't anchor on existing precedent; sanity-check "invasive alternative"
 
 ## 7. TBD frontiers heading into V4
 
-V4 carries the memory line forward; non-V4 backlog stays on the slimmed ROADMAP. The full V4 design space lives in the [AgentMemory evolution HLD](https://github.com/alexherrero/agentm/wiki/agent-memory-evolution) (shipped alongside this retrospective) and the new `.harness/ROADMAP-AgentMemoryV4.md`. Headlines:
+V4 carries the memory line forward; non-V4 backlog stays on the slimmed ROADMAP. The full V4 design space lives in the [AgentMemory evolution HLD](https://github.com/alexherrero/agentm/wiki/agentm-hld) (shipped alongside this retrospective) and the new `.harness/ROADMAP-AgentMemoryV4.md`. Headlines:
 
 - **Vault-backed harness state (#26).** Move `PLAN.md` / `progress.md` / `ROADMAP.md` / `project.json` into the vault. Universal cross-repo development. Reshapes the state model that #11 (wake-from-state) was originally going to formalize.
 - **FRIDAY-style natural-extension-of-memory (#28).** Agent + harness + memory as a personal-knowledge-management OS. Vision item; absorbs explicit-wake-surface in favor of higher-abstraction "open the file for X."
@@ -120,7 +120,7 @@ Non-V4 frontiers: #17 Antigravity 2.0 + CLI host support; #19 Ideas.md format re
 
 **Cross-references:**
 
-- [`agent-memory-evolution`](https://github.com/alexherrero/agentm/wiki/agent-memory-evolution) — the AgentMemory evolution HLD (V1 → V4), shipped alongside this retrospective in plan #14
+- [`agent-memory-evolution`](https://github.com/alexherrero/agentm/wiki/agentm-hld) — the AgentMemory evolution HLD (V1 → V4), shipped alongside this retrospective in plan #14
 - [`memoryvault`](https://github.com/alexherrero/agentm/wiki/memoryvault) — the parent MemoryVault design (V3 implementation)
 - [`agentm/.harness/ROADMAP-AgentMemoryV4.md`](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP-AgentMemoryV4.md) — V4 roadmap (lands in plan #14 task 3)
 - `agentm/.harness/ROADMAP.archive.20260523-v3-complete.md` — full V3-era ROADMAP snapshot (operator-local; `.harness/` is gitignored — archive preserved for eventual vault migration)
