@@ -1,6 +1,6 @@
 # Per-host paths
 
-crickets generates native host plugins from `src/<group>/` into committed `dist/<host>/plugins/<group>/` (the [source → generator model](crickets-v3-native-plugins#overview)). Each primitive `kind` lands at a host-specific path *inside* that plugin, and the host's plugin manager installs the whole plugin (`claude plugin install` / `agy plugin install <path>`) — nothing is copied into `.claude/` or the project tree. This page is the kind → in-plugin path lookup, per host.
+crickets generates native host plugins from `src/<group>/` into committed `dist/<host>/plugins/<group>/` (the [source → generator model](crickets-build-system#overview)). Each primitive `kind` lands at a host-specific path *inside* that plugin, and the host's plugin manager installs the whole plugin (`claude plugin install` / `agy plugin install <path>`) — nothing is copied into `.claude/` or the project tree. This page is the kind → in-plugin path lookup, per host.
 
 ## ⚡ Quick Reference
 
@@ -24,6 +24,7 @@ See [Hooks](Hooks) for what each `hooks/<name>/` dir contains and how hooks run 
 - **Hook manifest.** Claude wraps the hook records in `hooks/hooks.json`; Antigravity keys them in `hooks.json` at the plugin root. (Antigravity runs plugin hooks observe-only — see [Compatibility](Compatibility).)
 - **Snippets.** Antigravity ships instruction files, so a `snippet` emits to `rules/<name>.md`; Claude Code has no instruction-file primitive in the plugin surface, so snippets are dropped (the generator logs each drop).
 - **Marketplace pointer** (repo root, for `<host> plugin marketplace add`): Claude `.claude-plugin/marketplace.json`; Antigravity `.agents/plugins/marketplace.json`.
+- **MCP servers.** No `mcp-server` primitive ships today (reserved-unused), but the host shapes differ when one lands: Claude Code reads `.mcp.json` (or inline config); Antigravity reads `mcp_config.json` with a `serverUrl`, strict JSON, and **no `timeout`** field.
 
 ## Source → emitted
 

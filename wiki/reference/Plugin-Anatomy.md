@@ -1,6 +1,6 @@
 # Plugin anatomy
 
-A crickets plugin is a **functional group of primitives** — skills, agents, commands, hooks — authored once under `src/<group>/` and generated into a native host plugin at `dist/<host>/plugins/<group>/`, which the host's plugin manager installs. The group folder *is* the plugin, and its name is the plugin slug. crickets doesn't redefine the host plugin format — it generates into it; this page is the crickets-side anatomy: what's in a plugin and how plugins relate. For why it's built this way see [the v3 design](crickets-v3-native-plugins); for host coverage see [Compatibility](Compatibility).
+A crickets plugin is a **functional group of primitives** — skills, agents, commands, hooks — authored once under `src/<group>/` and generated into a native host plugin at `dist/<host>/plugins/<group>/`, which the host's plugin manager installs. The group folder *is* the plugin, and its name is the plugin slug. crickets doesn't redefine the host plugin format — it generates into it; this page is the crickets-side anatomy: what's in a plugin and how plugins relate. For why it's built this way see [the v3 design](crickets-build-system); for host coverage see [Compatibility](Compatibility).
 
 ## ⚡ Quick Reference
 
@@ -62,4 +62,4 @@ The six shipped plugins:
 - [Per-host paths](Per-Host-Paths) — where each kind lands, per host.
 - [Manifest schema](Manifest-Schema) — `group.yaml` + primitive frontmatter.
 - [Modify a plugin](Modify-A-Plugin) — edit `src/`, regenerate, dogfood.
-- [Crickets v3.0 — native plugins](crickets-v3-native-plugins) — the design + rationale.
+- [Crickets v3.0 — native plugins](crickets-build-system) — the design + rationale.

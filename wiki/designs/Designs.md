@@ -24,7 +24,6 @@ The architecture behind crickets and Agent M — the high-level design docs that
   - [privacy](crickets-privacy) — PII + extensible data-protection layer.
   - [research](crickets-research) — deep research.
   - [diagnostics](crickets-diagnostics) — observability / troubleshooting.
-- **[Crickets v3.0 — Native Host Plugins](crickets-v3-native-plugins)** — the `src/` → generate → `dist/` model.
 - **[Wiki Maintenance](wiki-maintenance-design)** — the diataxis-author + documenter + wiki-watcher system.
 - **[diataxis-author](diataxis-author)** — the authoring + style-learning skill.
 - **[Continuous Integration](continuous-integration)** — the gate battery · the 3-OS matrix · the PII layers.

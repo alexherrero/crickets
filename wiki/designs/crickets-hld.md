@@ -11,7 +11,7 @@ prd:
 project: https://github.com/users/alexherrero/projects/5
 kind: design
 scope: arc
-reconciles: developer-plugin-suite.md, crickets-v3-native-plugins.md
+reconciles: crickets-composition.md, crickets-build-system.md
 governs:
   - src/**
   - scripts/**
@@ -19,7 +19,7 @@ area: crickets/architecture
 ---
 
 > [!NOTE]
-> **LAUNCHED — the live crickets parent design** (lifted into tracked `wiki/designs/` 2026-06-20, AG Phase-2 C0; all sub-designs content-final 2026-06-24, AG Phase 3). **Reconciles** the earlier `developer-plugin-suite.md` + `crickets-v3-native-plugins.md` — their "three"/"six"-plugin identity-lines are superseded. Built on design-doc Appendix C; inherits the shared beliefs from the [Foundations HLD](https://github.com/alexherrero/agentm/wiki/agentm-foundations-hld) by reference, and composes onto the person — the [agentm HLD](https://github.com/alexherrero/agentm/wiki/agentm-hld). Governance keys stamped: `governs: [src/**, scripts/**]`, `area: crickets/architecture` (AG Phase-2 C0.2).
+> **LAUNCHED — the live crickets parent design** (lifted into tracked `wiki/designs/` 2026-06-20, AG Phase-2 C0; all sub-designs content-final 2026-06-24, AG Phase 3). **Reconciles** the earlier standalone designs (developer-plugin-suite + crickets-v3-native-plugins) — their "three"/"six"-plugin identity-lines are superseded — which have since been subsumed into this HLD's [composition](crickets-composition.md) + [build-system](crickets-build-system.md) children (AG Wave 2, 2026-06-24). Built on design-doc Appendix C; inherits the shared beliefs from the [Foundations HLD](https://github.com/alexherrero/agentm/wiki/agentm-foundations-hld) by reference, and composes onto the person — the [agentm HLD](https://github.com/alexherrero/agentm/wiki/agentm-hld). Governance keys stamped: `governs: [src/**, scripts/**]`, `area: crickets/architecture` (AG Phase-2 C0.2).
 
 # Crickets — the toolbox the assistant picks up
 
@@ -97,10 +97,12 @@ The mechanics live in sub-designs, so this HLD stays high-level.
 
 - design-doc **Appendix C** — the ratified crickets Overview this HLD expands (the input spec, not a sibling)
 - [Foundations HLD](https://github.com/alexherrero/agentm/wiki/agentm-foundations-hld) — the shared beliefs, inherited by reference; [agentm HLD](https://github.com/alexherrero/agentm/wiki/agentm-hld) — the person (personas, opinions) crickets composes onto
-- `wiki/designs/developer-plugin-suite.md` + `crickets-v3-native-plugins.md` — the launched designs this HLD **reconciles** (their "three"/"six"-plugin identity-lines are superseded by the current set — thirteen capabilities at target, thirteen shipping today)
+- the earlier standalone designs this HLD reconciled (their "three"/"six"-plugin identity-lines are superseded by the current set — thirteen capabilities at target, thirteen shipping today) have been **subsumed** into the [composition](crickets-composition.md) + [build-system](crickets-build-system.md) children (AG Wave 2, 2026-06-24)
 - per-component source paths (scripts, ADRs, manifests) live in the sub-designs above
 
 ## Amendment log
+
+**2026-06-24 — the two reconciled standalone designs subsumed into the children (AG Wave 2).** The earlier `developer-plugin-suite.md` + `crickets-v3-native-plugins.md` — which this HLD reconciled (the "three"/"six"-plugin identity-lines, superseded) and up-pointered at the 2026-06-20 lift — are now move-and-retire **subsumed** into the [composition](crickets-composition.md) (the `enhances:` soft-composition + ADRs 0017/0027) and [build-system](crickets-build-system.md) (the `src` → generate → `dist` pipeline + ADRs 0013/0015) children, and deleted (git history retains them). The `reconciles:` frontmatter + the banner/References now name the living children. No-loss verified per design before each deletion. *Re-audit trigger:* none — the reconcile relationship is fully absorbed into the parent→child structure.
 
 **2026-06-24 — folded ADRs 0006 / 0011 into this design (AG Phase 4, move-and-retire).**
 
@@ -118,7 +120,7 @@ The mechanics live in sub-designs, so this HLD stays high-level.
 
 **2026-06-21 (C0.2) — stamped governance keys: `governs: [src/**, scripts/**]`, `area: crickets/architecture`.** AG Phase-2 C0.2. The two broad globs make the parent HLD the **broad fallback** over both crickets code trees (mirrors the agentm HLD's multi-tree `[scripts/**, harness]`); Phase-3 / C4 sub-designs narrow with capability-specific globs (`src/<group>/**`, specific `scripts/*.py`) and the resolver prefers them automatically (most-specific-wins). `area: crickets/architecture` follows the canonical two-level `<root>/<domain>` vocabulary the AG area-taxonomy defines and the shipped agentm designs carry (`agentm/architecture`, `shared/foundations`); child areas are `crickets/<capability>` (e.g. `crickets/developer-safety`, seeded by the C4 ADR fold). `shape:` is not stamped on design docs per the governance contract (it is the SHAPE axis for host-loaded primitives, not design artifacts). With these keys the crickets bridge (`find_governing_design.py --root <crickets>`) resolves `src/…` and `scripts/…` targets to this HLD instead of greenfield. *(Corrected from the initial 2026-06-21 stamp — bare `crickets` / `[src, scripts]` — to the canonical two-level area + glob form once agentm's shipped designs confirmed the convention.)* *Re-audit trigger:* when C4 / Phase-3 sub-designs are authored, narrow their `governs:` globs and seed child areas; the parent's broad globs can tighten as every subtree gains a more-specific owner.
 
-**2026-06-20 (lift) — lifted into tracked `wiki/designs/`; `status: proposed → launched`.** AG Phase-2 C0. Moved from the vault `hld-drafts/` to `wiki/designs/crickets-hld.md` as the live crickets parent design; frontmatter took the tracked-design convention plus `kind: design` / `scope: arc`. Cross-repo links to the agentm Foundations + agentm HLDs were rewritten to `github.com/alexherrero/agentm/wiki/…` URLs (they resolve once agentm lifts its parents — A0); the still-seeded cross-cutting children (build-system, composition) are now plain-text references pending their Phase-3 authoring (a launched wiki page must not link to unpublished pages). Up-pointers added on `developer-plugin-suite.md` + `crickets-v3-native-plugins.md`. **Why not stamp `governs:`/`area:`/`shape:` now:** that convention is agentm A1's substrate deliverable — stamping before it locks risks the two repos diverging; deferred to C0.2. *Re-audit trigger:* stamp the governance keys when A1's convention + the area taxonomy are confirmed; confirm the agentm-wiki URLs resolve once A0 lands.
+**2026-06-20 (lift) — lifted into tracked `wiki/designs/`; `status: proposed → launched`.** AG Phase-2 C0. Moved from the vault `hld-drafts/` to `wiki/designs/crickets-hld.md` as the live crickets parent design; frontmatter took the tracked-design convention plus `kind: design` / `scope: arc`. Cross-repo links to the agentm Foundations + agentm HLDs were rewritten to `github.com/alexherrero/agentm/wiki/…` URLs (they resolve once agentm lifts its parents — A0); the still-seeded cross-cutting children (build-system, composition) are now plain-text references pending their Phase-3 authoring (a launched wiki page must not link to unpublished pages). Up-pointers added on the two reconciled standalone designs (both since subsumed into the children — see the 2026-06-24 Wave 2 entry above). **Why not stamp `governs:`/`area:`/`shape:` now:** that convention is agentm A1's substrate deliverable — stamping before it locks risks the two repos diverging; deferred to C0.2. *Re-audit trigger:* stamp the governance keys when A1's convention + the area taxonomy are confirmed; confirm the agentm-wiki URLs resolve once A0 lands.
 
 **2026-06-20 — authored, reviewed, and finalized.**
 

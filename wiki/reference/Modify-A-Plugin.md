@@ -63,4 +63,4 @@ crickets is a source of truth (`src/<group>/`) plus a generator that emits commi
 
 - [Install crickets plugins](Install-Into-Project) — the three install modes.
 - [Manifest-Schema](Manifest-Schema) — primitive frontmatter + `group.yaml`.
-- [The source-of-truth + generator model](crickets-v3-native-plugins#overview) — how crickets generates native plugins from one `src/`.
+- [The source-of-truth + generator model](crickets-build-system#overview) — how crickets generates native plugins from one `src/`.

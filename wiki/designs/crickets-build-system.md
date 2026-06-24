@@ -11,7 +11,7 @@ approved: 2026-06-21
 ---
 
 > [!NOTE]
-> **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-21).** child-design — the build pipeline, parent [crickets HLD](crickets-hld.md). Reconciles the launched [crickets-v3-native-plugins](crickets-v3-native-plugins.md) design (the *why*; this is the *how*). `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3).
+> **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-21).** child-design — the build pipeline, parent [crickets HLD](crickets-hld.md). Subsumes the launched `crickets-v3-native-plugins.md` design (the *why*; this is the *how* — now its single home; AG Wave 2, 2026-06-24). `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3).
 
 # Crickets build system
 
@@ -54,7 +54,7 @@ The *definition* is single-source; the *generation* is deliberately **partial** 
 
 ## Dependencies
 
-- **Reconciles** the launched [crickets-v3-native-plugins](crickets-v3-native-plugins.md) (the architecture decision — the *why*; this child is the *how*).
+- **Subsumes** the earlier crickets-v3-native-plugins design (the architecture *why*; this child is the *how* — now its single home; the two ADRs it had absorbed, 0013 + 0015, are preserved in the Amendment log).
 - **Relies on** `src/SCHEMA.md` (the two-layer manifest contract) and each host's native plugin CLI (for install).
 - **Sibling** [composition](crickets-composition.md) — the `capabilities:` / `enhances:` metadata the generator emits, and where the composition lints live.
 - **ADRs:** 0013 (bundles → native plugins), 0017 (the `enhances:`/`capabilities:` metadata the marketplace entries carry).
@@ -64,16 +64,23 @@ The *definition* is single-source; the *generation* is deliberately **partial** 
 - **Not full parity** — the honest claim is "one definition, generated and drift-gated for every host, with named skips where a host can't represent a primitive," not parity. The per-host skip *rationale* (why each gap exists, the fallback) is a candidate for its own **host-coverage** sub-design — noted here, not enumerated.
 - **Determinism is a standing risk** — any non-deterministic output (unsorted iteration, unstable keys) makes the drift gate flap; it must stay sorted/stable.
 - *(No `[PENDING-IMPL]` markers: the pipeline is **as-built** — the generator, emitters, drift gate, and installer all ship. The placeholder rule applies only where a design describes something not-yet-built.)*
-- **Re-audit triggers:** re-derive the per-host skip list against the live emitters at the lift; confirm `generate.py check` is wired into CI; reconcile with `crickets-v3-native-plugins.md` when it folds.
+- **Re-audit triggers:** re-derive the per-host skip list against the live emitters at the lift; confirm `generate.py check` is wired into CI; the crickets-v3-native-plugins reconcile is done (subsumed here 2026-06-24, AG Wave 2).
 
 ## References
 
 - **Tools:** `scripts/generate.py` (driver + `check`), `src_model.py` (shared parser), `emit_claude.py` / `emit_antigravity.py` (per-host emitters), `lint_src.py` (source validation), `bootstrap.sh` (installer)
 - **Schema:** `src/SCHEMA.md` — the two-layer manifest contract; the source of truth for authoring a capability
 - **Artifacts:** `dist/default-set.json` + the per-host `marketplace.json` (generator-emitted install metadata)
-- **Designs / ADRs:** [crickets-v3-native-plugins](crickets-v3-native-plugins.md) · ADR 0013 · ADR 0017
+- **Designs / decisions:** ADRs 0013 + 0015 (bundles → native plugins; proof scope) are preserved in this design's Amendment log; ADR 0017 (`enhances:` soft composition) lives in [composition](crickets-composition.md)
 
 ## Amendment log
+
+**2026-06-24 — subsumed the launched `crickets-v3-native-plugins.md` design (AG Wave 2, move-and-retire).** This design was the *how* reconciling that earlier *why*; it now subsumes it outright. The v3 design is deleted (git history + its six part files retain the full text); its still-live value — the two C4-folded ADRs it had absorbed (AG Phase-2) — is preserved below with decision + why-not + re-audit. The body already holds the as-built pipeline; the per-host emitter differences (the Claude/Antigravity mapping, the `SessionStart` gap, snippets → `rules/`) live in the live emitters + `wiki/reference/Per-Host-Paths.md`.
+
+- **ADR 0013 — bundles are native host plugins, generated from one source (2026-06-02).** One source of truth under `src/<group>/` + a deterministic stdlib-only `generate.py` emits native per-host plugins into committed `dist/{claude-code,antigravity}/`; functional grouping (folder) is the unit of distribution; cross-plugin reuse is generation-time dependencies, never a duplicated primitive; a `generate.py check` drift gate makes determinism load-bearing. Antigravity composition is **thin-separate** (no native deps — confirmed at the #40 dogfood: `agy` 1.0.2 has no dependency resolution); Claude uses native `dependencies`. *Why not hand-author per-host / generate-at-install / trust-manual-rebuild:* each recreates adapter drift, breaks the static marketplace + auditable diff, or lets generated output silently drift. *Re-audit trigger:* a host plugin-manifest/marketplace schema change, or a host requiring nondeterministic output.
+- **ADR 0015 — #36 partial-revision: #40 proves the architecture, defers the catalog (2026-06-02).** #40 proved the model on crickets' existing primitives (4 groups / 7 primitives — every emitter path) + dogfooded install on both hosts; the #36 skill relocations (`design` → design-docs, `diataxis-author` → wiki, `ship-release` → releasing) + the full catalog (testing / releasing / knowledge) were explicitly deferred to bucket ④. *Why record the boundary as a contract:* so a reader of the sparse post-#40 catalog sees it was partially-revised on purpose, not abandoned. *Re-audit trigger:* the first genuinely-new bucket-④ bundle (does a new primitive kind / host mapping need generator rework?), or the crickets/agentm split shifting again.
+
+*Why not keep `crickets-v3-native-plugins.md` as a standalone living design:* it was already up-pointered and reconciled by this design — keeping the husk forces a chain-read; the living body here is the single source. *Re-audit trigger:* a host plugin/marketplace schema change (regenerate + dogfood).
 
 **2026-06-24 — folded ADRs 0012 / 0014 into this design (AG Phase 4, move-and-retire).**
 
@@ -85,4 +92,4 @@ The *definition* is single-source; the *generation* is deliberately **partial** 
 
 Migrated from the crickets HLD (the build-pipeline mechanics), deepened against the live code, conformed to the abbreviated-design template (Objective / Overview / Design) with a pipeline diagram in Overview, then taken through an operator edit pass (trimmed banner + Objective meta). Documents the write-once-generate-everywhere model: one `src/<group>/` source → the deterministic `generate.py` → a native plugin per host, drift-gated by `generate.py check` and installed by `bootstrap.sh`; honest about partial per-host generation (named skips, not full parity).
 
-Content-final; carries **no `[PENDING-IMPL]` markers** — the pipeline is as-built. `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). **Re-audit triggers:** re-derive the per-host skip list against the live emitters at the lift; confirm `generate.py check` is in CI; reconcile with `crickets-v3-native-plugins.md` when it folds.
+Content-final; carries **no `[PENDING-IMPL]` markers** — the pipeline is as-built. `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). **Re-audit triggers:** re-derive the per-host skip list against the live emitters at the lift; confirm `generate.py check` is in CI; the crickets-v3-native-plugins reconcile is done (subsumed here 2026-06-24, AG Wave 2).

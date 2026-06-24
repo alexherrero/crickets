@@ -44,7 +44,6 @@
 **Architecture (Agent M)** — [in the agentm wiki ↗](https://github.com/alexherrero/agentm/wiki/memoryvault)
 
 **Crickets**
-- [Crickets v3.0 — Native Host Plugins](crickets-v3-native-plugins)
 - [Wiki Maintenance (V5 ④)](wiki-maintenance-design)
 - [diataxis-author — Diátaxis wiki authoring + maintenance](diataxis-author)
 - [Continuous Integration](continuous-integration)

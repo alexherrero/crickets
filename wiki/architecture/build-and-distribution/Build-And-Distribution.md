@@ -33,6 +33,6 @@ Detail:
 - [Plugin anatomy](Plugin-Anatomy) — the shape of a generated plugin.
 - [Install crickets plugins](Install-Into-Project) — the three install modes, step by step.
 - [CI gates](CI-Gates) — the deterministic checks that guard every build.
-- [Native plugins — the v3 design](crickets-v3-native-plugins) — why distribution is shaped this way.
+- [Native plugins — the v3 design](crickets-build-system) — why distribution is shaped this way.
 
 [Architecture](Architecture) · [Reference](Reference) · [Home](Home)
