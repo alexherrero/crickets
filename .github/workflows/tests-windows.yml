@@ -51,3 +51,27 @@ jobs:
       - name: Run check-no-pii.sh
         shell: bash
         run: bash scripts/check-no-pii.sh --all
+
+  obsidian-vault-conformance:
+    # Windows is where the LF-exact round-trip earns its keep: a `write` degraded to
+    # text mode would translate `\n`→`\r\n` only here. The suites need the agentm
+    # kernel clone (they skip in the crickets-only `validate` job), so the sibling is
+    # checked out in this dedicated job.
+    name: obsidian-vault conformance (vs agentm kernel)
+    runs-on: windows-latest
+    env:
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Check out the sibling agentm kernel
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          repository: alexherrero/agentm
+          path: _agentm
+          fetch-depth: 1
+      - name: Install Python deps
+        run: python -m pip install pyyaml
+      - name: obsidian-vault backend conformance + discovery + doctor (against the real kernel)
+        env:
+          AGENTM_SCRIPTS: ${{ github.workspace }}/_agentm/scripts
+        run: cd scripts && python -m unittest test_obsidian_vault_conformance test_obsidian_vault_discovery test_obsidian_vault_doctor

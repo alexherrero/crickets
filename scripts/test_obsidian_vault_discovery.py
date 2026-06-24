@@ -90,49 +90,49 @@ class VaultPluginDiscoveryEdge(unittest.TestCase):
             )
         if str(agentm_scripts) not in sys.path:
             sys.path.insert(0, str(agentm_scripts))
-        # A sibling plugin-test loader (task-1 structural smoke) may have left a
-        # plugin class in the shared `vault` slot WITHOUT the kernel built-in ever
-        # being imported — the kernel module's import-time self-register
-        # (`backend_selection` → `storage_vault`) would then hit the registry's
-        # duplicate guard. Free the slot first so the kernel built-in registers
-        # clean. (In production the built-in always imports before any plugin
-        # loads, so this collision is a single-process test artifact only.)
+        # V5-3 deleted the kernel built-in vault backend — the vault backend now
+        # lives only in this plugin, discovered on demand by the engine resolver
+        # (`backend_selection._load_vault_plugin_backend`). The shared `vault`
+        # registry slot is therefore empty in production; clear it here so a sibling
+        # plugin-test loader can't leave a stale class in it and skew the
+        # leaves-unmutated assertion below.
         import storage_seam  # noqa: E402  (only importable once path is set)
 
         storage_seam.registry._backends.pop(PROTOCOL_NAME, None)
         import backend_selection  # noqa: E402
-        import storage_vault as kernel_vault  # noqa: E402  (the kernel built-in)
         import vault_lock  # noqa: E402
 
         cls.bs = backend_selection
         cls.seam = storage_seam
-        cls.kernel_backend = kernel_vault.VaultBackend
         cls.vault_lock = vault_lock
 
     def setUp(self) -> None:
         # The registry singleton is shared across every test module in the run, and
-        # a sibling loader (task-1 structural smoke) may leave a plugin class in the
-        # `vault` slot. Normalize to the kernel built-in so the restore assertion
-        # below is deterministic regardless of test ordering.
-        self.seam.registry.register(PROTOCOL_NAME, self.kernel_backend, clobber=True)
+        # a sibling loader may leave a plugin class in the `vault` slot. Clear it so
+        # the slot starts empty — the V5-3 production state (no kernel built-in) the
+        # leaves-unmutated assertion below pins.
+        self.seam.registry._backends.pop(PROTOCOL_NAME, None)
 
-    def test_resolver_loads_plugin_backend_distinct_from_builtin(self) -> None:
+    def test_resolver_loads_plugin_backend(self) -> None:
         backend_cls = self.bs._load_vault_plugin_backend(plugin_scripts=PLUGIN_SCRIPTS)
         self.assertIsNotNone(
             backend_cls, "the engine resolver did not discover the plugin backend"
         )
         self.assertTrue(issubclass(backend_cls, self.seam.StorageBackend))
-        # The plugin class is the one selection hands back — NOT the kernel built-in.
-        self.assertIsNot(backend_cls, self.kernel_backend)
+        # Post-V5-3 the plugin is the sole vault backend (no kernel built-in to be
+        # distinct from); the resolver hands back its `VaultBackend`.
+        self.assertEqual(backend_cls.__name__, "VaultBackend")
 
-    def test_resolver_restores_registry_to_builtin(self) -> None:
+    def test_resolver_leaves_registry_unmutated(self) -> None:
         before = self.seam.registry.get(PROTOCOL_NAME)
         self.bs._load_vault_plugin_backend(plugin_scripts=PLUGIN_SCRIPTS)
         after = self.seam.registry.get(PROTOCOL_NAME)
-        # Loading frees the slot so the plugin can self-register, then restores the
-        # built-in — discovery must not permanently mutate the shared registry.
+        # Loading frees the slot so the plugin can self-register, then pops it again
+        # in `finally` — discovery must not permanently mutate the shared registry.
+        # Post-V5-3 there is no built-in to restore, so the slot is empty (None)
+        # both before and after.
         self.assertIs(after, before)
-        self.assertIs(after, self.kernel_backend)
+        self.assertIsNone(after)
 
     def test_write_composes_the_single_kernel_vault_lock(self) -> None:
         # The lock edge: the plugin backend's `write` is bound to the very same
@@ -177,25 +177,22 @@ class FirstRunAdoptionEdge(unittest.TestCase):
             )
         if str(agentm_scripts) not in sys.path:
             sys.path.insert(0, str(agentm_scripts))
-        # Free the shared `vault` slot before the kernel's import-time self-register
-        # (`backend_selection` → `storage_vault`) so it registers clean past the
-        # duplicate guard — see the discovery edge above for why this is a
-        # single-process test artifact, never a production path.
+        # V5-3 deleted the kernel built-in; the vault backend is plugin-only,
+        # discovered by `select_backend` via `_load_vault_plugin_backend`. Clear the
+        # shared `vault` slot so a sibling loader can't leave a stale class in it.
         import storage_seam  # noqa: E402
 
         storage_seam.registry._backends.pop(PROTOCOL_NAME, None)
         import backend_selection  # noqa: E402
-        import storage_vault as kernel_vault  # noqa: E402
 
         cls.bs = backend_selection
         cls.seam = storage_seam
-        cls.kernel_backend = kernel_vault.VaultBackend
 
     def setUp(self) -> None:
-        # Normalize the shared registry to the kernel built-in so `select_backend`'s
-        # `registry.get('vault')` guard passes deterministically regardless of test
-        # ordering (a sibling loader may leave a plugin class in the slot).
-        self.seam.registry.register(PROTOCOL_NAME, self.kernel_backend, clobber=True)
+        # Clear the shared `vault` slot so `select_backend` discovers the plugin
+        # from scratch (post-V5-3 there is no pre-registered built-in), deterministic
+        # regardless of test ordering.
+        self.seam.registry._backends.pop(PROTOCOL_NAME, None)
         self._tmp = tempfile.TemporaryDirectory()
         tmp = Path(self._tmp.name)
         # The on-device install prefix carrying the operator's *existing* state —
@@ -252,8 +249,8 @@ class FirstRunAdoptionEdge(unittest.TestCase):
 
     def test_selection_resolves_vault_to_the_plugin_reading_the_configured_path(self) -> None:
         backend, _ = self._select_under_config()
-        # The *plugin*, not the kernel built-in — and a real StorageBackend.
-        self.assertNotIsInstance(backend, self.kernel_backend)
+        # The plugin's `VaultBackend` (the sole vault backend post-V5-3), a real
+        # StorageBackend.
         self.assertIsInstance(backend, self.seam.StorageBackend)
         self.assertEqual(type(backend).__name__, "VaultBackend")
         # Seeded from the in-place config `vault_path` — the same root the built-in had.

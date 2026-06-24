@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""V5-2 task 5 — the load-bearing conformance + byte-identical parallel-run proof (LC-5).
+"""The load-bearing conformance proof for the obsidian-vault plugin backend (LC-5).
 
-This is the **entire acceptance bar** for the storage re-home: green here is
-exactly what unlocks V5-3 to delete the built-in ``vault`` backend on *evidence*,
-never on assertion. Three proofs, all from the crickets (plugin) side, driving the
-real agentm machinery imported from the located sibling clone:
+Originally the V5-2 acceptance bar for the storage re-home — green here is what
+unlocked V5-3 to delete the kernel built-in ``vault`` backend on *evidence*. **That
+deletion has since happened**, so this suite reconciled (AG Wave 2, 2026-06-24) from
+"prove the plugin ≡ the built-in" to "hold the sole (plugin) backend to the kernel
+contract." Two proofs remain, both from the crickets (plugin) side, driving the real
+agentm machinery imported from the located sibling clone:
 
   1. **Conformance — the plugin is a valid backend** (``PluginVaultConformance``).
      The V5-1-authored kernel suite (``storage_conformance``) run *unchanged*
@@ -16,35 +18,31 @@ real agentm machinery imported from the located sibling clone:
      ``PluginVaultRunConformanceReport`` asserts that explicitly, so a green run is
      never misread as index-rebuild proof.
 
-  2. **Parallel-run — plugin ≡ built-in, byte-for-byte** (``PluginVsBuiltinParallelRun``).
-     On a *shared* scratch vault root the plugin reads exactly what the built-in
-     wrote (and vice-versa), byte-identical including CRLF + non-ASCII; two
-     *independent* vaults given identical writes produce byte-identical files on
-     disk; locator resolution and ``list``/``exists``/``info`` agree. The empty
-     diff *is* LC-5.
+  2. **Behavioral contract — the CAS the byte suite can't see** (``PluginVaultBehavioralContract``).
+     Proof 1 establishes byte-faithfulness under quiescent single-writer access — a
+     strictly weaker claim than the byte-*and-behavior* faithfulness the vault needs.
+     A plugin whose ``write`` was degraded to ``atomic_write`` *only*
+     (device-local-equivalent) passes every conformance case green. This proof
+     closes that gap: the plugin's public ``write`` must **bite** on a concurrent
+     modification (raise :class:`ConcurrentModificationError`, driven
+     deterministically by interposing a foreign write into the CAS window); and the
+     plugin must advertise the vault's real profile (``concurrent_writers=True`` /
+     ``"whole-file"``), pinned to literals. Homed here, not in the universal kernel
+     suite, because the seam's ``write`` exposes no CAS precondition — a universal
+     check would need a frozen-seam-API extension (DC-7); see the class docstring.
 
-  3. **Behavioral contract — the CAS the byte suite can't see** (``PluginVsBuiltinBehavioralContract``).
-     Proofs 1–2 establish byte-faithfulness under quiescent single-writer access —
-     a strictly weaker claim than the byte-*and-behavior* faithfulness V5-3's
-     deletion of the built-in rests on. A plugin whose ``write`` was degraded to
-     ``atomic_write`` *only* (device-local-equivalent) passes every case above
-     green. This proof closes that gap: the plugin's public ``write`` must **bite**
-     on a concurrent modification (raise :class:`ConcurrentModificationError`,
-     driven deterministically by interposing a foreign write into the CAS window),
-     run against both implementations for behavioral parity; and the plugin must
-     advertise the built-in's exact ``capabilities`` + ``conflict_strategy``
-     (``concurrent_writers=True`` / ``"whole-file"``, pinned to literals). Homed
-     here, not in the universal kernel suite, because the seam's ``write`` exposes
-     no CAS precondition — a universal check would need a frozen-seam-API extension
-     (DC-7); see the class docstring.
+  (The former proof 2 — ``PluginVsBuiltinParallelRun``, the byte-identical
+  plugin↔built-in parallel-run — was the migration gate that authorized deleting the
+  built-in. V5-3 has deleted it, so the twin no longer exists; that class was removed
+  in AG Wave 2. Git history retains the parallel-run proof.)
 
 All of it locates the sibling agentm clone and **graceful-skips** when none is
-reachable, so crickets CI stays deterministic (the kernel suite is agentm-homed;
-it runs live wherever ``../agentm`` is checked out — e.g. the operator's machine).
-This is the "how does crickets CI reach an agentm-homed suite?" edge the plan
-flags: the suite must be importable at *class-definition* time, so the clone is
-located at **module load** and the whole battery is skipped when it is absent —
-never an import error that reds the run.
+reachable, so the suite stays importable at *class-definition* time — the clone is
+located at **module load** and the whole battery is skipped when absent, never an
+import error that reds the run. crickets CI reaches the kernel by checking out the
+sibling agentm repo in a dedicated ``obsidian-vault-conformance`` job (Linux +
+Windows; see ``.github/workflows/tests-{linux,windows}.yml``); on the operator's
+machine the suite runs live against ``../agentm``.
 
 The operator's *real* vault is never touched here: every case uses a fresh
 ``tempfile`` scratch tree (the factory contract — a clean root per check), and the
@@ -100,30 +98,21 @@ _SKIP_REASON = (
 if _AGENTM_AVAILABLE:
     if str(_AGENTM_SCRIPTS) not in sys.path:
         sys.path.insert(0, str(_AGENTM_SCRIPTS))
-    # Free the shared `vault` slot before the kernel's import-time self-register
-    # (`backend_selection` → `storage_vault`) so it registers clean past the
-    # duplicate guard — a sibling loader (the task-1 smoke / discovery edge) may
-    # have left a plugin class in the slot without the built-in ever importing.
-    # This is a single-process test artifact only; production imports the built-in
-    # before any plugin loads.
-    import storage_seam as _ss  # noqa: E402
-
-    _ss.registry._backends.pop(PROTOCOL_NAME, None)
+    # The kernel ships the contract + harness (`backend_selection`,
+    # `storage_conformance`) from _AGENTM_SCRIPTS. The vault backend itself is no
+    # longer a kernel built-in — V5-3 deleted it and re-homed it in THIS plugin
+    # (PLUGIN_SCRIPTS) — so it is loaded only through the engine resolver
+    # `backend_selection._load_vault_plugin_backend` (which execs the plugin in
+    # isolation and pops its self-registration), never by a global `import
+    # storage_vault`. No registry mutation happens at module load.
     import backend_selection as _bs  # noqa: E402
     import storage_conformance as _sc  # noqa: E402
-    import storage_vault as _kernel_vault  # noqa: E402  (the kernel built-in)
     from storage_conformance import ConformanceSuite, run_conformance  # noqa: E402
 
     # The vault's distinguishing safety vocabulary — the CAS raise the byte-only
     # universal suite never exercises. Single-sourced from its canonical home
-    # (vault_lock), the same module both the plugin and the built-in import.
+    # (vault_lock, an agentm kernel module the plugin also imports).
     from vault_lock import ConcurrentModificationError  # noqa: E402
-
-    # Whatever the prior import ordering across the discover run, leave the shared
-    # `vault` slot holding the built-in so sibling modules that call
-    # `registry.get('vault')` see the canonical backend (the parallel-run reaches
-    # the built-in by direct import, but a good citizen restores the registry).
-    _ss.registry.register(PROTOCOL_NAME, _kernel_vault.VaultBackend, clobber=True)
 else:  # pragma: no cover - exercised only on a clone-less host (e.g. crickets CI)
     # A distinct empty placeholder (NOT `object`) so the `(…, ConformanceSuite,
     # unittest.TestCase)` bases keep a consistent MRO — `object` would illegally
@@ -137,24 +126,10 @@ else:  # pragma: no cover - exercised only on a clone-less host (e.g. crickets C
 
 # Markdown samples pinning byte-identical fidelity across the two implementations:
 # LF-only, CRLF, mixed, no-trailing-newline, and non-ASCII (accented Latin + Greek
-# + a cricket 🦗) crossed with CRLF. A backend that translated newlines would
-# diverge from its twin on at least the CRLF samples.
-_PARALLEL_SAMPLES = (
-    "unix line one\nunix line two\n",
-    "windows line one\r\nwindows line two\r\n",
-    "mixed\r\nlf\nbare-cr\rtail",
-    "no trailing newline",
-    "non-ascii café ναί \U0001f997\r\nsecond\r\n",
-)
-
-# Logical paths whose resolution must be identical between plugin and built-in.
-_RESOLVE_BATTERY = (
-    (),
-    ("a",),
-    ("a", "b", "c"),
-    ("projects", "demo", "note.md"),
-    ("projects", "crickets", "_index.md"),
-)
+# (The `_PARALLEL_SAMPLES` / `_RESOLVE_BATTERY` fixtures fed the removed
+# plugin↔built-in parallel-run class — dropped in AG Wave 2 with that class, since
+# V5-3 deleted the built-in. The LF-exact / CRLF byte fidelity they pinned is still
+# covered by `ConformanceSuite`'s `test_lf_exact_round_trip` over the plugin.)
 
 
 class _PluginBackendCase:
@@ -166,13 +141,20 @@ class _PluginBackendCase:
     """
 
     _plugin_cls = None
-    _builtin_cls = None
 
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
-        # The engine's own discovery resolver loads the plugin backend (pops the
-        # `vault` slot, execs the plugin, restores the built-in) and hands back the
+        # The registry singleton is shared across the whole `discover` run; a sibling
+        # module (the structural smoke) may leave a plugin class in the `vault` slot.
+        # `_load_vault_plugin_backend` assumes the slot is empty at entry (post-V5-3
+        # there is no kernel built-in), so clear it first — else the plugin's
+        # import-time self-register would hit the duplicate guard.
+        import storage_seam  # noqa: E402  (path set at module load)
+
+        storage_seam.registry._backends.pop(PROTOCOL_NAME, None)
+        # The engine's own discovery resolver loads the plugin backend (execs the
+        # plugin, then pops its self-registration in `finally`) and hands back the
         # class — the same path `select_backend` uses on a `storage.backend=vault`.
         cls._plugin_cls = _bs._load_vault_plugin_backend(plugin_scripts=PLUGIN_SCRIPTS)
         if cls._plugin_cls is None:
@@ -181,7 +163,6 @@ class _PluginBackendCase:
                 "via the engine resolver — task-3 discovery is broken (this is a loud "
                 "error, not a skip: the plugin file is present)"
             )
-        cls._builtin_cls = _kernel_vault.VaultBackend
 
     def _scratch_vault(self) -> Path:
         """A fresh throwaway vault tree, auto-removed when the test finishes."""
@@ -201,27 +182,6 @@ class _PluginBackendCase:
             root=base / "vault" / "projects" / "crickets",
             lock_root=base / "locks",
         )
-
-    def _make_builtin_backend(self):
-        """A fresh kernel built-in ``VaultBackend`` over its own clean scratch root."""
-        base = self._scratch_vault()
-        return self._builtin_cls(
-            root=base / "vault" / "projects" / "crickets",
-            lock_root=base / "locks",
-        )
-
-    def _shared_vault_pair(self):
-        """A (plugin, built-in, root) trio over **one** shared scratch vault root.
-
-        Both backends address the *same* vault tree (each idempotently mkdir's it),
-        with separate lock bases so the shared tree holds only data files — the
-        setup for "the plugin reads exactly what the built-in wrote" on one vault.
-        """
-        base = self._scratch_vault()
-        root = base / "vault" / "projects" / "crickets"
-        plugin = self._plugin_cls(root=root, lock_root=base / "locks-plugin")
-        builtin = self._builtin_cls(root=root, lock_root=base / "locks-builtin")
-        return plugin, builtin, root
 
 
 @unittest.skipUnless(_AGENTM_AVAILABLE, _SKIP_REASON)
@@ -264,113 +224,17 @@ class PluginVaultRunConformanceReport(_PluginBackendCase, unittest.TestCase):
         self.assertEqual(report["derived"], "skipped")
 
 
-@unittest.skipUnless(_AGENTM_AVAILABLE, _SKIP_REASON)
-class PluginVsBuiltinParallelRun(_PluginBackendCase, unittest.TestCase):
-    """Byte-identical parallel-run: the plugin and the built-in are one backend.
-
-    The belt-and-suspenders half of LC-5 (the conformance suite is the contract;
-    this is the on-the-real-code-path equivalence). Two implementations of one
-    backend must resolve, serve, and persist identically — the parallel-run *diff
-    is empty*. That empty diff is what lets V5-3 delete the built-in.
-    """
-
-    def test_plugin_reads_what_builtin_wrote_byte_identical(self) -> None:
-        # One vault, written by the built-in, read by the plugin — byte-for-byte.
-        plugin, builtin, _ = self._shared_vault_pair()
-        for i, content in enumerate(_PARALLEL_SAMPLES):
-            builtin.write(builtin.resolve("notes", f"s{i}.md"), content)
-            got = plugin.read(plugin.resolve("notes", f"s{i}.md"))
-            self.assertEqual(
-                got, content, f"plugin did not read the built-in's write verbatim (sample {i})"
-            )
-            self.assertEqual(
-                got.encode("utf-8"),
-                content.encode("utf-8"),
-                f"plugin/built-in diverged at the byte level (sample {i})",
-            )
-
-    def test_builtin_reads_what_plugin_wrote_byte_identical(self) -> None:
-        # The mirror direction: written by the plugin, read by the built-in.
-        plugin, builtin, _ = self._shared_vault_pair()
-        for i, content in enumerate(_PARALLEL_SAMPLES):
-            plugin.write(plugin.resolve("notes", f"s{i}.md"), content)
-            got = builtin.read(builtin.resolve("notes", f"s{i}.md"))
-            self.assertEqual(
-                got, content, f"built-in did not read the plugin's write verbatim (sample {i})"
-            )
-            self.assertEqual(
-                got.encode("utf-8"),
-                content.encode("utf-8"),
-                f"built-in/plugin diverged at the byte level (sample {i})",
-            )
-
-    def test_independent_writes_produce_byte_identical_files(self) -> None:
-        # Two *independent* vaults, identical input → byte-identical output files.
-        # This is the parallel-run in its purest form: same writes, same bytes on
-        # disk, regardless of which implementation produced them.
-        p_base = self._scratch_vault()
-        b_base = self._scratch_vault()
-        p_root = p_base / "vault" / "projects" / "crickets"
-        b_root = b_base / "vault" / "projects" / "crickets"
-        plugin = self._plugin_cls(root=p_root, lock_root=p_base / "locks")
-        builtin = self._builtin_cls(root=b_root, lock_root=b_base / "locks")
-        for i, content in enumerate(_PARALLEL_SAMPLES):
-            rel = ("notes", f"s{i}.md")
-            plugin.write(plugin.resolve(*rel), content)
-            builtin.write(builtin.resolve(*rel), content)
-            p_bytes = p_root.joinpath(*rel).read_bytes()
-            b_bytes = b_root.joinpath(*rel).read_bytes()
-            self.assertEqual(
-                p_bytes,
-                b_bytes,
-                f"plugin and built-in wrote different bytes for identical input (sample {i}) — "
-                "the parallel-run diff is NOT empty",
-            )
-
-    def test_locator_resolution_is_identical(self) -> None:
-        plugin, builtin, _ = self._shared_vault_pair()
-        for parts in _RESOLVE_BATTERY:
-            self.assertEqual(
-                plugin.resolve(*parts).key,
-                builtin.resolve(*parts).key,
-                f"locator resolution diverged for {parts!r}",
-            )
-
-    def test_list_exists_info_agree_after_identical_writes(self) -> None:
-        # A small tree written through the built-in; the plugin (same vault) must
-        # agree on the directory listing, existence, and byte sizes.
-        plugin, builtin, _ = self._shared_vault_pair()
-        builtin.write(builtin.resolve("box", "a.md"), "a\n")
-        builtin.write(builtin.resolve("box", "b.md"), "café\r\n")  # non-ASCII + CRLF
-        builtin.mkdir(builtin.resolve("box", "sub"))
-        builtin.write(builtin.resolve("box", "sub", "deep.md"), "deep\n")
-
-        p_children = sorted(loc.key for loc in plugin.list(plugin.resolve("box")))
-        b_children = sorted(loc.key for loc in builtin.list(builtin.resolve("box")))
-        self.assertEqual(p_children, b_children, "list disagreed on immediate children")
-        self.assertEqual(
-            set(b_children),
-            {"box/a.md", "box/b.md", "box/sub"},
-            "the built-in's own list is not the expected immediate-children set",
-        )
-
-        for parts in (("box", "a.md"), ("box", "b.md"), ("box", "sub"), ("box", "absent.md")):
-            self.assertEqual(
-                plugin.exists(plugin.resolve(*parts)),
-                builtin.exists(builtin.resolve(*parts)),
-                f"exists disagreed for {parts!r}",
-            )
-
-        for parts in (("box", "a.md"), ("box", "b.md")):
-            self.assertEqual(
-                plugin.info(plugin.resolve(*parts)).size,
-                builtin.info(builtin.resolve(*parts)).size,
-                f"info.size disagreed for {parts!r}",
-            )
+# NOTE: the `PluginVsBuiltinParallelRun` class (byte-identical plugin↔kernel-built-in
+# twin comparison) was removed in AG Wave 2 (2026-06-24). It was a migration-gate
+# test — its docstring noted "that empty diff is what lets V5-3 delete the built-in."
+# V5-3 has since deleted the kernel built-in, so the twin no longer exists; comparing
+# the sole (plugin) backend against itself is vacuous. The plugin's ongoing contract
+# is covered by `PluginVaultConformance` (the universal battery) above. Git history
+# retains the parallel-run proof.
 
 
 @unittest.skipUnless(_AGENTM_AVAILABLE, _SKIP_REASON)
-class PluginVsBuiltinBehavioralContract(_PluginBackendCase, unittest.TestCase):
+class PluginVaultBehavioralContract(_PluginBackendCase, unittest.TestCase):
     """The behavior the byte-only conformance suite structurally cannot assert.
 
     LC-5's green authorizes V5-3 to **delete** the built-in, on the premise that
@@ -390,18 +254,16 @@ class PluginVsBuiltinBehavioralContract(_PluginBackendCase, unittest.TestCase):
          another device) into exactly that window by interposing on
          ``Path.read_bytes`` — the same deterministic technique agentm's own
          ``test_storage_vault`` uses end-to-end — and require the public ``write``
-         to **raise** and leave the foreign bytes intact. Run against *both*
-         implementations: the built-in case anchors the harness as non-vacuous and
-         proves the plugin matches the built-in's behavior, not merely "raises".
+         to **raise** and leave the foreign bytes intact. (Pre-V5-3 this also ran
+         against the kernel built-in as a parity anchor; the built-in is gone, so it
+         now runs against the plugin and is pinned by the literal advertisement (2).)
 
-      2. **Identical advertised contract** (``test_*_advertise_identical_contract``).
-         ``capabilities`` + ``conflict_strategy`` must be byte-equal between plugin
-         and built-in, with the vault's real profile (``concurrent_writers=True``,
-         ``conflict_strategy="whole-file"``) **pinned to literals** — so a *both*-
-         degraded pair (each lying its way to device-local's all-False floor) cannot
-         pass on parity alone. Together with (1) the mutant is boxed in: degrade the
-         ``write`` and (1) reds; downgrade the advertisement to dodge (1) and (2)
-         reds.
+      2. **Advertised contract pinned to literals** (``test_plugin_advertises_the_vault_contract``).
+         ``capabilities`` + ``conflict_strategy`` must match the vault's real profile
+         (``concurrent_writers=True``, ``conflict_strategy="whole-file"``) **pinned to
+         literals** — so a backend degraded its way to device-local's all-False floor
+         cannot pass. Together with (1) the mutant is boxed in: degrade the ``write``
+         and (1) reds; downgrade the advertisement to dodge (1) and (2) reds.
 
     Why crickets-side and not the agentm kernel suite: the seam's
     ``write(locator, content)`` has no ``expected_hash`` parameter, so there is no
@@ -453,29 +315,17 @@ class PluginVsBuiltinBehavioralContract(_PluginBackendCase, unittest.TestCase):
 
     def test_plugin_write_bites_on_concurrent_modification(self) -> None:
         # The regression bite: a degraded (atomic_write-only) plugin would NOT raise.
+        # (The V5-2 built-in parity anchor was removed in AG Wave 2 — V5-3 deleted the
+        # built-in; the CAS bite is now pinned against the literal expectation below.)
         self._assert_write_cas_bites(self._make_plugin_backend())
 
-    def test_builtin_write_bites_on_concurrent_modification(self) -> None:
-        # Behavioral parity anchor: the same harness against the untouched built-in
-        # proves it is non-vacuous and that the plugin matches the built-in's bite.
-        self._assert_write_cas_bites(self._make_builtin_backend())
-
-    def test_plugin_and_builtin_advertise_identical_contract(self) -> None:
+    def test_plugin_advertises_the_vault_contract(self) -> None:
         plugin = self._make_plugin_backend()
-        builtin = self._make_builtin_backend()
-        # Parity: the plugin advertises the built-in's exact capability profile.
-        self.assertEqual(
-            plugin.capabilities,
-            builtin.capabilities,
-            "plugin and built-in must advertise identical capabilities",
-        )
-        self.assertEqual(
-            plugin.conflict_strategy,
-            builtin.conflict_strategy,
-            "plugin and built-in must advertise the same conflict strategy",
-        )
-        # Absolute pin: a *both*-degraded pair would match each other but not these
-        # literals — the vault's real synced/multi-writer profile, not the floor.
+        # Absolute pin: the vault's real synced/multi-writer profile, not the
+        # device-local all-False floor. A `write` degraded to `atomic_write`-only
+        # (dropping the CAS) reds the bite above; downgrading the advertisement to
+        # dodge it reds these literals. (Pre-V5-3 this was a plugin↔built-in parity
+        # check; the built-in is gone, so it pins literals directly.)
         self.assertTrue(
             plugin.capabilities.concurrent_writers,
             "the vault plugin must declare concurrent_writers (the mutex makes N writers safe)",

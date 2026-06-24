@@ -101,3 +101,31 @@ jobs:
           config-path: .gitleaks.toml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  obsidian-vault-conformance:
+    # The obsidian-vault plugin's conformance/discovery/doctor suites hold the
+    # plugin to agentm's StorageBackend contract — they need the agentm kernel
+    # clone, so they `skipUnless` in the `validate` unit-test job (crickets-only)
+    # and run here with the sibling checked out. Dedicated job so the kernel
+    # checkout can't perturb the other gates' scope.
+    name: obsidian-vault conformance (vs agentm kernel)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Check out the sibling agentm kernel
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          repository: alexherrero/agentm
+          path: _agentm
+          fetch-depth: 1
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.11'
+      - name: Install Python deps
+        run: pip install pyyaml
+      - name: obsidian-vault backend conformance + discovery + doctor (against the real kernel)
+        # AGENTM_SCRIPTS points each suite's `_locate_agentm_scripts()` at the kernel
+        # `scripts/` — without it they skip (the CI-deterministic clone-absent path).
+        env:
+          AGENTM_SCRIPTS: ${{ github.workspace }}/_agentm/scripts
+        run: cd scripts && python3 -m unittest test_obsidian_vault_conformance test_obsidian_vault_discovery test_obsidian_vault_doctor

@@ -270,24 +270,23 @@ class DoctorVaultWithEngine(unittest.TestCase):
             )
         if str(agentm_scripts) not in sys.path:
             sys.path.insert(0, str(agentm_scripts))
-        # Free the shared `vault` slot before the kernel's import-time self-register
-        # (`backend_selection` → `storage_vault`) so it registers clean past the
-        # duplicate guard — a single-process test artifact, never a production path
-        # (see test_obsidian_vault_discovery for the full rationale).
+        # V5-3 deleted the kernel built-in; the vault backend is plugin-only, and the
+        # doctor preview loads it through `_load_vault_plugin_backend(plugin_scripts=…)`
+        # (never a pre-registered registry slot). Clear the shared `vault` slot so a
+        # sibling loader can't leave a stale class in it.
         import storage_seam  # noqa: E402
 
         storage_seam.registry._backends.pop(PROTOCOL_NAME, None)
         import backend_selection  # noqa: E402
-        import storage_vault as kernel_vault  # noqa: E402
 
         cls.kernel_scripts = agentm_scripts
         cls.seam = storage_seam
-        cls.kernel_backend = kernel_vault.VaultBackend
 
     def setUp(self) -> None:
-        # Normalize the shared `vault` slot to the kernel built-in so storage_preview's
-        # `registry.get('vault')` guard passes deterministically regardless of order.
-        self.seam.registry.register(PROTOCOL_NAME, self.kernel_backend, clobber=True)
+        # Clear the shared `vault` slot so the doctor preview discovers the plugin
+        # from scratch (post-V5-3 there is no pre-registered built-in), deterministic
+        # regardless of test ordering.
+        self.seam.registry._backends.pop(PROTOCOL_NAME, None)
         self._tmp = tempfile.TemporaryDirectory()
         tmp = Path(self._tmp.name)
         # A synthetic, real-shaped MemoryVault: `_meta/repos.json` gives it the
