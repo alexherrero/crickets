@@ -66,4 +66,4 @@ Discrete `plan → work → review → release` gates beat freestyling the whole
 - [Spawn a worker in a worktree](Spawn-A-Worker-In-A-Worktree) · [Run isolated tasks](Run-Isolated-Tasks) · [Integrate a worker](Integrate-A-Worker) — the worktree lifecycle: plan-level isolation, per-task isolation, and merging back.
 - [Developer Safety](Developer-Safety) · [Plugin anatomy](Plugin-Anatomy) — the sibling safety plugin + the shared plugin structure.
 - [Why phase-gating](Why-Phase-Gating) — why the loop is gated.
-- [Developer Plugin Suite design](developer-plugin-suite) — the developer-workflows / safety / code-review split.
+- [Developer Plugin Suite design](crickets-composition) — the developer-workflows / safety / code-review split.

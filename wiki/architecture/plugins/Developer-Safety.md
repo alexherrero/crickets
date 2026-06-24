@@ -93,4 +93,4 @@ The primitives compose into a safety net: **operator-controllable** (kill-switch
 - [ADR 0003 — base operator hooks](crickets-developer-safety) — the design rationale + re-audit triggers.
 - [Plugin anatomy](Plugin-Anatomy) — what a crickets plugin is + its structure.
 - [Install crickets plugins](Install-Into-Project) — all three install modes.
-- [Developer Plugin Suite design](developer-plugin-suite) — the developer-workflows / safety / code-review split.
+- [Developer Plugin Suite design](crickets-composition) — the developer-workflows / safety / code-review split.

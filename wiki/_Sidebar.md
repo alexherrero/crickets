@@ -45,7 +45,6 @@
 
 **Crickets**
 - [Crickets v3.0 — Native Host Plugins](crickets-v3-native-plugins)
-- [Developer Plugin Suite (V5 ④)](developer-plugin-suite)
 - [Wiki Maintenance (V5 ④)](wiki-maintenance-design)
 - [diataxis-author — Diátaxis wiki authoring + maintenance](diataxis-author)
 - [Continuous Integration](continuous-integration)

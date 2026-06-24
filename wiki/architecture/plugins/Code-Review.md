@@ -47,4 +47,4 @@ A reviewer primed to **assume bugs exist** finds real ones; demanding a failing 
 - [Why adversarial review](Why-Adversarial-Review) — why the assume-bugs framing works.
 - [Developer Workflows](Developer-Workflows) — the base plugin this enhances at `/review`.
 - [Hooks](Hooks) · [Plugin anatomy](Plugin-Anatomy) — the evidence-tracker catalog entry + the shared plugin structure.
-- [Developer Plugin Suite design](developer-plugin-suite) — the developer-workflows / safety / code-review split.
+- [Developer Plugin Suite design](crickets-composition) — the developer-workflows / safety / code-review split.
