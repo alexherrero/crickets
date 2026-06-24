@@ -66,4 +66,4 @@ For a manifest of N components, gap-fill creates: the **Architecture** section l
 - [Provision a repo's wiki](Provision-A-Repo-Wiki) — scaffold the seven-section frame first; this how-to fills its Architecture section.
 - [Repo layout](Repo-Layout) — where `wiki/architecture.yml` and the `architecture/` tree sit in the repo.
 - [Wiki-Maintenance plugin](Wiki-Maintenance) — the plugin that bundles `wiki-init` and the gate.
-- [Wiki Section Taxonomy](wiki-section-taxonomy) — why Architecture is a per-project manifest instead of hard-coded sub-sections.
+- [Wiki Section Taxonomy](crickets-wiki) — why Architecture is a per-project manifest instead of hard-coded sub-sections.

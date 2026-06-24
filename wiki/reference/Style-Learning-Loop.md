@@ -56,6 +56,6 @@ The workflows above invoke the loop automatically; to experiment with it explici
 
 ## Related
 
-- [Wiki Maintenance design](wiki-maintenance-design) — why the voice layer + operator-in-the-loop learning exist.
+- [Wiki Maintenance design](crickets-wiki) — why the voice layer + operator-in-the-loop learning exist.
 - [Wiki Watch Config](Wiki-Watch-Config) — the wiki-watcher that runs the documenter.
 - [Customization types](Customization-Types) — the kinds the `wiki-maintenance` plugin ships.

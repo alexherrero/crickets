@@ -53,7 +53,7 @@ When a host release changes its plugin surface (paths, manifest schema, hook eve
 
 ## The wiki published wrong
 
-- **A page shows the wrong content** → almost certainly a case-insensitive basename collision; `check-wiki` rule-g and the deploy job both guard it, so check the failing run first ([Wiki design](wiki-design)).
+- **A page shows the wrong content** → almost certainly a case-insensitive basename collision; `check-wiki` rule-g and the deploy job both guard it, so check the failing run first ([Wiki design](crickets-wiki)).
 - **Nav/sidebar looks stale** → the wiki re-mirrors on every push that touches `wiki/**`; a bad publish self-heals on the next green push.
 
 ## The wiki-watcher did nothing

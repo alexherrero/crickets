@@ -62,7 +62,7 @@ The structural component map — five components, each a folder under **Architec
 
 - **Native host plugins** ([design](crickets-build-system)) — author a primitive once; the generator emits native Claude Code **and** Antigravity plugins, installable three ways, with a CI gate that fails if `dist/` drifts from `src/`.
 - **Developer plugin suite** ([design](crickets-composition)) — the phase-gated dev loop, the safety controls, and adversarial review, as three composable plugins joined by `enhances:`.
-- **Wiki maintenance** ([design](wiki-maintenance-design)) — a template-driven wiki maintainer that expands from Diátaxis toward your house voice via an operator-in-the-loop learning loop, plus the wiki-watcher.
+- **Wiki maintenance** ([design](crickets-wiki)) — a template-driven wiki maintainer that expands from Diátaxis toward your house voice via an operator-in-the-loop learning loop, plus the wiki-watcher.
 - **diataxis-author** ([design](diataxis-author)) — Diátaxis authoring and repair for any repo. *(now an Agent M skill — see the [Agent M design](https://github.com/alexherrero/agentm).)*
 
 ## 💡 Why it works the way it does

@@ -4,7 +4,7 @@
 
 The **wiki-watcher** keeps a wiki in sync with its source repo automatically, so docs track the code instead of drifting. It watches the repo's docs and code — `PLAN.md`, `ROADMAP.md`, `designs/`, ADRs, tracked `.md`, source — for **doc-worthy** changes, and dispatches the `documenter` to author the wiki update and open a PR for review. It is an **idempotent single-cycle engine you run on a loop**, not a daemon and not a one-shot: each invocation runs one `detect → judge → author → dispatch` cycle and exits, and something re-invokes it (Claude Code `/loop` or cron) so the wiki keeps up **asynchronously as you work** — cursors and a processed-set make repeated runs safe.
 
-**It's the async path — not run synchronously.** The synchronous path is the phase-boundary dispatch built into the developer-workflows commands: `/plan`, `/work`, `/release`, and `/bugfix` run the same `documenter` in-session the moment a phase completes. The watcher reuses that documenter on a loop for doc-worthy changes that *aren't* tied to a phase boundary — work outside the harness flow, or a repo you aren't driving through the phase commands — which is why it's decoupled, autonomous, and PR-gated rather than synchronous. To drive it, see [How to run the wiki-watcher](Run-The-Wiki-Watcher); for the rationale, [the design](wiki-watcher).
+**It's the async path — not run synchronously.** The synchronous path is the phase-boundary dispatch built into the developer-workflows commands: `/plan`, `/work`, `/release`, and `/bugfix` run the same `documenter` in-session the moment a phase completes. The watcher reuses that documenter on a loop for doc-worthy changes that *aren't* tied to a phase boundary — work outside the harness flow, or a repo you aren't driving through the phase commands — which is why it's decoupled, autonomous, and PR-gated rather than synchronous. To drive it, see [How to run the wiki-watcher](Run-The-Wiki-Watcher); for the rationale, [the design](crickets-wiki).
 
 This page is the **config contract**. There is no dedicated config file — the watcher reads three sources, each owned by a different layer, and run config never lives in the vault: the vault holds the cross-device *index*, the on-host marker holds *run config*.
 
@@ -86,4 +86,4 @@ Before any candidate reaches the doc-worthiness judge, a coarse **significance p
 - [How to run the wiki-watcher](Run-The-Wiki-Watcher) — the task-oriented walkthrough.
 - [Antigravity limitations](Antigravity-Limitations) — why the scheduling that re-invokes this engine is Claude-first.
 - [Compatibility](Compatibility) — supported hosts.
-- [Wiki-watcher design](wiki-watcher) — the index-vs-run-config split and the rest of the rationale.
+- [Wiki-watcher design](crickets-wiki) — the index-vs-run-config split and the rest of the rationale.

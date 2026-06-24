@@ -21,7 +21,7 @@ approved: 2026-06-23
 
 ## Overview
 
-privacy works in three layers — **proactive** (don't compose a secret), **detect** (scan the diff), **enforce** (block the push) — plus a **review** layer for privacy *practice*. The primitives:
+privacy works in three layers — **proactive** (don't compose a secret), **detect** (scan the diff), **enforce** (block the push) — plus a **review** layer for privacy *practice*. The detect + enforce layers run client-side at the `pre-push` hook **and again in CI**, where `check-no-pii.sh --all` + `gitleaks` run as **two independent scanners** — a back-stop that reduces single-pattern blind spots (by the time CI fails the secret is already in pushed history, so the hook is the load-bearing block; CI back-stops both it and the scrubber). The primitives:
 
 | Primitive | Kind | Status | What it does |
 |---|---|---|---|

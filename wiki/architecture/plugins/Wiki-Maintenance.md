@@ -24,7 +24,7 @@ On Antigravity, install by path (see [Install crickets plugins](Install-Into-Pro
 | **`diataxis-evaluator`** | agent | read-only — classify a page's Diátaxis mode when it's ambiguous |
 | **`style-scope-evaluator`** | agent | read-only — recommend the scope (global / per-project / per-repo) to store a confirmed voice lesson |
 
-`check-wiki.py` is the deterministic linter behind the authoring + repair flows (mode discipline, link integrity, the section conventions) — and the gate `wiki-init` wires into a provisioned repo's CI. The agent runs it by reference (`${CLAUDE_PLUGIN_ROOT}`); CI runs a vendored copy (`--resync-gate` refreshes it), because GitHub Actions has no plugin-runtime path — see the [provisioning design](wiki-maintenance-provisioning).
+`check-wiki.py` is the deterministic linter behind the authoring + repair flows (mode discipline, link integrity, the section conventions) — and the gate `wiki-init` wires into a provisioned repo's CI. The agent runs it by reference (`${CLAUDE_PLUGIN_ROOT}`); CI runs a vendored copy (`--resync-gate` refreshes it), because GitHub Actions has no plugin-runtime path — see the [provisioning design](crickets-wiki).
 
 ## How it composes
 
@@ -41,7 +41,7 @@ A wiki rots when it's hand-maintained and voiceless. This plugin fights both: **
 - [Provision a repo's wiki](Provision-A-Repo-Wiki) — scaffold a wiki + its CI from nothing with `wiki-init`.
 - [Run the wiki-watcher](Run-The-Wiki-Watcher) — drive one watcher cycle.
 - [Style-learning loop](Style-Learning-Loop) · [Wiki Watch Config](Wiki-Watch-Config) — the voice layer + the watcher's config contract.
-- [Provisioning design](wiki-maintenance-provisioning) — why provisioning joins authoring; the gate-distribution split + supersession-gated retirement.
+- [Provisioning design](crickets-wiki) — why provisioning joins authoring; the gate-distribution split + supersession-gated retirement.
 - [Developer Workflows](Developer-Workflows) — the base plugin this enhances at phase boundaries.
 - [Plugin anatomy](Plugin-Anatomy) — what a crickets plugin is + its structure.
-- [Wiki Maintenance design](wiki-maintenance-design) — why the voice layer + operator-in-the-loop learning exist.
+- [Wiki Maintenance design](crickets-wiki) — why the voice layer + operator-in-the-loop learning exist.

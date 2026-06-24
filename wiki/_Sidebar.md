@@ -44,12 +44,7 @@
 **Architecture (Agent M)** — [in the agentm wiki ↗](https://github.com/alexherrero/agentm/wiki/memoryvault)
 
 **Crickets**
-- [Wiki Maintenance (V5 ④)](wiki-maintenance-design)
 - [diataxis-author — Diátaxis wiki authoring + maintenance](diataxis-author)
-- [Continuous Integration](continuous-integration)
-- [Wiki Design](wiki-design)
-- [Wiki-Maintenance Provisioning](wiki-maintenance-provisioning)
-- [Wiki Section Taxonomy](wiki-section-taxonomy)
 ### 💡 [Explanation](Explanation)
 - [Purpose and scope](Purpose-And-Scope)
 - [Why adversarial review](Why-Adversarial-Review)

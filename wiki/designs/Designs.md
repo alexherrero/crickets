@@ -24,13 +24,7 @@ The architecture behind crickets and Agent M — the high-level design docs that
   - [privacy](crickets-privacy) — PII + extensible data-protection layer.
   - [research](crickets-research) — deep research.
   - [diagnostics](crickets-diagnostics) — observability / troubleshooting.
-- **[Wiki Maintenance](wiki-maintenance-design)** — the diataxis-author + documenter + wiki-watcher system.
 - **[diataxis-author](diataxis-author)** — the authoring + style-learning skill.
-- **[Continuous Integration](continuous-integration)** — the gate battery · the 3-OS matrix · the PII layers.
-- **[Wiki](wiki-design)** — the intent-grouped IA · per-folder sidebars · linting + publish.
-- **[Wiki-Maintenance Provisioning](wiki-maintenance-provisioning)** — provision a target repo end-to-end (init · template-ship · gate distribution · standalone retirement).
-- **[Wiki Section Taxonomy](wiki-section-taxonomy)** — the 7-section frame · per-project Architecture manifest · conditional sections · the two dogfood restructures.
-- **[Wiki Composer](wiki-composer)** — the manifest → page transform: load each section · strip its opinion comment · resolve voice + language · concatenate.
 
 **Architecture (Agent M)**
 

@@ -46,7 +46,7 @@
 
 - [Wiki-Maintenance plugin](Wiki-Maintenance) — the plugin that bundles `wiki-init`, the gate, and the watcher.
 - [Maintain a wiki — wiki-watcher](Run-The-Wiki-Watcher) — keep the provisioned wiki in sync after scaffolding.
-- [Provisioning design](wiki-maintenance-provisioning) — why provisioning joins authoring, and the gate-distribution split (reference for the agent, vendor for CI).
+- [Provisioning design](crickets-wiki) — why provisioning joins authoring, and the gate-distribution split (reference for the agent, vendor for CI).
 - [Declare a project's Architecture](Declare-Architecture) — write the `wiki/architecture.yml` that grows the scaffolded `architecture/` section.
-- [ADR 0020 — seven-section wiki taxonomy](wiki-section-taxonomy) — why the frame is fixed at seven, and the two conditional-section gates.
+- [ADR 0020 — seven-section wiki taxonomy](crickets-wiki) — why the frame is fixed at seven, and the two conditional-section gates.
 - [Install crickets plugins](Install-Into-Project) — get `wiki-maintenance` onto your host.
