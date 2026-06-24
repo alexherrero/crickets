@@ -19,7 +19,7 @@ standalone: true
 # 0.2.3 = declare capabilities: [wiki-maintenance] (agentm V5-8 LC-5 cutover) +
 # remove vestigial probe_capability() function from wiki_watch_dispatch.py (it was
 # a tautology: wiki-watch running implies the plugin is installed).
-version: 0.2.4
+version: 0.2.5
 capabilities: [wiki-maintenance]
 enhances:
   - group: developer-workflows

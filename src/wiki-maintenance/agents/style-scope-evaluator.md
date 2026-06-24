@@ -96,4 +96,4 @@ Writes attempted by this sub-agent are bugs in dispatch + should be caught at PR
 - [`scripts/agentmemory_conventions.py`](../skills/diataxis-author/scripts/agentmemory_conventions.py) — the writer the caller invokes *after* the operator confirms this sub-agent's recommendation (graceful-degrades to a raw write when the agentm kernel is absent — DC-3).
 - [`diataxis-evaluator`](diataxis-evaluator.md) — sibling read-only sub-agent in the same plugin; the mold this one clones (DC-4). That one decides a page's Diátaxis *mode*; this one decides a lesson's storage *scope*.
 - [`adapt-evaluator` sub-agent](https://github.com/alexherrero/agentm/blob/main/harness/agents/adapt-evaluator.md) (agentm) — the originating read-only-with-scoped-write pattern; this sub-agent has **zero** write scope.
-- [Parent design](../wiki/explanation/designs/wiki-maintenance.md) — Detailed Design §2–§4 (the style layer + the learning loop) + Tech Debt 1–2 (operator-gated generalization; overlay precedence conflicts).
+- [Parent design](https://github.com/alexherrero/crickets/wiki/crickets-wiki) — the `wiki` capability design (the style layer + the voice-learning loop).
