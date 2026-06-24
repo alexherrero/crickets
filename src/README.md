@@ -2,7 +2,7 @@
 
 Single source of truth for the crickets customization catalog. Authors write each customization **once** here; `scripts/generate.py` (lands in part 2) emits native host plugins (Claude Code + Antigravity) into `dist/` from this tree.
 
-Part of the **Crickets v3.0** native-plugin architecture — see the design at [`wiki/explanation/designs/crickets-v3-native-plugins.md`](../wiki/explanation/designs/crickets-v3-native-plugins.md).
+Part of the **Crickets** native-plugin architecture — see the design at [crickets-build-system](https://github.com/alexherrero/crickets/wiki/crickets-build-system).
 
 ## Folder-per-group
 

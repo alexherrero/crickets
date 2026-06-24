@@ -9,7 +9,7 @@ install_scope: project
 
 # diataxis-author — author + maintain a Diátaxis wiki for any repo
 
-The second major skill in `crickets` (after `memory`). Encodes the operator's Diátaxis discipline from [agentm ADR 0004 — Diátaxis Documentation Spec](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0004-diataxis-documentation-spec.md) into proactive authoring guidance + ongoing drift detection + repair + one-shot migration, with per-repo overrides via `wiki/.diataxis-conventions.md` and global conventions stored in AgentMemory (`_always-load/diataxis-*.md`). Designed via [crickets's design skill](https://github.com/alexherrero/crickets/blob/main/wiki/explanation/designs/diataxis-author.md) — second real dogfood of plan #6's `/design author` after MemoryVault closed.
+The second major skill in `crickets` (after `memory`). Encodes the operator's Diátaxis discipline from [agentm ADR 0004 — Diátaxis Documentation Spec](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0004-diataxis-documentation-spec.md) into proactive authoring guidance + ongoing drift detection + repair + one-shot migration, with per-repo overrides via `wiki/.diataxis-conventions.md` and global conventions stored in AgentMemory (`_always-load/diataxis-*.md`). Designed via [crickets's design skill](https://github.com/alexherrero/crickets/wiki/crickets-wiki) — second real dogfood of plan #6's `/design author` after MemoryVault closed.
 
 **Position vs. `check-wiki.py` strict validator**: validators catch violations after-the-fact; diataxis-author provides **proactive** guidance at write time (template selection, mode classification, filename style). Both layers complement: skill prevents drift at write time; `check-wiki.py` catches drift at commit time + during `/diataxis check`.
 
@@ -254,7 +254,7 @@ python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/repair.py --stub -
 ### `/diataxis repair`
 
 > [!NOTE]
-> **Status**: stub. Full body lands in plan #13 **part 3** (`check-repair`). See the [check-repair part](https://github.com/alexherrero/crickets/blob/main/wiki/explanation/designs/diataxis-author/parts/check-repair.md) for the locked design.
+> **Status**: stub. Full body lands in plan #13 **part 3** (`check-repair`). See the [check-repair part](https://github.com/alexherrero/crickets/wiki/crickets-wiki) for the locked design.
 
 Interactive fix-application for drift detected by `/diataxis check`. Per finding: present suggested fix (cross-ref rewrite / mode reclassification / template realignment / split-mode-mixed-into-N-pages) + operator approves / edits / rejects. Pattern matches `/memory watchlist review`'s interactive flow. Mode-mixed splits dispatch `documenter` sub-agent (the mechanical-write worker). All file modifications preview-first; never silent.
 
@@ -537,7 +537,7 @@ Python-side scripts can use whatever they need (network for ADR 0004 cross-refer
 
 ## Cross-references
 
-- **Parent design**: [diataxis-author](https://github.com/alexherrero/crickets/blob/main/wiki/explanation/designs/diataxis-author.md) — the canonical "Why we built this" entry point per the locked design call from plan #6.
+- **Parent design**: [diataxis-author](https://github.com/alexherrero/crickets/wiki/crickets-wiki) — the canonical "Why we built this" entry point per the locked design call from plan #6.
 - **Diátaxis spec source**: [agentm ADR 0004 — Diátaxis Documentation Spec](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0004-diataxis-documentation-spec.md) — the canonical convention this skill enforces.
 - **Predecessor (being subsumed)**: [agentm `migrate-to-diataxis` skill](https://github.com/alexherrero/agentm/blob/main/harness/skills/migrate-to-diataxis.md) — one-shot migration skill that `/diataxis migrate` ports + extends. Ships deprecation notice in plan #13 part 4.
 - **Sibling sub-agent**: [`diataxis-evaluator`](https://github.com/alexherrero/crickets/blob/main/agents/diataxis-evaluator.md) — read-only sub-agent for ambiguous mode classification. Dispatched from `/diataxis classify` (operational from part 2) + `/diataxis repair` mode-mixed splits (operational from part 3).
