@@ -67,12 +67,12 @@ None — `obsidian-vault` is **infrastructure below the substrate**; it stores b
 
 ## Migrations
 
-None today — the names are stable post-V5-2. **Backlog (filed):** separate Google-Drive *sync* from the Obsidian *vault format*; when done, a bare **`vault`** capability emerges with `obsidian-vault` and other backends as specializations (the platform-bound → bare-noun path the naming rule describes). The selector still name-hardcodes `obsidian-vault@crickets` — a tracked lean-v1 generalization (design-doc §9.1).
+None today — the names are stable post-V5-2. **Backlog (filed):** separate Google-Drive *sync* from the Obsidian *vault format*; when done, a bare **`vault`** capability emerges with `obsidian-vault` and other backends as specializations (the platform-bound → bare-noun path the naming rule describes). The selector resolves the `vault` protocol by a plugin-specific path convention — a tracked lean-v1 generalization.
 
 ## Risks & open questions
 
 - **All delivered** — no greenfield; `storage_vault.py` is byte-faithful from the retired kernel built-in (parallel-run + conformance verified).
-- **Selector hardcoding** — `backend_selection.py` name-hardcodes `obsidian-vault@crickets`; generalizing it is the lean-v1 exception, tracked separately.
+- **Selector discovery path** — `backend_selection.py` resolves the `vault` protocol by a plugin-specific path convention; generalizing it is the lean-v1 exception, tracked separately.
 - **The GDrive / Obsidian split** is backlog, not scheduled — when it lands, the bare `vault` capability emerges.
 - **Re-audit triggers:** generalize the selector when a second backend ships; split GDrive-sync from Obsidian-format at the `vault`-capability backlog item.
 

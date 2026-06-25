@@ -66,7 +66,7 @@ A live plan's board reaches **at least four levels — Version → Feature → P
 
 A version is a one-line *About*. A work item (task / plan / feature / sub-feature) carries **two surfaces**:
 
-- **The issue body — a kept-current summary.** ① **Kickoff** (`Goal · Done-when` for a task, `Goal · Why-it-matters` for a feature) at start, a **current progress summary** that reflects where the work stands right now, and ③ **Closeout** (`Outcome · Landed/Shipped-link · date`) at ship. The body answers *what is this, and where does it stand* — at a glance.
+- **The issue body — a kept-current summary.** ① **Kickoff** (`Goal · Done-when` for a task, `Goal · Why-it-matters` for a feature) at start, ② **current progress summary** that reflects where the work stands right now, and ③ **Closeout** (`Outcome · Landed/Shipped-link · date`) at ship. The body answers *what is this, and where does it stand* — at a glance.
 - **A comment per commit — the granular trail.** Each commit posts a **GitHub issue comment** — a timeline entry (`{date} ([sha](commit-url)): {summary}`, the commit link built deterministically from the SHA). The comments answer *what happened, commit by commit.* (Altitude follows the unit: a task comments per commit, a plan per task, a feature per plan shipped.)
 
 ### Per-commit comment + keep-the-summary-current — two idempotent surfaces
