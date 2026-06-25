@@ -1,7 +1,7 @@
 # One-way vault-to-board synthesis
 
 > [!NOTE]
-> Implemented — catalog bundle #8 (roadmap #41). The `github-projects` plugin is built under `src/github-projects/`; the design calls below are locked and recorded in [ADR 0025](crickets-github-projects). This page is the *why*; [GitHub Projects plugin](GitHub-Projects) is the reference surface and [Sync a project board](Sync-A-Project-Board) the operator recipe.
+> Implemented — catalog bundle #8 (roadmap #41). The `github-projects` plugin is built under `src/github-projects/`; the design calls below are locked and recorded in the [GitHub Projects design](crickets-github-projects). This page is the *why*; [GitHub Projects plugin](GitHub-Projects) is the reference surface and [Sync a project board](Sync-A-Project-Board) the operator recipe.
 
 The `github-projects` plugin answers a specific question: how does a project's state become legible to a human without making the human's view a second place that has to be kept in sync? The answer crickets settles on is **one-way deterministic synthesis** — the vault is the single source of truth, and the GitHub Project board is a *generated* mirror of it, never an editable peer. This page explains why that shape, what it buys, and the one structural property that makes it both safe and a little uncanny: the plugin that maintains the boards is itself tracked on a board.
 
@@ -62,7 +62,7 @@ This is not a gimmick — it's the strongest possible dogfood. If the projection
 | Surfaces this cycle | `github-board` only — `local-index` / `none` deferred to a follow-up |
 
 > [!NOTE]
-> These calls are recorded formally in [ADR 0025 — one-way vault→GitHub-Project board synthesis](crickets-github-projects), with the "why not the alternative" reasoning per call and the re-audit triggers. This section is the narrative; the ADR is the decision of record.
+> These calls are recorded formally in the [GitHub Projects design](crickets-github-projects), with the "why not the alternative" reasoning per call and the re-audit triggers. This section is the narrative; the design is the decision of record.
 
 ## Related
 
@@ -70,4 +70,4 @@ This is not a gimmick — it's the strongest possible dogfood. If the projection
 - [Sync a project board](Sync-A-Project-Board) — the operator recipe for a sync + the inaugural backfill.
 - [Why deterministic gates run first](Why-Deterministic-Gates) — the same determinism-enables-a-gate logic, applied to the phase loop.
 - [Purpose and scope](Purpose-And-Scope) — where this plugin sits in the crickets / agentm split.
-- [ADR 0025](crickets-github-projects) — the decision of record for the locked design calls.
+- [GitHub Projects design](crickets-github-projects) — the decision of record for the locked design calls.

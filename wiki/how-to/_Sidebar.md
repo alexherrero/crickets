@@ -22,4 +22,3 @@
 ### 🏛️ [Architecture](Architecture)
 ### 🧩 [Designs](Designs)
 ### 💡 [Explanation](Explanation)
-### 📐 [Decisions](Decisions)

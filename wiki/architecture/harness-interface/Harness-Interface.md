@@ -24,6 +24,6 @@ The seam is graceful-skip in both directions, so each side works alone. A harnes
 Detail:
 
 - [Purpose and scope](Purpose-And-Scope) — what crickets is and is not, and how it sits beside agentm.
-- [Crickets split — agentm ADR 0006 ↗](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0006-crickets-split.md) — the decision that drew this seam.
+- [Crickets split — agentm Foundations HLD ↗](https://github.com/alexherrero/agentm/wiki/agentm-foundations-hld) — the decision that drew this seam.
 
 [Architecture](Architecture) · [Explanation](Explanation) · [Home](Home)

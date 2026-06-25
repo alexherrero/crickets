@@ -32,7 +32,7 @@
 | 💰 **Audit & watch token spend** — per-turn cost breakdown + live status-line meter | [token-audit + status-line-meter](Plugins) | `/token-audit` command · live `↑K↓K $0.xx [62%]` badge |
 | 🧪 **Keep testing discipline standing** — skip-marker rule + 3-principle testing skill | [testing-conventions](Testing-Conventions) | `no-skip-tests` rule · `testing-conventions` skill |
 | 🚢 **Ship releases reliably** — version-bump rule + pre-release checklist skill | [releasing-conventions](Releasing-Conventions) | `version-bump-required` rule · `ship-release` skill |
-| 📐 **Author design docs + ADRs** — `/design` pipeline and the ADR format skill | [design-docs](Design-Docs) | `adr` skill · [author a design](Author-A-Design) · [record a decision](Record-An-Architectural-Decision) |
+| 📐 **Author design docs** — `/design` pipeline and amendment-log discipline for living designs | [design-docs](Design-Docs) | [author a design](Author-A-Design) · [record a decision](Record-An-Architectural-Decision) |
 
 ## 📖 Look up a detail
 
@@ -74,9 +74,9 @@ Crickets is grounded in established practice and industry precedent — and it *
 - [Why deterministic gates run first](Why-Deterministic-Gates) — typecheck, lint, and tests gate before sycophantic LLM judgment.
 - [Why phase-gating](Why-Phase-Gating) — discrete plan → work → review → release gates beat freestyling the whole lifecycle.
 
-## 📐 Architecture decisions
+## 📐 Design decisions
 
-Every load-bearing call is recorded as an ADR — the "why X, and why not Y" trail, with re-audit triggers. → **[Browse all decisions](Decisions)**
+Load-bearing calls live in each design's amendment log — the "why X, and why not Y" trail, with re-audit triggers. → **[Browse all designs](Designs)**
 
 ## 🤝 Want to contribute?
 

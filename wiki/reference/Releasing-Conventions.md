@@ -45,6 +45,5 @@ Requires `developer-workflows` as a base. Both plugins must be enabled for the s
 ## See also
 
 - [developer-workflows plugin](Developer-Workflows) — the `/release` phase command this skill gates; also `/work`, `/plan`, `/bugfix`.
-- [ADR 0030](crickets-development-lifecycle) — the single-writer protocol governing concurrent-worker version bumps (the one exception the `version-bump-required` rule acknowledges).
-- [ADR 0029](crickets-development-lifecycle) — paired-release order and coordination.
+- [Development lifecycle design](crickets-development-lifecycle) — the single-writer protocol governing concurrent-worker version bumps (the one exception the `version-bump-required` rule acknowledges) and paired-release order and coordination.
 - [Customization Types](Customization-Types) — what `kind: rule` and `kind: skill` are.

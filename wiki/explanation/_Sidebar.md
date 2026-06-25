@@ -11,4 +11,3 @@
 - [Why phase-gating](Why-Phase-Gating)
 - [One-way vault-to-board synthesis](One-Way-Vault-To-Board-Synthesis)
 - [Developer-Workflows token efficiency](Developer-Workflows-Token-Efficiency)
-### 📐 [Decisions](Decisions)

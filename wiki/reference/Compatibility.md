@@ -60,7 +60,7 @@ Each is tracked, with its re-address trigger, in the canonical [Antigravity limi
 
 ## Out-of-scope hosts
 
-- **Gemini CLI** — dropped in v3.0. Google replaced it with the Antigravity CLI (`agy`), which **is** supported; consumer Gemini CLI sunsets 2026-06-18. ([ADR 0006 — the crickets split](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0006-crickets-split.md).)
+- **Gemini CLI** — dropped in v3.0. Google replaced it with the Antigravity CLI (`agy`), which **is** supported; consumer Gemini CLI sunsets 2026-06-18. ([agentm Foundations HLD — crickets split](https://github.com/alexherrero/agentm/wiki/agentm-foundations-hld).)
 - **Codex** — never had an adapter.
 
 ## See also

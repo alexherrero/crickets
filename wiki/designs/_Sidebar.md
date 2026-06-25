@@ -25,4 +25,4 @@
   - [research](crickets-research)
   - [diagnostics](crickets-diagnostics)
 ### 💡 [Explanation](Explanation)
-### 📐 [Decisions](Decisions)
+- [Decisions (archived)](Decisions)

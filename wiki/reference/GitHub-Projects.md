@@ -2,7 +2,7 @@
 # GitHub Projects plugin
 
 > [!NOTE]
-> Implemented — catalog bundle #8 (roadmap #41), group version `0.1.0`. Every value below documents the built plugin under `src/github-projects/` with `file:line` references; the locked design calls are recorded in [ADR 0025](crickets-github-projects).
+> Implemented — catalog bundle #8 (roadmap #41), group version `0.1.0`. Every value below documents the built plugin under `src/github-projects/` with `file:line` references; the locked design calls are recorded in the [GitHub Projects design](crickets-github-projects).
 
 The `github-projects` plugin (group version `0.1.0`, `requires: developer-workflows` — `src/github-projects/group.yaml:4`) synthesizes vault project state into a **GitHub Project board** — one-way and deterministically. The vault stays the agent's source of truth; the GitHub Project is the canonical *human* source, **generated and never hand-maintained**. This page indexes the config schema, the flat Type taxonomy, the six per-type templates, the frozen field schema, the materialization rule, and the single live write path. The *why* (one-way synthesis, the meta-loop, silent-source-attribution stripping) is in [One-way vault-to-board synthesis](One-Way-Vault-To-Board-Synthesis); the operator recipe is in [Sync a project board](Sync-A-Project-Board).
 
@@ -176,4 +176,4 @@ Each board is wired by a `project.json` in that project's vault `_harness/` (git
 - [Developer Workflows](Developer-Workflows) — the base plugin `github-projects` requires; the phase commands that emit board updates.
 - [CI gates](CI-Gates) — the gate battery `check_project_sync.py` joins.
 - [Plugin anatomy](Plugin-Anatomy) — what a crickets plugin's `scripts/` payload is.
-- [ADR 0025](crickets-github-projects) — the locked design calls (DC-1 / DC-2 / DC-4, taxonomy, silent-source, surface) and why-not-the-alternative per call.
+- [GitHub Projects design](crickets-github-projects) — the locked design calls (DC-1 / DC-2 / DC-4, taxonomy, silent-source, surface) and why-not-the-alternative per call.

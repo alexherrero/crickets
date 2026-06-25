@@ -37,7 +37,7 @@ The `developer-workflows` phase commands `/work`, `/plan`, and `/review` accept 
 
 ## The `/design` command
 
-`/design` is the **upstream authoring step** of the phase loop — it starts *earlier* than `/plan`. Use it when the problem is ambiguous, multi-stakeholder, or has cross-cutting Quality-Attributes / Operations concerns; use `/plan` for an already-settled design. It is packaged as a **command** (not a skill), consistent with the rest of the all-commands phase loop, and is implemented as two tested stdlib-only Python helpers plus a thin command prompt (see [ADR 0024](crickets-development-lifecycle)). The task recipe is in [Author a design](Author-A-Design).
+`/design` is the **upstream authoring step** of the phase loop — it starts *earlier* than `/plan`. Use it when the problem is ambiguous, multi-stakeholder, or has cross-cutting Quality-Attributes / Operations concerns; use `/plan` for an already-settled design. It is packaged as a **command** (not a skill), consistent with the rest of the all-commands phase loop, and is implemented as two tested stdlib-only Python helpers plus a thin command prompt (see the [Development lifecycle design](crickets-development-lifecycle)). The task recipe is in [Author a design](Author-A-Design).
 
 | Surface | Location |
 |---|---|
@@ -193,7 +193,7 @@ When an agentm clone is installed the bridge **delegates** to agentm's `queue_st
 | Helper | wraps `scripts/spawn_worker.py` (inside the `developer-workflows` plugin), invoked as `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/spawn_worker.py" <name>`; accepts `--project-root <path>` / `--worktree-path <path>`. Stdlib-only; mirrors `resolve_plan.py`'s pure-core + injectable-backend shape. Exit codes: `0` ok (worktree path on stdout), `1` graceful-skip (located resolver, no resolvable harness), `2` loud refusal (empty/singleton/unsafe name, no-clobber path/branch collision, resolver refusal, or failed `git worktree add` — never a partial spawn) |
 
 > [!NOTE]
-> **Operator authority, two forms.** Worker worktrees require operator authority — either an explicit `/spawn-worker` command (where the invocation is the authority) or a durable `isolation.mode: worktree-per-plan` config opt-in in `.harness/project.json` (where the config field is the authority). Silent authority-free auto-spawn stays forbidden. The explicit-command decision is in [ADR 0022](crickets-developer-safety); the config-opt-in extension is in [ADR 0028](crickets-developer-safety).
+> **Operator authority, two forms.** Worker worktrees require operator authority — either an explicit `/spawn-worker` command (where the invocation is the authority) or a durable `isolation.mode: worktree-per-plan` config opt-in in `.harness/project.json` (where the config field is the authority). Silent authority-free auto-spawn stays forbidden. The explicit-command decision is in the [Developer safety design](crickets-developer-safety); the config-opt-in extension is also in the [Developer safety design](crickets-developer-safety).
 >
 > With `isolation.mode: worktree-per-plan` set, `/work` and `/bugfix` auto-spawn a `worker/<slug>` worktree at step 1.5 (isolation check) and finalize it (push + open PR) at the plan's end via `finalize_unit.py`. The `isolation_config.should_auto_isolate()` check is the authority gate; `is_inside_worktree()` prevents nested spawns.
 
@@ -331,7 +331,7 @@ The bare paths are **byte-identical** to today's literals; this is locked by an 
 - [Run a named plan](Run-A-Named-Plan) — the task recipe for driving `/work --name <slug>` and friends.
 - [Spawn a worker in a worktree](Spawn-A-Worker-In-A-Worktree) — the task recipe for `/spawn-worker`: hand an activated named plan to a worker in its own checkout.
 - [Integrate a worker](Integrate-A-Worker) — the task recipe for `/integrate-worker`: land a finished worker's branch on `main` only if the integrated tree still passes the gate.
-- [ADR 0023 — gate the integrated tree](crickets-development-lifecycle) — the decision behind the gate-on-merged-tree + hard-reset-rollback rows in [Integrating a worker](#integrating-a-worker).
+- [Development lifecycle design — gate the integrated tree](crickets-development-lifecycle) — the decision behind the gate-on-merged-tree + hard-reset-rollback rows in [Integrating a worker](#integrating-a-worker).
 - [See every active plan](See-Every-Active-Plan) — the read-side recipe: `/queue-status-lite` for a one-glance view of the queue.
 - [Developer Workflows](Developer-Workflows) — the phase-loop plugin these commands belong to.
 - [Why phase-gating](Why-Phase-Gating) — why the loop is gated and state lives on disk.

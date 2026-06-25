@@ -1,6 +1,6 @@
 # Purpose and scope
 
-What crickets is, what it isn't, and how it relates to agentm — the "why does this repo exist" read in under five minutes. The full decision, with consequences, is [ADR 0001](crickets-hld).
+What crickets is, what it isn't, and how it relates to agentm — the "why does this repo exist" read in under five minutes. The full decision, with consequences, is the [Crickets HLD](crickets-hld).
 
 ## ⚡ Quick Reference
 
@@ -40,7 +40,7 @@ Sibling repos, cloned side by side (`~/Antigravity/agentm/`, `~/Antigravity/cric
     src/<group>/  →  generate.py  →  dist/<host>/plugins/<group>/
 ```
 
-They're **decoupled** — independent release cycles, and no shared install code ([ADR 0014](crickets-build-system) retired the old byte-synced `lib/install/`). Both are public, with the same PII guardrails (the pre-push hook + `check-no-pii.sh` + gitleaks).
+They're **decoupled** — independent release cycles, and no shared install code ([Build system design](crickets-build-system) retired the old byte-synced `lib/install/`). Both are public, with the same PII guardrails (the pre-push hook + `check-no-pii.sh` + gitleaks).
 
 ## Non-goals
 
@@ -50,7 +50,7 @@ They're **decoupled** — independent release cycles, and no shared install code
 
 ## Related
 
-- [ADR 0001 — crickets purpose, scope, public-with-PII-guardrails](crickets-hld) — the decision with full context + consequences.
+- [Crickets HLD — purpose, scope, public-with-PII-guardrails](crickets-hld) — the decision with full context + consequences.
 - [Plugin anatomy](Plugin-Anatomy) — what a crickets plugin is.
 - [Customization types](Customization-Types) — the primitive kinds.
 - [Install crickets plugins](Install-Into-Project) — the install modes.

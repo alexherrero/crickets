@@ -16,4 +16,3 @@
 - [Harness interface ↔ Agent M](Harness-Interface)
 ### 🧩 [Designs](Designs)
 ### 💡 [Explanation](Explanation)
-### 📐 [Decisions](Decisions)

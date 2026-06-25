@@ -127,4 +127,4 @@ test -f <resolved-harness>/PLAN.md && echo "singleton present and untouched"
 - [Run a named plan](Run-A-Named-Plan) — drive the named plans `/design sequence` emits.
 - [Run a coordinator-directed worker team](Run-A-Coordinator-Directed-Worker-Team) — hand the sequenced plans to workers; `tech-lead` forward-references the `/design` → `/plan` authoring arc.
 - [Coordinator roles](Coordinator-Roles) — the `tech-lead` role whose authoring floor `/design` raises.
-- [ADR 0024 — package /design as a command](crickets-development-lifecycle) — why `/design` ships as a command (tested Python helper + thin prompt), not a skill.
+- [Development lifecycle design — package /design as a command](crickets-development-lifecycle) — why `/design` ships as a command (tested Python helper + thin prompt), not a skill.

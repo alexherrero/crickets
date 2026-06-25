@@ -58,5 +58,5 @@ Expected: `allow_force_pushes: false`, `linear_history: true`, status checks lis
 ## See also
 
 - [CI gates](CI-Gates) — the full gate battery the required status checks reference
-- [ADR 0029: Concurrent-release coordination](crickets-development-lifecycle) — why this model was chosen and the re-audit trigger if plan concurrency grows past a handful of simultaneous landers
+- [Development lifecycle design — Concurrent-release coordination](crickets-development-lifecycle) — why this model was chosen and the re-audit trigger if plan concurrency grows past a handful of simultaneous landers
 - [Spawn a worker in a worktree](Spawn-A-Worker-In-A-Worktree) — how the loop creates the `worker/<slug>` branch this protection applies to
