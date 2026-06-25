@@ -46,7 +46,7 @@ A deterministic generator (`scripts/generate.py`), reading the source through on
 
 - **The committed `dist/` + the drift gate.** `dist/` is committed, and `python3 scripts/generate.py check` re-runs the generator and fails if the committed output diverges from the source — so "generated, never hand-edited" is *enforced*, not just intended (the gate is in `check-all.sh` + CI).
 - **Adding a host = adding an emitter.** Emitters register against a `HostEmitter` base via a small registry (`_EMITTER_MODULES`), so a new host is a new emitter module, not a change to the core driver.
-- **Install.** A one-line `bootstrap.sh` installs by calling each host's native plugin CLI, driven by the generator-emitted `default-set.json` (with marketplace + manual modes underneath); the per-host `marketplace.json` files carry the install metadata + the soft-composition links.
+- **Install.** Three modes in decreasing automation: **`bootstrap.sh`** (device-wide `--scope user` into `~/.claude/` by default — the one-liner), **marketplace** (explicit `claude install` / `agy install` from the emitted `marketplace.json`), **manual** (direct file placement). `install.sh` / `install.ps1` are retired — native host plugin systems replace them. crickets stands alone (no install dependency on agentm; agentm bundles crickets in its own one-liner). The generator-emitted `default-set.json` + per-host `marketplace.json` carry install metadata + soft-composition links.
 
 ### Host-agnostic source, host-specific output
 
@@ -57,7 +57,7 @@ The *definition* is single-source; the *generation* is deliberately **partial** 
 - **Subsumes** the earlier crickets-v3-native-plugins design (the architecture *why*; this child is the *how* — now its single home; the two ADRs it had absorbed, 0013 + 0015, are preserved in the Amendment log).
 - **Relies on** `src/SCHEMA.md` (the two-layer manifest contract) and each host's native plugin CLI (for install).
 - **Sibling** [composition](crickets-composition.md) — the `capabilities:` / `enhances:` metadata the generator emits, and where the composition lints live.
-- **ADRs:** 0013 (bundles → native plugins), 0017 (the `enhances:`/`capabilities:` metadata the marketplace entries carry).
+- Native-plugin generation decisions (bundles → plugins; proof scope; device-wide install; install.sh retirement) are in the Amendment log; the `enhances:`/`capabilities:` composition mechanics are in [composition](crickets-composition.md).
 
 ## Risks & open questions
 
@@ -71,7 +71,7 @@ The *definition* is single-source; the *generation* is deliberately **partial** 
 - **Tools:** `scripts/generate.py` (driver + `check`), `src_model.py` (shared parser), `emit_claude.py` / `emit_antigravity.py` (per-host emitters), `lint_src.py` (source validation), `bootstrap.sh` (installer)
 - **Schema:** `src/SCHEMA.md` — the two-layer manifest contract; the source of truth for authoring a capability
 - **Artifacts:** `dist/default-set.json` + the per-host `marketplace.json` (generator-emitted install metadata)
-- **Designs / decisions:** ADRs 0013 + 0015 (bundles → native plugins; proof scope) are preserved in this design's Amendment log; ADR 0017 (`enhances:` soft composition) lives in [composition](crickets-composition.md)
+- **Designs / decisions:** generation + install decisions (folded from ADRs 0013, 0015, 0012, 0014) are in the Amendment log; soft-composition (`enhances:` / `capabilities:`) lives in [composition](crickets-composition.md)
 
 ## Amendment log
 
