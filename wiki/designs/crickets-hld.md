@@ -16,6 +16,22 @@ governs:
   - src/**
   - scripts/**
 area: crickets/architecture
+children:
+  - crickets-build-system.md
+  - crickets-composition.md
+  - crickets-development-lifecycle.md
+  - crickets-code-review.md
+  - crickets-design.md
+  - crickets-developer-safety.md
+  - crickets-wiki.md
+  - crickets-github-projects.md
+  - crickets-maintenance.md
+  - crickets-conventions.md
+  - crickets-obsidian-vault.md
+  - crickets-token-audit.md
+  - crickets-privacy.md
+  - crickets-research.md
+  - crickets-diagnostics.md
 ---
 
 > [!NOTE]
