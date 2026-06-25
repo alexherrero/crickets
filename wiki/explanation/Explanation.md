@@ -21,4 +21,4 @@ The principles behind crickets — why adversarial review, deterministic gates, 
 
 ## See also
 
-[Reference](Reference) · [Designs](Designs) · [Decisions](Decisions) · [Home](Home)
+[Reference](Reference) · [Designs](Designs) · [Home](Home)

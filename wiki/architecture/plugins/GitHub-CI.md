@@ -3,6 +3,8 @@
 
 _CI + dependency-update tooling. Ships `dependabot-fixer` — a bounded autonomous loop that clears mechanical Dependabot breakage without merging._
 
+Full primitive detail: [maintenance design](crickets-maintenance).
+
 ## How it composes
 
 - **Requires `developer-workflows`** — a **hard** dependency (`standalone: false`). This is the `requires:` half of the composition model (unlike `enhances:`, used by `developer-safety` / `code-review`, which is soft + optional). See [Manifest schema](Manifest-Schema).

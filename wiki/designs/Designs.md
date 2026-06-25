@@ -41,4 +41,4 @@ The architecture behind crickets and Agent M — the high-level design docs that
 
 ## See also
 
-[Reference](Reference) · [Decisions](Decisions) · [Explanation](Explanation) · [Home](Home)
+[Reference](Reference) · [Explanation](Explanation) · [Home](Home)

@@ -4,5 +4,6 @@ The presence of this file signals that `wiki/` follows the Diátaxis four-mode
 convention (tutorials / how-to / reference / explanation) and may be subject
 to `check-wiki.py --strict` linting.
 
-See crickets/wiki/explanation/decisions/ for the toolkit's ADRs once
-they land (task 6 of v0.1.0 plan).
+Architectural decisions live in the living designs under `wiki/designs/` — each
+design's amendment log records the decisions it embodies. (The standalone ADR
+model is retired.)
