@@ -169,7 +169,7 @@ The loop **requests `done`** (the check battery `/work` and `/release` run — *
 
 ## References
 
-- **Command specs:** crickets `src/development-lifecycle/commands/` — `setup` · `plan` · `work` · `review` · `release` · `bugfix` · `launch` · `deprecate` (+ `retire`, to author)
+- **Command specs:** crickets `src/developer-workflows/commands/` (→ `development-lifecycle`) — `setup` · `plan` · `work` · `review` · `release` · `bugfix` · `launch` · `deprecate` (+ `retire`, to author)
 - **Concurrency machinery:** `scripts/` — `spawn_worker.py` · `integrate_worker.py` · `queue_status.py` · `task_isolation.py` · `isolation_config.py` · `preflight_reconcile.py` · `finalize_unit.py` · `resolve_plan.py` · `stage_plan.py`; ADR 0028/0022 (worktree authority), 0030 (integration lock)
 - **Durable-memory wiring:** agentm `wiki/designs/device-wide-architecture.md` (V5-6 routing-plane — identical bytes across backends; V5-3 storage cutover — device-local canonical, vault as plugin); `resolve_plan.py` seam delegation
 - **Sisters:** [code-review](crickets-code-review.md) · [developer-safety](crickets-developer-safety.md) · [github-projects](crickets-github-projects.md) · [design](crickets-design.md) · [wiki](crickets-wiki.md) · [conventions](crickets-conventions.md) · [diagnostics](crickets-diagnostics.md) · [research](crickets-research.md)

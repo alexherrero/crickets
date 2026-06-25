@@ -109,7 +109,7 @@ There is **no role tier**. What used to be called a "role" is a **persona** (an 
 
 - **Version-matching policy is unsettled** — the matcher exists, but whether a range is enforced at load or at call, and whether a mismatch warns or errors, is the per-capability sub-designs' to settle.
 - **The opinion request-by-name path is designed, not built** — today tools hardwire their opinion; the migration is Phase-3/4 (the [Opinions design](https://github.com/alexherrero/agentm/wiki/agentm-opinions-and-gates)).
-- **The three new capabilities are tentative** — `research`, `diagnostics`, `lifecycle` do not ship yet and carry tentative edges; their precise depends/enhances land when their sub-designs are authored.
+- **`research` and `diagnostics` are newly designed, not yet built** — their precise depends/enhances are carried from their authored sub-designs; the edges land as they ship.
 - **Role-retirement is mid-flight** — `Coordinator-Roles.md` + the transitional agent-defs (`worker.md`, `tech-lead.md`, …) reconcile to the persona-wields-tools shape when role-retirement lands.
 - **A transitional baked-in-scripts wrinkle** — until the orchestration-split slim lands, agentm still carries copies of some pre-unbundling dev-loop scripts.
 - **Re-audit triggers:** re-derive the relationship map from `dist/default-set.json` as the set grows; confirm the three new capabilities' edges when their sub-designs land; reconcile `Coordinator-Roles.md` at role-retirement; convert the mermaid map to a vector diagram at the parent's diagram pass; repoint the ADR references as agentm 0006/0011/0016 fold into living designs.

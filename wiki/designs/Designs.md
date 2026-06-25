@@ -22,8 +22,8 @@ The architecture behind crickets and Agent M — the high-level design docs that
   - [obsidian-vault](crickets-obsidian-vault) — the storage backend.
   - [token-audit](crickets-token-audit) — token metering; absorbs status-line-meter.
   - [privacy](crickets-privacy) — PII + extensible data-protection layer.
-  - [research](crickets-research) — deep research.
-  - [diagnostics](crickets-diagnostics) — observability / troubleshooting.
+  - [research](crickets-research) — deep research *(newly designed, not yet built)*.
+  - [diagnostics](crickets-diagnostics) — observability / troubleshooting *(newly designed, not yet built)*.
 
 **Architecture (Agent M)**
 

@@ -140,7 +140,7 @@ The rename is **in place**: the plugin directory `github-ci` → `maintenance`, 
 
 ## References
 
-- **Delivered:** crickets `src/maintenance/skills/dependabot-fixer/SKILL.md` (the bounded fix loop) · agentm `scripts/detect_project.py` (the R-dependabot detection rule) · `.harness/known-migrations.md` (per-project recipes, consulted first)
+- **Delivered:** crickets `src/github-ci/skills/dependabot-fixer/SKILL.md` (→ `maintenance`) (the bounded fix loop) · agentm `scripts/detect_project.py` (the R-dependabot detection rule) · `.harness/known-migrations.md` (per-project recipes, consulted first)
 - **Composes:** [diagnostics](crickets-diagnostics.md) (the diagnose engine) · [privacy](crickets-privacy.md) (proactive static / this reactive advisory) · [code-review](crickets-code-review.md) (the episodic `/simplify` passes) · the agentm memory engine (the `debt` + depends-on kinds) · [token-audit](crickets-token-audit.md) + the adapt-skills watchlist + the agentm scheduler (`content-refresh`)
 - **Up:** [crickets HLD](crickets-hld.md) · [composition](crickets-composition.md) · [agentm Personas](https://github.com/alexherrero/agentm/wiki/agentm-personas) (Maintainer — the persona this is the executing arm of)
 
