@@ -43,7 +43,7 @@ graph TD
 
 ### Why a wiki
 
-Docs that drift from the code are worse than no docs — they read as authoritative and quietly mislead. A wiki earns its keep only when three properties hold: it is **true** to what the code does, **structured** so a reader lands on the right kind of page, and written in **one voice**. `wiki` exists to make those hold *automatically*, at phase boundaries, instead of resting on a human remembering to update a page. The trajectory it serves is a navigable knowledge base that compounds — not a pile of pages.
+Docs that drift from the code are worse than no docs — they read as authoritative and quietly mislead. A wiki earns its keep only when three properties hold: it is **true** to what the code does, **structured** so a reader lands on the right kind of page, and written in **one voice**. `wiki` exists to make those hold *automatically*, at phase boundaries, instead of resting on a human remembering to update a page. The trajectory it serves is a navigable knowledge base that compounds.
 
 ### The structure — Diátaxis, owned by conventions
 
