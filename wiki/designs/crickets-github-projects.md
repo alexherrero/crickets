@@ -78,6 +78,21 @@ The two surfaces reconcile differently, both idempotently:
 
 > **Designed delta from as-built.** The shipping plugin today folds per-commit progress into the issue **body** (one line per commit, no comment path — there is no `gh issue comment` call). This design moves the per-commit update to a **comment** (the granular timeline) and keeps the body as the **current summary** — a `[PENDING-IMPL]` change that adds the `gh issue comment` post + the SHA-keyed dedupe, while the body-reconcile path stays as-is.
 
+### The message voice + the 2026-06-26 dogfood — the operational spec
+
+The discipline above was **hand-run end to end** on both boards (2026-06-26: agentm #2 issues #95–#106, crickets #5 issues #37–#51) to prove it before wiring. What that dogfood settled, for the build to honor:
+
+**The message voice — plain English for a non-technical human.** Every per-commit line and every roll-up summary is written for the owner glancing at the board, **not** in commit-ese. The rules (operator-approved 2026-06-26): no file / function / script names, no code identifiers, no config keys; describe the user-visible value or the concrete change; **never name an external project / author / tool as a source** (the silent-source rule — strip it from the public board); don't echo the conventional-commit type ("docs:" / "refactor:" still did something — say what). Approved substitutions: `vault` → "notes folder", `plugin` / `bundle` → "add-on", `harness` / engine → "the tool", `wiki` → "documentation site", `ADR` / decision-record → "decision notes", `persona` → "role", `crickets` → "the suite / project", a release bump → "Cut release X bundling the above." A drafting agent reads each commit's diff; a critic pass enforces this voice and catches leaked jargon.
+
+**The roll-up altitude (which comment lands where).** A comment-per-commit lands on the **lowest materialized work item** — the **Plan** in the common case (Tasks materialize only when a plan is actively broken down). Summaries cascade **up** as each unit completes: a **plan-completion summary** (≤2 plain paragraphs) on its **Feature**, and a **feature-landing summary** (≤2 plain paragraphs) on its **Version**. The reader gets per-commit detail at the bottom and a human digest at every level above.
+
+**Operational rules the build must get right (learned the hard way in the dogfood):**
+- **Resolve + dedupe via the issues-LIST API, never search.** `gh issue list --search` hits the search index, which lags minutes for just-created issues — so a re-run after a partial failure would create **duplicates**. List-and-match-by-exact-title (and list-comments-and-match-by-marker) are immediately consistent. Items are reused by exact title (or a stable id), created only if absent.
+- **SHA-keyed comment dedupe via a hidden marker.** Each comment ends with `<!-- board:<key> -->` (key = `sha:<short>` for a commit, `plansum:<id>` / `verland:<id>` for a roll-up); the sync skips a comment whose marker is already present, so re-running never double-posts.
+- **Idempotent recovery.** A transient `401 Bad credentials` on a Project mutation is expected at scale; because every step is find-or-create / skip-if-present, re-running simply converges with zero duplicates.
+- **Cross-check commit coverage.** A drafting agent can silently drop a commit — diff the expected SHA set against what was drafted before posting.
+- **Adding a board Track is non-destructive only if done right.** Add a single-select option by re-submitting **every existing option with its `id`** plus the new one *without* an id (the option input accepts `id`); replacing options without ids orphans every item's value. Verify zero items changed before / after.
+
 ### Status — mirrored at lifecycle transitions
 
 Status is a custom Project field — **Todo → In Progress → Done** — moved at the phase transitions, not free-floating:
@@ -128,6 +143,8 @@ None — `github-projects` **mirrors, it does not judge.** It projects whatever 
 - **Up / consumed by:** [crickets HLD](crickets-hld.md) · [composition](crickets-composition.md) · [Personas](https://github.com/alexherrero/agentm/wiki/agentm-personas) (Planner — drives this; Operator — reads it) · [development-lifecycle](crickets-development-lifecycle.md)
 
 ## Amendment log
+
+**2026-06-26 — board-reflection dogfood: the message voice + operational spec.** Hand-ran the full Version→Feature→Plan→per-commit + cascading-summaries discipline on both boards (agentm #2 issues #95–#106, crickets #5 issues #37–#51) ahead of the wiring, and folded the learnings into the body (see "The message voice + the 2026-06-26 dogfood"): the plain-English message voice (operator-approved substitution vocabulary; silent-source-stripped), the roll-up altitude (per-commit on the lowest materialized item; summaries cascade plan→feature→version), and the operational rules (resolve / dedupe via the issues-LIST API not search; hidden-marker SHA-dedupe; idempotent recovery from a transient 401; commit-coverage cross-check; non-destructive Track-option add). *Why not just wire what was drafted:* the dogfood caught a search-index duplication hazard, a silently-dropped commit, and the safe Track-add method — all build-breaking if unlearned. *Re-audit trigger:* GitHub changes the sub-issue or single-select-option API, or the voice spec is revised.
 
 **2026-06-24 — folded ADRs 0016 / 0025 into this design (AG Phase 4, move-and-retire).**
 
