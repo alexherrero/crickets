@@ -67,8 +67,9 @@ class TestClaudeEmitter(unittest.TestCase):
             self.assertTrue(d.get("description"))
             self.assertEqual(d["version"], declared[slug])
         # Concrete anchor for the per-plugin-semver fix: wiki-maintenance was
-        # bumped past the original 0.1.0 (0.2.5 = AG Wave 2 design-link repoints).
-        self.assertEqual(self._plugin_json("wiki-maintenance")["version"], "0.2.5")
+        # bumped past the original 0.1.0 (0.2.6 = voice-invariant additions to the
+        # diataxis-author base style guide: sentence/paragraph budgets, term-of-art carve-out).
+        self.assertEqual(self._plugin_json("wiki-maintenance")["version"], "0.2.6")
         self.assertEqual(self._plugin_json("pii")["version"], "0.2.1")  # 0.2.1 = capabilities: [privacy]
 
     def test_dependencies_from_requires(self):
