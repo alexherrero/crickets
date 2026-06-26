@@ -21,7 +21,7 @@ approved: 2026-06-23
 
 ## Overview
 
-privacy works in three layers — **proactive** (don't compose a secret), **detect** (scan the diff), **enforce** (block the push) — plus a **review** layer for privacy *practice*. The detect + enforce layers run client-side at the `pre-push` hook **and again in CI**, where `check-no-pii.sh --all` + `gitleaks` run as **two independent scanners** — a back-stop that reduces single-pattern blind spots (by the time CI fails the secret is already in pushed history, so the hook is the load-bearing block; CI back-stops both it and the scrubber). The primitives:
+privacy works in three layers — **proactive** (don't compose a secret), **detect** (scan the diff), **enforce** (block the push) — plus a **review** layer for privacy *practice*. The detect and enforce layers run client-side at the `pre-push` hook, and again in CI, where `check-no-pii.sh --all` + `gitleaks` run as **two independent scanners**. That CI pass is a back-stop that reduces single-pattern blind spots: by the time CI fails the secret is already in pushed history, so the hook is the load-bearing block and CI back-stops both it and the scrubber. The primitives:
 
 | Primitive | Kind | Status | What it does |
 |---|---|---|---|
@@ -49,7 +49,7 @@ graph TD
 
 ### Deterministic by contract
 
-The leak scan is **rule-based, not learned** — the same input yields the same finding, reproducibly. That is what lets other capabilities compose it as a *guard* rather than a guess: the same patterns gate every push, and [diagnostics](crickets-diagnostics.md) scrubs a failure-incident body before it lands in memory.
+The leak scan is **rule-based and deterministic** — the same input yields the same finding, reproducibly. That reproducibility is what lets other capabilities compose it as a *guard*: the same patterns gate every push, and [diagnostics](crickets-diagnostics.md) scrubs a failure-incident body before it lands in memory.
 
 ### The `pre-push` hook is shared
 

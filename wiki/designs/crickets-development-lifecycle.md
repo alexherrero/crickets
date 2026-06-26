@@ -17,7 +17,7 @@ approved: 2026-06-22
 
 ## Objective
 
-The development lifecycle is a developer's **bread and butter** — the loop you actually run every day, not a once-in-a-while ritual. You sit down at a repo, turn a brief into a plan, work the plan task by task, have the work torn at adversarially, and ship it under a recoverability gate; for long-lived code you then launch it to real users, deprecate what it replaces, and retire the dead interface. Each step is a short, isolated session with one job, and the next session picks up from **durable artifacts on disk** rather than a remembered conversation. This capability names those daily cycles, pins down where each begins and ends, and makes explicit how state survives between them — whether or not the agentm memory engine is mounted underneath. It is the base every other capability builds on.
+The development lifecycle is a developer's **bread and butter** — the loop you actually run every day, not a once-in-a-while ritual. You sit down at a repo, turn a brief into a plan, work the plan task by task, have the work torn at adversarially, and ship it under a recoverability gate. For long-lived code, you then launch it to real users, deprecate what it replaces, and retire the dead interface. Each step is a short, isolated session with one job, and the next session picks up from **durable artifacts on disk** rather than a remembered conversation. This capability names those daily cycles, pins down where each begins and ends, and makes explicit how state survives between them — whether or not the agentm memory engine is mounted underneath. It is the base every other capability builds on.
 
 ## Overview
 

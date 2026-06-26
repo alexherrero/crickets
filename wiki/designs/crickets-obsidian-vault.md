@@ -47,7 +47,7 @@ graph TD
 
 ## Design
 
-### One-way up — a backing plugin, never a back-edge
+### One-way up — a backing plugin
 
 `obsidian-vault` **implements the seam contract; the seam never imports it.** It imports `vault_lock`, `storage-seam` types, and `harness_memory`'s conflict classifier from the present engine (not vendored) and exposes the backend the selector dispatches to. This is the load-bearing direction: a crickets *backing* plugin reaches up into agentm's substrate contract; agentm never depends down on the plugin (the kernel's old built-in was deleted at V5-3, leaving this the sole vault backend).
 

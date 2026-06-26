@@ -57,7 +57,7 @@ graph TD
 
 ### Two surfaces, one engine
 
-`/token-audit` is the after-the-fact breakdown (where the tokens went, which window, cache hit-rate); `status_line_meter.py` is the live meter that keeps the current burn in view during a session. Both read the same analyzer — the meter is not a second cost model, it is the same measurement surfaced live.
+`/token-audit` is the after-the-fact breakdown (where the tokens went, which window, cache hit-rate); `status_line_meter.py` is the live meter that keeps the current burn in view during a session. Both read the same analyzer: the meter is that one measurement, surfaced live during the session.
 
 ### How it's invoked
 
@@ -65,7 +65,7 @@ token-audit engages at three altitudes — two delivered, one designed:
 
 - **Passive (live)** — `status_line_meter.py` keeps the current burn in view throughout a session; nobody invokes it, it is always on.
 - **On-demand** — `/token-audit` is **operator-invoked**: the detailed after-the-fact breakdown, run when you want to see where the tokens went.
-- **Ambient capture + periodic review *(designed)*** — on session-stop a hook auto-runs the analyzer and **logs the per-model cost breakdown into memory** as a durable `session-cost` record (a new memory kind); the memory engine's **dreaming pass** (its periodic reflection / consolidation cycle) then reviews those records to surface an efficiency *trend* — flagging when token use is creeping up over time, to be acted on later rather than caught only in the moment. This turns token-audit from a point-in-time lookup into a longitudinal signal on the **`efficient`** opinion. **`[PENDING-IMPL]`** — the auto-on-stop capture (a Stop hook writing the `session-cost` entry) and the dreaming-pass review are designed, not built; today the capability is operator-invoked plus the passive meter.
+- **Ambient capture + periodic review *(designed)*** — on session-stop a hook auto-runs the analyzer and **logs the per-model cost breakdown into memory** as a durable `session-cost` record (a new memory kind). The memory engine's **dreaming pass** (its periodic reflection / consolidation cycle) then reviews those records to surface an efficiency *trend* — flagging when token use creeps up over time, to act on later. This turns token-audit from a point-in-time lookup into a longitudinal signal on the **`efficient`** opinion. **`[PENDING-IMPL]`** — the auto-on-stop capture (a Stop hook writing the `session-cost` entry) and the dreaming-pass review are designed, not built; today the capability is operator-invoked plus the passive meter.
 
 ### Opinions it consumes
 

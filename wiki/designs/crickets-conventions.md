@@ -17,7 +17,15 @@ approved: 2026-06-23
 
 ## Objective
 
-`conventions` is the **base set of standards a plugin consumes directly — before any opinion weighs in**. They are objective, house-standard facts a tool reads and acts on with **no judgment call**: bump the version when a primitive changes, set up CI on a new project, run the gate battery before every commit, a skip needs a named blocker, keep state on disk. Each enforceable convention is backed by a deterministic gate (`scripts/check-*.sh`) — that gate is what makes it a *convention* and not an *opinion*. They are the concrete substrate the agentm opinions cite; the arrow is one-way — opinions, personas, and workflows read conventions, conventions never ask an opinion.
+`conventions` is the **base set of standards a plugin consumes directly — before any opinion weighs in**. They are objective, house-standard facts a tool reads and acts on with **no judgment call**:
+
+- bump the version when a primitive changes;
+- set up CI on a new project;
+- run the gate battery before every commit;
+- a skip needs a named blocker;
+- keep state on disk.
+
+Each enforceable convention is backed by a deterministic gate (`scripts/check-*.sh`) — that gate is what makes it a *convention* and not an *opinion*. They are the concrete substrate the agentm opinions cite; the arrow is one-way — opinions, personas, and workflows read conventions, conventions never ask an opinion.
 
 ## Overview
 
@@ -63,7 +71,7 @@ graph TD
 
 A **convention** is an *objective, house-standard fact* a plugin reads and acts on with **no judgment** ("bump the version on any primitive change"; "a skip needs a named blocker"; "tests are a 3-layer pyramid"). An **opinion** is an agentm *stance* asked for **by name** that requires judgment (`done` / `good` / `efficient` / `how-we-engineer`).
 
-The relationship is **implementation, not rivalry** — the `done` opinion is literally *"the check battery + the written conventions for shape."* So an opinion is the **named question** ("is this done?"); conventions are part of the **deterministic answer** it cites. One convention can be cited by several opinions; an opinion cites conventions across domains. The arrow is one-way: conventions stay dumb and objective, consumed directly (**crickets-side**); opinions are the judgment surface on top (the **agentm pillar**).
+Conventions are what an opinion cites: the `done` opinion is literally *"the check battery + the written conventions for shape."* So an opinion is the **named question** ("is this done?"); conventions are part of the **deterministic answer** it cites. One convention can be cited by several opinions; an opinion cites conventions across domains. The arrow is one-way: conventions stay dumb and objective, consumed directly (**crickets-side**); opinions are the judgment surface on top (the **agentm pillar**).
 
 ### The three shapes
 
@@ -90,7 +98,7 @@ The relationship is **implementation, not rivalry** — the `done` opinion is li
 - **agentic-engineering** *(partial — mostly homeless)* — the harness discipline: phase-gated sessions, state-on-disk-not-conversation, single-threaded implementation with read-only sub-agent fan-out, the PLAN.md shape (locked design calls + narrative Status), wake-on-CI, no parallel implementers. Today these live only in `AGENTS.md` / `principles.md` / `CLAUDE.md`; they migrate in. Consumed by every phase workflow and every persona.
 - **reliability** *(partial)* — deterministic-checks-gate-LLM-judgment, prefer-deterministic-over-agentic verification when both achieve the same thing, resolve-don't-cache vault paths. Consumed by the gate battery and the `good` opinion.
 - **coding** *(new)* — the general day-to-day base (naming, error-handling, structure) that sits under testing + quality and has no dedicated home; the umbrella skill for the expanded shell. Consumed by every `/work` session.
-- **documentation** *(partial)* — the **Diátaxis structure**: every page is exactly one of four modes (tutorials · how-to · reference · explanation), single-mode-per-page, with length ceilings + a naming style. The tree itself is the **fixed seven-section frame** in fixed order — **How-to · Reference · Architecture · Designs · Explanation · Decisions · Operational** — with two **conditional** sections (Architecture renders on a `wiki/architecture.yml` declaration; Operational on audience/visibility). The **naming rule:** every page basename is unique across the tree case-insensitively, and when a user-facing page and a design page collide the user-facing page owns the clean name while the design page takes a `-design` suffix (`check-wiki` rule (g)). Section index/landing pages are `<!-- mode: index -->` and **shape-exempt** from the single-mode rule (a short curated "what's in here" + a tooling-maintained recent-changes block). The objective structure standard lives here; **[wiki](crickets-wiki.md) consumes + enforces it** — its `check-wiki.py` is the gate (mode · length · vendor · the section-structure rules m/n/o · the seven-section `_FOLDER_MODE` allow-list), its templates + `diataxis-author` skill author against it, a per-repo `.diataxis-conventions.md` can override. The prose *voice* is a separate agentm opinion (subjective, learned), not a convention.
+- **documentation** *(partial)* — the **Diátaxis structure**: every page is exactly one of four modes (tutorials · how-to · reference · explanation), single-mode-per-page, with length ceilings and a naming style. The tree is the **fixed seven-section frame** in fixed order — How-to · Reference · Architecture · Designs · Explanation · Decisions · Operational — with two **conditional** sections (Architecture on a `wiki/architecture.yml` declaration; Operational on audience/visibility). The **naming rule:** every page basename is unique across the tree case-insensitively; when a user-facing page and a design page collide, the user-facing page owns the clean name and the design page takes a `-design` suffix (`check-wiki` rule (g)). Index/landing pages (`<!-- mode: index -->`) are **shape-exempt** from the single-mode rule. The objective structure standard lives here; **[wiki](crickets-wiki.md) consumes and enforces it** — `check-wiki.py` is the gate (mode · length · vendor · structure), its templates and `diataxis-author` skill author against it, and a per-repo `.diataxis-conventions.md` can override. The prose *voice* is a separate agentm opinion (subjective, learned), not a convention.
 
 ### Opinions — conventions are the substrate they cite
 
