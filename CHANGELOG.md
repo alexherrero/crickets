@@ -5,6 +5,20 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+**Relicensed from MIT to a medium-matched split.** Crickets's contribution lives largely in prose — prompts, skill definitions, phase specs, wiki — so a single software license fit it poorly. Code now ships under Apache-2.0; documentation, prompts, agent instructions, and skill / command / workflow definitions ship under CC-BY-4.0; the "crickets" name and logos are covered by a brand policy. No use is restricted — both licenses permit commercial use and derivatives; the change matches the attribution mechanism to the medium and adds a trademark the open-source licenses deliberately don't reach. See [`TRADEMARK.md`](TRADEMARK.md), [`NOTICE`](NOTICE), and the README License section.
+
+### Changed
+
+- **`LICENSE`** is now Apache-2.0 (was MIT) — the explicit patent grant + `NOTICE` attribution file strengthen credit at zero cost to openness.
+
+### Added
+
+- **`LICENSE-CONTENT`** — CC-BY-4.0 for documentation, prompts, agent instructions, and skill / command / workflow definitions (the prose where the contribution lives). Boundary rule: a prompt embedded as a string literal inside a code file is content (CC-BY-4.0).
+- **`NOTICE`** — Apache attribution notice + the code/content license map.
+- **`TRADEMARK.md`** — brand policy for the "crickets" name and logos.
+
 ## [v3.22.0] — 2026-06-18 — Minor: V5-4 process-seam adoption (`developer-workflows 0.25.0`)
 
 **MINOR — `developer-workflows 0.24.0 → 0.25.0`: V5-4 process-seam adoption.** `resolve_plan.py` previously bridged directly to `agentm/scripts/harness_memory.py resolve-active-plan` — an informal reach-in predating the V5-4 process seam. Now that the seam has shipped in agentm (`process_seam.py`, agentm v5.2.0), the informal bridge is retired in favour of the designed interface. A new `find_process_seam.py` script (DC-2 compliant — best-effort discovery, graceful-skip to exit 1 when agentm absent) discovers `process_seam.py` via path-fallback, and `resolve_plan.py` now makes two seam calls (`state-path plan` + `state-path progress`) and reassembles the tab-separated pair. The output contract and exit codes are unchanged (callers see `<plan_path>\t<progress_path>` on stdout; exit 0/1/2); the seam-vs-fallback switch is fully internal.

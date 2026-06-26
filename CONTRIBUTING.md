@@ -86,6 +86,14 @@ Requirements: a Google Chrome install (macOS auto-detected; Linux `google-chrome
 
 The banner is a **static brand asset** — it does not carry release-version data (live version + CI status live in shields.io badges in the README), so regeneration is NOT tied to releases. Mirrors the equivalent setup in the sibling [`agentm`](https://github.com/alexherrero/agentm/blob/main/CONTRIBUTING.md#regenerating-the-brand-banner) repo.
 
+## Licensing
+
+Crickets is **multi-licensed by medium** — code under [Apache-2.0](LICENSE), documentation / prompts / skill definitions under [CC-BY-4.0](LICENSE-CONTENT), and the name + logos under a [trademark policy](TRADEMARK.md). The full split and the boundary rule (a prompt embedded as a string literal in a code file is *content*) live in the [README License section](README.md#license).
+
+**Why this shape, not blanket MIT:** the toolkit's contribution lives in prose — prompts, skill definitions, phase specs, wiki — so one software license fit it poorly. The goal is **attribution + brand, not idea-protection**: no license can stop someone reimplementing the methodology (copyright protects expression, not ideas), so we secure credit on the words (CC-BY's medium-matched attribution beats MIT's bare notice) plus a trademark that makes a true rip-off *nameable*. We deliberately did **not** reach for copyleft (AGPL) or source-available / Fair-Source (FSL/BSL) — both chill the broad reuse this project wants and solve a hosted-revenue problem it doesn't have.
+
+By contributing, you agree your contributions ship under the same split (code → Apache-2.0; prose → CC-BY-4.0).
+
 ## Commit messages
 
 Do not append `Co-Authored-By:` trailers naming agents or models. Plain commit message only. See [AGENTS.md § Conventions § Commit messages](AGENTS.md#commit-messages) for the full rule.
