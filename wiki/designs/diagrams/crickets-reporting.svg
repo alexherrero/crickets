@@ -1,0 +1,52 @@
+<svg viewBox="0 0 720 430" width="1040" height="621" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ra" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#7E57C2"/></marker>
+    <marker id="rg" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#B0B0B8"/></marker>
+  </defs>
+  <rect x="6" y="6" width="708" height="418" rx="16" fill="#ffffff" stroke="#E3E3E8" stroke-width="1.5"/>
+  <text x="360" y="30" text-anchor="middle" font-size="15" font-weight="700" fill="#4A2E80">How the digest is assembled</text>
+
+  <!-- sources -->
+  <rect x="14" y="50" width="168" height="46" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.3"/>
+  <text x="98" y="72" text-anchor="middle" font-size="10.5" font-weight="700" fill="#2F4B6B">runner</text>
+  <text x="98" y="88" text-anchor="middle" font-size="8" fill="#5E7891">job results · T2-change log</text>
+  <rect x="190" y="50" width="168" height="46" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.3"/>
+  <text x="274" y="72" text-anchor="middle" font-size="10.5" font-weight="700" fill="#2F4B6B">diagnostics</text>
+  <text x="274" y="88" text-anchor="middle" font-size="8" fill="#5E7891">health · liveness</text>
+  <rect x="366" y="50" width="168" height="46" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.3"/>
+  <text x="450" y="72" text-anchor="middle" font-size="10.5" font-weight="700" fill="#2F4B6B">token-audit</text>
+  <text x="450" y="88" text-anchor="middle" font-size="8" fill="#5E7891">cost</text>
+  <rect x="542" y="50" width="168" height="46" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.3"/>
+  <text x="626" y="72" text-anchor="middle" font-size="10.5" font-weight="700" fill="#2F4B6B">memory revert-log</text>
+  <text x="626" y="88" text-anchor="middle" font-size="8" fill="#5E7891">revert pointers</text>
+
+  <path d="M98,96 L215,148" fill="none" stroke="#7E57C2" stroke-width="1.3" marker-end="url(#ra)"/>
+  <path d="M274,96 L305,148" fill="none" stroke="#7E57C2" stroke-width="1.3" marker-end="url(#ra)"/>
+  <path d="M450,96 L415,148" fill="none" stroke="#7E57C2" stroke-width="1.3" marker-end="url(#ra)"/>
+  <path d="M626,96 L505,148" fill="none" stroke="#7E57C2" stroke-width="1.3" marker-end="url(#ra)"/>
+
+  <!-- digest -->
+  <rect x="180" y="150" width="360" height="52" rx="12" fill="#F2EEFB" stroke="#7E57C2" stroke-width="2"/>
+  <text x="360" y="174" text-anchor="middle" font-size="13" font-weight="700" fill="#4A2E80">digest</text>
+  <text x="360" y="191" text-anchor="middle" font-size="9" fill="#6E5B96">aggregate · render · deliver</text>
+
+  <path d="M300,202 L228,266" fill="none" stroke="#7E57C2" stroke-width="1.3" marker-end="url(#ra)"/>
+  <path d="M420,202 L492,266" fill="none" stroke="#7E57C2" stroke-width="1.3" marker-end="url(#ra)"/>
+  <path d="M360,202 V348" fill="none" stroke="#B0B0B8" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#rg)"/>
+  <text x="372" y="332" text-anchor="start" font-size="8.5" font-style="italic" fill="#8A8A92">later</text>
+
+  <!-- outputs -->
+  <rect x="70" y="268" width="280" height="46" rx="9" fill="#EDE9F7" stroke="#7E57C2" stroke-width="1.4"/>
+  <text x="210" y="290" text-anchor="middle" font-size="11" font-weight="700" fill="#4A2E80">routine digest</text>
+  <text x="210" y="306" text-anchor="middle" font-size="8.5" fill="#6E5B96">email · weekly heartbeat · on request</text>
+  <rect x="370" y="268" width="280" height="46" rx="9" fill="#EDE9F7" stroke="#7E57C2" stroke-width="1.4"/>
+  <text x="510" y="290" text-anchor="middle" font-size="11" font-weight="700" fill="#4A2E80">urgent alerts</text>
+  <text x="510" y="306" text-anchor="middle" font-size="8.5" fill="#6E5B96">email · immediate · chat (later)</text>
+
+  <!-- dashboards (later) -->
+  <rect x="250" y="350" width="220" height="44" rx="9" fill="#F4F4F6" stroke="#B0B0B8" stroke-width="1.3"/>
+  <text x="360" y="372" text-anchor="middle" font-size="11" font-weight="700" fill="#8A8A92">dashboards</text>
+  <text x="360" y="387" text-anchor="middle" font-size="8.5" fill="#A0A0A8">pull views · later</text>
+
+  <text x="360" y="414" text-anchor="middle" font-size="8.5" font-style="italic" fill="#8A78AE">The digest aggregates four sources and pushes two notifications; dashboards (dimmed) is the later pull view.</text>
+</svg>

@@ -24,5 +24,6 @@
   - [privacy](crickets-privacy)
   - [research](crickets-research)
   - [diagnostics](crickets-diagnostics)
+  - [reporting](crickets-reporting)
 ### 💡 [Explanation](Explanation)
 - [Decisions (archived)](Decisions)

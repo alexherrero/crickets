@@ -32,6 +32,7 @@ children:
   - crickets-privacy.md
   - crickets-research.md
   - crickets-diagnostics.md
+  - crickets-reporting.md
 ---
 
 > [!NOTE]
@@ -52,7 +53,7 @@ This doc is about the toolbox: the capabilities it implements, how a capability 
 
 ## The capabilities
 
-crickets is **thirteen capabilities** — each a self-contained plugin, each written once and generated for every host (next section). A capability is a named ability with a handful of primitives inside it — commands, agents, skills, hooks. *(Eleven of the thirteen ship today; `research` and `diagnostics` are newly designed, not yet built. Several reached their final names: `developer-workflows` → `development-lifecycle`, `github-ci` → `maintenance`, `pii` → `privacy`, `wiki-maintenance` → `wiki`, `design-docs` → `design`, `testing`+`releasing` merged → `conventions`, `status-line-meter` folded into `token-audit`; the once-separate `lifecycle` capability folded into the spine.)* A few examples:
+crickets is **fourteen capabilities** — each a self-contained plugin, each written once and generated for every host (next section). A capability is a named ability with a handful of primitives inside it — commands, agents, skills, hooks. *(Eleven of the fourteen ship today; `research`, `diagnostics`, and `reporting` are newly designed, not yet built. Several reached their final names: `developer-workflows` → `development-lifecycle`, `github-ci` → `maintenance`, `pii` → `privacy`, `wiki-maintenance` → `wiki`, `design-docs` → `design`, `testing`+`releasing` merged → `conventions`, `status-line-meter` folded into `token-audit`; the once-separate `lifecycle` capability folded into the spine.)* A few examples:
 
 - **`development-lifecycle`** (the phase loop) — the phase commands (`/plan`, `/work`, `/review`, `/release`, `/bugfix`, `/setup`, plus `/launch`, `/deprecate`, `/retire`), the agent-defs that run them (worker, tech-lead, the Planner (TPM) coordinator), and the phase hooks.
 - **`code-review`** — the adversarial-reviewer agent (plus a cross-model variant), the `/code-review` command, and the cross-review shell-out.
@@ -68,7 +69,7 @@ The capability *name* is the plugin name; the makeup is what's inside. A capabil
 
 **They can lean on an opinion, too.** A capability — or a single primitive — can depend on or be enhanced by one of agentm's named [opinions](https://github.com/alexherrero/agentm/wiki/agentm-hld) (*what "done" looks like*, *what "good" looks like*), the same way it leans on another capability. When the opinion is present it shapes the work; when it's absent, the capability degrades gracefully and carries on.
 
-Crickets is thirteen capabilities. Full details are available below and in the [composition sub-design](crickets-composition.md).
+Crickets is fourteen capabilities. Full details are available below and in the [composition sub-design](crickets-composition.md).
 
 ## How a capability is composed
 
@@ -108,15 +109,18 @@ The mechanics live in sub-designs, so this HLD stays high-level.
 | privacy | privacy / data protection — `pii` first, extensible (e.g. secret-leak prevention, redaction) |
 | research | deep research *(new)* |
 | diagnostics | observability / troubleshooting *(new)* |
+| reporting | the operator-facing report surface — the digest now (what ran, what changed, health, alerts), dashboards later *(new)* |
 
 ## References
 
 - design-doc **Appendix C** — the ratified crickets Overview this HLD expands (the input spec, not a sibling)
 - [Foundations HLD](https://github.com/alexherrero/agentm/wiki/agentm-foundations-hld) — the shared beliefs, inherited by reference; [agentm HLD](https://github.com/alexherrero/agentm/wiki/agentm-hld) — the person (personas, opinions) crickets composes onto
-- the earlier standalone designs this HLD reconciled (their "three"/"six"-plugin identity-lines are superseded by the current set — thirteen capabilities at target, eleven shipping today) have been **subsumed** into the [composition](crickets-composition.md) + [build-system](crickets-build-system.md) children (AG Wave 2, 2026-06-24)
+- the earlier standalone designs this HLD reconciled (their "three"/"six"-plugin identity-lines are superseded by the current set — fourteen capabilities at target, eleven shipping today) have been **subsumed** into the [composition](crickets-composition.md) + [build-system](crickets-build-system.md) children (AG Wave 2, 2026-06-24)
 - per-component source paths (scripts, ADRs, manifests) live in the sub-designs above
 
 ## Amendment log
+
+**2026-06-26 — a 14th capability: `reporting` (operator).** A new capability homes the **digest** — the operator-facing report the runner's autonomous work needs (what ran, what changed with revert pointers, health, alerts). Count moves 13 → 14. Why not fold it into `github-projects` or `diagnostics`: github-projects holds always-on board state and diagnostics produces the health signal — `reporting` is the periodic push report + alerts that *presents* their data, a distinct cadence and surface. Net-new: an email delivery channel (the one infrastructure piece the harness lacks); a chat-message alert channel is designed-for. The Sub-designs table + count + [Designs](Designs.md) + the AG area-taxonomy are reconciled to fourteen. **Re-audit trigger:** add `reporting` to the [composition](crickets-composition.md) map (folded into the Bucket-B diagram sweep); build the email + future chat-alert channels; specify `dashboards` when there's a reason.
 
 **2026-06-24 — the two reconciled standalone designs subsumed into the children (AG Wave 2).** The earlier `developer-plugin-suite.md` + `crickets-v3-native-plugins.md` — which this HLD reconciled (the "three"/"six"-plugin identity-lines, superseded) and up-pointered at the 2026-06-20 lift — are now move-and-retire **subsumed** into the [composition](crickets-composition.md) (the `enhances:` soft-composition + ADRs 0017/0027) and [build-system](crickets-build-system.md) (the `src` → generate → `dist` pipeline + ADRs 0013/0015) children, and deleted (git history retains them). The `reconciles:` frontmatter + the banner/References now name the living children. No-loss verified per design before each deletion. *Re-audit trigger:* none — the reconcile relationship is fully absorbed into the parent→child structure.
 

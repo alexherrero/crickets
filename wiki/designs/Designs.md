@@ -7,7 +7,7 @@ The architecture behind crickets and Agent M — the high-level design docs that
 
 **Crickets**
 
-- **[Crickets — High Level Design](crickets-hld)** — the live parent design: the thirteen-capability toolbox, build-once-generate-everywhere, and composition onto agentm. Reconciles the two designs below. All children content-final (AG Phase 3, 2026-06-24).
+- **[Crickets — High Level Design](crickets-hld)** — the live parent design: the fourteen-capability toolbox, build-once-generate-everywhere, and composition onto agentm. Reconciles the two designs below. All children content-final (AG Phase 3, 2026-06-24).
   - [Build system](crickets-build-system) — single source → per-host generated, drift gate, host-subset coverage.
   - [Composition](crickets-composition) — capability↔capability and capability↔opinion, the full relationship map, the one-way arrow onto agentm, role-retirement.
   - [Model + effort routing](https://github.com/alexherrero/agentm/wiki/agentm-model-effort-routing) — T0…T4 tier scale; persona→tier map; `tier:` manifest axis. *(agentm-parented; enforcement surface is crickets agent-defs.)*
@@ -24,6 +24,7 @@ The architecture behind crickets and Agent M — the high-level design docs that
   - [privacy](crickets-privacy) — PII + extensible data-protection layer.
   - [research](crickets-research) — deep research *(newly designed, not yet built)*.
   - [diagnostics](crickets-diagnostics) — observability / troubleshooting *(newly designed, not yet built)*.
+  - [reporting](crickets-reporting) — the operator-facing report surface: the digest now, dashboards later *(newly designed, not yet built)*.
 
 **Architecture (Agent M)**
 
@@ -34,6 +35,7 @@ The architecture behind crickets and Agent M — the high-level design docs that
 
 <!-- maintained by the wiki tooling -->
 
+- **2026-06-26** — `reporting` added as the 14th capability (the digest now, dashboards later); portfolio count 13 → 14.
 - **2026-06-24** — AG Wave 2: the eight superseded designs (developer-plugin-suite, crickets-v3-native-plugins, the six wiki/CI designs) subsumed into the living children; diataxis-author vault-archived. `wiki/designs/` is now canonical-only.
 - **2026-06-24** — AG Phase 3: 15 crickets child designs lifted (all content-final); crickets-hld.md re-synced (thirteen capabilities, rename ledger, 3 amendment entries).
 - **2026-06-08** — moved to `designs/`; this index added.
