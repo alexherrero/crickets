@@ -1,0 +1,75 @@
+<svg viewBox="0 0 1040 380" width="1040" height="380" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ma" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#7E57C2"/></marker>
+    <marker id="mg" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#9AA0AA"/></marker>
+  </defs>
+  <rect x="6" y="6" width="1028" height="368" rx="16" fill="#ffffff" stroke="#E3E3E8" stroke-width="1.5"/>
+  <text x="520" y="28" text-anchor="middle" font-size="15" font-weight="700" fill="#4A2E80">maintenance — keep the shipped codebase healthy</text>
+
+  <!-- M -->
+  <rect x="445" y="42" width="150" height="42" rx="10" fill="#F2EEFB" stroke="#7E57C2" stroke-width="2"/>
+  <text x="520" y="68" text-anchor="middle" font-size="12" font-weight="700" fill="#4A2E80">maintenance</text>
+
+  <!-- bus from M to primitives -->
+  <path d="M520,84 V104" fill="none" stroke="#C9BCE0" stroke-width="1.4"/>
+  <path d="M95,104 H945" fill="none" stroke="#C9BCE0" stroke-width="1.4"/>
+  <path d="M95,104 V130" fill="none" stroke="#C9BCE0" stroke-width="1.4"/>
+  <path d="M265,104 V130" fill="none" stroke="#C9BCE0" stroke-width="1.4"/>
+  <path d="M435,104 V130" fill="none" stroke="#C9BCE0" stroke-width="1.4"/>
+  <path d="M605,104 V130" fill="none" stroke="#C9BCE0" stroke-width="1.4"/>
+  <path d="M775,104 V130" fill="none" stroke="#C9BCE0" stroke-width="1.4"/>
+  <path d="M945,104 V130" fill="none" stroke="#C9BCE0" stroke-width="1.4"/>
+
+  <!-- primitives -->
+  <rect x="20" y="130" width="150" height="48" rx="9" fill="#EDE9F7" stroke="#7E57C2" stroke-width="1.4"/>
+  <text x="95" y="151" text-anchor="middle" font-size="10" font-weight="700" fill="#4A2E80">dependabot-fixer</text>
+  <text x="95" y="167" text-anchor="middle" font-size="8" fill="#6E5B96">delivered</text>
+
+  <rect x="190" y="130" width="150" height="48" rx="9" fill="#F4F4F6" stroke="#B0B0B8" stroke-width="1.3"/>
+  <text x="265" y="151" text-anchor="middle" font-size="10" font-weight="700" fill="#8A8A92">deps-currency</text>
+  <text x="265" y="167" text-anchor="middle" font-size="8" fill="#A0A0A8">greenfield</text>
+
+  <rect x="360" y="130" width="150" height="48" rx="9" fill="#F4F4F6" stroke="#B0B0B8" stroke-width="1.3"/>
+  <text x="435" y="151" text-anchor="middle" font-size="10" font-weight="700" fill="#8A8A92">cve-security-patch</text>
+  <text x="435" y="167" text-anchor="middle" font-size="8" fill="#A0A0A8">greenfield</text>
+
+  <rect x="530" y="130" width="150" height="48" rx="9" fill="#F4F4F6" stroke="#B0B0B8" stroke-width="1.3"/>
+  <text x="605" y="151" text-anchor="middle" font-size="10" font-weight="700" fill="#8A8A92">tech-debt-inventory</text>
+  <text x="605" y="167" text-anchor="middle" font-size="8" fill="#A0A0A8">greenfield</text>
+
+  <rect x="700" y="130" width="150" height="48" rx="9" fill="#F4F4F6" stroke="#B0B0B8" stroke-width="1.3"/>
+  <text x="775" y="151" text-anchor="middle" font-size="10" font-weight="700" fill="#8A8A92">content-refresh</text>
+  <text x="775" y="167" text-anchor="middle" font-size="8" fill="#A0A0A8">optional · tentative</text>
+
+  <rect x="870" y="130" width="150" height="48" rx="9" fill="#F2EEFB" stroke="#7E57C2" stroke-width="2"/>
+  <text x="945" y="151" text-anchor="middle" font-size="10" font-weight="700" fill="#4A2E80">model-drift-detector</text>
+  <text x="945" y="167" text-anchor="middle" font-size="8" fill="#6E5B96">greenfield · new</text>
+  <text x="945" y="192" text-anchor="middle" font-size="7.5" font-style="italic" fill="#8A78AE">reads pricing.py + the chart</text>
+
+  <!-- model-drift-detector triggers content-refresh -->
+  <path d="M870,150 H852" fill="none" stroke="#7E57C2" stroke-width="1.4" marker-end="url(#ma)"/>
+  <text x="861" y="144" text-anchor="middle" font-size="7.5" font-style="italic" fill="#6E5B96">triggers</text>
+
+  <!-- externals -->
+  <rect x="20" y="250" width="150" height="44" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.3"/>
+  <text x="95" y="277" text-anchor="middle" font-size="10" font-weight="700" fill="#2F4B6B">diagnostics</text>
+  <rect x="360" y="250" width="150" height="44" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.3"/>
+  <text x="435" y="277" text-anchor="middle" font-size="10" font-weight="700" fill="#2F4B6B">privacy</text>
+  <rect x="530" y="250" width="150" height="44" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.3"/>
+  <text x="605" y="277" text-anchor="middle" font-size="10" font-weight="700" fill="#2F4B6B">agentm memory</text>
+  <rect x="700" y="250" width="150" height="44" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.3"/>
+  <text x="775" y="277" text-anchor="middle" font-size="10" font-weight="700" fill="#2F4B6B">token-audit</text>
+
+  <!-- relationship edges -->
+  <path d="M95,178 V250" fill="none" stroke="#9AA0AA" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#mg)"/>
+  <text x="99" y="216" text-anchor="start" font-size="7.5" font-style="italic" fill="#7A7A82">calls diagnose engine</text>
+  <path d="M435,178 V250" fill="none" stroke="#9AA0AA" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#mg)"/>
+  <text x="439" y="216" text-anchor="start" font-size="7.5" font-style="italic" fill="#7A7A82">reactive sibling</text>
+  <path d="M605,178 V250" fill="none" stroke="#9AA0AA" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#mg)"/>
+  <text x="609" y="216" text-anchor="start" font-size="7.5" font-style="italic" fill="#7A7A82">debt kind</text>
+  <path d="M775,178 V250" fill="none" stroke="#9AA0AA" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#mg)"/>
+  <text x="779" y="216" text-anchor="start" font-size="7.5" font-style="italic" fill="#7A7A82">re-pins pricing</text>
+
+  <text x="520" y="324" text-anchor="middle" font-size="8.5" font-style="italic" fill="#8A78AE">The detector triggers content-refresh, which re-pins token-audit's pricing; one delivered (dependabot-fixer) + five greenfield.</text>
+  <text x="520" y="342" text-anchor="middle" font-size="8.5" font-style="italic" fill="#8A78AE">The repair lives in maintenance; the analysis in diagnostics.</text>
+</svg>

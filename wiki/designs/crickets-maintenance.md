@@ -30,24 +30,11 @@ approved: 2026-06-23
 | **`cve-security-patch`** *(greenfield)* | Patch a vulnerable dependency on a security advisory, before it fails CI. |
 | **`tech-debt-inventory`** *(greenfield)* | A standing, recallable, classified debt backlog — not an ad-hoc one-shot pass. |
 | **`content-refresh`** *(greenfield · optional · scheduled · tentative)* | Periodically refresh the harness's external-sourced content against a checklist — model pricing (`pricing.py`), the **model+effort routing chart** (re-pin on model releases), adapted-skill upstreams, other pinned snapshots. |
+| **`model-drift-detector`** *(greenfield)* | Catch a model release before our pins go stale — a weekly CI job that diffs the live Claude + Gemini model lists against our pinned set and opens an issue to run `content-refresh`. |
 
-```mermaid
-graph TD
-    M["<b>maintenance</b><br/><i>keep the shipped codebase healthy</i>"]
-    M --> DF["dependabot-fixer<br/><i>delivered</i>"]
-    M --> DC["deps-currency"]
-    M --> CVE["cve-security-patch"]
-    M --> TD["tech-debt-inventory"]
-    M --> CR["content-refresh<br/><i>scheduled · optional</i>"]
-    DF -. "calls the diagnose engine" .-> DG["diagnostics"]
-    CVE -. "reactive sibling of" .-> PV["privacy (proactive)"]
-    TD -. "debt kind" .-> MEM["agentm memory"]
-    CR -. "re-pins pricing for" .-> TA["token-audit"]
-    classDef gf fill:#f4f4f6,stroke:#b0b0b8,color:#8a8a92;
-    class DC,CVE,TD,CR gf;
-```
+![How maintenance's primitives relate: maintenance fans out to dependabot-fixer (delivered) plus deps-currency, cve-security-patch, tech-debt-inventory, content-refresh, and model-drift-detector (greenfield); dependabot-fixer calls the diagnostics diagnose engine, cve-security-patch is privacy's reactive sibling, tech-debt-inventory leans on agentm memory, content-refresh re-pins token-audit's pricing, and the model-drift-detector triggers content-refresh on a model release](diagrams/crickets-maintenance.svg)
 
-*The repair lives here, the analysis in diagnostics (`dependabot-fixer` calls the diagnose engine); `cve-security-patch` is privacy's reactive sibling; `tech-debt-inventory` leans on memory; `content-refresh` re-pins token-audit's pricing on a schedule; one delivered + three greenfield + a tentative optional content-refresh (dimmed).*
+*The repair lives here, the analysis in diagnostics (`dependabot-fixer` calls the diagnose engine); `cve-security-patch` is privacy's reactive sibling; `tech-debt-inventory` leans on memory; `content-refresh` re-pins token-audit's pricing, and the `model-drift-detector` triggers `content-refresh` on a model release; one delivered + five greenfield.*
 
 ## Design
 
@@ -88,15 +75,33 @@ graph TD
 
 ### `content-refresh` — refresh external-sourced content *(greenfield · optional · scheduled · tentative)*
 
-- *Entry:* an **opt-in scheduled task** (the agentm scheduler / cron), or on-demand. Optional per install — like `wiki-watch`, off unless turned on.
+- *Entry:* an **opt-in scheduled task** (the agentm scheduler / cron), or on-demand. Optional per install — like `wiki-watch`, off unless turned on. For the **model-release case**, the `model-drift-detector` (below) is the trigger on CI cron, so that case needs nothing from the agentm scheduler.
 - *Exit:* the harness's pinned external content re-checked against a **refresh checklist** and surfaced as a report — safe mechanical re-pins applied under the repair guarantees, judgment-bound drift surfaced for operator review.
 - *Automated:* walk the checklist, and for each source fetch the current upstream, diff against the pinned snapshot, then re-pin or flag. Two classes:
-    - **mechanical re-pins** (model pricing in token-audit's `pricing.py`; the model-version strings in the [model+effort routing chart](https://github.com/alexherrero/agentm/wiki/agentm-model-effort-routing) on a model release) auto-apply under the bounded / never-merge guarantees;
-    - **judgment-bound drift** (an adapted skill's upstream changed, or a genuinely new model that needs a *tier* placement — `adapt-don't-import` and tier-assignment are human calls) surfaces to the watchlist instead of auto-editing.
-- *Composes:* [token-audit](crickets-token-audit.md) (re-pins `pricing.py` — the standing mitigation for its pricing-drift risk) + the [model+effort routing chart](https://github.com/alexherrero/agentm/wiki/agentm-model-effort-routing) (re-pins its model strings on a model release) + the **adapt-skills watchlist** (re-checks the upstreams behind adapted skills) + the agentm **scheduler** (the scheduled trigger).
+    - **mechanical re-pins** (a renamed model-version string in `pricing.py` or the [model+effort routing chart](https://github.com/alexherrero/agentm/wiki/agentm-model-effort-routing) on a model release) auto-apply under the bounded / never-merge guarantees;
+    - **judgment-bound drift** (an adapted skill's upstream changed, or a genuinely new model that needs a *tier* placement and a *price* — `adapt-don't-import`, tier-assignment, and the price number [from the pricing docs page, which the model-list API doesn't carry] are human calls) surfaces to the watchlist instead of auto-editing.
+- *Composes:* [token-audit](crickets-token-audit.md) (re-pins `pricing.py` — the standing mitigation for its pricing-drift risk) + the [model+effort routing chart](https://github.com/alexherrero/agentm/wiki/agentm-model-effort-routing) (re-pins its model strings on a model release) + the **adapt-skills watchlist** (re-checks the upstreams behind adapted skills) + the **`model-drift-detector`** (the trigger for the model-release case, on CI cron) + the agentm **scheduler** (the trigger for the non-model checklist items).
 - *Distinct from `deps-currency`:* currency tracks **package versions** drifting in the manifests; content-refresh tracks **pinned external-content snapshots** (pricing tables, adapted upstream text) going stale. Different sources, same keep-current spirit.
 
 **`[PENDING-IMPL]` · tentative** — flagged 2026-06-23 (AG token-audit review) as the home for the content-refresh idea; decide own-capability-vs-primitive + author at the post-docs-review pass. The checklist + the re-pin/flag split are the design seed.
+
+### `model-drift-detector` — catch a model release before our pins go stale *(greenfield)*
+
+- *Entry:* a **weekly GitHub Actions cron** (plus `workflow_dispatch` for an on-demand run), in crickets. It runs only on that cron, so a model release never reddens an unrelated contributor's PR.
+- *Exit:* on drift, an **opened-or-updated GitHub issue** — "run `content-refresh`" — naming the per-provider diff, the mechanical-or-judgment class of each item, and the file:line to edit; a clean run is silent. The job exits 0 either way, so the schedule stays green and the drift travels through the issue.
+- *Automated:* query the two providers' read-only model-list endpoints (Anthropic `/v1/models`, Gemini `…/models` — ids only, no generation, no token cost), normalize the ids, and set-diff them per provider against the in-repo known set. A live id we never pinned is a **new model**; a pinned id the provider has dropped is a **removed model**; a shifted class default is a **changed default**. Each item is classified along `content-refresh`'s split — a missing `pricing.py` row or a renamed version string is **mechanical** (content-refresh can re-pin it), a new model needing a tier or a changed default is **judgment-bound** (surfaced, never auto-edited).
+- *Composes:* [token-audit](crickets-token-audit.md)'s `pricing.py` (known-set input one — the Claude wire-ids) + the [model+effort routing chart](https://github.com/alexherrero/agentm/wiki/agentm-model-effort-routing) (known-set input two — the distinct Gemini model names it pins in prose) + `content-refresh` (the action it triggers). It reads both pins and writes neither; the re-pin belongs to `content-refresh`.
+
+**The known set and the signal — four calls:**
+
+- **Source of truth.** `pricing.py` is canonical for the Claude axis (it is already machine-readable, the one place a price lives); the chart is canonical for the Gemini side, where the known set is the **distinct** prose model names it pins (the same name repeats across tier rows). A single **wire-id ↔ prose-name** map, kept with the detector, is the join key — it collapses the chart's repeated prose names and matches them to the live wire-ids.
+- **Signals on its own cron.** The detector is absent from `check-all.sh` and from the push path; it exits 0 even on a drift, so the drift travels through the issue. A provider API that is unreachable, rate-limited, or missing its secret logs "could not fetch the live model list — skipping this run" and exits 0, so a transient outage stays distinct from drift.
+- **Emit a deduped issue.** Drift opens-or-updates one issue keyed by a stable title/label, so a standing drift reuses its issue across runs; a CI step-summary line is the secondary surface.
+- **Home and secrets.** The detector, its cron workflow, and the `ANTHROPIC_API_KEY` / `GEMINI_API_KEY` Actions secrets live in **crickets** (with `pricing.py`, `content-refresh`, and this design); it reads the agentm chart cross-repo.
+
+**Two honest limits.** The Models API returns ids and capabilities but **no** per-MTok prices, so the detector catches model-*set* drift; a silent price change to an already-pinned model is a separate source (the pricing docs page) and stays out of scope. And a **removed** model is never auto-deleted from `pricing.py` — token-audit still needs old prices to cost past transcripts, so a removal is surfaced for review and any deletion goes through the repair guarantees.
+
+**`[PENDING-IMPL]`** — build the weekly cron workflow (the first scheduled workflow in either repo) + the detector script (the `check-*.py` idiom: stdlib, fail-soft, pure-diff-vs-IO split) + the wire-id ↔ prose-name map. It delivers value before `content-refresh` is built: until then a human acts on the issue.
 
 ### The repair guarantees
 
@@ -108,6 +113,9 @@ maintenance is the one side that **edits the repo**, so every primitive acts und
 - **vs [diagnostics](crickets-diagnostics.md)** — diagnostics is the analysis-only diagnose engine; it never edits. maintenance is the only side that applies a fix. The `dependabot-fixer` recast (caller, not re-implementer) is the load-bearing instance.
 - **vs [privacy](crickets-privacy.md)** — privacy = proactive static-pattern scanning; maintenance's `cve-security-patch` = the reactive advisory-driven sibling. Same domain, opposite trigger.
 - **vs [code-review](crickets-code-review.md)** — code-review = ad-hoc `/simplify` (episodic, diff-scoped); maintenance = the standing recallable backlog those passes feed and draw from.
+- **`model-drift-detector` vs `content-refresh`** — the detector **detects and signals**; `content-refresh` **refreshes** (it owns every write). Two halves of one detect-then-act pair.
+- **`model-drift-detector` vs [token-audit](crickets-token-audit.md)** — the detector reads `pricing.py` as known-set input; token-audit owns it, and the re-pin write is `content-refresh`'s.
+- **`model-drift-detector` vs [model+effort routing](https://github.com/alexherrero/agentm/wiki/agentm-model-effort-routing)** — the detector reads the chart and flags that a model changed; routing owns the tier scale, and a new model's tier placement stays judgment-bound. The detector never assigns a tier.
 
 ### First slice — the rename, nothing else
 
@@ -147,6 +155,8 @@ The rename is **in place**: the plugin directory `github-ci` → `maintenance`, 
 - **Up:** [crickets HLD](crickets-hld.md) · [composition](crickets-composition.md) · [agentm Personas](https://github.com/alexherrero/agentm/wiki/agentm-personas) (Maintainer — the persona this is the executing arm of)
 
 ## Amendment log
+
+**2026-06-26 — added `model-drift-detector` as the trigger arm of `content-refresh` (operator, design-critique #5).** A weekly CI cron job that queries the live Anthropic + Gemini model-list APIs and set-diffs them per provider against the in-repo known set (`pricing.py` for Claude ids; the model+effort chart for the Gemini column), opening a deduped "run `content-refresh`" issue on a new / removed / changed-default model. It gives the P8 principle a real gate and **rides CI cron, so it carries no agentm-runner dependency**. Calls: known-set source of truth = `pricing.py` (Claude) + the chart (Gemini) joined by a wire-id ↔ prose-name map; signal-never-block (its own cron, absent from `check-all.sh`, exits 0 even on drift); deduped issue as the signal; crickets hosts the cron + the `ANTHROPIC_API_KEY`/`GEMINI_API_KEY` secrets, reading the agentm chart cross-repo; weekly cadence + `workflow_dispatch`. Honest limits: it validates model-*set* drift, not price numbers (the Models API has no prices), and never auto-deletes a removed model's pinned row (token-audit needs it for historical costing — surfaced for review). `content-refresh`'s model-release trigger is reconciled from the agentm scheduler to this detector. `[PENDING-IMPL]`. **Re-audit:** build `content-refresh` as the consumer; revisit the known-set source if the chart's prose table proves brittle to parse; add a price-number re-verification source if the Models API gains prices.
 
 **2026-06-23 — added `content-refresh` as a tentative fifth primitive (operator flag, AG token-audit review).** An optional, scheduled (opt-in, agentm-scheduler) primitive that periodically refreshes the harness's external-sourced content against a checklist — model pricing (`pricing.py`, the standing mitigation for token-audit's pricing-drift risk), the model+effort routing chart (re-pinned on model releases), adapted-skill upstreams, other pinned snapshots — with **mechanical re-pins auto-applied** under the repair guarantees and **judgment-bound drift surfaced** to the watchlist (never auto-edited). Distinct from `deps-currency` (package versions vs pinned content snapshots). `[PENDING-IMPL]` + tentative: own-capability-vs-primitive is a post-docs-review decision.
 
