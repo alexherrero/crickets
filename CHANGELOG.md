@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`vault-git` design (proposed).** A new vault-domain capability design ([`wiki/designs/crickets-vault-git.md`](wiki/designs/crickets-vault-git.md)): a git-transport plugin that backs the AgentMemory vault with a private GitHub repo — deterministic `init`/`sync`/`status`/`doctor` scripts + an on-by-default autosync hook, per-root so one machine can back a personal vault and a shared team repo. Pairs with `obsidian-vault`; realizes the git transport in the agentm [Vault Storage & Presentation design](https://github.com/alexherrero/agentm/wiki/agentm-vault-storage-presentation). Governs no code yet (`status: proposed`).
 - **`LICENSE-CONTENT`** — CC-BY-4.0 for documentation, prompts, agent instructions, and skill / command / workflow definitions (the prose where the contribution lives). Boundary rule: a prompt embedded as a string literal inside a code file is content (CC-BY-4.0).
 - **`NOTICE`** — Apache attribution notice + the code/content license map.
 - **`TRADEMARK.md`** — brand policy for the "crickets" name and logos.

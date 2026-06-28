@@ -20,6 +20,7 @@ The architecture behind crickets and Agent M — the high-level design docs that
   - [maintenance](crickets-maintenance) — keep the codebase healthy: dependency repair, CVE, tech-debt, tentative content-refresh.
   - [conventions](crickets-conventions) — 8-domain base-standards shell (testing · releasing · ci · code-quality · agentic-engineering · reliability · coding · documentation).
   - [obsidian-vault](crickets-obsidian-vault) — the storage backend.
+  - [vault-git](crickets-vault-git) — the git-transport plugin (proposed; pairs with obsidian-vault).
   - [token-audit](crickets-token-audit) — token metering; absorbs status-line-meter.
   - [privacy](crickets-privacy) — PII + extensible data-protection layer.
   - [research](crickets-research) — deep research *(newly designed, not yet built)*.

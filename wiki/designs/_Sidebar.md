@@ -20,6 +20,7 @@
   - [maintenance](crickets-maintenance)
   - [conventions](crickets-conventions)
   - [obsidian-vault](crickets-obsidian-vault)
+  - [vault-git](crickets-vault-git)
   - [token-audit](crickets-token-audit)
   - [privacy](crickets-privacy)
   - [research](crickets-research)
