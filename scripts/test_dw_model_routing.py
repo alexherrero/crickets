@@ -4,7 +4,7 @@
 Locks the load-bearing facts:
 
   * The three role agent defs carry the correct `model:` frontmatter field:
-    - worker     → claude-opus-4-8   (strong model; autonomous execution)
+    - worker     → claude-sonnet-4-6 (T1 executor; opusplan plan→execute split)
     - researcher → claude-sonnet-4-6 (lighter; read-only / research)
     - tech-lead  → claude-sonnet-4-6 (lighter; planning / authoring)
   * All five execution/planning commands contain a one-line routing nudge
@@ -31,7 +31,7 @@ from src_model import read_frontmatter  # noqa: E402
 _ROUTING_NUDGE_MARKER = "Recommended model for this phase:"
 
 _AGENT_ROUTING = {
-    "worker": "claude-opus-4-8",
+    "worker": "claude-sonnet-4-6",
     "researcher": "claude-sonnet-4-6",
     "tech-lead": "claude-sonnet-4-6",
 }
@@ -51,11 +51,11 @@ class TestAgentModelFrontmatter(unittest.TestCase):
     def _fm(self, name: str) -> dict:
         return read_frontmatter(_AGENTS / f"{name}.md") or {}
 
-    def test_worker_model_is_opus(self):
+    def test_worker_model_is_sonnet(self):
         fm = self._fm("worker")
         self.assertEqual(
-            fm.get("model"), "claude-opus-4-8",
-            "worker.md: expected model: claude-opus-4-8 (autonomous execution)",
+            fm.get("model"), "claude-sonnet-4-6",
+            "worker.md: expected model: claude-sonnet-4-6 (T1 executor; opusplan plan→execute split)",
         )
 
     def test_researcher_model_is_sonnet(self):

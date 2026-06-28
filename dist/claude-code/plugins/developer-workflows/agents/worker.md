@@ -3,9 +3,9 @@ name: worker
 description: Active executor role — the autonomous /work persona, one per worktree. Binds to its named plan via the worktree-local .harness/active-plan marker /spawn-worker drops (no --name needed); integrates back via /integrate-worker. Full tool access.
 kind: agent
 supported_hosts: [claude-code, antigravity]
-version: 0.1.0
+version: 0.1.1
 install_scope: either
-model: claude-opus-4-8
+model: claude-sonnet-4-6
 ---
 
 # worker — the autonomous executor

@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **`LICENSE`** is now Apache-2.0 (was MIT) — the explicit patent grant + `NOTICE` attribution file strengthen credit at zero cost to openness.
+- **`developer-workflows` worker agent** now runs **Sonnet 4.6** (was Opus 4.8) — realigning the executor to the **T1** tier ([model+effort routing](https://github.com/alexherrero/agentm/wiki/agentm-model-effort-routing)): cheaper long build stretches, matching the `opusplan` plan→execute split (agentm critique ruling 8). `worker.md` `0.1.0` → `0.1.1`.
 
 ### Added
 

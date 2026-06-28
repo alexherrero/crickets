@@ -227,5 +227,9 @@ standalone: true
 # (check-plan-grounding gate, keyed off touches_architecture) + Hook 4 (/work
 # divergence NOTE, never a halt) + Hook 5 (/release design reconciliation) + Hook 6
 # (SessionStart launched-design paths inject, paths-only).
-version: 0.26.0
+# 0.27.0 = worker agent model realignment (agentm critique ruling 8) — worker.md
+# model claude-opus-4-8 → claude-sonnet-4-6, realigning the autonomous executor to
+# the T1 tier (the opusplan plan→execute split). test_dw_model_routing.py updated to
+# the new contract (worker=sonnet); cheaper long build stretches, no interface change.
+version: 0.27.0
 capabilities: [setup, plan, work, review, release, bugfix, documentation]
