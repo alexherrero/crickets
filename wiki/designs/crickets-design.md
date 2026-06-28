@@ -150,7 +150,7 @@ design **implements `how-we-engineer`** (layer 3 — the sizing ladder + the sec
 
 ## Migrations
 
-- **The capability rename** `design-docs` → **`design`** (bare noun), declaring `[design, architecture]`, with resolver aliasing.
+- **The capability rename** `design-docs` → **`design`** (bare noun), declaring `[design, architecture]` plus the retired `design-docs` name so existing references resolve (the [composition](crickets-composition.md) rename mechanism — the group declares both names).
 - **The re-homing from `developer-workflows`** — `/spec`, `/interview-me`, `/document-decision`, `design_doc.py`, `design_sequence.py`, the design-doc template move in; the `requires` target is the renamed **`development-lifecycle`**.
 - **De-dupe the two `/design` copies** — both `design-docs` and the old `developer-workflows` shipped one; `design` owns the single copy.
 - **The ADR carve-out** — the `adr` skill stays, but in agentm + crickets the ADR model is retired (amend living designs instead); the skill governs every other repo until it migrates.

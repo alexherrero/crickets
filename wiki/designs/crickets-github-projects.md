@@ -104,7 +104,7 @@ Status is a custom Project field — **Todo → In Progress → Done** — moved
 
 Container items (Version) carry no status thread — they roll up child status natively; pre-work cards (Backlog-item / Idea) are static, ordered by Priority, with no thread until promoted.
 
-**Built vs designed (the honest split).** The shipping path writes the **issue body + open/closed state** — that part is wired, idempotent, drift-gated. The **DC-2 Project fields** (Track · Type · Priority · Start · Target · **Status**) have deterministic `gh` argv builders but **no live callers yet** — they are operator-gated backfill, not the unit-tested wired path. So today the live status signal is **open-vs-closed**; the Status *field* transition is designed, awaiting the field-write wiring (the Planner-era automation, below).
+**Built vs designed (the honest split).** The shipping path writes the **issue body + open/closed state** — that part is wired, idempotent, drift-gated. The **DC-2 Project fields** (Track · Type · Priority · Start · Target · **Status**) have deterministic `gh` argv builders but **no live callers yet** — they are operator-gated backfill, not the unit-tested wired path. So today the live status signal is **open-vs-closed**; the Status *field* transition is designed, awaiting the field-write wiring (the Planner-era automation, below). **Native sub-issue nesting** — the parent-chain links that produce the ≥4-deep tree, the Gantt roll-up, and the child-status roll-up — is **also designed-not-wired** (`[PENDING-IMPL]`): the hierarchy is modeled + validated in `project_model.py`, but no code emits the links, and `gh issue` has no sub-issue subcommand — the mechanism is a GraphQL `addSubIssue` (or `gh api`) call. *Re-audit:* wire the sub-issue links when the depth tree is built.
 
 ### The drift gate detects; the Planner corrects
 
@@ -124,7 +124,7 @@ None — `github-projects` **mirrors, it does not judge.** It projects whatever 
 
 ## Migrations
 
-- **The `requires` target is renamed** — it required `developer-workflows`; that capability is now **`development-lifecycle`** (the spine rename), so the `requires:` edge re-points. Mechanical, with resolver aliasing.
+- **The `requires` target is renamed** — it required `developer-workflows`; that capability is now **`development-lifecycle`** (the spine rename), so the `requires:` edge re-points. Mechanical — the spine group declares both `developer-workflows` and `development-lifecycle` so the edge keeps resolving (the [composition](crickets-composition.md) rename mechanism).
 - The capability name itself is stable (platform-bound, keeps `github-projects`).
 
 ## Risks & open questions
@@ -144,6 +144,8 @@ None — `github-projects` **mirrors, it does not judge.** It projects whatever 
 - **Up / consumed by:** [crickets HLD](crickets-hld.md) · [composition](crickets-composition.md) · [Personas](https://github.com/alexherrero/agentm/wiki/agentm-personas) (Planner — drives this; Operator — reads it) · [development-lifecycle](crickets-development-lifecycle.md)
 
 ## Amendment log
+
+**2026-06-28 — flagged native sub-issue nesting as designed-not-wired (critique W7).** The honest split now records that the parent-chain links producing the ≥4-deep tree, the Gantt roll-up, and child-status roll-up are `[PENDING-IMPL]` — modeled + validated in `project_model.py` but not emitted; the mechanism is a GraphQL `addSubIssue` / `gh api` call (`gh issue` has no sub-issue subcommand). *Re-audit:* wire the sub-issue links when the depth tree is built.
 
 **2026-06-26 — board-reflection dogfood: the message voice + operational spec.** Hand-ran the full Version→Feature→Plan→per-commit + cascading-summaries discipline on both boards (agentm #2 issues #95–#106, crickets #5 issues #37–#51) ahead of the wiring, and folded the learnings into the body (see "The message voice + the 2026-06-26 dogfood"): the plain-English message voice (operator-approved substitution vocabulary; silent-source-stripped), the roll-up altitude (per-commit on the lowest materialized item; summaries cascade plan→feature→version), and the operational rules (resolve / dedupe via the issues-LIST API not search; hidden-marker SHA-dedupe; idempotent recovery from a transient 401; commit-coverage cross-check; non-destructive Track-option add; **content-creation rate-limit pacing for bulk backfills** — ~8s/post + a patient 120s cooldown on "submitted too quickly", since rapid retries extend GitHub's anti-abuse penalty). *Why not just wire what was drafted:* the dogfood caught a search-index duplication hazard, a silently-dropped commit, the safe Track-add method, and GitHub's ~500/hr content-creation limit (a full-history backfill is a ~1.5–2 hr paced grind) — all build-breaking if unlearned. *Re-audit trigger:* GitHub changes the sub-issue or single-select-option API, or the voice spec is revised.
 

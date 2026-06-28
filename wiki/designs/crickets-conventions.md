@@ -25,7 +25,7 @@ approved: 2026-06-23
 - a skip needs a named blocker;
 - keep state on disk.
 
-Each enforceable convention is backed by a deterministic gate (`scripts/check-*.sh`) — that gate is what makes it a *convention* and not an *opinion*. They are the concrete substrate the agentm opinions cite; the arrow is one-way — opinions, personas, and workflows read conventions, conventions never ask an opinion.
+Each enforceable convention is backed by a deterministic gate (`scripts/check-*.sh`) — shipped, or **gate-targeted** (`[PENDING-IMPL]`) for a newly-folded rule whose gate isn't built yet; that gate (present or pledged) is what makes it a *convention* and not an *opinion*. They are the concrete substrate the agentm opinions cite; the arrow is one-way — opinions, personas, and workflows read conventions, conventions never ask an opinion.
 
 ## Overview
 
@@ -33,10 +33,10 @@ Each enforceable convention is backed by a deterministic gate (`scripts/check-*.
 
 | Domain | Holds | Status |
 |---|---|---|
-| **testing** | tests-are-sacred · verification-first · the 3-layer pyramid · `no-skip-tests` | delivered |
+| **testing** | tests-are-sacred · verification-first · the 3-layer pyramid · `no-skip-tests` *(rule shipped; `check-no-skip-tests.sh` gate `[PENDING-IMPL]`)* | delivered |
 | **releasing** | `ship-release` · `version-bump-required` · changelog + paired-release discipline | delivered |
 | **ci** | always set up CI · `check-all.sh` is the source of truth · run-the-battery-before-commit · add-new-checks | partial |
-| **code-quality** | evidence-to-flip-a-task · no-change-detector tests · design-conformance (the seam invariants) · Beyoncé-rule · simplicity-first | partial |
+| **code-quality** | evidence-to-flip-a-task · no-change-detector tests · design-conformance (the seam invariants) · Beyoncé-rule · simplicity-first · `skill-quality` + `check-slop` *(the skill-shape gate, `[PENDING-IMPL]`)* | partial |
 | **agentic-engineering** | phase-gated sessions · state-on-disk · single-threaded + read-only fan-out · the PLAN.md shape · wake-on-CI · no-parallel-implementers | partial *(mostly homeless today)* |
 | **reliability** | deterministic-checks-gate-LLM-judgment · prefer-deterministic-over-agentic verification · resolve-don't-cache-paths | partial |
 | **coding** | the day-to-day base (naming · error-handling · structure) under testing + quality — no home today | new |
@@ -77,7 +77,7 @@ Conventions are what an opinion cites: the `done` opinion is literally *"the che
 
 | Shape | Path | What it is | How it holds |
 |---|---|---|---|
-| **rule** | `rules/<name>.md` | an enforceable standard — trigger condition · "what is NOT a bypass" table · enforcement checklist (the `no-skip-tests` / `version-bump-required` template) | **names its `scripts/check-*.sh` gate** — the gate is what makes it objective and un-forgettable |
+| **rule** | `rules/<name>.md` | an enforceable standard — trigger condition · "what is NOT a bypass" table · enforcement checklist (the `no-skip-tests` / `version-bump-required` template) | **names its `scripts/check-*.sh` gate** (shipped or `[PENDING-IMPL]`) — the gate is what makes it objective and un-forgettable |
 | **skill** | `skills/<name>/SKILL.md` | standing day-to-day practice prose | consulted by the workflow; owns the *practice*, not the *audit* (that's `code-review`'s `testing-strategy`) |
 | **reference** | `reference/<name>.md` | objective house facts (the gate-battery inventory, the `features.json` schema) the rules cite | *objective facts only* — cited, not gated; subjective tradeoff knowledge is excluded (below) |
 
@@ -148,7 +148,7 @@ The principle: **prefer the gate.** A convention that can be made gate-backed sh
 
 Two structural lifts at the Phase-3 / v6.0 pass:
 
-1. **Merge** — `testing-conventions` + `releasing-conventions` consolidate to one `src/conventions/`, the `group.yaml` merges, and `capabilities: [conventions]` replaces the two transitional declarations (resolver aliasing keeps the old names resolving). The four existing primitives don't change.
+1. **Merge** — `testing-conventions` + `releasing-conventions` consolidate to one `src/conventions/`, the `group.yaml` merges, and `capabilities: [conventions]` replaces the two transitional declarations (the merged group declares both the old and new capability names, so the old ones keep resolving — the [composition](crickets-composition.md) rename mechanism). The four existing primitives don't change.
 2. **Migrate the homeless conventions in** — the objective base standards that live only in `AGENTS.md` / `principles.md` / `~/.claude/CLAUDE.md` (the agentic-engineering discipline, the ci-battery rules, the no-change-detector quality rule, the coding base) become **first-class `rules/` + `skills/`**; `AGENTS.md` keeps a pointer, `conventions` owns the standard. The cite-don't-duplicate boundary keeps it from re-owning what `developer-safety` / `privacy` / `maintenance` / `code-review` already hold.
 
 ## Risks & open questions
@@ -157,7 +157,8 @@ Two structural lifts at the Phase-3 / v6.0 pass:
 - **Subjective knowledge-refs are explicitly OUT** — language-selection, platform-selection, per-language performance tuning belong in the Opinions pillar or learned memory (contextual, decaying); putting them behind a gate would be a category error.
 - **The de-dup must hold** — `conventions` cites, never duplicates, a standard another capability owns; a re-owned convention drifts from its source.
 - **The `reference/` shape is new** — objective house facts only; the rules cite it, no gate enforces a reference doc.
-- **Re-audit triggers:** land the merge + the homeless-migration at the Phase-3 lift; add the `reference/` shape; confirm each new rule names its `check-*.sh` gate; keep the subjective knowledge-refs routed to opinions/memory.
+- **`self-correction-loop` is not a conventions concern** — the evaluate→grade→re-run improvement loop is the agentm **Experience → Opinions** loop ([agentm Opinions](https://github.com/alexherrero/agentm/wiki/agentm-opinions-and-gates)), not a gate-backed standard; conventions only folds in the *skill-shape* gate (`skill-quality` + `check-slop`).
+- **Re-audit triggers:** land the merge + the homeless-migration at the Phase-3 lift; add the `reference/` shape; confirm each new rule names its `check-*.sh` gate; **ship `check-no-skip-tests.sh`** + a **`check-conventions-cite-not-duplicate`** portfolio lint (fails on a standard duplicated rather than cited — the structural boundary the residual bucket rests on); keep the subjective knowledge-refs routed to opinions/memory.
 
 ## References
 
@@ -167,6 +168,8 @@ Two structural lifts at the Phase-3 / v6.0 pass:
 - **Up:** [crickets HLD](crickets-hld.md) · [composition](crickets-composition.md) · [agentm Opinions](https://github.com/alexherrero/agentm/wiki/agentm-opinions-and-gates) (which cite conventions)
 
 ## Amendment log
+
+**2026-06-28 — AG critique revisions (W6 · R4 · R10).** Demoted the gate thesis to **gate-backed OR gate-targeted** and marked `no-skip-tests`'s `check-no-skip-tests.sh` gate `[PENDING-IMPL]` (W6); named the residual-bucket's structural boundary — a `check-conventions-cite-not-duplicate` portfolio lint (fails on a standard duplicated rather than cited) — in the re-audit triggers (R4); folded `skill-quality` + `check-slop` into the code-quality domain as the gate-targeted skill-shape gate, and scoped `self-correction-loop` out as the agentm Experience→Opinions loop, not a convention (R10). *Re-audit:* ship `check-no-skip-tests.sh` + the cite-not-duplicate lint.
 
 **2026-06-24 — subsumed `continuous-integration.md` + `wiki-section-taxonomy.md` (AG Wave 2, move-and-retire).** Two superseded designs whose still-live convention substance lands here; both deleted (git history retains the full PRD text + part files). The two C4-folded ADRs they had absorbed (AG Phase-2) are preserved below with decision + why-not + re-audit; the seven-section frame is also reflected in the `documentation` domain body, and the `ci`-consistency mechanism is noted in the `ci` domain.
 

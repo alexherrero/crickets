@@ -87,7 +87,7 @@ privacy **implements part of `done`** — a change that leaks a secret or PII is
 
 ## Migrations
 
-The capability is renamed `pii` → `privacy` (the bare concern-noun; `capabilities: [privacy]` is already declared, from the Phase-2 hygiene pass). The plugin directory + the primitive doc-titles (`pii-patterns`, `pii-scrubber`) follow at the v6.0 rename, with resolver aliasing so existing references resolve.
+The capability is renamed `pii` → `privacy` (the bare concern-noun; `capabilities: [privacy]` is already declared, from the Phase-2 hygiene pass). The plugin directory + the primitive doc-titles (`pii-patterns`, `pii-scrubber`) follow at the v6.0 rename; the group declares both `pii` and `privacy` so existing references resolve (the [composition](crickets-composition.md) rename mechanism).
 
 ## Risks & open questions
 

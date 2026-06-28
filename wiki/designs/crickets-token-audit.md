@@ -82,7 +82,7 @@ token-audit is **the measurement half of `efficient`.** The opinion is the judgm
 ## Migrations
 
 - **The `status-line-meter` fold** — `status_line_meter.py` moves in; its standalone `enhances:` edge dissolves and becomes internal. One capability owns measurement + metering.
-- **The v6.0 rename** `token-audit` → **`tokens`** (object-over-action), with resolver aliasing so existing references resolve. The `efficiency` rename was **rejected** — it collides with the `efficient` opinion the capability's own tools request, and inverts the one-way rule (a capability naming itself after the opinion it serves).
+- **The v6.0 rename** `token-audit` → **`tokens`** (object-over-action); the group declares both names so existing references resolve (the [composition](crickets-composition.md) rename mechanism). The `efficiency` rename was **rejected** — it collides with the `efficient` opinion the capability's own tools request, and inverts the one-way rule (a capability naming itself after the opinion it serves).
 - **Sibling audits, not a widened scope** — other efficiency dimensions (latency, memory) get their own audit tools; this one stays token-cost.
 
 ## Risks & open questions

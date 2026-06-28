@@ -85,12 +85,13 @@ code-review **implements `good`** — the adversarial-review contract *is* what 
 - **enhances [development-lifecycle](crickets-development-lifecycle.md)'s `review`** — `/review` dispatches the adversarial pass; the `evidence-tracker` hook gates `/work`.
 - **implements the `good` opinion** ([agentm Opinions](https://github.com/alexherrero/agentm/wiki/agentm-opinions-and-gates)) — the adversarial-review contract *is* what `good` looks like.
 - **composed by [diagnostics](crickets-diagnostics.md)** (hypothesis verification — *real bug, or an assumption?*) and **[maintenance](crickets-maintenance.md)** (a no-living-callers check on a removal).
+- **composes [privacy](crickets-privacy.md)'s `pii-scrubber` on the cross-model path** — the raw diff sent to an external model (Gemini → Google) is scrubbed before shell-out, or a pre-flight re-confirm fires on scrub-positive material; opting into a second opinion is not consent to ship a secret to a third party. **`[PENDING-IMPL]`** — the scrub is not yet wired into `cross-review.sh`.
 - Points up at the [crickets HLD](crickets-hld.md); the requires/enhances mechanics are in [crickets-composition](crickets-composition.md).
 
 ## Risks & open questions
 
 - **The `good` opinion is hardwired today** — the three-form contract is embedded in the reviewers; requesting `good` by name (`opinion_request`) is Phase-3/4 (the [Opinions design](https://github.com/alexherrero/agentm/wiki/agentm-opinions-and-gates)). **`[PENDING-IMPL]`** — wire the request-by-name when the Opinion registry ships; until then the hardwired contract *is* `good`.
-- **The cross-model reviewer depends on an external CLI** (Gemini) — opt-in per invocation, editable to another model in `cross-review.sh`, and graceful-fallback to the in-process reviewer; not a hard dependency.
+- **The cross-model reviewer depends on an external CLI** (Gemini) — opt-in per invocation, editable to another model in `cross-review.sh`, and graceful-fallback to the in-process reviewer; not a hard dependency. **It also crosses a trust boundary** — the raw diff goes to a third-party model with no redaction today; composing `privacy`'s `pii-scrubber` (Dependencies) closes it (`[PENDING-IMPL]`).
 - **The `{domain}-review` family is future scope** — peer-review beyond code (`design-review`, `doc-review`) arrives as sibling plugins, not a bloated single one.
 - **Re-audit triggers:** wire `opinion_request("good")` when the registry ships; add `{domain}-review` siblings when peer-review beyond code is needed.
 
@@ -100,6 +101,8 @@ code-review **implements `good`** — the adversarial-review contract *is* what 
 - **Up / composes:** [crickets HLD](crickets-hld.md) · [composition](crickets-composition.md) · [agentm Opinions](https://github.com/alexherrero/agentm/wiki/agentm-opinions-and-gates) (`good`)
 
 ## Amendment log
+
+**2026-06-28 — compose `pii-scrubber` on the cross-model path (critique W9).** Named `privacy`'s `pii-scrubber` in Dependencies and flagged the trust-boundary in Risks: the raw diff shipped to the external model (Gemini → Google) is scrubbed before shell-out, or a pre-flight re-confirm fires on scrub-positive material — `[PENDING-IMPL]` in `cross-review.sh`. *Re-audit:* wire the scrub before the cross-model path ships on by default.
 
 **2026-06-24 (re-homed 2026-06-25) — folded ADR 0009 (evidence-tracker hook) into this design.** Originally folded into developer-safety in AG Phase 4; re-homed here (the correct owner — the hook ships in `src/code-review/`) in the AG settle-sweep Group E.
 

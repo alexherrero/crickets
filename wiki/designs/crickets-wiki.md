@@ -87,7 +87,7 @@ wiki **enforces the `documentation` convention** ([conventions](crickets-convent
 
 ## Migrations
 
-- **The capability rename** `wiki-maintenance` → **`wiki`** (bare noun), with resolver aliasing (`[wiki-maintenance]` → `[wiki]`).
+- **The capability rename** `wiki-maintenance` → **`wiki`** (bare noun); the group declares both names (`[wiki-maintenance, wiki]`) so existing references resolve (the [composition](crickets-composition.md) rename mechanism).
 - **The `enhances` target re-points** — it enhanced `developer-workflows:documentation`; that capability is now **`development-lifecycle`**.
 - The plugin directory (`src/wiki-maintenance/`) follows the rename at v6.0.
 
