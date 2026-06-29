@@ -11,7 +11,7 @@ approved: 2026-06-23
 ---
 
 > [!NOTE]
-> **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-23).** child-design — **the `token-audit` capability** (token-cost measurement + live metering — the measurement slice of the `efficient` opinion). `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). Points *up* at the [crickets HLD](crickets-hld.md).
+> **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-23) · locked 2026-06-28 (final AG design sweep).** child-design — **the `token-audit` capability** (token-cost measurement + live metering — the measurement slice of the `efficient` opinion). `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). Points *up* at the [crickets HLD](crickets-hld.md).
 
 # token-audit (→ `tokens` at v6.0)
 
@@ -30,22 +30,7 @@ The primitives, all delivered (+ one fold):
 | `pricing.py` | script | One pinned source of model rates — the only place a price lives. |
 | `status_line_meter.py` | script | The live status-line meter (**folded in** from `status-line-meter`). |
 
-```mermaid
-graph TD
-    T["<b>token-audit</b>"]
-    T --> CMD["/token-audit<br/><i>on-demand breakdown · operator</i>"]
-    T --> SL["status_line_meter.py<br/><i>live meter · passive (folds in)</i>"]
-    T --> AN["analyzer.py<br/><i>cache split · 5h windows · floor</i>"]
-    AN --> PR["pricing.py<br/><i>pinned per-model rates</i>"]
-    SL --> PR
-    AN -. "auto on session-stop" .-> MEM["session-cost record<br/><i>logged to memory · designed</i>"]
-    MEM -. "reviewed in dreaming" .-> TR["efficiency trend<br/><i>flags creep · designed</i>"]
-    T -. "measurement half of" .-> EFF["efficient opinion"]
-    classDef fold fill:#f4f4f6,stroke:#b0b0b8,color:#8a8a92;
-    class SL fold;
-    classDef des fill:#f4f4f6,stroke:#b0b0b8,color:#8a8a92;
-    class MEM,TR des;
-```
+![The token-audit capability: /token-audit (on-demand operator breakdown) and the status_line_meter.py live meter (folds in) both read pricing.py's pinned per-model rates; analyzer.py computes the cache split, 5h windows, and floor; on session-stop it logs a session-cost record to memory (designed), reviewed in dreaming into an efficiency trend that flags creep (designed); token-audit is the measurement half of the efficient opinion](diagrams/crickets-token-audit.svg)
 
 *A deterministic cost analyzer (cache-split · 5-hour windows · the always-load floor) behind both the on-demand `/token-audit` breakdown and the passive live meter; `pricing.py` is the one pinned rate source. Designed (grey): on session-stop the analyzer auto-logs a per-model `session-cost` record to memory, which the dreaming pass reviews to surface an efficiency trend. It supplies the cost truth the `efficient` opinion weighs its budget against.*
 
@@ -96,6 +81,10 @@ token-audit is **the measurement half of `efficient`.** The opinion is the judgm
 
 - crickets `src/token-audit/` + `src/status-line-meter/` (the folding-in source) — `/token-audit` · `analyzer.py` · `pricing.py` · `status_line_meter.py`; declares `[token-audit]` (→ `[tokens]`)
 - **Up / serves:** [crickets HLD](crickets-hld.md) · [composition](crickets-composition.md) · [agentm Opinions](https://github.com/alexherrero/agentm/wiki/agentm-opinions-and-gates) (`efficient`)
+
+## Amendment log
+
+**2026-06-28 — lock-down sweep (operator review).** Converted the primitives mermaid to a house-style hand-SVG (`diagrams/crickets-token-audit.svg`); and restored the missing `## Amendment log` heading (the design had none). Confirmed token-audit is the measurement half of the `efficient` opinion (`/token-audit` + the live meter over `pricing.py`'s pinned rates; `analyzer.py`'s cache split · 5h windows · floor), and that the session-cost → dreaming → efficiency-trend chain is designed. Locked as a v5–v8 guidepost.
 
 **2026-06-23 — authored, reviewed, and finalized.** Authored from the seeded stub and grounded against the live `src/token-audit` + `src/status-line-meter` plugins. token-audit is the **measurement half of `efficient`** — a deterministic cost analyzer (cache split · 5-hour windows · the always-load floor; same transcript → same number) behind two surfaces: the on-demand `/token-audit` breakdown and the passive live meter (folding in `status_line_meter.py`); `pricing.py` is the single pinned rate source. The `### Opinions` arrow is one-way (the opinion cites the numbers; the capability never reaches up). Recorded the rejected `efficiency` rename and the v6.0 `tokens` target (resolver aliasing).
 

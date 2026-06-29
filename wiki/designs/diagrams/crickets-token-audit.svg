@@ -1,0 +1,58 @@
+<svg viewBox="0 0 880 530" width="1100" height="638" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+  <defs>
+    <marker id="s" markerWidth="10" markerHeight="10" refX="7.2" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#5B7C9E"/>
+    </marker>
+    <marker id="r" markerWidth="10" markerHeight="10" refX="7.2" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#9aa0a8"/>
+    </marker>
+  </defs>
+
+  <g stroke="#5B7C9E" stroke-width="1.8" fill="none" marker-end="url(#s)">
+    <path d="M440,70 L168,116"/>
+    <path d="M440,70 L425,116"/>
+    <path d="M440,70 L712,116"/>
+    <path d="M715,174 L640,222"/>
+    <path d="M430,174 L530,222"/>
+  </g>
+  <g stroke="#9aa0a8" stroke-width="1.5" stroke-dasharray="5 4" fill="none" marker-end="url(#r)">
+    <path d="M775,174 L760,328"/>
+    <path d="M725,388 L725,430"/>
+    <path d="M395,62 L205,328"/>
+  </g>
+  <text x="788" y="250" font-size="9" font-style="italic" fill="#8a8a92">auto on session-stop</text>
+  <text x="735" y="414" font-size="9" font-style="italic" fill="#8a8a92">reviewed in dreaming</text>
+  <text x="262" y="200" font-size="9" font-style="italic" fill="#8a8a92">measurement half of</text>
+
+  <rect x="370" y="24" width="160" height="46" rx="9" fill="#F2EEFB" stroke="#7E57C2" stroke-width="2.3"/>
+  <text x="450" y="51" text-anchor="middle" font-size="13" font-weight="700" fill="#5b3a8c">token-audit</text>
+
+  <rect x="40" y="116" width="220" height="56" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/>
+  <text x="150" y="139" text-anchor="middle" font-size="12" font-weight="600" fill="#34516e">/token-audit</text>
+  <text x="150" y="155" text-anchor="middle" font-size="8.7" font-style="italic" fill="#5B7C9E">on-demand breakdown · operator</text>
+
+  <rect x="300" y="116" width="240" height="56" rx="9" fill="#F4F4F6" stroke="#B0B0B8" stroke-width="1.5"/>
+  <text x="420" y="139" text-anchor="middle" font-size="12" font-weight="600" fill="#8a8a92">status_line_meter.py</text>
+  <text x="420" y="155" text-anchor="middle" font-size="8.7" font-style="italic" fill="#a0a0a8">live meter · passive (folds in)</text>
+
+  <rect x="600" y="116" width="240" height="56" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/>
+  <text x="720" y="139" text-anchor="middle" font-size="12" font-weight="600" fill="#34516e">analyzer.py</text>
+  <text x="720" y="155" text-anchor="middle" font-size="8.7" font-style="italic" fill="#5B7C9E">cache split · 5h windows · floor</text>
+
+  <rect x="470" y="222" width="240" height="54" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/>
+  <text x="590" y="244" text-anchor="middle" font-size="12" font-weight="600" fill="#34516e">pricing.py</text>
+  <text x="590" y="260" text-anchor="middle" font-size="9" font-style="italic" fill="#5B7C9E">pinned per-model rates</text>
+
+  <rect x="610" y="328" width="230" height="58" rx="9" fill="#F4F4F6" stroke="#B0B0B8" stroke-width="1.5"/>
+  <text x="725" y="351" text-anchor="middle" font-size="11.5" font-weight="600" fill="#8a8a92">session-cost record</text>
+  <text x="725" y="367" text-anchor="middle" font-size="8.7" font-style="italic" fill="#a0a0a8">logged to memory · designed</text>
+
+  <rect x="610" y="430" width="230" height="54" rx="9" fill="#F4F4F6" stroke="#B0B0B8" stroke-width="1.5"/>
+  <text x="725" y="452" text-anchor="middle" font-size="11.5" font-weight="600" fill="#8a8a92">efficiency trend</text>
+  <text x="725" y="468" text-anchor="middle" font-size="8.7" font-style="italic" fill="#a0a0a8">flags creep · designed</text>
+
+  <rect x="60" y="328" width="220" height="54" rx="9" fill="#FBF3E2" stroke="#C8961E" stroke-width="1.6"/>
+  <text x="170" y="360" text-anchor="middle" font-size="12" font-weight="600" fill="#8a6516">efficient opinion</text>
+
+  <text x="430" y="514" text-anchor="middle" font-size="10" font-style="italic" fill="#8a8a92">the measurement half of efficient — a breakdown + live meter over pinned rates; the session-cost → dreaming → trend chain is designed.</text>
+</svg>
