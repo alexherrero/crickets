@@ -1,0 +1,57 @@
+<svg viewBox="0 0 820 580" width="1025" height="725" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+  <defs>
+    <marker id="s" markerWidth="10" markerHeight="10" refX="7.2" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#5B7C9E"/>
+    </marker>
+    <marker id="g" markerWidth="10" markerHeight="10" refX="7.2" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#3A9D5D"/>
+    </marker>
+    <marker id="r" markerWidth="10" markerHeight="10" refX="7.2" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#9aa0a8"/>
+    </marker>
+  </defs>
+
+  <g stroke="#5B7C9E" stroke-width="1.8" fill="none" marker-end="url(#s)">
+    <path d="M420,74 L420,112"/>
+    <path d="M420,170 L420,208"/>
+    <path d="M462,264 L606,308"/>
+    <path d="M222,368 L388,410"/>
+    <path d="M620,368 L452,410"/>
+    <path d="M420,460 L420,492"/>
+  </g>
+  <path d="M378,264 L222,308" stroke="#3A9D5D" stroke-width="1.9" fill="none" marker-end="url(#g)"/>
+  <path d="M598,310 L482,266" stroke="#9aa0a8" stroke-width="1.5" stroke-dasharray="5 4" fill="none" marker-end="url(#r)"/>
+
+  <text x="292" y="292" text-anchor="end" font-size="9.5" font-style="italic" fill="#3A9D5D">hit</text>
+  <text x="556" y="292" font-size="9.5" font-style="italic" fill="#5B7C9E">miss</text>
+  <text x="556" y="282" font-size="9" font-style="italic" fill="#8a8a92">alias back</text>
+
+  <rect x="320" y="24" width="200" height="50" rx="9" fill="#F0F2F5" stroke="#8a93a0" stroke-width="1.6"/>
+  <text x="420" y="45" text-anchor="middle" font-size="12.5" font-weight="600" fill="#3a4250">a failure</text>
+  <text x="420" y="61" text-anchor="middle" font-size="9" font-style="italic" fill="#8a93a0">CI · test · runtime</text>
+
+  <rect x="300" y="114" width="240" height="56" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/>
+  <text x="420" y="137" text-anchor="middle" font-size="12.5" font-weight="600" fill="#34516e">Layer 0 — classify</text>
+  <text x="420" y="153" text-anchor="middle" font-size="9" font-style="italic" fill="#5B7C9E">build / test / type / lint / runtime</text>
+
+  <rect x="320" y="210" width="200" height="54" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/>
+  <text x="420" y="232" text-anchor="middle" font-size="12.5" font-weight="600" fill="#34516e">Layer 1 — fingerprint</text>
+  <text x="420" y="248" text-anchor="middle" font-size="9" font-style="italic" fill="#5B7C9E">exact-match</text>
+
+  <rect x="80" y="310" width="210" height="58" rx="9" fill="#E9F6EE" stroke="#3A9D5D" stroke-width="1.8"/>
+  <text x="185" y="333" text-anchor="middle" font-size="12.5" font-weight="700" fill="#27613f">prior incident + fix</text>
+  <text x="185" y="349" text-anchor="middle" font-size="9" font-style="italic" fill="#3A9D5D">zero inference</text>
+
+  <rect x="520" y="310" width="240" height="58" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/>
+  <text x="640" y="333" text-anchor="middle" font-size="12" font-weight="600" fill="#34516e">Layer 2 — semantic fallback</text>
+  <text x="640" y="349" text-anchor="middle" font-size="9" font-style="italic" fill="#5B7C9E">RRF + graph hop</text>
+
+  <rect x="320" y="410" width="200" height="50" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/>
+  <text x="420" y="440" text-anchor="middle" font-size="12.5" font-weight="600" fill="#34516e">ranked hypotheses</text>
+
+  <rect x="300" y="492" width="240" height="56" rx="9" fill="#FBF3E2" stroke="#C8961E" stroke-width="1.7"/>
+  <text x="420" y="515" text-anchor="middle" font-size="12.5" font-weight="600" fill="#8a6516">write failure-incident</text>
+  <text x="420" y="531" text-anchor="middle" font-size="9" font-style="italic" fill="#b5851a">scrubbed by privacy</text>
+
+  <text x="410" y="572" text-anchor="middle" font-size="10" font-style="italic" fill="#8a8a92">classify → fingerprint → exact-match fix (zero inference) or semantic fallback → ranked hypotheses → a scrubbed failure-incident memory.</text>
+</svg>

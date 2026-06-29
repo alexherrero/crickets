@@ -11,7 +11,7 @@ approved: 2026-06-23
 ---
 
 > [!NOTE]
-> **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-23).** child-design — **the `diagnostics` capability** (failure analysis + hypothesis generation + cross-session failure-pattern memory), parent [crickets HLD](crickets-hld.md). `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). Points *up* at the [crickets HLD](crickets-hld.md).
+> **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-23) · locked 2026-06-28 (final AG design sweep).** child-design — **the `diagnostics` capability** (failure analysis + hypothesis generation + cross-session failure-pattern memory), parent [crickets HLD](crickets-hld.md). `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). Points *up* at the [crickets HLD](crickets-hld.md).
 
 # diagnostics
 
@@ -30,19 +30,7 @@ Diagnosis runs as a loop:
 
 The failure-diagnosis engine depends on agentm's **memory system** — cross-session failure-pattern memory is the recall engine put to work.
 
-```mermaid
-graph TD
-    F["a failure<br/><i>CI · test · runtime</i>"] --> C["Layer 0 — classify<br/><i>build/test/type/lint/runtime</i>"]
-    C --> FP["Layer 1 — fingerprint<br/>exact-match"]
-    FP -- "hit" --> PR["prior incident + fix<br/><i>zero inference</i>"]
-    FP -- "miss" --> SEM["Layer 2 — semantic fallback<br/><i>RRF + graph hop</i>"]
-    SEM --> HY["ranked hypotheses"]
-    PR --> HY
-    HY --> INC["write failure-incident<br/><i>scrubbed by privacy</i>"]
-    SEM -. "alias back" .-> FP
-    classDef hit fill:#eef7ee,stroke:#3A9D5D,color:#1E5435;
-    class PR hit;
-```
+![Layered failure analysis: a failure (CI · test · runtime) → Layer 0 classify (build/test/type/lint/runtime) → Layer 1 fingerprint (exact-match); a hit returns the prior incident + fix with zero inference, a miss falls back to Layer 2 semantic search (RRF + graph hop) which aliases back to fingerprint; both feed ranked hypotheses, then a failure-incident memory is written (scrubbed by privacy)](diagrams/crickets-diagnostics.svg)
 
 *Deterministic-first: classify, then a fingerprint exact-match (a hit returns the prior fix with zero inference); only a miss falls to semantic recall; the incident is scrubbed + written, and a drifted match aliases back so the next recurrence is an exact hit.*
 
@@ -135,6 +123,8 @@ diagnostics leans on **`how-we-engineer`** — its deterministic-first disciplin
 - **Siblings:** [crickets HLD](crickets-hld.md) · [development-lifecycle](crickets-development-lifecycle.md) (`/observe`'s caller via `/launch`; `/bugfix` calls the engine) · `maintenance` (the renamed `github-ci`; `dependabot-fixer` calls the engine) · [composition](crickets-composition.md) · [agentm Personas](https://github.com/alexherrero/agentm/wiki/agentm-personas) (Troubleshooter/SRE) · [agentm Memory System](https://github.com/alexherrero/agentm/wiki/agentm-memory-system)
 
 ## Amendment log
+
+**2026-06-28 — lock-down sweep (operator review).** Converted the failure-analysis mermaid to a house-style hand-SVG (`diagrams/crickets-diagnostics.svg`). Confirmed the layered pipeline (classify → fingerprint exact-match → hit/zero-inference or semantic fallback → ranked hypotheses) and the `failure-incident` memory scrubbed by `privacy`. No content change. Locked as a v5–v8 guidepost.
 
 **2026-06-23 — added the recall-ladder diagram (diagram backfill).** Per the every-design-carries-a-diagram rule.
 
