@@ -11,7 +11,7 @@ approved: 2026-06-23
 ---
 
 > [!NOTE]
-> **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-23).** child-design — **the `research` capability** (deep research + web fetch + synthesis), parent [crickets HLD](crickets-hld.md). `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). Points *up* at the [crickets HLD](crickets-hld.md).
+> **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-23) · locked 2026-06-28 (final AG design sweep).** child-design — **the `research` capability** (deep research + web fetch + synthesis), parent [crickets HLD](crickets-hld.md). `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). Points *up* at the [crickets HLD](crickets-hld.md).
 
 # research
 
@@ -26,19 +26,7 @@ Research runs in two modes:
 - **On-demand** — answer a question now: `explorer` *(delivered)*, `researcher` *(delivered)*, and a new `idea-search` *(greenfield)* — find what's already in the vault before reaching outward.
 - **Scheduled forward-learning** *(designed)* — reach approved sources on a cadence, bring back what's worth knowing, surface it; leans on agentm's scheduler + approved-source pipeline.
 
-The **posture** is settled as **public**: `research` is a public capability — a deliberate reversal of the earlier "deep research is operator-personal, out of scope" intent. Deep multi-source work still stays **forward-referenced to an operator-personal agent, by name and contract**; the capability itself is public.
-
-```mermaid
-graph TD
-    R["<b>research</b>"]
-    R --> OD["on-demand<br/><i>explorer · researcher · idea-search</i>"]
-    R --> SC["scheduled forward-learning<br/><i>learn-forward · codebase-improvement</i>"]
-    OD -. "researcher forward-refs" .-> DR["operator-personal<br/>deep-research agent"]
-    SC -. "lean by name" .-> SUB["agentm forward-experience<br/><i>scheduler + approved sources</i>"]
-    OD -. "enhances" .-> PLAN["/plan"]
-    classDef designed fill:#f4f4f6,stroke:#b0b0b8,color:#8a8a92;
-    class SC,SUB designed;
-```
+![The research capability: on-demand (explorer · researcher · idea-search) enhances /plan and forward-refs the operator-personal deep-research agent; scheduled forward-learning (learn-forward · codebase-improvement — designed) leans by name on agentm's forward-experience engine (scheduler + approved sources)](diagrams/crickets-research.svg)
 
 *Two modes — on-demand (ships) and scheduled forward-learning (designed, leaning by name on agentm's unbuilt substrate); deep multi-source work is forward-referenced to an operator-personal agent; the on-demand half enhances `/plan`.*
 
@@ -101,10 +89,10 @@ research leans on **`how-we-engineer`** — it feeds the plan → design → arc
 
 ## Risks & open questions
 
-- **No public deep-research command — by design.** The posture is public (settled), but the operator-personal deep-research agent proved non-portable as a vendored primitive, so `research` ships **no** public deep-research command; `researcher`'s forward-reference covers the deep work. Revisit only if forward-reference proves insufficient in real use.
+- **Deep multi-source research is forward-referenced.** `researcher` references an operator-personal deep-research agent by name + contract when one is installed, degrading to `explorer` + bounded `WebFetch` otherwise. Revisit if the forward-reference proves insufficient in real use.
 - **The scheduled half is blocked** on the agentm scheduler + approved-source pipeline (designed-not-built) — named and deferred. It stays in this design (one capability, not a split — operator-decided).
 - **`idea-search`'s relevance bar** — a vault scan that surfaces stale or tangential ideas wastes the "find what's known first" step; calibrate the recall threshold so it returns genuinely-bearing entries, not everything adjacent.
-- **Re-audit triggers:** flip the `[PENDING-IMPL]` markers as `idea-search`, then the scheduled workflows, land; revisit a public deep-research command only if forward-reference proves insufficient.
+- **Re-audit triggers:** flip the `[PENDING-IMPL]` markers as `idea-search`, then the scheduled workflows, land; revisit the forward-reference approach only if it proves insufficient in real use.
 
 ## References
 
@@ -116,12 +104,14 @@ research leans on **`how-we-engineer`** — it feeds the plan → design → arc
 
 ## Amendment log
 
+**2026-06-28 — lock-down sweep (operator review).** Converted the two-modes mermaid to a house-style hand-SVG (`diagrams/crickets-research.svg`); and, per operator review, removed the public / operator-personal posture discussion from the body, Risks, re-audit, and this log (the deep-research forward-reference mechanism stays). Confirmed the two modes — on-demand (built) and scheduled forward-learning (designed, leaning by name on agentm's forward-experience substrate). Locked as a v5–v8 guidepost.
+
 **2026-06-23 — added the two-modes diagram (diagram backfill).** Per the every-design-carries-a-diagram rule.
 
 **2026-06-23 — added an Opinions-it-consumes clause (portfolio backfill).** Made explicit that research leans on `how-we-engineer` (it feeds the sizing ladder) — a standard Design clause adopted across the capability designs.
 
 **2026-06-23 — authored, reviewed, and finalized.**
 
-The `research` capability brings in what the agent hasn't seen, in two modes. **On-demand:** `explorer` + `researcher` (delivered read-only agents) and a new `idea-search` (greenfield, over the recall engine). **Scheduled forward-learning:** `learn-forward` + `codebase-improvement` (designed) — both lean by name on agentm's unbuilt scheduler + approved-source pipeline, surfacing findings to the idea incubator/watchlist, never auto-adopting. The adapt-don't-import seam stays one-way (discovery → watchlist → operator-gate). The first slice is the two agents + `idea-search`, with no dependency on unbuilt infrastructure. A public **deep-research command does not exist**: `researcher` forward-references an operator-personal deep-research agent by name and contract.
+The `research` capability brings in what the agent hasn't seen, in two modes. **On-demand:** `explorer` + `researcher` (delivered read-only agents) and a new `idea-search` (greenfield, over the recall engine). **Scheduled forward-learning:** `learn-forward` + `codebase-improvement` (designed) — both lean by name on agentm's unbuilt scheduler + approved-source pipeline, surfacing findings to the idea incubator/watchlist, never auto-adopting. The adapt-don't-import seam stays one-way (discovery → watchlist → operator-gate). The first slice is the two agents + `idea-search`, with no dependency on unbuilt infrastructure. Deep multi-source research is **forward-referenced**: `researcher` references an operator-personal deep-research agent by name and contract.
 
-Operator decisions (2026-06-23): the posture is **public** (a deliberate reversal of the earlier operator-personal / out-of-scope intent; deep multi-source work still forward-referenced); **`research` owns `researcher`**; the scheduled + on-demand halves stay **one capability, one design** (not a split). Conformed to the per-primitive operational contract with `(delivered)` / `(greenfield)` / `(designed)` markers, and fixed a composition-lint violation (the draft both `requires` *and* `enhances` `development-lifecycle` → corrected to `enhances`, since research works standalone). **Built-vs-designed:** the two agents delivered; `idea-search` + the scheduled half greenfield/blocked on the agentm scheduler. **Re-audit triggers:** flip `[PENDING-IMPL]` as `idea-search` then the scheduled workflows land; revisit a public deep-research command only if forward-reference proves insufficient.
+Operator decisions (2026-06-23): **`research` owns `researcher`**; deep multi-source work is forward-referenced to an operator-personal agent (by name + contract); the scheduled + on-demand halves stay **one capability, one design** (not a split). Conformed to the per-primitive operational contract with `(delivered)` / `(greenfield)` / `(designed)` markers, and fixed a composition-lint violation (the draft both `requires` *and* `enhances` `development-lifecycle` → corrected to `enhances`, since research works standalone). **Built-vs-designed:** the two agents delivered; `idea-search` + the scheduled half greenfield/blocked on the agentm scheduler. **Re-audit triggers:** flip `[PENDING-IMPL]` as `idea-search` then the scheduled workflows land; revisit the forward-reference approach only if it proves insufficient in real use.

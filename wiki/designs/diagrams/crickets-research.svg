@@ -1,0 +1,47 @@
+<svg viewBox="0 0 860 350" width="1075" height="438" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+  <defs>
+    <marker id="s" markerWidth="10" markerHeight="10" refX="7.2" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#5B7C9E"/>
+    </marker>
+    <marker id="r" markerWidth="10" markerHeight="10" refX="7.2" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#9aa0a8"/>
+    </marker>
+  </defs>
+
+  <g stroke="#5B7C9E" stroke-width="1.8" fill="none" marker-end="url(#s)">
+    <path d="M410,70 L290,128"/>
+    <path d="M470,70 L580,128"/>
+  </g>
+  <g stroke="#9aa0a8" stroke-width="1.5" stroke-dasharray="5 4" fill="none" marker-end="url(#r)">
+    <path d="M215,186 L188,248"/>
+    <path d="M300,186 L392,248"/>
+    <path d="M615,186 L642,248"/>
+  </g>
+  <text x="120" y="222" font-size="9" font-style="italic" fill="#8a8a92">researcher forward-refs</text>
+  <text x="360" y="222" text-anchor="end" font-size="9" font-style="italic" fill="#8a8a92">enhances</text>
+  <text x="630" y="222" font-size="9" font-style="italic" fill="#8a8a92">lean by name</text>
+
+  <rect x="370" y="24" width="140" height="46" rx="9" fill="#F2EEFB" stroke="#7E57C2" stroke-width="2.3"/>
+  <text x="440" y="51" text-anchor="middle" font-size="13" font-weight="700" fill="#5b3a8c">research</text>
+
+  <rect x="120" y="128" width="260" height="56" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/>
+  <text x="250" y="151" text-anchor="middle" font-size="12.5" font-weight="600" fill="#34516e">on-demand</text>
+  <text x="250" y="167" text-anchor="middle" font-size="8.7" font-style="italic" fill="#5B7C9E">explorer · researcher · idea-search</text>
+
+  <rect x="480" y="128" width="270" height="56" rx="9" fill="#F4F4F6" stroke="#B0B0B8" stroke-width="1.5"/>
+  <text x="615" y="151" text-anchor="middle" font-size="12" font-weight="600" fill="#8a8a92">scheduled forward-learning</text>
+  <text x="615" y="167" text-anchor="middle" font-size="8.7" font-style="italic" fill="#a0a0a8">learn-forward · codebase-improvement</text>
+
+  <rect x="60" y="248" width="240" height="56" rx="9" fill="#FBF3E2" stroke="#C8961E" stroke-width="1.6"/>
+  <text x="180" y="271" text-anchor="middle" font-size="11.5" font-weight="600" fill="#8a6516">operator-personal</text>
+  <text x="180" y="287" text-anchor="middle" font-size="9" font-style="italic" fill="#b5851a">deep-research agent</text>
+
+  <rect x="330" y="248" width="160" height="56" rx="9" fill="#FBF3E2" stroke="#C8961E" stroke-width="1.6"/>
+  <text x="410" y="280" text-anchor="middle" font-size="12.5" font-weight="600" fill="#8a6516">/plan</text>
+
+  <rect x="520" y="248" width="270" height="56" rx="9" fill="#F4F4F6" stroke="#B0B0B8" stroke-width="1.5"/>
+  <text x="655" y="271" text-anchor="middle" font-size="11.5" font-weight="600" fill="#8a8a92">agentm forward-experience</text>
+  <text x="655" y="287" text-anchor="middle" font-size="8.7" font-style="italic" fill="#a0a0a8">scheduler + approved sources</text>
+
+  <text x="430" y="334" text-anchor="middle" font-size="10" font-style="italic" fill="#8a8a92">on-demand (built) enhances /plan + forward-refs the operator's deep-research agent; scheduled forward-learning leans on agentm's experience engine.</text>
+</svg>

@@ -1,0 +1,58 @@
+<svg viewBox="0 0 920 440" width="1150" height="550" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+  <defs>
+    <marker id="s" markerWidth="10" markerHeight="10" refX="7.2" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#5B7C9E"/>
+    </marker>
+    <marker id="r" markerWidth="10" markerHeight="10" refX="7.2" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#9aa0a8"/>
+    </marker>
+  </defs>
+
+  <g stroke="#5B7C9E" stroke-width="1.8" fill="none" marker-end="url(#s)">
+    <path d="M150,76 L372,150"/>
+    <path d="M395,76 L418,150"/>
+    <path d="M700,76 L482,150"/>
+    <path d="M425,204 L425,250"/>
+    <path d="M425,304 L425,348"/>
+  </g>
+  <g stroke="#9aa0a8" stroke-width="1.5" stroke-dasharray="5 4" fill="none" marker-end="url(#r)">
+    <path d="M222,177 L298,177"/>
+    <path d="M552,185 L608,185"/>
+    <path d="M745,150 L722,78"/>
+  </g>
+  <text x="232" y="170" font-size="9" font-style="italic" fill="#8a8a92">re-triggers</text>
+  <text x="556" y="178" font-size="9" font-style="italic" fill="#8a8a92">operator's edits</text>
+  <text x="752" y="120" font-size="9" font-style="italic" fill="#8a8a92">updates</text>
+
+  <rect x="30" y="28" width="200" height="48" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/>
+  <text x="130" y="57" text-anchor="middle" font-size="11.5" font-weight="600" fill="#34516e">the code + phase artifacts</text>
+
+  <rect x="270" y="28" width="240" height="48" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/>
+  <text x="390" y="49" text-anchor="middle" font-size="11.5" font-weight="600" fill="#34516e">documentation convention</text>
+  <text x="390" y="65" text-anchor="middle" font-size="8.7" font-style="italic" fill="#5B7C9E">Diátaxis · from conventions</text>
+
+  <rect x="600" y="28" width="230" height="48" rx="9" fill="#F2EEFB" stroke="#7E57C2" stroke-width="1.9"/>
+  <text x="715" y="49" text-anchor="middle" font-size="11.5" font-weight="600" fill="#5b3a8c">operator's voice</text>
+  <text x="715" y="65" text-anchor="middle" font-size="8.7" font-style="italic" fill="#7E57C2">learned opinion</text>
+
+  <rect x="40" y="150" width="180" height="54" rx="9" fill="#FBF3E2" stroke="#C8961E" stroke-width="1.6"/>
+  <text x="130" y="173" text-anchor="middle" font-size="12" font-weight="600" fill="#8a6516">wiki-watch</text>
+  <text x="130" y="189" text-anchor="middle" font-size="9" font-style="italic" fill="#b5851a">drift loop</text>
+
+  <rect x="300" y="150" width="250" height="54" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/>
+  <text x="425" y="173" text-anchor="middle" font-size="12.5" font-weight="600" fill="#34516e">documenter</text>
+  <text x="425" y="189" text-anchor="middle" font-size="8.7" font-style="italic" fill="#5B7C9E">write-executor · scoped to wiki/**</text>
+
+  <rect x="610" y="150" width="270" height="54" rx="9" fill="#F4F4F6" stroke="#B0B0B8" stroke-width="1.5"/>
+  <text x="745" y="173" text-anchor="middle" font-size="11" font-weight="600" fill="#8a8a92">diataxis-author + style-scope-evaluator</text>
+  <text x="745" y="189" text-anchor="middle" font-size="8.7" font-style="italic" fill="#a0a0a8">voice-learning loop</text>
+
+  <rect x="300" y="250" width="250" height="54" rx="9" fill="#EAF1FB" stroke="#3A6EA5" stroke-width="2.3"/>
+  <text x="425" y="273" text-anchor="middle" font-size="12.5" font-weight="700" fill="#1e3a5f">check-wiki.py</text>
+  <text x="425" y="289" text-anchor="middle" font-size="8.5" font-style="italic" fill="#3A6EA5">deterministic gate · Diátaxis · length · vendor</text>
+
+  <rect x="330" y="348" width="190" height="48" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/>
+  <text x="425" y="377" text-anchor="middle" font-size="12" font-weight="600" fill="#34516e">wiki/** tree</text>
+
+  <text x="455" y="426" text-anchor="middle" font-size="10" font-style="italic" fill="#8a8a92">three inputs → the documenter → the check-wiki.py floor → the tree; wiki-watch re-triggers on drift, and operator edits feed the voice-learning loop.</text>
+</svg>
