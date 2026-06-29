@@ -7,7 +7,7 @@ A crickets customization is a **primitive** — a skill, command, agent, hook, o
 
 ## How it works
 
-A primitive's `kind` field decides both what it does and where you author it — `src/<group>/<kind-dir>/<name>`. The generator discovers it by walking that subdir, and a per-group `group.yaml` describes the plugin around it. Five kinds ship today; the schema reserves six more (`mcp-server`, `status-line`, `output-style`, `workflow`, `rule`, `settings-fragment`) with no instance yet.
+A primitive's `kind` field decides both what it does and where you author it — `src/<group>/<kind-dir>/<name>`. The generator discovers it by walking that subdir, and a per-group `group.yaml` describes the plugin around it. Seven kinds ship today; the schema reserves four more (`mcp-server`, `status-line`, `workflow`, `settings-fragment`) with no instance yet.
 
 | Kind | What it is |
 |---|---|
@@ -16,6 +16,8 @@ A primitive's `kind` field decides both what it does and where you author it —
 | **`agent`** | a sub-agent for fan-out work. |
 | **`hook`** | a script the host runs at a session event. |
 | **`snippet`** | a standing instruction fragment. |
+| **`output-style`** | a host output style (e.g. `terse`). |
+| **`rule`** | a standing rule fragment (e.g. `edit-over-write`). |
 
 Plugins compose two ways. A plugin `requires:` another when it hard-depends on it — it is then *integrated*, not `standalone`. A plugin `enhances:` another when it augments it only if both are installed: soft, and skipped when the target is absent.
 

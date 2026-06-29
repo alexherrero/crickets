@@ -32,6 +32,6 @@ See [Hooks](Hooks) for the full hook catalog and per-host effectiveness.
 - [Hooks](Hooks) — the hook catalog + per-host effectiveness.
 - [Developer safety design](crickets-developer-safety) — the design rationale + re-audit triggers.
 - [Plugin anatomy](Plugin-Anatomy) — what a crickets plugin is + its structure.
-- [Developer Plugin Suite design](crickets-composition) — the developer-workflows / safety / code-review split.
+- [Composition design](crickets-composition) — the developer-workflows / safety / code-review split.
 
 [Architecture](Architecture) · [Plugins](Plugins) · [Home](Home)

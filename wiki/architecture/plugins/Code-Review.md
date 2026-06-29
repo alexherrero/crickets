@@ -20,6 +20,6 @@ A reviewer primed to assume bugs finds real ones; demanding a failing test or a 
 - [First code review](01-First-Code-Review) — the tutorial.
 - [Review a change](Use-Code-Review) · [Simplify a diff](Simplify-A-Diff) · [In-flight decision review](Use-Doubt-Review) — the how-tos.
 - [Why adversarial review](Why-Adversarial-Review) — why the assume-bugs framing works.
-- [Developer Plugin Suite design](crickets-composition) — the developer-workflows / safety / code-review split.
+- [Composition design](crickets-composition) — the developer-workflows / safety / code-review split.
 
 [Architecture](Architecture) · [Plugins](Plugins) · [Home](Home)

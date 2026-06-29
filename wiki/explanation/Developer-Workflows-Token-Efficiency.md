@@ -3,10 +3,7 @@
 > [!NOTE]
 > Status: implemented
 > Shipped: crickets v3.14.0, developer-workflows v0.13.0–v0.17.0, 2026-06-14
-> Last updated: 2026-06-14
-
-> [!IMPORTANT]
-> **Pending** — four primitives are under construction: phase-aware model routing (task 1), a Terse output style (task 2), an Edit-over-Write rule (task 3), and a compact-nudge-on-resume hook (task 4). This page will flip to `implemented` once all four ship and `check-all.sh` is green.
+> Last updated: 2026-06-29
 
 ## Intent
 
@@ -29,10 +26,10 @@ Agent defs (`worker.md`, `researcher.md`, `tech-lead.md`) honor `model:` frontma
 
 Routing defaults:
 
-- **Strong model (Opus):** `worker.md`, `/work`, `/bugfix` — autonomous task execution where quality cliffs are most costly.
-- **Lighter model (Sonnet):** `researcher.md`, `tech-lead.md`, `/plan`, `/review`, `/design` — planning, authoring, read-only research.
+- **Strong model (Opus):** the `/work` and `/bugfix` command nudges — autonomous task execution where quality cliffs are most costly (the strong-model planning side of `opusplan`, which executes on Sonnet).
+- **Lighter model (Sonnet):** `worker.md` (the spawned executor, **T1**), `researcher.md`, `tech-lead.md`, `/plan`, `/review`, `/design` — planning, authoring, read-only research, and execution.
 
-Defaults are operator-overridable via `claude --model` or the `/model` command.
+Defaults are operator-overridable via `claude --model` or the `/model` command. The full model × effort tier scale (T0–T4 + the persona→tier map) lives in the [model + effort routing design](https://github.com/alexherrero/agentm/wiki/agentm-model-effort-routing); `worker.md` is realigned to **T1** (Sonnet) there.
 
 ### Terse output style
 
@@ -48,11 +45,9 @@ Trigger: `UserPromptSubmit`. Threshold: context >= 60% (via `CLAUDE_CONTEXT_USAG
 
 ## Implementation
 
-_Filled once tasks 1–4 ship._
+Source locations:
 
-Source locations (pending):
-
-- `src/developer-workflows/agents/worker.md` — `model: claude-opus-4-8` frontmatter
+- `src/developer-workflows/agents/worker.md` — `model: claude-sonnet-4-6` frontmatter
 - `src/developer-workflows/agents/researcher.md` — `model: claude-sonnet-4-6` frontmatter
 - `src/developer-workflows/agents/tech-lead.md` — `model: claude-sonnet-4-6` frontmatter
 - `src/developer-workflows/commands/plan.md` — routing nudge line + `/clear` reminder

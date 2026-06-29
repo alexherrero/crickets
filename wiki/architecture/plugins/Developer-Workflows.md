@@ -23,6 +23,6 @@ Discrete `plan → work → review → release` gates beat freestyling the whole
 - [Developer Safety](Developer-Safety) · [Plugin anatomy](Plugin-Anatomy) — the sibling safety plugin + the shared plugin structure.
 - [Why phase-gating](Why-Phase-Gating) — why the loop is gated.
 - [Development lifecycle design](crickets-development-lifecycle) — the full design, including hooks and `find_process_seam.py`.
-- [Developer Plugin Suite design](crickets-composition) — the developer-workflows / safety / code-review split.
+- [Composition design](crickets-composition) — the developer-workflows / safety / code-review split.
 
 [Architecture](Architecture) · [Plugins](Plugins) · [Home](Home)

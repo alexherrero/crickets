@@ -41,7 +41,7 @@ Three relationships, in increasing coupling:
 - **`requires`** — a hard dependency. On Claude Code the manifest's native `dependencies` auto-installs the base; on Antigravity the plugin ships thin and the docs say "install the base first."
 - **`enhances`** — soft: the plugin works alone and *augments* a target when both are installed, engaged by a capability probe rather than a hard link.
 
-The six shipped plugins:
+A representative set of shipped plugins (the full roster is in the [Designs](Designs) section):
 
 | Plugin | Standalone? | Relation to the base |
 |---|---|---|
