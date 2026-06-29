@@ -1,0 +1,53 @@
+<svg viewBox="0 0 900 250" width="1125" height="313" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+  <defs>
+    <marker id="s" markerWidth="10" markerHeight="10" refX="7.2" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#5B7C9E"/>
+    </marker>
+    <marker id="r" markerWidth="10" markerHeight="10" refX="7.2" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#9aa0a8"/>
+    </marker>
+  </defs>
+
+  <!-- ladder edges (solid) -->
+  <g stroke="#5B7C9E" stroke-width="1.9" fill="none" marker-end="url(#s)">
+    <path d="M174,158 L222,158"/>
+    <path d="M384,158 L432,158"/>
+    <path d="M594,158 L642,158"/>
+  </g>
+  <!-- persona entry edges (dashed) -->
+  <g stroke="#9aa0a8" stroke-width="1.5" stroke-dasharray="5 4" fill="none" marker-end="url(#r)">
+    <path d="M304,82 L304,128"/>
+    <path d="M514,82 L514,128"/>
+    <path d="M739,82 L739,128"/>
+  </g>
+  <text x="320" y="110" font-size="9" font-style="italic" fill="#8a8a92">reach for</text>
+  <text x="530" y="110" font-size="9" font-style="italic" fill="#8a8a92">composes</text>
+  <text x="755" y="110" font-size="9" font-style="italic" fill="#8a8a92">composes</text>
+
+  <!-- personas -->
+  <rect x="204" y="38" width="200" height="44" rx="9" fill="#F4F4F6" stroke="#B0B0B8" stroke-width="1.5"/>
+  <text x="304" y="65" text-anchor="middle" font-size="11.5" font-weight="600" fill="#8a8a92">Engineer · Tech-Lead</text>
+  <rect x="434" y="38" width="160" height="44" rx="9" fill="#F4F4F6" stroke="#B0B0B8" stroke-width="1.5"/>
+  <text x="514" y="65" text-anchor="middle" font-size="11.5" font-weight="600" fill="#8a8a92">Designer</text>
+  <rect x="644" y="38" width="190" height="44" rx="9" fill="#F4F4F6" stroke="#B0B0B8" stroke-width="1.5"/>
+  <text x="739" y="65" text-anchor="middle" font-size="11.5" font-weight="600" fill="#8a8a92">Architect</text>
+
+  <!-- the ladder -->
+  <rect x="24" y="130" width="150" height="56" rx="9" fill="#F0F2F5" stroke="#8a93a0" stroke-width="1.6"/>
+  <text x="99" y="153" text-anchor="middle" font-size="12.5" font-weight="600" fill="#3a4250">/plan</text>
+  <text x="99" y="169" text-anchor="middle" font-size="9.5" font-style="italic" fill="#8a93a0">task list</text>
+
+  <rect x="224" y="130" width="160" height="56" rx="9" fill="#E9F6EE" stroke="#3A9D5D" stroke-width="2.2"/>
+  <text x="304" y="153" text-anchor="middle" font-size="12.5" font-weight="700" fill="#27613f">abbreviated</text>
+  <text x="304" y="169" text-anchor="middle" font-size="9.5" font-style="italic" fill="#3A9D5D">default rung</text>
+
+  <rect x="434" y="130" width="160" height="56" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/>
+  <text x="514" y="153" text-anchor="middle" font-size="12.5" font-weight="600" fill="#34516e">full design</text>
+  <text x="514" y="169" text-anchor="middle" font-size="9.5" font-style="italic" fill="#5B7C9E">single-system</text>
+
+  <rect x="644" y="130" width="190" height="56" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/>
+  <text x="739" y="153" text-anchor="middle" font-size="12.5" font-weight="600" fill="#34516e">architecture</text>
+  <text x="739" y="169" text-anchor="middle" font-size="9.5" font-style="italic" fill="#5B7C9E">cross-system HLD</text>
+
+  <text x="450" y="222" text-anchor="middle" font-size="10" font-style="italic" fill="#8a8a92">one sizing ladder above /plan — abbreviated is the default rung most work lands on; each persona enters at its altitude.</text>
+</svg>

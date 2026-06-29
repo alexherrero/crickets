@@ -1,0 +1,60 @@
+<svg viewBox="0 0 820 400" width="1025" height="500" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+  <defs>
+    <marker id="s" markerWidth="10" markerHeight="10" refX="7.2" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#5B7C9E"/>
+    </marker>
+    <marker id="r" markerWidth="10" markerHeight="10" refX="7.2" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#9aa0a8"/>
+    </marker>
+  </defs>
+
+  <!-- solid composition edges -->
+  <g stroke="#5B7C9E" stroke-width="1.8" fill="none" marker-end="url(#s)">
+    <path d="M340,80 L135,148"/>
+    <path d="M340,80 L340,144"/>
+    <path d="M340,80 L540,148"/>
+    <path d="M340,214 L340,298"/>
+  </g>
+  <!-- dashed relationship edges -->
+  <g stroke="#9aa0a8" stroke-width="1.5" stroke-dasharray="5 4" fill="none" marker-end="url(#r)">
+    <path d="M438,158 L660,142"/>
+    <path d="M636,186 L662,240"/>
+  </g>
+  <text x="548" y="136" text-anchor="middle" font-size="9.5" font-style="italic" fill="#8a8a92">auto-dispatched by</text>
+  <text x="652" y="218" text-anchor="middle" font-size="9.5" font-style="italic" fill="#8a8a92">gates</text>
+
+  <!-- capability root -->
+  <rect x="250" y="24" width="180" height="56" rx="10" fill="#F2EEFB" stroke="#7E57C2" stroke-width="2.4"/>
+  <text x="340" y="48" text-anchor="middle" font-size="14" font-weight="700" fill="#5b3a8c">code-review</text>
+  <text x="340" y="66" text-anchor="middle" font-size="10.5" font-style="italic" fill="#7E57C2">good, applied to code</text>
+
+  <!-- surfaces -->
+  <rect x="24" y="150" width="196" height="58" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/>
+  <text x="122" y="172" text-anchor="middle" font-size="12.5" font-weight="600" fill="#34516e">commands</text>
+  <text x="122" y="188" text-anchor="middle" font-size="9" font-style="italic" fill="#5B7C9E">/code-review · /doubt · /simplify</text>
+
+  <rect x="242" y="144" width="196" height="70" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/>
+  <text x="340" y="165" text-anchor="middle" font-size="12.5" font-weight="600" fill="#34516e">sub-agents</text>
+  <text x="340" y="181" text-anchor="middle" font-size="9" font-style="italic" fill="#5B7C9E">adversarial-reviewer (+cross)</text>
+  <text x="340" y="194" text-anchor="middle" font-size="9" font-style="italic" fill="#5B7C9E">security-auditor · test-engineer</text>
+
+  <rect x="460" y="150" width="176" height="58" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/>
+  <text x="548" y="174" text-anchor="middle" font-size="12.5" font-weight="600" fill="#34516e">evidence-tracker</text>
+  <text x="548" y="190" text-anchor="middle" font-size="9.5" font-style="italic" fill="#5B7C9E">/work gate hook</text>
+
+  <!-- external workflows -->
+  <rect x="662" y="120" width="138" height="46" rx="9" fill="#FBF3E2" stroke="#C8961E" stroke-width="1.5"/>
+  <text x="731" y="141" text-anchor="middle" font-size="12" font-weight="600" fill="#8a6516">/review</text>
+  <text x="731" y="156" text-anchor="middle" font-size="9" font-style="italic" fill="#b5851a">workflow</text>
+
+  <rect x="662" y="222" width="138" height="46" rx="9" fill="#FBF3E2" stroke="#C8961E" stroke-width="1.5"/>
+  <text x="731" y="243" text-anchor="middle" font-size="12" font-weight="600" fill="#8a6516">/work</text>
+  <text x="731" y="258" text-anchor="middle" font-size="9" font-style="italic" fill="#b5851a">workflow</text>
+
+  <!-- the invariant / output -->
+  <rect x="242" y="298" width="196" height="58" rx="9" fill="#E9F6EE" stroke="#3A9D5D" stroke-width="1.8"/>
+  <text x="340" y="320" text-anchor="middle" font-size="12.5" font-weight="700" fill="#27613f">falsifiable finding</text>
+  <text x="340" y="336" text-anchor="middle" font-size="9" font-style="italic" fill="#3A9D5D">failing test · file:line · NO ISSUES</text>
+
+  <text x="410" y="384" text-anchor="middle" font-size="10" font-style="italic" fill="#8a8a92">every reviewer returns a falsifiable finding — prose rejected; this is what `good` means concretely.</text>
+</svg>

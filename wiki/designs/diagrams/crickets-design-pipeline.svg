@@ -1,0 +1,63 @@
+<svg viewBox="0 0 1020 300" width="1224" height="360" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+  <defs>
+    <marker id="s" markerWidth="10" markerHeight="10" refX="7.2" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#5B7C9E"/>
+    </marker>
+    <marker id="r" markerWidth="10" markerHeight="10" refX="7.2" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#9aa0a8"/>
+    </marker>
+  </defs>
+
+  <!-- pipeline edges (solid) -->
+  <g stroke="#5B7C9E" stroke-width="1.9" fill="none" marker-end="url(#s)">
+    <path d="M174,71 L212,71"/>
+    <path d="M354,71 L392,71"/>
+    <path d="M554,71 L592,71"/>
+    <path d="M754,71 L792,71"/>
+    <path d="M879,98 L800,228"/>
+  </g>
+  <text x="845" y="170" font-size="9.5" font-style="italic" fill="#5B7C9E" transform="rotate(58 845 170)">hands off</text>
+
+  <!-- optional + gate edges (dashed) -->
+  <g stroke="#9aa0a8" stroke-width="1.5" stroke-dasharray="5 4" fill="none" marker-end="url(#r)">
+    <path d="M99,44 C 99,12 470,12 472,42"/>
+    <path d="M664,150 L668,100"/>
+    <path d="M742,150 L862,100"/>
+  </g>
+  <text x="286" y="14" text-anchor="middle" font-size="9" font-style="italic" fill="#8a8a92">optional</text>
+  <text x="650" y="128" text-anchor="end" font-size="9" font-style="italic" fill="#8a8a92">guards</text>
+  <text x="812" y="128" font-size="9" font-style="italic" fill="#8a8a92">guards</text>
+
+  <!-- front matter (optional) -->
+  <rect x="24" y="44" width="150" height="54" rx="9" fill="#F4F4F6" stroke="#B0B0B8" stroke-width="1.5"/>
+  <text x="99" y="66" text-anchor="middle" font-size="12" font-weight="600" fill="#8a8a92">/interview-me</text>
+  <text x="99" y="82" text-anchor="middle" font-size="9" font-style="italic" fill="#a0a0a8">brief · ~95%</text>
+
+  <rect x="214" y="44" width="140" height="54" rx="9" fill="#F4F4F6" stroke="#B0B0B8" stroke-width="1.5"/>
+  <text x="284" y="66" text-anchor="middle" font-size="12" font-weight="600" fill="#8a8a92">/spec</text>
+  <text x="284" y="82" text-anchor="middle" font-size="9" font-style="italic" fill="#a0a0a8">PRD</text>
+
+  <!-- the core verbs -->
+  <rect x="394" y="44" width="160" height="54" rx="9" fill="#F2EEFB" stroke="#7E57C2" stroke-width="2.2"/>
+  <text x="474" y="66" text-anchor="middle" font-size="12.5" font-weight="700" fill="#5b3a8c">author</text>
+  <text x="474" y="82" text-anchor="middle" font-size="9" font-style="italic" fill="#7E57C2">draft → review → final</text>
+
+  <rect x="594" y="44" width="160" height="54" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/>
+  <text x="674" y="66" text-anchor="middle" font-size="12.5" font-weight="600" fill="#34516e">translate</text>
+  <text x="674" y="82" text-anchor="middle" font-size="9" font-style="italic" fill="#5B7C9E">final doc → parts/</text>
+
+  <rect x="794" y="44" width="170" height="54" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/>
+  <text x="879" y="66" text-anchor="middle" font-size="12.5" font-weight="600" fill="#34516e">sequence</text>
+  <text x="879" y="82" text-anchor="middle" font-size="9" font-style="italic" fill="#5B7C9E">topo-sort → named plans</text>
+
+  <!-- the gate -->
+  <rect x="574" y="150" width="200" height="50" rx="9" fill="#EAF1FB" stroke="#3A6EA5" stroke-width="2"/>
+  <text x="674" y="172" text-anchor="middle" font-size="12" font-weight="700" fill="#1e3a5f">design_doc.py</text>
+  <text x="674" y="188" text-anchor="middle" font-size="9" font-style="italic" fill="#3A6EA5">Status:final gate</text>
+
+  <!-- the loop -->
+  <rect x="574" y="228" width="420" height="48" rx="9" fill="#F0F2F5" stroke="#8a93a0" stroke-width="1.6"/>
+  <text x="784" y="257" text-anchor="middle" font-size="12.5" font-weight="600" fill="#3a4250">/plan → /work → /review → /release</text>
+
+  <text x="300" y="262" text-anchor="middle" font-size="10" font-style="italic" fill="#8a8a92">a strictly-ordered pipeline above /plan; author is the only verb that moves Status to final.</text>
+</svg>

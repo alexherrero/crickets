@@ -11,7 +11,7 @@ approved: 2026-06-23
 ---
 
 > [!NOTE]
-> **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-23).** child-design — **the `developer-safety` capability** (the control + safety layer: the recoverability gate, operator-control hooks, engineering-norm snippets + their enforcement). `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). Points *up* at the [crickets HLD](crickets-hld.md).
+> **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-23) · locked 2026-06-28 (final AG design sweep).** child-design — **the `developer-safety` capability** (the control + safety layer: the recoverability gate, operator-control hooks, engineering-norm snippets + their enforcement). `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). Points *up* at the [crickets HLD](crickets-hld.md).
 
 # developer-safety
 
@@ -41,22 +41,7 @@ It engages the phase loop one-directionally — `developer-safety` **enhances** 
 | `coauthor-guard` | hook · prepare-commit-msg | automatic — every commit *(to build)* | Deterministically **strips** any agent `Co-Authored-By` trailer before the commit is written — `commit-no-coauthor` made mechanical, on every host. |
 | `worktrees-operator-initiated` | snippet | composed by other plugins | Worktrees only on operator initiation — never an autonomous spawn. |
 
-```mermaid
-graph TD
-    A["every outward action"]
-    OP(["operator"])
-    OP -. "drops .harness/STOP" .-> KS["kill-switch hook<br/><i>blocks next tool call</i>"]
-    OP -. "writes .harness/STEER.md" .-> ST["steer hook<br/><i>injects a redirect</i>"]
-    KS --> A
-    ST --> A
-    A --> G{"recoverability gate"}
-    G -->|recoverable| P["proceed — announced"]
-    G -->|unrecoverable| C["stop — operator confirms"]
-    FL["settings allowlist<br/><i>mechanical floor</i>"] -. "backstops" .-> G
-    TE(["turn ends"]) --> CS["commit-on-stop hook<br/><i>auto-snapshot if dirty → refs/auto-save</i>"]
-    classDef gate fill:#eef4ff,stroke:#3a6ea5,color:#1e3a5f;
-    class G gate;
-```
+![The developer-safety control + safety layer as three gates over a norm layer: the control gate (operator drops STOP/STEER → kill-switch / steer hooks), the judgment gate (every outward action passes a recoverability gate — recoverable proceeds announced, unrecoverable stops for operator confirmation, backstopped by the settings allowlist), and the preservation gate (turn-end commit-on-stop auto-snapshots a dirty tree to refs/auto-save); ambient and never invoked](diagrams/crickets-developer-safety.svg)
 
 *The operator's only manual touch-points are dropping a `STOP` / `STEER` file (halt / redirect) and answering a confirmation when an unrecoverable action hits the gate. Everything else is ambient — the judgment gate runs on every outward action (backstopped mechanically by the settings allowlist), and `commit-on-stop` snapshots a dirty tree automatically at every turn-end.*
 
@@ -112,6 +97,8 @@ The gates are not uniform across hosts. `commit-on-stop` is a pure side-effect, 
 - **Up:** [crickets HLD](crickets-hld.md) · [composition](crickets-composition.md) · [conventions](crickets-conventions.md) (cites the snippets)
 
 ## Amendment log
+
+**2026-06-28 — lock-down sweep (operator review).** Converted the three-gates mermaid to a house-style hand-SVG (`diagrams/crickets-developer-safety.svg`). Confirmed the three gates (judgment · control · preservation) over the norm layer, the ambient never-invoked stance, and the load-bearing invariant — recoverability is reversibility, not blast-radius. The folded ADR 0003/0028/0022 records (0009 re-homed to code-review) and the newest-first log are unchanged. Locked as a v5–v8 guidepost.
 
 **2026-06-24 — folded ADRs 0003 / 0028 / 0022 into this design (AG Phase 4, move-and-retire); ADR 0009 re-homed to code-review (AG settle-sweep, 2026-06-25).**
 

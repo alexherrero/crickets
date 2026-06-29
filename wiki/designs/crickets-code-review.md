@@ -11,7 +11,7 @@ approved: 2026-06-23
 ---
 
 > [!NOTE]
-> **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-23).** child-design — **the `code-review` capability** (adversarial review — assume the code is broken and prove otherwise). `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). Points *up* at the [crickets HLD](crickets-hld.md).
+> **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-23) · locked 2026-06-28 (final AG design sweep).** child-design — **the `code-review` capability** (adversarial review — assume the code is broken and prove otherwise). `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). Points *up* at the [crickets HLD](crickets-hld.md).
 
 # code-review
 
@@ -40,16 +40,7 @@ The primitives, all delivered.
 
 Plus the **`evidence-tracker`** hook (fires in `/work`), the `cross-review.sh` script, and the `security-review` + `testing-strategy` skills.
 
-```mermaid
-graph TD
-    CR["<b>code-review</b><br/><i>good, applied to code</i>"]
-    CR --> CMD["commands<br/><i>/code-review · /doubt · /simplify</i>"]
-    CR --> AG["sub-agents<br/><i>adversarial-reviewer (+cross)<br/>security-auditor · test-engineer</i>"]
-    CR --> ET["evidence-tracker hook"]
-    AG -. "auto-dispatched by" .-> RVP["/review"]
-    ET -. "gates" .-> WK["/work"]
-    AG --> CT["falsifiable finding<br/><i>failing test · file:line · NO ISSUES</i>"]
-```
+![The code-review capability — an implementation of `good` applied to code — composes three surfaces (commands /code-review·/doubt·/simplify, the adversarial sub-agents incl. the cross-model variant, and the evidence-tracker /work-gate hook); the sub-agents are auto-dispatched by /review and the hook gates /work; every reviewer returns a falsifiable finding — failing test · file:line · NO ISSUES, prose rejected](diagrams/crickets-code-review.svg)
 
 *Three operator-invoked commands + the auto-dispatched adversarial sub-agents + the `evidence-tracker` `/work` gate; every reviewer returns a falsifiable finding (prose rejected) — what `good` means concretely.*
 
@@ -101,6 +92,8 @@ code-review **implements `good`** — the adversarial-review contract *is* what 
 - **Up / composes:** [crickets HLD](crickets-hld.md) · [composition](crickets-composition.md) · [agentm Opinions](https://github.com/alexherrero/agentm/wiki/agentm-opinions-and-gates) (`good`)
 
 ## Amendment log
+
+**2026-06-28 — lock-down sweep (operator review).** Converted the structure mermaid to a house-style hand-SVG (`diagrams/crickets-code-review.svg`). Confirmed code-review is *an implementation of `good` applied to code* and the falsifiable-findings-only invariant (failing test / `file:line` / `NO ISSUES`; prose rejected). The folded ADR 0009 record and the newest-first log are unchanged. Locked as a v5–v8 guidepost.
 
 **2026-06-28 — compose `pii-scrubber` on the cross-model path (critique W9).** Named `privacy`'s `pii-scrubber` in Dependencies and flagged the trust-boundary in Risks: the raw diff shipped to the external model (Gemini → Google) is scrubbed before shell-out, or a pre-flight re-confirm fires on scrub-positive material — `[PENDING-IMPL]` in `cross-review.sh`. *Re-audit:* wire the scrub before the cross-model path ships on by default.
 

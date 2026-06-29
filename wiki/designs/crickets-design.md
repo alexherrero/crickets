@@ -11,7 +11,7 @@ approved: 2026-06-24
 ---
 
 > [!NOTE]
-> **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-24).** child-design — **the `design` capability** (design authoring across the whole sizing ladder above `/plan`). `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). Points *up* at the [crickets HLD](crickets-hld.md).
+> **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-24) · locked 2026-06-28 (final AG design sweep).** child-design — **the `design` capability** (design authoring across the whole sizing ladder above `/plan`). `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). Points *up* at the [crickets HLD](crickets-hld.md).
 
 # design
 
@@ -41,17 +41,7 @@ The primitives:
 | architecture-rung scaffolding | — | to build | Multi-system HLD + cross-system composition analysis + architecture-review. |
 | abbreviated-design template | template | to build | The default-rung template. |
 
-```mermaid
-graph LR
-    P["/plan<br/><i>task list</i>"] --> AB["abbreviated<br/><i>default rung</i>"]
-    AB --> FU["full design<br/><i>single-system</i>"]
-    FU --> AR["architecture<br/><i>cross-system HLD</i>"]
-    ENG["Engineer · Tech-Lead"] -. "reach for" .-> AB
-    DES["Designer"] -. "composes" .-> FU
-    ARC["Architect"] -. "composes" .-> AR
-    classDef def fill:#eef4ff,stroke:#3a6ea5,color:#1e3a5f;
-    class AB def;
-```
+![The design sizing ladder above /plan: /plan's task list feeds the abbreviated rung (the default most work lands on), then full design (single-system), then architecture (cross-system HLD); the Engineer/Tech-Lead reach for abbreviated, the Designer composes full, the Architect composes architecture — each persona enters at its altitude](diagrams/crickets-design-ladder.svg)
 
 *One sizing ladder above `/plan` — abbreviated is the default rung most work lands on, full for a single system, architecture for cross-system HLDs (the four-pillar AG set is the worked example); each persona enters at its altitude.*
 
@@ -101,19 +91,7 @@ The conventions, templates, and voice that govern design authoring **evolve from
 
 The authoring chain is a strictly-ordered pipeline **above `/plan`**, split between interactive prompts and deterministic helpers (the crickets idiom: gates + sorts + writes in unit-tested stdlib Python; section walks + proposals + approvals in the prompt).
 
-```mermaid
-graph LR
-    IM["/interview-me<br/><i>brief · ~95%</i>"] --> SP["/spec<br/><i>PRD</i>"]
-    SP --> AU["author<br/><i>draft→review→final</i>"]
-    IM -.-> AU
-    AU --> TR["translate<br/><i>final doc → parts/</i>"]
-    TR --> SQ["sequence<br/><i>topo-sort → named plans</i>"]
-    SQ --> LOOP["/plan → /work → /review → /release"]
-    GATE["design_doc.py<br/><i>Status:final gate</i>"] -. "guards" .-> TR
-    GATE -. "guards" .-> SQ
-    classDef gate fill:#eef4ff,stroke:#3a6ea5,color:#1e3a5f;
-    class GATE gate;
-```
+![The design authoring pipeline above /plan: optional /interview-me → /spec front matter feeds author (draft→review→final, the only verb that moves Status to final), then translate (final doc → parts/), then sequence (topo-sort → named plans), handing off to the /plan → /work → /review → /release loop; design_doc.py's Status:final gate guards translate and sequence](diagrams/crickets-design-pipeline.svg)
 
 - **Front matter (optional):** `/interview-me` drives a brief to ~95% confidence one question at a time; `/spec` writes a six-section PRD (its Out-of-scope section is the highest-value one). Both feed a confirmed brief downstream.
 - **The core — `/design` author → translate → sequence:** **author** walks the rung template's sections and is the only verb that moves Status `draft → review → final` (final needs a human "approve as final"); **translate** (gated on Status:final + a non-empty Detailed Design, both via `design_doc.py`) splits the final doc into `parts/`, one per Detailed-Design subsection, each sized for a single `/work` cycle; **sequence** (`design_sequence.py` — a Kahn topo-sort with an alphabetical tie-break, so re-runs never churn) orders the parts by their dependency DAG and writes them via `stage_plan.py` — the first **activated** to a named `PLAN-<doc>-<part>.md`, the rest **queued** inert, never touching the singleton `PLAN.md`.
@@ -168,6 +146,8 @@ design **implements `how-we-engineer`** (layer 3 — the sizing ladder + the sec
 - **Templates:** abbreviated-design-template · hld-template · the full template (`developer-workflows/templates/design-doc.md`)
 - **Voice:** `personal/_always-load/docs-prose-style.md` (the learned prose-voice opinion) · `style_resolver.py` (the base⊕overlay seam, built for wiki)
 - **Up / composed by:** [crickets HLD](crickets-hld.md) · [composition](crickets-composition.md) · [Personas](https://github.com/alexherrero/agentm/wiki/agentm-personas) (Architect / Designer / Engineer-Tech-Lead) · [development-lifecycle](crickets-development-lifecycle.md) · [research](crickets-research.md) (the soft context input) · [conventions](crickets-conventions.md) + [wiki](crickets-wiki.md) (the `documentation` convention for published output) · [agentm Opinions](https://github.com/alexherrero/agentm/wiki/agentm-opinions-and-gates) (`how-we-engineer` / `good` / voice)
+
+**2026-06-28 — lock-down sweep (operator review).** Converted both mermaid diagrams to house-style hand-SVGs (the sizing ladder `diagrams/crickets-design-ladder.svg` + the author→translate→sequence pipeline `diagrams/crickets-design-pipeline.svg`). Confirmed the three-rung ladder above `/plan` and the organizing line — *structure is a convention, voice is an opinion*. No content change. Locked as a v5–v8 guidepost.
 
 **2026-06-24 — authored, reviewed, and finalized.** *(Authored + deepened 2026-06-23; approved 2026-06-24.)* `design` authors design documents across the whole **sizing ladder above `/plan`** — three rungs of one ladder (**abbreviated** default · **full** · **architecture/HLD**), renamed `design-docs` → `design`, declaring `[design, architecture]`. The Design section is reasoning-first: **why we design** (fix architecture + locked calls before code; the head of the loop that makes plans possible), **what goes into each rung template** (the canonical-seven / locked-ten / vision-led-seven section structures), **how a design adapts its template** (rungs nest by addition; N/A-omit; the deliberately-dropped sections), **the layering** (template ⊕ design-authoring conventions ⊕ the `how-we-engineer` / `good` opinions ⊕ the operator's voice ⊕ the published `documentation` convention), **self-reinforced learning** (the built reflection loop that grew `docs-prose-style.md` from these reviews; the designed Experience→Opinions sharpening), **the author → translate → sequence workflows + plug-in points** (with a pipeline diagram), and **how design feeds the dev loop** (generation via `sequence` + grounding via the hooks; research a soft input). The organizing line: **structure is a convention, voice is an opinion.**
 

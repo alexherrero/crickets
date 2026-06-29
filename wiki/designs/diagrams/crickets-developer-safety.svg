@@ -1,0 +1,81 @@
+<svg viewBox="0 0 880 530" width="1100" height="663" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+  <defs>
+    <marker id="s" markerWidth="10" markerHeight="10" refX="7.2" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#5B7C9E"/>
+    </marker>
+    <marker id="r" markerWidth="10" markerHeight="10" refX="7.2" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#9aa0a8"/>
+    </marker>
+  </defs>
+
+  <!-- section labels -->
+  <text x="40" y="32" font-size="11.5" font-weight="700" font-style="italic" fill="#9aa0a8">① control gate — halt / redirect</text>
+  <text x="196" y="214" font-size="11.5" font-weight="700" font-style="italic" fill="#9aa0a8">② judgment gate — recoverable?</text>
+  <text x="648" y="296" font-size="11.5" font-weight="700" font-style="italic" fill="#9aa0a8">③ preservation gate</text>
+
+  <!-- dashed operator + backstop edges -->
+  <g stroke="#9aa0a8" stroke-width="1.5" stroke-dasharray="5 4" fill="none" marker-end="url(#r)">
+    <path d="M124,90 L140,126"/>
+    <path d="M188,72 L364,126"/>
+    <path d="M468,332 L402,335"/>
+  </g>
+  <text x="60" y="112" font-size="9" font-style="italic" fill="#8a8a92">drops STOP</text>
+  <text x="300" y="96" font-size="9" font-style="italic" fill="#8a8a92">writes STEER.md</text>
+  <text x="430" y="324" text-anchor="end" font-size="9" font-style="italic" fill="#8a8a92">backstops</text>
+
+  <!-- solid edges -->
+  <g stroke="#5B7C9E" stroke-width="1.8" fill="none" marker-end="url(#s)">
+    <path d="M140,182 L268,224"/>
+    <path d="M370,182 L350,224"/>
+    <path d="M310,272 L310,310"/>
+    <path d="M268,366 L168,422"/>
+    <path d="M352,366 L398,422"/>
+    <path d="M770,422 L762,366"/>
+  </g>
+  <text x="208" y="402" font-size="9.5" font-style="italic" fill="#3A9D5D">recoverable</text>
+  <text x="392" y="402" font-size="9.5" font-style="italic" fill="#b5851a">unrecoverable</text>
+
+  <!-- operator -->
+  <rect x="60" y="44" width="140" height="46" rx="23" fill="#F0F2F5" stroke="#8a93a0" stroke-width="1.6"/>
+  <text x="130" y="72" text-anchor="middle" font-size="12.5" font-weight="600" fill="#3a4250">operator</text>
+
+  <!-- control hooks -->
+  <rect x="40" y="126" width="200" height="56" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/>
+  <text x="140" y="149" text-anchor="middle" font-size="12" font-weight="600" fill="#34516e">kill-switch hook</text>
+  <text x="140" y="165" text-anchor="middle" font-size="9" font-style="italic" fill="#5B7C9E">blocks next tool call</text>
+
+  <rect x="270" y="126" width="200" height="56" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/>
+  <text x="370" y="149" text-anchor="middle" font-size="12" font-weight="600" fill="#34516e">steer hook</text>
+  <text x="370" y="165" text-anchor="middle" font-size="9" font-style="italic" fill="#5B7C9E">injects a redirect</text>
+
+  <!-- every outward action -->
+  <rect x="200" y="224" width="220" height="48" rx="9" fill="#F0F2F5" stroke="#8a93a0" stroke-width="1.6"/>
+  <text x="310" y="253" text-anchor="middle" font-size="12.5" font-weight="600" fill="#3a4250">every outward action</text>
+
+  <!-- recoverability gate -->
+  <rect x="220" y="310" width="180" height="56" rx="9" fill="#EAF1FB" stroke="#3A6EA5" stroke-width="2.2"/>
+  <text x="310" y="334" text-anchor="middle" font-size="12.5" font-weight="700" fill="#1e3a5f">recoverability gate</text>
+  <text x="310" y="351" text-anchor="middle" font-size="9.5" font-style="italic" fill="#3A6EA5">can this be undone?</text>
+
+  <!-- outcomes -->
+  <rect x="78" y="422" width="180" height="50" rx="9" fill="#E9F6EE" stroke="#3A9D5D" stroke-width="1.7"/>
+  <text x="168" y="452" text-anchor="middle" font-size="12" font-weight="600" fill="#27613f">proceed — announced</text>
+
+  <rect x="300" y="422" width="200" height="50" rx="9" fill="#FBF3E2" stroke="#C8961E" stroke-width="1.7"/>
+  <text x="400" y="452" text-anchor="middle" font-size="12" font-weight="600" fill="#8a6516">stop — operator confirms</text>
+
+  <!-- settings allowlist -->
+  <rect x="470" y="306" width="170" height="56" rx="9" fill="#F4F4F6" stroke="#B0B0B8" stroke-width="1.5"/>
+  <text x="555" y="329" text-anchor="middle" font-size="12" font-weight="600" fill="#8a8a92">settings allowlist</text>
+  <text x="555" y="345" text-anchor="middle" font-size="9" font-style="italic" fill="#a0a0a8">mechanical floor</text>
+
+  <!-- preservation -->
+  <rect x="648" y="306" width="224" height="58" rx="9" fill="#E9F6EE" stroke="#3A9D5D" stroke-width="1.7"/>
+  <text x="760" y="329" text-anchor="middle" font-size="12" font-weight="600" fill="#27613f">commit-on-stop hook</text>
+  <text x="760" y="345" text-anchor="middle" font-size="8.7" font-style="italic" fill="#3A9D5D">auto-snapshot if dirty → refs/auto-save</text>
+
+  <rect x="700" y="422" width="140" height="46" rx="23" fill="#F0F2F5" stroke="#8a93a0" stroke-width="1.6"/>
+  <text x="770" y="450" text-anchor="middle" font-size="12.5" font-weight="600" fill="#3a4250">turn ends</text>
+
+  <text x="440" y="510" text-anchor="middle" font-size="10" font-style="italic" fill="#8a8a92">ambient, never invoked — recoverability is reversibility, not blast-radius; when uncertain, treated as unrecoverable.</text>
+</svg>
