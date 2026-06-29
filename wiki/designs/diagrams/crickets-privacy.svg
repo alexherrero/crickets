@@ -1,0 +1,45 @@
+<svg viewBox="0 0 860 380" width="1075" height="475" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+  <defs>
+    <marker id="s" markerWidth="10" markerHeight="10" refX="7.2" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#5B7C9E"/>
+    </marker>
+    <marker id="r" markerWidth="10" markerHeight="10" refX="7.2" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#9aa0a8"/>
+    </marker>
+  </defs>
+
+  <g stroke="#5B7C9E" stroke-width="1.8" fill="none" marker-end="url(#s)">
+    <path d="M400,70 L292,128"/>
+    <path d="M460,70 L560,128"/>
+  </g>
+  <g stroke="#9aa0a8" stroke-width="1.5" stroke-dasharray="5 4" fill="none" marker-end="url(#r)">
+    <path d="M210,188 L188,278"/>
+    <path d="M400,280 L300,190"/>
+    <path d="M640,188 L692,278"/>
+  </g>
+  <text x="120" y="240" font-size="9" font-style="italic" fill="#8a8a92">scrubs incident for</text>
+  <text x="372" y="238" text-anchor="end" font-size="9" font-style="italic" fill="#8a8a92">reactive sibling</text>
+  <text x="700" y="240" font-size="9" font-style="italic" fill="#8a8a92">consumes good</text>
+
+  <rect x="360" y="24" width="140" height="46" rx="9" fill="#F2EEFB" stroke="#7E57C2" stroke-width="2.3"/>
+  <text x="430" y="51" text-anchor="middle" font-size="13" font-weight="700" fill="#5b3a8c">privacy</text>
+
+  <rect x="80" y="130" width="300" height="58" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/>
+  <text x="230" y="153" text-anchor="middle" font-size="12.5" font-weight="600" fill="#34516e">deterministic floor</text>
+  <text x="230" y="169" text-anchor="middle" font-size="8.6" font-style="italic" fill="#5B7C9E">pii-patterns · check-no-pii.sh · pii-scrubber · pre-push</text>
+
+  <rect x="470" y="130" width="250" height="58" rx="9" fill="#F4F4F6" stroke="#B0B0B8" stroke-width="1.5"/>
+  <text x="595" y="153" text-anchor="middle" font-size="12.5" font-weight="600" fill="#8a8a92">privacy-review</text>
+  <text x="595" y="169" text-anchor="middle" font-size="9" font-style="italic" fill="#a0a0a8">LLM practice review (to adapt)</text>
+
+  <rect x="90" y="280" width="180" height="46" rx="9" fill="#FBF3E2" stroke="#C8961E" stroke-width="1.5"/>
+  <text x="180" y="308" text-anchor="middle" font-size="12" font-weight="600" fill="#8a6516">diagnostics</text>
+
+  <rect x="320" y="280" width="260" height="46" rx="9" fill="#FBF3E2" stroke="#C8961E" stroke-width="1.5"/>
+  <text x="450" y="308" text-anchor="middle" font-size="11.5" font-weight="600" fill="#8a6516">maintenance · cve-security-patch</text>
+
+  <rect x="620" y="280" width="160" height="46" rx="9" fill="#FBF3E2" stroke="#C8961E" stroke-width="1.5"/>
+  <text x="700" y="308" text-anchor="middle" font-size="12" font-weight="600" fill="#8a6516">opinions</text>
+
+  <text x="430" y="362" text-anchor="middle" font-size="10" font-style="italic" fill="#8a8a92">a deterministic leak floor (built) + an LLM practice review (to adapt); cve-security-patch is its reactive sibling.</text>
+</svg>

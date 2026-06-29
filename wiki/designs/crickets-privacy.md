@@ -11,7 +11,7 @@ approved: 2026-06-23
 ---
 
 > [!NOTE]
-> **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-23).** child-design — **the `privacy` capability** (keep secrets + personal information out of what gets committed and pushed, and keep good privacy practice in the code). `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). Points *up* at the [crickets HLD](crickets-hld.md).
+> **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-23) · locked 2026-06-28 (final AG design sweep).** child-design — **the `privacy` capability** (keep secrets + personal information out of what gets committed and pushed, and keep good privacy practice in the code). `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). Points *up* at the [crickets HLD](crickets-hld.md).
 
 # privacy
 
@@ -31,17 +31,7 @@ privacy works in three layers — **proactive** (don't compose a secret), **dete
 | `pre-push` hook | hook | delivered | Mandatory enforcer — blocks a push carrying a finding. |
 | `privacy-review` | skill | to adapt | Review the codebase's privacy **practices** (data minimization · PII-in-logs · retention · consent) — not string scanning. |
 
-```mermaid
-graph TD
-    PV["<b>privacy</b>"]
-    PV --> DET["deterministic floor<br/><i>pii-patterns · check-no-pii.sh · pii-scrubber · pre-push</i>"]
-    PV --> REV["privacy-review<br/><i>LLM practice review (to adapt)</i>"]
-    DET -. "scrubs incident for" .-> DG["diagnostics"]
-    CVE["maintenance · cve-security-patch"] -. "reactive sibling" .-> DET
-    REV -. "consumes good" .-> OP["opinions"]
-    classDef gf fill:#f4f4f6,stroke:#b0b0b8,color:#8a8a92;
-    class REV gf;
-```
+![The privacy capability: a deterministic leak floor (pii-patterns · check-no-pii.sh · pii-scrubber · pre-push — built) plus an LLM privacy-review (to adapt); the floor scrubs incident material for diagnostics, maintenance's cve-security-patch is its reactive sibling, and the review consumes the good opinion](diagrams/crickets-privacy.svg)
 
 *A deterministic leak floor (delivered — regex, never LLM) and an LLM privacy-practice review (to adapt); the floor scrubs incidents for diagnostics; maintenance's `cve-security-patch` is its reactive sibling.*
 
@@ -104,6 +94,8 @@ The capability is renamed `pii` → `privacy` (the bare concern-noun; `capabilit
 - **Up:** [crickets HLD](crickets-hld.md) · [composition](crickets-composition.md) · [agentm Opinions](https://github.com/alexherrero/agentm/wiki/agentm-opinions-and-gates) (`done` / `good` / `how-we-engineer`)
 
 ## Amendment log
+
+**2026-06-28 — lock-down sweep (operator review).** Converted the layers mermaid to a house-style hand-SVG (`diagrams/crickets-privacy.svg`). Confirmed the deterministic leak floor (built) + the LLM privacy-review (to adapt), and that `cve-security-patch` is its reactive sibling. No content change. Locked as a v5–v8 guidepost.
 
 **2026-06-23 — added the layers diagram (diagram backfill).** Per the every-design-carries-a-diagram rule.
 

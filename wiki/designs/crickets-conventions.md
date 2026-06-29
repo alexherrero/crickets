@@ -11,7 +11,7 @@ approved: 2026-06-23
 ---
 
 > [!NOTE]
-> **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-23).** child-design — **the `conventions` capability** (the base set of standards a plugin consumes before opinions weigh in). `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). Points *up* at the [crickets HLD](crickets-hld.md).
+> **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-23) · locked 2026-06-28 (final AG design sweep).** child-design — **the `conventions` capability** (the base set of standards a plugin consumes before opinions weigh in). `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). Points *up* at the [crickets HLD](crickets-hld.md).
 
 # conventions
 
@@ -25,7 +25,7 @@ approved: 2026-06-23
 - a skip needs a named blocker;
 - keep state on disk.
 
-Each enforceable convention is backed by a deterministic gate (`scripts/check-*.sh`) — shipped, or **gate-targeted** (`[PENDING-IMPL]`) for a newly-folded rule whose gate isn't built yet; that gate (present or pledged) is what makes it a *convention* and not an *opinion*. They are the concrete substrate the agentm opinions cite; the arrow is one-way — opinions, personas, and workflows read conventions, conventions never ask an opinion.
+Each enforceable convention is backed by a deterministic gate (`scripts/check-*.sh`) — shipped, or **gate-targeted** (`[PENDING-IMPL]`) when a newly-folded rule's gate isn't built yet. That gate, present or pledged, is what makes it a *convention* and not an *opinion*. Conventions are the substrate the agentm opinions cite, and the arrow runs one way: opinions, personas, and workflows read conventions; conventions never ask an opinion.
 
 ## Overview
 
@@ -42,26 +42,7 @@ Each enforceable convention is backed by a deterministic gate (`scripts/check-*.
 | **coding** | the day-to-day base (naming · error-handling · structure) under testing + quality — no home today | new |
 | **documentation** | the Diátaxis structure (four modes · single-mode-per-page · intent-group layout · length ceilings · naming) — enforced by [wiki](crickets-wiki.md)'s `check-wiki.py` | partial |
 
-```mermaid
-graph TD
-    WF["phase workflows<br/><i>/work · /review · /release</i>"]
-    PE["personas<br/><i>Engineer · Reviewer · Maintainer</i>"]
-    OP["opinions<br/><i>done · good · efficient · how-we-engineer</i>"]
-
-    CV["<b>conventions</b><br/><i>testing · releasing · ci · code-quality · agentic-engineering<br/>reliability · coding · documentation</i>"]
-
-    GATE["check-all.sh gate battery"]
-    OWN["developer-safety · privacy<br/>maintenance · code-review"]
-
-    WF -- "probe by name (resolver)" --> CV
-    PE -- "lean on" --> CV
-    OP -. "cite — one-way" .-> CV
-    CV == "rules enforced by" ==> GATE
-    CV -. "cites, never re-owns" .-> OWN
-
-    classDef base fill:#eef4ff,stroke:#3a6ea5,color:#1e3a5f;
-    class CV base;
-```
+![The conventions hub: phase workflows probe it by name through the resolver and personas lean on it, while opinions cite it one-way; its rules are enforced by the check-all.sh gate battery, and it cites — never re-owns — the standards held by developer-safety, privacy, maintenance, and code-review](diagrams/crickets-conventions.svg)
 
 *Consumers (workflows, personas) read `conventions` by name through the resolver; opinions **cite** it one-way (it is their substrate); its rules are enforced by the **`check-all.sh` gate battery** — the can't-forget floor; and it **cites, never re-owns**, the standards held by `developer-safety` / `privacy` / `maintenance` / `code-review`.*
 
@@ -133,7 +114,7 @@ Adding a domain = drop a `rules/` file (+ its `check-*.sh` gate), a `skills/` fo
 A consumer — a command, skill, persona, or opinion — reaches `conventions` the one-way way everything reaches a capability: **by name through the resolver** (`find_capability` → `capability_resolver.py`, version-matched, graceful-skip), then reads the relevant domain's `rules` / `skills` / `reference`. The harder problem is making sure a consumer **doesn't forget** — handled in two tiers:
 
 - **Gate-backed conventions can't be forgotten.** Every `rule` names a `scripts/check-*.sh` gate, and the gate runs in the **`check-all.sh` battery at every commit** — independent of whether any plugin remembered to consult it. A violation fails the commit, not a code review. (The `ci` convention "run the battery before every commit" is what closes this loop.) This is the strong floor.
-- **Practice + reference conventions are surfaced, not just available.** A skill / reference standard has no gate, so a consumer must read it — and a standard nobody reads is dead. So the applicable conventions are **surfaced at the point of work**: the phase workflows consult their domain (`/work` reads coding + testing, `/release` reads releasing), and the set a project is governed by is surfaced at session/phase start (the always-load shape memory uses). A consumer **declares** the conventions it depends on, and the **Phase-2 conformance gate** can check that a plugin which should consult one actually declares it — so "forgot to call conventions" becomes a gate finding, not a silent gap.
+- **Practice + reference conventions are surfaced, not just available.** A skill / reference standard has no gate, so a consumer must read it — and a standard nobody reads is dead. So the applicable conventions are **surfaced at the point of work**: each phase workflow consults its domain (`/work` reads coding + testing, `/release` reads releasing). The set a project is governed by is surfaced at session start — the pattern the always-load memory already uses. A consumer **declares** the conventions it depends on, and the **Phase-2 conformance gate** can check that a plugin which should consult one actually declares it — so "forgot to call conventions" becomes a gate finding, not a silent gap.
 
 The principle: **prefer the gate.** A convention that can be made gate-backed should be — the battery is the only mechanism that survives forgetfulness; surfacing is the fallback for the genuinely judgment-shaped ones.
 
@@ -149,7 +130,7 @@ The principle: **prefer the gate.** A convention that can be made gate-backed sh
 Two structural lifts at the Phase-3 / v6.0 pass:
 
 1. **Merge** — `testing-conventions` + `releasing-conventions` consolidate to one `src/conventions/`, the `group.yaml` merges, and `capabilities: [conventions]` replaces the two transitional declarations (the merged group declares both the old and new capability names, so the old ones keep resolving — the [composition](crickets-composition.md) rename mechanism). The four existing primitives don't change.
-2. **Migrate the homeless conventions in** — the objective base standards that live only in `AGENTS.md` / `principles.md` / `~/.claude/CLAUDE.md` (the agentic-engineering discipline, the ci-battery rules, the no-change-detector quality rule, the coding base) become **first-class `rules/` + `skills/`**; `AGENTS.md` keeps a pointer, `conventions` owns the standard. The cite-don't-duplicate boundary keeps it from re-owning what `developer-safety` / `privacy` / `maintenance` / `code-review` already hold.
+2. **Migrate the homeless conventions in** — the objective base standards that live only in `AGENTS.md` / `principles.md` / `~/.claude/CLAUDE.md` (the agentic-engineering discipline, the ci-battery rules, the no-change-detector quality rule, the coding base) become standalone `rules/` + `skills/`; `AGENTS.md` keeps a pointer, `conventions` owns the standard. The cite-don't-duplicate boundary keeps it from re-owning what `developer-safety` / `privacy` / `maintenance` / `code-review` already hold.
 
 ## Risks & open questions
 
@@ -168,6 +149,8 @@ Two structural lifts at the Phase-3 / v6.0 pass:
 - **Up:** [crickets HLD](crickets-hld.md) · [composition](crickets-composition.md) · [agentm Opinions](https://github.com/alexherrero/agentm/wiki/agentm-opinions-and-gates) (which cite conventions)
 
 ## Amendment log
+
+**2026-06-28 — lock-down sweep + voice pass (operator review).** Converted the relationship mermaid to a house-style hand-SVG (`diagrams/crickets-conventions.svg`); and did a voice pass to the current design-doc standard — fixed the one LLM-tell (`first-class`→`standalone`) and split the longest run-on sentences into one-claim sentences (the doc was otherwise on-standard: active voice, colon-led lists, no peacock words). No change to the conventions contract. Locked as a v5–v8 guidepost.
 
 **2026-06-28 — AG critique revisions (W6 · R4 · R10).** Demoted the gate thesis to **gate-backed OR gate-targeted** and marked `no-skip-tests`'s `check-no-skip-tests.sh` gate `[PENDING-IMPL]` (W6); named the residual-bucket's structural boundary — a `check-conventions-cite-not-duplicate` portfolio lint (fails on a standard duplicated rather than cited) — in the re-audit triggers (R4); folded `skill-quality` + `check-slop` into the code-quality domain as the gate-targeted skill-shape gate, and scoped `self-correction-loop` out as the agentm Experience→Opinions loop, not a convention (R10). *Re-audit:* ship `check-no-skip-tests.sh` + the cite-not-duplicate lint.
 

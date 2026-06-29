@@ -11,7 +11,7 @@ approved: 2026-06-23
 ---
 
 > [!NOTE]
-> **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-23).** child-design — **the `obsidian-vault` capability** (the Obsidian / Google-Drive storage backend for the agentm memory engine). `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). Points *up* at the [crickets HLD](crickets-hld.md).
+> **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-23) · locked 2026-06-28 (final AG design sweep).** child-design — **the `obsidian-vault` capability** (the Obsidian / Google-Drive storage backend for the agentm memory engine). `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). Points *up* at the [crickets HLD](crickets-hld.md).
 
 # obsidian-vault
 
@@ -31,17 +31,7 @@ All delivered:
 | `conflict-merger-session-start` | hook | SessionStart notice for conflict + duplicate files (non-blocking). |
 | `vault-doctor` | skill | Operator-facing wrapper over `doctor_vault.py` (Claude Code + Antigravity). |
 
-```mermaid
-graph TD
-    ENG["agentm memory engine"]
-    ENG --> SEAM["storage seam<br/><i>StorageBackend contract · selector</i>"]
-    SEAM --> DL["device-local backend"]
-    SEAM --> OV["<b>obsidian-vault</b><br/><i>storage_vault.py</i>"]
-    OV --> WS["V5-0 write stack<br/><i>mutex + content-hash CAS + atomic-write</i>"]
-    OV --> CF["conflict handling<br/><i>vault_conflicts · conflict-merger · vault-doctor</i>"]
-    classDef back fill:#eef4ff,stroke:#3a6ea5,color:#1e3a5f;
-    class OV back;
-```
+![One StorageBackend behind the storage seam: the agentm memory engine talks to the seam (the StorageBackend contract + selector), which binds either the device-local backend or obsidian-vault (storage_vault.py); obsidian-vault adds the V5-0 write stack (mutex + content-hash CAS + atomic-write) and conflict handling (vault_conflicts · conflict-merger · vault-doctor)](diagrams/crickets-obsidian-vault.svg)
 
 *The memory engine reaches storage through the seam; `obsidian-vault` is one interchangeable backend (device-local is the other), implementing the `StorageBackend` contract one-way up; it composes the V5-0 concurrency stack + GDrive-conflict handling.*
 
@@ -83,5 +73,7 @@ None today — the names are stable post-V5-2. **Backlog (filed):** separate Goo
 - **Up:** [crickets HLD](crickets-hld.md) · [composition](crickets-composition.md)
 
 ## Amendment log
+
+**2026-06-28 — lock-down sweep (operator review).** Converted the seam/backend mermaid to a house-style hand-SVG (`diagrams/crickets-obsidian-vault.svg`). Confirmed obsidian-vault is one `StorageBackend` behind the seam (device-local is the sibling) and adds the V5-0 safe-write stack + GDrive-conflict handling, one-way up. No content change. Locked as a v5–v8 guidepost.
 
 **2026-06-23 — authored, reviewed, and finalized.** Authored from the seeded stub and grounded against the live `src/obsidian-vault` plugin. All primitives delivered — `storage_vault.py` (the backend), `doctor_vault.py`, `vault_conflicts.py`, the `conflict-merger` hook, the `vault-doctor` skill. Named the load-bearing direction — **one-way up** (implements the seam contract; the seam never imports it; the sole vault backend since the kernel built-in was deleted at V5-3) — and the V5-0 concurrency stack + GDrive-conflict handling. `### Opinions`: none — it is infrastructure below the substrate. Carries the seam/backend diagram. The GDrive/Obsidian split + the selector generalization are filed backlog (the bare `vault` capability emerges when the split lands). **Re-audit:** generalize the selector when a second backend ships; split GDrive-sync from Obsidian-format at the `vault`-capability backlog item.

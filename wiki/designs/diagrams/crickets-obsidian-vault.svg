@@ -1,0 +1,39 @@
+<svg viewBox="0 0 830 440" width="1037" height="550" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+  <defs>
+    <marker id="s" markerWidth="10" markerHeight="10" refX="7.2" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#5B7C9E"/>
+    </marker>
+  </defs>
+
+  <g stroke="#5B7C9E" stroke-width="1.8" fill="none" marker-end="url(#s)">
+    <path d="M410,70 L410,118"/>
+    <path d="M352,176 L250,224"/>
+    <path d="M470,176 L518,220"/>
+    <path d="M492,280 L468,334"/>
+    <path d="M556,280 L698,334"/>
+  </g>
+
+  <rect x="310" y="24" width="200" height="46" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/>
+  <text x="410" y="51" text-anchor="middle" font-size="12.5" font-weight="600" fill="#34516e">agentm memory engine</text>
+
+  <rect x="290" y="120" width="240" height="56" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/>
+  <text x="410" y="143" text-anchor="middle" font-size="12.5" font-weight="600" fill="#34516e">storage seam</text>
+  <text x="410" y="159" text-anchor="middle" font-size="9" font-style="italic" fill="#5B7C9E">StorageBackend contract · selector</text>
+
+  <rect x="110" y="224" width="200" height="50" rx="9" fill="#F4F4F6" stroke="#B0B0B8" stroke-width="1.5"/>
+  <text x="210" y="253" text-anchor="middle" font-size="12" font-weight="600" fill="#8a8a92">device-local backend</text>
+
+  <rect x="410" y="222" width="220" height="58" rx="9" fill="#EAF1FB" stroke="#3A6EA5" stroke-width="2.3"/>
+  <text x="520" y="245" text-anchor="middle" font-size="13" font-weight="700" fill="#1e3a5f">obsidian-vault</text>
+  <text x="520" y="262" text-anchor="middle" font-size="9.5" font-style="italic" fill="#3A6EA5">storage_vault.py</text>
+
+  <rect x="350" y="334" width="232" height="58" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/>
+  <text x="466" y="357" text-anchor="middle" font-size="12" font-weight="600" fill="#34516e">V5-0 write stack</text>
+  <text x="466" y="373" text-anchor="middle" font-size="8.7" font-style="italic" fill="#5B7C9E">mutex + content-hash CAS + atomic-write</text>
+
+  <rect x="600" y="334" width="216" height="58" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/>
+  <text x="708" y="357" text-anchor="middle" font-size="12" font-weight="600" fill="#34516e">conflict handling</text>
+  <text x="708" y="373" text-anchor="middle" font-size="8.5" font-style="italic" fill="#5B7C9E">vault_conflicts · conflict-merger · vault-doctor</text>
+
+  <text x="415" y="424" text-anchor="middle" font-size="10" font-style="italic" fill="#8a8a92">one StorageBackend behind the seam — the device-local backend is the sibling; obsidian-vault adds the safe-write stack + conflict handling.</text>
+</svg>
