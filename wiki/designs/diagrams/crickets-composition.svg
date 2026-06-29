@@ -1,0 +1,106 @@
+<svg viewBox="0 0 1080 630" width="1350" height="788" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+  <defs>
+    <marker id="ad" markerWidth="10" markerHeight="10" refX="7.2" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#44617D"/>
+    </marker>
+    <marker id="ag" markerWidth="10" markerHeight="10" refX="7.2" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#3A9D5D"/>
+    </marker>
+  </defs>
+
+  <!-- ===== edges (under boxes) ===== -->
+  <!-- enhancer -> spine (dashed green = enhances, soft) -->
+  <g stroke="#3A9D5D" stroke-width="1.6" stroke-dasharray="5 4" fill="none" marker-end="url(#ag)">
+    <path d="M222,55 L401,86"/>
+    <path d="M222,103 L401,99"/>
+    <path d="M222,151 L401,113"/>
+    <path d="M222,199 L401,127"/>
+  </g>
+  <!-- requirer -> spine (solid = requires, hard) -->
+  <g stroke="#44617D" stroke-width="1.8" fill="none" marker-end="url(#ad)">
+    <path d="M858,55 L679,86"/>
+    <path d="M858,103 L679,99"/>
+    <path d="M858,151 L679,113"/>
+    <path d="M858,199 L679,127"/>
+  </g>
+  <!-- spine -> substrate (solid, bold = rests on) -->
+  <path d="M540,142 L540,499" stroke="#44617D" stroke-width="2.4" fill="none" marker-end="url(#ad)"/>
+  <text x="551" y="332" font-size="11" font-style="italic" fill="#44617D">rests on</text>
+  <!-- substrate-direct -> substrate (solid) -->
+  <g stroke="#44617D" stroke-width="1.8" fill="none" marker-end="url(#ad)">
+    <path d="M148,347 L148,499"/>
+    <path d="M344,347 L344,499"/>
+    <path d="M716,347 L716,499"/>
+    <path d="M912,347 L912,499"/>
+  </g>
+
+  <!-- ===== the spine ===== -->
+  <rect x="406" y="70" width="268" height="72" rx="11" fill="#F2EEFB" stroke="#7E57C2" stroke-width="2.5"/>
+  <text x="540" y="102" text-anchor="middle" font-size="15" font-weight="700" fill="#5b3a8c">development-lifecycle</text>
+  <text x="540" y="123" text-anchor="middle" font-size="11.5" font-style="italic" fill="#7E57C2">the spine</text>
+
+  <!-- ===== enhancers (green, soft) ===== -->
+  <rect x="46" y="34" width="176" height="42" rx="9" fill="#E9F6EE" stroke="#3A9D5D" stroke-width="1.6"/>
+  <text x="134" y="54" text-anchor="middle" font-size="12.5" font-weight="600" fill="#27613f">code-review</text>
+  <text x="134" y="68" text-anchor="middle" font-size="9.5" font-style="italic" fill="#3A9D5D">adversarial review</text>
+
+  <rect x="46" y="82" width="176" height="42" rx="9" fill="#E9F6EE" stroke="#3A9D5D" stroke-width="1.6"/>
+  <text x="134" y="102" text-anchor="middle" font-size="12.5" font-weight="600" fill="#27613f">developer-safety</text>
+  <text x="134" y="116" text-anchor="middle" font-size="9.5" font-style="italic" fill="#3A9D5D">recoverability gate</text>
+
+  <rect x="46" y="130" width="176" height="42" rx="9" fill="#E9F6EE" stroke="#3A9D5D" stroke-width="1.6"/>
+  <text x="134" y="150" text-anchor="middle" font-size="12.5" font-weight="600" fill="#27613f">wiki</text>
+  <text x="134" y="164" text-anchor="middle" font-size="9.5" font-style="italic" fill="#3A9D5D">docs upkeep</text>
+
+  <rect x="46" y="178" width="176" height="42" rx="9" fill="#F4F4F6" stroke="#B0B0B8" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="134" y="198" text-anchor="middle" font-size="12.5" font-weight="600" fill="#8a8a92">research</text>
+  <text x="134" y="212" text-anchor="middle" font-size="9.5" font-style="italic" fill="#a0a0a8">new</text>
+
+  <!-- ===== requirers (slate, hard) ===== -->
+  <rect x="858" y="34" width="176" height="42" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/>
+  <text x="946" y="54" text-anchor="middle" font-size="12.5" font-weight="600" fill="#34516e">github-projects</text>
+  <text x="946" y="68" text-anchor="middle" font-size="9.5" font-style="italic" fill="#5B7C9E">board-sync</text>
+
+  <rect x="858" y="82" width="176" height="42" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/>
+  <text x="946" y="102" text-anchor="middle" font-size="12.5" font-weight="600" fill="#34516e">maintenance</text>
+  <text x="946" y="116" text-anchor="middle" font-size="9.5" font-style="italic" fill="#5B7C9E">deps · CVE · debt</text>
+
+  <rect x="858" y="130" width="176" height="42" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/>
+  <text x="946" y="150" text-anchor="middle" font-size="12.5" font-weight="600" fill="#34516e">conventions</text>
+  <text x="946" y="164" text-anchor="middle" font-size="9.5" font-style="italic" fill="#5B7C9E">testing + releasing</text>
+
+  <rect x="858" y="178" width="176" height="42" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/>
+  <text x="946" y="198" text-anchor="middle" font-size="12.5" font-weight="600" fill="#34516e">design</text>
+  <text x="946" y="212" text-anchor="middle" font-size="9.5" font-style="italic" fill="#5B7C9E">design authoring</text>
+
+  <!-- ===== substrate-direct (gold) ===== -->
+  <text x="60" y="292" font-size="10" font-style="italic" fill="#b5851a">rest directly on the substrate ↓</text>
+
+  <rect x="60" y="301" width="176" height="46" rx="9" fill="#FBF3E2" stroke="#C8961E" stroke-width="1.6"/>
+  <text x="148" y="323" text-anchor="middle" font-size="12.5" font-weight="600" fill="#8a6516">token-audit</text>
+  <text x="148" y="338" text-anchor="middle" font-size="9.5" font-style="italic" fill="#b5851a">token metering</text>
+
+  <rect x="256" y="301" width="176" height="46" rx="9" fill="#FBF3E2" stroke="#C8961E" stroke-width="1.6"/>
+  <text x="344" y="323" text-anchor="middle" font-size="12.5" font-weight="600" fill="#8a6516">obsidian-vault</text>
+  <text x="344" y="338" text-anchor="middle" font-size="9.5" font-style="italic" fill="#b5851a">storage backend</text>
+
+  <rect x="628" y="301" width="176" height="46" rx="9" fill="#FBF3E2" stroke="#C8961E" stroke-width="1.6"/>
+  <text x="716" y="323" text-anchor="middle" font-size="12.5" font-weight="600" fill="#8a6516">privacy</text>
+  <text x="716" y="338" text-anchor="middle" font-size="9.5" font-style="italic" fill="#b5851a">data protection</text>
+
+  <rect x="824" y="301" width="176" height="46" rx="9" fill="#F4F4F6" stroke="#B0B0B8" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="912" y="323" text-anchor="middle" font-size="12.5" font-weight="600" fill="#8a8a92">diagnostics</text>
+  <text x="912" y="338" text-anchor="middle" font-size="9.5" font-style="italic" fill="#a0a0a8">new</text>
+
+  <!-- ===== the substrate ===== -->
+  <rect x="140" y="502" width="800" height="66" rx="15" fill="#E3EBF3" stroke="#44617D" stroke-width="2.5"/>
+  <text x="540" y="532" text-anchor="middle" font-size="15" font-weight="700" fill="#2f4a66">agentm substrate</text>
+  <text x="540" y="552" text-anchor="middle" font-size="11.5" font-style="italic" fill="#44617D">memory · opinions · personas</text>
+
+  <!-- ===== legend + note ===== -->
+  <line x1="318" y1="590" x2="348" y2="590" stroke="#3A9D5D" stroke-width="1.6" stroke-dasharray="5 4"/>
+  <text x="354" y="594" font-size="10.5" fill="#3A9D5D">enhances (soft)</text>
+  <line x1="512" y1="590" x2="542" y2="590" stroke="#44617D" stroke-width="1.8"/>
+  <text x="548" y="594" font-size="10.5" fill="#44617D">requires / rests on (hard)</text>
+  <text x="540" y="616" text-anchor="middle" font-size="10" font-style="italic" fill="#8a8a92">research &amp; diagnostics (dimmed) are new — not yet shipping; research also rests on the substrate.</text>
+</svg>

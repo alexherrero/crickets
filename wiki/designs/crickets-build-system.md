@@ -11,7 +11,7 @@ approved: 2026-06-21
 ---
 
 > [!NOTE]
-> **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-21).** child-design — the build pipeline, parent [crickets HLD](crickets-hld.md). Subsumes the launched `crickets-v3-native-plugins.md` design (the *why*; this is the *how* — now its single home; AG Wave 2, 2026-06-24). `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3).
+> **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-21) · locked 2026-06-28 (final AG design sweep).** child-design — the build pipeline, parent [crickets HLD](crickets-hld.md). Subsumes the launched `crickets-v3-native-plugins.md` design (the *why*; this is the *how* — now its single home; AG Wave 2, 2026-06-24). `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3).
 
 # Crickets build system
 
@@ -74,6 +74,8 @@ The *definition* is single-source; the *generation* is deliberately **partial** 
 - **Designs / decisions:** generation + install decisions (folded from ADRs 0013, 0015, 0012, 0014) are in the Amendment log; soft-composition (`enhances:` / `capabilities:`) lives in [composition](crickets-composition.md)
 
 ## Amendment log
+
+**2026-06-28 — lock-down sweep (operator review).** Sized the pipeline diagram (`width`/`height`). Confirmed the single-source-of-truth + determinism (the `generate.py check` drift gate) and the honest partial per-host generation (Antigravity thin-separate; named skips, not full parity). The folded ADR 0012/0013/0014/0015 records and the newest-first log are unchanged. Locked as a v5–v8 guidepost.
 
 **2026-06-24 — subsumed the launched `crickets-v3-native-plugins.md` design (AG Wave 2, move-and-retire).** This design was the *how* reconciling that earlier *why*; it now subsumes it outright. The v3 design is deleted (git history + its six part files retain the full text); its still-live value — the two C4-folded ADRs it had absorbed (AG Phase-2) — is preserved below with decision + why-not + re-audit. The body already holds the as-built pipeline; the per-host emitter differences (the Claude/Antigravity mapping, the `SessionStart` gap, snippets → `rules/`) live in the live emitters + `wiki/reference/Per-Host-Paths.md`.
 

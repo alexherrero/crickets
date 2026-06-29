@@ -11,7 +11,7 @@ approved: 2026-06-22
 ---
 
 > [!NOTE]
-> **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-22).** child-design — **the composition mechanics**, parent [crickets HLD](crickets-hld.md): how capabilities combine with each other, lean on agentm's opinions, and compose onto the person. The parent stays high-level; this holds the wiring. `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). Points *up* at the [crickets HLD](crickets-hld.md).
+> **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-22) · locked 2026-06-28 (final AG design sweep).** child-design — **the composition mechanics**, parent [crickets HLD](crickets-hld.md): how capabilities combine with each other, lean on agentm's opinions, and compose onto the person. The parent stays high-level; this holds the wiring. `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). Points *up* at the [crickets HLD](crickets-hld.md).
 
 # Crickets Composition Design
 
@@ -25,43 +25,7 @@ Three kinds of composition meet here: capability with capability, capability wit
 
 The target shape is **thirteen plugin-capabilities**, and **thirteen plugins ship today** (the sets differ). The target renames `developer-workflows` → `development-lifecycle` (the spine, now owning the feature's whole arc — `launch` / `deprecate` / `retire` included), folds `testing-conventions` + `releasing-conventions` → `conventions` and `status-line-meter` → `token-audit`, and adds the two new `research` / `diagnostics`. The graph below is that target shape:
 
-```mermaid
-graph TD
-    CR["code-review<br/><i>adversarial review</i>"]
-    DS["developer-safety<br/><i>recoverability gate</i>"]
-    WK["wiki<br/><i>docs upkeep</i>"]
-    GP["github-projects<br/><i>board-sync</i>"]
-    GC["maintenance<br/><i>deps · CVE · debt</i>"]
-    CV["conventions<br/><i>testing + releasing</i>"]
-    DZ["design<br/><i>design authoring</i>"]
-    TA["token-audit<br/><i>token metering</i>"]
-    OV["obsidian-vault<br/><i>storage backend</i>"]
-    PV["privacy<br/><i>data protection</i>"]
-    RS["research<br/><i>(new)</i>"]
-    DG["diagnostics<br/><i>(new)</i>"]
-
-    DW["<b>development-lifecycle</b> — the spine<br/><i>setup · plan · work · review · release · bugfix · launch · deprecate · retire</i>"]
-    SUB(["agentm substrate<br/><i>memory · opinions · personas</i>"])
-
-    CR -. enhances .-> DW
-    DS -. enhances .-> DW
-    WK -. enhances .-> DW
-    RS -. enhances .-> DW
-    GP == requires ==> DW
-    GC == requires ==> DW
-    CV == requires ==> DW
-    DZ == requires ==> DW
-
-    DW ==> SUB
-    TA ==> SUB
-    OV ==> SUB
-    PV ==> SUB
-    DG ==> SUB
-    RS ==> SUB
-
-    classDef tentative fill:#f4f4f6,stroke:#b0b0b8,stroke-dasharray:5 4,color:#8a8a92;
-    class RS,DG tentative;
-```
+![The thirteen-capability target shape: a central development-lifecycle spine that four capabilities enhance softly (code-review, developer-safety, wiki, and the new research) and four require hard (github-projects, maintenance, conventions, design); the spine rests on the agentm substrate (memory · opinions · personas), as do token-audit, obsidian-vault, privacy, and the new diagnostics directly; research and diagnostics are new and not yet shipping](diagrams/crickets-composition.svg)
 
 *Dashed green = soft `enhances:`; solid = hard `requires:`. **Dimmed nodes** (`research`, `diagnostics`) are the **new capabilities, not yet shipping** — their precise depends/enhances land in their per-capability sub-designs (`crickets-research`, `crickets-diagnostics`, to be authored). `development-lifecycle` (the spine — the renamed `developer-workflows`, now owning the feature's whole arc including `launch` / `deprecate` / `retire`) is the base most build on; `code-review`, `developer-safety`, and `wiki` enhance it; `github-projects`, `maintenance`, `conventions`, and `design` require it; `token-audit`, `obsidian-vault`, and `privacy` rest directly on the substrate. Everything rests, directly or through the spine, on the agentm substrate. Today the thirteen ship under current names (`developer-workflows`, `github-ci`, `design-docs`, `wiki-maintenance`, `pii`, the two `*-conventions`, `status-line-meter`); the renames + merges land in Phase-1/3 build. One line on what each capability is: the [HLD's sub-designs table](crickets-hld.md).*
 
@@ -92,7 +56,7 @@ The opinion surfaces (done / good / efficient / how-we-engineer) and the request
 
 **crickets depends on agentm; agentm never depends on crickets.** That arrow is the load-bearing rule of the whole split. A tool draws on the substrate by *asking*: the authoritative resolver lives in agentm (`capability_resolver.py`); crickets reaches it through a thin bridge (`find_capability.py`) that discovers it by path-fallback and skips gracefully when agentm is absent. The graceful skip runs both ways — remove the tools and agentm still remembers; remove agentm and the tools still run, just without memory-backed continuity. A bare agentm is whole on its own.
 
-Three decisions drew the arrow: the repo split made them siblings sharing only a byte-identical `lib/install/` (ADR 0006); the V5 unbundling deleted the phase loop from agentm and re-homed it in crickets, removing even the hard-require (ADR 0011); and the routing-plane de-vaulting kept agentm's substrate speaking in backend-agnostic terms, so a tool can ask without assuming vault paths (V5-6, in the `memory-storage-seam` living design). *(Transitional wrinkle: until the orchestration-split slim lands, agentm still carries baked-in copies of some dev-loop scripts from before the unbundling — a cleanup-status detail.)*
+Three decisions drew the arrow: the repo split made them siblings sharing only a byte-identical `lib/install/`; the V5 unbundling deleted the phase loop from agentm and re-homed it in crickets, removing even the hard-require; and the routing-plane de-vaulting kept agentm's substrate speaking in backend-agnostic terms, so a tool can ask without assuming vault paths (V5-6, in the `memory-storage-seam` living design). *(The first two decisions now live in the [agentm HLD](https://github.com/alexherrero/agentm/wiki/agentm-hld) amendment log. Transitional wrinkle: until the orchestration-split slim lands, agentm still carries baked-in copies of some dev-loop scripts from before the unbundling — a cleanup-status detail.)*
 
 ### Role-retirement (the transitional shape)
 
@@ -128,15 +92,9 @@ A v6.0 capability rename — `developer-workflows` → `development-lifecycle`, 
 
 ## Amendment log
 
-**2026-06-22 — grounded against live code, corrected, and conformed to the abbreviated-design template.**
+**2026-06-28 — lock-down sweep (operator review).** Converted the relationship-map mermaid to a house-style hand-SVG (`diagrams/crickets-composition.svg`); reversed this log to newest-first (the convention); and dropped the two dead ADR-number citations in the dependency-arrow paragraph (the repo split + the V5 unbundling now point to the [agentm HLD](https://github.com/alexherrero/agentm/wiki/agentm-hld) amendment log, matching the V5-6 treatment beside them). The folded ADR 0017/0027 records stay (this design owns them). No change to the composition contract. Locked as a v5–v8 guidepost.
 
-Restructured from a topic-outline into the abbreviated template (Objective / Overview / Design / Dependencies / Risks & open questions / References / Amendment log): the framing + the relationship map move to Overview, the four mechanics become Design subsections, and Dependencies + Risks are drawn out of the inline prose. A read-only grounding pass against the live `agentm` + `crickets` repos corrected four drifts — version matching is **implemented** (`capability_version_match.py`), not a stub; all thirteen plugins declare `capabilities:` today (the former "6 of 13" gap is closed), so that claim is dropped; the dead ADR references are repointed at living designs (crickets soft-composition → the developer-suite design, since subsumed into this design 2026-06-24; agentm routing-plane → `memory-storage-seam`; the still-standing 0006/0011/0016 kept with a fold note); and the relationship map is now labeled as the **target shape** with the three unshipped capabilities visually dimmed, since the body had narrated the v6.0 target (renames, merges, new capabilities) in the present tense.
-
-Verified-correct and unchanged: the `requires:`/`enhances:` semantics, the asymmetric/order-free/quiet-absence resolution, the four `lint_src.py` lints, the one-way arrow (bridge path-fallback + graceful-skip), and the read-only-helper discriminator. **Re-audit triggers:** re-derive the map from `dist/default-set.json` as the set grows; confirm the new capabilities' edges when their sub-designs land; convert the map to a vector diagram at the parent's diagram pass; repoint the ADR references as 0006/0011/0016 fold.
-
-**2026-06-22 — map updated for the lifecycle merge (operator).** The standalone `lifecycle` capability is folded back into the spine: the map drops the `lifecycle` node, renames `developer-workflows` → `development-lifecycle` (the spine now owns the feature's whole arc, `launch`/`deprecate`/`retire` included), and the target count moves 14 → **13**. Two new capabilities remain dimmed (`research`, `diagnostics`). Why not keep `lifecycle` separate: `/launch` is the step right after `/release`, so splitting adjacent lifecycle steps across two plugins was an artificial seam. **Re-audit trigger:** when `github-ci` is reframed as `maintenance`, update that node too.
-
-**2026-06-23 — `github-ci` → `maintenance` reframe (operator).** The map's `github-ci` node is renamed `maintenance` (deps repair + currency · CVE · tech-debt), still a hard `requires:` on the spine; the count stays 13 (a rename, not an add). `maintenance` composes `diagnostics` (its `dependabot-fixer` calls the diagnose engine — repair here, analysis there) and pairs with `privacy` (reactive advisory vs proactive static); those soft compose-edges aren't drawn on this requires/enhances spine map but live in the [maintenance sub-design](crickets-maintenance.md). **Re-audit trigger:** add the `maintenance → diagnostics` / `maintenance → privacy` compose-edges if the map grows a composition layer beyond the spine.
+**2026-06-28 — added the rename mechanism (critique W5 / ruling 11).** Added §"Renames keep both old and new names resolving": a v6.0 rename or merge keeps existing `requires:` / `enhances:` resolving because the plugin's `group.yaml` declares **both** the old and the new capability name — there is no separate alias map, the resolver matches by declared name. Replaced the imprecise "resolver aliasing" wording across the seven rename designs with a pointer here. *Re-audit:* add the no-dangling-name check when an old name is dropped in a later major.
 
 **2026-06-24 — subsumed the launched `developer-plugin-suite.md` design (AG Wave 2, move-and-retire).** This design is now the single canonical home for crickets composition; the earlier developer-suite design — which the 2026-06-22 grounding pass had reconciled against — is deleted (git history + its six part files hold the full text). Its still-live value is folded here; in particular the two C4-folded ADRs it had absorbed (AG Phase-2) are preserved below with decision + why-not + re-audit, since this design now owns `governs: scripts/suggest_enhancers.py` in addition to the bridge.
 
@@ -145,4 +103,12 @@ Verified-correct and unchanged: the `requires:`/`enhances:` semantics, the asymm
 
 *Why not keep `developer-plugin-suite.md` as a standalone living design:* it was already up-pointered and reconciled by this design + the crickets HLD — keeping the husk forces a chain-read; the living body here is the single source. *Re-audit trigger:* a host shipping native soft-composition (drop the tooling-resolved `enhances:` layer), or a second group needing an output-style/rule.
 
-**2026-06-28 — added the rename mechanism (critique W5 / ruling 11).** Added §"Renames keep both old and new names resolving": a v6.0 rename or merge keeps existing `requires:` / `enhances:` resolving because the plugin's `group.yaml` declares **both** the old and the new capability name — there is no separate alias map, the resolver matches by declared name. Replaced the imprecise "resolver aliasing" wording across the seven rename designs with a pointer here. *Re-audit:* add the no-dangling-name check when an old name is dropped in a later major.
+**2026-06-23 — `github-ci` → `maintenance` reframe (operator).** The map's `github-ci` node is renamed `maintenance` (deps repair + currency · CVE · tech-debt), still a hard `requires:` on the spine; the count stays 13 (a rename, not an add). `maintenance` composes `diagnostics` (its `dependabot-fixer` calls the diagnose engine — repair here, analysis there) and pairs with `privacy` (reactive advisory vs proactive static); those soft compose-edges aren't drawn on this requires/enhances spine map but live in the [maintenance sub-design](crickets-maintenance.md). **Re-audit trigger:** add the `maintenance → diagnostics` / `maintenance → privacy` compose-edges if the map grows a composition layer beyond the spine.
+
+**2026-06-22 — map updated for the lifecycle merge (operator).** The standalone `lifecycle` capability is folded back into the spine: the map drops the `lifecycle` node, renames `developer-workflows` → `development-lifecycle` (the spine now owns the feature's whole arc, `launch`/`deprecate`/`retire` included), and the target count moves 14 → **13**. Two new capabilities remain dimmed (`research`, `diagnostics`). Why not keep `lifecycle` separate: `/launch` is the step right after `/release`, so splitting adjacent lifecycle steps across two plugins was an artificial seam. **Re-audit trigger:** when `github-ci` is reframed as `maintenance`, update that node too.
+
+**2026-06-22 — grounded against live code, corrected, and conformed to the abbreviated-design template.**
+
+Restructured from a topic-outline into the abbreviated template (Objective / Overview / Design / Dependencies / Risks & open questions / References / Amendment log): the framing + the relationship map move to Overview, the four mechanics become Design subsections, and Dependencies + Risks are drawn out of the inline prose. A read-only grounding pass against the live `agentm` + `crickets` repos corrected four drifts — version matching is **implemented** (`capability_version_match.py`), not a stub; all thirteen plugins declare `capabilities:` today (the former "6 of 13" gap is closed), so that claim is dropped; the dead ADR references are repointed at living designs (crickets soft-composition → the developer-suite design, since subsumed into this design 2026-06-24; agentm routing-plane → `memory-storage-seam`; the still-standing 0006/0011/0016 kept with a fold note); and the relationship map is now labeled as the **target shape** with the three unshipped capabilities visually dimmed, since the body had narrated the v6.0 target (renames, merges, new capabilities) in the present tense.
+
+Verified-correct and unchanged: the `requires:`/`enhances:` semantics, the asymmetric/order-free/quiet-absence resolution, the four `lint_src.py` lints, the one-way arrow (bridge path-fallback + graceful-skip), and the read-only-helper discriminator. **Re-audit triggers:** re-derive the map from `dist/default-set.json` as the set grows; confirm the new capabilities' edges when their sub-designs land; convert the map to a vector diagram at the parent's diagram pass; repoint the ADR references as 0006/0011/0016 fold.
