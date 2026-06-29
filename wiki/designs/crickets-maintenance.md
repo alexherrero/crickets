@@ -11,7 +11,7 @@ approved: 2026-06-23
 ---
 
 > [!NOTE]
-> **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-23).** child-design — **the `maintenance` capability** (keep an already-shipped codebase healthy: dependency repair + currency, security patching, tech-debt inventory). `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). Points *up* at the [crickets HLD](crickets-hld.md).
+> **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-23) · locked 2026-06-28 (final AG design sweep).** child-design — **the `maintenance` capability** (keep an already-shipped codebase healthy: dependency repair + currency, security patching, tech-debt inventory). `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). Points *up* at the [crickets HLD](crickets-hld.md).
 
 # maintenance
 
@@ -155,6 +155,8 @@ The rename is **in place**: the plugin directory `github-ci` → `maintenance`, 
 - **Up:** [crickets HLD](crickets-hld.md) · [composition](crickets-composition.md) · [agentm Personas](https://github.com/alexherrero/agentm/wiki/agentm-personas) (Maintainer — the persona this is the executing arm of)
 
 ## Amendment log
+
+**2026-06-28 — lock-down sweep (operator review).** Resized the primitives diagram to the house ~1.3× convention (`diagrams/crickets-maintenance.svg`). Confirmed maintenance keeps a shipped codebase healthy (deps repair + currency · CVE patching · tech-debt inventory; `dependabot-fixer` delivered, the rest greenfield) and its composition (calls `diagnostics`, pairs with `privacy`, `content-refresh` re-pins `token-audit` pricing, `model-drift-detector` triggers it). No content change. Locked as a v5–v8 guidepost.
 
 **2026-06-28 — scheduler → runner rename (Bucket-B / critique W1).** Renamed the agentm background-job primitive **scheduler → runner** in the current-state `content-refresh` prose (it rides the host scheduler; the [agentm Runner design](https://github.com/alexherrero/agentm/wiki/agentm-runner) owns it). Also corrected the imprecise "resolver aliasing" rename wording to the merged-group-declares-both-names mechanism (ruling 11). Historical entries keep their original wording. *Re-audit:* flip the runner's `[PENDING-IMPL]` to as-built when it ships.
 

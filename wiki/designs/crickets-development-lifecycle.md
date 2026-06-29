@@ -11,7 +11,7 @@ approved: 2026-06-22
 ---
 
 > [!NOTE]
-> **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-22).** child-design — the **development-lifecycle** capability: the loop a developer runs every day, a feature's whole life from plan to retirement. The base every other capability builds on. `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). Points *up* at the [crickets HLD](crickets-hld.md).
+> **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-22) · locked 2026-06-28 (final AG design sweep).** child-design — the **development-lifecycle** capability: the loop a developer runs every day, a feature's whole life from plan to retirement. The base every other capability builds on. `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). Points *up* at the [crickets HLD](crickets-hld.md).
 
 # development-lifecycle
 
@@ -36,14 +36,7 @@ The lifecycle, first to last:
 
 The one branch off this road is **`/bugfix`** — for defects it replaces `/plan` + `/work` with Report → Analyze → Fix → Verify (mandatory regression test, mandatory `/review`), then rejoins the `/release` path.
 
-```mermaid
-graph LR
-    S["/setup<br/><i>once</i>"] --> P["/plan"] --> W["/work"] --> RV["/review"] --> RL["/release"] --> L["/launch"] --> D["/deprecate"] --> RT["/retire"]
-    P -. "defect track" .-> BF["/bugfix"]
-    BF -. "rejoins" .-> RL
-    classDef once fill:#f4f4f6,stroke:#b0b0b8,color:#8a8a92;
-    class S once;
-```
+![The development-lifecycle loop: /setup (once) → /plan → /work → /review → /release → /launch → /deprecate → /retire, with /bugfix as the defect track that branches off /plan and rejoins at /release — the loop a developer runs every day, a feature's whole life from plan to retirement](diagrams/crickets-development-lifecycle.svg)
 
 *The daily loop and the feature's endpoints, first to retirement; `/bugfix` is the alternate track to plan + work; each step is a short isolated session, state carried on disk between them.*
 
@@ -183,6 +176,8 @@ The loop **requests `done`** (the check battery `/work` and `/release` run — *
 - **Up:** [crickets HLD](crickets-hld.md) · [composition](crickets-composition.md) · [agentm Opinions](https://github.com/alexherrero/agentm/wiki/agentm-opinions-and-gates) (`done`, `how-we-engineer`) · [agentm Personas](https://github.com/alexherrero/agentm/wiki/agentm-personas) (loop / goal launch modes)
 
 ## Amendment log
+
+**2026-06-28 — lock-down sweep (operator review).** Converted the lifecycle-flow mermaid to a house-style hand-SVG (`diagrams/crickets-development-lifecycle.svg`). Confirmed development-lifecycle is the spine every other capability builds on — the plan→…→retire loop with `/bugfix` rejoining at `/release` (renamed `developer-workflows`→`development-lifecycle`, now owning the whole arc). The folded-ADR records and the newest-first log are unchanged. Locked as a v5–v8 guidepost.
 
 **2026-06-24 — folded ADRs 0002 / 0004 / 0023 / 0024 / 0026 / 0029 / 0030 into this design (AG Phase 4, move-and-retire).**
 

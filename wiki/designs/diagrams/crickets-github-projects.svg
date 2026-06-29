@@ -1,0 +1,59 @@
+<svg viewBox="0 0 890 460" width="1112" height="575" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+  <defs>
+    <marker id="s" markerWidth="10" markerHeight="10" refX="7.2" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#5B7C9E"/>
+    </marker>
+    <marker id="r" markerWidth="10" markerHeight="10" refX="7.2" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#9aa0a8"/>
+    </marker>
+  </defs>
+
+  <!-- main chain (solid, one-way) -->
+  <g stroke="#5B7C9E" stroke-width="1.9" fill="none" marker-end="url(#s)">
+    <path d="M445,90 L445,124"/>
+    <path d="M445,180 L445,214"/>
+    <path d="M445,270 L445,304"/>
+  </g>
+  <!-- relationship edges (dashed) -->
+  <g stroke="#9aa0a8" stroke-width="1.5" stroke-dasharray="5 4" fill="none" marker-end="url(#r)">
+    <path d="M122,306 L326,160"/>
+    <path d="M760,306 L590,250"/>
+    <path d="M122,364 C 220,432 690,432 770,364"/>
+  </g>
+  <text x="208" y="222" font-size="9.5" font-style="italic" fill="#8a8a92">drives</text>
+  <text x="690" y="282" font-size="9.5" font-style="italic" fill="#8a8a92">vault == board?</text>
+  <text x="447" y="430" text-anchor="middle" font-size="9.5" font-style="italic" fill="#8a8a92">corrects</text>
+
+  <!-- vault (source of truth) -->
+  <rect x="325" y="24" width="240" height="66" rx="10" fill="#EAF1FB" stroke="#3A6EA5" stroke-width="2.3"/>
+  <text x="445" y="46" text-anchor="middle" font-size="13" font-weight="700" fill="#1e3a5f">vault project</text>
+  <text x="445" y="61" text-anchor="middle" font-size="9" font-style="italic" fill="#3A6EA5">roadmap · plans · progress</text>
+  <text x="445" y="78" text-anchor="middle" font-size="9.5" font-weight="700" fill="#1e3a5f">source of truth</text>
+
+  <!-- sync -->
+  <rect x="325" y="124" width="240" height="56" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.7"/>
+  <text x="445" y="147" text-anchor="middle" font-size="12.5" font-weight="600" fill="#34516e">project_sync.py</text>
+  <text x="445" y="163" text-anchor="middle" font-size="9" font-style="italic" fill="#5B7C9E">deterministic render · idempotent</text>
+
+  <!-- board -->
+  <rect x="305" y="214" width="280" height="56" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.7"/>
+  <text x="445" y="237" text-anchor="middle" font-size="12.5" font-weight="600" fill="#34516e">GitHub Project board</text>
+  <text x="445" y="253" text-anchor="middle" font-size="9" font-style="italic" fill="#5B7C9E">issues + native sub-issue nesting</text>
+
+  <!-- hierarchy -->
+  <rect x="232" y="306" width="426" height="58" rx="9" fill="#E9F6EE" stroke="#3A9D5D" stroke-width="1.7"/>
+  <text x="445" y="329" text-anchor="middle" font-size="11.5" font-weight="600" fill="#27613f">Version → Feature → (Sub-feature) → Plan → Task</text>
+  <text x="445" y="346" text-anchor="middle" font-size="8.7" font-style="italic" fill="#3A9D5D">≥4 deep · body = current summary · a comment per commit</text>
+
+  <!-- planner (unbuilt) -->
+  <rect x="24" y="306" width="196" height="58" rx="9" fill="#F4F4F6" stroke="#B0B0B8" stroke-width="1.5"/>
+  <text x="122" y="329" text-anchor="middle" font-size="12" font-weight="600" fill="#8a8a92">Planner (TPM)</text>
+  <text x="122" y="345" text-anchor="middle" font-size="8.5" font-style="italic" fill="#a0a0a8">depth-maintainer + drift-corrector · unbuilt</text>
+
+  <!-- drift gate -->
+  <rect x="672" y="306" width="200" height="58" rx="9" fill="#FBF3E2" stroke="#C8961E" stroke-width="1.6"/>
+  <text x="772" y="329" text-anchor="middle" font-size="11.5" font-weight="600" fill="#8a6516">check_project_sync.py</text>
+  <text x="772" y="345" text-anchor="middle" font-size="8.5" font-style="italic" fill="#b5851a">drift gate · detects, never corrects</text>
+
+  <text x="445" y="456" text-anchor="middle" font-size="10" font-style="italic" fill="#8a8a92">one-way deterministic board-sync — the vault is the source of truth; the board is a projection.</text>
+</svg>

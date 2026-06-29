@@ -11,7 +11,7 @@ approved: 2026-06-23
 ---
 
 > [!NOTE]
-> **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-23).** child-design — **the `github-projects` capability** (one-way deterministic board-sync — project a vault project's roadmap/plan/progress onto a GitHub Project board). `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). Points *up* at the [crickets HLD](crickets-hld.md).
+> **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-23) · locked 2026-06-28 (final AG design sweep).** child-design — **the `github-projects` capability** (one-way deterministic board-sync — project a vault project's roadmap/plan/progress onto a GitHub Project board). `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). Points *up* at the [crickets HLD](crickets-hld.md).
 
 # github-projects
 
@@ -31,20 +31,7 @@ The renderer, model, drift detector, schema, and templates are delivered; the fi
 | `project_schema.json` | rule | The board-shape contract — the parent chain + the DC-2 field set (Track · Type · Priority · Start · Target · Status). |
 | per-type templates | template | The locked kickoff / progress / closeout triads (task · plan · feature · sub-feature) + single-line forms (version · idea · backlog-item · promotion). |
 
-```mermaid
-graph TD
-    V["vault project<br/><i>roadmap · plans · progress</i><br/><b>source of truth</b>"]
-    V --> SY["project_sync.py<br/><i>deterministic render · idempotent</i>"]
-    SY --> B["GitHub Project board<br/><i>issues + native sub-issue nesting</i>"]
-    B --> H["Version → Feature → (Sub-feature) → Plan → Task<br/><i>≥4 deep · body = current summary · a comment per commit</i>"]
-    PL["Planner (TPM)<br/><i>depth-maintainer + drift-corrector · unbuilt</i>"] -. "drives" .-> SY
-    CK["check_project_sync.py<br/><i>drift gate · detects, never corrects</i>"] -. "vault == board?" .-> B
-    PL -. "corrects" .-> CK
-    classDef src fill:#eef4ff,stroke:#3a6ea5,color:#1e3a5f;
-    class V src;
-    classDef des fill:#f4f4f6,stroke:#b0b0b8,color:#8a8a92;
-    class PL des;
-```
+![One-way deterministic board-sync: the vault project (roadmap · plans · progress — the source of truth) feeds project_sync.py (deterministic, idempotent render) which writes the GitHub Project board (issues + native sub-issue nesting) as a Version→Feature→(Sub-feature)→Plan→Task tree ≥4 deep, each item a kept-current summary body + a comment per commit; check_project_sync.py is a drift gate that detects but never corrects, and the unbuilt Planner (TPM) persona drives the write path to hold depth + correct drift](diagrams/crickets-github-projects.svg)
 
 *One direction only — the vault is authored; `project_sync.py` renders it to nested issues (≥4 levels deep; each work item carries a kept-current summary body + a comment per commit); `check_project_sync.py` detects drift but never corrects. The **Planner (TPM)** persona (unbuilt) drives the write path to hold the depth floor + correct drift; until it ships, that is hand-maintained.*
 
@@ -78,15 +65,15 @@ The two surfaces reconcile differently, both idempotently:
 
 > **Designed delta from as-built.** The shipping plugin today folds per-commit progress into the issue **body** (one line per commit, no comment path — there is no `gh issue comment` call). This design moves the per-commit update to a **comment** (the granular timeline) and keeps the body as the **current summary** — a `[PENDING-IMPL]` change that adds the `gh issue comment` post + the SHA-keyed dedupe, while the body-reconcile path stays as-is.
 
-### The message voice + the 2026-06-26 dogfood — the operational spec
+### The message voice + operational rules — the board-write spec
 
-The discipline above was **hand-run end to end** on both boards (2026-06-26: agentm #2 issues #95–#106, crickets #5 issues #37–#51) to prove it before wiring. What that dogfood settled, for the build to honor:
+Three things the board-write path must honor — a message voice, a roll-up altitude, and a set of operational rules:
 
-**The message voice — plain English for a non-technical human.** Every per-commit line and every roll-up summary is written for the owner glancing at the board, **not** in commit-ese. The rules (operator-approved 2026-06-26): no file / function / script names, no code identifiers, no config keys; describe the user-visible value or the concrete change; **never name an external project / author / tool as a source** (the silent-source rule — strip it from the public board); don't echo the conventional-commit type ("docs:" / "refactor:" still did something — say what). Approved substitutions: `vault` → "notes folder", `plugin` / `bundle` → "add-on", `harness` / engine → "the tool", `wiki` → "documentation site", `ADR` / decision-record → "decision notes", `persona` → "role", `crickets` → "the suite / project", a release bump → "Cut release X bundling the above." A drafting agent reads each commit's diff; a critic pass enforces this voice and catches leaked jargon.
+**The message voice — plain English for a non-technical human.** Every per-commit line and every roll-up summary is written for the owner glancing at the board, **not** in commit-ese. The rules: no file / function / script names, no code identifiers, no config keys; describe the user-visible value or the concrete change; **never name an external project / author / tool as a source** (the silent-source rule — strip it from the public board); don't echo the conventional-commit type ("docs:" / "refactor:" still did something — say what). Approved substitutions: `vault` → "notes folder", `plugin` / `bundle` → "add-on", `harness` / engine → "the tool", `wiki` → "documentation site", `ADR` / decision-record → "decision notes", `persona` → "role", `crickets` → "the suite / project", a release bump → "Cut release X bundling the above." A drafting agent reads each commit's diff; a critic pass enforces this voice and catches leaked jargon.
 
 **The roll-up altitude (which comment lands where).** A comment-per-commit lands on the **lowest materialized work item** — the **Plan** in the common case (Tasks materialize only when a plan is actively broken down). Summaries cascade **up** as each unit completes: a **plan-completion summary** (≤2 plain paragraphs) on its **Feature**, and a **feature-landing summary** (≤2 plain paragraphs) on its **Version**. The reader gets per-commit detail at the bottom and a human digest at every level above.
 
-**Operational rules the build must get right (learned the hard way in the dogfood):**
+**Operational rules the build must get right:**
 - **Resolve + dedupe via the issues-LIST API, never search.** `gh issue list --search` hits the search index, which lags minutes for just-created issues — so a re-run after a partial failure would create **duplicates**. List-and-match-by-exact-title (and list-comments-and-match-by-marker) are immediately consistent. Items are reused by exact title (or a stable id), created only if absent.
 - **SHA-keyed comment dedupe via a hidden marker.** Each comment ends with `<!-- board:<key> -->` (key = `sha:<short>` for a commit, `plansum:<id>` / `verland:<id>` for a roll-up); the sync skips a comment whose marker is already present, so re-running never double-posts.
 - **Idempotent recovery.** A transient `401 Bad credentials` on a Project mutation is expected at scale; because every step is find-or-create / skip-if-present, re-running simply converges with zero duplicates.
@@ -144,6 +131,8 @@ None — `github-projects` **mirrors, it does not judge.** It projects whatever 
 - **Up / consumed by:** [crickets HLD](crickets-hld.md) · [composition](crickets-composition.md) · [Personas](https://github.com/alexherrero/agentm/wiki/agentm-personas) (Planner — drives this; Operator — reads it) · [development-lifecycle](crickets-development-lifecycle.md)
 
 ## Amendment log
+
+**2026-06-28 — lock-down sweep (operator review).** Converted the board-sync mermaid to a house-style hand-SVG (`diagrams/crickets-github-projects.svg`); and, per operator review, **stripped the how-we-got-here narrative** from the message-voice / operational-rules section — it now documents the board-write spec directly (the dogfood that produced it stays recorded in this log, not the body). The folded ADR 0016/0025 records and the newest-first log are unchanged. Locked as a v5–v8 guidepost.
 
 **2026-06-28 — flagged native sub-issue nesting as designed-not-wired (critique W7).** The honest split now records that the parent-chain links producing the ≥4-deep tree, the Gantt roll-up, and child-status roll-up are `[PENDING-IMPL]` — modeled + validated in `project_model.py` but not emitted; the mechanism is a GraphQL `addSubIssue` / `gh api` call (`gh issue` has no sub-issue subcommand). *Re-audit:* wire the sub-issue links when the depth tree is built.
 
