@@ -33,7 +33,7 @@ curl -fsSL https://raw.githubusercontent.com/alexherrero/crickets/main/bootstrap
 claude plugin marketplace add alexherrero/crickets && claude plugin install developer@crickets
 ```
 
-Full detail (three modes × both hosts): [Install crickets plugins](https://github.com/alexherrero/crickets/wiki/Install-Into-Project). The v2.x `install.sh` dispatcher was retired in v3.0 ([ADR 0014](https://github.com/alexherrero/crickets/wiki/0014-install-decoupling)).
+Full detail (three modes × both hosts): [Install crickets plugins](https://github.com/alexherrero/crickets/wiki/Install-Into-Project). The v2.x `install.sh` dispatcher was retired in v3.0.
 
 ## Conventions
 
@@ -76,5 +76,5 @@ Required fields: `name`, `description`, `kind`, `supported_hosts`, `version`. Bu
 
 ## Cross-references
 
-- [`agentm`](https://github.com/alexherrero/agentm) — sibling repo; phase-gated workflow + canonical phase specs. See [agentm ADR 0006](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0006-crickets-split.md) for the split decision.
+- [`agentm`](https://github.com/alexherrero/agentm) — sibling repo; phase-gated workflow + canonical phase specs.
 - This repo's [Diátaxis-shaped wiki](wiki/Home.md) — start at `wiki/Home.md` for navigation; key entry points include [Purpose and scope](wiki/explanation/Purpose-And-Scope.md), [Manifest Schema](wiki/reference/Manifest-Schema.md), and [Tutorial 1](wiki/tutorials/01-First-Customization.md).
