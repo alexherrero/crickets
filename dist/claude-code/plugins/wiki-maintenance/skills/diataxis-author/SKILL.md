@@ -1,6 +1,6 @@
 ---
 name: diataxis-author
-description: Author + maintain a Diátaxis-style wiki for any repo. Live authoring guidance (mode selection + template-fill + filename style), ongoing drift detection + repair, one-shot migration of legacy audience-based wikis to the four-mode (tutorials / how-to / reference / explanation) discipline, and single-page mode classification with sub-agent fallback on ambiguous cases. Reads operator conventions from AgentMemory `_always-load/diataxis-*.md`; composes a base style-guide ⊕ on-demand voice overlay into authored drafts, and learns generalizable voice lessons from the operator's own edits (edit-driven capture, operator-gated for generality + scope); offers to capture judgment calls back as new conventions (operator-confirmed via permeable-boundary helper). Dispatches the existing `documenter` sub-agent for mechanical-write work; never auto-forks into wiki/ without preview. Subsumes the predecessor `migrate-to-diataxis` skill (harness-side) per ROADMAP #13. Hosts: Claude Code + Antigravity (`gemini-cli` removed in v0.9.0 per the gemini-cli host-removal decision, crickets-hld design).
+description: Author + maintain a Diátaxis-style wiki for any repo. Live authoring guidance (mode selection + template-fill + filename style), ongoing drift detection + repair, one-shot migration of legacy audience-based wikis to the six-section documentation layout (how-to · reference · architecture · designs · explanation · operational; onboarding folds into how-to, marked with a mode-tutorial hint), and single-page mode classification with sub-agent fallback on ambiguous cases. Reads operator conventions from AgentMemory `_always-load/diataxis-*.md`; composes a base style-guide ⊕ on-demand voice overlay into authored drafts, and learns generalizable voice lessons from the operator's own edits (edit-driven capture, operator-gated for generality + scope); offers to capture judgment calls back as new conventions (operator-confirmed via permeable-boundary helper). Dispatches the existing `documenter` sub-agent for mechanical-write work; never auto-forks into wiki/ without preview. Subsumes the predecessor `migrate-to-diataxis` skill (harness-side) per ROADMAP #13. Hosts: Claude Code + Antigravity (`gemini-cli` removed in v0.9.0 per the gemini-cli host-removal decision, crickets-hld design).
 kind: skill
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
@@ -39,11 +39,13 @@ The full read-side wiring lands with part 5 (`agentmemory-docs-release`); this s
 | Author a new wiki page with template + mode selection + filename style | `/diataxis author <slug>` |
 | Detect drift across the wiki (mode-mixed pages, stale cross-refs, template-shape drift, convention drift) | `/diataxis check [--strict]` |
 | Apply suggested fixes for detected drift, interactively | `/diataxis repair` |
-| One-shot migrate a legacy audience-based wiki to the four-mode Diátaxis layout | `/diataxis migrate` |
+| One-shot migrate a legacy audience-based wiki to the six-section documentation layout | `/diataxis migrate` |
 | Classify a single page's mode (operator-debug; sub-agent dispatches here for ambiguous cases) | `/diataxis classify <file>` |
 | Capture a generalizable voice lesson from your own edits to an authored draft | `/diataxis capture <draft> <edited>` |
 | Relocate global wiki conventions out of `_always-load` into the on-demand `_global` store (one-time, operator-run) | `/diataxis relocate --preview` |
 | Promote a proven overlay voice lesson into the committed base style-guide (maintainer; `src/`-only, operator-gated) | `/diataxis promote --preview` |
+
+> **Six-section layout.** The target taxonomy is the crickets six-section documentation layout — `how-to` · `reference` · `architecture` · `designs` · `explanation` · `operational`. Four are always present (how-to · reference · designs · explanation); `architecture` is gated on a `wiki/architecture.yml` manifest and `operational` on a non-public wiki. Onboarding "tutorials" fold into `how-to/` with a `<!-- mode: tutorial -->` hint — there is **no** `tutorials/` folder. `migrate.py` targets this layout. (Reconciliation pending: `author.py` / `classify.py` / `check.py` / `repair.py` still carry the legacy four-mode `tutorial → tutorials/` dir map — tracked follow-up.)
 
 ## Sub-commands
 
@@ -78,7 +80,7 @@ Live authoring guidance — operator invokes when starting a new wiki page. Skil
 
 **Step 2 — Validate inputs.** Mode in `{tutorial, how-to, reference, explanation}`; filename style in valid set; wiki root exists + is a directory.
 
-**Step 3 — Compute target path.** Apply filename style to slug → base name. Mode-to-directory mapping: `tutorial → tutorials/` (plural per Diátaxis convention; only this mode is pluralized), `how-to → how-to/`, `reference → reference/`, `explanation → explanation/`. Target = `<wiki-root>/<mode-dir>/<base>.md`.
+**Step 3 — Compute target path.** Apply filename style to slug → base name. Section-to-directory mapping: `how-to → how-to/`, `reference → reference/`, `explanation → explanation/`. Onboarding **tutorial** content folds into `how-to/` with a `<!-- mode: tutorial -->` hint — there is no `tutorials/` folder. (The remaining six-section folders — `architecture/<slug>/`, `designs/`, `operational/` — are authored via their own page types, the design pipeline, or by hand.) Target = `<wiki-root>/<section-dir>/<base>.md`.
 
 **Step 4 — Collision check.** If target exists + `--overwrite` not set, halt with `"target already exists: <path>; pick a different slug or pass --overwrite"`.
 
@@ -104,7 +106,7 @@ python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/author.py \
 # Kebab-case filename style
 python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/author.py \
   "Tutorial 3 — Advanced things" --mode tutorial --filename-style kebab-case
-# → wiki/tutorials/tutorial-3-advanced-things.md
+# → wiki/how-to/tutorial-3-advanced-things.md  (onboarding page, marked <!-- mode: tutorial -->)
 ```
 
 #### Failure modes (graceful)
@@ -266,7 +268,7 @@ Interactive fix-application for drift detected by `/diataxis check`. Per finding
 
 ### `/diataxis migrate`
 
-One-shot migration of legacy audience-based wikis (`development/` + `operational/` + `design/` + `architecture/`) to the four-mode Diátaxis layout. Subsumes the harness's predecessor [`migrate-to-diataxis`](https://github.com/alexherrero/agentm/blob/main/harness/skills/migrate-to-diataxis.md) skill — same contract: preview-first, deterministic classification by heading shape per ADR 0004, `git mv` for blame preservation, mode-mixed pages flagged for human split (delegates to `/diataxis repair` for the actual split work). Auto-seeds `wiki/.diataxis` marker + `wiki/.diataxis-conventions.md` (per-repo overrides) post-migration. **Never commits** — operator stages + commits manually after reviewing diff (single-commit safety net via operator-driven commit boundary).
+One-shot migration of legacy audience-based wikis (`development/` + `operational/` + `design/` + `architecture/`) to the six-section documentation layout. Subsumes the harness's predecessor [`migrate-to-diataxis`](https://github.com/alexherrero/agentm/blob/main/harness/skills/migrate-to-diataxis.md) skill — same contract: preview-first, deterministic classification by heading shape per ADR 0004, `git mv` for blame preservation, mode-mixed pages flagged for human split (delegates to `/diataxis repair` for the actual split work). Auto-seeds `wiki/.diataxis` marker + `wiki/.diataxis-conventions.md` (per-repo overrides) post-migration. **Never commits** — operator stages + commits manually after reviewing diff (single-commit safety net via operator-driven commit boundary).
 
 #### Invocation shape
 
@@ -299,7 +301,7 @@ Applied in order; first match wins:
 |---|---|---|
 | **ADR** | H1 matches `# ADR \d{4}:` OR path under `decisions/` with `NNNN-*.md` | `explanation/decisions/<basename>` |
 | **Status page** | NOTE block in first 25 lines with `**Status:**` + `**Plan:**` | `explanation/<basename>` |
-| **Tutorial** | `## Step N —` heading + `## What you learned` + `## Next` | `tutorials/<basename>` (plural per Diátaxis convention) |
+| **Tutorial** | `## Step N —` heading + `## What you learned` + `## Next` | `how-to/<basename>` + injected `<!-- mode: tutorial -->` hint (no `tutorials/` folder) |
 | **How-to** | `## Steps` H2 OR ≥3 numbered imperative steps in first 40 lines, AND no `## Rationale\|Why\|Background\|Context` | `how-to/<basename>` |
 | **Reference** | `## ⚡ Quick Reference` or `## Quick Reference` in first 20 lines OR ≥60% table lines | `reference/<basename>` |
 | **Mode-mixed (flag)** | ≥2 of {how-to, reference, explanation} fire with competing strength | **Flag for human split** — page stays at old path; preview emits `NEEDS HUMAN SPLIT`. Operator runs `/diataxis repair` after migration for the split. |
@@ -405,7 +407,7 @@ The CLI itself doesn't dispatch sub-agents directly — it returns the marker + 
 ```bash
 # Clear tutorial page → mode: tutorial, confidence: 0.95
 python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/classify.py \
-  wiki/tutorials/01-Getting-Started.md
+  wiki/how-to/01-Getting-Started.md
 
 # Ambiguous mode-mixed page → needs_subagent: true
 python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/classify.py \

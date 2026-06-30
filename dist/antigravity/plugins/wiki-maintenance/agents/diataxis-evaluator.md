@@ -31,14 +31,22 @@ TIER-1-HEURISTIC-RESULT: {mode: <tier1-guess>, confidence: <0.0-1.0>, rationale:
 PER-REPO-CONVENTIONS: <contents of <repo>/wiki/.diataxis-conventions.md if present, else "none">
 OPERATOR-CONVENTIONS: <contents of all <vault>/personal-private/_always-load/diataxis-*.md entries>
 RUBRIC:
-  Classify into one of: tutorial | how-to | reference | explanation
-  Use ADR 0004's four-mode definitions:
-    - tutorial: learning-oriented; step-by-step; user follows along; explicit "what you learn" + "next" sections
-    - how-to: task-oriented; numbered imperative steps; assumes user knows the goal
-    - reference: information-oriented; lookup tables; quick-reference layout; no narrative
-    - explanation: understanding-oriented; prose-heavy; the "why" + history + design rationale
-  Mode-mixed pages (meet 2+ mode criteria with competing strength) → flag for human split + suggest N-page split.
-  Return JSON: {mode: <one of 4>, confidence: <0.0-1.0>, rationale: <1-3 sentences>, mode_mixed: <bool>, suggested_split: [{mode, body_section_ranges}] | null}
+  Decide the page's target section (six-section documentation layout) + its check-wiki shape mode.
+  Six sections — four always present (how-to · reference · designs · explanation) + two conditional
+  (architecture, gated on a wiki/architecture.yml manifest; operational, non-public wikis only):
+    - how-to (mode how-to): task-oriented; numbered imperative `## Steps`; assumes the user knows the goal.
+        Onboarding "tutorial" content is a how-to variant — mode tutorial, section how-to, marked
+        `<!-- mode: tutorial -->`: learning-oriented, `## Step N —` + `## What you learned` + `## Next`.
+    - reference (mode reference): information-oriented; lookup tables; `## ⚡ Quick Reference`; no narrative.
+    - architecture (mode index): the structural component map — a component-overview landing under
+        architecture/<slug>/. Conditional; sits before designs.
+    - designs (mode explanation): a design doc (in-flight or shipped) with a `## Amendment log` — the home
+        for decision records now the ADR model is retired.
+    - explanation (mode explanation): understanding-oriented; prose-heavy; the "why" + history + rationale.
+    - operational (mode how-to): runbooks, SLAs, monitoring, rollback. Conditional; non-public wikis only.
+  Mixed-section pages (meet 2+ section criteria with competing strength) → flag for human split + suggest N-page split.
+  Return JSON: {section: <one of 6>, mode: <tutorial|how-to|reference|explanation|index>, confidence: <0.0-1.0>,
+                rationale: <1-3 sentences>, mode_mixed: <bool>, suggested_split: [{section, body_section_ranges}] | null}
 ```
 
 The sub-agent reads the page contents via Read tool + per-repo + operator conventions via Glob+Grep + (rarely, if needed for cross-reference) ADR 0004 via WebFetch. Returns the JSON. Never writes anything.
@@ -68,7 +76,7 @@ Writes attempted by this sub-agent are bugs in dispatch + should be caught at PR
 - [`diataxis-author` skill](../skills/diataxis-author/SKILL.md) — the caller; this sub-agent's sole purpose is supporting that skill's classification work.
 - [`scripts/classify.py`](../skills/diataxis-author/scripts/classify.py) — Tier-1 heuristic engine. Returns `needs_subagent: true` when its confidence is below threshold (default 0.7) or when the page is mode-mixed. Caller (the skill body) sees that flag + dispatches this sub-agent with the heuristic's output included in the rubric for context.
 - [`scripts/author.py`](../skills/diataxis-author/scripts/author.py) — uses classify.py's mode inference when `--intent <sentence>` is passed; if classify says `needs_subagent: true`, the operator is prompted to disambiguate explicitly via `--mode`.
-- [crickets-conventions design — documentation domain](https://github.com/alexherrero/crickets/wiki/crickets-conventions) — the Diátaxis documentation spec (four-mode definitions + machine-enforceable rules) this sub-agent applies.
+- [crickets-conventions design — documentation domain](https://github.com/alexherrero/crickets/wiki/crickets-conventions) — the Diátaxis documentation spec (six-section definitions + machine-enforceable rules) this sub-agent applies.
 - [`adapt-evaluator` sub-agent](https://github.com/alexherrero/agentm/blob/main/harness/agents/adapt-evaluator.md) (agentm) — sibling sub-agent; established the read-only-with-scoped-write pattern this one mirrors (this sub-agent has **zero** write scope; adapt-evaluator has `_skill-watchlist/<source-slug>/<pattern-slug>.md` only).
 - [`memory-idea-researcher` sub-agent](https://github.com/alexherrero/agentm/blob/main/harness/agents/memory-idea-researcher.md) (agentm) — reference shape for the caller-supplies-inline-rubric pattern.
 - [Parent design](https://github.com/alexherrero/crickets/wiki/crickets-wiki) — Detailed Design §5 (`/diataxis classify <file>`) + §6 (mode-classification ambiguity in Tech Debt §1).

@@ -2,7 +2,7 @@
 # migrate.py — /diataxis migrate (plan #13 part 4 task 1).
 #
 # Ports the harness's `migrate-to-diataxis` predecessor (one-shot legacy
-# wiki → Diátaxis four-mode migration). Preview-first, deterministic
+# wiki → six-section documentation-layout migration). Preview-first, deterministic
 # classification by heading shape per ADR 0004, `git mv` for blame
 # preservation, mode-mixed pages flagged for human split (delegates to
 # `/diataxis repair` from part 3), link rewrites across all wiki/**/*.md,
@@ -56,14 +56,27 @@ if str(_SCRIPTS_DIR) not in sys.path:
 # Legacy audience-based dirs (predecessor convention).
 _LEGACY_DIRS = ("development", "operational", "design", "architecture")
 
-# Diátaxis four-mode dirs (matches ADR 0004 + classify.py convention —
-# only tutorials is plural).
+# Destination folders in the six-section documentation layout (matches
+# wiki_init.py DEFAULT_SECTIONS + check-wiki.py _FOLDER_MODE). The six-section
+# taxonomy has NO tutorials/ folder: tutorial-shaped onboarding folds into
+# how-to/ and is marked with a `<!-- mode: tutorial -->` hint on the move (see
+# _inject_tutorial_hint) so check-wiki.py's resolve_mode still treats it as a
+# tutorial. The heading-shape classifier only emits tutorial / how-to /
+# reference / explanation; the remaining sections — architecture/ (manifest-
+# gated), designs/ (design pipeline), operational/ (non-public runbooks) — are
+# not populated from legacy heading shape and stay for `/diataxis author` + hand
+# work.
 _MODE_DIRS = {
-    "tutorial": "tutorials",
+    "tutorial": "how-to",
     "how-to": "how-to",
     "reference": "reference",
     "explanation": "explanation",
 }
+
+# The mode-hint marker that makes check-wiki.py treat a how-to/ page as a
+# tutorial (resolve_mode: an explicit hint wins over the folder default).
+_TUTORIAL_HINT = "<!-- mode: tutorial -->"
+_TUTORIAL_HINT_RE = re.compile(r"<!--\s*mode:\s*tutorial\s*-->", re.IGNORECASE)
 
 
 # ── Classification (deterministic; matches predecessor's table) ────────────
@@ -268,6 +281,33 @@ def _compute_new_path(p: Path, wiki_root: Path, target_mode: str) -> Path:
     return wiki_root / mode_dir_name / p.name
 
 
+def _inject_tutorial_hint(path: Path) -> bool:
+    """Mark a tutorial-shaped page that folded into how-to/ with the
+    `<!-- mode: tutorial -->` hint, so check-wiki.py's resolve_mode treats it as
+    a tutorial rather than a malformed how-to. Inserts the hint just after the
+    page's first H1 (else at the top). Idempotent — a no-op if already hinted.
+    Returns True when the file was modified."""
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return False
+    if _TUTORIAL_HINT_RE.search(text):
+        return False
+    lines = text.splitlines(keepends=True)
+    insert_at = 0
+    for i, line in enumerate(lines):
+        if line.lstrip().startswith("# "):
+            insert_at = i + 1
+            break
+    hint_block = (("\n" if insert_at > 0 else "") + _TUTORIAL_HINT + "\n")
+    lines.insert(insert_at, hint_block)
+    try:
+        path.write_text("".join(lines), encoding="utf-8")
+    except OSError:
+        return False
+    return True
+
+
 # ── Top-level orchestration ────────────────────────────────────────────────
 
 
@@ -305,6 +345,7 @@ def render_preview(pages: list[Page], wiki_root: Path) -> str:
     lines.append("POST-MIGRATION:")
     lines.append("  - wiki/.diataxis marker will be created (enables strict-mode check-wiki lint).")
     lines.append("  - wiki/.diataxis-conventions.md will be auto-seeded with detected conventions.")
+    lines.append("  - tutorial-shaped pages fold into how-to/ and get a `<!-- mode: tutorial -->` hint.")
     lines.append("  - git log --follow on each moved page will show blame preserved.")
     return "\n".join(lines)
 
@@ -324,7 +365,7 @@ def execute_migration(pages: list[Page], wiki_root: Path, *, dry_run: bool = Fal
 
     Operator stages + commits manually after reviewing diff. NEVER commits.
     """
-    stats = {"moved": 0, "flagged": 0, "errors": 0, "marker_created": False, "conventions_seeded": False}
+    stats = {"moved": 0, "flagged": 0, "errors": 0, "hinted": 0, "marker_created": False, "conventions_seeded": False}
     # Find repo root so we can invoke `git -C <repo>` correctly regardless
     # of the caller's cwd. Falls back to wiki_root's parent if no .git
     # found (smoke tests + non-git scenarios).
@@ -351,6 +392,18 @@ def execute_migration(pages: list[Page], wiki_root: Path, *, dry_run: bool = Fal
                 check=True, capture_output=True, text=True, timeout=30,
             )
             stats["moved"] += 1
+            # Tutorial-shaped pages fold into how-to/; mark them with the
+            # `<!-- mode: tutorial -->` hint, then re-stage so the edit rides
+            # the same operator review as the move.
+            if p.target_mode == "tutorial" and _inject_tutorial_hint(p.new_path):
+                stats["hinted"] += 1
+                try:
+                    subprocess.run(
+                        git_base_args + ["add", str(p.new_path)],
+                        check=True, capture_output=True, text=True, timeout=30,
+                    )
+                except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as e:
+                    print(f"[migrate] git add (tutorial hint) failed for {p.new_path}: {e}", file=sys.stderr)
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as e:
             stats["errors"] += 1
             print(f"[migrate] git mv failed for {p.old_path}: {e}", file=sys.stderr)
@@ -399,7 +452,7 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="diataxis-migrate",
         description=(
-            "One-shot legacy → Diátaxis four-mode migration. Subsumes the "
+            "One-shot legacy → six-section documentation-layout migration. Subsumes the "
             "harness's `migrate-to-diataxis` predecessor. Preview-first; "
             "deterministic classification per ADR 0004; `git mv` for blame "
             "preservation; mode-mixed pages flagged for human split."
@@ -469,6 +522,7 @@ def main(argv: list[str] | None = None) -> int:
     stats = execute_migration(pages, wiki_root, dry_run=False)
     print(f"\nmigrate-to-diataxis: applied")
     print(f"  moved:    {stats['moved']} pages")
+    print(f"  hinted:   {stats['hinted']} tutorial pages folded into how-to/ with <!-- mode: tutorial -->")
     print(f"  flagged:  {stats['flagged']} pages for human split")
     print(f"  errors:   {stats['errors']}")
     print(f"  marker:   {'created' if stats['marker_created'] else 'NOT created'}")

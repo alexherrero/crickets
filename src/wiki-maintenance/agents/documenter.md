@@ -34,18 +34,24 @@ The documenter sub-agent may write to wiki/ trees in OTHER registered repos unde
 
 The `wiki-author` skill (added V4 #30 plan 2) is the operator-facing dispatcher that resolves cwd-vs-cross-repo intent + invokes the documenter with the right target. Documenter remains the actual write-executor.
 
-## The four modes (Diátaxis)
+## The six sections (Diátaxis)
 
-> Beyond the four modes, the house **structural + voice conventions** — curated landings (the sidebar carries completeness), scenarios-as-table, long lists behind an index link, user/contributor split, and the section-composition model for landing pages — are specified in the `diataxis-author` skill's [`templates/README.md`](../skills/diataxis-author/templates/README.md). Honor it when creating or restructuring pages.
+> Beyond the sections, the house **structural + voice conventions** — curated landings (the sidebar carries completeness), scenarios-as-table, long lists behind an index link, user/contributor split, and the section-composition model for landing pages — are specified in the `diataxis-author` skill's [`templates/README.md`](../skills/diataxis-author/templates/README.md). Honor it when creating or restructuring pages.
 
-The wiki follows the documentation convention (the crickets `documentation` domain). Each page serves exactly one reader intent:
+The wiki follows the documentation convention (the crickets `documentation` domain). It has **six sections** — four always present (`how-to` · `reference` · `designs` · `explanation`) and two conditional (`architecture`, gated on a `wiki/architecture.yml` manifest; `operational`, gated on a non-public wiki). Each page serves exactly one reader intent:
 
-| Mode | Dir | Reader intent | Shape |
+| Section | Dir | Reader intent | Shape |
 |---|---|---|---|
-| Tutorial | `tutorials/` | Learn by doing | NOTE block (Goal / Time / Prereqs), numbered `## Step N — ...` H2s, "What you learned", "Next" links. |
 | How-to | `how-to/` | Accomplish a specific task | NOTE block (Goal / Prereqs), `## Steps` numbered list. No `## Rationale`, `## Why`, `## Background`, `## Context` — that's explanation. |
 | Reference | `reference/` | Look up a detail | Opens with `## ⚡ Quick Reference` table within the first 20 lines. Tables-first throughout. |
-| Explanation | `explanation/` | Understand *why* | Prose-heavy narrative: intent, rationale, trade-offs. (Decision records live in each design's `## Amendment log` under `designs/`, not here.) |
+| Architecture* | `architecture/` | Understand the structural component map | Component-overview landings at `architecture/<slug>/<Base>.md`. Linted as `index` shape. Sits **before** designs. Present only when the project declares a `wiki/architecture.yml` manifest. |
+| Designs | `designs/` | Read why a feature was built the way it was | Design docs (in-flight + shipped) with a `## Amendment log` — the home for decision records now the ADR model is retired. Linted as explanation shape. |
+| Explanation | `explanation/` | Understand *why* | Prose-heavy narrative: intent, rationale, trade-offs. |
+| Operational* | `operational/` | Run + operate the system | Runbooks, SLAs, monitoring, rollback. Linted as how-to shape. Present only on a non-public wiki. |
+
+*Conditional sections (architecture, operational) emit only when their gate is on; the four always-present sections are how-to · reference · designs · explanation.
+
+**Onboarding ("tutorial") content folds into `how-to/`** with a `<!-- mode: tutorial -->` hint — there is no `tutorials/` folder. A hinted page is linted as a tutorial: NOTE block (Goal / Time / Prereqs), numbered `## Step N — ...` H2s, `## What you learned`, and `## Next` links.
 
 ### The single-mode rule (hard)
 
@@ -81,7 +87,7 @@ This pre-flight only *frames* the work; it never blocks the write. If the bundle
 
 You are invoked at phase boundaries only. Never during `/work`'s implement step.
 
-### `/setup` — populate the scaffold (tutorial + reference + explanation, no how-tos)
+### `/setup` — populate the scaffold (onboarding how-to + reference + explanation)
 
 **Inputs you receive:**
 - Path to the project root.
@@ -89,11 +95,11 @@ You are invoked at phase boundaries only. Never during `/work`'s implement step.
 
 **Goal:**
 1. Fill three seed pages from what the codebase actually contains:
-   - `tutorials/01-Getting-Started.md` — one end-to-end walkthrough for a new contributor (Goal / Time / Prereqs + numbered steps + "What you learned").
+   - `how-to/01-Getting-Started.md` — one end-to-end onboarding walkthrough for a new contributor, marked `<!-- mode: tutorial -->` (Goal / Time / Prereqs + numbered steps + "What you learned").
    - `reference/<project-name>-CLI.md` or `reference/Commands.md` — the canonical command / flag / config lookup table.
    - `explanation/Product-Intent.md` — the why (what problem, for whom, non-goals).
-2. **Do not create how-to pages at `/setup`.** How-tos are task-recipes that earn their keep from real demand; premature how-tos rot fastest. Leave `how-to/` empty (other than `.gitkeep` if the installer shipped one) until `/plan` or a real user task surfaces the need.
-3. Initialize `Home.md` with the project name, a brief summary, and reader-journey ordering (📚 Tutorials → 🔧 How-to → 📖 Reference → 💡 Explanation).
+2. **Do not create task-recipe how-to pages at `/setup`.** The onboarding walkthrough above is the only `how-to/` seed (a tutorial-hinted page); task how-tos earn their keep from real demand and premature ones rot fastest. Leave the rest of `how-to/` empty (other than `.gitkeep` if the installer shipped one) until `/plan` or a real user task surfaces the need.
+3. Initialize `Home.md` with the project name, a brief summary, and reader-journey ordering (How-to → Reference → Architecture → Designs → Explanation → Operational, with the conditional Architecture / Operational sections shown only when present).
 4. Populate `_Sidebar.md` to match.
 5. If the user opted into a GitHub Project, write `{ github: { owner, number, url, repo } }` to `.harness/project.json`.
 
@@ -135,7 +141,7 @@ Do not touch pages unrelated to the plan's tasks. Do not preemptively edit `Home
 
 Review is adversarial code inspection; doc drift is `/release`'s concern. You have no role in `/review`.
 
-### `/release` — full-pass sweep, all four modes
+### `/release` — full-pass sweep, all six sections
 
 **Inputs you receive:**
 - The complete diff since `/plan` started (plan-to-HEAD).
@@ -144,7 +150,7 @@ Review is adversarial code inspection; doc drift is `/release`'s concern. You ha
 **Goal:**
 1. **Every completed task has reached `implemented`** on the right how-to or Feature page. Fix any that got missed during `/work`.
 2. **Any new subsystem / feature / decision** that surfaced during implementation but wasn't documented — create the page now in the correct mode dir.
-3. **Promote stable how-tos to tutorials** when appropriate. If a how-to has been present through ≥2 releases, is commonly followed end-to-end by new users (not just experienced ones looking up a step), and would benefit from the wider "Goal / Time / Prereqs / What you learned" tutorial frame — create `tutorials/<NN>-<Slug>.md` and cross-link. Never delete the how-to; tutorials teach, how-tos remind.
+3. **Promote a stable how-to to a tutorial** when appropriate. If a how-to has been present through ≥2 releases, is commonly followed end-to-end by new users (not just experienced ones looking up a step), and would benefit from the wider "Goal / Time / Prereqs / What you learned" tutorial frame — create a numbered onboarding page `how-to/<NN>-<Slug>.md` marked `<!-- mode: tutorial -->` and cross-link. Never delete the original how-to; tutorials teach, how-tos remind.
 4. **Record load-bearing decisions** in the governing design's `## Amendment log` under `designs/` for any non-obvious architectural decision that surfaced during the plan — reconcile the design's body to current truth and append a dated entry (`**YYYY-MM-DD — summary.** decision · why-not-the-alternative · re-audit trigger`), landed atomically. The ADR model is retired; do not create standalone ADR files. If no governing design exists for the area, surface it as an `OPEN QUESTION` (author one via `/design` first).
 5. **Append to `reference/Completed-Features.md`** — one line in the overview table + a dated section with branch/PR ref and a 2–3 sentence summary.
 6. **Update `Home.md` and `_Sidebar.md`** to reflect any pages added / renamed / removed during this plan, preserving reader-journey ordering.
@@ -170,7 +176,7 @@ Four shapes defined in [`../documentation.md`](../documentation.md#templates):
 - **Template 1 — "Page":** default for narrative pages under `explanation/` and for reference pages. `#` H1 + summary paragraph + optional `⚡ Quick Reference` + semantic sections.
 - **Template 2 — "Status":** for `explanation/<feature-or-subsystem>.md`. Adds a GitHub-alert status callout (`pending | implemented | deprecated`) + `Intent` / `Design` / `Implementation` / `Notes` sections.
 - **Template 3 — "Decision record":** an entry in a living design's `## Amendment log` under `designs/` (`**YYYY-MM-DD — summary.** decision · why-not-the-alternative · re-audit trigger`), reconciling the design body in the same atomic change. Replaces the retired ADR model.
-- **Template 4 — "Tutorial" / "How-to":** for `tutorials/<NN>-<slug>.md` and `how-to/<Verb-Object>.md`. Opens with `> [!NOTE]` Goal / Time / Prereqs block; body is numbered `## Step N —` (tutorial) or `## Steps` numbered list (how-to). Tutorials close with `## What you learned` + `## Next`; how-tos close with optional `## Verify` / `## Troubleshooting`.
+- **Template 4 — "Tutorial" / "How-to":** both live under `how-to/` — an onboarding tutorial is `how-to/<NN>-<slug>.md` marked `<!-- mode: tutorial -->`; a task how-to is `how-to/<Verb-Object>.md`. Opens with `> [!NOTE]` Goal / Time / Prereqs block; body is numbered `## Step N —` (tutorial) or `## Steps` numbered list (how-to). Tutorials close with `## What you learned` + `## Next`; how-tos close with optional `## Verify` / `## Troubleshooting`.
 
 No YAML front-matter anywhere. Status is carried in GitHub-alert blocks.
 
@@ -181,9 +187,9 @@ See [`../documentation.md`](../documentation.md#stylistic-conventions) for the f
 - Tables over bullet lists for comparative info.
 - Diagrams (ASCII or Mermaid) whenever a relationship is clearer drawn than described.
 - GitHub alerts (`> [!NOTE]`, `> [!IMPORTANT]`, `> [!WARNING]`) for load-bearing callouts.
-- Emoji section markers, consistent: 📚 Tutorials · 🔧 How-to · 📖 Reference · 💡 Explanation · ⚡ Quick Reference.
+- Emoji section markers, consistent across the six sections (🔧 How-to · 📖 Reference · 💡 Explanation · ⚡ Quick Reference, plus Architecture / Designs / Operational where present) — match the markers the `templates/sections/` composition blocks use rather than inventing. Onboarding folds into How-to with a `<!-- mode: tutorial -->` hint (no separate Tutorials marker).
 - Cross-links: wiki pages by basename (`Home`, `01-Getting-Started`, etc.), full GitHub URLs with `#L<line>` for code references.
-- Filenames: `CamelCase-With-Dashes.md`, globally unique across mode dirs. Tutorials are numerically prefixed (`01-`, `02-`, ...) to suggest reading order.
+- Filenames: `CamelCase-With-Dashes.md`, globally unique across section dirs. Onboarding pages are numerically prefixed (`01-`, `02-`, ...) to suggest reading order.
 
 ## Guardrails
 
@@ -213,7 +219,7 @@ OPEN QUESTIONS:
   - explanation/Billing.md has a human-written "Known Limitations" section I left untouched — confirm still accurate?
 
 NO-OP CATEGORIES (for telemetry):
-  - tutorials/: no changes needed
+  - designs/: no amendment-log entries needed
   - how-to/: no new recipes surfaced
   - reference/: no new commands or flags
   - explanation/: no new decisions or intent shifts

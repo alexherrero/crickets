@@ -20,9 +20,10 @@ A wiki is built from **pages**; each page is composed from **sections**.
   `sections: [ordered list]`. The list *is* the page — resolve each name to
   `sections/<name>.md` and compose in order. Edit the list to author a page.
 - **Page types:** **landing types** (`home`, and later `plugin-home`, `project-landing`)
-  are section-composed today. The four Diátaxis modes (`tutorial` / `how-to` / `reference` /
-  `explanation`) are still page-level monoliths, but their sections are now extracted into the
-  library (§2), ready for the composer to assemble.
+  are section-composed today. The four Diátaxis page-shape modes (`tutorial` / `how-to` / `reference` /
+  `explanation`) — which populate the six-section folder layout (tutorial folds into `how-to/` via a
+  `<!-- mode: tutorial -->` hint) — are still page-level monoliths, but their sections are now extracted
+  into the library (§2), ready for the composer to assemble.
 
 ## 2. The section library
 

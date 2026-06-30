@@ -1,5 +1,7 @@
 # Tutorial: <Replace with title — start with a verb like "Get started with X" or "Build your first Y">
 
+<!-- mode: tutorial -->
+
 > [!NOTE]
 > **Goal:** <One sentence — the outcome the reader will achieve by following this tutorial.>
 > **Time:** <Estimated minutes; e.g. "~15 minutes">

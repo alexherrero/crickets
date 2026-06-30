@@ -169,7 +169,7 @@
       ],
       "name": "wiki-maintenance",
       "source": "./dist/claude-code/plugins/wiki-maintenance",
-      "version": "0.3.1"
+      "version": "0.3.2"
     }
   ]
 }
