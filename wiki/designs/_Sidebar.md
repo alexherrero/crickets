@@ -4,7 +4,7 @@
 ### 📖 [Reference](Reference)
 ### 🏛️ [Architecture](Architecture)
 ### 🧩 [Designs](Designs)
-**Architecture (Agent M)** — [in the agentm wiki ↗](https://github.com/alexherrero/agentm/wiki/memoryvault)
+**Architecture (AgentM)** — [in the agentm wiki ↗](https://github.com/alexherrero/agentm/wiki/memoryvault)
 
 **Crickets**
 - [Crickets — High Level Design](crickets-hld)

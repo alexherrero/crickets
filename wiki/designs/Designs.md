@@ -1,7 +1,7 @@
 <!-- mode: index -->
 # Designs
 
-The architecture behind crickets and Agent M — the high-level design docs that explain *how* each system works, in depth. Each design's sub-parts live in this section's sidebar.
+The architecture behind crickets and AgentM — the high-level design docs that explain *how* each system works, in depth. Each design's sub-parts live in this section's sidebar.
 
 ## What's here
 
@@ -27,7 +27,7 @@ The architecture behind crickets and Agent M — the high-level design docs that
   - [diagnostics](crickets-diagnostics) — observability / troubleshooting *(newly designed, not yet built)*.
   - [reporting](crickets-reporting) — the operator-facing report surface: the digest now, dashboards later *(newly designed, not yet built)*.
 
-**Architecture (Agent M)**
+**Architecture (AgentM)**
 
 - **[MemoryVault](https://github.com/alexherrero/agentm/wiki/memoryvault)** — permanent agent memory.
 - **[AgentM HLD](https://github.com/alexherrero/agentm/wiki/agentm-hld)** (the V1→V8 evolution arc + the V5 Memory-OS baseline) · **[Foundations](https://github.com/alexherrero/agentm/wiki/agentm-foundations-hld)** (the V4 device-wide substrate). *(The standalone Agent-Memory-Evolution / Device-Wide / Memory-OS V5 HLDs were vault-archived 2026-06-24, AG Wave 2.)*

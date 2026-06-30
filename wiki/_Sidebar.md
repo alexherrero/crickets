@@ -39,9 +39,9 @@
 - [Customization model](Customization-Model)
 - [Build & distribution](Build-And-Distribution)
 - [Host adapters](Host-Adapters)
-- [Harness interface ↔ Agent M](Harness-Interface)
+- [Harness interface ↔ AgentM](Harness-Interface)
 ### 🧩 [Designs](Designs)
-**Architecture (Agent M)** — [in the agentm wiki ↗](https://github.com/alexherrero/agentm/wiki/memoryvault)
+**Architecture (AgentM)** — [in the agentm wiki ↗](https://github.com/alexherrero/agentm/wiki/memoryvault)
 
 **Crickets**
 ### 💡 [Explanation](Explanation)

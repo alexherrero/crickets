@@ -1,5 +1,5 @@
 <!-- mode: index -->
-# Harness interface ↔ Agent M
+# Harness interface ↔ AgentM
 
 _The seam between this toolkit and the sibling `agentm` harness — what each owns, and how they compose without depending on each other._
 

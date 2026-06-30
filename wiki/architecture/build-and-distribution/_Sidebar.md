@@ -13,6 +13,6 @@
 - [Customization model](Customization-Model)
 - [Build & distribution](Build-And-Distribution)
 - [Host adapters](Host-Adapters)
-- [Harness interface ↔ Agent M](Harness-Interface)
+- [Harness interface ↔ AgentM](Harness-Interface)
 ### 🧩 [Designs](Designs)
 ### 💡 [Explanation](Explanation)

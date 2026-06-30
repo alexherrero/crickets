@@ -13,11 +13,11 @@
 
 <p align="center"><sub>Works with Claude Code + Antigravity — <a href="https://github.com/alexherrero/crickets/wiki/Compatibility">see compatibility</a></sub></p>
 
-**Crickets** is a set of small, composable agent primitives — skills, hooks, sub-agents, MCP servers, commands, and more — grouped into native plugins for Claude Code and Antigravity. They're what **you** add to a project to make [Agent M (`agentm`)](https://github.com/alexherrero/agentm) effective.
+**Crickets** is a set of small, composable agent primitives — skills, hooks, sub-agents, MCP servers, commands, and more — grouped into native plugins for Claude Code and Antigravity. They're what **you** add to a project to make [AgentM (`agentm`)](https://github.com/alexherrero/agentm) effective.
 
 ## 📚 Get started
 
-[Install](Install-Into-Project) the plugins alongside Agent M and [point them](https://github.com/alexherrero/agentm) at your project.
+[Install](Install-Into-Project) the plugins alongside AgentM and [point them](https://github.com/alexherrero/agentm) at your project.
 
 - [Install crickets plugins](Install-Into-Project) — one-liner, marketplace, or manual `--plugin-dir`, on Claude Code or Antigravity. (Quick version in the [repo README](https://github.com/alexherrero/crickets#readme).)
 
@@ -51,20 +51,20 @@ The structural component map — five components, each a folder under **Architec
 - [Customization model](Customization-Model) — the primitive types and the `enhances:` soft-composition model.
 - [Build & distribution](Build-And-Distribution) — `src/` → generated `dist/` native plugins, three install modes.
 - [Host adapters](Host-Adapters) — the per-host surface mapping (Claude Code · Antigravity).
-- [Harness interface ↔ Agent M](Harness-Interface) — the seam between this toolkit and the sibling harness.
+- [Harness interface ↔ AgentM](Harness-Interface) — the seam between this toolkit and the sibling harness.
 
 ## 🧩 Major designs
 
-**Architecture (Agent M)** — the substrate crickets runs on. These are Agent M's; see its design docs rather than re-reading them here.
+**Architecture (AgentM)** — the substrate crickets runs on. These are AgentM's; see its design docs rather than re-reading them here.
 
-- **Agent M memory** — the MemoryVault store, the device-wide architecture, and the memory-OS unbundling. → [Agent M design docs](https://github.com/alexherrero/agentm). Background: [MemoryVault](https://github.com/alexherrero/agentm/wiki/memoryvault) · [memory evolution](https://github.com/alexherrero/agentm/wiki/agentm-hld) · [device-wide](https://github.com/alexherrero/agentm/wiki/agentm-foundations-hld) · [memory-OS](https://github.com/alexherrero/agentm/wiki/agentm-hld).
+- **AgentM memory** — the MemoryVault store, the device-wide architecture, and the memory-OS unbundling. → [AgentM design docs](https://github.com/alexherrero/agentm). Background: [MemoryVault](https://github.com/alexherrero/agentm/wiki/memoryvault) · [memory evolution](https://github.com/alexherrero/agentm/wiki/agentm-hld) · [device-wide](https://github.com/alexherrero/agentm/wiki/agentm-foundations-hld) · [memory-OS](https://github.com/alexherrero/agentm/wiki/agentm-hld).
 
 **Plugins (Crickets)** — what each adds, in plain terms.
 
 - **Native host plugins** ([design](crickets-build-system)) — author a primitive once; the generator emits native Claude Code **and** Antigravity plugins, installable three ways, with a CI gate that fails if `dist/` drifts from `src/`.
 - **Developer plugin suite** ([design](crickets-composition)) — the phase-gated dev loop, the safety controls, and adversarial review, as three composable plugins joined by `enhances:`.
 - **Wiki maintenance** ([design](crickets-wiki)) — a template-driven wiki maintainer that expands from Diátaxis toward your house voice via an operator-in-the-loop learning loop, plus the wiki-watcher.
-- **diataxis-author** ([design](crickets-wiki)) — Diátaxis authoring and repair for any repo, folded into the `wiki` capability. *(now an Agent M skill — see the [Agent M design](https://github.com/alexherrero/agentm).)*
+- **diataxis-author** ([design](crickets-wiki)) — Diátaxis authoring and repair for any repo, folded into the `wiki` capability. *(now an AgentM skill — see the [AgentM design](https://github.com/alexherrero/agentm).)*
 
 ## 💡 Why it works the way it does
 

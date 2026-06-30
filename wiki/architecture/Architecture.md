@@ -9,7 +9,7 @@ The structural component map — how crickets is built. Five components, each a 
 - **[Customization model](Customization-Model)** — the primitive types (skills · commands · agents · hooks · …) and the `enhances:` soft-composition model that lets plugins layer.
 - **[Build & distribution](Build-And-Distribution)** — how `src/` is generated into committed `dist/` native host plugins and shipped (bootstrap · marketplace · `--plugin-dir`).
 - **[Host adapters](Host-Adapters)** — the per-host surface mapping (Claude Code · Antigravity) and where each primitive lands.
-- **[Harness interface ↔ Agent M](Harness-Interface)** — the seam between this toolkit and the sibling `agentm` harness: what each owns and how they compose.
+- **[Harness interface ↔ AgentM](Harness-Interface)** — the seam between this toolkit and the sibling `agentm` harness: what each owns and how they compose.
 
 ## Recent changes
 
