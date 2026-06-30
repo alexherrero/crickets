@@ -30,12 +30,12 @@ class TestScaffoldPlan(unittest.TestCase):
         return [it.relpath for it in plan]
 
     def test_empty_yields_full_scaffold(self):
-        plan = wi.compute_scaffold_plan(set(), ["how-to", "reference", "explanation", "decisions"])
+        plan = wi.compute_scaffold_plan(set(), ["how-to", "reference", "explanation", "designs"])
         rels = self._rels(plan)
         self.assertIn("Home.md", rels)
         self.assertIn("_Sidebar.md", rels)
         for s, base in [("how-to", "How-To"), ("reference", "Reference"),
-                        ("explanation", "Explanation"), ("decisions", "Decisions")]:
+                        ("explanation", "Explanation"), ("designs", "Designs")]:
             self.assertIn(f"{s}/{base}.md", rels)
             self.assertIn(f"{s}/_Sidebar.md", rels)
         self.assertEqual(len(plan), 2 + 2 * 4)   # 2 root + (landing + sidebar) * 4
@@ -68,15 +68,15 @@ class TestScaffoldPlan(unittest.TestCase):
         self.assertEqual(wi.parse_sections(""), wi.DEFAULT_SECTIONS)
 
 
-class TestSevenSectionFrame(unittest.TestCase):
-    """The static 7-section taxonomy frame + the two conditional slots
+class TestSixSectionFrame(unittest.TestCase):
+    """The static 6-section taxonomy frame + the two conditional slots
     (wiki-section-taxonomy 1/6 — static-frame)."""
 
-    def test_default_sections_is_the_ordered_seven(self):
+    def test_default_sections_is_the_ordered_six(self):
         self.assertEqual(
             wi.DEFAULT_SECTIONS,
             ["how-to", "reference", "architecture", "designs",
-             "explanation", "decisions", "operational"])
+             "explanation", "operational"])
 
     def test_renamed_entries_in_section_meta(self):
         # do -> how-to/How-To ; why -> explanation/Explanation (reversing the
@@ -93,12 +93,12 @@ class TestSevenSectionFrame(unittest.TestCase):
         self.assertEqual(wi.CONDITIONAL_SECTIONS,
                          frozenset({"architecture", "operational"}))
 
-    def test_neither_conditional_declared_yields_five_always_present(self):
+    def test_neither_conditional_declared_yields_four_always_present(self):
         self.assertEqual(
             wi.active_sections(wi.DEFAULT_SECTIONS),
-            ["how-to", "reference", "designs", "explanation", "decisions"])
+            ["how-to", "reference", "designs", "explanation"])
 
-    def test_both_conditionals_declared_yields_all_seven(self):
+    def test_both_conditionals_declared_yields_all_six(self):
         self.assertEqual(
             wi.active_sections(wi.DEFAULT_SECTIONS, has_architecture=True, non_public=True),
             wi.DEFAULT_SECTIONS)
@@ -106,12 +106,12 @@ class TestSevenSectionFrame(unittest.TestCase):
     def test_only_architecture_declared(self):
         self.assertEqual(
             wi.active_sections(wi.DEFAULT_SECTIONS, has_architecture=True),
-            ["how-to", "reference", "architecture", "designs", "explanation", "decisions"])
+            ["how-to", "reference", "architecture", "designs", "explanation"])
 
     def test_only_operational_declared(self):
         self.assertEqual(
             wi.active_sections(wi.DEFAULT_SECTIONS, non_public=True),
-            ["how-to", "reference", "designs", "explanation", "decisions", "operational"])
+            ["how-to", "reference", "designs", "explanation", "operational"])
 
 
 class TestArchitectureManifest(unittest.TestCase):
@@ -298,7 +298,7 @@ class TestNestedArchitectureSidebar(unittest.TestCase):
     no-manifest · single-component · recurring-pillars."""
 
     SECTIONS = ["how-to", "reference", "architecture", "designs",
-                "explanation", "decisions"]
+                "explanation"]
 
     def test_no_components_keeps_architecture_a_flat_bullet(self):
         # no-manifest fixture: architecture present in sections but no components →
@@ -474,8 +474,8 @@ class TestScaffoldPassesCheckWiki(unittest.TestCase):
         self._assert_clean(wi.DEFAULT_SECTIONS)
 
     def test_extended_sections_scaffold_is_gate_clean(self):
-        self._assert_clean(["how-to", "reference", "designs", "explanation",
-                            "decisions", "operational"])
+        self._assert_clean(["how-to", "reference", "architecture", "designs",
+                            "explanation", "operational"])
 
     def test_architecture_manifest_scaffold_is_gate_clean(self):
         # a manifest-driven scaffold (Architecture + nested component folders +
@@ -657,7 +657,7 @@ class TestRealWikiSmoke(unittest.TestCase):
 
     def test_real_wiki_run_is_noop(self):
         # The no-op invariant, RESTORED in crickets-dogfood (part 4): crickets' own
-        # wiki is now on the seven-section frame, so the section-level scaffold plan
+        # wiki is now on the six-section frame, so the section-level scaffold plan
         # converges to nothing to do. The @expectedFailure tripwire that guarded the
         # "battery red 1→4" transition window (parts 1-3, while crickets still had
         # the old do/, why/, plugins/ folders) is gone — its job is done. The

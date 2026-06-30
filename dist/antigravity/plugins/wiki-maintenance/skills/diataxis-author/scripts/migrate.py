@@ -18,7 +18,8 @@
 #      design/architecture.
 #
 # Classification rules (matches predecessor's table verbatim):
-#   - ADR: H1 matches `^# ADR \d{4}:` → explanation/decisions/<basename>.
+#   - ADR (legacy): H1 matches `^# ADR \d{4}:` → explanation/<basename>
+#     (the ADR model is retired; fold into a design's amendment log by hand).
 #   - Status page: body has `> [!NOTE]` block with `**Status:**` + `**Plan:**`
 #     → explanation/<basename>.
 #   - How-to: `## Steps` H2 with numbered list OR ≥3 numbered imperative
@@ -261,12 +262,9 @@ def _compute_new_path(p: Path, wiki_root: Path, target_mode: str) -> Path:
     """Compute new path for a page given target mode. Preserves basename;
     flattens out the old subdir."""
     mode_dir_name = _MODE_DIRS[target_mode]
-    # ADRs stay under explanation/decisions/ subdir.
-    if target_mode == "explanation" and (
-        _ADR_HEADING_RE.match("".join(_read_lines(p)[:1]) or "")
-        or "decisions" in p.parts
-    ):
-        return wiki_root / "explanation" / "decisions" / p.name
+    # Legacy ADR pages flatten into explanation/ — the Decisions section is
+    # retired (decisions now live in living-design amendment logs); fold them
+    # into the relevant design by hand after the migration.
     return wiki_root / mode_dir_name / p.name
 
 
@@ -480,7 +478,7 @@ def main(argv: list[str] | None = None) -> int:
     print("  2. Spot-check git log --follow wiki/<new-path>/<Some-Page>.md to confirm blame preserved.")
     print(f"  3. Split the {stats['flagged']} flagged pages by hand via /diataxis repair.")
     print("  4. Run check-wiki.py --strict on the wiki/ root.")
-    print("  5. Commit. Suggested message: refactor(wiki): migrate to Diátaxis four-mode layout (ADR 0004)")
+    print("  5. Commit. Suggested message: refactor(wiki): migrate to the six-section documentation layout")
     return 0 if stats["errors"] == 0 else 2
 
 

@@ -31,14 +31,14 @@ PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import vendor_gate as _vendor  # noqa: E402  (sibling in the plugin's scripts/)
 
-# Default section set — the ordered seven-section taxonomy (wiki-section-taxonomy
-# design). Five always-present (how-to · reference · designs · explanation ·
-# decisions) plus two CONDITIONAL slots: architecture (gated on a declared
+# Default section set — the ordered six-section taxonomy (wiki-section-taxonomy
+# design). Four always-present (how-to · reference · designs · explanation)
+# plus two CONDITIONAL slots: architecture (gated on a declared
 # wiki/architecture.yml manifest — part 2) and operational (gated on non-public
 # visibility — part 3). Architecture sits BEFORE designs (understanding-oriented
 # component map first; per-feature designs follow).
 DEFAULT_SECTIONS = ["how-to", "reference", "architecture", "designs",
-                    "explanation", "decisions", "operational"]
+                    "explanation", "operational"]
 
 # section slug -> (landing basename, H1 title, one-line purpose). Drives both the
 # plan (basename) and the render (title + purpose). Unknown sections fall back to
@@ -53,7 +53,6 @@ SECTION_META: dict[str, tuple[str, str, str]] = {
     "architecture": ("Architecture", "Architecture", "The structural component map — how the project is built."),
     "designs": ("Designs", "Designs", "Design docs for in-flight and shipped work."),
     "explanation": ("Explanation", "Explanation", "Background, rationale, and decisions."),
-    "decisions": ("Decisions", "Decisions", "Architecture Decision Records."),
     "operational": ("Operational", "Operational", "Runbooks, SLAs, monitoring, and rollback (non-public wikis)."),
 }
 

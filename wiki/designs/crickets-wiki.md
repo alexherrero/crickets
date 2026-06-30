@@ -39,11 +39,11 @@ The structure standard is a **modified Diátaxis** — the **`documentation` con
 
 **Kept from standard Diátaxis — the page modes.** Every page is exactly **one mode** — tutorials · how-to · reference · explanation — and never blends them (the single-mode rule), under length ceilings and a naming style. The mode is what makes a reader land on the right *kind* of page.
 
-**Changed — a fixed seven-section frame, not four mode-folders.** The tree is **seven sections in fixed order: How-to · Reference · Architecture · Designs · Explanation · Decisions · Operational.** The differences from stock Diátaxis:
+**Changed — a fixed six-section frame, not four mode-folders.** The tree is **six sections in fixed order: How-to · Reference · Architecture · Designs · Explanation · Operational.** The differences from stock Diátaxis:
 
 - **Tutorials fold into How-to** — too few to earn a section of their own; task docs live in How-to.
-- **Four sections are added** that Diátaxis has no slot for: **Architecture** (system overviews), **Designs** (the "why we built X" design docs), **Decisions** (decision records), and **Operational** (runbooks + ops).
-- **Two are conditional:** **Architecture** renders only when a repo declares `wiki/architecture.yml`; **Operational** renders only on non-public visibility (public wikis suppress it). The other five are always present.
+- **Three sections are added** that Diátaxis has no slot for: **Architecture** (system overviews), **Designs** (the "why we built X" design docs — decision records live in each design's amendment log), and **Operational** (runbooks + ops).
+- **Two are conditional:** **Architecture** renders only when a repo declares `wiki/architecture.yml`; **Operational** renders only on non-public visibility (public wikis suppress it). The other four are always present.
 - **The audience-tag layout is retired** — sections group by intent, not by reader.
 
 The canonical definition lives in conventions (the `documentation` domain); `wiki` is its **executor** — `check-wiki.py` is the gate, the templates encode it, the `diataxis-author` skill authors against it, and a per-repo `.diataxis-conventions.md` overrides it.
@@ -69,7 +69,7 @@ The floor guarantees structure; authoring + watch keep the docs true to the code
 | `wiki-author` · `wiki-watch` | skill | Authoring entry + the one-cycle drift watch. |
 | `diataxis-evaluator` · `style-scope-evaluator` | agent | Read-only judges for the ambiguous mode-classification + voice-scope calls. |
 | `composer.py` *(in `diataxis-author`)* | module | The manifest → page transform (`compose_page`): load each `templates/sections/<name>.md`, strip its `<!-- SECTION -->` opinion comment, resolve voice, concatenate in manifest order — deterministic; leaves `<…>` author-fill placeholders intact. |
-| `/wiki-init` · `/wiki-watch` · `/recent-wiki-changes` | command | **Init** (idempotent, preview-first provisioning: scaffolds the seven-section IA + per-folder sidebars + landings, drops a parameterized `wiki-sync.yml` into the target's `.github/workflows/`, wires the gate per the distribution split; warns on billed Actions minutes when the target isn't public) · the drift watch · the recent-changes digest. |
+| `/wiki-init` · `/wiki-watch` · `/recent-wiki-changes` | command | **Init** (idempotent, preview-first provisioning: scaffolds the six-section IA + per-folder sidebars + landings, drops a parameterized `wiki-sync.yml` into the target's `.github/workflows/`, wires the gate per the distribution split; warns on billed Actions minutes when the target isn't public) · the drift watch · the recent-changes digest. |
 | `wiki-sync.yml` | workflow | The publish **deployment** — one workflow, two jobs: `lint-wiki` (the `check-wiki` gate, on push + PR) then `update-wiki` (`needs: lint-wiki`; `rsync -a` mirror of `wiki/` to the GitHub wiki — add/edit/rename/delete; fails loudly on case-insensitive dupe basenames; graceful-skip when the wiki is disabled; self-heals on the next green push). Publishing is deployment, lint-gated — not CI. |
 
 ### Opinions + conventions it consumes
@@ -105,6 +105,9 @@ wiki **enforces the `documentation` convention** ([conventions](crickets-convent
 - **Up / enhances:** [crickets HLD](crickets-hld.md) · [composition](crickets-composition.md) · [development-lifecycle](crickets-development-lifecycle.md) · **[conventions](crickets-conventions.md) (the `documentation` convention it enforces)** · [Personas](https://github.com/alexherrero/agentm/wiki/agentm-personas) (Maintainer) · [agentm Opinions](https://github.com/alexherrero/agentm/wiki/agentm-opinions-and-gates) (`good` + the voice)
 
 ## Amendment log
+
+**2026-06-30 — Decisions section retired: six-section frame.** The added-section set drops from four to three (Architecture · Designs · Operational); decision records now live in each living design's `## Amendment log`, not a standalone Decisions section. The frame is now **How-to · Reference · Architecture · Designs · Explanation · Operational** (four always-present, Architecture + Operational conditional). `wiki_init.py`, `check-wiki`, the templates, and the `documenter`/`migrate.py` ADR-routing drop `decisions/` in the same pass (defined authoritatively in the [conventions](crickets-conventions.md) `documentation` domain). *Why not keep an empty Decisions section:* a universally-empty always-present section is drift that re-scaffolds itself. *Re-audit trigger:* a durable decision-artifact class with no living-design home.
+
 
 **2026-06-28 — lock-down sweep (operator review).** Converted the system mermaid to a house-style hand-SVG (`diagrams/crickets-wiki.svg`); rewrote the structure section to spell out the **modified Diátaxis** — the seven-section frame and its differences from stock Diátaxis; and repointed the two loose ADR citations (the Diátaxis-spec seed; the seven-section cross-reference) at the [conventions](crickets-conventions.md) `documentation` domain. The folded-ADR records (0008 / 0018 / 0019) keep their numbers as historical decision IDs (the locked-design fold pattern). Locked as a v5–v8 guidepost.
 

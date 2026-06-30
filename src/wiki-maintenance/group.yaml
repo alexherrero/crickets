@@ -10,7 +10,7 @@ standalone: true
 # primitives so `claude plugin update wiki-maintenance@crickets` actually pulls
 # them (the marketplace entry compares this value; a static version no-ops the
 # update). 0.2.0 = first bump past the original 0.1.0 — covers wiki-init,
-# wiki-sync.yml, the single-sourced check-wiki.py, and the seven-section composer
+# wiki-sync.yml, the single-sourced check-wiki.py, and the six-section composer
 # shipped since 0.1.0. 0.2.1 = check-wiki.py fix — extract_wiki_links now skips
 # fenced code blocks + inline code spans, so a link-shaped template literal (e.g.
 # a `]({{placeholder}})` example) is no longer a false-positive broken-link error.
@@ -19,7 +19,7 @@ standalone: true
 # 0.2.3 = declare capabilities: [wiki-maintenance] (agentm V5-8 LC-5 cutover) +
 # remove vestigial probe_capability() function from wiki_watch_dispatch.py (it was
 # a tautology: wiki-watch running implies the plugin is installed).
-version: 0.2.6
+version: 0.3.0
 capabilities: [wiki-maintenance]
 enhances:
   - group: developer-workflows

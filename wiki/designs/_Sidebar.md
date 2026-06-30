@@ -27,4 +27,3 @@
   - [diagnostics](crickets-diagnostics)
   - [reporting](crickets-reporting)
 ### 💡 [Explanation](Explanation)
-- [Decisions (archived)](Decisions)
