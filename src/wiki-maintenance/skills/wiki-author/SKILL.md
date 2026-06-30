@@ -9,7 +9,7 @@ install_scope: user
 
 # wiki-author — operator-facing dispatcher for wiki edits
 
-Auto-fires on operator phrases like *"update the wiki with what we just shipped"* or *"add this to the wiki"*. Resolves which Diátaxis mode page to update or create, then dispatches the **`documenter` sub-agent** (the write-executor, hard-boundary-scoped to `wiki/**` per [ADR 0004 Amendment 2026-05-27](../../../wiki/explanation/decisions/0004-diataxis-documentation-spec.md#amendment-2026-05-27)). Operator confirms every write via preview-before-write gate.
+Auto-fires on operator phrases like *"update the wiki with what we just shipped"* or *"add this to the wiki"*. Resolves which Diátaxis mode page to update or create, then dispatches the **`documenter` sub-agent** (the write-executor, hard-boundary-scoped to `wiki/**` per the [crickets-conventions design — documentation domain](https://github.com/alexherrero/crickets/wiki/crickets-conventions)). Operator confirms every write via preview-before-write gate.
 
 ## Triggers and non-triggers
 
@@ -70,7 +70,7 @@ After resolution, this skill ALWAYS:
    - **Create new page**: derives mode from the phrase ("how-to for X" → how-to dir; "reference for X" → reference dir); if ambiguous, asks the operator interactively. Defers to the `diataxis-author` skill if available for richer mode selection.
 4. **Drafts the structural edit + emits a unified diff preview** to the operator before writing — **and surfaces the step-2 context bundle alongside the diff** so the operator sees *here's what's locked + what we've decided before* next to the proposed change. Per-write gate (every cross-repo edit gates on approval).
 5. **On operator approval**: dispatches the `documenter` sub-agent with the resolved target + draft content. Documenter performs the actual file write under its hard-boundary scope (per [documenter spec](../../agents/documenter.md#cross-repo-write-contract-v4-30-plan-2--2026-05-27)).
-6. **Cross-references**: ADR 0004 Amendment 2026-05-27 (preview-before-write + .diataxis-conventions override + repo_registry resolution); documenter sub-agent spec (write-scope hard boundary + V4 #35 pre-flight); diataxis-author skill (mode selection + per-repo conventions, when applicable).
+6. **Cross-references**: the [crickets-conventions design](https://github.com/alexherrero/crickets/wiki/crickets-conventions) documentation domain (preview-before-write + .diataxis-conventions override + repo_registry resolution); documenter sub-agent spec (write-scope hard boundary + V4 #35 pre-flight); diataxis-author skill (mode selection + per-repo conventions, when applicable).
 
 ## What this skill does NOT do
 
@@ -82,7 +82,7 @@ After resolution, this skill ALWAYS:
 ## When NOT to invoke this skill
 
 - Operator is reading the wiki (descriptive language, not imperative).
-- Operator is asking about wiki structure or conventions (route to ADR 0004 / Diátaxis docs instead).
+- Operator is asking about wiki structure or conventions (route to the [crickets-conventions design](https://github.com/alexherrero/crickets/wiki/crickets-conventions) / Diátaxis docs instead).
 - Operator wants to write to a NON-wiki file (PLAN.md, progress.md, AGENTS.md, source code) — those are off-limits for documenter; refuse + route the operator to the appropriate surface (the harness `/work` phase, manual edit, etc.).
 
 ## Per-host adapter

@@ -1,6 +1,6 @@
 ---
 name: diataxis-author
-description: Author + maintain a Diátaxis-style wiki for any repo. Live authoring guidance (mode selection + template-fill + filename style), ongoing drift detection + repair, one-shot migration of legacy audience-based wikis to the four-mode (tutorials / how-to / reference / explanation) discipline, and single-page mode classification with sub-agent fallback on ambiguous cases. Reads operator conventions from AgentMemory `_always-load/diataxis-*.md`; composes a base style-guide ⊕ on-demand voice overlay into authored drafts, and learns generalizable voice lessons from the operator's own edits (edit-driven capture, operator-gated for generality + scope); offers to capture judgment calls back as new conventions (operator-confirmed via permeable-boundary helper). Dispatches the existing `documenter` sub-agent for mechanical-write work; never auto-forks into wiki/ without preview. Subsumes the predecessor `migrate-to-diataxis` skill (harness-side) per ROADMAP #13. Hosts: Claude Code + Antigravity (`gemini-cli` removed in v0.9.0 per ADR 0006).
+description: Author + maintain a Diátaxis-style wiki for any repo. Live authoring guidance (mode selection + template-fill + filename style), ongoing drift detection + repair, one-shot migration of legacy audience-based wikis to the four-mode (tutorials / how-to / reference / explanation) discipline, and single-page mode classification with sub-agent fallback on ambiguous cases. Reads operator conventions from AgentMemory `_always-load/diataxis-*.md`; composes a base style-guide ⊕ on-demand voice overlay into authored drafts, and learns generalizable voice lessons from the operator's own edits (edit-driven capture, operator-gated for generality + scope); offers to capture judgment calls back as new conventions (operator-confirmed via permeable-boundary helper). Dispatches the existing `documenter` sub-agent for mechanical-write work; never auto-forks into wiki/ without preview. Subsumes the predecessor `migrate-to-diataxis` skill (harness-side) per ROADMAP #13. Hosts: Claude Code + Antigravity (`gemini-cli` removed in v0.9.0 per the gemini-cli host-removal decision, crickets-hld design).
 kind: skill
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
@@ -9,7 +9,7 @@ install_scope: project
 
 # diataxis-author — author + maintain a Diátaxis wiki for any repo
 
-The second major skill in `crickets` (after `memory`). Encodes the operator's Diátaxis discipline from [agentm ADR 0004 — Diátaxis Documentation Spec](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0004-diataxis-documentation-spec.md) into proactive authoring guidance + ongoing drift detection + repair + one-shot migration, with per-repo overrides via `wiki/.diataxis-conventions.md` and global conventions stored in AgentMemory (`_always-load/diataxis-*.md`). Designed via [crickets's design skill](https://github.com/alexherrero/crickets/wiki/crickets-wiki) — second real dogfood of plan #6's `/design author` after MemoryVault closed.
+The second major skill in `crickets` (after `memory`). Encodes the operator's Diátaxis discipline from the [crickets-conventions design — documentation domain](https://github.com/alexherrero/crickets/wiki/crickets-conventions) into proactive authoring guidance + ongoing drift detection + repair + one-shot migration, with per-repo overrides via `wiki/.diataxis-conventions.md` and global conventions stored in AgentMemory (`_always-load/diataxis-*.md`). Designed via [crickets's design skill](https://github.com/alexherrero/crickets/wiki/crickets-wiki) — second real dogfood of plan #6's `/design author` after MemoryVault closed.
 
 **Position vs. `check-wiki.py` strict validator**: validators catch violations after-the-fact; diataxis-author provides **proactive** guidance at write time (template selection, mode classification, filename style). Both layers complement: skill prevents drift at write time; `check-wiki.py` catches drift at commit time + during `/diataxis check`.
 
@@ -533,12 +533,12 @@ Python-side scripts can use whatever they need (network for ADR 0004 cross-refer
 
 ## Host scope
 
-`supported_hosts: [claude-code, antigravity]` — `gemini-cli` excluded per [ROADMAP item #15](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md) (Gemini-CLI host removal, shipped in toolkit v0.9.0 / ADR 0006). Same scope as the sibling `memory` skill.
+`supported_hosts: [claude-code, antigravity]` — `gemini-cli` excluded per [ROADMAP item #15](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md) (Gemini-CLI host removal, shipped in toolkit v0.9.0; rationale in the [crickets-hld design](https://github.com/alexherrero/crickets/wiki/crickets-hld)). Same scope as the sibling `memory` skill.
 
 ## Cross-references
 
 - **Parent design**: [diataxis-author](https://github.com/alexherrero/crickets/wiki/crickets-wiki) — the canonical "Why we built this" entry point per the locked design call from plan #6.
-- **Diátaxis spec source**: [agentm ADR 0004 — Diátaxis Documentation Spec](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0004-diataxis-documentation-spec.md) — the canonical convention this skill enforces.
+- **Diátaxis spec source**: [crickets-conventions design — documentation domain](https://github.com/alexherrero/crickets/wiki/crickets-conventions) — the canonical convention this skill enforces.
 - **Predecessor (being subsumed)**: [agentm `migrate-to-diataxis` skill](https://github.com/alexherrero/agentm/blob/main/harness/skills/migrate-to-diataxis.md) — one-shot migration skill that `/diataxis migrate` ports + extends. Ships deprecation notice in plan #13 part 4.
 - **Sibling sub-agent**: [`diataxis-evaluator`](https://github.com/alexherrero/crickets/blob/main/agents/diataxis-evaluator.md) — read-only sub-agent for ambiguous mode classification. Dispatched from `/diataxis classify` (operational from part 2) + `/diataxis repair` mode-mixed splits (operational from part 3).
 - **Sibling sub-agent (style-learning)**: [`style-scope-evaluator`](https://github.com/alexherrero/crickets/blob/main/agents/style-scope-evaluator.md) — read-only sub-agent for voice-lesson scope placement. Dispatched from `/diataxis capture` as gate 2 (recommends one of global / per-project / per-repo; the operator confirms).

@@ -387,7 +387,7 @@ External GitHub repo links use full URLs.
 
 ## See also
 
-- [agentm ADR 0004 — Diátaxis Documentation Spec](../../../agentm/wiki/explanation/decisions/0004-diataxis-documentation-spec.md) — canonical spec
+- [crickets-conventions design — documentation domain](https://github.com/alexherrero/crickets/wiki/crickets-conventions) — canonical spec
 - [crickets diataxis-author design doc](https://github.com/alexherrero/crickets/wiki/crickets-wiki) — skill design
 """
         conv_path.write_bytes(conv_content.encode("utf-8"))

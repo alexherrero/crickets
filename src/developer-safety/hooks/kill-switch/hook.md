@@ -51,7 +51,7 @@ The next tool call proceeds normally.
 - **`kill-switch` runs first.** If `.harness/STOP` is present, the tool call is blocked before `steer` reads `.harness/STEER.md`.
 - This ordering is **load-bearing**: a halt must take precedence over a steer.
 
-Hook ordering within an event is documented as alphabetical install order. If Claude Code ever changes hook event semantics, re-audit this invariant (see [ADR 0003](0003-base-operator-hooks)).
+Hook ordering within an event is documented as alphabetical install order. If Claude Code ever changes hook event semantics, re-audit this invariant (see the [developer-safety design](https://github.com/alexherrero/crickets/wiki/crickets-developer-safety) — base operator hooks rationale).
 
 ## File location (v0.7.0)
 
@@ -74,4 +74,4 @@ On **Antigravity** the hook **fires but cannot halt** the tool call. Antigravity
 - [`steer`](../steer/hook.md) — companion mid-run-redirect hook.
 - [`commit-on-stop`](../commit-on-stop/hook.md) — companion safety-branch hook.
 - [How to use the base hooks](../../wiki/how-to/Use-The-Base-Hooks.md) — practical scenarios for all three.
-- [ADR 0003 — base operator hooks](../../wiki/explanation/decisions/0003-base-operator-hooks.md) — design rationale.
+- [developer-safety design — base operator hooks rationale](https://github.com/alexherrero/crickets/wiki/crickets-developer-safety) — design rationale.

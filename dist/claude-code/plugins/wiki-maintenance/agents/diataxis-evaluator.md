@@ -54,7 +54,7 @@ Writes attempted by this sub-agent are bugs in dispatch + should be caught at PR
 - **Never writes to wiki/** or any other filesystem path. Classification + suggested splits are returned to the caller for the caller's preview-first action.
 - **Never invokes `git mv`, `documenter` sub-agent, or any other write-capable agent.** Those dispatches happen at the caller level.
 - **Never overrides operator-confirmed mode classifications.** If operator has classified a page as mode X via per-repo convention or always-load entry, sub-agent honors that classification + skips re-evaluation.
-- **Never re-fetches ADR 0004 from the network** if a local copy exists at `<harness-repo>/wiki/explanation/decisions/0004-diataxis-documentation-spec.md`. WebFetch is reserved for the cross-repo case where the harness isn't co-located.
+- **Never re-fetches the Diátaxis documentation spec from the network** if a local copy exists (e.g. the governing `wiki/designs/crickets-conventions.md` documentation domain). WebFetch is reserved for the cross-repo case where the spec source isn't co-located.
 
 ## Failure modes (all soft)
 
@@ -68,7 +68,7 @@ Writes attempted by this sub-agent are bugs in dispatch + should be caught at PR
 - [`diataxis-author` skill](../skills/diataxis-author/SKILL.md) — the caller; this sub-agent's sole purpose is supporting that skill's classification work.
 - [`scripts/classify.py`](../skills/diataxis-author/scripts/classify.py) — Tier-1 heuristic engine. Returns `needs_subagent: true` when its confidence is below threshold (default 0.7) or when the page is mode-mixed. Caller (the skill body) sees that flag + dispatches this sub-agent with the heuristic's output included in the rubric for context.
 - [`scripts/author.py`](../skills/diataxis-author/scripts/author.py) — uses classify.py's mode inference when `--intent <sentence>` is passed; if classify says `needs_subagent: true`, the operator is prompted to disambiguate explicitly via `--mode`.
-- [agentm ADR 0004 — Diátaxis Documentation Spec](https://github.com/alexherrero/agentm/blob/main/wiki/explanation/decisions/0004-diataxis-documentation-spec.md) — the four-mode definitions + machine-enforceable rules this sub-agent applies.
+- [crickets-conventions design — documentation domain](https://github.com/alexherrero/crickets/wiki/crickets-conventions) — the Diátaxis documentation spec (four-mode definitions + machine-enforceable rules) this sub-agent applies.
 - [`adapt-evaluator` sub-agent](https://github.com/alexherrero/agentm/blob/main/harness/agents/adapt-evaluator.md) (agentm) — sibling sub-agent; established the read-only-with-scoped-write pattern this one mirrors (this sub-agent has **zero** write scope; adapt-evaluator has `_skill-watchlist/<source-slug>/<pattern-slug>.md` only).
 - [`memory-idea-researcher` sub-agent](https://github.com/alexherrero/agentm/blob/main/harness/agents/memory-idea-researcher.md) (agentm) — reference shape for the caller-supplies-inline-rubric pattern.
 - [Parent design](https://github.com/alexherrero/crickets/wiki/crickets-wiki) — Detailed Design §5 (`/diataxis classify <file>`) + §6 (mode-classification ambiguity in Tech Debt §1).

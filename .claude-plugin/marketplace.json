@@ -21,7 +21,7 @@
       ],
       "name": "code-review",
       "source": "./dist/claude-code/plugins/code-review",
-      "version": "0.2.1"
+      "version": "0.2.2"
     },
     {
       "capabilities": [
@@ -47,7 +47,7 @@
       ],
       "name": "developer-safety",
       "source": "./dist/claude-code/plugins/developer-safety",
-      "version": "0.3.1"
+      "version": "0.3.2"
     },
     {
       "capabilities": [
@@ -169,7 +169,7 @@
       ],
       "name": "wiki-maintenance",
       "source": "./dist/claude-code/plugins/wiki-maintenance",
-      "version": "0.3.0"
+      "version": "0.3.1"
     }
   ]
 }

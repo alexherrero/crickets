@@ -98,4 +98,4 @@ Snapshots are authored as `commit-on-stop hook <commit-on-stop@crickets.local>`,
 - [`kill-switch`](../kill-switch/hook.md) — companion emergency-halt hook.
 - [`steer`](../steer/hook.md) — companion mid-run-redirect hook.
 - [How to use the base hooks](../../wiki/how-to/Use-The-Base-Hooks.md) — practical scenarios for all three.
-- [ADR 0003 — base operator hooks](../../wiki/explanation/decisions/0003-base-operator-hooks.md) — design rationale.
+- [developer-safety design — base operator hooks rationale](https://github.com/alexherrero/crickets/wiki/crickets-developer-safety) — design rationale.

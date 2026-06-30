@@ -30,4 +30,4 @@ capabilities: [recoverability]
 # request — is expected, not an exception. Snippet file + `name:` renamed to stay
 # matched; behavior for a session with no operator worktree request is unchanged.
 # 0.3.1 = declare capabilities: [recoverability] (AG Phase-2 capability-declaration hygiene).
-version: 0.3.1
+version: 0.3.2

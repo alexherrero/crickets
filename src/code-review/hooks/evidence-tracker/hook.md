@@ -21,7 +21,7 @@ A `PreToolUse` hook that tightens `/work`'s verification gate. From [cwc-long-ru
 | `Write` or `Edit` not flipping a checkbox | Pass-through (exit 0) |
 | Any other tool | Pass-through (exit 0) |
 
-Evidence requirement per task (HYBRID — locked in [ADR 0009](../../wiki/explanation/decisions/0009-evidence-tracker-hook.md)):
+Evidence requirement per task (HYBRID — locked in the [code-review design](https://github.com/alexherrero/crickets/wiki/crickets-code-review) — evidence-tracker hook rationale):
 
 - **HEURISTIC** by default — files under `tests/` or `spec/`, matching `*.spec.*` / `*.test.*` / `*_test.py` / `test_*.py` with a code extension (markdown excluded to prevent `tests/README.md` false-positive), OR any path literally named in the task's `**Verification:**` text.
 - **Per-task override** via `**Evidence:** <glob-or-paths>` task-body annotation (comma- or whitespace-separated; supports globs).
@@ -81,5 +81,5 @@ The settings fragment registers the hook on `PreToolUse` with matcher `Read|Writ
 - **Python helper:** [`evidence_tracker.py`](evidence_tracker.py) (~720 lines, stdlib-only) — the core resolver + state-file management + checkbox-flip detector. 61 unit tests covering all paths.
 - **Sibling base hooks:** [`kill-switch`](../kill-switch/hook.md), [`steer`](../steer/hook.md), [`commit-on-stop`](../commit-on-stop/hook.md) — operator-control hooks landing in earlier plans (#4 + #5).
 - **Harness `/work` spec amendment:** `harness/phases/03-work.md` §5b — documents the evidence-tracking contract from the harness side (lands in plan #9 task 4).
-- **ADR 0009:** [Evidence-tracker hook design rationale](../../wiki/explanation/decisions/0009-evidence-tracker-hook.md) — 3 locked design calls Q1–Q3 + load-bearing assumptions (lands in plan #9 task 6).
+- **Design rationale:** [code-review design — evidence-tracker hook](https://github.com/alexherrero/crickets/wiki/crickets-code-review) — 3 locked design calls Q1–Q3 + load-bearing assumptions.
 - **How-to:** [Use The Evidence-Tracker Hook](../../wiki/how-to/Use-The-Evidence-Tracker-Hook.md) (lands in plan #9 task 5).

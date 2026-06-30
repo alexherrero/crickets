@@ -54,7 +54,7 @@ EOF
 - If `.harness/STOP` is present, `kill-switch` blocks the tool call **before** `steer` reads `.harness/STEER.md`. The steer file is left untouched.
 - If you want to halt **and** steer for the next-attempted call, halt first (touch STOP), write STEER.md, then remove STOP. Next tool call: kill-switch passes, steer fires.
 
-This ordering is documented as a load-bearing invariant — see [ADR 0003](0003-base-operator-hooks).
+This ordering is documented as a load-bearing invariant — see the [developer-safety design](https://github.com/alexherrero/crickets/wiki/crickets-developer-safety) (base operator hooks rationale).
 
 ## Audit trail
 
@@ -86,4 +86,4 @@ On **Antigravity** the hook **fires but cannot inject**. Antigravity plugin hook
 - [`kill-switch`](../kill-switch/hook.md) — companion emergency-halt hook.
 - [`commit-on-stop`](../commit-on-stop/hook.md) — companion safety-branch hook.
 - [How to use the base hooks](../../wiki/how-to/Use-The-Base-Hooks.md) — practical scenarios for all three.
-- [ADR 0003 — base operator hooks](../../wiki/explanation/decisions/0003-base-operator-hooks.md) — design rationale.
+- [developer-safety design — base operator hooks rationale](https://github.com/alexherrero/crickets/wiki/crickets-developer-safety) — design rationale.
