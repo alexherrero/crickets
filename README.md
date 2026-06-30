@@ -1,8 +1,17 @@
+<!--
+  This README mirrors the wiki Home (wiki/Home.md): the opener, Get started,
+  Learn more, and the latest-release note are kept in sync with it. The wiki
+  Home is canonical; the README adds only the repo-local sections below it
+  (Contributing, License). Convention: agentm harness/documentation.md
+  § "Home.md and the repo README". Wiki-internal links here are written as full
+  https://github.com/alexherrero/crickets/wiki/<Page> URLs (the README renders
+  on the repo page, not inside the wiki).
+-->
 <p align="center">
   <img src="assets/crickets/banner-1600.png" alt="Crickets — Inspired by the Noisy Cricket">
 </p>
 
-<p align="center"><em>Inspired by the <a href="https://en.wikipedia.org/wiki/Men_in_Black_(1997_film)">Noisy Cricket</a> — compact, composable agent primitives.</em></p>
+<p align="center"><em>The composable plugins that give your agent its hands — so it can actually do the work.</em></p>
 
 <!--
   Badge convention (plan #15 task 7) — mirrors the harness side (task 6 v2):
@@ -26,66 +35,37 @@
 
 <p align="center"><sub>Works with Claude Code + Antigravity — <a href="https://github.com/alexherrero/crickets/wiki/Compatibility">see compatibility</a></sub></p>
 
-**Crickets** is a set of agent primitives — skills, sub-agents, hooks, commands — grouped into **native plugins** for Claude Code and Antigravity, generated from a single source of truth. These are the primitives **you** carry into any project: the phase-gated dev loop, safety controls, code review, docs upkeep.
+**Crickets** is the toolkit that gives your agent its hands — a set of small, composable plugins (capabilities, skills, hooks, and sub-agents) for the things an agent actually does: review a change, run a phased dev loop, build and maintain a wiki, sync a project board, watch token spend, and more. Each is a focused plugin you install into Claude Code or Antigravity. Add what you need, leave what you don't.
 
-It pairs with [**AgentM**](https://github.com/alexherrero/agentm), the memory — auto-recall and on-disk state that follow you across every project.
+Crickets is designed as the capability half of [AgentM](https://github.com/alexherrero/agentm): AgentM brings the memory, judgment, and personas; crickets brings what they act through. The two are built to be used together, but can be used apart.
 
-What's new lives in the [CHANGELOG](CHANGELOG.md).
+## 🚀 Get started
 
-## What's inside
-
-Six plugins, generated from one source. Together they cover the working day with an agent:
-
-- **Run a phase-gated dev process** — plan → work → review → release, working the plan autonomously with a per-task safety check.
-- **Stay in control of a running agent** — an emergency stop, mid-run redirection, and crash recovery that never touches your branch.
-- **Review any diff or PR adversarially** — a reviewer primed to find bugs, not to agree.
-- **Fix Dependabot PRs automatically** — reads the failing CI and the changelog, patches, never merges.
-- **Keep personal information out of public commits** — scan and redact before anything ships.
-- **Keep a wiki current, in your voice** — authoring, repair, and a watcher that opens doc PRs.
-
-Each capability is its own plugin; install only what you want. What each one ships, and how they compose, is in the [plugin pages](wiki/architecture/plugins/Plugins.md) (the **Plugins** component under **Architecture** in the wiki sidebar).
-
-## How it works
-
-```mermaid
-flowchart LR
-    S[src/&lt;group&gt;/<br/>one source of truth<br/>kind · supported_hosts · requires]
-    G[scripts/generate.py<br/>deterministic emit]
-    CC[dist/claude-code/plugins/&lt;group&gt;]
-    AG[dist/antigravity/plugins/&lt;group&gt;]
-    S --> G
-    G --> CC
-    G --> AG
-```
-
-Author a primitive once under its group. The generator emits a native Claude Code plugin **and** a native Antigravity plugin per group, plus each host's marketplace manifest. The committed `dist/` is what ships, and a CI gate (`generate.py check`) fails the build if `dist/` drifts from `src/`. Where the two hosts diverge — hook events, dependency handling, the snippet→`rules/` gap — is spelled out in [Per-Host-Paths](wiki/reference/Per-Host-Paths.md) and [Compatibility](wiki/reference/Compatibility.md).
-
-## Get started
-
-Install the recommended set on whichever host(s) you have:
+Crickets installs into Claude Code and Antigravity with one command. AgentM is its other half; for the full experience, [set it up first](https://github.com/alexherrero/agentm/wiki/Home), then add the crickets plugins.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/alexherrero/crickets/main/bootstrap.sh | bash
 ```
 
-Prefer the marketplace? One word from GitHub on Claude Code:
+[See requirements](https://github.com/alexherrero/crickets/wiki/Compatibility) and [install modes](https://github.com/alexherrero/crickets/wiki/Install-Into-Project) for more information.
 
-```bash
-claude plugin marketplace add alexherrero/crickets
-claude plugin install developer-workflows@crickets   # + developer-safety, code-review, github-ci, pii, wiki-maintenance
-```
+## 📖 Learn more
 
-All three install modes (one-liner / marketplace / manual `--plugin-dir`) per host: **[Install crickets plugins](wiki/how-to/Install-Into-Project.md)**. Hacking on a plugin? **[Modify a crickets plugin](wiki/reference/Modify-A-Plugin.md)**.
+The [wiki](https://github.com/alexherrero/crickets/wiki) covers everything there is to know about crickets. A few links to get you started.
 
-## Adding + developing customizations
+- [What it can do](https://github.com/alexherrero/crickets/wiki/How-To) — the plugins and the tasks each one handles.
+- [Why it works this way](https://github.com/alexherrero/crickets/wiki/Explanation) — adversarial review, deterministic gates, phase-gating.
+- [Architecture](https://github.com/alexherrero/crickets/wiki/Architecture) — how crickets is built and composed.
+- [Reference](https://github.com/alexherrero/crickets/wiki/Reference) — plugin anatomy, the manifest schema, and the install modes.
 
-- [Tutorial 1 — Your first code review](wiki/how-to/01-First-Code-Review.md) — use a plugin end-to-end.
-- [Plugin anatomy](wiki/reference/Plugin-Anatomy.md) — what a crickets plugin *is*, before you change one.
-- [Repo layout](wiki/reference/Repo-Layout.md) — what lives where.
-- [Modify a crickets plugin](wiki/reference/Modify-A-Plugin.md) — the `src/` → generate → dogfood loop.
-- [Add a skill](wiki/reference/Add-A-Skill.md) · [Add a plugin](wiki/reference/Add-A-Plugin.md)
-- [Manifest Schema](wiki/reference/Manifest-Schema.md) — primitive frontmatter + `group.yaml`.
-- [Troubleshooting](wiki/reference/Troubleshooting.md) — symptom-first lookup when something stops working.
+> [!NOTE]
+> **Latest release: [v3.22.0](https://github.com/alexherrero/crickets/releases/tag/v3.22.0).** The dev-loop plugin now reads your active plan and progress through AgentM's official interface instead of reaching into its files. A cleaner connection between the two, and nothing changes in how you use it.
+
+---
+
+## Contributing
+
+Self-tested on every push by three per-OS workflows (Linux, Mac, Windows) running in parallel. Run the same deterministic battery locally with `bash scripts/check-all.sh`. Details and the full invariant list in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
