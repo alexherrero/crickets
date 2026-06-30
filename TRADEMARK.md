@@ -18,7 +18,7 @@ logos**.
 
 The name **"crickets"**, the project logos, and the banner artwork are
 trademarks of **Alex Herrero**, claimed through use (™); formal registration may
-follow. (Its sibling project **"agentm"**/"Agent M" is covered by its own
+follow. (Its sibling project **"agentm"**/"AgentM" is covered by its own
 [trademark policy](https://github.com/alexherrero/agentm/blob/main/TRADEMARK.md).)
 
 ## What you can do — no permission needed

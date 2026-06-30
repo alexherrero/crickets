@@ -675,7 +675,7 @@ claude plugin uninstall developer@crickets
 
 ## [v2.1.1] — 2026-05-29 — Catch-up + wiki hygiene + CI gate
 
-**PATCH.** Cross-repo lib-parity catch-up (5 `sync-lib.sh` passes since v2.1.0 carrying agentm's installer evolution into crickets, including the Windows-symlink normalization fix surfaced during dev-machine-setup dogfood), CI hygiene (`check-wiki --strict` gate now runs in crickets's `validate` job, mirroring agentm; gitleaks shallow-checkout fragility on multi-commit pushes fixed), wiki cleanup (5 stub how-tos for skills that moved to Agent M in v2.0.0 deleted with inbound refs cleaned), and multi-subsection HLD updates tracking agentm's V4.5 → V4.7 arc. No public-API changes — entirely catch-up work bringing crickets to parity with the agentm-side primitive evolution that's been landing since v2.1.0.
+**PATCH.** Cross-repo lib-parity catch-up (5 `sync-lib.sh` passes since v2.1.0 carrying agentm's installer evolution into crickets, including the Windows-symlink normalization fix surfaced during dev-machine-setup dogfood), CI hygiene (`check-wiki --strict` gate now runs in crickets's `validate` job, mirroring agentm; gitleaks shallow-checkout fragility on multi-commit pushes fixed), wiki cleanup (5 stub how-tos for skills that moved to AgentM in v2.0.0 deleted with inbound refs cleaned), and multi-subsection HLD updates tracking agentm's V4.5 → V4.7 arc. No public-API changes — entirely catch-up work bringing crickets to parity with the agentm-side primitive evolution that's been landing since v2.1.0.
 
 ### Added
 
@@ -687,9 +687,9 @@ claude plugin uninstall developer@crickets
 
 ### Changed
 
-- **5 wiki stub how-tos removed** (`wiki/how-to/Add-A-Plugin.md`, `Use-Diataxis-Author.md`, `Use-The-Design-Skill.md`, `Use-The-Evidence-Tracker-Hook.md`, `Use-The-Memory-Skill.md`). Each was a "moved-to-Agent-M" pointer note for a skill / hook / authoring flow that relocated to Agent M in v2.0.0 (V4 #36 reorg). The pages were genuinely explanation-mode content — move rationale + cross-refs, not step-by-step recipes — so adding placeholder Steps would have either duplicated Agent M's docs (drift risk) or been degenerate. Deletion + inbound-reference cleanup (~23 refs across 11 files) was the right shape; ADR/HLD narrative references replaced with Agent M wiki URLs so cross-references still resolve to canonical operational docs.
+- **5 wiki stub how-tos removed** (`wiki/how-to/Add-A-Plugin.md`, `Use-Diataxis-Author.md`, `Use-The-Design-Skill.md`, `Use-The-Evidence-Tracker-Hook.md`, `Use-The-Memory-Skill.md`). Each was a "moved-to-Agent-M" pointer note for a skill / hook / authoring flow that relocated to AgentM in v2.0.0 (V4 #36 reorg). The pages were genuinely explanation-mode content — move rationale + cross-refs, not step-by-step recipes — so adding placeholder Steps would have either duplicated AgentM's docs (drift risk) or been degenerate. Deletion + inbound-reference cleanup (~23 refs across 11 files) was the right shape; ADR/HLD narrative references replaced with AgentM wiki URLs so cross-references still resolve to canonical operational docs.
 
-- **`Home.md` + `_Sidebar.md` nav** — added `device-wide-architecture` to the Explanation sections. `Home.md`'s How-to section gained a generic "moved to Agent M" pointer block covering plugin authoring + the 3 skills + the hook, replacing per-page redirect entries.
+- **`Home.md` + `_Sidebar.md` nav** — added `device-wide-architecture` to the Explanation sections. `Home.md`'s How-to section gained a generic "moved to AgentM" pointer block covering plugin authoring + the 3 skills + the hook, replacing per-page redirect entries.
 
 - **HLD subsections published**: V4.5 (`agentm v4.4.0` wiki I/O foundation), V4.6 (`agentm v4.5.0` migration tooling), V4.7 (`agentm v4.6.0` documenter vault-context resolution). Each subsection tracks a paired-pair release arc that materially extended the device-wide-architecture model.
 
@@ -760,11 +760,11 @@ claude plugin uninstall developer@crickets
 
 ## [v2.0.0] — 2026-05-27 — V4 #36 reorg: catalog narrowed to base primitives
 
-**MAJOR — BREAKING.** V4 #36 reorganization. Compound skills (`memory`, `design`, `diataxis-author`, `ship-release`), memory hooks (`memory-recall-session-start`, `memory-recall-prompt-submit`, `memory-reflect-stop`, `memory-reflect-idle`), the `evidence-tracker` hook, the `memory-idea-researcher` sub-agent, the `plugins/` tree (including `example-plugin` and the `install-plugin.sh` user-global plugin installer), and the `bundles/` namespace (including `quality-gates` + `example-bundle`) **all moved to [Agent M](https://github.com/alexherrero/agentm) v4.0.0**. Crickets v2.0.0 is base primitives only — the toolkit-cricket split now mirrors the design call locked in ADR 0012 (device-wide-by-default): Crickets owns universal primitives any project can use; Agent M owns the agentic memory + compound flows + plugins that make the harness a full agentic learning environment. Paired with **agentm v4.0.0** — see the [Agent M v4.0.0 release notes](https://github.com/alexherrero/agentm/releases/tag/v4.0.0) for the full V4 device-wide context.
+**MAJOR — BREAKING.** V4 #36 reorganization. Compound skills (`memory`, `design`, `diataxis-author`, `ship-release`), memory hooks (`memory-recall-session-start`, `memory-recall-prompt-submit`, `memory-reflect-stop`, `memory-reflect-idle`), the `evidence-tracker` hook, the `memory-idea-researcher` sub-agent, the `plugins/` tree (including `example-plugin` and the `install-plugin.sh` user-global plugin installer), and the `bundles/` namespace (including `quality-gates` + `example-bundle`) **all moved to [AgentM](https://github.com/alexherrero/agentm) v4.0.0**. Crickets v2.0.0 is base primitives only — the toolkit-cricket split now mirrors the design call locked in ADR 0012 (device-wide-by-default): Crickets owns universal primitives any project can use; AgentM owns the agentic memory + compound flows + plugins that make the harness a full agentic learning environment. Paired with **agentm v4.0.0** — see the [AgentM v4.0.0 release notes](https://github.com/alexherrero/agentm/releases/tag/v4.0.0) for the full V4 device-wide context.
 
 ### Added
 
-- **`wiki/how-to/Quality-Gates-Recipe.md`** — operator-facing recipe documenting which primitives form the quality-gates set (`evaluator` + `kill-switch` + `steer` + `commit-on-stop` + `evidence-tracker`, the last sourced from Agent M post-reorg). `bash install.sh <target>` default install gives all of Crickets's contribution to that set.
+- **`wiki/how-to/Quality-Gates-Recipe.md`** — operator-facing recipe documenting which primitives form the quality-gates set (`evaluator` + `kill-switch` + `steer` + `commit-on-stop` + `evidence-tracker`, the last sourced from AgentM post-reorg). `bash install.sh <target>` default install gives all of Crickets's contribution to that set.
 
 ### Changed [BREAKING]
 
@@ -773,24 +773,24 @@ claude plugin uninstall developer@crickets
   - **Sub-agents (3):** `evaluator`, `adapt-evaluator`, `diataxis-evaluator`.
   - **Hooks (3):** `kill-switch`, `steer`, `commit-on-stop`.
 - **`kind: bundle` + `kind: plugin` reserved-future.** Both kinds remain in the manifest enum (manifest schema unchanged from v1.2.0; still 13 kinds total) but no bundles or plugins ship in v2.0.0. The `quality-gates` bundle pattern moved to a docs-only how-to recipe per design call Q of plan #19. The `--bundle <name>` installer flag still parses but no-ops when no bundles are present.
-- **`install.sh` + `install.ps1` python-deps section slimmed.** `requirements.txt` is now `pyyaml` only. `sqlite-vec` + `sentence-transformers` (with their transitive `torch`/`transformers`/`tokenizers` chain — the ~1.3GB BGE-large download nag in the v1.x install log) moved to Agent M's `requirements.txt` since they were memory-skill deps.
-- **`install.sh` + `install.ps1` `index_personal_skills` removed.** The personal-skills auto-indexer's script (`skills/memory/scripts/index_skills.py`) moved with the memory skill to Agent M. Agent M's installer owns this step post-reorg. The `--no-skill-index` / `-NoSkillIndex` flag is preserved as a backward-compat no-op so existing CI invocations don't break.
-- **Smoke install tests rewritten.** `scripts/smoke-install-bash.sh` + `scripts/smoke-install-pwsh.ps1` were ~95% memory-skill functional tests (`/memory save`, `/memory evolve`, recall engine, embedding queue, reflection mining, ideas surfacing, permeable boundary, Diátaxis classify/author/check/repair/migrate, etc.) — all of which moved to Agent M with the skill. New shape covers only what Crickets still ships; expected-files arrays, idempotent re-run, `--update` wipe + recreate, `--no-pre-push-hook`, `--no-legacy-cleanup`, kill-switch sentinel end-to-end, validate-manifests gemini-cli rejection, and post-install integrity all preserved.
+- **`install.sh` + `install.ps1` python-deps section slimmed.** `requirements.txt` is now `pyyaml` only. `sqlite-vec` + `sentence-transformers` (with their transitive `torch`/`transformers`/`tokenizers` chain — the ~1.3GB BGE-large download nag in the v1.x install log) moved to AgentM's `requirements.txt` since they were memory-skill deps.
+- **`install.sh` + `install.ps1` `index_personal_skills` removed.** The personal-skills auto-indexer's script (`skills/memory/scripts/index_skills.py`) moved with the memory skill to AgentM. AgentM's installer owns this step post-reorg. The `--no-skill-index` / `-NoSkillIndex` flag is preserved as a backward-compat no-op so existing CI invocations don't break.
+- **Smoke install tests rewritten.** `scripts/smoke-install-bash.sh` + `scripts/smoke-install-pwsh.ps1` were ~95% memory-skill functional tests (`/memory save`, `/memory evolve`, recall engine, embedding queue, reflection mining, ideas surfacing, permeable boundary, Diátaxis classify/author/check/repair/migrate, etc.) — all of which moved to AgentM with the skill. New shape covers only what Crickets still ships; expected-files arrays, idempotent re-run, `--update` wipe + recreate, `--no-pre-push-hook`, `--no-legacy-cleanup`, kill-switch sentinel end-to-end, validate-manifests gemini-cli rejection, and post-install integrity all preserved.
 
 ### Internal
 
 - **`bundles/` namespace removed.** `bundles/quality-gates/` + `bundles/example-bundle/` both deleted. The `install_bundles` function in both installer scripts is retained (no-ops over an empty `bundles/*` glob); kept for forward-compat if the catalog ever grows enough to warrant bundles again.
-- **`plugins/` namespace + `scripts/install-plugin.sh` moved to Agent M** (now at `agentm/harness/plugins/` + `agentm/scripts/install-plugin.sh`). The Crickets-side plugin documentation cross-links to Agent M's location.
+- **`plugins/` namespace + `scripts/install-plugin.sh` moved to AgentM** (now at `agentm/harness/plugins/` + `agentm/scripts/install-plugin.sh`). The Crickets-side plugin documentation cross-links to AgentM's location.
 - **ADR 0010 (quality-gates-bundle) deleted.** Per design call Q of plan #19, no supersession marker — the decision was project-internal and the recipe replaces it. ADR audit confirmed no other ADRs reference 0010 inbound.
-- **HLD V4.2 subsections added** to both `wiki/explanation/designs/agent-memory-evolution.md` (Architecture section) and `wiki/explanation/designs/device-wide-architecture.md` (Lifecycle section). The V4.x evolution chain so far: V4.1 was crickets v1.2.0 (Antigravity 2.0 host support); V4.2 is this reorg; V4.3+ will be Agent M's continuing state migration + auto-detect work.
+- **HLD V4.2 subsections added** to both `wiki/explanation/designs/agent-memory-evolution.md` (Architecture section) and `wiki/explanation/designs/device-wide-architecture.md` (Lifecycle section). The V4.x evolution chain so far: V4.1 was crickets v1.2.0 (Antigravity 2.0 host support); V4.2 is this reorg; V4.3+ will be AgentM's continuing state migration + auto-detect work.
 
 ### Migration
 
 **For v1.x users with compound skills installed (`memory`, `design`, `diataxis-author`, `ship-release`) or memory hooks running:**
 
-The compound surface moved to Agent M. The simplest upgrade path:
+The compound surface moved to AgentM. The simplest upgrade path:
 
-1. Install Agent M (if you don't already have it):
+1. Install AgentM (if you don't already have it):
    ```bash
    git clone https://github.com/alexherrero/agentm.git ~/Antigravity/agentm
    bash ~/Antigravity/agentm/install.sh <target-project>
@@ -801,13 +801,13 @@ The compound surface moved to Agent M. The simplest upgrade path:
    bash install.sh --update <target-project>
    ```
 
-Agent M's installer dispatches the compound skills + memory hooks to your target's `.claude/skills/`, `.claude/hooks/`, and `.agents/skills/` paths — the same destinations Crickets v1.x used. Your vault content (`<vault>/personal-private/`, `<vault>/_meta/embedding-queue.jsonl`, the vec-index database) is untouched; the skill scripts that read/write it just live at a different on-disk source path now. Re-running the SessionStart hook on first invocation under v4.0.0 re-anchors the recall loop without any vault-side migration.
+AgentM's installer dispatches the compound skills + memory hooks to your target's `.claude/skills/`, `.claude/hooks/`, and `.agents/skills/` paths — the same destinations Crickets v1.x used. Your vault content (`<vault>/personal-private/`, `<vault>/_meta/embedding-queue.jsonl`, the vec-index database) is untouched; the skill scripts that read/write it just live at a different on-disk source path now. Re-running the SessionStart hook on first invocation under v4.0.0 re-anchors the recall loop without any vault-side migration.
 
 **For v1.x users with `--bundle quality-gates`:** the bundle is gone but the recipe lives on. See [Quality-Gates-Recipe.md](https://github.com/alexherrero/crickets/blob/main/wiki/how-to/Quality-Gates-Recipe.md). Default `bash install.sh <target>` installs Crickets's contribution to the set (evaluator + kill-switch + steer + commit-on-stop); pair with `bash agentm/install.sh <target>` to add the evidence-tracker hook that completes the set.
 
 ### Cross-references
 
-- **Paired sibling release:** [Agent M v4.0.0](https://github.com/alexherrero/agentm/releases/tag/v4.0.0) — the "device-wide era" opens.
+- **Paired sibling release:** [AgentM v4.0.0](https://github.com/alexherrero/agentm/releases/tag/v4.0.0) — the "device-wide era" opens.
 - **HLD updates:** `agent-memory-evolution.md` (Architecture § V4.2), `device-wide-architecture.md` (Lifecycle § V4.2).
 - **ADRs referenced:** ADR 0012 (device-wide-by-default — locked the decision; this release implements it on the Crickets side).
 - **Plan:** `agentm` `.harness/PLAN.md` plan #19 — coordinated paired release pair #11.
@@ -894,13 +894,13 @@ GitHub installs HTTP redirects from the old URLs to the new ones automatically �
 
 ## [v1.0.2] — 2026-05-24 — Fix Crickets transparent-variant assets (toolkit-only PATCH)
 
-Patch — **hotfix for the v1.0.1 Crickets logo hero**. The 6 `crickets-transparent-{64 / 128 / 256 / 512 / 1024 / 2048}.png` files shipped in v1.0.1 had the design-tool's transparency-indicator checker pattern **baked into the PNG itself** (visible by inspecting the asset directly; visible on the live GitHub README hero as a grey checker around the disc). Operator flagged the mismatch with Agent M's clean visual after v1.0.1 shipped.
+Patch — **hotfix for the v1.0.1 Crickets logo hero**. The 6 `crickets-transparent-{64 / 128 / 256 / 512 / 1024 / 2048}.png` files shipped in v1.0.1 had the design-tool's transparency-indicator checker pattern **baked into the PNG itself** (visible by inspecting the asset directly; visible on the live GitHub README hero as a grey checker around the disc). Operator flagged the mismatch with AgentM's clean visual after v1.0.1 shipped.
 
-**Fix:** regenerated all 6 transparent variants from the clean `crickets-disc-2048.png` source via PIL high-quality resize. New transparent set has real transparent surround (bbox padding matches Agent M's `clean-transparent` ratio at ~10%). README hero reference stays `crickets-transparent-512.png` — file content replaced in place; live render auto-corrects on push.
+**Fix:** regenerated all 6 transparent variants from the clean `crickets-disc-2048.png` source via PIL high-quality resize. New transparent set has real transparent surround (bbox padding matches AgentM's `clean-transparent` ratio at ~10%). README hero reference stays `crickets-transparent-512.png` — file content replaced in place; live render auto-corrects on push.
 
 ### Changed
 
-- **`assets/crickets/crickets-transparent-{64 / 128 / 256 / 512 / 1024 / 2048}.png`** — regenerated. File sizes shrunk ~3× (e.g. 512px went from 282KB → 96KB; no more checker overlay inflating the file). Visual now matches Agent M's clean-silhouette-on-transparent-surround pattern.
+- **`assets/crickets/crickets-transparent-{64 / 128 / 256 / 512 / 1024 / 2048}.png`** — regenerated. File sizes shrunk ~3× (e.g. 512px went from 282KB → 96KB; no more checker overlay inflating the file). Visual now matches AgentM's clean-silhouette-on-transparent-surround pattern.
 
 ### Internal
 
@@ -911,7 +911,7 @@ Patch — **hotfix for the v1.0.1 Crickets logo hero**. The 6 `crickets-transpar
 
 ## [v1.0.1] — 2026-05-24 — Crickets logo hero + brand-name clarification (toolkit-only PATCH)
 
-Patch — **first visual brand iteration on the Crickets side**, mirroring the [`agentm v3.0.1`](https://github.com/alexherrero/agentm/releases/tag/v3.0.1) Agent M logo pass from earlier today. Adds the Crickets logo asset set and refreshes `README.md` + `wiki/Home.md` with the brand-aligned visual hero. Toolkit-only PATCH (no paired harness release this round — harness already shipped v3.0.1 with the Agent M hero; this matches it on the Crickets side).
+Patch — **first visual brand iteration on the Crickets side**, mirroring the [`agentm v3.0.1`](https://github.com/alexherrero/agentm/releases/tag/v3.0.1) AgentM logo pass from earlier today. Adds the Crickets logo asset set and refreshes `README.md` + `wiki/Home.md` with the brand-aligned visual hero. Toolkit-only PATCH (no paired harness release this round — harness already shipped v3.0.1 with the AgentM hero; this matches it on the Crickets side).
 
 **Brand-name clarification — singular "Cricket" → plural "Crickets" across all surfaces.** The brand was always meant to be plural (per the asset directory `assets/crickets/` shipped here and `<title>Crickets — Asset Set</title>` in the operator's brand artifacts); earlier CHANGELOG entries / READMEs introduced the singular form by typo. This release corrects retroactively — CHANGELOG entries for `v1.0.0` (and harness v3.0.0 / v3.0.1 on the harness side) read "Crickets" consistently end-to-end. **GitHub release pages preserved as-shipped** (those are immutable in practice).
 
@@ -932,13 +932,13 @@ Patch — **first visual brand iteration on the Crickets side**, mirroring the [
 
 - 1 commit on this side: `<pending>` (assets + rename + README hero + wiki Home) + this v1.0.1 release commit.
 - **Toolkit-only PATCH** — harness reference cleanup (singular Cricket → plural Crickets in harness README + CHANGELOG + Completed-Features) rides as a separate harness docs commit (no harness version bump this round; harness already shipped v3.0.1).
-- **Same brand palette + typography as Agent M** — `--ink: #0a0a0a` + `--paper: #f4efe6` + Inter Tight + JetBrains Mono. Brand-system coherence is real; operator delivered both sets from Claude.ai Artifacts.
-- Establishes `assets/` as the brand-asset convention on the Crickets side (matches the convention already established on the Agent M side).
+- **Same brand palette + typography as AgentM** — `--ink: #0a0a0a` + `--paper: #f4efe6` + Inter Tight + JetBrains Mono. Brand-system coherence is real; operator delivered both sets from Claude.ai Artifacts.
+- Establishes `assets/` as the brand-asset convention on the Crickets side (matches the convention already established on the AgentM side).
 - **Operator-review-gated** per [[docs-prose-style]] workflow; explicit approve-and-ship green-light received before push.
 
-## [v1.0.0] — 2026-05-24 — Crickets 1.0 (paired with agentm v3.0.0 — Agent M V3 close-out)
+## [v1.0.0] — 2026-05-24 — Crickets 1.0 (paired with agentm v3.0.0 — AgentM V3 close-out)
 
-Major — **1.0 commitment** after the V3 arc validates the customization surface. The toolkit is now **Crickets** — the noisy cricket of the system, small primitives that punch above their weight. Paired with [`agentm v3.0.0`](https://github.com/alexherrero/agentm/releases/tag/v3.0.0) which ships **Agent M V3** — the agentic memory system that the harness + Crickets + vault folder together compose.
+Major — **1.0 commitment** after the V3 arc validates the customization surface. The toolkit is now **Crickets** — the noisy cricket of the system, small primitives that punch above their weight. Paired with [`agentm v3.0.0`](https://github.com/alexherrero/agentm/releases/tag/v3.0.0) which ships **AgentM V3** — the agentic memory system that the harness + Crickets + vault folder together compose.
 
 **What 1.0 commits to** (stable public API surface):
 
@@ -965,14 +965,14 @@ Major — **1.0 commitment** after the V3 arc validates the customization surfac
 | **Bundles** (2) | `quality-gates` (real-substance), `example-bundle` (reference skeleton) |
 | **ADRs** (9) | 0001 purpose, 0002 evaluator, 0003 base hooks, 0004 design skill, 0006 Gemini-CLI removal, 0007 MemoryVault Discovery + Mining, 0008 diataxis-author, 0009 evidence-tracker, 0010 quality-gates |
 
-Plus the wiki — Diátaxis four-mode (tutorials / how-to / reference / explanation) with the V3 retrospective + Agent M evolution HLD shipped fresh in this release pair.
+Plus the wiki — Diátaxis four-mode (tutorials / how-to / reference / explanation) with the V3 retrospective + AgentM evolution HLD shipped fresh in this release pair.
 
 ### Added
 
-- **`README.md`** — Crickets brand-framed rewrite. Lead paragraph names Crickets, the catalog table covers what ships today, install commands paired with Agent M, architecture-history pointers go to the HLD + V3 retrospective.
+- **`README.md`** — Crickets brand-framed rewrite. Lead paragraph names Crickets, the catalog table covers what ships today, install commands paired with AgentM, architecture-history pointers go to the HLD + V3 retrospective.
 - **`wiki/Home.md`** — Crickets lead paragraph above the Diátaxis nav.
 - **`wiki/explanation/v3-retrospective.md`** (new, 1749 words) — what shipped across the V3 arc, what we learned, what's deferred. 7 sections: scope / what shipped / architecture themes that crystallized / repeat lessons / operator-driven mid-plan pivots / deferred items + rationale / TBD frontiers heading into V4.
-- **`wiki/explanation/designs/agent-memory-evolution.md`** (new, ~3000 words) — Agent M V1→V4 HLD. 8 sections: Goals / Background / Architecture / Constitutional Schema / Autonomous Workflows / Background Automations / Commands Reference + See also. Forward-looking V4 framing covers role split (raw yours / wiki agent's / schema joint), three-stage pipeline (raw / inbox / wiki), file-back compile loop, multi-domain scope (Agent M for coding, vacation, cooking, crafting, research, learning), universal sub-dirs, first-class binary assets, domain-as-tag, cross-project layers, entry content rule, synthesis primitive, auto-save default, tighter guardrails. V4.5 (harness rework for any domain) noted as separate future design.
+- **`wiki/explanation/designs/agent-memory-evolution.md`** (new, ~3000 words) — AgentM V1→V4 HLD. 8 sections: Goals / Background / Architecture / Constitutional Schema / Autonomous Workflows / Background Automations / Commands Reference + See also. Forward-looking V4 framing covers role split (raw yours / wiki agent's / schema joint), three-stage pipeline (raw / inbox / wiki), file-back compile loop, multi-domain scope (AgentM for coding, vacation, cooking, crafting, research, learning), universal sub-dirs, first-class binary assets, domain-as-tag, cross-project layers, entry content rule, synthesis primitive, auto-save default, tighter guardrails. V4.5 (harness rework for any domain) noted as separate future design.
 
 ### Changed
 
@@ -980,7 +980,7 @@ Plus the wiki — Diátaxis four-mode (tutorials / how-to / reference / explanat
 
 ### Internal
 
-- **4 commits on this side** since v0.13.0: `6cea91d` (V3 retrospective), `33dc752` (Agent M HLD + Home/Sidebar/retrospective back-links), `e30fbef` (cross-ref fix — `.harness/` paths are gitignored, so GitHub URLs to them resolve to 404; demoted to inline path mentions), `d22ea0d` (Crickets README + wiki Home rewrite), plus this v1.0.0 release commit.
+- **4 commits on this side** since v0.13.0: `6cea91d` (V3 retrospective), `33dc752` (AgentM HLD + Home/Sidebar/retrospective back-links), `e30fbef` (cross-ref fix — `.harness/` paths are gitignored, so GitHub URLs to them resolve to 404; demoted to inline path mentions), `d22ea0d` (Crickets README + wiki Home rewrite), plus this v1.0.0 release commit.
 - **Paired-release ordering**: this toolkit release tagged first; harness v3.0.0 release notes URL-link this release per `[[coordinated-release-order]]` convention.
 - **8th consecutive paired-release pair** (after v0.9.0/v0.9.2/v0.10.0/v0.11.0/v0.11.1/v0.12.0/v0.13.0). First MAJOR.
 

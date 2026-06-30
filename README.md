@@ -28,7 +28,7 @@
 
 **Crickets** is a set of agent primitives — skills, sub-agents, hooks, commands — grouped into **native plugins** for Claude Code and Antigravity, generated from a single source of truth. These are the primitives **you** carry into any project: the phase-gated dev loop, safety controls, code review, docs upkeep.
 
-It pairs with [**Agent M**](https://github.com/alexherrero/agentm), the memory — auto-recall and on-disk state that follow you across every project.
+It pairs with [**AgentM**](https://github.com/alexherrero/agentm), the memory — auto-recall and on-disk state that follow you across every project.
 
 What's new lives in the [CHANGELOG](CHANGELOG.md).
 
