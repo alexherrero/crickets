@@ -342,7 +342,7 @@ def _check_all_gate(root: str | os.PathLike) -> tuple[int, str]:
 _DEFAULT_GATE = _check_all_gate
 
 
-# ── default production artifact-prepare (single-writer integration, ADR 0030) ───
+# ── default production artifact-prepare (single-writer integration) ─────────────
 
 _PREPARE_SCRIPT = ("scripts", "integrate-prepare.sh")
 
@@ -350,7 +350,7 @@ _PREPARE_SCRIPT = ("scripts", "integrate-prepare.sh")
 def _artifact_prepare(root: str | os.PathLike, pre_sha: str) -> tuple[int, str]:
     """Run the project's artifact-prepare step on the merged tree, if it has one.
 
-    The single-writer-integration model (ADR 0030): a worker branch commits
+    The single-writer-integration model (development-lifecycle design): a worker branch commits
     src + generated artifacts at the *current* version and defers the version
     bump; the serialized integrator is the single writer of the shared version
     registry. A project that produces such a registry (e.g. crickets'
@@ -396,7 +396,7 @@ def _integrate_lock_path(root: str | os.PathLike) -> Path:
     Mirrors `spawn_worker`'s worktree-add lock but a *separate* file: build fans
     out N-wide (each spawn serializes only its own worktree add), while integration
     lands **one at a time** through this lock. The integrator is the single writer
-    of the shared integration branch + version registry (ADR 0030), so a second
+    of the shared integration branch + version registry (single-writer integration), so a second
     `/integrate-worker` blocks here rather than racing on `main`.
     """
     git_dir = _git(["rev-parse", "--git-dir"], root)
@@ -452,7 +452,7 @@ def integrate(name: str, root: str, *, gate=_DEFAULT_GATE, resolver=_AUTO,
     Build fans out N-wide; **integration is single-writer**. `lock(root)` is an
     exclusive advisory lock held across the whole merge → prepare → gate →
     consolidate critical section, so a second concurrent integration blocks rather
-    than racing on the shared integration branch + version registry (ADR 0030).
+    than racing on the shared integration branch + version registry (single-writer integration).
     `lock` is injectable (mirrors `gate` / `prepare`) so tests drive serialization
     without real flock; production takes the `fcntl.flock`-backed default. The
     landing stays **local** — `integrate_worker.py` never pushes and never bypasses
@@ -476,7 +476,7 @@ def _integrate_locked(name: str, root: str, *, gate=_DEFAULT_GATE,
 
     `gate(root) -> (rc, output)` is injected so tests drive green/red without the
     real battery. `prepare(root, pre_sha) -> (rc, output)` is the single-writer
-    artifact step (ADR 0030): run on the merged tree BEFORE the gate, it bumps the
+    artifact step (single-writer integration): run on the merged tree BEFORE the gate, it bumps the
     deferred version(s) + regenerates the shared registry so the gate passes on the
     integrated tree; it defaults to a graceful no-op when the project has no such
     step. A failed prepare rolls the merge back exactly like a red gate — the bump
@@ -556,7 +556,7 @@ def _integrate_locked(name: str, root: str, *, gate=_DEFAULT_GATE,
                        + (f"\ngit said:\n{detail}\n" if detail else ""))
 
     # The merge committed: HEAD is now the integration merge commit. Before the
-    # gate, run the single-writer artifact-prepare step (ADR 0030): the worker
+    # gate, run the single-writer artifact-prepare step: the worker
     # deferred its version bump, so the integrator bumps the affected plugin(s) +
     # regenerates the shared registry HERE, on the merged tree, so the version-bump
     # gate passes. A prepare that fails (or raises) rolls the merge back exactly

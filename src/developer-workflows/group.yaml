@@ -35,7 +35,7 @@ standalone: true
 # binds to `PLAN-<slug>.md` with no `--name` and no singleton ambiguity. Composed
 # onto `resolve_plan` (a non-zero resolve gates the spawn — nothing created); the
 # divergent-`vault_project` copy is the LC-2 fallback only. Operator-initiated,
-# never autonomous (paired with the `worktrees-operator-initiated` norm, ADR 0022).
+# never autonomous (paired with the `worktrees-operator-initiated` norm — the worktree operator-authority rule, developer-safety design).
 # 0.7.0 = integration-merge-command (V5-10 sibling #3) — the lifecycle counterpart
 # to spawn-worker that CLOSES the loop. An `integrate_worker.py` helper +
 # `/integrate-worker` command merges a finished `worker/<slug>` branch into the
@@ -121,7 +121,7 @@ standalone: true
 # no --prune=now, dirty-check, cap at 10, submodule warning). Root-anchor fix: path
 # derives from `resolve_main_worktree()` (git rev-parse --git-common-dir), so spawn
 # from inside an existing worktree never nests. Single-owner guard: auto-spawn skips
-# when already inside a worktree the loop did not create. Carve-out refined (ADR 0028):
+# when already inside a worktree the loop did not create. Carve-out refined (operator-authority refinement, developer-safety design):
 # config opt-in IS operator authority; prohibition updated to "without operator
 # authority". `gh pr create` added to Recoverable row. Global ~/.claude/CLAUDE.md
 # § Worktrees updated (self-mod gate, operator-authorized, dev-setup commit d98261d).
@@ -140,8 +140,9 @@ standalone: true
 # `/release` step 7 mandates a pre-tag reachability check before `gh release create`;
 # (3) `main` branch-protection requirements documented (required CI status checks +
 # squash/rebase + no force-push + linear history) + the serialized-single-writer
-# model documented with its re-audit trigger. ADR 0029 records the decision (own ADR,
-# cross-references ADR 0022-supersession ADR 0028).
+# model documented with its re-audit trigger. Recorded as the concurrent-release-coordination
+# decision in the development-lifecycle design's amendment log (building on the machine-wide
+# worktree operator-authority rule).
 # 0.20.0 = single-writer artifact integration (Model A, worktree-pr-loop plan, part 3,
 # task 2) — concurrent worker branches commit src + `dist/` regenerated at the *current*
 # (unbumped) version and defer ONLY the `group.yaml` bump to a serialized integrator, so
@@ -153,7 +154,7 @@ standalone: true
 # aware (a `worker/` branch, or `$VERSION_BUMP_DEFER` truthy, downgrades a missing bump to
 # advisory). The `dist-sync` gate stays fully authoritative everywhere (UNTOUCHED). crickets
 # ships the concrete `integrate_prepare.py` (diff-slugs → bump → regen → commit) + a thin
-# `integrate-prepare.sh` wrapper. ADR 0030 records the decision.
+# `integrate-prepare.sh` wrapper. Recorded as the single-writer-integration decision in the development-lifecycle design's amendment log.
 # 0.20.1 = Windows bash-stub portability fix the OS matrix caught in the unreleased 0.20.0.
 # The gate (`check-all.sh`) + the artifact-prepare hook (`integrate-prepare.sh`) run via
 # `bash`; on the windows-2025 runner plain `bash` resolves to `System32\bash.exe` — the WSL
@@ -231,5 +232,10 @@ standalone: true
 # model claude-opus-4-8 → claude-sonnet-4-6, realigning the autonomous executor to
 # the T1 tier (the opusplan plan→execute split). test_dw_model_routing.py updated to
 # the new contract (worker=sonnet); cheaper long build stretches, no interface change.
-version: 0.28.0
+# 0.28.1 = retire the retired-ADR-number citations (worktree/integration) in prose +
+# comments → living designs: the concurrent-release-coordination + single-writer-integration
+# decisions reference the development-lifecycle design's amendment log; the worktree
+# operator-authority rule + its config-opt-in refinement reference the developer-safety
+# design's amendment log. Docs/comments only — no behavior change.
+version: 0.28.1
 capabilities: [setup, plan, work, review, release, bugfix, documentation]

@@ -12,7 +12,7 @@ between an explicit name and the singleton.
     # stdout (rc 0): "<worktree_path>\n"
 
 **Operator-initiated, never autonomous.** This is the deliberate counterpart to
-the `worktrees-operator-initiated` norm (ADR 0022): an agent never spawns a
+the `worktrees-operator-initiated` norm (the worktree operator-authority rule, developer-safety design): an agent never spawns a
 worktree on its own, but when the *operator* invokes this helper, creating the
 worktree IS the initiation. Nothing here runs unprompted.
 

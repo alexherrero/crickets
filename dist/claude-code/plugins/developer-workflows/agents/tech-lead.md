@@ -34,7 +34,7 @@ tech-lead is the **plan** end of the coordinator flow:
 brief → tech-lead (/plan [--stage/--activate]) → /spawn-worker (operator) → worker (/work) → /integrate-worker → project-manager (glance)
 ```
 
-After tech-lead stages and activates a named plan, the **operator** runs `/spawn-worker <slug>` (operator-initiated, never autonomous — ADR 0022) to hand that plan to a worker worktree. tech-lead produces the plans; it does not spawn the worktrees.
+After tech-lead stages and activates a named plan, the **operator** runs `/spawn-worker <slug>` (operator-initiated, never autonomous — the worktree operator-authority rule; see the developer-safety design) to hand that plan to a worker worktree. tech-lead produces the plans; it does not spawn the worktrees.
 
 ## Anti-patterns
 
