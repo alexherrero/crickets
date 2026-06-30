@@ -9,7 +9,7 @@
 # sequence verbatim. `host-adapters` matches a known pillar template by slug but is
 # free-formed here to hold its 4th-place slot (and to carry crickets-specific
 # wording). PII guardrails fold into `build-and-distribution`; the harness seam with
-# Agent M is its own component. See wiki/designs/wiki-section-taxonomy.md
+# AgentM is its own component. See wiki/designs/wiki-section-taxonomy.md
 # (part: crickets-dogfood).
 architecture:
   components:
@@ -30,6 +30,6 @@ architecture:
       summary: The per-host surface mapping (Claude Code · Antigravity) and where each authored primitive lands.
       overview: Host-Adapters
     - slug: harness-interface
-      title: Harness interface ↔ Agent M
+      title: Harness interface ↔ AgentM
       summary: The seam between this toolkit and the sibling `agentm` harness — what each owns, and how they compose without depending on each other.
       overview: Harness-Interface
