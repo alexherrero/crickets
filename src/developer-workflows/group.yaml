@@ -231,5 +231,5 @@ standalone: true
 # model claude-opus-4-8 → claude-sonnet-4-6, realigning the autonomous executor to
 # the T1 tier (the opusplan plan→execute split). test_dw_model_routing.py updated to
 # the new contract (worker=sonnet); cheaper long build stretches, no interface change.
-version: 0.27.0
+version: 0.28.0
 capabilities: [setup, plan, work, review, release, bugfix, documentation]

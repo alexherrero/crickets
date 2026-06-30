@@ -1,6 +1,6 @@
 ---
 name: document-decision
-description: "ADR trigger workflow — WHEN to write an Architecture Decision Record and HOW to execute it. Trigger conditions: any architectural decision, any public API change, any behavior change not obvious from code. Execution: draft the ADR before implementing, not after; include 'why not the alternative' per call; link from CHANGELOG. References the adr-shape convention — does not redefine it."
+description: "Decision-record trigger workflow — WHEN to capture an architectural decision and HOW to execute it. Trigger conditions: any architectural decision, any public API change, any behavior change not obvious from code. Routes to the repo's decision-record format: a standalone ADR where the ADR model is in use, or an amendment to the relevant living design where the ADR model has been retired (e.g. agentm, crickets). Execution: draft before implementing, not after; include 'why not the alternative' per call; name a re-audit trigger; link from CHANGELOG. References the repo's adr-shape / design-governance convention — does not redefine it."
 kind: command
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
@@ -8,9 +8,20 @@ install_scope: project
 argument-hint: <decision being made — a one-sentence description of the architectural call — required>
 ---
 
-You are running **/document-decision** — the ADR trigger workflow for capturing an architectural decision before it calcifies in commits.
+You are running **/document-decision** — the decision-record trigger workflow for capturing an architectural decision before it calcifies in commits.
 
 **Decision:** $ARGUMENTS — a one-sentence description of the architectural call being made. Required. If you cannot state the decision in one sentence, the decision is not yet clear enough to implement.
+
+## Resolve the record format first
+
+This workflow captures a decision; **where** the record lands depends on your repo's convention. Resolve this before anything else:
+
+- **ADR model (default).** The repo records decisions as standalone Architecture Decision Records. Follow the ADR path below — open a new ADR file and fill it per your `### CHANGELOG + ADR shapes` convention.
+- **Living-design amendment model.** The repo has **retired the ADR model** in favour of amending living designs (e.g. **agentm** and **crickets**, per their `CLAUDE.md` carve-out / `Design-Governance`). Do **not** create a new ADR file — instead amend the governing design under `wiki/designs/`: reconcile its body to current truth and append an entry to its `## Amendment log`, landed as one atomic change.
+
+To tell which applies, check the repo's `CLAUDE.md` / `AGENTS.md` ADR-shape convention (or `wiki/reference/Design-Governance.md`): if it says the ADR model is retired and decisions amend the living design, use the amendment model; otherwise use the ADR model.
+
+**The discipline is identical in both modes** — draft before implementing, an explicit "why not the alternative" for every load-bearing call, at least one re-audit trigger, and a CHANGELOG link. Only the artifact differs: an ADR file vs. an amendment-log entry in the governing design. Everything below is written for the ADR path; if your repo uses the amendment model, apply each step to the design's body + amendment log instead of a new ADR file.
 
 ## When to Use
 
@@ -51,9 +62,9 @@ A decision is correct given the assumptions in force when it was made. Assumptio
 
 Before writing the ADR, state the decision in one sentence: "We are choosing X to accomplish Y." If you cannot, stop and clarify the decision. An unclear decision produces an unclear ADR.
 
-### Step 2 — Draft the ADR before implementing
+### Step 2 — Draft the record before implementing
 
-Open the ADR file now, before writing any code. The format is in the `### CHANGELOG + ADR shapes` section of your CLAUDE.md; follow it exactly. A brief orientation for new adopters:
+Open the record now, before writing any code. **ADR model:** open a new ADR file; the format is in the `### CHANGELOG + ADR shapes` section of your CLAUDE.md; follow it exactly. **Amendment model:** open the governing design under `wiki/designs/`, reconcile its body to current truth, and draft the `## Amendment log` entry (date · what changed · why-not-the-alternative · re-audit trigger) — see your repo's "record a design decision" how-to. The same four ADR fields below map onto the amendment-log entry, compressed to a paragraph. A brief orientation:
 
 The ADR opens with a `> [!NOTE]` block carrying `Status: accepted | superseded | rejected` and the date. It has four sections:
 
