@@ -1,47 +1,46 @@
 <!-- mode: index -->
 # Designs
 
-The architecture behind crickets and AgentM — the high-level design docs that explain *how* each system works, in depth. Each design's sub-parts live in this section's sidebar.
+Design documents for crickets, organized by parent/child with the high-level or parent design (HLD) followed by its children. This is a complete index of all current and planned designs.
 
-## What's here
+In addition to its high-level design for crickets and its children, crickets also lists the designs for all of its plugins here for clarity in a separate section. This is done to disambiguate plugins from the main components of crickets, as they stand architecturally separate.
 
-**Crickets**
+For a list of designs as they relate to the architecture of crickets and roles, see [here](Architecture).
 
-- **[Crickets — High Level Design](crickets-hld)** — the live parent design: the fourteen-capability toolbox, build-once-generate-everywhere, and composition onto agentm. Reconciles the two designs below. All children content-final (AG Phase 3, 2026-06-24).
-  - [Build system](crickets-build-system) — single source → per-host generated, drift gate, host-subset coverage.
-  - [Composition](crickets-composition) — capability↔capability and capability↔opinion, the full relationship map, the one-way arrow onto agentm, role-retirement.
-  - [Model + effort routing](https://github.com/alexherrero/agentm/wiki/agentm-model-effort-routing) — T0…T4 tier scale; persona→tier map; `tier:` manifest axis. *(agentm-parented; enforcement surface is crickets agent-defs.)*
-  - [development-lifecycle](crickets-development-lifecycle) — the spine: setup / plan / work / review / release / bugfix + launch / deprecate / retire.
-  - [code-review](crickets-code-review) — adversarial review, cross-model variant, `/code-review`.
-  - [design](crickets-design) — design authoring: abbreviated / full / architecture rungs.
-  - [developer-safety](crickets-developer-safety) — the recoverability gate: skill + hook + carve-out tests.
-  - [wiki](crickets-wiki) — docs upkeep: diataxis-author + documenter + wiki-watcher.
-  - [github-projects](crickets-github-projects) — board-sync: vault → board ≥4 deep, per-commit comment trail; driven by the Planner (TPM).
-  - [maintenance](crickets-maintenance) — keep the codebase healthy: dependency repair, CVE, tech-debt, tentative content-refresh.
-  - [conventions](crickets-conventions) — 8-domain base-standards shell (testing · releasing · ci · code-quality · agentic-engineering · reliability · coding · documentation).
-  - [obsidian-vault](crickets-obsidian-vault) — the storage backend.
-  - [vault-git](crickets-vault-git) — the git-transport plugin (proposed; pairs with obsidian-vault).
-  - [token-audit](crickets-token-audit) — token metering; absorbs status-line-meter.
-  - [privacy](crickets-privacy) — PII + extensible data-protection layer.
-  - [research](crickets-research) — deep research *(newly designed, not yet built)*.
-  - [diagnostics](crickets-diagnostics) — observability / troubleshooting *(newly designed, not yet built)*.
-  - [reporting](crickets-reporting) — the operator-facing report surface: the digest now, dashboards later *(newly designed, not yet built)*.
+Shared root: [Foundations](https://github.com/alexherrero/agentm/wiki/agentm-foundations-hld) — (*Final*) lays out the nine principles that guide the development of agentm and crickets, and how the person (agentm) and its tools (crickets) relate. It lives in the AgentM wiki, and both HLDs inherit it by reference.
 
-**Architecture (AgentM)**
+## Crickets HLD
 
-- **[MemoryVault](https://github.com/alexherrero/agentm/wiki/memoryvault)** — permanent agent memory.
-- **[AgentM HLD](https://github.com/alexherrero/agentm/wiki/agentm-hld)** (the V1→V8 evolution arc + the V5 Memory-OS baseline) · **[Foundations](https://github.com/alexherrero/agentm/wiki/agentm-foundations-hld)** (the V4 device-wide substrate). *(The standalone Agent-Memory-Evolution / Device-Wide / Memory-OS V5 HLDs were vault-archived 2026-06-24, AG Wave 2.)*
+[Crickets HLD](crickets-hld) — is the high-level parent design for crickets. It is an overview of the toolkit: small, stateless plugins, each authored once and generated as a native plugin for every host (Claude Code and Antigravity), that compose with one another and onto AgentM. The designs below are crickets' own machinery — how it is built and how it composes:
 
-## Recent changes
+| Design                                                                                           | What it covers                                                                                                           | Status |
+| ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ | :----: |
+| [Build system](crickets-build-system)                                                            | How one source becomes native plugins for both hosts, with a check that fails if the generated copies drift              | Final  |
+| [Composition](crickets-composition)                                                              | How plugins connect — one building on another, or leaning on an AgentM standard, without reaching into each other's code | Final  |
+| [Model + effort routing](https://github.com/alexherrero/agentm/wiki/agentm-model-effort-routing) | is shared with AgentM — its design lives in the AgentM wiki; the crickets plugins carry the per-role settings            | Final  |
 
-<!-- maintained by the wiki tooling -->
+## Plugins
 
-- **2026-06-26** — `reporting` added as the 14th capability (the digest now, dashboards later); portfolio count 13 → 14.
-- **2026-06-24** — AG Wave 2: the eight superseded designs (developer-plugin-suite, crickets-v3-native-plugins, the six wiki/CI designs) subsumed into the living children; diataxis-author vault-archived. `wiki/designs/` is now canonical-only.
-- **2026-06-24** — AG Phase 3: 15 crickets child designs lifted (all content-final); crickets-hld.md re-synced (thirteen capabilities, rename ledger, 3 amendment entries).
-- **2026-06-08** — moved to `designs/`; this index added.
-- **2026-06-09** — Continuous Integration + Wiki designs added; the four earlier designs updated to shipped reality; Wiki Maintenance is now launched.
+Each capability is its own plugin with its own design, standing apart from the architecture above.
+
+| Plugin | What it covers | Status |
+|---|---|:---:|
+| [Development-lifecycle](crickets-development-lifecycle) | The dev loop — plan, work, review, release, and the rest of a feature's life | Final |
+| [Code review](crickets-code-review) | Adversarial review of a change: assume there's a bug and prove otherwise | Final |
+| [Design](crickets-design) | Writing design docs at the right size, from a quick sketch to a full architecture | Final |
+| [Developer safety](crickets-developer-safety) | The safety net for an autonomous session: stop/redirect controls, a recoverability check, auto-saved work | Final |
+| [Wiki](crickets-wiki) | Keeping the docs true to the code, in your house voice | Final |
+| [Research](crickets-research) | Bringing in what the agent hasn't seen — codebase search, web lookups, scheduled learning | Planned |
+| [GitHub projects](crickets-github-projects) | Mirroring your plans and progress onto a GitHub board, one way | Final |
+| [Reporting](crickets-reporting) | The operator-facing digest of what autonomous work did | Planned |
+| [Maintenance](crickets-maintenance) | Keeping a shipped codebase healthy: dependency repair, security patches, tech-debt tracking | Final |
+| [Diagnostics](crickets-diagnostics) | Analyzing failures and suggesting what went wrong; it diagnoses, it doesn't fix | Planned |
+| [Conventions](crickets-conventions) | The house standards for testing, releasing, docs, and more, kept in one place | Final |
+| [Token audit](crickets-token-audit) | Measuring what a session costs, with a live meter | Final |
+| [Privacy](crickets-privacy) | Keeping secrets and personal data out of what gets committed or shared | Final |
+| [Obsidian vault](crickets-obsidian-vault) | Keeps the vault in a synced folder | Final |
+| [vault-git](crickets-vault-git) | Git-backed vault storage — version history and off-device backup | Planned |
 
 ## See also
 
-[Reference](Reference) · [Explanation](Explanation) · [Home](Home)
+[Architecture](Architecture) · [Home](Home)
