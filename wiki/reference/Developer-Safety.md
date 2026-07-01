@@ -3,17 +3,19 @@
 
 ## Architecture
 
-Developer Safety is the operator-control layer for a long-running agent session. It gives you a way to halt the agent mid-run, redirect it without a restart, and recover its in-flight work if a session ends unexpectedly — plus the standing autonomy doctrine and two commit conventions that decide what the agent may do on its own. The plugin is standalone: it depends on nothing, and its hooks quietly engage across the phase loop when `developer-workflows` is also installed.
+Developer Safety keeps you in control of an agent that works on its own. The longer an agent runs unattended, the more you want three things: a way to stop it, a way to redirect it without starting over, and the confidence that nothing is lost if a session ends unexpectedly. This plugin gives you all three — a kill switch, a steering note, and an automatic snapshot of in-flight work — plus a few ground rules for what the agent may decide for itself. It needs nothing else to work, and its safety hooks quietly engage across the rest of your workflow when the other plugins are installed.
 
 ### Diagram
 
-_None / not needed._
+How the hooks wrap the running workflow — every tool call passes the operator's live controls, guided by the recoverability doctrine, with a snapshot catching anything unsaved:
+
+![Developer Safety wrapping the workflow: the developer-workflows phase loop (/plan, /work, /review, /release) sends every tool call through the kill-switch and steer hooks — fed by the operator's STOP and STEER.md trigger files — before it runs; the recoverability doctrine guides each call, and commit-on-stop snapshots a dirty working tree to refs/auto-save at each turn's end](diagrams/developer-safety-hooks.svg)
 
 ### How it works
 
-The heart of the plugin is a trio of hooks driven by trigger files under `.harness/`. `kill-switch` fires on every tool call: if `.harness/STOP` exists it blocks the call, so you `touch .harness/STOP` to halt and `rm` it to resume — no session restart. `steer` also fires on every tool call: write a "do it this way instead" note to `.harness/STEER.md` and the next call picks it up, after which the hook renames the file to `STEER.consumed-<timestamp>.md` for an audit trail. `commit-on-stop` fires when a turn ends: if the working tree is dirty it records a full snapshot on a hidden `refs/auto-save/<timestamp>` ref without switching branches or touching your edits, so a crashed session stops losing work. The two `PreToolUse` hooks run in alphabetical install order, so `kill-switch` always wins over `steer` — a halt takes precedence over a redirect.
+Developer Safety runs on three hooks, each watching for a simple trigger file in your project. Two of them give you live control while the agent works. The **kill switch** checks before every step: drop in a `STOP` file and the agent stops at once; delete it and it carries on — no restart. **Steer** works the same way for course-correcting: write a "do it this way instead" note in `STEER.md`, the agent reads it on its next step, then sets it aside so you keep a record of what you asked. If both fire at once, the halt wins — stopping beats redirecting. The third hook, **commit-on-stop**, is the safety net: when a turn ends with unsaved changes, it records a snapshot of your work to a separate ref, so a session that ends unexpectedly never loses what was in flight.
 
-Above the hooks sits the `recoverability` skill: the doctrine that classifies every action as recoverable or unrecoverable, proceeds on the former (announced), and stops only on the latter. The skill is the pre-action discipline; the hooks are the in-flight controls that enforce it. Two snippets round out the plugin — `commit-no-coauthor` (never add a `Co-Authored-By` trailer naming the model) and `worktrees-operator-initiated` (worktrees are first-class but never spawned autonomously). On Claude Code the hooks are fully effective; on Antigravity they fire observe-only, so you approximate them with an always-on rule that checks the trigger files before each step.
+Under the hooks sits the **recoverability** doctrine — the judgment the agent applies on its own. Before it acts, it asks one question: can this be undone? If it can, it goes ahead and tells you; if it can't, it stops and checks with you first. Two short conventions round it out: no `Co-Authored-By` line on commits, and new worktrees only when you ask for one. One thing to know — the hooks do their full job on Claude Code; on Antigravity they can only watch, not block, so there you lean on an always-on rule that checks the same trigger files before each step.
 
 ### Composition
 
