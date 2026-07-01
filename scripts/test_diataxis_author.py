@@ -56,7 +56,7 @@ author = _load("author")
 
 
 _MONOLITHS = ("how-to", "tutorial", "reference", "explanation")
-_MANIFESTS = ("component-overview", "home", "plugin-home", "section-index")
+_MANIFESTS = ("component-overview", "home", "plugin-home", "plugin-reference", "section-index")
 
 
 def _empty_style():
@@ -84,7 +84,7 @@ def _mkwiki(td: str) -> Path:
 class TestTemplateDrivenValidation(unittest.TestCase):
     """Task 1 — page-type validity is template existence, not a hardcoded enum."""
 
-    def test_valid_page_types_are_the_eight_templates_excluding_readme(self):
+    def test_valid_page_types_are_the_nine_templates_excluding_readme(self):
         got = author._valid_page_types()
         self.assertEqual(
             sorted(got), sorted(_MONOLITHS + _MANIFESTS),
