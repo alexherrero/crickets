@@ -17,7 +17,11 @@ How it composes — what enhances the loop, what requires it, and the AgentM sub
 
 ### How it works
 
-The loop turns a brief into working code through discrete gates rather than one freestyle pass. `/setup` scaffolds a project once; `/plan` turns a brief into `.harness/PLAN.md` with per-task verification criteria and writes no code; `/work` then works that task list autonomously, single-threaded, stopping only when a per-task safety pre-check fails or a clarification is needed; `/review` runs an adversarial pass that assumes the code has bugs; `/release` is the pre-merge gate. `/bugfix` is a different pipeline — Report, Analyze, Fix, Verify — used in place of plan-plus-work for defects. Around that core sit the authoring commands (`/design`, `/spec`, `/interview-me`), the ship-phase commands (`/observe`, `/deprecate`, `/launch`, `/ci-cd`, `/document-decision`), and the multi-plan and worktree surface (`/queue-status-lite`, `/spawn-worker`, `/integrate-worker`). Six role agents — `worker`, `tech-lead`, `researcher`, `project-manager`, `evaluator`, `explorer` — compose onto the loop as thin skins. State lives on disk between sessions, not in the conversation, which is what lets a plan span many sessions. The phase commands and agents are host-symmetric; the two session hooks are Claude-only.
+Developer Workflows moves a change from a rough **idea** to a shipped feature, one gated step at a time, and its commands map onto that flow.
+
+You start with an **idea** — a brief, a feature request, a bug. When it is still fuzzy, `/interview-me` draws out what you actually want. **Research** then fills in what the agent hasn't seen: a read-only sweep of the codebase, and the web when it helps. With the shape clearer, you move to **architecture and design** — `/spec` writes a short PRD, and `/design` takes a design doc to a human-approved final and splits it into parts. Those parts become **plans**: `/plan` turns a brief into a task list with pass/fail criteria, and a larger design fans out into several ordered, named plans. Then the **work** — `/work` runs a plan's tasks one at a time, stopping only when a safety check fails or it needs a decision; for bigger efforts you break the work out into isolated worktrees with `/spawn-worker` and land them with `/integrate-worker`. Every change is **reviewed** adversarially at `/review` and shipped through the `/release` gate, with `/bugfix` as the shorter Report → Analyze → Fix → Verify track for defects.
+
+The whole loop runs on disk, not in the conversation: the plan, its progress, and the project's state live in files, which is what lets one plan span many sessions.
 
 ### Composition
 
@@ -72,7 +76,7 @@ Each primitive links to the source that implements it. The phase and ship comman
 
 ### Configuration
 
-No configuration — the plugin works out of the box. The phase commands read on-disk state under `.harness/` (`PLAN.md`, `progress.md`, and optional `project.json`/isolation settings), but those are project state written by the loop, not plugin settings you configure up front.
+No configuration — the plugin works out of the box. The phase commands read and write the harness's on-disk state (the plan, progress, and feature files, plus optional project settings), but that is project state the loop maintains, not plugin settings you set up front. Where those files live is set by the project's **state mode**, not by this plugin: they sit either repo-local under `.harness/` or inside your synced memory vault, whichever the harness is configured for.
 
 ## See also
 

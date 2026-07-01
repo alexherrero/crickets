@@ -71,8 +71,9 @@ class TestClaudeEmitter(unittest.TestCase):
         # Decisions section retired from the scaffolder, gate, and ADR routing;
         # 0.3.1 = repoint retired-ADR src/ references to the living designs;
         # 0.3.2 = diataxis-author/documenter/diataxis-evaluator/migrate.py four-mode
-        # → six-section taxonomy modernization).
-        self.assertEqual(self._plugin_json("wiki-maintenance")["version"], "0.3.2")
+        # → six-section taxonomy modernization; 0.3.3 = check-wiki rule (e) accepts
+        # the combined plugin-page shape (## Architecture + ## Reference two-parent)).
+        self.assertEqual(self._plugin_json("wiki-maintenance")["version"], "0.3.3")
         self.assertEqual(self._plugin_json("pii")["version"], "0.2.1")  # 0.2.1 = capabilities: [privacy]
 
     def test_dependencies_from_requires(self):

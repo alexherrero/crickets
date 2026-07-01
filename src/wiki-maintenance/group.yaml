@@ -22,7 +22,7 @@ standalone: true
 # 0.3.2 = diataxis-author SKILL + documenter + diataxis-evaluator + migrate.py
 # modernized four-mode → six-section taxonomy (migrate.py now folds tutorial-shaped
 # pages into how-to/ with a <!-- mode: tutorial --> hint; no tutorials/ folder).
-version: 0.3.2
+version: 0.3.3
 capabilities: [wiki-maintenance]
 enhances:
   - group: developer-workflows
