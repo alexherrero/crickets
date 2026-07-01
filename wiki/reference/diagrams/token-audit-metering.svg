@@ -1,0 +1,56 @@
+<svg viewBox="0 0 860 300" width="1118" height="390" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+  <defs>
+    <marker id="a" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#5B7C9E"/></marker>
+    <marker id="ag" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#3A9D5D"/></marker>
+    <marker id="an" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#8a93a0"/></marker>
+  </defs>
+
+  <!-- operator -->
+  <rect x="24" y="118" width="150" height="44" rx="9" fill="#F0F2F5" stroke="#8a93a0" stroke-width="1.5"/>
+  <text x="99" y="139" text-anchor="middle" font-size="12.5" font-weight="600" fill="#3a4250">Operator (you)</text>
+  <text x="99" y="155" text-anchor="middle" font-size="9.5" font-style="italic" fill="#6b7480">run the audit</text>
+
+  <!-- transcript -->
+  <rect x="214" y="112" width="150" height="56" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.5"/>
+  <text x="289" y="136" text-anchor="middle" font-size="12" font-weight="600" fill="#34516e">session transcript</text>
+  <text x="289" y="153" text-anchor="middle" font-size="9.5" fill="#5B7C9E">read message by message</text>
+
+  <!-- operator -> transcript -->
+  <path d="M174 140 L212 140" fill="none" stroke="#8a93a0" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#an)"/>
+
+  <!-- split + price container -->
+  <rect x="404" y="20" width="256" height="248" rx="12" fill="#F7FAFE" stroke="#3A6EA5" stroke-width="1.3" stroke-dasharray="5 4"/>
+  <text x="416" y="38" font-size="10" fill="#3A6EA5">for every message</text>
+
+  <!-- split -->
+  <rect x="424" y="48" width="216" height="70" rx="9" fill="#EAF1FB" stroke="#3A6EA5" stroke-width="1.5"/>
+  <text x="532" y="72" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1e3a5f">split the tokens</text>
+  <text x="532" y="90" text-anchor="middle" font-size="10" fill="#1e3a5f">cache-read · cache-write · fresh</text>
+  <text x="532" y="106" text-anchor="middle" font-size="9.5" font-style="italic" fill="#3A6EA5">what share came from cache</text>
+
+  <!-- price -->
+  <rect x="424" y="170" width="216" height="70" rx="9" fill="#EAF1FB" stroke="#3A6EA5" stroke-width="1.5"/>
+  <text x="532" y="194" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1e3a5f">price each slice</text>
+  <text x="532" y="212" text-anchor="middle" font-size="10" fill="#1e3a5f">from the pinned rate table</text>
+  <text x="532" y="228" text-anchor="middle" font-size="9.5" font-style="italic" fill="#3A6EA5">no model estimates its own spend</text>
+
+  <!-- split -> price -->
+  <path d="M532 118 L532 168" fill="none" stroke="#5B7C9E" stroke-width="1.4" marker-end="url(#a)"/>
+
+  <!-- transcript -> container -->
+  <path d="M364 140 L402 140" fill="none" stroke="#5B7C9E" stroke-width="1.4" marker-end="url(#a)"/>
+  <text x="383" y="132" text-anchor="middle" font-size="9.5" fill="#5B7C9E">stream</text>
+
+  <!-- report -->
+  <rect x="700" y="106" width="150" height="88" rx="9" fill="#E9F6EE" stroke="#3A9D5D" stroke-width="1.5"/>
+  <text x="775" y="130" text-anchor="middle" font-size="12.5" font-weight="600" fill="#27613f">cost breakdown</text>
+  <text x="775" y="148" text-anchor="middle" font-size="9.5" fill="#27613f">total · cache split</text>
+  <text x="775" y="163" text-anchor="middle" font-size="9.5" fill="#27613f">5h windows · floor</text>
+  <text x="775" y="181" text-anchor="middle" font-size="9.5" font-style="italic" fill="#3A9D5D">per-message curve</text>
+
+  <!-- container -> report -->
+  <path d="M660 150 L698 150" fill="none" stroke="#3A9D5D" stroke-width="1.4" marker-end="url(#ag)"/>
+  <text x="679" y="142" text-anchor="middle" font-size="9.5" fill="#3A9D5D">roll up</text>
+
+  <text x="430" y="288" text-anchor="middle" font-size="9.5" font-style="italic" fill="#8a8a92">Every figure traces back to a usage field and a pinned price — nothing is inferred by an LLM.</text>
+</svg>

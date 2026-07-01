@@ -1,0 +1,65 @@
+<svg viewBox="0 0 900 360" width="1170" height="468" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+  <defs>
+    <marker id="a" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#5B7C9E"/></marker>
+    <marker id="ag" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#3A9D5D"/></marker>
+    <marker id="ap" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#7E57C2"/></marker>
+  </defs>
+
+  <!-- vault (source) -->
+  <rect x="24" y="120" width="168" height="80" rx="9" fill="#F2EEFB" stroke="#7E57C2" stroke-width="1.5"/>
+  <text x="108" y="150" text-anchor="middle" font-size="12.5" font-weight="700" fill="#5b3a8c">the vault</text>
+  <text x="108" y="168" text-anchor="middle" font-size="10" fill="#5b3a8c">roadmap · plans · progress</text>
+  <text x="108" y="184" text-anchor="middle" font-size="9.5" font-style="italic" fill="#7E57C2">the source of truth</text>
+
+  <!-- build the picture -->
+  <rect x="236" y="120" width="168" height="80" rx="9" fill="#EAF1FB" stroke="#3A6EA5" stroke-width="1.5"/>
+  <text x="320" y="150" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1e3a5f">read + shape</text>
+  <text x="320" y="168" text-anchor="middle" font-size="10" fill="#1e3a5f">versions · features</text>
+  <text x="320" y="183" text-anchor="middle" font-size="10" fill="#1e3a5f">plans · tasks · backlog</text>
+
+  <!-- decide what appears -->
+  <rect x="448" y="120" width="168" height="80" rx="9" fill="#EAF1FB" stroke="#3A6EA5" stroke-width="1.5"/>
+  <text x="532" y="146" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1e3a5f">pick what shows</text>
+  <text x="532" y="164" text-anchor="middle" font-size="9.5" fill="#1e3a5f">features + up: always</text>
+  <text x="532" y="179" text-anchor="middle" font-size="9.5" fill="#1e3a5f">plan/task: active only</text>
+
+  <!-- render -->
+  <rect x="660" y="120" width="168" height="80" rx="9" fill="#EAF1FB" stroke="#3A6EA5" stroke-width="1.5"/>
+  <text x="744" y="150" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1e3a5f">render</text>
+  <text x="744" y="168" text-anchor="middle" font-size="10" fill="#1e3a5f">a short, dated</text>
+  <text x="744" y="183" text-anchor="middle" font-size="10" fill="#1e3a5f">summary per item</text>
+
+  <!-- flow across the top row -->
+  <path d="M192,160 L232,160" fill="none" stroke="#5B7C9E" stroke-width="1.4" marker-end="url(#a)"/>
+  <path d="M404,160 L444,160" fill="none" stroke="#5B7C9E" stroke-width="1.4" marker-end="url(#a)"/>
+  <path d="M616,160 L656,160" fill="none" stroke="#5B7C9E" stroke-width="1.4" marker-end="url(#a)"/>
+
+  <!-- render -> single write path (down) -->
+  <path d="M744,200 L744,244" fill="none" stroke="#5B7C9E" stroke-width="1.4" marker-end="url(#a)"/>
+
+  <!-- single write path -->
+  <rect x="616" y="248" width="212" height="72" rx="9" fill="#E9F6EE" stroke="#3A9D5D" stroke-width="1.5"/>
+  <text x="722" y="274" text-anchor="middle" font-size="12.5" font-weight="600" fill="#27613f">one write path</text>
+  <text x="722" y="292" text-anchor="middle" font-size="10" fill="#27613f">create the issue, or update</text>
+  <text x="722" y="307" text-anchor="middle" font-size="9.5" font-style="italic" fill="#3A9D5D">keyed by id — no duplicates</text>
+
+  <!-- write path -> board -->
+  <path d="M616,284 L456,284" fill="none" stroke="#3A9D5D" stroke-width="1.4" marker-end="url(#ag)"/>
+
+  <!-- board -->
+  <rect x="236" y="248" width="220" height="72" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.5"/>
+  <text x="346" y="278" text-anchor="middle" font-size="12.5" font-weight="700" fill="#34516e">the GitHub board</text>
+  <text x="346" y="296" text-anchor="middle" font-size="9.5" font-style="italic" fill="#5B7C9E">the human-readable mirror</text>
+
+  <!-- drift check -->
+  <rect x="24" y="248" width="168" height="72" rx="9" fill="#FBF3E2" stroke="#C8961E" stroke-width="1.5"/>
+  <text x="108" y="278" text-anchor="middle" font-size="12" font-weight="600" fill="#8a6516">drift check</text>
+  <text x="108" y="296" text-anchor="middle" font-size="9.5" font-style="italic" fill="#8a6516">vault == board? flag if not</text>
+
+  <!-- board <-> drift check -->
+  <path d="M236,284 L196,284" fill="none" stroke="#C8961E" stroke-width="1.4" marker-end="url(#a)" marker-start="url(#a)"/>
+  <path d="M108,248 C108,220 108,210 108,204" fill="none" stroke="#C8961E" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#ap)"/>
+  <text x="120" y="228" text-anchor="start" font-size="9" font-style="italic" fill="#8a6516">compares back to the vault</text>
+
+  <text x="450" y="346" text-anchor="middle" font-size="10.5" font-style="italic" fill="#8a8a92">One direction only: the vault drives the board. Re-running converges instead of duplicating, and the drift check catches any divergence.</text>
+</svg>

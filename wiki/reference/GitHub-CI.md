@@ -3,15 +3,23 @@
 
 ## Architecture
 
-GitHub CI handles the mechanical breakage that follows a dependency bump. When Dependabot opens a PR and CI goes red, this plugin reads what failed and tries to fix it on the spot — a bounded, autonomous loop that clears the common cases without asking you to babysit each one. It never merges, so a person stays in the loop for the decision that matters.
+GitHub CI takes the busywork out of dependency updates. When a bot opens a pull request to bump a package and your checks go red, this plugin steps in: it reads what broke and tries to patch it for you, so the routine breakage a version bump causes gets cleared without you stopping to babysit each one. It knows when it's out of its depth — if a fix needs real judgment, it stops and says so rather than guessing, and it never merges, so you stay in charge of the call that matters. GitHub CI builds on the base development loop and doesn't stand alone.
 
 ### Diagram
 
-_None / not needed._
+The repair loop — how a red dependency-update PR is diagnosed, patched, and re-checked, and where it stops:
+
+![A bounded fix loop that reads a failing update PR's check logs and release notes, applies a patch and pushes it, re-runs the checks, and loops up to a capped number of attempts — green checks comment the residual risk and out-of-depth fixes hand back to the operator, and it never merges](diagrams/github-ci-fix-loop.svg)
+
+How it composes — the base it requires and the substrate it rests on:
+
+![github-ci in the centre with a solid slate arrow up to developer-workflows, the phase-loop base it requires, and a dashed purple arrow down onto the AgentM substrate it composes onto one-way](diagrams/github-ci-composition.svg)
 
 ### How it works
 
-The plugin ships a single skill, `dependabot-fixer`. It triggers when you are on a `dependabot/*` branch with red CI, when you ask it to fix a Dependabot PR, or when you invoke `/dependabot-fix`. It reads the failing CI logs alongside the upstream package's CHANGELOG, and — if the repo has a `.harness/known-migrations.md` recipe for that package — uses the recipe as its first fix attempt. It then applies a bounded fix loop (three iterations by default), pushing each attempt to the Dependabot branch and re-running CI. When it succeeds it comments any residual risk on the PR; when the fix needs human judgment it aborts honestly and says so. It stops at the fix — merging is always left to a person. The `.harness/`-aware paths are soft references: when those files are absent the skill falls back to language defaults, so it works in any repo with Dependabot and CI, not only harness-installed projects.
+The plugin ships one skill that repairs a broken dependency update. It kicks in when a bot's update PR fails your checks — either on its own, or when you ask it to fix one. To work out what to do, it reads the failing check logs and the new package's release notes together, so it's fixing against what actually changed upstream rather than guessing. If your project keeps its own notes on how to migrate that package, it tries those first.
+
+From there it works in a tight loop: apply a fix, push it up, watch the checks re-run, and try again if they're still red — up to a small, capped number of attempts so it never spins forever. When the checks go green it leaves a note on the PR flagging anything you should still double-check. When a fix would take real judgment, it stops and tells you plainly instead of forcing a bad patch. It stops at the fix and never merges — that call stays with you. It leans on your project's migration notes when they exist but doesn't need them, so it works in any repo with dependency updates and CI.
 
 ### Composition
 

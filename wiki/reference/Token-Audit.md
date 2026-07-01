@@ -3,15 +3,23 @@
 
 ## Architecture
 
-Token Audit tells you what a Claude Code session actually cost. It reads the session transcript and prices every message from a pinned rate table, so the numbers are deterministic — no model is asked to estimate its own spend. It is the measurement half of the `efficient` opinion: the opinion sets the budget, and this plugin supplies the cost truth that budget is weighed against.
+Token Audit tells you what a Claude Code session actually cost, and where the money went. It reads the session's own record of work and prices it out for you — the total, how much was served cheaply from cache versus billed fresh, and the fixed cost every turn carries before you type a word. The numbers are trustworthy because they come from a fixed price list, not a guess: no model is asked to estimate its own spend. If you are trying to stretch a plan and stay coding all day, this is how you see where your budget is going. It stands alone and needs nothing else, and Status-Line-Meter can build on it to put a live cost badge in front of you as you work.
 
 ### Diagram
 
-_None / not needed._
+How a session's record becomes a cost breakdown — read each turn, split cache-read vs cache-write vs fresh tokens, price every slice from the pinned table, then roll it up into windows and a floor:
+
+![Token Audit's metering flow: the operator runs the audit, which reads the session transcript turn by turn, splits each message into cache-read, cache-write, and fresh tokens, prices every slice from a pinned rate table, and rolls the result up into a cost breakdown of total, cache split, five-hour windows, floor, and per-message curve](diagrams/token-audit-metering.svg)
+
+How it composes — Token Audit stands alone on the AgentM substrate, with Status-Line-Meter building on it for live metering:
+
+![How token-audit composes: it stands alone requiring nothing, rests one-way on the AgentM substrate of memory, opinions, and personas, and is enhanced (soft, optional) by status-line-meter, which reuses its pricing table for a live status-line badge](diagrams/token-audit-composition.svg)
 
 ### How it works
 
-Run `/token-audit` and it resolves the current session's JSONL transcript, then hands it to `analyzer.py`. The analyzer streams the file, reads the `message.usage` fields on each turn, and splits every message into cache-read, cache-write, and fresh-input tokens — so you can see what share of the session was served from cache rather than re-billed. It rolls costs up into 5-hour windows to match Claude's rolling-limit math, breaks out the always-load floor (the fixed cost every turn carries before you type anything), and prices each slice from `pricing.py`, the one place a per-model rate lives. Pass `--by-phase` and it attributes cost to the `/plan`, `/work`, `/review`, `/release`, and `/bugfix` markers it finds in the transcript. Every figure traces back to a usage field and a pinned price; nothing is inferred by an LLM.
+You run it, and it finds the current session's record of work and reads it turn by turn. For each turn it separates the tokens into three buckets — the ones served cheaply from cache, the ones written into cache, and the fresh input billed at full rate — so you can see how much of the session was re-used rather than re-paid. It then prices every slice from a single fixed rate table, adds it all up, and shows the breakdown: the total, the share that came from cache, and the always-load floor that each turn carries before you type anything.
+
+Because a plan's limits reset on a rolling clock, it also groups the cost into five-hour windows so the sums line up with how you actually get billed, and it can attribute cost to each phase of your workflow when you ask it to. Every figure traces back to a real usage number and a pinned price — nothing is inferred by a model.
 
 ### Composition
 

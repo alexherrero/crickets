@@ -1,0 +1,59 @@
+<svg viewBox="0 0 860 340" width="1118" height="442" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+  <defs>
+    <marker id="a" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#5B7C9E"/></marker>
+    <marker id="ag" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#3A9D5D"/></marker>
+    <marker id="an" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#8a93a0"/></marker>
+  </defs>
+
+  <!-- inputs (operator + watcher) -->
+  <rect x="24" y="30" width="188" height="44" rx="9" fill="#F0F2F5" stroke="#8a93a0" stroke-width="1.5"/>
+  <text x="118" y="50" text-anchor="middle" font-size="12" font-weight="600" fill="#3a4250">Operator asks</text>
+  <text x="118" y="66" text-anchor="middle" font-size="9.5" fill="#6b7480">"update the wiki"</text>
+
+  <rect x="24" y="130" width="188" height="44" rx="9" fill="#F0F2F5" stroke="#8a93a0" stroke-width="1.5"/>
+  <text x="118" y="150" text-anchor="middle" font-size="12" font-weight="600" fill="#3a4250">Watcher run</text>
+  <text x="118" y="166" text-anchor="middle" font-size="9.5" fill="#6b7480">a code change lands</text>
+
+  <!-- decide -->
+  <rect x="262" y="70" width="188" height="64" rx="9" fill="#EAF1FB" stroke="#3A6EA5" stroke-width="1.5"/>
+  <text x="356" y="94" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1e3a5f">Pick the page + kind</text>
+  <text x="356" y="112" text-anchor="middle" font-size="10.5" fill="#1e3a5f">which page, which mode</text>
+  <text x="356" y="127" text-anchor="middle" font-size="9.5" fill="#3A6EA5">scaffold first if the wiki is new</text>
+
+  <!-- inputs -> decide -->
+  <path d="M 212 52 C 236 60, 244 78, 260 90" fill="none" stroke="#8a93a0" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#an)"/>
+  <path d="M 212 152 C 236 144, 244 126, 260 116" fill="none" stroke="#8a93a0" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#an)"/>
+
+  <!-- write -->
+  <rect x="500" y="70" width="196" height="64" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.5"/>
+  <text x="598" y="90" text-anchor="middle" font-size="12.5" font-weight="600" fill="#34516e">Documenter writes</text>
+  <text x="598" y="108" text-anchor="middle" font-size="10.5" fill="#34516e">author · fix drift · migrate</text>
+  <text x="598" y="123" text-anchor="middle" font-size="9.5" fill="#5B7C9E">wiki only, keeps your edits</text>
+
+  <!-- decide -> write -->
+  <path d="M 450 102 L 498 102" fill="none" stroke="#5B7C9E" stroke-width="1.4" marker-end="url(#a)"/>
+
+  <!-- result -->
+  <rect x="500" y="200" width="196" height="60" rx="9" fill="#E9F6EE" stroke="#3A9D5D" stroke-width="1.5"/>
+  <text x="598" y="224" text-anchor="middle" font-size="12.5" font-weight="600" fill="#27613f">Updated page</text>
+  <text x="598" y="242" text-anchor="middle" font-size="10.5" fill="#27613f">PR by default — a human merges</text>
+
+  <!-- write -> result -->
+  <path d="M 598 134 L 598 198" fill="none" stroke="#3A9D5D" stroke-width="1.4" marker-end="url(#ag)"/>
+
+  <!-- voice loop -->
+  <rect x="262" y="220" width="196" height="64" rx="9" fill="#F2EEFB" stroke="#7E57C2" stroke-width="1.5"/>
+  <text x="360" y="244" text-anchor="middle" font-size="12.5" font-weight="600" fill="#5b3a8c">Learns your voice</text>
+  <text x="360" y="262" text-anchor="middle" font-size="10.5" fill="#5b3a8c">from edits you make</text>
+  <text x="360" y="277" text-anchor="middle" font-size="9.5" fill="#7E57C2">general only if you agree</text>
+
+  <!-- your edit -> voice loop -->
+  <path d="M 500 236 C 488 246, 474 252, 460 252" fill="none" stroke="#7E57C2" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#an)"/>
+  <text x="480" y="230" text-anchor="middle" font-size="9.5" font-style="italic" fill="#7E57C2">you edit</text>
+
+  <!-- voice loop -> decide (feeds next write) -->
+  <path d="M 356 220 L 356 136" fill="none" stroke="#7E57C2" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#an)"/>
+  <text x="366" y="180" text-anchor="start" font-size="9.5" font-style="italic" fill="#7E57C2">shapes the next write</text>
+
+  <text x="430" y="316" text-anchor="middle" font-size="10" font-style="italic" fill="#8a8a92">A request or a code change flows through page-choice to the documenter; your own edits teach it your voice for next time.</text>
+</svg>

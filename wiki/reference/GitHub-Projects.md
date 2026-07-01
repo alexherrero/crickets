@@ -3,15 +3,23 @@
 
 ## Architecture
 
-GitHub Projects keeps a GitHub Project board in step with your vault's roadmap, plans, and progress — automatically and in one direction only. The vault stays the agent's source of truth; the board is a generated, human-readable mirror that nobody hand-edits. Because the sync is deterministic and idempotent, the same vault state always renders the same board, and re-running never drifts.
+GitHub Projects gives your team a live, human-readable view of what the agent is doing. Your vault holds the real roadmap, plans, and progress, but a vault isn't where colleagues go to check status — a GitHub Project board is. This plugin keeps that board in step with the vault automatically, so anyone can glance at the board and trust it reflects the current state without anyone hand-editing it. The sync runs one way only, from vault to board, and it's deterministic: the same vault state always renders the same board, and re-running never creates duplicates or drift. It enhances Developer Workflows and needs it installed to run.
 
 ### Diagram
 
-_None / not needed._
+How the sync flows — the vault drives the board one way, and a drift check keeps them honest:
+
+![The github-projects sync pipeline: the vault (roadmap, plans, progress) is read and shaped into versions, features, plans and tasks, then the plugin picks what shows (features and up always, plan and task only for the active plan), renders a short dated summary per item, and pushes it through one write path that creates or updates each issue keyed by id; the result is the human-readable GitHub board, and a drift check compares board back to vault and flags any divergence](diagrams/github-projects-sync.svg)
+
+How it composes — github-projects both needs the phase loop and adds to it, resting on the AgentM substrate:
+
+![How github-projects composes: github-projects on the left connects to developer-workflows on the right by two arrows — a solid requires arrow (won't install without it) and a dashed-green enhances arrow (the phases emit board updates) — and developer-workflows rests on the AgentM substrate of memory, opinions and personas](diagrams/github-projects-composition.svg)
 
 ### How it works
 
-The plugin reads a per-project `project.json` that wires one vault project to one GitHub Project. From the vault's roadmap and progress it builds a typed graph — Version, Feature, Sub-feature, Plan, Task, Backlog-item, Idea — then materializes the items that should appear on the board: feature-level-and-up always, but Plans and Tasks only for the plan you're actively working. Each item renders through a locked one-line template into a stable, dated body, and a single write path (`project_sync.py post`) creates or updates the matching issue by stable id — so a re-run converges instead of duplicating. A drift gate, `check_project_sync.py`, asserts the vault and the board still agree and fails the local battery when they don't. When `developer-workflows` is installed, its `/plan`, `/work`, `/release`, and `/bugfix` phases emit the matching board update as they run; without the board-sync capability present, they skip silently.
+A small config file tells the plugin which vault project maps to which GitHub board. From there it reads the vault's roadmap and progress and builds a picture of the work — versions, features, plans, tasks, and the things still in the backlog. It doesn't mirror all of that onto the board. Features and everything above them always appear, so the board reads as a stable roadmap, but the finer-grained plans and tasks only show up for the plan you're actively working, so the board never fills with breakdowns for work that hasn't started.
+
+Each item gets a short, dated summary from a fixed set of templates, and every write goes through one path that either creates the matching issue or updates the one that's already there — keyed by a stable id, so running the sync again just brings the board back into agreement rather than posting duplicates. A drift check confirms the vault and the board still match and flags it if they've diverged. When Developer Workflows is installed, the plan, work, release, and bugfix phases each push the matching board update as they run; if this plugin isn't present, those steps simply do nothing.
 
 ### Composition
 

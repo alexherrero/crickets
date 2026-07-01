@@ -3,20 +3,26 @@
 
 ## Architecture
 
-The `obsidian-vault` plugin is a crickets plugin that re-homes the agentm memory engine's `vault` storage backend out of the agentm kernel and into a plugin. It lets the engine keep its memory inside your own Obsidian vault on Google Drive instead of a device-local store, so the memory you accumulate lives as plain Markdown you can open, read, and edit in Obsidian — and syncs across your devices through Drive. The backend is **agentm-facing**: it ships as the plugin's `scripts/` payload, the agentm engine discovers and loads it, and the host (Claude Code / Antigravity) never calls it directly.
+Obsidian Vault lets your agent keep its memory inside your own Obsidian vault instead of a store buried in a device-local folder. Everything the agent learns lands as plain Markdown you can open, read, and edit in Obsidian — and because the vault lives on Google Drive, that memory follows you from one device to the next. It also knows how to cope with the mess cloud sync leaves behind, spotting the conflict and duplicate files Drive scatters around so your memory stays clean. This is a storage backend the memory engine picks up and runs on its own, so nothing in your normal workflow calls it directly. It stands alone — it needs no other plugin, only a vault to point at.
 
 > [!IMPORTANT]
 > **Status: pending** (V5-2). This page is a forward-declared skeleton — the `obsidian-vault` plugin is built but **not yet the live backend** (V5-2 parallel-run, pre-V5-3-cutover). A later `/work` task flips it to a documented surface only once the diff proves each row. Do not treat any reserved value below as shipped; the descriptor, seam-verb, and acceptance rows are reserved, not yet verified. (The `vault-doctor` skill and `doctor_vault.py`, shipped in V5-2 task 6, are the exception — they are reachable today.)
 
 ### Diagram
 
-_None / not needed._
+How memory reaches the vault — the engine hands each save to the backend, which writes plain Markdown into the Drive-synced folder while watching for the conflict files sync leaves behind:
+
+![The obsidian-vault storage flow: the memory engine hands each save to the vault backend, which guards concurrent writers and writes plain Markdown into your Drive-synced Obsidian vault, while conflict detection spots the stray copies cloud sync leaves behind](diagrams/obsidian-vault-storage.svg)
+
+How it composes — obsidian-vault requires and enhances nothing, standing alone on the AgentM memory engine that discovers and loads it:
+
+![obsidian-vault composition: the plugin has no couplings to other plugins — it stands alone, running one-way on the AgentM memory engine that discovers, selects, and loads it](diagrams/obsidian-vault-composition.svg)
 
 ### How it works
 
-The plugin ships a `scripts/` payload that the agentm engine discovers and loads — the host never calls it directly. `storage_vault.py` implements the engine's storage seam (the frozen V5-1 seam) and composes agentm's V5-0 write stack: an advisory `mkdir` mutex, a content-hash compare-and-swap, and atomic temp-then-rename writes. That combination lets two sessions write the same synced vault without corrupting each other. It **imports** the lock module, seam types, and conflict classifier from the present engine rather than vendoring copies, so it depends one way *up* on agentm's substrate — and agentm never depends down on it. The backend only ever runs under a present engine; it is the agentm engine that owns discovery, selection, and loading.
+The heart of the plugin is a storage backend — the piece the memory engine writes to and reads from. When you point the engine at your vault, it hands every save to this backend, which writes the memory out as Markdown into the folder Drive keeps in sync. Because that folder can be open on more than one machine at once, the backend takes care to let two sessions write to the same vault without clobbering each other's work. It leans on the engine's own building blocks to do that rather than carrying its own copies, so it always runs as part of the engine, never on its own.
 
-Because the store is a Google-Drive-synced folder, Drive occasionally produces conflict and duplicate files. `vault_conflicts.py` detects those families — `(conflicted copy …)`, `[Conflict]`, `Copy of …`, numbered ` (N)` duplicates, and the DriveFS `lost_and_found/` dump. On Claude Code the `conflict-merger-session-start` hook surfaces them automatically at session start; on either host the `vault-doctor` skill runs the read-only `doctor_vault.py` probe on demand to check that the vault path resolves, backend selection routes here, and no conflicts are outstanding.
+Cloud sync has a habit of leaving litter behind — a duplicate here, a "conflicted copy" there — whenever two devices touch the same file. The plugin knows what those stray files look like and can point them out so you can clean them up. On Claude Code it does this for you at the start of a session; everywhere else, a small health check surfaces the same thing on demand and confirms your vault is wired up and conflict-free.
 
 ### Composition
 

@@ -3,15 +3,23 @@
 
 ## Architecture
 
-PII Guardrail keeps personal information — real emails, personal file paths, API keys, phone numbers — out of anything you commit or push. It works in four layers that back each other up, so a value that slips past one is caught by the next, and a value written correctly in the first place never triggers the last.
+PII Guardrail keeps personal information out of your git history. Real emails, personal file paths, API keys, and phone numbers have a way of ending up in committed content, and once they land in a shared history they are painful to pull back out. This plugin gives you defense in depth against that: it nudges the agent toward safe stand-ins as it writes, offers an on-demand scan that finds and helps you fix anything that slipped through, and backs both with a hard block right before a push so nothing leaks even if the earlier layers miss. It needs nothing else to run and stands on its own.
 
 ### Diagram
 
-_None / not needed._
+The four-layer defense — each layer catches what the one before it missed:
+
+![The pii four-layer defense left to right: while writing, a stand-in rule nudges toward safe placeholders; before commit, an on-demand scan finds and fixes personal info; before push, a hard automatic block stops anything that slipped through; and in CI a final backstop keeps the history clean — the first two layers aim to keep the last two from ever firing](diagrams/pii-defense.svg)
+
+How it composes — pii requires nothing and enhances nothing, so it stands alone on the AgentM substrate:
+
+![The pii plugin sits alone above the AgentM substrate of memory, opinions, and personas, connected by a one-way dashed purple arrow, labelled as requiring nothing and standing alone with no couplings](diagrams/pii-composition.svg)
 
 ### How it works
 
-The plugin runs a four-layer defense, from proactive to deterministic. The `pii-patterns` rule fires while you compose: it tells the agent to reach for safe stand-ins from the start — RFC 2606 domains like `alice@example.com`, `$HOME` in place of `/Users/<name>/`, env-var references instead of real tokens, and the NANP `555-01xx` range for phone numbers. When something slips through anyway, the `pii-scrubber` skill is the interactive layer: run it before a commit or push and it scans the diff (or the whole tree), surfaces every finding as `file:line` with a proposed redaction, and loops until the range is clean — remediating rather than just failing. Behind the skill sit two deterministic enforcers that live at the repo level: a mandatory `pre-push` hook that blocks a push regardless of whether the agent remembered to scan, and a CI gate that is the final backstop. Together the rule and skill aim to keep the hook from ever needing to fire.
+The plugin defends in four layers, from the gentlest to the most absolute. The first is a rule the agent follows as it writes: reach for a safe stand-in from the start — a placeholder email domain, `$HOME` instead of a real home directory, an env-var reference instead of a real token, a reserved fake phone number. When something real slips through anyway, the second layer is an on-demand scan you run before a commit or push. It reads your changes, points at each piece of personal information by file and line, suggests a redaction, and loops with you until everything is clean — it fixes, it doesn't just complain.
+
+The last two layers are automatic and unskippable. A check runs right before every push and blocks it if anything got through, whether or not anyone thought to scan; and the same check runs again in CI as a final backstop. The idea is that the first two layers keep the last two from ever having to fire.
 
 ### Composition
 

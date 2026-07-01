@@ -1,0 +1,47 @@
+<svg viewBox="0 0 860 300" width="1118" height="390" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+  <defs>
+    <marker id="a" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#5B7C9E"/></marker>
+    <marker id="ag" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#3A9D5D"/></marker>
+  </defs>
+
+  <!-- the release intent -->
+  <rect x="20" y="112" width="150" height="64" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.5"/>
+  <text x="95" y="140" text-anchor="middle" font-size="12.5" font-weight="600" fill="#34516e">/release</text>
+  <text x="95" y="158" text-anchor="middle" font-size="10.5" fill="#34516e">ready to ship</text>
+
+  <!-- intent -> gate -->
+  <path d="M 170 144 L 214 144" fill="none" stroke="#5B7C9E" stroke-width="1.4" marker-end="url(#a)"/>
+
+  <!-- the checklist gate -->
+  <rect x="216" y="40" width="408" height="220" rx="12" fill="#EAF1FB" stroke="#3A6EA5" stroke-width="1.6"/>
+  <text x="420" y="64" text-anchor="middle" font-size="12.5" font-weight="700" fill="#1e3a5f">the pre-tag checklist — every item must pass</text>
+
+  <rect x="236" y="78" width="176" height="40" rx="8" fill="#FBFCFE" stroke="#3A6EA5" stroke-width="1.3"/>
+  <text x="324" y="102" text-anchor="middle" font-size="11" fill="#1e3a5f">CI green on every OS</text>
+  <rect x="428" y="78" width="176" height="40" rx="8" fill="#FBFCFE" stroke="#3A6EA5" stroke-width="1.3"/>
+  <text x="516" y="102" text-anchor="middle" font-size="11" fill="#1e3a5f">version bumped</text>
+
+  <rect x="236" y="128" width="176" height="40" rx="8" fill="#FBFCFE" stroke="#3A6EA5" stroke-width="1.3"/>
+  <text x="324" y="152" text-anchor="middle" font-size="11" fill="#1e3a5f">CHANGELOG authored</text>
+  <rect x="428" y="128" width="176" height="40" rx="8" fill="#FBFCFE" stroke="#3A6EA5" stroke-width="1.3"/>
+  <text x="516" y="152" text-anchor="middle" font-size="11" fill="#1e3a5f">built files committed</text>
+
+  <rect x="236" y="178" width="176" height="40" rx="8" fill="#FBFCFE" stroke="#3A6EA5" stroke-width="1.3"/>
+  <text x="324" y="202" text-anchor="middle" font-size="11" fill="#1e3a5f">no orphan PRs</text>
+  <rect x="428" y="178" width="176" height="40" rx="8" fill="#FBFCFE" stroke="#3A6EA5" stroke-width="1.3"/>
+  <text x="516" y="202" text-anchor="middle" font-size="11" fill="#1e3a5f">full gate battery green</text>
+
+  <text x="420" y="242" text-anchor="middle" font-size="9.5" font-style="italic" fill="#3A6EA5">any item fails → stop and fix before tagging</text>
+
+  <!-- gate -> ship -->
+  <path d="M 624 144 L 668 144" fill="none" stroke="#3A9D5D" stroke-width="1.4" marker-end="url(#ag)"/>
+  <text x="646" y="136" text-anchor="middle" font-size="10" fill="#3A9D5D">all pass</text>
+
+  <!-- ship outcome -->
+  <rect x="670" y="112" width="170" height="64" rx="9" fill="#E9F6EE" stroke="#3A9D5D" stroke-width="1.5"/>
+  <text x="755" y="140" text-anchor="middle" font-size="12.5" font-weight="600" fill="#27613f">tag + publish</text>
+  <text x="755" y="158" text-anchor="middle" font-size="10.5" fill="#27613f">a clean release</text>
+
+  <!-- cross-repo note -->
+  <text x="420" y="288" text-anchor="middle" font-size="9.5" font-style="italic" fill="#8a8a92">For paired cross-repo releases, the checklist also locks which repo ships first so the release notes cross-link correctly.</text>
+</svg>

@@ -1,0 +1,34 @@
+<svg viewBox="0 0 820 400" width="1066" height="520" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+  <defs>
+    <marker id="req" markerWidth="10" markerHeight="10" refX="7.2" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L8,3 L0,6 Z" fill="#5B7C9E"/></marker>
+    <marker id="enh" markerWidth="10" markerHeight="10" refX="7.2" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L8,3 L0,6 Z" fill="#3A9D5D"/></marker>
+    <marker id="sub" markerWidth="10" markerHeight="10" refX="7.2" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L8,3 L0,6 Z" fill="#7E57C2"/></marker>
+  </defs>
+
+  <!-- this plugin (left, centre-of-attention) -->
+  <rect x="52" y="150" width="238" height="92" rx="9" fill="#EAF1FB" stroke="#3A6EA5" stroke-width="1.5"/>
+  <text x="171" y="188" text-anchor="middle" font-size="14.5" font-weight="700" fill="#1e3a5f">github-projects</text>
+  <text x="171" y="208" text-anchor="middle" font-size="10.5" font-style="italic" fill="#3A6EA5">one-way vault → board sync</text>
+
+  <!-- developer-workflows (right, the neighbour it both requires and enhances) -->
+  <rect x="536" y="150" width="238" height="92" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.5"/>
+  <text x="655" y="188" text-anchor="middle" font-size="14" font-weight="700" fill="#34516e">developer-workflows</text>
+  <text x="655" y="208" text-anchor="middle" font-size="10.5" font-style="italic" fill="#5B7C9E">the phase loop</text>
+
+  <!-- requires (hard, solid slate) -->
+  <path d="M290,178 L532,178" fill="none" stroke="#5B7C9E" stroke-width="1.4" marker-end="url(#req)"/>
+  <text x="411" y="169" text-anchor="middle" font-size="10" font-style="italic" fill="#5B7C9E">requires — won't install without it</text>
+
+  <!-- enhances (soft, dashed green) -->
+  <path d="M290,214 L532,214" fill="none" stroke="#3A9D5D" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#enh)"/>
+  <text x="411" y="232" text-anchor="middle" font-size="10" font-style="italic" fill="#3A9D5D">enhances — the phases emit board updates</text>
+
+  <!-- AgentM substrate -->
+  <rect x="515" y="308" width="280" height="56" rx="9" fill="#F2EEFB" stroke="#7E57C2" stroke-width="1.5"/>
+  <text x="655" y="332" text-anchor="middle" font-size="13" font-weight="700" fill="#5b3a8c">AgentM substrate</text>
+  <text x="655" y="350" text-anchor="middle" font-size="9.5" font-style="italic" fill="#7E57C2">memory · opinions · personas</text>
+  <path d="M655,242 L655,304" fill="none" stroke="#7E57C2" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#sub)"/>
+  <text x="667" y="278" text-anchor="start" font-size="9.5" font-style="italic" fill="#8a8a92">rests on, one-way</text>
+
+  <text x="410" y="388" text-anchor="middle" font-size="10.5" font-style="italic" fill="#8a8a92">Solid = requires (hard); dashed-green = enhances (soft). github-projects both needs the phase loop and adds to it.</text>
+</svg>

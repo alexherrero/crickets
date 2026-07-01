@@ -1,0 +1,30 @@
+<svg viewBox="0 0 760 420" width="988" height="546" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+  <defs>
+    <marker id="enh" markerWidth="10" markerHeight="10" refX="7.2" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L8,3 L0,6 Z" fill="#3A9D5D"/></marker>
+    <marker id="sub" markerWidth="10" markerHeight="10" refX="7.2" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L8,3 L0,6 Z" fill="#7E57C2"/></marker>
+  </defs>
+
+  <!-- central plugin -->
+  <rect x="270" y="150" width="220" height="82" rx="9" fill="#EAF1FB" stroke="#3A6EA5" stroke-width="2.4"/>
+  <text x="380" y="184" text-anchor="middle" font-size="14.5" font-weight="700" fill="#1e3a5f">token-audit</text>
+  <text x="380" y="203" text-anchor="middle" font-size="10.5" font-style="italic" fill="#3A6EA5">deterministic cost breakdown</text>
+  <text x="380" y="220" text-anchor="middle" font-size="9.5" font-style="italic" fill="#3A6EA5">stands alone — requires nothing</text>
+
+  <!-- enhancer (right, dashed-green enhances -> center) -->
+  <text x="560" y="112" font-size="10.5" font-weight="700" fill="#3A9D5D">ENHANCED BY (soft)</text>
+  <rect x="560" y="124" width="176" height="60" rx="9" fill="#E9F6EE" stroke="#3A9D5D" stroke-width="1.6"/>
+  <text x="648" y="149" text-anchor="middle" font-size="12" font-weight="600" fill="#27613f">status-line-meter</text>
+  <text x="648" y="166" text-anchor="middle" font-size="9" font-style="italic" fill="#3A9D5D">live status-line badge</text>
+  <text x="648" y="179" text-anchor="middle" font-size="9" font-style="italic" fill="#3A9D5D">reuses the pricing table</text>
+  <path d="M560,158 C520,168 512,178 492,186" fill="none" stroke="#3A9D5D" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#enh)"/>
+  <text x="524" y="150" text-anchor="middle" font-size="9.5" font-style="italic" fill="#8a8a92">builds on it</text>
+
+  <!-- substrate -->
+  <rect x="240" y="320" width="280" height="56" rx="9" fill="#F2EEFB" stroke="#7E57C2" stroke-width="2"/>
+  <text x="380" y="344" text-anchor="middle" font-size="13" font-weight="700" fill="#5b3a8c">AgentM substrate</text>
+  <text x="380" y="362" text-anchor="middle" font-size="9.5" font-style="italic" fill="#7E57C2">memory · opinions · personas</text>
+  <path d="M380,232 L380,316" stroke="#7E57C2" stroke-width="1.8" stroke-dasharray="5 4" fill="none" marker-end="url(#sub)"/>
+  <text x="392" y="280" font-size="9.5" font-style="italic" fill="#8a8a92">composes onto, one-way</text>
+
+  <text x="380" y="404" text-anchor="middle" font-size="10.5" font-style="italic" fill="#8a8a92">Dashed-green = enhances (soft, optional). token-audit stands alone and rests on the AgentM substrate.</text>
+</svg>

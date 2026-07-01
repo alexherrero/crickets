@@ -3,15 +3,19 @@
 
 ## Architecture
 
-Status Line Meter keeps a small live gauge in your Claude Code status line, so you can see how much of the context window you have used and roughly what the session is costing without pausing to run a report. It reads the transcript incrementally after each response and renders a compact one-line badge, staying out of the way when a number is unavailable.
+Status Line Meter keeps a small live gauge in the corner of your Claude Code session, so you always have a rough sense of where you stand without pausing to run a report. At a glance you see how much of the context window you have burned through and roughly what the session is costing, updated after every response. It is the ambient, always-on companion to a full cost breakdown: not the detailed report, just the number you want in your peripheral vision while you work. It runs on its own out of the box, and quietly gains its cost readings when Token-Audit is installed alongside it.
 
 ### Diagram
 
-_None / not needed._
+How it composes — it stands alone on the Claude Code status line and enhances Token-Audit when both are installed:
+
+![How status-line-meter composes: the plugin sits alone on the AgentM substrate reading the Claude Code status line, and reaches out with a soft enhances edge to token-audit, reusing its pricing for the live cost and floor-share badges](diagrams/status-line-meter-composition.svg)
 
 ### How it works
 
-After every API response, Claude Code pipes a small JSON payload to the plugin's script on stdin, and the script prints a single line back that becomes your status line. That line carries up to three independently optional badges: the context-window used-percentage (`▌42%`), a floor-share badge showing the always-load surface's share of session cost (`⌊18%⌋`), and the estimated session cost (`$0.14`). The script reads the transcript incrementally — it caches its last read offset per session in the system temp directory and only parses what is new — and it resets cleanly when the transcript is truncated, for example after `/compact`. For the cost and floor-share badges it discovers `token-audit`'s `pricing.py` from the sibling plugins directory at runtime; when `token-audit` is not installed it quietly falls back to the used-percentage alone. Any missing field, null value, or error is a graceful skip: the badge is dropped rather than allowed to hang or corrupt the status line.
+After each response, Claude Code hands the plugin a quick summary of the session and asks for one line of text back — that line becomes your status bar. The plugin renders up to three small badges into it: how much of the context window you have used, an estimate of what the session has cost so far, and a share showing how much of that cost comes from the fixed overhead loaded into every prompt. To keep up without slowing you down, it only looks at what is new since the last response rather than re-reading the whole conversation, and it starts over cleanly if the conversation is ever trimmed back.
+
+The cost figures lean on Token-Audit's pricing, so the two cost badges appear only when that plugin is installed alongside; on its own, Status Line Meter still shows the context-window gauge. And whenever a number can't be worked out, it simply leaves that badge off rather than showing a broken or stale figure — so the bar stays honest and never gets in your way.
 
 ### Composition
 

@@ -3,15 +3,23 @@
 
 ## Architecture
 
-Wiki Maintenance provisions a repo's `wiki/` from nothing, keeps it in Diátaxis single-mode shape and your house voice, and watches for doc-worthy changes so the docs track the code without a separate step. A wiki rots when it's hand-maintained and voiceless — this plugin makes the structure self-enforcing, the prose learnable, and the automation safe to leave running.
+Wiki Maintenance keeps a repo's docs alive instead of letting them rot. It sets up a wiki from scratch, holds every page to a clear Diátaxis shape and your own writing voice, and watches the code so the docs move with it rather than falling behind. The idea is that a wiki fails when it's hand-tended and inconsistent, so this plugin makes the structure enforce itself, teaches the agent your voice from your own edits, and runs the upkeep safely enough to leave on. It stands alone — you can use it in any repo on its own — and it slots naturally into Developer Workflows when that plugin is installed, updating pages as part of the normal loop.
 
 ### Diagram
 
-_None / not needed._
+How the authoring flow runs — from a request or a code change through page-choice to the documenter, with your edits teaching it your voice:
+
+![The wiki-maintenance authoring flow: an operator request or a watcher run feeds a page-and-mode choice, which hands off to the documenter to author, repair, or migrate a page into an updated page shipped as a pull request; your own edits feed a voice-learning loop that shapes the next write](diagrams/wiki-maintenance-authoring.svg)
+
+How it composes — standalone, resting on the AgentM substrate, softly enhancing Developer Workflows when both are installed:
+
+![How wiki-maintenance composes: it stands alone and rests on the AgentM substrate of memory, opinions, and personas, with a dashed-green soft-enhances arrow out to developer-workflows, which it documents at phase boundaries only when both are installed](diagrams/wiki-maintenance-composition.svg)
 
 ### How it works
 
-You provision a wiki with `wiki-init`, which scaffolds the intent-group folders, per-folder sidebars, and section landings — idempotent and preview-first, so it never clobbers a page that already exists. From then on, `wiki-author` fires on operator phrases like "update the wiki with what we just shipped": it resolves which Diátaxis mode page to touch, then hands the mechanical write to the `documenter` sub-agent, which is hard-scoped to `wiki/**`, preserves human edits, and never touches code. The `diataxis-author` skill supplies the deeper discipline behind that write — mode selection, template-fill, drift repair, and one-shot migration of a legacy audience-based wiki into the six-section layout — and it learns generalizable voice lessons from your own edits, gated by you for scope. Two read-only evaluators back the ambiguous calls: `diataxis-evaluator` classifies a page whose mode is unclear, and `style-scope-evaluator` recommends where a captured voice lesson should live. For continuous upkeep, `wiki-watch` runs one idempotent cycle — poll, detect, judge significance, dispatch the documenter PR-default — cooldown-gated and cursor-backed so a `/loop` or cron line never drops a change or double-dispatches. When `developer-workflows` is also installed, its phase commands dispatch the same `documenter` at phase boundaries, so the wiki updates as part of the normal loop.
+You start by scaffolding the wiki — the plugin lays down the folders, sidebars, and section landing pages, and it never overwrites anything that already exists, so it's safe to run on a wiki you've already begun. After that, a plain request like "update the wiki with what we just shipped" is enough: the plugin works out which page should change, then hands the actual writing to a documenter that only ever touches the wiki, keeps your hand edits intact, and never edits code. Behind that write sits the real discipline — picking the right kind of page, filling it to the template, fixing pages that have drifted, and, when you're moving an older wiki over, reshaping it into the standard layout. It also learns your voice: when you edit a page, it can pick up a lasting lesson from your change, and it checks with you before treating that lesson as a general rule.
+
+For ongoing upkeep, a watcher can run on its own. Each run looks at what's changed in the code, decides whether it's worth documenting, and, when it is, sends the documenter to write the update — opening a pull request by default so a human still merges it. It's built to be run on a schedule without ever doubling up or dropping a change. And when Developer Workflows is installed, the same documenter is called at the end of each phase, so the docs get refreshed as a normal part of the loop rather than as a separate chore.
 
 ### Composition
 

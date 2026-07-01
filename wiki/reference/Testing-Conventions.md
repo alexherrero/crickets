@@ -3,17 +3,19 @@
 
 ## Architecture
 
-Testing Conventions keeps test discipline standing and visible throughout the dev loop. It is not a review pass you run at the end — it is a set of day-to-day principles the agent carries every time it writes, changes, or touches code with observable behavior, so the discipline is already in place before a review ever happens.
+Testing Conventions gives your agent a steady stance on how to test — one it carries the whole time it writes code, not a pass you bolt on at the end. It holds the line on the habits that keep a suite trustworthy: write the failing test before the code, never weaken or delete a test to get a build green, and keep fast unit tests, integration tests, and end-to-end tests at their own distinct scopes. When the agent reaches for a shortcut like a skip marker, it makes sure there's a real, documented reason rather than a quiet "we'll get to it later." So by the time a change reaches review, the tests already reflect what the code actually does. It builds on Developer Workflows, extending that phase loop with test discipline rather than standing on its own.
 
 ### Diagram
 
-_None / not needed._
+How it composes — the plugin's two primitives, the developer-workflows base it requires, and the AgentM substrate it rests on:
+
+![How testing-conventions composes: the testing-conventions skill and the no-skip-tests rule sit inside the plugin, which requires (solid slate, hard) the developer-workflows phase loop — both must be enabled to load — and composes one-way onto the AgentM substrate of memory, opinions, and personas](diagrams/testing-conventions-composition.svg)
 
 ### How it works
 
-The plugin ships two primitives that work at different moments. A **rule**, `no-skip-tests`, fires the instant the agent adds or approves a skip, xfail, xit, or pending marker without a compliant comment — it demands an inline note naming the exact technical blocker (a missing dependency, an environment constraint, a known upstream bug) and a link to a tracking issue, and rejects process states like "TODO" or "flaky." A **skill**, `testing-conventions`, encodes three standing principles the agent applies continuously: tests are sacred (never delete or weaken a test to make a build pass), verification first (write the failing scenario before the code that satisfies it), and the 3-layer pyramid (keep unit, integration, and E2E tests at their distinct scopes and speeds rather than collapsing them). Together they cover both the reflex — the moment you reach for a skip marker — and the practice — how you write and layer tests in the first place.
+Two pieces work at two different moments. The first is a set of standing principles the agent keeps in mind as it writes: tests are sacred, so it never guts one to make a build pass; verification comes first, so it writes the failing scenario before the code that answers it; and the test pyramid stays intact, so quick unit tests, integration tests, and slower end-to-end tests each keep their own job instead of blurring together. The second watches for the moment the agent goes to skip a test. Skipping isn't banned — but the agent has to say why in the test itself, naming the actual blocker (a missing dependency, an environment it can't reach, a known upstream bug) and pointing at where it's tracked. A vague "TODO" or "flaky" won't do; the reason has to be real and checkable later.
 
-The plugin owns the *practice* of testing. For review-time gap auditing — spotting which test types a diff is missing — reach for the `code-review` plugin's `testing-strategy` skill instead; that one owns the *audit*.
+Together they cover both the reflex and the practice — the split-second you reach for a skip, and the way you write and layer tests in the first place. This plugin owns that day-to-day *practice*. Auditing a finished change for missing test types is a different job, and lives in the Code Review plugin.
 
 ### Composition
 

@@ -1,0 +1,46 @@
+<svg viewBox="0 0 820 340" width="1066" height="442" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+  <defs>
+    <marker id="a" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#5B7C9E"/></marker>
+    <marker id="ag" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#3A9D5D"/></marker>
+    <marker id="au" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#C8961E"/></marker>
+  </defs>
+
+  <!-- memory engine (source of writes) -->
+  <rect x="24" y="132" width="176" height="66" rx="9" fill="#F2EEFB" stroke="#7E57C2" stroke-width="1.5"/>
+  <text x="112" y="160" text-anchor="middle" font-size="12.5" font-weight="700" fill="#5b3a8c">memory engine</text>
+  <text x="112" y="178" text-anchor="middle" font-size="10.5" fill="#7E57C2">saves what the agent learns</text>
+
+  <!-- engine -> backend -->
+  <path d="M 200 165 L 250 165" fill="none" stroke="#5B7C9E" stroke-width="1.4" marker-end="url(#a)"/>
+  <text x="225" y="157" text-anchor="middle" font-size="10" fill="#5B7C9E">each save</text>
+
+  <!-- vault backend -->
+  <rect x="252" y="120" width="200" height="90" rx="9" fill="#EAF1FB" stroke="#3A6EA5" stroke-width="1.8"/>
+  <text x="352" y="147" text-anchor="middle" font-size="12.5" font-weight="700" fill="#1e3a5f">vault backend</text>
+  <text x="352" y="165" text-anchor="middle" font-size="10.5" fill="#1e3a5f">writes memory as Markdown</text>
+  <text x="352" y="183" text-anchor="middle" font-size="9.5" font-style="italic" fill="#3A6EA5">guards concurrent writers,</text>
+  <text x="352" y="196" text-anchor="middle" font-size="9.5" font-style="italic" fill="#3A6EA5">so two sessions don't clobber</text>
+
+  <!-- backend -> vault -->
+  <path d="M 452 165 L 502 165" fill="none" stroke="#3A9D5D" stroke-width="1.4" marker-end="url(#ag)"/>
+  <text x="477" y="157" text-anchor="middle" font-size="10" fill="#3A9D5D">writes</text>
+
+  <!-- the vault (Markdown on Drive) -->
+  <rect x="504" y="120" width="200" height="90" rx="9" fill="#E9F6EE" stroke="#3A9D5D" stroke-width="1.5"/>
+  <text x="604" y="147" text-anchor="middle" font-size="12.5" font-weight="700" fill="#27613f">your Obsidian vault</text>
+  <text x="604" y="165" text-anchor="middle" font-size="10.5" fill="#27613f">plain Markdown you can edit</text>
+  <text x="604" y="183" text-anchor="middle" font-size="9.5" font-style="italic" fill="#3A9D5D">on Google Drive —</text>
+  <text x="604" y="196" text-anchor="middle" font-size="9.5" font-style="italic" fill="#3A9D5D">syncs across your devices</text>
+
+  <!-- conflict detection -->
+  <rect x="504" y="256" width="200" height="66" rx="9" fill="#FBF3E2" stroke="#C8961E" stroke-width="1.5"/>
+  <text x="604" y="283" text-anchor="middle" font-size="12.5" font-weight="600" fill="#8a6516">conflict detection</text>
+  <text x="604" y="301" text-anchor="middle" font-size="10.5" fill="#8a6516">spots Drive's stray copies</text>
+  <text x="604" y="315" text-anchor="middle" font-size="9.5" fill="#a67c1e">so you can clean them up</text>
+
+  <!-- vault -> conflict detection -->
+  <path d="M 604 210 L 604 254" fill="none" stroke="#C8961E" stroke-width="1.4" marker-end="url(#au)"/>
+  <text x="616" y="236" text-anchor="start" font-size="10" fill="#8a6516">sync leaves litter</text>
+
+  <text x="410" y="330" text-anchor="middle" font-size="10" font-style="italic" fill="#8a8a92">The backend runs inside the memory engine, never on its own; it writes plain Markdown to a Drive-synced vault and watches for the conflict files sync leaves behind.</text>
+</svg>

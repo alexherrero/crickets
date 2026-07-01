@@ -1,0 +1,33 @@
+<svg viewBox="0 0 760 440" width="988" height="572" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+  <defs>
+    <marker id="req" markerWidth="10" markerHeight="10" refX="7.2" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L8,3 L0,6 Z" fill="#5B7C9E"/></marker>
+    <marker id="sub" markerWidth="10" markerHeight="10" refX="7.2" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L8,3 L0,6 Z" fill="#7E57C2"/></marker>
+  </defs>
+
+  <!-- the base it requires (top) -->
+  <text x="380" y="42" text-anchor="middle" font-size="10.5" font-weight="700" fill="#5B7C9E">REQUIRES (hard)</text>
+  <rect x="255" y="54" width="250" height="66" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.5"/>
+  <text x="380" y="84" text-anchor="middle" font-size="12.5" font-weight="700" fill="#34516e">developer-workflows</text>
+  <text x="380" y="102" text-anchor="middle" font-size="10.5" font-style="italic" fill="#5B7C9E">the phase-loop base</text>
+
+  <!-- this plugin (centre) -->
+  <rect x="240" y="196" width="280" height="88" rx="9" fill="#EAF1FB" stroke="#3A6EA5" stroke-width="1.5"/>
+  <text x="380" y="230" text-anchor="middle" font-size="12.5" font-weight="700" fill="#1e3a5f">github-ci</text>
+  <text x="380" y="250" text-anchor="middle" font-size="10.5" font-style="italic" fill="#3A6EA5">repairs a broken dependency update</text>
+  <text x="380" y="268" text-anchor="middle" font-size="10.5" fill="#1e3a5f">reads the failures, patches, re-runs</text>
+
+  <!-- github-ci -> developer-workflows (requires, solid slate, up) -->
+  <path d="M380,196 L380,124" fill="none" stroke="#5B7C9E" stroke-width="1.4" marker-end="url(#req)"/>
+  <text x="392" y="164" text-anchor="start" font-size="10" font-style="italic" fill="#5B7C9E">installs on top of, needs it</text>
+
+  <!-- AgentM substrate (bottom) -->
+  <rect x="240" y="356" width="280" height="56" rx="9" fill="#F2EEFB" stroke="#7E57C2" stroke-width="1.5"/>
+  <text x="380" y="380" text-anchor="middle" font-size="12.5" font-weight="700" fill="#5b3a8c">AgentM substrate</text>
+  <text x="380" y="398" text-anchor="middle" font-size="9.5" font-style="italic" fill="#7E57C2">memory · opinions · personas</text>
+
+  <!-- github-ci -> substrate (composes onto, one-way) -->
+  <path d="M380,284 L380,352" fill="none" stroke="#7E57C2" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#sub)"/>
+  <text x="392" y="324" text-anchor="start" font-size="9.5" font-style="italic" fill="#8a8a92">composes onto, one-way</text>
+
+  <text x="380" y="432" text-anchor="middle" font-size="10.5" font-style="italic" fill="#8a8a92">Solid = requires (hard): github-ci extends the phase loop and won't install without it.</text>
+</svg>
