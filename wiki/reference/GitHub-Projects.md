@@ -25,9 +25,9 @@ Each item gets a short, dated summary from a fixed set of templates, and every w
 
 | Direction | Plugin | How |
 |---|---|---|
-| Enhances (soft) | [Developer-Workflows](Developer-Workflows) | Its `/plan`, `/work`, `/release`, and `/bugfix` phases emit board updates as they run — capability-gated on `board-sync`, and a no-op when this plugin is absent. |
+| Enhances (soft) | [Developer-Workflows](Developer-Workflows) | Its `/plan`, `/work`, `/release`, and `/bugfix` phases emit board updates as they run — gated on the `board-sync` capability, and a no-op when this plugin is absent. |
 | Enhanced by (soft) | — | None. |
-| Requires (hard) | [Developer-Workflows](Developer-Workflows) | Declared in `group.yaml` (`requires: [developer-workflows]`, `src/github-projects/group.yaml:4`); the phases the board sync hangs off live there. |
+| Requires (hard) | [Developer-Workflows](Developer-Workflows) | Declared in `group.yaml` (`requires: [developer-workflows]`); the phases the board sync hangs off live there. |
 | Required by (hard) | — | None. |
 
 ### Why not
@@ -40,103 +40,91 @@ GitHub Projects is an opinionated, one-way sync, and it will not fit every workf
 
 ## Reference
 
-> [!NOTE]
-> Implemented — catalog bundle #8 (roadmap #41), group version `0.1.4` (`src/github-projects/group.yaml:26`). Every value below documents the built plugin under `src/github-projects/` with `file:line` references; the locked design calls are recorded in the [GitHub Projects design](crickets-github-projects).
-
 ### Commands & skills
 
-This plugin ships no slash commands or skills — it is a script payload plus a template set that `developer-workflows` phases drive. Each primitive links to the source that implements it.
+This plugin ships no slash commands or skills. It's a set of scripts plus a template library that the `developer-workflows` phases drive. Each primitive links to the source that implements it.
 
 | Primitive | Kind | What it does |
 |---|---|---|
-| [`project_sync.py`](https://github.com/alexherrero/crickets/blob/main/src/github-projects/scripts/project_sync.py) | script | The only write path — renders an item and creates or updates its issue idempotently by stable id (`post`, `--dry-run`). |
-| [`project_model.py`](https://github.com/alexherrero/crickets/blob/main/src/github-projects/scripts/project_model.py) | script | Builds the typed graph, enforces the parent-chain, and applies the materialization rule (feature-and-up always; Plan/Task only for the active plan). |
-| [`check_project_sync.py`](https://github.com/alexherrero/crickets/blob/main/src/github-projects/scripts/check_project_sync.py) | script | The drift gate — asserts vault == board, graceful-skips with no `project.json` or no `gh`. |
-| [`project_schema.json`](https://github.com/alexherrero/crickets/blob/main/src/github-projects/scripts/project_schema.json) | schema | The documented `project.json` contract (`additionalProperties: false`) — config keys, field mappings, and the isolation block. |
-| [`templates/`](https://github.com/alexherrero/crickets/blob/main/src/github-projects/templates) | templates | The locked one-line body templates per type and lifecycle stage (kickoff / progress / closeout, plus the pre-work and promotion clauses). |
+| [`project_sync.py`](https://github.com/alexherrero/crickets/blob/main/src/github-projects/scripts/project_sync.py) | script | The only path that writes to GitHub — renders an item and creates or updates its issue, keyed by a stable id so re-runs never duplicate. |
+| [`project_model.py`](https://github.com/alexherrero/crickets/blob/main/src/github-projects/scripts/project_model.py) | script | Builds the typed graph of the work, enforces the parent-chain, and applies the materialization rule (features and up always; plans and tasks only for the active plan). |
+| [`check_project_sync.py`](https://github.com/alexherrero/crickets/blob/main/src/github-projects/scripts/check_project_sync.py) | script | The drift gate — checks the board still matches the vault, and skips cleanly when there's no config or no `gh`. |
+| [`project_schema.json`](https://github.com/alexherrero/crickets/blob/main/src/github-projects/scripts/project_schema.json) | schema | The documented `project.json` contract — config keys, field mappings, and the isolation block. |
+| [`templates/`](https://github.com/alexherrero/crickets/blob/main/src/github-projects/templates) | templates | The one-line body templates, one set per type and lifecycle stage. |
 
-### `project.json` config schema
+### Configuration
 
-The plugin reads a per-project `project.json` (placeholder home: `<vault>/_harness/project.json`, gitignored — it never lives in the public repo and carries no PII) that wires a vault project to its GitHub Project board.
+The plugin reads a per-project `project.json` that maps a vault project to its GitHub Project board. It lives in that project's gitignored `_harness/` directory — never in the public repo, and it carries no PII. Only two keys are required: `vault_project` (the vault project whose roadmap and progress drive the board) and `github` (which itself needs `owner` and `number`).
 
-The schema lives at `src/github-projects/scripts/project_schema.json` (`additionalProperties: false`). Only `vault_project` + `github` are required; `github` itself requires only `owner` + `number`.
-
-| Key | Type | Req? | Role |
+| Key | Type | Required | Role |
 |---|---|---|---|
-| `vault_project` | string | **required** | the vault project slug whose roadmap/plan/progress drives the board |
-| `github.owner` | string | **required** | the GitHub owner (user/org) that owns the Project |
-| `github.number` | integer (≥1) | **required** | the Project number |
-| `github.url` | string | optional | the canonical Project URL — link bases are built from this; **derived from `owner`+`number` when omitted**, never hand-typed |
-| `github.repo` | string (`owner/name`) | optional | the repo the Project's issues live under |
-| `project_surface` | enum | optional | `github-board` \| `local-index` \| `none` — defaults to `github-board`, the only surface this cycle |
-| `items_source` | string (path) | optional | path to `board-items.json`; omit → the sibling `board-items.json` beside `project.json` |
-| `fields` | object | optional | maps the frozen field **names** (`track`→`Track`, `type`→`Type`, …) onto the Project's columns |
-| `isolation` | object | optional | two-field block (`mode` ∈ {`worktree-per-plan`, `direct`, `worktree-per-task`}; `integration` ∈ {`pull-request`, `direct-push`}, `additionalProperties: false`) — consumed by the developer-workflows loop's `isolation_config.py` reader; `worktree-per-task` is live (per-task spawning for operator-declared-isolated tasks, `Isolated: true` in `PLAN.md`) |
-| `env` | object | optional | env-var → path overrides |
+| `vault_project` | string | yes | the vault project whose roadmap / plan / progress drives the board |
+| `github.owner` | string | yes | the GitHub owner (user or org) that owns the Project |
+| `github.number` | integer | yes | the Project number |
+| `github.url` | string | no | the Project URL; link bases are built from it, and it's derived from `owner` + `number` when omitted |
+| `github.repo` | string | no | the repo the Project's issues live under |
+| `project_surface` | enum | no | `github-board` (the default) / `local-index` / `none` |
+| `items_source` | path | no | where the board items live; defaults to a `board-items.json` beside the config |
+| `fields` | object | no | maps the field names (`track`, `type`, …) onto the Project's columns |
+| `isolation` | object | no | how worktrees and integration are handled, read by the developer-workflows loop |
+| `env` | object | no | environment-variable path overrides |
 
-Schema: `project_schema.json:7-73`. The loader (`project_sync.py:265`, `load_config`) does the minimal runtime check — `vault_project` / `github.owner` / `github.number` present, raising `SyncError` otherwise; the JSON Schema is the **documented contract**, not wired into the loader. `items_source` resolution: `_items_path_from_cfg` (`project_sync.py:488`). With no `project.json` and no `gh` on PATH, the drift gate and the phase emissions skip cleanly rather than erroring.
+With no `project.json` and no `gh` on the PATH, the drift gate and the phase updates skip cleanly rather than failing.
 
-> [!NOTE]
-> The vault path comes from `project.json` config, **not** a hard agentm dependency — `requires: developer-workflows`, not `requires: agentm` (this supersedes a pre-V5-split note that said `requires: agentm`).
+### The type taxonomy
 
-### Flat Type taxonomy
+The board models a flat set of seven types, held together by a parent-chain rather than nested containers:
 
-The board models a **flat Type taxonomy** (locked 2026-06-06) — seven types, with a parent-chain rather than nested containers.
-
-| Type | Class | Parent | Notes |
-|---|---|---|---|
-| Version | container | — | the top-level container |
-| Feature | work | Version | |
-| Sub-feature | work | Feature | |
-| Plan | work | Feature \| Sub-feature | |
-| Task | work | Plan | lifecycle thread `①Kickoff → ②Progress → ③Closeout` |
-| Backlog-item | pre-work | — | |
-| Idea | pre-work | — | |
-
-The seven types above are the locked **flat taxonomy**. In code the `TYPES` frozenset (`project_model.py:36`) carries an eighth — `Bug` — which the graph accepts but the renderer has **no template** for this cycle, so rendering one raises `RenderError` (`project_sync.py:247`). The parent-chain is enforced at load time: the `PARENT_TYPES` table (`project_model.py:43`) drives `build_graph` (`project_model.py:145`), which rejects a top-level type that declares a parent, a missing/nonexistent parent, or a wrong-type parent. `TOP_LEVEL` (`project_model.py:49`) = Version · Backlog-item · Idea · Bug. Children keep declaration order; a cycle is rejected by `_assert_acyclic` (`project_model.py:185`).
-
-#### Materialization granularity (DC-1)
-
-The board does **not** mirror everything in the vault. What gets a board item depends on whether work has started:
-
-| Tier | Materialized | When |
+| Type | Class | Parent |
 |---|---|---|
-| Versions · Features · Sub-features · Backlog · Ideas | **always** (feature-level-and-up) | whether or not work has started |
-| Plan · Task | **only for the active plan** | never pre-persist task breakdowns |
+| Version | container | — |
+| Feature | work | Version |
+| Sub-feature | work | Feature |
+| Plan | work | Feature or Sub-feature |
+| Task | work | Plan |
+| Backlog-item | pre-work | — |
+| Idea | pre-work | — |
 
-DC-1 lives in `materialize(graph, active_plans)` (`project_model.py:203`): `ALWAYS_MATERIALIZE` (`project_model.py:52` — Version · Feature · Sub-feature · Backlog-item · Idea · Bug) is unconditional; a `Plan` is included only when its id is in `active_plans`, and a `Task` only when its parent plan is. Graph insertion order is preserved, so the board's item order is deterministic.
+The parent-chain is checked when the graph loads: a type that should be top-level can't declare a parent, a child's parent must exist and be the right type, and cycles are rejected. Version, Backlog-item, and Idea sit at the top level.
 
-### Frozen field schema
+**Materialization** — the board doesn't mirror everything in the vault. What earns a board item depends on whether the work has started:
 
-Every materialized item carries the same six fields (DC-2), in this order. These are **board columns**, not body content — the body-only sync path never writes them; only the operator-gated backfill or a manual edit sets a Project field.
-
-| Field | Role | Value vocabulary |
+| Tier | On the board | When |
 |---|---|---|
-| Track | the work stream | **free-form** — schema guidance: spans `V4`→`V7` + Backlog + Ideas (`project_schema.json:60`) |
-| Type | one of the locked types | the only **code-enforced** field value — `TYPES` (`project_model.py:36`) |
-| Priority | fix-first ordering | **free-form** — schema guidance: P-tier `P0`–`P3`, fix-first at top (`project_schema.json:62`) |
-| Start | start date | a `YYYY-MM-DD` date |
-| Target | target date | a `YYYY-MM-DD` date |
-| Status | lifecycle state | **free-form** — no enumerated vocabulary in code (`Item.status` is `str \| None`, `project_model.py:80`) |
+| Versions · Features · Sub-features · Backlog · Ideas | always | whether or not work has started |
+| Plans · Tasks | only for the active plan | task breakdowns are never pre-published |
 
-> [!IMPORTANT]
-> Only `Type` and `project_surface` are enforced enums in code. `Track`, `Priority`, and `Status` flow through as free-form model-supplied strings — the schema's `fields` block (`project_schema.json:60-65`) maps the column **names** (`track`→`Track`, …), not their values. Treat the vocabularies above as house convention, not validation.
+So the board reads as a stable roadmap at the feature level and up, and fills in plan and task detail only once you start a plan.
 
-### The six per-type templates
+### The field schema
 
-**Locked** one-line markdown templates with `{{placeholders}}` live in `src/github-projects/templates/` — 16 files. The four **work types** (Feature · Sub-feature · Plan · Task) each ship a `kickoff` / `progress` / `closeout` triad; the **container** (Version) and **pre-work types** (Backlog-item, Idea) ship a single template, plus a `backlog-item-promotion` clause.
+Every materialized item carries the same six fields, in this order. These are board columns, not body text — the ordinary sync writes the body; the columns are set by a manual edit or an operator-gated backfill.
 
-| Type | Template file(s) | Structure (placeholders) |
+| Field | Role | Values |
 |---|---|---|
-| Version | `version.md` | `**About:** {{about}}` |
-| Feature | `feature-{kickoff,progress,closeout}.md` | kickoff `{{goal}} · {{why_matters}}`; progress `{{date}}: {{plan_goal}} shipped ({{version}})`; closeout `{{outcome}}` · Shipped `{{release_links}}` · Deferred `{{deferred}}` (the renderer folds the deferral `→` issue link into the `deferred` value when the target is materialized, so the deferred prose survives even an absent/unmaterialized target) |
-| Sub-feature | `sub-feature-{kickoff,progress,closeout}.md` | same shape as Feature |
-| Plan | `plan-{kickoff,progress,closeout}.md` | kickoff `{{goal}} · {{done_when}}`; progress `{{date}} (→ {{task_link}}): {{progress}}`; closeout `{{outcome}}` · Shipped `{{shipped_link}}` · `{{date}}` |
-| Task | `task-{kickoff,progress,closeout}.md` | the `①→②→③` lifecycle thread (below) |
-| Backlog-item | `backlog-item.md` (+ `backlog-item-promotion.md`) | `What: {{what}} · Why it matters: {{why_matters}} · Priority: {{priority}} — {{priority_reason}}`; promotion clause `Promoted → {{promoted_link}} · {{date}}` |
-| Idea | `idea.md` | `{{spark}} · Could promote → {{promote_target}}` |
+| Track | the work stream | free-form (house convention: `V4`→`V7`, Backlog, Ideas) |
+| Type | one of the seven types | the one value enforced in code |
+| Priority | fix-first ordering | free-form (house convention: `P0`–`P3`) |
+| Start | start date | `YYYY-MM-DD` |
+| Target | target date | `YYYY-MM-DD` |
+| Status | lifecycle state | free-form |
 
-The **Task lifecycle thread** — the three stages a Task accretes over its life, joined by blank lines (`_render_work_item`, `project_sync.py:205`):
+Only `Type` is checked against a fixed list; `Track`, `Priority`, and `Status` pass through as free-form strings, so treat their vocabularies as house convention rather than validation.
+
+### The templates
+
+Each type renders from a small set of locked one-line templates with `{{placeholders}}`. The four work types (Feature, Sub-feature, Plan, Task) each carry a kickoff / progress / closeout triad; the container (Version) and the pre-work types (Backlog-item, Idea) carry a single template, plus a promotion clause for a promoted backlog item.
+
+| Type | Templates | Shape |
+|---|---|---|
+| Version | one | `About: {{about}}` |
+| Feature / Sub-feature | kickoff · progress · closeout | goal + why; a dated shipped line; outcome + release links + deferred work |
+| Plan | kickoff · progress · closeout | goal + done-when; dated progress; outcome + shipped link |
+| Task | kickoff · progress · closeout | the ①→②→③ lifecycle thread below |
+| Backlog-item | one (+ promotion) | what · why it matters · priority |
+| Idea | one | the spark + where it could be promoted |
+
+A Task accretes three stages over its life, joined by blank lines:
 
 ```
 **① Goal:** {{goal}}  ·  **Done when:** {{done_when}}
@@ -146,63 +134,25 @@ The **Task lifecycle thread** — the three stages a Task accretes over its life
 **③ Outcome:** {{outcome}}  ·  **Landed:** {{landed_link}} · {{date}}
 ```
 
-A renderer/model partition keeps the two roles disjoint (rule 6): the template owns layout + placeholder names; the model (`board-items.json`) owns the values. No `bug` template ships — see the Type note above.
+The template owns the layout and the placeholder names; the values come from the board-items data — the two stay separate.
 
-### The deterministic render path
+### The render path
 
-`project_sync.py` (stdlib) owns a deterministic render: stable field order, dividers, `YYYY-MM-DD` dates, and entity-id/SHA → URL links built from the remote URL in `github.url` (**never hand-typed**). The public render **strips silent-source attribution** — names present in the private vault roadmap are renderer-enforced absent from the public mirror.
+The render is deterministic: the same item always renders the same body, with a stable field order, `YYYY-MM-DD` dates, and links built from the Project URL rather than hand-typed. A clause whose optional value is missing is dropped whole; a required value that's withheld is an error, so a half-filled item never renders silently. The public render also strips silent-source attribution — names that appear in the private vault roadmap are kept out of the public board.
 
-| Render property | Value |
-|---|---|
-| Field order | stable / deterministic |
-| Dates | `YYYY-MM-DD` |
-| Links | built from `github.url` — entity-id / SHA → URL; never hand-typed |
-| Public attribution | silent-source attribution **stripped** by the renderer |
+### The write path
 
-Render contract (`project_sync.py`): the clause divider is `_CLAUSE_SEP = "  ·  "` (`project_sync.py:48`); stages join with `\n\n` (`:49`); dates go through `fmt_date` → `strftime("%Y-%m-%d")`, which also validates a `YYYY-MM-DD` input and rejects impossible calendar dates (`:92-99`). `fill()` (`:116-134`) splits a template on the divider and **drops a whole clause when any of its placeholder values is `None`** (an absent optional), but **raises `RenderError` when a placeholder key is missing from the value map entirely** (a withheld required value) — a single-space `·` inside a clause is preserved. Links are built, never hand-typed: `_entity_link` resolves an id/issue to its issue URL (`:102-112`), `commit_link` (`:80`) and `release_link` (`:88`) build from the repo/Project URL. The public render appends `**Source (private):**` only when `not public and item.silent_source` (`:249-250`) — so silent-source attribution is renderer-stripped from the public board.
+`project_sync.py` is the only path that writes to GitHub, and it's idempotent: for each item it creates the issue if there's none, updates it if the body changed, and does nothing if it already matches — so re-running just brings the board back into agreement. A `--dry-run` renders without writing, as the preview boundary. Most stages re-render in full from the board-items data; a few progress and closeout stages accept flag values (a commit, a summary, a date) so a phase can push a quick update as it runs.
 
-### The single live write path
-
-`project_sync.py post` is the **only** path that writes to GitHub. It is idempotent: create-or-update keyed by stable id.
-
-The `post` subcommand (`_build_parser`, `project_sync.py:497-516`) takes:
-
-| Flag | Role |
-|---|---|
-| `--config` | **required** — path to `project.json` |
-| `--id` / `--issue` | select the item by vault id or by existing issue number |
-| `--type` | a `<type>-<stage>` shortcut (e.g. `task-progress`); **omit for a full re-render** from `board-items.json` |
-| `--commit` / `--summary` / `--date` | stage values folded into the flag-suppliable stages |
-| `--active-plan` (repeatable) | which plans are active (drives DC-1 materialization) |
-| `--templates` | override the template dir (defaults to the `scripts/` sibling) |
-| `--private` | render with silent-source attribution (default is the public, stripped render) |
-| `--dry-run` | render without writing — the preview boundary |
-
-**Idempotency** — `plan_item_action` (`project_sync.py:346`): no issue yet → `create`; rendered body equals the current body → `noop`; else → `update`. Re-running converges.
-
-**Stage shortcuts** — `apply_update` (`project_sync.py:386`) folds flag values only for the three flag-suppliable stages: `task-progress` (`--commit`+`--summary`), `plan-progress` (`--summary`), `task-closeout` (`--summary`+`--commit`). The template-driven stages — every `kickoff`, plus plan/feature `closeout` — are **not** flag-suppliable; they raise if you pass `--type`, because they re-render in full from `board-items.json` (`:429-430`).
-
-### Drift gate + phase-hook emission
+### The drift gate
 
 | Mechanism | Behaviour |
 |---|---|
-| Drift gate | `check_project_sync.py` asserts `vault == board`; wired into `scripts/check-all.sh` (`:45`) and `tests-linux.yml` (`:59`) |
-| Graceful-skip | no `project.json` or no `gh` → the gate skips cleanly (never an error) |
-| Phase hooks | `developer-workflows` `/plan` · `/work` · `/release` · `/bugfix` emit the matching board update **when the plugin is installed**; graceful-skip otherwise |
+| Drift gate | `check_project_sync.py` checks the board still matches the vault; it runs in the local gate battery and in CI |
+| Graceful-skip | no `project.json` or no `gh` → the gate skips cleanly, never an error |
+| Phase updates | the `developer-workflows` `/plan` · `/work` · `/release` · `/bugfix` phases push the matching board update when the plugin is installed, and skip quietly when it isn't |
 
-The gate is `compute_drift` (`check_project_sync.py:55-90`), which surfaces four drift kinds: `create` (a vault item with no issue), `missing` (an item's issue absent from the board), `update` (the rendered body differs), and `orphan` (a board issue no materialized item claims). It skips the `missing` kind for vault items whose referenced issue is closed — Done-feature history — via `fetch_closed_issue_numbers()` feeding a `closed_issue_numbers` param into `compute_drift` (backward-compatible). Exit codes: `0` clean **or** graceful-skip, `1` on drift, `2` on an operational `CheckError`. Graceful-skip is `return 0` when there's no `project.json` (`:133-136`) or no `gh` on PATH (`:138-140`). The read side is `fetch_board_bodies` (`:101-113`, `gh issue list --state open`). Phase emission is wired into `developer-workflows` 0.12.0: `/plan` emits **Plan kickoff**, `/work` emits **Task progress** (`--type task-progress`), `/release` emits **Plan + Feature closeout**, and `/bugfix` carries a graceful-skip note — each checks `find_capability.py board-sync` (via the agentm capability resolver) and skips silently when unavailable.
-
-### Wired boards
-
-Each board is wired by a `project.json` in that project's vault `_harness/` (gitignored — never in the public repo); the config carries no PII.
-
-| Project | Board | Status |
-|---|---|---|
-| crickets | `alexherrero/crickets` Project #5 | wired + backfilled (18 open issues synced byte-for-byte) |
-| agentm | `alexherrero/agentm` Project #2 | wired + backfilled (16 items synced) |
-
-> [!NOTE]
-> The inaugural backfill of both boards to current state was **operator-gated** — the one bulk write, run only on explicit approval. See [Sync a project board](Sync-A-Project-Board#backfill-both-boards-operator-gated).
+The gate surfaces four kinds of drift: an item with no issue yet, an issue missing from the board, a body that no longer matches, and an orphan issue no item claims. Closed issues for done features are left as history. It exits clean on a match or a graceful-skip, and non-zero when it finds drift.
 
 ## See also
 
@@ -211,6 +161,6 @@ Each board is wired by a `project.json` in that project's vault `_harness/` (git
 - [Developer Workflows](Developer-Workflows) — the base plugin `github-projects` requires; the phase commands that emit board updates.
 - [CI gates](CI-Gates) — the gate battery `check_project_sync.py` joins.
 - [Plugin anatomy](Plugin-Anatomy) — what a crickets plugin's `scripts/` payload is.
-- [GitHub Projects design](crickets-github-projects) — the locked design calls (DC-1 / DC-2 / DC-4, taxonomy, silent-source, surface) and why-not-the-alternative per call.
+- [GitHub Projects design](crickets-github-projects) — the locked design calls (the taxonomy, materialization, field schema, silent-source, and surface) and the why-not-the-alternative for each.
 
 [Reference](Reference) · [Architecture](Architecture) · [Home](Home)
