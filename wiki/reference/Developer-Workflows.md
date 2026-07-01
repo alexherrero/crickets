@@ -3,7 +3,7 @@
 
 ## Architecture
 
-Developer Workflows is the phase-gated loop your agent runs a change through — `/setup`, `/plan`, `/work`, `/review`, `/release`, and the separate `/bugfix` pipeline — plus the design, ship, and worktree commands that surround them. It is the base plugin the rest of the suite enhances: install it alone and you get the whole lifecycle; install the siblings alongside it and they hook into these phases.
+Developer Workflows is a set of opinionated workflows covering every phase of development — from ideation and design to implementation, and even deprecation. As the agent works, it saves its state to disk through AgentM's memory, so you can split a change across several agents, or give different sessions different kinds of work: research and design in one, implementation or cleanup in another. The agent always knows where it left off, and many of its steps are enhanced by the other crickets plugins when they are installed.
 
 ### Diagram
 
