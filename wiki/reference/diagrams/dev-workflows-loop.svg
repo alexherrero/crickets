@@ -1,0 +1,42 @@
+<svg viewBox="0 0 900 460" width="1170" height="598" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+  <defs>
+    <marker id="s" markerWidth="10" markerHeight="10" refX="7.2" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L8,3 L0,6 Z" fill="#5B7C9E"/></marker>
+    <marker id="d" markerWidth="10" markerHeight="10" refX="7.2" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L8,3 L0,6 Z" fill="#9aa0a8"/></marker>
+  </defs>
+
+  <!-- authoring feed -->
+  <rect x="200" y="42" width="320" height="48" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/>
+  <text x="360" y="64" text-anchor="middle" font-size="12.5" font-weight="700" fill="#34516e">Authoring — the design front-matter</text>
+  <text x="360" y="81" text-anchor="middle" font-size="10" font-style="italic" fill="#5B7C9E">/design · /spec · /interview-me</text>
+  <path d="M300,90 L262,163" stroke="#9aa0a8" stroke-width="1.6" stroke-dasharray="5 4" fill="none" marker-end="url(#d)"/>
+  <text x="212" y="130" font-size="9.5" font-style="italic" fill="#8a8a92">feeds the plan</text>
+
+  <!-- main loop -->
+  <rect x="40" y="166" width="120" height="54" rx="9" fill="#F0F2F5" stroke="#8a93a0" stroke-width="1.4" stroke-dasharray="5 4"/>
+  <text x="100" y="190" text-anchor="middle" font-size="13" font-weight="700" fill="#3a4250">/setup</text>
+  <text x="100" y="207" text-anchor="middle" font-size="9" font-style="italic" fill="#8a93a0">run once</text>
+  <g font-weight="700" fill="#1e3a5f">
+    <rect x="200" y="166" width="120" height="54" rx="9" fill="#EAF1FB" stroke="#3A6EA5" stroke-width="2"/><text x="260" y="197" text-anchor="middle" font-size="14">/plan</text>
+    <rect x="360" y="166" width="120" height="54" rx="9" fill="#EAF1FB" stroke="#3A6EA5" stroke-width="2"/><text x="420" y="197" text-anchor="middle" font-size="14">/work</text>
+    <rect x="520" y="166" width="120" height="54" rx="9" fill="#EAF1FB" stroke="#3A6EA5" stroke-width="2"/><text x="580" y="197" text-anchor="middle" font-size="14">/review</text>
+    <rect x="680" y="166" width="120" height="54" rx="9" fill="#EAF1FB" stroke="#3A6EA5" stroke-width="2"/><text x="740" y="197" text-anchor="middle" font-size="14">/release</text>
+  </g>
+  <g stroke="#5B7C9E" stroke-width="2" fill="none" marker-end="url(#s)">
+    <path d="M320,193 L358,193"/><path d="M480,193 L518,193"/><path d="M640,193 L678,193"/>
+  </g>
+  <path d="M160,193 L198,193" stroke="#9aa0a8" stroke-width="1.6" stroke-dasharray="5 4" fill="none" marker-end="url(#d)"/>
+
+  <!-- bugfix track -->
+  <rect x="200" y="300" width="440" height="50" rx="9" fill="#F0F2F5" stroke="#8a93a0" stroke-width="1.5"/>
+  <text x="420" y="322" text-anchor="middle" font-size="12.5" font-weight="700" fill="#3a4250">/bugfix — Report · Analyze · Fix · Verify</text>
+  <text x="420" y="339" text-anchor="middle" font-size="9.5" font-style="italic" fill="#8a93a0">the defect track — used instead of /plan + /work</text>
+  <path d="M640,318 C700,300 720,250 740,222" stroke="#9aa0a8" stroke-width="1.6" stroke-dasharray="5 4" fill="none" marker-end="url(#d)"/>
+
+  <!-- ship discipline -->
+  <rect x="668" y="300" width="192" height="50" rx="9" fill="#FBF3E2" stroke="#C8961E" stroke-width="1.6"/>
+  <text x="764" y="322" text-anchor="middle" font-size="12" font-weight="700" fill="#8a6516">Ship discipline</text>
+  <text x="764" y="339" text-anchor="middle" font-size="9" font-style="italic" fill="#b5851a">/launch · /deprecate · /ci-cd · /observe</text>
+  <path d="M764,300 L748,224" stroke="#9aa0a8" stroke-width="1.6" stroke-dasharray="5 4" fill="none" marker-end="url(#d)"/>
+
+  <text x="450" y="420" text-anchor="middle" font-size="10.5" font-style="italic" fill="#8a8a92">The phase-gated loop — one phase per session, state on disk. Authoring feeds /plan; /bugfix replaces plan+work for defects; ship discipline surrounds /release.</text>
+</svg>

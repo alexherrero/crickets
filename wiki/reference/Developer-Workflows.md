@@ -7,7 +7,13 @@ Developer Workflows is the phase-gated loop your agent runs a change through —
 
 ### Diagram
 
-_None / not needed._
+The workflow — the phase-gated loop, its authoring feed, the `/bugfix` track, and ship discipline:
+
+![The developer-workflows loop: /setup (once) then /plan -> /work -> /review -> /release, with authoring (/design, /spec, /interview-me) feeding /plan, the /bugfix defect track replacing plan+work, and ship discipline (/launch, /deprecate, /ci-cd, /observe) around /release](diagrams/dev-workflows-loop.svg)
+
+How it composes — what enhances the loop, what requires it, and the AgentM substrate it rests on:
+
+![How developer-workflows composes: code-review, developer-safety, and wiki-maintenance enhance it (soft); design-docs, github-ci, github-projects, releasing-conventions, and testing-conventions require it (hard); it composes one-way onto the AgentM substrate of memory, opinions, and personas](diagrams/dev-workflows-composition.svg)
 
 ### How it works
 

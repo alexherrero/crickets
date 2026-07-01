@@ -16,6 +16,9 @@ decided, why, and under what assumptions.
 > installation and adds the re-audit-triggers discipline. If CLAUDE.md is updated, re-audit this
 > skill against it — see **Re-audit trigger for this skill** at the bottom.
 
+> [!IMPORTANT]
+> **In crickets and agentm the ADR model is retired.** A decision in those repos amends the relevant living design's `## Amendment log` under `wiki/designs/`, not a standalone ADR file — see [How to record a design decision](Record-An-Architectural-Decision). The ADR shape below still governs other repos that use the ADR model.
+
 ## When to write an ADR
 
 Write an ADR for any of the following:

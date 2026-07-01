@@ -5,4 +5,4 @@ requires: [developer-workflows]
 standalone: false
 capabilities: [design]
 # 0.1.1 = declare capabilities: [design] (AG Phase-2 capability-declaration hygiene).
-version: 0.1.1
+version: 0.1.2
