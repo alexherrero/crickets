@@ -1,35 +1,70 @@
 <!-- mode: index -->
 # How-to
 
-Task-focused recipes for getting things done with the crickets plugins — from a zero-to-working install through running each plugin on real work. New here? Start with the one-liner install, then watch a plugin work end-to-end.
+Task-focused recipes for the crickets plugins. For field-level detail like plugin anatomy and the manifest schema, see [Reference](Reference).
 
-## Start here
+## Get started
 
-1. [Install crickets plugins](Install-Into-Project) — the three install modes (one-liner · marketplace · manual `--plugin-dir`), per host.
-2. [Using code review](01-First-Code-Review) — a hands-on first run: install one plugin, plant a bug, watch `/code-review` catch it.
+| How-to | What it does |
+|---|---|
+| [Run the development loop](Run-The-Development-Loop) | Take a change from brief to shipped through the phases. |
+| [Install crickets plugins](Install-Into-Project) | Install the plugins on Claude Code or Antigravity. |
+| [Using code review](01-First-Code-Review) | Hands-on first run: plant a bug, catch it. |
+| [Install the vault backend](Install-The-Vault-Backend) | Set up the storage backend for the vault. |
 
-## What's here
+## Build a plugin
 
-- **[Install crickets plugins](Install-Into-Project)** — the three install modes, per host.
-- **[Using code review](01-First-Code-Review)** — a hands-on first run, end-to-end.
-- **[Review a change — code review](Use-Code-Review)** — run `/code-review` over a diff or PR for adversarial bug-finding.
-- **[Provision a repo's wiki — wiki-init](Provision-A-Repo-Wiki)** — scaffold a repo's `wiki/` and its lint-then-publish CI from nothing.
-- **[Declare a project's Architecture — architecture.yml](Declare-Architecture)** — write the per-project manifest that grows the wiki's Architecture section.
-- **[Maintain a wiki — wiki-watcher](Run-The-Wiki-Watcher)** — keep a wiki in sync with its repo, automatically.
-- **[Spawn a worker in a worktree — /spawn-worker](Spawn-A-Worker-In-A-Worktree)** — hand an activated named plan to a worker in its own isolated checkout.
-- **[Integrate a worker — /integrate-worker](Integrate-A-Worker)** — land a finished worker's branch on `main`, gated on the integrated tree passing.
+| How-to | What it does |
+|---|---|
+| [Add a plugin](Add-A-Plugin) | Scaffold a new plugin, then build it. |
+| [Add a skill](Add-A-Skill) | Add a skill to a plugin. |
+| [Modify a plugin](Modify-A-Plugin) | Change a plugin and regenerate it. |
+| [Plugin anatomy](Plugin-Anatomy) | How a crickets plugin is laid out. |
 
-## Recent changes
+## Develop efficiently
 
-<!-- maintained by the wiki tooling (recent-wiki-changes / the documenter) -->
+| How-to | What it does |
+|---|---|
+| [Review a change — code review](Use-Code-Review) | Run `/code-review` over a diff or PR. |
+| [In-flight decision review — /doubt](Use-Doubt-Review) | Review a decision in fresh context before committing. |
+| [Simplify a diff](Simplify-A-Diff) | Run `/simplify` to cut accidental complexity. |
 
-- **2026-06-13** — Integrate-A-Worker how-to shipped (`/integrate-worker`, lands a finished worker; gate on the integrated tree; rolls back `main` on red; never pushes).
-- **2026-06-13** — Spawn-A-Worker-In-A-Worktree how-to added (`/spawn-worker`, operator-initiated worktree per worker).
-- **2026-06-12** — See-Every-Active-Plan how-to added (`/queue-status-lite`, the read-side glance over the plan queue).
-- **2026-06-11** — Declare-Architecture how-to added (writing `wiki/architecture.yml`).
-- **2026-06-11** — `do/` + `get-started/` folded into `how-to/` (wiki-section-taxonomy restructure); this index merged from both.
-- **2026-06-10** — Provision-A-Repo-Wiki how-to added (the `wiki-init` walkthrough).
-- **2026-06-08** — Run-The-Wiki-Watcher trimmed + de-jargoned.
+## Release with discipline
+
+| How-to | What it does |
+|---|---|
+| [Add a launch-readiness gate](Add-Launch-Readiness-Gate) | Check observability, rollback, and flags before shipping. |
+| [Add observability](Add-Observability-With-Observe) | Instrument the code as you build it. |
+| [Author a CI/CD pipeline](Author-A-CICD-Pipeline) | Build the lint, test, deploy gate pipeline. |
+| [Deprecate a surface](Deprecate-A-Surface-With-Deprecate) | Retire an old surface, migrate its callers. |
+
+## Plan a project
+
+| How-to | What it does |
+|---|---|
+| [Author a design](Author-A-Design) | Write a design doc at the right size. |
+| [Run a named plan](Run-A-Named-Plan) | Work a specific plan when several are active. |
+| [See every active plan](See-Every-Active-Plan) | A read-only glance over every active plan. |
+| [Record an architectural decision](Record-An-Architectural-Decision) | Capture a decision in the governing design's log. |
+| [Sync a project board](Sync-A-Project-Board) | Mirror your plans and progress onto a board. |
+
+## Maintain a wiki
+
+| How-to | What it does |
+|---|---|
+| [Provision a repo's wiki](Provision-A-Repo-Wiki) | Scaffold `wiki/` and its lint-then-publish CI. |
+| [Declare a project's Architecture](Declare-Architecture) | Write the manifest that grows the Architecture section. |
+| [Maintain a wiki — wiki-watcher](Run-The-Wiki-Watcher) | Keep the wiki in sync with its repo. |
+
+## Run an agent team
+
+| How-to | What it does |
+|---|---|
+| [Spawn a worker in a worktree](Spawn-A-Worker-In-A-Worktree) | Hand a named plan to an isolated worker. |
+| [Run isolated tasks](Run-Isolated-Tasks) | Run work in an isolated checkout, away from main. |
+| [Integrate a worker](Integrate-A-Worker) | Land a finished worker's branch, gated on green. |
+| [Configure main branch protection](Configure-Main-Branch-Protection) | Set the rules the integration gate expects. |
+| [Run a coordinator-directed worker team](Run-A-Coordinator-Directed-Worker-Team) | Coordinate several workers on one plan. |
 
 ## See also
 
