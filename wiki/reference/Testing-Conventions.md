@@ -1,57 +1,56 @@
 <!-- mode: reference -->
-# Testing Conventions plugin
+# Testing Conventions
 
-The `testing-conventions` plugin (`requires: developer-workflows`) ships two primitives that keep test discipline standing and visible throughout the dev loop: a **rule** that fires on skip/xfail markers and a **skill** that encodes the three day-to-day testing principles.
+## Architecture
 
-## ⚡ Quick Reference
+Testing Conventions keeps test discipline standing and visible throughout the dev loop. It is not a review pass you run at the end — it is a set of day-to-day principles the agent carries every time it writes, changes, or touches code with observable behavior, so the discipline is already in place before a review ever happens.
 
-| Aspect | Value |
-|---|---|
-| Plugin slug | `testing-conventions` |
-| Version | 0.1.0 |
-| Requires | `developer-workflows` |
-| Primitives | `no-skip-tests` rule · `testing-conventions` skill |
-| Hosts | Claude Code · Antigravity |
+### Diagram
 
-## Primitives
+_None / not needed._
 
-### `no-skip-tests` rule
+### How it works
 
-Fires whenever you add or approve a skip/xfail/xit/pending marker without a compliant comment. The rule requires an inline comment immediately before the marker that states the **exact technical blocker** (not "TODO", not "flaky") and links a tracking issue or PR.
+The plugin ships two primitives that work at different moments. A **rule**, `no-skip-tests`, fires the instant the agent adds or approves a skip, xfail, xit, or pending marker without a compliant comment — it demands an inline note naming the exact technical blocker (a missing dependency, an environment constraint, a known upstream bug) and a link to a tracking issue, and rejects process states like "TODO" or "flaky." A **skill**, `testing-conventions`, encodes three standing principles the agent applies continuously: tests are sacred (never delete or weaken a test to make a build pass), verification first (write the failing scenario before the code that satisfies it), and the 3-layer pyramid (keep unit, integration, and E2E tests at their distinct scopes and speeds rather than collapsing them). Together they cover both the reflex — the moment you reach for a skip marker — and the practice — how you write and layer tests in the first place.
 
-Covered markers: `@pytest.mark.skip` · `@pytest.mark.xfail` · `xit(` / `it.skip(` · `test.skip(` · `pending(` · `// SKIP` / `# SKIP`.
+The plugin owns the *practice* of testing. For review-time gap auditing — spotting which test types a diff is missing — reach for the `code-review` plugin's `testing-strategy` skill instead; that one owns the *audit*.
 
-The required override shape:
+### Composition
 
-```
-# SKIP: <one-sentence technical blocker> — see <issue URL or PR>
-@pytest.mark.skip
-def test_foo():
-    ...
-```
+| Direction | Plugin | How |
+|---|---|---|
+| Enhances (soft) | — | None. |
+| Enhanced by (soft) | — | None. |
+| Requires (hard) | [Developer-Workflows](Developer-Workflows) | Testing Conventions builds on the developer-workflows base — both plugins must be enabled for the skill and rule to load. |
+| Required by (hard) | — | None. |
 
-### `testing-conventions` skill
+### Why not
 
-Standing principles the agent applies every time it writes, changes, or reviews code with observable behavior. Three principles, each with concrete examples:
+Testing Conventions is opinionated, and it will not fit every workflow. Reach for something else if:
 
-| Principle | What it enforces |
-|---|---|
-| **Tests are sacred** | Never delete or skip a test to make a build pass. A failing test is information, not an obstacle — fix the behavior, fix the test, or justify the skip explicitly. |
-| **Verification first** | Write the scenario that can fail *before* the code that makes it pass. If you can't describe the observable behavior in one sentence before writing the implementation, the requirement is underspecified. |
-| **3-layer pyramid** | Unit (< 1 ms, isolated), Integration (10 ms–1 s, real collaborators at the boundary), E2E (golden paths only, full stack). Don't collapse them; don't push integration failures down to unit mocks. |
+- Your team already has its own testing doctrine — a different pyramid shape, a different stance on skip markers — and you don't want a second opinion layered on top.
+- You want review-time gap auditing rather than standing practice; that's the `code-review` plugin's `testing-strategy` skill, not this one.
+- The change is small or throwaway. The verification-first and never-skip principles are deliberately firm, and on a spike or a one-off script they can feel heavier than the work warrants.
 
-> For **review-time gap auditing** — identifying missing test types across a diff — use the `code-review` plugin's `testing-strategy` skill. `testing-conventions` owns the *practice*; `testing-strategy` owns the *audit*.
+## Reference
 
-## Install
+### Commands & skills
 
-```bash
-claude plugin install testing-conventions@crickets
-```
+Each primitive links to the source that implements it.
 
-Requires `developer-workflows` as a base. Both plugins must be enabled for the skill to load.
+| Primitive | Kind | What it does |
+|---|---|---|
+| [`testing-conventions`](https://github.com/alexherrero/crickets/blob/main/src/testing-conventions/skills/testing-conventions/SKILL.md) | skill | Standing testing principles — tests are sacred, verification first, the 3-layer pyramid. |
+| [`no-skip-tests`](https://github.com/alexherrero/crickets/blob/main/src/testing-conventions/rules/no-skip-tests.md) | rule | Fires on a skip/xfail/xit/pending marker; requires a comment naming the technical blocker plus a tracking link. |
+
+### Configuration
+
+No configuration — the plugin works out of the box.
 
 ## See also
 
-- [code-review plugin](Code-Review) — the `testing-strategy` skill (review-time test gap audit) and `adversarial-reviewer` agent.
-- [Customization Types](Customization-Types) — what `kind: rule` and `kind: skill` are.
-- [Manifest Schema](Manifest-Schema) — the `requires:` and `enhances:` contract.
+- [Testing strategy audit](https://github.com/alexherrero/crickets/blob/main/src/code-review/skills/testing-strategy/SKILL.md) — the `code-review` companion that audits a diff for missing test types.
+- [Code Review](Code-Review) — the adversarial review plugin this pairs with at review time.
+- [Conventions design](crickets-conventions) — the deeper design, including the planned merge of `testing-conventions` and `releasing-conventions` into a single `conventions` plugin.
+
+[Reference](Reference) · [Architecture](Architecture) · [Home](Home)

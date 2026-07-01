@@ -1,49 +1,53 @@
 <!-- mode: reference -->
-# Releasing Conventions plugin
+# Releasing Conventions
 
-The `releasing-conventions` plugin (`requires: developer-workflows`) ships two primitives that make release discipline explicit and repeatable: a **rule** that fires when a version bump is missing and a **skill** that encodes the pre-release checklist, changelog shape, and paired-release discipline.
+## Architecture
 
-## ⚡ Quick Reference
+Releasing Conventions is the discipline layer for cutting a release. It does not run the tag-and-publish mechanics itself; instead it makes the rules explicit and repeatable — what has to be true before you tag, what a changelog entry should look like, and how to coordinate two repos that release together. It sits on top of `developer-workflows`, so its checklist is what the `/release` phase leans on before anything ships.
 
-| Aspect | Value |
-|---|---|
-| Plugin slug | `releasing-conventions` |
-| Version | 0.1.1 |
-| Requires | `developer-workflows` |
-| Primitives | `version-bump-required` rule · `ship-release` skill |
-| Hosts | Claude Code · Antigravity |
+### Diagram
 
-## Primitives
+_None / not needed._
 
-### `version-bump-required` rule
+### How it works
 
-Fires when a diff adds, modifies, or removes user-visible primitives (skills, rules, commands, agents, hooks, snippets) under `src/` without a corresponding `group.yaml` `version` increment on the same branch.
+The plugin ships two primitives that fire at different moments. The `version-bump-required` rule watches diffs: when a change adds, modifies, or removes a user-visible primitive under `src/` without bumping the affected group's `group.yaml` `version`, the rule flags it — and it knows the one legitimate exception, the concurrent-worker single-writer protocol where the integrator owns the bump rather than the PR author. The `ship-release` skill is the pre-tag gate: it walks a pre-release checklist (CI green on every OS, version bumped, CHANGELOG authored, `dist/` regenerated and committed, `features.json` current, no orphan PRs, `check-all.sh` green), fixes the changelog shape, and locks paired-release order for coordinated cross-repo releases. Because the plugin requires `developer-workflows`, the skill's checklist becomes the discipline the `/release` phase enforces before it tags or publishes.
 
-The rule distinguishes the one legitimate exception — **concurrent worker branches** using the ADR 0030 single-writer protocol, where the integrator owns the bump — from all other cases where the PR author is responsible.
+### Composition
 
-Trigger: any path under `src/<group>/skills/`, `src/<group>/rules/`, `src/<group>/commands/`, `src/<group>/agents/`, `src/<group>/hooks/`, or `src/<group>/snippets/`.
+| Direction | Plugin | How |
+|---|---|---|
+| Enhances (soft) | — | None. |
+| Enhanced by (soft) | — | None. |
+| Requires (hard) | [Developer-Workflows](Developer-Workflows) | The `/release` phase this discipline gates; the skill's checklist is what that phase applies before tagging. Both must be enabled for the skill to load. |
+| Required by (hard) | — | None. |
 
-### `ship-release` skill
+### Why not
 
-Applied before tagging or publishing a release. Covers four areas:
+Releasing Conventions encodes one opinionated way to release, and it will not suit every project. Reach for something else if:
 
-| Area | What it enforces |
-|---|---|
-| **Pre-release checklist** | CI green on every OS · version bumped · CHANGELOG authored · `dist/` regenerated and committed · `features.json` current · no orphan PRs · `check-all.sh` green |
-| **Changelog shape** | Lead framing paragraph · Added / Changed / Internal sections (omit empty) · paired-release cross-links with URLs (never describe a paired release without the sibling release page URL) |
-| **Paired-release discipline** | Lock the order explicitly before tagging · CI green on both sides before close · complete both sides in the same session · document the order in the plan's locked design calls |
-| **Version bump policy** | Patch: bug fixes only · Minor: new primitives or behavioral additions · Major: breaking changes · one group at a time · never bump on a worker branch in the concurrent-worker protocol |
+- Your release rules differ — a different changelog format, a different bump policy, or no cross-repo coordination — and you would have to fight the built-in checklist rather than lean on it.
+- You already have a release tool or CI pipeline that owns these gates, and a second discipline layer on top only adds friction.
+- The change is small or the project is throwaway, where a full pre-release checklist and a version-bump rule are more ceremony than the work needs.
 
-## Install
+## Reference
 
-```bash
-claude plugin install releasing-conventions@crickets
-```
+### Commands & skills
 
-Requires `developer-workflows` as a base. Both plugins must be enabled for the skill to load.
+Each primitive links to the source that implements it.
+
+| Primitive | Kind | What it does |
+|---|---|---|
+| [`ship-release`](https://github.com/alexherrero/crickets/blob/main/src/releasing-conventions/skills/ship-release/SKILL.md) | skill | Pre-release checklist, changelog shape, paired-release order, and version-bump policy applied before you tag or publish. |
+| [`version-bump-required`](https://github.com/alexherrero/crickets/blob/main/src/releasing-conventions/rules/version-bump-required.md) | rule | Flags a diff that touches a user-visible primitive without bumping the group's `group.yaml` version. |
+
+### Configuration
+
+No configuration — the plugin works out of the box. It requires `developer-workflows` to be enabled as its base.
 
 ## See also
 
-- [developer-workflows plugin](Developer-Workflows) — the `/release` phase command this skill gates; also `/work`, `/plan`, `/bugfix`.
-- [Development lifecycle design](crickets-development-lifecycle) — the single-writer protocol governing concurrent-worker version bumps (the one exception the `version-bump-required` rule acknowledges) and paired-release order and coordination.
-- [Customization Types](Customization-Types) — what `kind: rule` and `kind: skill` are.
+- [Developer-Workflows](Developer-Workflows) — the `/release` phase this discipline gates, plus `/work`, `/plan`, and `/bugfix`.
+- [Customization Types](Customization-Types) — what `kind: rule` and `kind: skill` mean.
+
+[Reference](Reference) · [Architecture](Architecture) · [Home](Home)

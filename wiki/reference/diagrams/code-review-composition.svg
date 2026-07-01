@@ -1,0 +1,40 @@
+<svg viewBox="0 0 800 400" width="1120" height="560" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+  <defs>
+    <marker id="r" markerWidth="10" markerHeight="10" refX="7.2" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#9aa0a8"/>
+    </marker>
+  </defs>
+
+  <!-- code-review plugin (left) -->
+  <rect x="44" y="96" width="250" height="208" rx="10" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.8"/>
+  <text x="169" y="128" text-anchor="middle" font-size="15" font-weight="700" fill="#34516e">code-review</text>
+  <text x="169" y="147" text-anchor="middle" font-size="10" font-style="italic" fill="#5B7C9E">adversarial code review</text>
+  <rect x="66" y="166" width="206" height="52" rx="8" fill="#FBFCFE" stroke="#5B7C9E" stroke-width="1.3"/>
+  <text x="169" y="188" text-anchor="middle" font-size="11.5" font-weight="600" fill="#34516e">evidence-tracker</text>
+  <text x="169" y="205" text-anchor="middle" font-size="9.5" font-style="italic" fill="#5B7C9E">the checkbox-gate hook</text>
+  <rect x="66" y="230" width="206" height="52" rx="8" fill="#FBFCFE" stroke="#5B7C9E" stroke-width="1.3"/>
+  <text x="169" y="252" text-anchor="middle" font-size="11.5" font-weight="600" fill="#34516e">adversarial reviewers</text>
+  <text x="169" y="269" text-anchor="middle" font-size="9.5" font-style="italic" fill="#5B7C9E">assume-bugs (+ cross-model)</text>
+
+  <!-- developer-workflows (right) -->
+  <rect x="506" y="60" width="250" height="280" rx="10" fill="#EAF1FB" stroke="#3A6EA5" stroke-width="2.2"/>
+  <text x="631" y="90" text-anchor="middle" font-size="14" font-weight="700" fill="#1e3a5f">developer-workflows</text>
+  <text x="631" y="108" text-anchor="middle" font-size="9.5" font-style="italic" fill="#3A6EA5">the phase loop</text>
+  <rect x="528" y="122" width="206" height="40" rx="8" fill="#F0F2F5" stroke="#8a93a0" stroke-width="1.3"/>
+  <text x="631" y="147" text-anchor="middle" font-size="12" fill="#3a4250">/plan</text>
+  <rect x="528" y="170" width="206" height="40" rx="8" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.7"/>
+  <text x="631" y="195" text-anchor="middle" font-size="12" font-weight="600" fill="#34516e">/work</text>
+  <rect x="528" y="218" width="206" height="40" rx="8" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.7"/>
+  <text x="631" y="243" text-anchor="middle" font-size="12" font-weight="600" fill="#34516e">/review</text>
+  <rect x="528" y="266" width="206" height="40" rx="8" fill="#F0F2F5" stroke="#8a93a0" stroke-width="1.3"/>
+  <text x="631" y="291" text-anchor="middle" font-size="12" fill="#3a4250">/release</text>
+
+  <g stroke="#9aa0a8" stroke-width="1.6" stroke-dasharray="5 4" fill="none" marker-end="url(#r)">
+    <path d="M272,192 L522,190"/>
+    <path d="M272,256 L522,238"/>
+  </g>
+  <text x="399" y="181" text-anchor="middle" font-size="9.5" font-style="italic" fill="#8a8a92">guards the [ ]→[x] flips</text>
+  <text x="399" y="262" text-anchor="middle" font-size="9.5" font-style="italic" fill="#8a8a92">dispatches the reviewers</text>
+
+  <text x="400" y="362" text-anchor="middle" font-size="10.5" font-style="italic" fill="#8a8a92">code-review enhances developer-workflows — engaged only when both are installed.</text>
+</svg>

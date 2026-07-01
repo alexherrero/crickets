@@ -1,67 +1,55 @@
 <!-- mode: reference -->
-# Design Docs plugin
+# Design Docs
 
-> [!NOTE]
-> **ADR model retired in crickets/agentm** (2026-06-24). Load-bearing decisions now go into the **amendment log** of the relevant living design under [`wiki/designs/`](Designs) rather than standalone ADR files. The `adr` skill remains useful for **other repos** that still use the ADR model; in crickets/agentm, use the amendment-log workflow in [How to record a design decision](Record-An-Architectural-Decision).
+## Architecture
 
-The `design-docs` plugin (`requires: developer-workflows`) surfaces the design-doc and amendment-log authoring workflow as an installable unit: the **`adr` skill** (decision format discipline + when-to-write, for repos that use ADRs) and the **`/design` command** (the author → translate → sequence pipeline, delegating to `developer-workflows`).
+Design Docs gives your agent the two authoring disciplines that sit upstream of writing code: turning a design into an ordered set of plans, and capturing an architectural decision in a shape a future reader can trust. It packages both as one installable unit — the `/design` command and the `adr` skill — so a repo gets the design-authoring surface without pulling in anything else.
 
-## ⚡ Quick Reference
+### Diagram
 
-| Aspect | Value |
-|---|---|
-| Plugin slug | `design-docs` |
-| Version | 0.1.0 |
-| Requires | `developer-workflows` |
-| Primitives | `adr` skill · `/design` command (delegation wrapper) |
-| Hosts | Claude Code · Antigravity |
+_None / not needed._
 
-## Primitives
+### How it works
 
-### `adr` skill
+The plugin carries two primitives. The `/design` command surfaces the three-verb pipeline — `author` a design doc to `Status: final`, `translate` the approved doc into structural `parts/`, then `sequence` those parts into topo-ordered named plans. The command is a thin wrapper: it provides the `/design` surface so design-docs users can reach the verb, but the workflow logic — the status lifecycle, storage resolution, and helper scripts — lives in `developer-workflows`, which the plugin requires. The `adr` skill is the other half. It encodes when an Architecture Decision Record is worth writing, the canonical five-section shape (Context, Decision with a "why not the alternative" per call, Consequences with re-audit triggers, Related), and treats the `adr-shape` entry in `~/.claude/CLAUDE.md` as its authoritative source. The skill is a standing instruction — it fires whenever the agent meets an architectural decision, not only when you invoke it. Because both crickets and agentm have retired the standalone-ADR model in favour of amendment logs on living designs, the `adr` skill now mainly serves other repos that still keep ADR files.
 
-Encodes when to write an Architecture Decision Record, the canonical 5-section shape, and the re-audit-trigger discipline. The skill is a **standing instruction** — it fires whenever the agent encounters an architectural decision, not only when you invoke it explicitly.
+### Composition
 
-The 5-section shape:
+| Direction | Plugin | How |
+|---|---|---|
+| Enhances (soft) | — | None. |
+| Enhanced by (soft) | — | None. |
+| Requires (hard) | [Developer-Workflows](Developer-Workflows) | The `/design` command delegates to developer-workflows' `/design` implementation; without it the command has nothing to delegate to. |
+| Required by (hard) | — | None. |
 
-| Section | What goes here |
-|---|---|
-| Opening block | `> [!NOTE]` with `Status: accepted\|superseded\|rejected` + `Date` |
-| **Context** | The open question the ADR resolves; relevant constraints; prior art |
-| **Decision** | One-sentence decision + rationale; **"why not the alternative" is required per call** |
-| **Consequences** | Positive bullets · Negative bullets · Load-bearing assumptions with explicit re-audit triggers |
-| **Related** | Cross-refs to other ADRs, design docs, plans, issues |
+### Why not
 
-Re-audit triggers are what separate a living record from a tombstone — each assumption names the condition under which the decision must be reconsidered.
+Design Docs is opinionated about how design authoring should flow, and it will not fit every project. Reach for something else if:
 
-> **ADR skill vs `/document-decision` command:** the `adr` skill teaches the agent the *format and discipline* of ADR writing. The `/document-decision` command (in `developer-workflows`) is the *workflow trigger* — it prompts you to write an ADR at the right moment in a decision process and enforces the "write before implementing" contract. Both work together; the skill is always present, the command is invoked at the decision point.
+- You do not run the harness's plan-driven workflow — the `/design` pipeline assumes `developer-workflows` is installed to do the real work, so on its own the command is inert.
+- Your project still keeps standalone ADR files and wants a heavier decision-record tool; the `adr` skill teaches a format and a discipline, it does not manage an ADR index or lifecycle.
+- The change in front of you is small and self-explanatory. A one-file fix rarely needs a design doc or a decision record, and running the pipeline for it is more ceremony than the work warrants.
 
-### `/design` command (delegation wrapper)
+## Reference
 
-Provides the `/design` command surface to `design-docs` users without duplicating the implementation. The full author → translate → sequence pipeline lives in `developer-workflows`; this wrapper surfaces it so the `/design` verb is discoverable in the `design-docs` plugin catalog entry.
+### Commands & skills
 
-Three sub-verbs, strictly ordered:
+Each primitive links to the source that implements it.
 
-| Verb | What it does |
-|---|---|
-| `author` | Walk the 10-section design-doc template to `Status: final`; the only verb that sets `final` |
-| `translate` | Split a `Status: final` doc into `parts/` files |
-| `sequence` | Topo-sort `parts/` into named plans (first activated, rest queued) |
+| Primitive | Kind | What it does |
+|---|---|---|
+| [`/design`](https://github.com/alexherrero/crickets/blob/main/src/design-docs/commands/design.md) | command | Author → translate → sequence a design doc into named plans; delegates to developer-workflows. |
+| [`adr`](https://github.com/alexherrero/crickets/blob/main/src/design-docs/skills/adr/SKILL.md) | skill | Decision-record discipline — when to write an ADR and the five-section shape with re-audit triggers. |
 
-If `developer-workflows` is not installed, this command has no implementation.
+### Configuration
 
-## Install
-
-```bash
-claude plugin install design-docs@crickets
-```
-
-Requires `developer-workflows` as a base. Both plugins must be enabled for the command and skill to load.
+No configuration — the plugin works out of the box. The `/design` command reads its workflow settings from `developer-workflows`, and the `adr` skill draws its canonical shape from the `adr-shape` entry in `~/.claude/CLAUDE.md`; neither adds a config key of its own.
 
 ## See also
 
 - [How to author a design](Author-A-Design) — the step-by-step guide for `/design author → translate → sequence`.
-- [How to record an architectural decision](Record-An-Architectural-Decision) — the step-by-step guide for `/document-decision` (the ADR workflow trigger).
-- [developer-workflows plugin](Developer-Workflows) — owns the `/design` and `/document-decision` implementations.
-- [Development lifecycle design](crickets-development-lifecycle) — why `/design` lives in `developer-workflows` and `design-docs` wraps it.
-- [Customization Types](Customization-Types) — what `kind: skill` and `kind: command` are.
+- [How to record an architectural decision](Record-An-Architectural-Decision) — the amendment-log workflow, and where the `adr` skill still applies.
+- [Developer-Workflows](Developer-Workflows) — owns the `/design` and `/document-decision` implementations this plugin builds on.
+- [Development lifecycle design](crickets-development-lifecycle) · [Design-docs design](crickets-design) — the deeper design.
+
+[Reference](Reference) · [Architecture](Architecture) · [Home](Home)
