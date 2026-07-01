@@ -1,23 +1,15 @@
 <!-- mode: index -->
 # Why it works
 
-The principles behind crickets — why adversarial review, deterministic gates, and phase-gating — plus the founding scope.
+These pages explain *why* crickets works the way it does — the principles behind adversarial review, deterministic gates, and phase-gating, and more. For technical specifications, see [Reference](Reference).
 
 ## What's here
 
-- **[Purpose and scope](Purpose-And-Scope)** — what crickets is for, and the public-with-PII-guardrails stance.
-- **[Why adversarial review](Why-Adversarial-Review)** — why the reviewer is primed to assume bugs exist.
-- **[Why deterministic gates run first](Why-Deterministic-Gates)** — why executable checks precede LLM judgment.
-- **[Why phase-gating](Why-Phase-Gating)** — why one phase per session, with state on disk.
-- **[Developer-Workflows token efficiency](Developer-Workflows-Token-Efficiency)** — the four token-efficiency levers in `developer-workflows` v0.13.0 (phase-aware routing, Terse style, Edit-over-Write rule, compact-nudge hook). Status: implemented.
-
-## Recent changes
-
-<!-- maintained by the wiki tooling -->
-
-- **2026-06-08** — folded into `why/`; this index added.
-- **2026-06-09** — Purpose and scope rewritten for v3.0; Cross-Repo-Memory-Protocol retired (memory is out of crickets scope).
-- **2026-06-11** — `why/` renamed to `explanation/` under the seven-section frame (wiki-section-taxonomy dogfood).
+- **[Purpose and scope](Purpose-And-Scope)** — why crickets was created, and for what.
+- **[Why adversarial review](Why-Adversarial-Review)** — why it makes sense to assume there are bugs when reviewing.
+- **[Why deterministic gates run first](Why-Deterministic-Gates)** — why deterministic checks come before LLM judgment.
+- **[Why phase-gating](Why-Phase-Gating)** — why each session does one phase, with the state kept on disk.
+- **[Why token efficiency](Developer-Workflows-Token-Efficiency)** — why we have levers that keep the dev loop cheap.
 
 ## See also
 
