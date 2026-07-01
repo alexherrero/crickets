@@ -5,8 +5,7 @@
 
 Obsidian Vault lets your agent keep its memory inside your own Obsidian vault instead of a store buried in a device-local folder. Everything the agent learns lands as plain Markdown you can open, read, and edit in Obsidian — and because the vault lives on Google Drive, that memory follows you from one device to the next. It also knows how to cope with the mess cloud sync leaves behind, spotting the conflict and duplicate files Drive scatters around so your memory stays clean. This is a storage backend the memory engine picks up and runs on its own, so nothing in your normal workflow calls it directly. It stands alone — it needs no other plugin, only a vault to point at.
 
-> [!IMPORTANT]
-> **Status: pending** (V5-2). This page is a forward-declared skeleton — the `obsidian-vault` plugin is built but **not yet the live backend** (V5-2 parallel-run, pre-V5-3-cutover). A later `/work` task flips it to a documented surface only once the diff proves each row. Do not treat any reserved value below as shipped; the descriptor, seam-verb, and acceptance rows are reserved, not yet verified. (The `vault-doctor` skill and `doctor_vault.py`, shipped in V5-2 task 6, are the exception — they are reachable today.)
+_Some of this page describes the backend's finished shape, which isn't fully live yet. The plugin is built and running alongside the engine's built-in store, but it isn't the default store yet. The health check and conflict detection are usable today; the rest is the target it's being proven against, not yet the shipped behaviour, and the sections below say which is which._
 
 ### Diagram
 
@@ -38,123 +37,62 @@ Cloud sync has a habit of leaving litter behind — a duplicate here, a "conflic
 Obsidian vault backend is opinionated about where memory lives, and it will not fit everyone. Reach for something else if:
 
 - You don't keep an Obsidian vault, or you don't sync one through Google Drive — the device-local backend the engine ships with needs no plugin and no setup.
-- You want a store with server-side encryption or true multi-writer transactions; this backend stores plain Markdown and reconciles concurrent writes with a content-hash CAS, not a database.
+- You want a store with server-side encryption or true multi-writer transactions; this backend stores plain Markdown and reconciles concurrent writes by comparing file contents, not through a database.
 - You'd rather not deal with sync-conflict files at all. Cross-device Drive sync produces them, and while the plugin detects and surfaces them, resolving each pair is still your call.
 
 ## Reference
 
 ### Commands & skills
 
-No host-facing commands — the plugin ships mainly a `scripts/` backend payload that the agentm engine loads. The operator-facing surface is the `vault-doctor` skill and its Claude-only session-start hook; the rest of the table is the backend and its vault machinery. Each primitive links to the source that implements it.
+The plugin is mostly a `scripts/` backend payload the agentm engine loads; the only thing you drive by hand is the `vault-doctor` health check. Each primitive links to the source that implements it.
 
 | Primitive | Kind | What it does |
 |---|---|---|
-| [`vault-doctor`](https://github.com/alexherrero/crickets/blob/main/src/obsidian-vault/skills/vault-doctor/SKILL.md) | skill | Read-only health check over `doctor_vault.py` — vault path, backend selection, conflict sweep; reachable on **both** hosts (`supported_hosts: [claude-code, antigravity]`). |
-| [`conflict-merger-session-start`](https://github.com/alexherrero/crickets/blob/main/src/obsidian-vault/hooks/conflict-merger-session-start/hook.md) | hook | Surfaces GDrive/DriveFS conflict + duplicate files at session start (Claude Code only). |
-| [`storage_vault.py`](https://github.com/alexherrero/crickets/blob/main/src/obsidian-vault/scripts/storage_vault.py) | script | The `vault` backend — implements the storage seam, composing the V5-0 write stack (mutex + CAS + atomic-write). |
-| [`doctor_vault.py`](https://github.com/alexherrero/crickets/blob/main/src/obsidian-vault/scripts/doctor_vault.py) | script | Read-only probe backing `vault-doctor` — three rows (`vault-path` / `backend` / `conflicts`), exit 1 only on a `FAIL`; constructs no backend, writes neither the vault nor the engine config. |
-| [`vault_conflicts.py`](https://github.com/alexherrero/crickets/blob/main/src/obsidian-vault/scripts/vault_conflicts.py) | script | GDrive/DriveFS sync-conflict detection; imports the kernel's filename classifier rather than vendoring it. |
+| [`vault-doctor`](https://github.com/alexherrero/crickets/blob/main/src/obsidian-vault/skills/vault-doctor/SKILL.md) | skill | A read-only health check — your vault path, which backend is active, and a conflict sweep. Works on both hosts. |
+| [`conflict-merger-session-start`](https://github.com/alexherrero/crickets/blob/main/src/obsidian-vault/hooks/conflict-merger-session-start/hook.md) | hook | Surfaces the conflict and duplicate files Drive sync leaves behind, at session start (Claude Code only). |
+| [`storage_vault.py`](https://github.com/alexherrero/crickets/blob/main/src/obsidian-vault/scripts/storage_vault.py) | script | The vault backend itself — reads and writes your memory as Markdown, sharing the engine's write-lock so two sessions don't clobber each other. |
+| [`doctor_vault.py`](https://github.com/alexherrero/crickets/blob/main/src/obsidian-vault/scripts/doctor_vault.py) | script | The read-only probe behind `vault-doctor` — checks the vault path, the active backend, and conflicts; it writes nothing. |
+| [`vault_conflicts.py`](https://github.com/alexherrero/crickets/blob/main/src/obsidian-vault/scripts/vault_conflicts.py) | script | Detects Google Drive's sync-conflict and duplicate files, reusing the engine's own filename classifier. |
 
-### Seam verbs
+### What the backend does
 
-The backend implements the V5-1 storage seam: five core verbs plus two ergonomic verbs, registered under the protocol name `vault`.
+The engine talks to every storage backend through the same small set of operations, and the vault backend implements them: resolve a location, read, write, list a directory, and check whether something exists — plus two conveniences, get info and make a directory. Alongside those it tells the engine what it can and can't do, so the engine knows what it's working with:
 
-| Verb | Class |
+| The backend… | |
 |---|---|
-| `resolve` | core |
-| `read` | core |
-| `write` | core |
-| `list` | core |
-| `exists` | core |
-| `info` | ergonomic |
-| `mkdir` | ergonomic |
+| handles concurrent writers | yes — two sessions can write to the same vault safely |
+| produces conflict files | yes — cross-device sync leaves them, and the backend detects them |
+| encrypts at rest | no — memory is stored as plain Markdown |
+| syncs across devices | yes — through Google Drive |
+| conflict strategy | a whole-file merge for Drive's conflicted copies |
 
-_Per-verb contracts pending — filled by `/work` once the task ships._
+The exact per-operation contracts are still being finalized as the backend moves from running alongside the built-in store to replacing it.
 
-### Capability descriptor
+### How the engine finds and uses it
 
-The backend declares a capability descriptor plus a named conflict strategy that the engine reads.
+The engine discovers the plugin by looking in a known place under your plugin-install directory, and ranks a vault it detects there. If you tell the engine to use the vault backend but the plugin isn't installed, it stops and says so rather than quietly falling back to the device-local store. To keep concurrent writes safe it shares the engine's own write-lock rather than carrying a copy, and it only ever runs as part of a running engine. On install it reads your existing vault path in place — it never rewrites your config, and it moves no data, so there's nothing to re-set-up.
 
-| Capability | Value |
-|---|---|
-| concurrent-writers | yes |
-| conflict-files | yes |
-| encryption | no |
-| sync | yes |
-| conflict strategy | "GDrive whole-file merger" (named) |
+### What's live today
 
-_Descriptor semantics pending — filled by `/work` once the task ships._
-
-### Vault-specific machinery
-
-The plugin carries the vault-specific machinery beside the backend.
-
-| Component | Role |
-|---|---|
-| vault probe | detection / ranking of a present vault |
-| GDrive conflict-merger | sync-conflict detection family + the whole-file merge strategy |
-| `conflict-merger-session-start` hook | session-start nudge (Claude Code only — see Host coverage) |
-| `vault-doctor` skill | operator-facing health check over `doctor_vault.py`; reachable on **both** hosts (`supported_hosts: [claude-code, antigravity]`) |
-| `doctor_vault.py` | read-only `doctor` check — three rows (`vault-path` / `backend` / `conflicts`), exit 1 only on a `FAIL`; constructs no backend, writes neither the vault nor the engine config |
-| state migration script | per-project state migration |
-
-> [!NOTE]
-> The `vault-doctor` skill and `doctor_vault.py` shipped in V5-2 task 6 and are reachable today; the remaining rows in this table stay pending until the diff proves each. The skill + doctor are the Antigravity-reachable substitute for the Claude-only session-start nudge — see [Host coverage](#host-coverage).
-
-### Discovery + lock contract
-
-| Contract | Behaviour |
-|---|---|
-| Discovery | the engine locates the installed plugin by a convention path off the plugin-install root |
-| Fail-loud | if `storage.backend=vault` is selected but the plugin is absent, the engine refuses loudly — it never silently demotes to device-local |
-| Write-lock | the backend **imports** the agentm kernel's canonical write-lock module; it never vendors a copy |
-| Runtime precondition | the backend only ever runs under a present engine |
-
-_Contract details pending — filled by `/work` once the task ships._
-
-### First-run adoption
-
-| Behaviour | Value |
-|---|---|
-| On install | reads the existing `vault_path` from `~/.claude/.agentm-config.json` **in place** (never writes it) |
-| Registration | registers as the `vault` backend |
-| Data movement | none — zero re-setup, zero data movement |
-
-_Adoption details pending — filled by `/work` once the task ships._
-
-### Acceptance proof
-
-The backend must pass its checks before the later V5-3 cutover is triggered.
-
-| Proof | What it asserts |
-|---|---|
-| Conformance suite | GREEN on the V5-1-authored suite — verb battery + byte-identical LF-exact markdown round-trip |
-| Parallel-run | byte-identical resolution against the still-present built-in backend |
-| Behavioral contract | `write` **bites** on a concurrent modification (raises `ConcurrentModificationError` via the content-hash CAS) + the plugin advertises the built-in's exact `capabilities` / `conflict_strategy` — asserted against both backends for parity |
-
-_Proof harness pending — filled by `/work` once the task ships._
-
-> [!WARNING]
-> **Conformance-suite green proves byte-faithfulness, not the concurrency contract.** The V5-1 suite's `UNIVERSAL_CHECKS` are single-writer / byte-round-trip only — they never exercise the `vault_mutex` / content-hash CAS / `ConcurrentModificationError`. A backend degraded to `atomic_write`-only (dropping the load-bearing CAS) passes every conformance + parallel-run case GREEN. Because V5-3 deletes the built-in backend on the strength of this gate, the cutover gate must **also** assert the behavioral contract — the CAS bite + capability parity in the row above. The universal suite can't carry the CAS check itself: the frozen seam's `write(locator, content)` exposes no CAS precondition (DC-7), so crickets adds it as a backend-specific check, not a kernel-suite extension.
+Two pieces are usable right now: the `vault-doctor` health check and the conflict detection behind it. The rest — the backend serving as your live memory store, and the proofs that let it replace the built-in one — is built but still being verified. Before the switch-over, the backend has to pass its checks: that it stores and reads back your Markdown exactly, that it matches the built-in store byte-for-byte while both run side by side, and that it correctly refuses a write when another session changed the same file first. That last check matters most — passing the round-trip proofs alone wouldn't catch a backend that had quietly lost its concurrency guard — so the switch-over gate asserts it directly. The full gate is described in the [obsidian-vault design](crickets-obsidian-vault).
 
 ### Host coverage
 
-| Host | Conflict-merger nudge | Detector reachability |
+| Host | Automatic nudge | Detection |
 |---|---|---|
-| Claude Code | automatic session-start nudge fires (`conflict-merger-session-start` hook) | reachable — automatic + on-demand |
-| Antigravity | no automatic nudge (no `SessionStart` event) | reachable on demand via the `vault-doctor` skill + `doctor_vault.py`'s `conflicts` check |
+| Claude Code | yes — fires at session start | reachable automatically and on demand |
+| Antigravity | no — there's no session-start event to hang it on | reachable on demand, through the `vault-doctor` check |
 
-> [!NOTE]
-> On Antigravity, detection is **not** lost — only the automatic nudge. The detector stays reachable through the `vault-doctor` skill (`supported_hosts: [claude-code, antigravity]`) and `doctor_vault.py`'s read-only `conflicts` check. Both shipped in V5-2 task 6. See the [Antigravity limitations register → Hooks](Antigravity-Limitations#2--hooks) for the host-gap context.
+On Antigravity you don't lose conflict detection — only the automatic nudge. The `vault-doctor` skill and its conflict check work on both hosts. See the [Antigravity limitations register](Antigravity-Limitations#2--hooks) for the host-gap context.
 
-## Configuration
+### Configuration
 
-The vault location is resolved at runtime, not baked into the plugin. The engine reads `plugins.obsidian-vault.vault_path` from its config (set via `agentm_config --vault-path`), and `$MEMORY_VAULT_PATH` is the per-invocation override. The plugin itself reads that path in place and never writes it. No other configuration — it works out of the box once a vault is configured.
+The vault location is resolved at runtime, not baked into the plugin. The engine reads `plugins.obsidian-vault.vault_path` from its config (set via `agentm_config --vault-path`), and `$MEMORY_VAULT_PATH` is the per-invocation override. The plugin itself reads that path in place and never writes it. There's nothing else to configure — it works out of the box once a vault is set.
 
 ## See also
 
-- [Install the vault backend](Install-The-Vault-Backend) — install the plugin and prove parallel-run identical before the cutover.
-- [CI gates](CI-Gates) — the gate battery the conformance-suite + parallel-run proofs will join.
+- [Install the vault backend](Install-The-Vault-Backend) — install the plugin and prove it matches the built-in store before the switch-over.
+- [CI gates](CI-Gates) — the gate battery this backend's proofs will join.
 - [Plugin anatomy](Plugin-Anatomy) — what a crickets plugin's `scripts/` payload is.
 - [Antigravity limitations](Antigravity-Limitations) — why the automatic session-start nudge is Claude-only, and the host-gap register it belongs to.
 - [obsidian-vault design](crickets-obsidian-vault) · [vault-git design](crickets-vault-git) — the deeper design.
