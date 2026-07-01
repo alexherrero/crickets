@@ -169,7 +169,7 @@
       ],
       "name": "wiki-maintenance",
       "source": "./plugins/wiki-maintenance",
-      "version": "0.3.3"
+      "version": "0.3.4"
     }
   ]
 }

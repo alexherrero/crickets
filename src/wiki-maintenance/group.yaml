@@ -22,7 +22,14 @@ standalone: true
 # 0.3.2 = diataxis-author SKILL + documenter + diataxis-evaluator + migrate.py
 # modernized four-mode → six-section taxonomy (migrate.py now folds tutorial-shaped
 # pages into how-to/ with a <!-- mode: tutorial --> hint; no tutorials/ folder).
-version: 0.3.3
+# 0.3.3 = check-wiki rule (e) accepts the combined plugin-page shape (## Architecture
+# + ## Reference two-parent).
+# 0.3.4 = codify the combined plugin-reference page standard — templates/plugin-reference.md
+# + section library (architecture-overview / diagram / composition-table / why-not /
+# commands-and-skills / configuration) + style/diagram-style.md house SVG spec; plus the
+# plain-spoken-overview/how-it-works + required-composition-diagram voice lessons in
+# templates/README.md and style/base-style-guide.md.
+version: 0.3.4
 capabilities: [wiki-maintenance]
 enhances:
   - group: developer-workflows

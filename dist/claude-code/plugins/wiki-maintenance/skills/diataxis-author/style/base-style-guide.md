@@ -28,6 +28,11 @@ house defaults. Keep it tight.
 - **De-perform labels.** Section titles, table headers, bullet leads: pick the
   less-prestigious framing. The body can be substantive; the label should not
   perform. (Brand names are exempt — they're the one label allowed to perform.)
+- **Plain-spoken overview + "how it works".** When a page opens with what a thing
+  is, or explains how it works, write it the way you'd tell a colleague: what it
+  is, why it's useful, how it moves. Keep implementation detail — internal names,
+  exact paths, event/hook names, install order — out of that prose; it belongs in
+  the reference tables.
 
 ## Banned
 

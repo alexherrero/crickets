@@ -39,9 +39,15 @@ A wiki is built from **pages**; each page is composed from **sections**.
 | `decisions-index` | landing | one link to the decision index |
 | `contribute` | landing, plugin-home | short pointer; specs live elsewhere |
 | `plugin-composition` | plugin-home | one plugin's standalone / requires / enhances + host reach |
-| `how-it-works` | component-overview | the mechanism — the lead of a component landing; table for the parallel parts |
+| `how-it-works` | component-overview, plugin-reference | the mechanism in plain prose — the lead of a component/plugin page; table for the parallel parts |
 | `component-composition` | component-overview | one Architecture component's couplings to its siblings |
 | `safety` | component-overview | OPTIONAL cross-cutting-concern callout (`## Safety` / `## Host gaps`) — only when a guardrail or host-gap story exists |
+| `architecture-overview` | plugin-reference | plain-spoken opener — what the plugin is + why it's useful, generalized |
+| `diagram` | plugin-reference | the house-SVG picture(s) — composition (always) + mechanism (when a flow needs it) |
+| `composition-table` | plugin-reference | the plugin's four couplings — enhances / enhanced-by / requires / required-by |
+| `why-not` | plugin-reference | the honest counter-case — who should reach for something else |
+| `commands-and-skills` | plugin-reference | the primitives table, each name linked to its source |
+| `configuration` | plugin-reference | what the operator sets up front, or "works out of the box" |
 | `section-contents` | section-index | the section's pages as curated one-liners (not regurgitated) |
 | `recent-changes` | section-index, plugin-home | tooling-maintained dated list of recent edits |
 | `mode-block` | how-to, tutorial | the `> [!NOTE]` Goal / [Time] / Prereqs block |
@@ -55,10 +61,13 @@ A wiki is built from **pages**; each page is composed from **sections**.
 | `host-differences` | reference | per-host asymmetry — state both hosts + the equivalent, not just "unsupported" |
 | `validation` | reference | what the validator asserts (grouped by scope) + the command to run it |
 
-Page-templates: `home.md` (landing), `plugin-home.md` (the per-plugin page — the wave-2
-per-plugin-pages target — Developer-Safety is the first, in the `architecture/plugins/` section), `section-index.md` (a section's landing — one per intent-folder),
-and `component-overview.md` (an Architecture component's landing — one per `architecture.yml` entry)
-are section manifests. The four Diátaxis mode templates (`how-to` /
+Page-templates: `home.md` (landing), `plugin-reference.md` (the per-plugin page — a combined
+**Architecture + Reference** page under `reference/`, one per plugin; Code-Review, Developer-Workflows,
+and Developer-Safety are the worked exemplars), `section-index.md` (a section's landing — one per
+intent-folder), and `component-overview.md` (an Architecture component's landing — one per
+`architecture.yml` entry) are section manifests. (`plugin-home.md` is the superseded predecessor — the
+early `architecture/plugins/` per-plugin landing, folded into `plugin-reference` when the per-plugin
+pages moved to `reference/` as combined pages.) The four Diátaxis mode templates (`how-to` /
 `tutorial` / `reference` / `explanation`) are still **monoliths** read live by `author.py`; their
 sections now live in the library above, and the **composer** (§6) will assemble them at
 codification — until then the monoliths stay.
@@ -185,8 +194,17 @@ codification — until then the monoliths stay.
   of one thing, add an overview/anchor page that says what the whole *is* and points down to the
   parts; the parts link back up. Distinct from cataloging items on one page — this is an overview
   *over a cluster of pages*. (Pass-1: `Plugin-Anatomy` over `Customization-Types` / `Per-Host-Paths` /
-  `Manifest-Schema`, at the operator's prompt. The wave-2 `plugin-home` page-template is its
+  `Manifest-Schema`, at the operator's prompt. The `plugin-reference` page-template is its
   per-plugin instance.)
+- **A plugin gets one combined reference page — Architecture, then Reference.** Each plugin's page
+  lives in `reference/` under two H2 parents: `## Architecture` — a plain-spoken opener on what it is
+  and why it's useful, at least a composition **diagram**, a plain How it works, the four-direction
+  Composition table, and a Why not — then `## Reference` — the primitives table (each name linked to
+  its source) and Configuration. The two prose sections stay plain and spoken, not in the weeds;
+  field-level detail is the Reference half's job. Every plugin page carries at least a composition
+  diagram — a mechanism diagram too when an internal flow needs one — in the house SVG style
+  (`style/diagram-style.md`). `check-wiki` rule (e) exempts this two-parent shape from the
+  open-with-a-table rule. (Pass-1: the 13 crickets plugin pages; `templates/plugin-reference.md`.)
 - **A cross-cutting concern is its own section, not a composition bullet.** On a component
   overview, a guardrail or where-it-falls-short story (PII defense, a destructive-action gate, a
   host capability with no authoring path) gets its OWN short section after `how-it-fits`, before
@@ -204,6 +222,11 @@ codification — until then the monoliths stay.
 - Governing lesson — **`user-facing-prose`** (global): plain, present-tense; cut marketing
   boasts, version-history asides, docs meta-commentary, and **LLM-tell vocabulary**
   ("first-class" → "supported", "seamless", "robust", "leverage"). Describe what a thing does now.
+- **Overview and How it works stay plain-spoken, not in the weeds.** On a component or plugin page, the
+  opening says what the thing is and why it's useful — generalized, the way you'd tell a colleague — and
+  How it works explains the mechanism in plain speech. Keep implementation detail (internal names, exact
+  paths, event/hook names, install order) out of the prose; it belongs in the reference tables. (Pass-1:
+  the plugin pages simplified from spec-dense openers to spoken prose — Developer-Safety is the exemplar.)
 - **Strip plan-internal jargon + implementation internals from user-facing pages.** Cut design-call
   codes (`DC-W4`, `DC-8`), task/part numbers (`part 4`, `task 1-4`), internal IDs (`(W1)`), and bucket
   labels; cut implementation names a reader doesn't act on — resolver/function names, internal `.py`
