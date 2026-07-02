@@ -1,6 +1,8 @@
 # Purpose and scope
 
-What crickets is, what it isn't, and how it relates to agentm — the "why does this repo exist" read in under five minutes. The full decision, with consequences, is the [Crickets HLD](crickets-hld).
+Why crickets was created, and for what — the "why does this repo exist" read in under five minutes.
+
+crickets exists so the agent customizations that travel with you — skills, sub-agents, commands, hooks — have a home of their own, one that doesn't crowd the workflow harness. Those customizations grow over time, and if they lived inside agentm they'd slowly bloat a repo whose whole point is a tight, phase-gated workflow. So the two are split by what they own: agentm owns the workflow, crickets owns the customizations. Each stays small and clear about its job, and either one can grow without dragging the other along. The full decision, with consequences, is the [Crickets HLD](crickets-hld).
 
 ## ⚡ Quick Reference
 

@@ -7,9 +7,13 @@
 
 ## Intent
 
-A fresh `developer-workflows` install is token-frugal by default. The operator should not have to carry a personal `~/.claude/CLAUDE.md` token-discipline block to benefit from these patterns — they are structural enough to ship as durable plugin primitives.
+A fresh `developer-workflows` install is token-frugal by default. The goal driving that is a simple one: all-day-autonomous coding on a smaller Claude plan, where the token budget is a hard daily constraint. When tokens are scarce, every session either respects the discipline or burns the day early — so the plugin has to make frugality the path of least resistance, not a thing you remember to do.
 
-The four levers mirror the operator's global token-discipline block (2026-06-13) for adopters:
+The insight is that the discipline is structural, not a matter of per-session willpower. Routing the right model to each phase, staying quiet between tool calls, preferring `Edit` over `Write`, clearing at phase boundaries — these are stable enough to bake into the plugin rather than repeat as reminders. So they ship as durable primitives, and an adopter gets the savings without carrying a personal `~/.claude/CLAUDE.md` token-discipline block. The four levers below mirror that global block (2026-06-13) so the two stay in step.
+
+The honest limit is that a plugin can only nudge — it cannot pull the levers for you. A hook can notice a session's context is large and suggest `/compact`, but it cannot actuate the command; model routing sets a sensible default per phase, but you can always override it with `--model`. Nudge-only is the ceiling, by design: the primitives lower the friction and keep the reminder in front of you, and the last step stays yours.
+
+The four levers, each mapped to the primitive kind that carries it:
 
 | Lever | Primitive kind | Effect |
 |---|---|---|
