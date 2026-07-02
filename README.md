@@ -65,12 +65,7 @@ The [wiki](https://github.com/alexherrero/crickets/wiki) covers everything there
 
 ## Contributing
 
-Contributions are welcome. Fork the repo, work on a branch, and open a pull request — here's what makes it land smoothly:
-
-- **Get your bearings.** [Plugin anatomy](https://github.com/alexherrero/crickets/wiki/Plugin-Anatomy) explains what a plugin is and how it's built; the [Add a plugin](https://github.com/alexherrero/crickets/wiki/Add-A-Plugin), [Add a skill](https://github.com/alexherrero/crickets/wiki/Add-A-Skill), and [Modify a plugin](https://github.com/alexherrero/crickets/wiki/Modify-A-Plugin) how-tos walk the authoring steps.
-- **Run the checks before you push.** `bash scripts/check-all.sh` runs the same deterministic battery CI does — the unit suite plus every gate. The full invariant list is in [CONTRIBUTING.md](CONTRIBUTING.md).
-- **What CI does with your PR.** Every push runs three per-OS workflows (Linux, macOS, Windows) in parallel; all of them need to be green before a PR can merge. The [CI gates](https://github.com/alexherrero/crickets/wiki/CI-Gates) page lists what runs and what each one proves.
-- **Review turnaround.** Expect a first review within about a week.
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for information on how to contribute to crickets.
 
 ## License
 
