@@ -32,7 +32,10 @@ standalone: true
 # 0.3.5 = explanation-page four-beat skeleton — templates/explanation.md rewritten to force
 # the why to lead (question · why-up-front · trade-off · what-it-is-not), + the structural
 # opinion in templates/README.md. From the Explanation-why audit (5 of 14 pages buried the why).
-version: 0.3.5
+# 0.3.6 = check-wiki rule (p) — the shape axis. Soft warns when an explanation page is
+# table-dominated (fact-dump; fenced diagrams/code don't count) or a reference page is mostly
+# prose / over a prose-word ceiling; the combined plugin-reference hybrid is exempt.
+version: 0.3.6
 capabilities: [wiki-maintenance]
 enhances:
   - group: developer-workflows

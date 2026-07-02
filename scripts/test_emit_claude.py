@@ -75,8 +75,9 @@ class TestClaudeEmitter(unittest.TestCase):
         # the combined plugin-page shape (## Architecture + ## Reference two-parent);
         # 0.3.4 = codify the combined plugin-reference page standard (template + section
         # library + diagram-style.md house SVG spec + plain-spoken voice lessons);
-        # 0.3.5 = explanation-page four-beat skeleton (why-leads) in templates/explanation.md).
-        self.assertEqual(self._plugin_json("wiki-maintenance")["version"], "0.3.5")
+        # 0.3.5 = explanation-page four-beat skeleton (why-leads) in templates/explanation.md;
+        # 0.3.6 = check-wiki rule (p) shape axis (explanation-as-lookup / reference-as-narrative)).
+        self.assertEqual(self._plugin_json("wiki-maintenance")["version"], "0.3.6")
         self.assertEqual(self._plugin_json("pii")["version"], "0.2.1")  # 0.2.1 = capabilities: [privacy]
 
     def test_dependencies_from_requires(self):
