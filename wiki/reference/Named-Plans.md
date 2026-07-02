@@ -1,20 +1,22 @@
 # Named plans
 
-The `developer-workflows` phase commands `/work`, `/plan`, and `/review` accept an **optional `--name <slug>` flag**. With a name they operate on a **named plan pair** — `PLAN-<slug>.md` + `progress-<slug>.md` — instead of the singleton `PLAN.md` / `progress.md`. This is what lets one shared harness state dir hold several concurrent plans at once. Bare invocations are unchanged: they resolve to the singleton, byte-for-byte as today. Consult this page to look up what a name maps to, how the name is resolved, the standalone-fallback paths, and the read-only `/queue-status-lite` command that lists the whole queue. The task recipes are in [Run a named plan](Run-A-Named-Plan) and [See every active plan](See-Every-Active-Plan); the *why* is in [Why phase-gating](Why-Phase-Gating).
+The `developer-workflows` phase commands `/work`, `/plan`, and `/review` accept an optional `--name <slug>` flag. With a name they operate on a named plan pair — `PLAN-<slug>.md` + `progress-<slug>.md` — instead of the singleton `PLAN.md` / `progress.md`. That is how one shared harness state dir holds several concurrent plans. Bare invocations resolve to the singleton.
+
+Look up here what a name maps to, how the name is resolved, the standalone-fallback paths, and the read-only `/queue-status-lite` command. The task recipes are in [Run a named plan](Run-A-Named-Plan) and [See every active plan](See-Every-Active-Plan); the *why* is in [Why phase-gating](Why-Phase-Gating).
 
 ## ⚡ Quick Reference
 
 | Invocation | Plan file read/written | Progress file appended | Notes |
 |---|---|---|---|
-| `/work` | `PLAN.md` | `progress.md` | singleton — byte-identical to today |
+| `/work` | `PLAN.md` | `progress.md` | singleton |
 | `/work --name <slug>` | `PLAN-<slug>.md` | `progress-<slug>.md` | named pair |
-| `/work task N` | `PLAN.md` | `progress.md` | singleton, task selector — unchanged |
+| `/work task N` | `PLAN.md` | `progress.md` | singleton, task selector |
 | `/work --name <slug> task N` | `PLAN-<slug>.md` | `progress-<slug>.md` | named pair + task selector |
-| `/plan` | `PLAN.md` | `progress.md` | singleton — unchanged |
+| `/plan` | `PLAN.md` | `progress.md` | singleton |
 | `/plan --name <slug>` | `PLAN-<slug>.md` (authored, **active**) | `progress-<slug>.md` | named pair, active tier |
 | `/plan --stage <slug>` | `queued-plans/PLAN-<slug>.md` (authored, **staged/inert**) | — | staging tier ([Two-tier staging](#two-tier-named-plan-staging)) |
 | `/plan --activate <slug>` | `queued-plans/PLAN-<slug>.md` → `PLAN-<slug>.md` (promoted) | — | promotes staged → active |
-| `/review` | `PLAN.md` | — | singleton — unchanged |
+| `/review` | `PLAN.md` | — | singleton |
 | `/review --name <slug>` | `PLAN-<slug>.md` | — | named pair |
 | `/spawn-worker <name>` | — (creates a worktree bound to the named plan) | — | operator-initiated worktree + `worker/<name>` branch ([Spawning a worker worktree](#spawning-a-worker-worktree)) |
 | `/integrate-worker <name>` | — | `progress-<slug>.md` appended into `progress.md` | merges `worker/<slug>` → `main` only if the integrated tree passes the full gate, then prunes ([Integrating a worker](#integrating-a-worker)) |
@@ -33,11 +35,11 @@ The `developer-workflows` phase commands `/work`, `/plan`, and `/review` accept 
 | `/plan` | optional `--name <slug>` (anywhere in args) | authors `PLAN-<slug>.md`, appends the scoped `progress-<slug>.md` line |
 | `/review` | optional `--name <slug>` (anywhere in args) | resolves + reads the named pair for adversarial critique |
 
-`/setup`, `/release`, and `/bugfix` do **not** take a plan name in this plan — they remain singleton-only.
+`/setup`, `/release`, and `/bugfix` do not take a plan name — they are singleton-only.
 
 ## The `/design` command
 
-`/design` is the **upstream authoring step** of the phase loop — it starts *earlier* than `/plan`. Use it when the problem is ambiguous, multi-stakeholder, or has cross-cutting Quality-Attributes / Operations concerns; use `/plan` for an already-settled design. It is packaged as a **command** (not a skill), consistent with the rest of the all-commands phase loop, and is implemented as two tested stdlib-only Python helpers plus a thin command prompt (see the [Development lifecycle design](crickets-development-lifecycle)). The task recipe is in [Author a design](Author-A-Design).
+`/design` is the upstream authoring step of the phase loop — it starts earlier than `/plan`. Use it when the problem is ambiguous, multi-stakeholder, or has cross-cutting Quality-Attributes / Operations concerns; use `/plan` for an already-settled design. The task recipe is in [Author a design](Author-A-Design); the reasoning is in the [Development lifecycle design](crickets-development-lifecycle).
 
 | Surface | Location |
 |---|---|
@@ -76,7 +78,7 @@ The `developer-workflows` phase commands `/work`, `/plan`, and `/review` accept 
 |---|---|
 | Input | the populated `<doc-dir>/parts/` |
 | Ordering | topo-sort, deterministic; alphabetical tie-break |
-| Writer | the already-shipped `stage_plan.py` (sibling #1) — `/design` does not re-derive harness paths |
+| Writer | `stage_plan.py` — `/design` does not re-derive harness paths |
 | First part | **activated** as `PLAN-<doc-slug>-<part-slug>.md` |
 | Remaining parts | **staged** into `queued-plans/PLAN-<doc-slug>-<part-slug>.md` |
 | Singleton `PLAN.md` | **never touched** |
@@ -88,15 +90,9 @@ The `developer-workflows` phase commands `/work`, `/plan`, and `/review` accept 
 | `confidential` | `<resolved-harness>/designs/<slug>.md` — harness root resolved via `design_doc.py harness-root` (composes onto the `resolve_plan.py` resolver; storage-agnostic); not committed |
 | `published` | `wiki/designs/<slug>.md` — committed (the crickets path, **not** agentm's `wiki/explanation/designs/`) |
 
-> [!NOTE]
-> **Deferred (not in this plan, do not expect):** the external-review handoff (Antigravity / Gemini transfer-context flow), and the `final → launched` auto-transition + queued-plan auto-promotion on `/release`.
-
 ## Two-tier named-plan staging
 
-> [!NOTE]
-> Shipped in `developer-workflows` 0.5.0. The active-tier `--name` write and the singleton write above are **unchanged** — staging is purely additive.
-
-`/plan` gains a second tier. Alongside writing the **active** named plan directly (`--name`), a coordinator can **stage** a plan into an inactive tier and **activate** it later when a worker picks it up. Staged plans are **inert** — invisible to `/work` and `/queue-status-lite` until activated.
+Alongside writing the active named plan directly (`--name`), `/plan` can stage a plan into an inactive tier and activate it later when a worker picks it up. Staged plans are inert — invisible to `/work` and `/queue-status-lite` until activated.
 
 ### The four `/plan` modes
 
@@ -129,7 +125,7 @@ The `developer-workflows` phase commands `/work`, `/plan`, and `/review` accept 
 
 ### Implementation
 
-A new `scripts/stage_plan.py` (stdlib-only, pure-core + injectable resolver, mirroring `resolve_plan.py`) owns both verbs. It is **composed onto** `resolve_plan.resolve` — it never re-derives the `_harness/` location or the vault redirect; it takes the resolved *active* `PLAN-<slug>.md` and composes `queued-plans/` onto its parent.
+`scripts/stage_plan.py` (stdlib-only, pure-core + injectable resolver, mirroring `resolve_plan.py`) owns both verbs. It composes onto `resolve_plan.resolve` rather than re-deriving the `_harness/` location or the vault redirect: it takes the resolved active `PLAN-<slug>.md` and composes `queued-plans/` onto its parent.
 
 | Component | Location | Role |
 |---|---|---|
@@ -139,18 +135,13 @@ A new `scripts/stage_plan.py` (stdlib-only, pure-core + injectable resolver, mir
 | `_QUEUED_DIR = "queued-plans"` | [`stage_plan.py:64`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/stage_plan.py#L64) | The flat staging-dir name (crickets flat-vault convention). |
 | CLI verbs `path` / `activate` | [`stage_plan.py:148`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/stage_plan.py#L148) (`_build_parser`) | Invoked as `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/stage_plan.py" path <slug>` and `... activate <slug>`. Exit codes align with `resolve_plan.py`: `0` ok, `1` graceful-skip propagated from the resolver, `2` loud refusal. |
 
-The `--stage` / `--activate` modes are wired in [`commands/plan.md:35`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/commands/plan.md#L35) (the four-mode block; `--stage` bullet at [`:39`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/commands/plan.md#L39), `--activate` bullet at [`:40`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/commands/plan.md#L40)) with an updated `argument-hint` at [`:8`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/commands/plan.md#L8).
+The `--stage` / `--activate` modes are wired in [`commands/plan.md`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/commands/plan.md). Staged plans stay invisible to `/queue-status-lite` because `queue_status._list_plan_files` globs `PLAN-*.md` non-recursively, so the `queued-plans/` subdir is skipped.
 
-The **staged = inert** invariant is free, not a new change: `queue_status._list_plan_files` root-globs `PLAN-*.md` **non-recursively** ([`queue_status.py:138`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/queue_status.py#L138)), so the `queued-plans/` subdir is naturally skipped — that is the load-bearing reason staged plans are invisible to `/queue-status-lite`. `queue_status.py` was **not** modified for staging.
-
-Locked by `scripts/test_stage_plan.py` — 14 hermetic tests over both resolver backends (standalone `.harness/` fallback + a stub proving the vault redirect is honored, not `<root>/.harness`), the three `activate` guards (happy-path bytes-verbatim, collision-refuses-leaving-active-untouched, missing-staged-refuses), copy-not-move, the negative invariant that a staged plan is not returned by `queue_status._list_plan_files`, and the `main()` CLI.
-
-> [!NOTE]
-> **Not in scope of this plan:** surfacing staged plans in `/queue-status-lite` (staged = inactive *by design*). The queue glance continues to list only the active tier — see [Reading the queue](#reading-the-queue--queue-status-lite).
+Locked by `scripts/test_stage_plan.py`.
 
 ## Reading the queue — `/queue-status-lite`
 
-The read complement to the `--name` writers above. `/queue-status-lite` lists **every** active plan in the harness dir — for each, its name, its `Status:` line, and the most-recent entry of the matching `progress*.md` — and prints that dashboard. It takes **no** `--name` flag: it enumerates the whole queue, not one pair. It is the coordinator's *glance* — **read-only by contract**: no claim, no lease, no arbitration, no writes. It surfaces the queue and decides nothing; the human stays the arbiter of who works which plan. It is **not a gate**. The task recipe is in [See every active plan](See-Every-Active-Plan).
+The read complement to the `--name` writers above. `/queue-status-lite` lists every active plan in the harness dir — for each, its name, its `Status:` line, and the most-recent entry of the matching `progress*.md`. It takes no `--name` flag: it enumerates the whole queue, not one pair. It is read-only by contract — no claim, no lease, no arbitration, no writes, not a gate; the human stays the arbiter of who works which plan. The task recipe is in [See every active plan](See-Every-Active-Plan).
 
 | Property | Value |
 |---|---|
@@ -173,14 +164,11 @@ The read complement to the `--name` writers above. `/queue-status-lite` lists **
 | Delegate target | agentm's shipped `queue_status_lite.py` reader when an agentm clone is locatable |
 | Standalone fallback | a minimal local `.harness/` dashboard mirroring the reader's format |
 
-When an agentm clone is installed the bridge **delegates** to agentm's `queue_status_lite.py` and re-emits its stdout verbatim — that reader is the single owner of the enumeration + render (naming contract, GDrive-conflict skipping, vault redirection). With no clone the bridge renders the minimal local dashboard itself, so the glance degrades rather than vanishing — a clean graceful-skip, never an error. It imports the agentm-clone lookup and the PLAN→progress naming helpers from the resolver bridge (`resolve_plan.py`), so that logic has one owner and is never copied.
-
-> [!NOTE]
-> `/queue-status-lite` adds **zero** agentm changes: it direct-shells to the *already-shipped* standalone reader — no new agentm verb. It is the read side of the multi-plan surface whose writers are the `--name`-aware `/work` / `/plan` / `/review` above.
+When an agentm clone is installed the bridge delegates to agentm's `queue_status_lite.py` and re-emits its stdout verbatim (that reader owns the naming contract, GDrive-conflict skipping, and vault redirection). With no clone the bridge renders the minimal local dashboard itself — a graceful-skip, never an error. The agentm-clone lookup and the PLAN→progress naming helpers come from the resolver bridge (`resolve_plan.py`).
 
 ## Spawning a worker worktree
 
-`/spawn-worker <name>` gives a named plan its own isolated checkout. It is **operator-initiated** — a normal session never spawns a worktree on its own; this command is the sanctioned way to create one for a worker. It fits the coordinator flow after a plan is staged and activated: `/plan --stage` → `/plan --activate` → **`/spawn-worker`** → launch a `/work` session in the new worktree. The task recipe is in [Spawn a worker in a worktree](Spawn-A-Worker-In-A-Worktree).
+`/spawn-worker <name>` gives a named plan its own isolated checkout. It is operator-initiated — a normal session never spawns a worktree on its own. It fits the coordinator flow after a plan is staged and activated: `/plan --stage` → `/plan --activate` → `/spawn-worker` → launch a `/work` session in the new worktree. The task recipe is in [Spawn a worker in a worktree](Spawn-A-Worker-In-A-Worktree).
 
 | Property | Value |
 |---|---|
@@ -193,15 +181,13 @@ When an agentm clone is installed the bridge **delegates** to agentm's `queue_st
 | Helper | wraps `scripts/spawn_worker.py` (inside the `developer-workflows` plugin), invoked as `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/spawn_worker.py" <name>`; accepts `--project-root <path>` / `--worktree-path <path>`. Stdlib-only; mirrors `resolve_plan.py`'s pure-core + injectable-backend shape. Exit codes: `0` ok (worktree path on stdout), `1` graceful-skip (located resolver, no resolvable harness), `2` loud refusal (empty/singleton/unsafe name, no-clobber path/branch collision, resolver refusal, or failed `git worktree add` — never a partial spawn) |
 
 > [!NOTE]
-> **Operator authority, two forms.** Worker worktrees require operator authority — either an explicit `/spawn-worker` command (where the invocation is the authority) or a durable `isolation.mode: worktree-per-plan` config opt-in in `.harness/project.json` (where the config field is the authority). Silent authority-free auto-spawn stays forbidden. The explicit-command decision is in the [Developer safety design](crickets-developer-safety); the config-opt-in extension is also in the [Developer safety design](crickets-developer-safety).
+> **Operator authority, two forms.** Worker worktrees require operator authority — either an explicit `/spawn-worker` command (where the invocation is the authority) or a durable `isolation.mode: worktree-per-plan` config opt-in in `.harness/project.json` (where the config field is the authority). Silent authority-free auto-spawn stays forbidden. Both forms are decided in the [Developer safety design](crickets-developer-safety).
 >
 > With `isolation.mode: worktree-per-plan` set, `/work` and `/bugfix` auto-spawn a `worker/<slug>` worktree at step 1.5 (isolation check) and finalize it (push + open PR) at the plan's end via `finalize_unit.py`. The `isolation_config.should_auto_isolate()` check is the authority gate; `is_inside_worktree()` prevents nested spawns.
 
 ## Integrating a worker
 
-`/integrate-worker <name>` is the coordinator-side counterpart to [`/spawn-worker`](#spawning-a-worker-worktree) — it **lands** a finished worker. It closes the worker lifecycle: `/plan --stage` → `/plan --activate` → `/spawn-worker` → run `/work` in the worktree → **`/integrate-worker`**. It is **operator-initiated** and merge order is **human-decided** — it integrates the one worker you name, when you name it, and never auto-sequences merges. The task recipe is in [Integrate a worker](Integrate-A-Worker).
-
-The gate runs on the **integrated** tree (the post-merge result), not the worker branch in isolation — so an integration conflict between the worker's work and newer `main` is actually caught — and `main` is protected by a hard-reset-on-red rollback, so it is **never left broken**.
+`/integrate-worker <name>` is the coordinator-side counterpart to [`/spawn-worker`](#spawning-a-worker-worktree) — it lands a finished worker, closing the lifecycle: `/plan --stage` → `/plan --activate` → `/spawn-worker` → run `/work` in the worktree → `/integrate-worker`. It is operator-initiated and merge order is human-decided; it never auto-sequences merges. The gate runs on the integrated (post-merge) tree, not the worker branch in isolation, and a red gate hard-resets `main` so it is never left broken. The task recipe is in [Integrate a worker](Integrate-A-Worker).
 
 | Property | Value |
 |---|---|
@@ -226,11 +212,11 @@ The gate runs on the **integrated** tree (the post-merge result), not the worker
 | `_prune()` / `_branch_safe_gone()` | [`integrate_worker.py:217`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/integrate_worker.py#L217), [`:196`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/integrate_worker.py#L196) | Green-path cleanup: removes the worktree (worktree-first), then safe-deletes the branch with `git branch -d` (not `-D` — `--no-ff` made it an ancestor of HEAD). A promote/prune failure is reported but never undoes the merge. |
 | Command wiring | [`commands/integrate-worker.md`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/commands/integrate-worker.md) | The operator-facing `/integrate-worker`. Wires the real gate (`bash scripts/check-all.sh` on the merged tree), surfaces helper output verbatim, never pushes. |
 
-Locked by `scripts/test_integrate_worker.py` — 18 hermetic tests over the guards (resolve-first, named-only, branch/worktree discovery, detached/dirty refusals), the conflict-abort and red-gate rollback paths, and the green promote-then-prune.
+Locked by `scripts/test_integrate_worker.py`.
 
 ### Pre-mutation guards
 
-All run **before** any merge — a refusal (exit 2) leaves `main` and the worktree untouched, so there is no partial integration to clean up. The command refuses when:
+All run before any merge — a refusal (exit 2) leaves `main` and the worktree untouched, so there is no partial integration to clean up. The command refuses when:
 
 | Condition | Behavior |
 |---|---|
@@ -242,7 +228,7 @@ All run **before** any merge — a refusal (exit 2) leaves `main` and the worktr
 
 ### Orphaned-worktree doctor probe
 
-A read-only `doctor_worktrees.py` (operator-run) lists every `worker/<slug>` worktree and classifies each with its plan mapping. It is the cleanup complement to `/integrate-worker` — **zero mutation**; the coordinator prunes on demand. The probe is **anchored on worker branches** (`git for-each-ref refs/heads/worker/`) correlated with `git worktree list --porcelain`, so it reports both lingering branches with no worktree and worktrees whose directory is gone — not only the worktrees on disk.
+A read-only `doctor_worktrees.py` (operator-run) lists every `worker/<slug>` worktree and classifies each with its plan mapping. It is the cleanup complement to `/integrate-worker` — zero mutation; the coordinator prunes on demand. The probe correlates worker branches (`git for-each-ref refs/heads/worker/`) with `git worktree list --porcelain`, so it reports both lingering branches with no worktree and worktrees whose directory is gone — not only the worktrees on disk.
 
 | Property | Value |
 |---|---|
@@ -271,7 +257,7 @@ The four states, in precedence order:
 | `_format()` | [`doctor_worktrees.py:211`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/doctor_worktrees.py#L211) | Renders the report: a header tally (counts per status) plus, per worktree, its branch · status · plan slug, the worktree path (or `(no worktree)`), and a `→` detail line. Pure — formats a list into a string. |
 | `main()` | [`doctor_worktrees.py:239`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/doctor_worktrees.py#L239) | The CLI: parses `--project-root`, prints `_format(diagnose(root))`, and **returns `0` always** — a read-only diagnostic, never a gate. |
 
-Locked by `scripts/test_doctor_worktrees.py` — 7 hermetic tests over real git in throwaway temp repos: all five reachable states classified correctly (active / merged-but-unpruned / orphaned-dir-gone / orphaned-no-worktree / dangling-marker incl. blank marker), the plan mapping, and a full before/after snapshot (worktree registry + every ref + HEAD + on-disk dirs) asserting the probe leaves the repo byte-identical (read-only).
+Locked by `scripts/test_doctor_worktrees.py`.
 
 ## `/work` argument parse rule
 
@@ -299,7 +285,7 @@ Named-plan resolution is **not** reimplemented in `developer-workflows`. The com
 | Standalone fallback to plain `.harness/` | the `developer-workflows` bridge |
 
 > [!IMPORTANT]
-> The commands **read** the `.harness/active-plan` marker (via the resolver) but write none. The explicit `--name <slug>` flag is the binding mechanism. A present-but-unresolvable marker surfaces a **loud error + non-zero exit** through the whole bridge — it never silently falls back to whatever `PLAN.md` happens to be there (the worker→plan mis-binding foot-gun). The sticky per-worktree marker *writer* is a separate, out-of-scope plan.
+> The commands **read** the `.harness/active-plan` marker (via the resolver) but write none. The explicit `--name <slug>` flag is the binding mechanism. A present-but-unresolvable marker surfaces a **loud error + non-zero exit** through the whole bridge — it never silently falls back to whatever `PLAN.md` happens to be there (the worker→plan mis-binding foot-gun).
 
 ### Resolver bridge
 
@@ -311,7 +297,7 @@ Named-plan resolution is **not** reimplemented in `developer-workflows`. The com
 | On dangling marker / unsafe slug | non-zero exit + stderr message (never a singleton fallback) |
 | Delegate target | agentm `process_seam.py state-path` (via `find_process_seam.py`) when the seam is discoverable; else the standalone fallback |
 
-The `--name <slug>` flag is a **command-level** convention: `/work`, `/plan`, and `/review` parse it out of their arguments and pass the extracted slug **positionally** to this bridge — the bridge's own CLI takes the name as a positional argument, not a flag. The bridge discovers agentm's process seam via `find_process_seam.py` (path-fallback: `$AGENTM_SCRIPTS_DIR` → co-located → `~/Antigravity/agentm/scripts/`); it issues two `process_seam.py state-path` calls (one for plan, one for progress) and reassembles the tab-separated output. `locate_resolver()` is retained in `resolve_plan.py` as a compatibility alias for `queue_status.py`'s agentm-scripts-dir lookup only — it is no longer used for plan resolution itself (V5-4, `developer-workflows` 0.25.0).
+The `--name <slug>` flag is a command-level convention: `/work`, `/plan`, and `/review` parse it out of their arguments and pass the extracted slug positionally to this bridge, whose own CLI takes the name as a positional argument, not a flag. The bridge discovers agentm's process seam via `find_process_seam.py` (path-fallback: `$AGENTM_SCRIPTS_DIR` → co-located → `~/Antigravity/agentm/scripts/`), issues two `process_seam.py state-path` calls (plan and progress), and reassembles the tab-separated output.
 
 ## Standalone fallback (no agentm installed)
 
@@ -323,7 +309,7 @@ When no hosting memory layer is locatable, the bridge degrades to plain `.harnes
 | `<slug>` | `.harness/PLAN-<slug>.md` + `.harness/progress-<slug>.md` |
 | unsafe slug | rejected locally — non-zero exit, no path printed |
 
-The bare paths are **byte-identical** to today's literals; this is locked by an executable test, not a promise.
+The bare paths are byte-identical to the singleton literals, locked by an executable test.
 
 ## Related
 
