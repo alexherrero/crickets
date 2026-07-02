@@ -1,19 +1,16 @@
 ---
 name: ship-release
-description: Pre-release checklist and release discipline — CI green on every OS, version bump committed, CHANGELOG authored, dist/ committed, paired-release order locked for cross-repo releases.
+description: Release discipline and mechanics in one skill — pre-release checklist (CI green on every OS, version bump committed, CHANGELOG authored, dist/ committed, paired-release order locked for cross-repo releases), then the mechanical cut (conventional-commit semver auto-sizing, CHANGELOG prepend, tag, push, `gh release create`).
 kind: skill
 supported_hosts: [claude-code, antigravity]
-version: 0.1.0
+version: 0.2.0
 install_scope: project
 ---
 
-You are running the `ship-release` skill. Apply these conventions every time you prepare, tag, or publish a release.
-
-> For the **mechanical release workflow** (conventional-commit classification, semver auto-sizing, CHANGELOG prepend, `git tag`, `gh release create`), see the standalone `ship-release` skill. This skill owns the **discipline**: the pre-release checklist, changelog shape, paired-release order, and version bump policy that must be satisfied before any release action fires.
+You are running the `ship-release` skill. Work through the pre-release checklist below before cutting anything, then run the mechanical workflow to tag and publish. Trigger phrases: "ship a release", "cut a release", "tag a release", or reviewing a diff that claims to be "release-ready."
 
 ## When to invoke
 
-- Before running `/release` or the `ship-release` standalone skill.
 - Before tagging a release commit.
 - Before publishing an updated plugin to any marketplace.
 - When reviewing a diff that claims to be "release-ready."
@@ -28,7 +25,7 @@ Work through every item. If any is incomplete, fix it before proceeding — do n
 4. **`dist/` regenerated and committed.** For repos where `dist/` is generated from `src/` (e.g. crickets), `generate.py build` must have been run and the result committed. The drift gate (`generate drift` in `check-all.sh`) enforces this — run it before tagging.
 5. **`features.json` current.** Every feature this release ships must have `passes: true`. Features still under development must not appear in the release notes.
 6. **No orphan PRs.** No open PRs that should be part of this release are left unmerged. A release should represent a complete, coherent unit of work.
-7. **`check-all.sh` green.** Run the full gate battery (`bash scripts/check-all.sh`) on the release commit and confirm 10/10 PASS before tagging.
+7. **`check-all.sh` green.** Run the full gate battery (`bash scripts/check-all.sh`) on the release commit and confirm every gate passes before tagging.
 
 ## Changelog shape
 
@@ -57,3 +54,107 @@ When two or more repos release together (e.g. `crickets` + `agentm`):
 - **Bump only the affected group's `group.yaml`.** A change to `developer-workflows` does not bump `code-review`. Each group versions independently.
 - **Never bump on a worker branch.** In the concurrent-worker (Model-A) protocol, `group.yaml` version bumps are integrator-only — performed once by `/integrate-worker` after all workers for a release batch have merged. A solo PR (no concurrent workers) bumps the group.yaml in the same PR.
 - **Never skip a version.** If the last release was `0.3.1` and you're shipping a minor, the next version is `0.4.0`, not `0.5.0` or `1.0.0`.
+
+## Mechanical workflow
+
+Once the pre-release checklist above is satisfied, cut the release.
+
+### Preconditions (check first, abort if not met)
+
+1. `gh auth status` — authenticated.
+2. Current branch is the default branch (`gh repo view --json defaultBranchRef -q .defaultBranchRef.name`).
+3. Working tree clean: `git status --porcelain` empty.
+4. Local is pushed: `git fetch && [ -z "$(git log origin/HEAD..HEAD --oneline)" ]`.
+5. At least one commit since the last tag. If `git describe --tags HEAD` equals the last tag exactly, abort with "nothing to ship".
+
+### Input handling
+
+The user may pass:
+- **No argument** → auto-size from commits.
+- **`patch` / `minor` / `major`** → force that size.
+- **`vX.Y.Z`** → use verbatim, skip auto-sizing.
+- **`--dry-run`** → compute + print, don't tag.
+- **`--draft`** → create as draft release.
+
+### 1. Classify commits in the range
+
+```bash
+PREV=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+RANGE="${PREV:+${PREV}..}HEAD"
+git log "$RANGE" --pretty=format:'%s%n%b%n---COMMIT---'
+```
+
+Classification rules:
+- `feat!:`, `fix!:`, any `!:` subject, or body contains `BREAKING CHANGE:` → **major**
+- `feat:` or `feat(scope):` → **minor**
+- `fix:`, `perf:`, `refactor:` → **patch**
+- `docs:`, `chore:`, `test:`, `ci:`, `build:` → **no-bump**
+- Anything else → **patch**
+
+Take the max across all commits. Respect the user's size hint if it's *larger*; warn + confirm if it's *smaller*.
+
+### 2. Compute next version
+
+Parse `PREV` as `vMAJOR.MINOR.PATCH`. Bump per the resolved size. If no prior tag, propose `v0.1.0`. This should already match the `group.yaml` bump from checklist item 2 — if it doesn't, flag the mismatch before proceeding rather than silently retagging a different version than what shipped.
+
+### 3. Draft release notes
+
+Group commits by section (Added / Changed / Fixed / Breaking / Internal), newest first, following the **Changelog shape** above. Show the draft to the user for edit before tagging. Sections with no commits are omitted.
+
+### 4. Update CHANGELOG.md
+
+Prepend a new section to `CHANGELOG.md` at repo root (create if missing, with a Keep-a-Changelog-style header). Commit it with message `chore(release): vX.Y.Z`. Show the diff and confirm before committing.
+
+### 5. Tag + push + release
+
+```bash
+git tag -a "vX.Y.Z" -m "Release vX.Y.Z — <title>"
+git push origin HEAD
+git push origin "vX.Y.Z"
+gh release create "vX.Y.Z" \
+  --title "vX.Y.Z — <title>" \
+  --notes-file .release-notes.md \
+  --verify-tag
+```
+
+If any step fails, delete the local tag (`git tag -d vX.Y.Z`) before exiting.
+
+### 6. Print the release URL
+
+`gh release view vX.Y.Z --json url -q .url`.
+
+### 7. Confirm + link
+
+Print the release URL. If the project's wiki has a `how-to/Cut-A-Release.md` or `operational/Runbook.md`, remind the user to note anything about the release that a future operator would need to know (rollback steps, migrations).
+
+## Guardrails
+
+- Never push to a non-default branch.
+- Never overwrite or move existing tags.
+- Never include uncommitted changes.
+- Never amend the release commit after tagging.
+
+## Output contract
+
+On success:
+
+```
+ship-release: cut vX.Y.Z
+  commits:   N (maj/min/patch classification)
+  notes:     CHANGELOG.md updated + pushed
+  release:   https://github.com/<owner>/<repo>/releases/tag/vX.Y.Z
+```
+
+On abort, one line: what failed and what the user should do next.
+
+## Failure modes
+
+- **Unpushed commits on default branch** → abort. The release tag must point at a commit that's on the remote, otherwise the GitHub release references a SHA collaborators don't have.
+- **Dirty working tree** → abort. Don't force-stash.
+- **Existing tag collision** → abort. Never overwrite.
+- **Push fails** (protected branch, auth) → leave the local tag in place; print the `gh release create` invocation the user can run by hand after they push.
+- **User rejects the draft notes** → save the draft to `.release-notes.md` and exit; user edits and re-runs the skill.
+
+## Migration history
+
+Two same-named skills existed side by side: the discipline checklist, authored directly in crickets `releasing-conventions` (v0.1.0), and the mechanical executor, originally shipped in `agentm v0.8.0` as a harness-bundled skill and migrated to crickets in toolkit v0.1.0 (paired with `agentm v2.0.0`) because the mechanics are broadly useful outside harness-installed projects. The migrated copy kept living in `agentm harness/skills/ship-release/` as well, so the two repos drifted into duplicate skills of the same name, with this file pointing at "the standalone skill" for mechanics it didn't itself contain. **Consolidated 2026-07-01 (v0.2.0):** the mechanical sections above are folded in; agentm's local copy is removed, and agentm now treats `ship-release` as a crickets-provided graceful-skip skill (its `R-changelog` detection rule still recommends installing it, exactly as `R-dependabot` recommends `dependabot-fixer`). The `/release` phase (crickets `developer-workflows`) suggests this skill as the post-merge follow-up, with a graceful-skip line if `crickets` isn't installed.

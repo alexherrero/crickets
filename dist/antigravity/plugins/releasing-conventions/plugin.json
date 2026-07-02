@@ -5,5 +5,5 @@
   },
   "description": "Ship-release workflow and release discipline — pre-release checklist, changelog-shape convention, and paired-release discipline for cross-repo coordinated releases.",
   "name": "releasing-conventions",
-  "version": "0.1.2"
+  "version": "0.2.0"
 }

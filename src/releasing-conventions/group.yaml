@@ -6,4 +6,6 @@ standalone: false
 capabilities: [releasing-conventions]
 # 0.1.2 = declare capabilities: [releasing-conventions] (AG Phase-2 hygiene;
 #          transitional self-name — merges into `conventions` with resolver aliasing in Phase-3).
-version: 0.1.2
+# 0.2.0 = merged agentm's mechanical ship-release executor (semver auto-sizing, CHANGELOG
+#          prepend, tag/push/gh-release) into this skill; agentm's duplicate copy retired.
+version: 0.2.0
