@@ -39,4 +39,4 @@ The capabilities crickets ships — built, generated, and composed by the system
 ## Recent changes
 
 > [!NOTE]
-> **Latest: the architecture's designs were reviewed and locked (2026-06-28).** Every high-level design and its sub-designs were finalized — the diagrams standardized to one house style, and each decision recorded in its own design's history. See [Designs](Designs) for the full set.
+> **Latest: the design set is complete and published ([v3.23.0](https://github.com/alexherrero/crickets/releases/tag/v3.23.0), 2026-07-01).** Every plugin now has a combined Architecture + Reference page, and each decision lives in its design's own history — the standalone ADR model is retired. See [Designs](Designs) for the full set.

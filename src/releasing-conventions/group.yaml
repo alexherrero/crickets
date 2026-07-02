@@ -8,4 +8,6 @@ capabilities: [releasing-conventions]
 #          transitional self-name — merges into `conventions` with resolver aliasing in Phase-3).
 # 0.2.0 = merged agentm's mechanical ship-release executor (semver auto-sizing, CHANGELOG
 #          prepend, tag/push/gh-release) into this skill; agentm's duplicate copy retired.
-version: 0.2.0
+# 0.2.1 = add the "update the latest-release note (README + Home)" step to the mechanical
+#          workflow — the merge tagged releases without it, leaving the note a version behind.
+version: 0.2.1

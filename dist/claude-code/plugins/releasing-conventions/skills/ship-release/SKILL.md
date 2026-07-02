@@ -3,7 +3,7 @@ name: ship-release
 description: Release discipline and mechanics in one skill — pre-release checklist (CI green on every OS, version bump committed, CHANGELOG authored, dist/ committed, paired-release order locked for cross-repo releases), then the mechanical cut (conventional-commit semver auto-sizing, CHANGELOG prepend, tag, push, `gh release create`).
 kind: skill
 supported_hosts: [claude-code, antigravity]
-version: 0.2.0
+version: 0.2.1
 install_scope: project
 ---
 
@@ -103,9 +103,15 @@ Group commits by section (Added / Changed / Fixed / Breaking / Internal), newest
 
 ### 4. Update CHANGELOG.md
 
-Prepend a new section to `CHANGELOG.md` at repo root (create if missing, with a Keep-a-Changelog-style header). Commit it with message `chore(release): vX.Y.Z`. Show the diff and confirm before committing.
+Prepend a new section to `CHANGELOG.md` at repo root (create if missing, with a Keep-a-Changelog-style header). Show the diff and confirm. Do not commit yet — the latest-release note (next step) lands in the same commit.
 
-### 5. Tag + push + release
+### 5. Update the latest-release note (if the repo has one)
+
+Many repos carry a one-line **latest-release note** — a blockquote callout in `README.md` and the wiki `Home.md` of the form `**Latest release: [vX.Y.Z](…/releases/tag/vX.Y.Z).** <one plain-language sentence on what shipped>`. It is a documented, release-driven element (see the project's `documentation` convention, "Home.md and the repo README"): the README mirrors Home, so update **both** in the same pass. Rewrite the version number, the release-tag link, and the summary sentence so it describes *this* release in plain, user-facing terms — a benefit or headline change, not a changelog dump. Then commit `CHANGELOG.md` + both notes together with message `chore(release): vX.Y.Z`; show the diff before committing.
+
+If the repo has no such note, skip this step. Leave the wiki Architecture "Recent changes" block alone — that is a separate, as-needed architectural narrative, not a per-release element.
+
+### 6. Tag + push + release
 
 ```bash
 git tag -a "vX.Y.Z" -m "Release vX.Y.Z — <title>"
@@ -119,11 +125,11 @@ gh release create "vX.Y.Z" \
 
 If any step fails, delete the local tag (`git tag -d vX.Y.Z`) before exiting.
 
-### 6. Print the release URL
+### 7. Print the release URL
 
 `gh release view vX.Y.Z --json url -q .url`.
 
-### 7. Confirm + link
+### 8. Confirm + link
 
 Print the release URL. If the project's wiki has a `how-to/Cut-A-Release.md` or `operational/Runbook.md`, remind the user to note anything about the release that a future operator would need to know (rollback steps, migrations).
 
@@ -141,7 +147,7 @@ On success:
 ```
 ship-release: cut vX.Y.Z
   commits:   N (maj/min/patch classification)
-  notes:     CHANGELOG.md updated + pushed
+  notes:     CHANGELOG.md + latest-release note (README + Home) updated + pushed
   release:   https://github.com/<owner>/<repo>/releases/tag/vX.Y.Z
 ```
 
@@ -158,3 +164,5 @@ On abort, one line: what failed and what the user should do next.
 ## Migration history
 
 Two same-named skills existed side by side: the discipline checklist, authored directly in crickets `releasing-conventions` (v0.1.0), and the mechanical executor, originally shipped in `agentm v0.8.0` as a harness-bundled skill and migrated to crickets in toolkit v0.1.0 (paired with `agentm v2.0.0`) because the mechanics are broadly useful outside harness-installed projects. The migrated copy kept living in `agentm harness/skills/ship-release/` as well, so the two repos drifted into duplicate skills of the same name, with this file pointing at "the standalone skill" for mechanics it didn't itself contain. **Consolidated 2026-07-01 (v0.2.0):** the mechanical sections above are folded in; agentm's local copy is removed, and agentm now treats `ship-release` as a crickets-provided graceful-skip skill (its `R-changelog` detection rule still recommends installing it, exactly as `R-dependabot` recommends `dependabot-fixer`). The `/release` phase (crickets `developer-workflows`) suggests this skill as the post-merge follow-up, with a graceful-skip line if `crickets` isn't installed.
+
+**Refined 2026-07-01 (v0.2.1):** added the "Update the latest-release note" step (README + wiki `Home.md`). The merged mechanical workflow tagged the release without touching the documented, release-driven latest-release note, so every cut left it one version behind — a step the old manual habit carried but the skill never encoded. The Architecture "Recent changes" block is deliberately out of scope: it is a separate, as-needed architectural narrative, not a per-release element.

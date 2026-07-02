@@ -39,4 +39,4 @@ The [wiki](https://github.com/alexherrero/crickets/wiki) covers everything there
 ---
 
 > [!NOTE]
-> **Latest release: [v3.22.0](https://github.com/alexherrero/crickets/releases/tag/v3.22.0).** The dev-loop plugin now reads your active plan and progress through AgentM's official interface instead of reaching into its files. A cleaner connection between the two, and nothing changes in how you use it.
+> **Latest release: [v3.23.0](https://github.com/alexherrero/crickets/releases/tag/v3.23.0).** Releasing is one skill now — `ship-release` runs the pre-release checklist and then cuts the release, including the mechanics that used to live in AgentM. Crickets is also dual-licensed now (code Apache-2.0, docs and prompts CC-BY-4.0), and every plugin has a combined reference page in the wiki.
