@@ -227,6 +227,13 @@ codification — until then the monoliths stay.
   How it works explains the mechanism in plain speech. Keep implementation detail (internal names, exact
   paths, event/hook names, install order) out of the prose; it belongs in the reference tables. (Pass-1:
   the plugin pages simplified from spec-dense openers to spoken prose — Developer-Safety is the exemplar.)
+- **Explanation pages lead with the why (the four-beat shape).** An explanation page's opening must
+  deliver the same why its landing bullet promised — the motivating reason, reasoned out, in the first
+  paragraph, before any table / definition / diagram / mechanics. Then the trade-off, then what it is
+  not. The common failure is a page that argues the why well but buries it under a definition or a
+  fact-table; `templates/explanation.md` bakes the four beats in so the why can't be displaced. (Pass-1:
+  the Explanation-why audit — 5 of 14 pages had the why present but not leading; Memory-Process-Seam and
+  Why-Deterministic-Gates are the exemplars.)
 - **Strip plan-internal jargon + implementation internals from user-facing pages.** Cut design-call
   codes (`DC-W4`, `DC-8`), task/part numbers (`part 4`, `task 1-4`), internal IDs (`(W1)`), and bucket
   labels; cut implementation names a reader doesn't act on — resolver/function names, internal `.py`
