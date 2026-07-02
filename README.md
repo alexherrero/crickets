@@ -65,18 +65,13 @@ The [wiki](https://github.com/alexherrero/crickets/wiki) covers everything there
 
 ## Contributing
 
-Self-tested on every push by three per-OS workflows (Linux, Mac, Windows) running in parallel. Run the same deterministic battery locally with `bash scripts/check-all.sh`. Details and the full invariant list in [CONTRIBUTING.md](CONTRIBUTING.md).
+Contributions are welcome. Fork the repo, work on a branch, and open a pull request — here's what makes it land smoothly:
+
+- **Get your bearings.** [Plugin anatomy](https://github.com/alexherrero/crickets/wiki/Plugin-Anatomy) explains what a plugin is and how it's built; the [Add a plugin](https://github.com/alexherrero/crickets/wiki/Add-A-Plugin), [Add a skill](https://github.com/alexherrero/crickets/wiki/Add-A-Skill), and [Modify a plugin](https://github.com/alexherrero/crickets/wiki/Modify-A-Plugin) how-tos walk the authoring steps.
+- **Run the checks before you push.** `bash scripts/check-all.sh` runs the same deterministic battery CI does — the unit suite plus every gate. The full invariant list is in [CONTRIBUTING.md](CONTRIBUTING.md).
+- **What CI does with your PR.** Every push runs three per-OS workflows (Linux, macOS, Windows) in parallel; all of them need to be green before a PR can merge. The [CI gates](https://github.com/alexherrero/crickets/wiki/CI-Gates) page lists what runs and what each one proves.
+- **Review turnaround.** Expect a first review within about a week.
 
 ## License
 
-Crickets is multi-licensed so each layer carries the license that fits it:
-
-| Layer | What it covers | License |
-|---|---|---|
-| **Code** | `.py`, `.sh`, `.ps1`, and configuration logic | [Apache-2.0](LICENSE) |
-| **Content** | docs, prompts, agent instructions, skill / command / workflow definitions, wiki, and other prose (`.md`) | [CC-BY-4.0](LICENSE-CONTENT) |
-| **Names & logos** | the "crickets" name and brand artwork | Trademark — see [TRADEMARK.md](TRADEMARK.md) |
-
-**Boundary rule:** prompt or instruction text embedded as a string literal inside a code file (e.g. a prompt inside a `.py` script) is **content** (CC-BY-4.0), even though it lives in a code file.
-
-Both licenses permit commercial use and derivative works; both require attribution. See [NOTICE](NOTICE) for the attribution string.
+Multi-licensed so each layer carries the license that fits it: code under [Apache-2.0](LICENSE), content — docs, prompts, prose, and other `.md` — under [CC-BY-4.0](LICENSE-CONTENT), and the "crickets" name and brand under [trademark](TRADEMARK.md). Prompt text embedded in a code file counts as content, even though it lives there. Both licenses allow commercial use and derivative works with attribution — see [NOTICE](NOTICE) for the attribution string.
