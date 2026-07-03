@@ -606,6 +606,83 @@ class TestApplyUpdate(unittest.TestCase):
             ps.apply_update(item, "task-foo", date="2026-06-14")
 
 
+class TestPostComment(unittest.TestCase):
+    def _task(self, issue=9):
+        return pm.Item(id="t1", type="task", title="T", issue=issue)
+
+    def _runner(self, comments=(), calls=None):
+        calls = calls if calls is not None else []
+
+        def runner(argv):
+            calls.append(argv)
+            if argv[:3] == ["gh", "issue", "view"]:
+                return json.dumps({"comments": [{"body": c} for c in comments]})
+            return ""
+        return runner, calls
+
+    def test_first_post_issues_comment(self):
+        runner, calls = self._runner(comments=[])
+        out = ps.post_comment(self._task(), "task-progress", _CFG, date="2026-07-03",
+                              commit="abc1234", summary="did x",
+                              runner=runner, dry_run=False)
+        self.assertEqual(out, "")
+        comment_calls = [c for c in calls if c[:3] == ["gh", "issue", "comment"]]
+        self.assertEqual(len(comment_calls), 1)
+        self.assertEqual(comment_calls[0][:4], ["gh", "issue", "comment", "9"])
+        self.assertIn("<!-- board:sha:abc1234 -->", comment_calls[0][-1])
+
+    def test_repost_same_sha_is_noop(self):
+        # list-and-match dedupe: the marker is already on an existing comment.
+        runner, calls = self._runner(comments=["<!-- board:sha:abc1234 -->"])
+        ps.post_comment(self._task(), "task-progress", _CFG, date="2026-07-03",
+                        commit="abc1234", summary="did x again",
+                        runner=runner, dry_run=False)
+        comment_calls = [c for c in calls if c[:3] == ["gh", "issue", "comment"]]
+        self.assertEqual(comment_calls, [])
+
+    def test_taskclose_marker_variant(self):
+        runner, calls = self._runner(comments=[])
+        ps.post_comment(self._task(), "task-closeout", _CFG, date="2026-07-03",
+                        commit="def5678", summary="shipped",
+                        runner=runner, dry_run=False)
+        comment_calls = [c for c in calls if c[:3] == ["gh", "issue", "comment"]]
+        self.assertEqual(len(comment_calls), 1)
+        self.assertIn("<!-- board:taskclose:t1 -->", comment_calls[0][-1])
+
+    def test_no_issue_is_noop(self):
+        runner, calls = self._runner(comments=[])
+        ps.post_comment(self._task(issue=None), "task-progress", _CFG,
+                        date="2026-07-03", commit="abc", summary="x",
+                        runner=runner, dry_run=False)
+        self.assertEqual(calls, [])
+
+    def test_non_task_update_type_is_noop(self):
+        runner, calls = self._runner(comments=[])
+        ps.post_comment(self._task(), "plan-progress", _CFG, date="2026-07-03",
+                        summary="x", runner=runner, dry_run=False)
+        self.assertEqual(calls, [])
+
+    def test_unreadable_comment_state_is_noop(self):
+        # A gh failure on the read must never risk a duplicate post.
+        def runner(argv):
+            raise ps.SyncError("boom")
+        calls = []
+        ps.post_comment(self._task(), "task-progress", _CFG, date="2026-07-03",
+                        commit="abc", summary="x",
+                        runner=lambda a: (calls.append(a), runner(a))[1],
+                        dry_run=False)
+        self.assertEqual(len(calls), 1)  # only the (failed) view call, no comment post
+
+    def test_dry_run_previews_without_posting(self):
+        runner, calls = self._runner(comments=[])
+        buf = io.StringIO()
+        ps.post_comment(self._task(), "task-progress", _CFG, date="2026-07-03",
+                        commit="abc1234", summary="did x",
+                        runner=runner, dry_run=True, out=buf)
+        self.assertIn("gh issue comment 9 --repo o/r --body", buf.getvalue())
+        self.assertEqual([c for c in calls if c[:3] == ["gh", "issue", "comment"]], [])
+
+
 class TestFindItem(unittest.TestCase):
     def _graph(self):
         return {

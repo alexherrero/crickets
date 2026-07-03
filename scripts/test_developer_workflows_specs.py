@@ -110,6 +110,17 @@ class TestWorkSpec(_NamedPlanWriterContract, unittest.TestCase):
         self.assertIn("hard stop", low)
         self.assertIn("never fall back to the singleton", low)
 
+    def test_board_sync_probe_degrades_to_silent_skip(self):
+        # board-write-path task 3: the per-commit comment surface rides the
+        # SAME step-10 call site (project_sync.py post --type task-progress) —
+        # no new probe, no new call site. This locks that the exit-1 skip
+        # semantics stay unchanged when github-projects/gh is unavailable.
+        self.assertIn(
+            'python3 "${CLAUDE_PLUGIN_ROOT}/scripts/find_capability.py" board-sync',
+            self.text)
+        self.assertIn("On **exit 1** (unavailable, or no `CLAUDE_PLUGIN_ROOT`) "
+                      "skip silently", self.text)
+
 
 class TestPlanSpec(_NamedPlanWriterContract, unittest.TestCase):
     """`/plan` can author a named PLAN-<slug>.md by consuming resolve_plan.py (T4)."""

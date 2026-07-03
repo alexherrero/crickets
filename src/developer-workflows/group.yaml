@@ -3,6 +3,10 @@ description: The phase-gated developer loop — /setup /plan /work /review /rele
 category: Coding
 requires: []
 standalone: true
+enhances:
+  - group: github-projects
+    capability: board-sync
+    effect: "/work's task close-out (step 10) posts a per-commit progress comment + a task-close comment (SHA-keyed dedupe, list-and-match — never --search) alongside the existing board-item body-fold, when github-projects is installed and gh is authenticated"
 # Per-plugin marketplace version. Bump on every release that ships new/changed
 # primitives so `claude plugin update developer-workflows@crickets` actually
 # pulls them (the marketplace entry compares this value; a static version no-ops

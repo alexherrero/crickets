@@ -353,6 +353,88 @@ def parse_created_issue_number(output):
     return int(m.group(1)) if m else None
 
 
+def issue_comment_argv(repo, number, body):
+    return ["gh", "issue", "comment", str(number), "--repo", repo, "--body", body]
+
+
+def issue_comments_view_argv(repo, number):
+    return ["gh", "issue", "view", str(number), "--repo", repo, "--json", "comments"]
+
+
+def commit_comment_marker(sha):
+    return f"<!-- board:sha:{sha[:7]} -->"
+
+
+def taskclose_comment_marker(item_id):
+    return f"<!-- board:taskclose:{item_id} -->"
+
+
+def render_commit_comment(repo_url, date, sha, summary):
+    return (f"{fmt_date(date)} ({commit_link(repo_url, sha)}): {summary}\n"
+            f"{commit_comment_marker(sha)}")
+
+
+def render_taskclose_comment(repo_url, item_id, outcome, sha, date):
+    return (f"**Outcome:** {outcome}  ·  **Landed:** {commit_link(repo_url, sha)} · "
+            f"{fmt_date(date)}\n{taskclose_comment_marker(item_id)}")
+
+
+def has_comment_marker(cfg, issue, marker, runner=None):
+    """List existing comments (list-and-match — never `--search`, which lags
+    the search index and risks a duplicate post on a re-run after a partial
+    failure) and report whether `marker` already appears in one.
+
+    Returns True/False when the read succeeds, or None when it can't be
+    determined (gh absent, unauthenticated, malformed response) — the caller
+    must treat None as "do not post" (never risk a duplicate on an unknown
+    state), not as "not yet posted."
+    """
+    runner = runner or _run_gh
+    try:
+        raw = runner(issue_comments_view_argv(cfg["github"]["repo"], issue))
+        data = json.loads(raw) if isinstance(raw, str) else raw
+        return any(marker in (c.get("body") or "") for c in data.get("comments", []))
+    except Exception:
+        return None
+
+
+def post_comment(item, update_type, cfg, *, date, commit=None, summary=None,
+                 runner=None, dry_run=True, out=None):
+    """Post a per-commit or task-close comment with SHA-keyed dedupe, alongside
+    (never instead of) the existing body-fold. No-op when the item has no
+    materialized issue yet (nothing to comment on), or when `update_type` isn't
+    a task-progress/task-closeout post — plan/feature progress lands from the
+    full sync, the same boundary `apply_update` already draws.
+    """
+    runner = runner or _run_gh
+    out = out if out is not None else sys.stdout
+    if item.issue is None:
+        return None
+    try:
+        itype, stage = update_type.rsplit("-", 1)
+    except ValueError:
+        return None
+    if itype != "task" or stage not in ("progress", "closeout"):
+        return None
+
+    repo_url = project_repo_url(cfg)
+    if stage == "progress":
+        marker = commit_comment_marker(commit)
+        body = render_commit_comment(repo_url, date, commit, summary)
+    else:
+        marker = taskclose_comment_marker(item.id)
+        body = render_taskclose_comment(repo_url, item.id, summary, commit, date)
+
+    if has_comment_marker(cfg, item.issue, marker, runner=runner) is not False:
+        return None  # already posted, or state unknown — never risk a duplicate
+
+    argv = issue_comment_argv(cfg["github"]["repo"], item.issue, body)
+    if dry_run:
+        print(GhCommand(argv).render(), file=out)
+        return None
+    return runner(argv)
+
+
 def fetch_current_body(cfg, issue, runner=None):
     """Fetch an existing issue's live body via a single `gh issue view` call,
     so the idempotency check compares against real state instead of always
@@ -606,6 +688,10 @@ def main(argv=None, *, runner=None):
     if args.update_type:
         apply_update(item, args.update_type, date=date,
                      commit=args.commit, summary=args.summary)
+        # The per-commit/task-close comment trail — a second surface alongside
+        # the body-fold above, not a replacement for it.
+        post_comment(item, args.update_type, cfg, date=date, commit=args.commit,
+                     summary=args.summary, runner=runner, dry_run=args.dry_run)
 
     # A single live read of the current body — real idempotency instead of
     # always forcing an update — for an item that already has a materialized
