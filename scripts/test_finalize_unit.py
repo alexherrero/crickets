@@ -14,10 +14,13 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
+import shutil
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
@@ -262,6 +265,59 @@ class TestFinalizeUnitMainExitCodes(unittest.TestCase):
         with patch.object(fu, "finalize_unit", return_value=result):
             ec = fu.main(["prog", "testslug", "--project-root", "/tmp"])
         self.assertEqual(ec, 0)
+
+
+class TestDefaultPiiGuard(unittest.TestCase):
+    """R0.6 regression: the default `_pii_guard` must be fail-open when the
+    real scanner (check-no-pii.sh) can't be found — not fail-closed. The
+    phantom `python3 -m pii_scrubber` entrypoint blocked every push on any
+    machine without a pip-importable pii_scrubber module, which is every
+    machine (the pii plugin ships only prose, no importable module)."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="fu-pii-"))
+        self.env_backup = dict(os.environ)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+        os.environ.clear()
+        os.environ.update(self.env_backup)
+
+    def _write_scanner(self, path: Path, exit_code: int) -> Path:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(f"#!/usr/bin/env bash\nexit {exit_code}\n", encoding="utf-8")
+        path.chmod(0o755)
+        return path
+
+    def test_scanner_absent_is_fail_open(self):
+        repo_root = self.tmp / "repo"
+        repo_root.mkdir()
+        home = self.tmp / "empty_home"
+        home.mkdir()
+        with mock.patch.dict(os.environ, {"AGENT_TOOLKIT_PATH": ""}, clear=False):
+            with mock.patch.object(Path, "home", return_value=home):
+                result = fu._pii_guard(str(repo_root))
+        self.assertTrue(result, "scanner absent must fail OPEN (pass), not closed")
+
+    def test_scanner_present_and_clean_passes(self):
+        repo_root = self.tmp / "repo"
+        repo_root.mkdir()
+        scanner = self._write_scanner(
+            self.tmp / "toolkit" / "scripts" / "check-no-pii.sh", exit_code=0
+        )
+        with mock.patch.dict(os.environ, {"AGENT_TOOLKIT_PATH": str(self.tmp / "toolkit")}):
+            result = fu._pii_guard(str(repo_root))
+        self.assertTrue(result)
+
+    def test_scanner_present_and_finds_pii_blocks(self):
+        repo_root = self.tmp / "repo"
+        repo_root.mkdir()
+        scanner = self._write_scanner(
+            self.tmp / "toolkit" / "scripts" / "check-no-pii.sh", exit_code=1
+        )
+        with mock.patch.dict(os.environ, {"AGENT_TOOLKIT_PATH": str(self.tmp / "toolkit")}):
+            result = fu._pii_guard(str(repo_root))
+        self.assertFalse(result)
 
 
 if __name__ == "__main__":

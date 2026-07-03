@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -34,19 +35,42 @@ from pr_helpers import (  # noqa: E402
 from isolation_config import read_isolation  # noqa: E402
 
 _BRANCH_PREFIX = "worker/"
+_PII_SCANNER_NAME = "check-no-pii.sh"
+
+
+def _find_pii_scanner(repo_root: str) -> "Path | None":
+    """Locate crickets' check-no-pii.sh via the same discovery cascade
+    `templates/hooks/pre-push` uses, or None. Candidates, first hit wins:
+      1. $AGENT_TOOLKIT_PATH/scripts/check-no-pii.sh  (explicit override)
+      2. ~/Antigravity/crickets/scripts/check-no-pii.sh  (conventional clone)
+      3. <repo_root>/../crickets/scripts/check-no-pii.sh  (sibling-of-repo)
+    """
+    candidates: list[Path] = []
+    toolkit = os.environ.get("AGENT_TOOLKIT_PATH", "").strip()
+    if toolkit:
+        candidates.append(Path(os.path.expanduser(toolkit)) / "scripts" / _PII_SCANNER_NAME)
+    candidates.append(Path.home() / "Antigravity" / "crickets" / "scripts" / _PII_SCANNER_NAME)
+    candidates.append(Path(repo_root) / ".." / "crickets" / "scripts" / _PII_SCANNER_NAME)
+    for c in candidates:
+        if c.is_file():
+            return c.resolve()
+    return None
 
 
 def _pii_guard(repo_root: str) -> bool:
-    """True iff the pre-push PII check passes. Runs pii-scrubber if available;
-    falls back to True (the pre-push hook is the mandatory enforcer)."""
+    """True iff the PII scan passes. Fail-open when the real scanner
+    (check-no-pii.sh) can't be found — the pre-push git hook is the mandatory
+    enforcer; this is a defense-in-depth pre-check, not the sole gate."""
+    scanner = _find_pii_scanner(repo_root)
+    if scanner is None:
+        return True
     try:
-        import subprocess
         r = subprocess.run(
-            [sys.executable, "-m", "pii_scrubber", "--check"],
+            ["bash", str(scanner), "--all"],
             cwd=repo_root, capture_output=True, timeout=30,
         )
         return r.returncode == 0
-    except Exception:
+    except (OSError, subprocess.SubprocessError):
         return True
 
 
