@@ -470,8 +470,13 @@ def resolve_board_item(cfg, issue, runner=None):
     """
     runner = runner or _run_gh
     try:
+        # gh's default item-list page is 30 — silently truncates any board
+        # bigger than that, so a real issue reads back as "not a project item
+        # yet" (bug found live, board-write-path task 10). --limit matches the
+        # 1000 ceiling check_project_sync.py already uses for issue lists.
         raw = runner(["gh", "project", "item-list", str(cfg["github"]["number"]),
-                      "--owner", cfg["github"]["owner"], "--format", "json"])
+                      "--owner", cfg["github"]["owner"], "--format", "json",
+                      "--limit", "1000"])
         data = json.loads(raw) if isinstance(raw, str) else raw
         for it in data.get("items", []):
             content = it.get("content") or {}
@@ -513,6 +518,12 @@ def sync_fields(item, cfg, stage=None, *, runner=None, dry_run=True, out=None):
     if item_id is None:
         return []
     field_ids = resolve_field_ids(cfg, runner=runner)
+    # `gh project item-list --format json` keys its per-field values by a
+    # lowercased/normalized name (e.g. "track", "status"), not the field's
+    # display-case name — found live (board-write-path task 10): comparing
+    # against the display-case label directly never matched, so idempotent
+    # skip silently never fired against a real board. Case-fold the lookup.
+    current_ci = {k.lower(): v for k, v in current.items()}
 
     desired = {
         "Track": item.track, "Type": item.type, "Priority": item.priority,
@@ -529,7 +540,7 @@ def sync_fields(item, cfg, stage=None, *, runner=None, dry_run=True, out=None):
         finfo = field_ids.get(label)
         if finfo is None:
             continue  # field doesn't exist on this board — never auto-create
-        if current.get(label) == value:
+        if current_ci.get(label.lower()) == value:
             continue  # idempotent skip — already matches
         if canonical in _DATE_CANONICALS:
             argv = project_item_edit_date_argv(project_id, item_id, finfo["id"], value)

@@ -827,6 +827,34 @@ class TestSyncFields(unittest.TestCase):
         item_edit_calls = [c for c in calls if c[:3] == ["gh", "project", "item-edit"]]
         self.assertEqual(item_edit_calls, [])
 
+    def test_idempotent_skip_is_case_insensitive_against_real_gh_output(self):
+        # Regression (found live, board-write-path task 10): `gh project
+        # item-list --format json` keys per-field values by a lowercased name
+        # ("track", "status"), not the field's display-case name ("Track",
+        # "Status") — comparing against the display-case label directly never
+        # matched, so idempotent skip silently never fired against a real
+        # board (Track "needed" an edit on every run, forever).
+        calls = []
+
+        def runner(argv):
+            calls.append(argv)
+            if argv[:3] == ["gh", "project", "view"]:
+                return json.dumps({"id": "PROJECT_ID"})
+            if argv[:3] == ["gh", "project", "item-list"]:
+                # lowercase keys, exactly as real `gh` emits them.
+                return json.dumps({"items": [
+                    {"id": "ITEM_ID", "content": {"number": 9},
+                     "track": "V5", "status": "Done"}]})
+            if argv[:3] == ["gh", "project", "field-list"]:
+                return self._FIELD_LIST
+            return ""
+
+        item = pm.Item(id="f1", type="feature", title="F", issue=9,
+                       track="V5", status="Done")
+        ps.sync_fields(item, _CFG, None, runner=runner, dry_run=False)
+        item_edit_calls = [c for c in calls if c[:3] == ["gh", "project", "item-edit"]]
+        self.assertEqual(item_edit_calls, [])
+
     def test_no_issue_is_noop(self):
         runner, calls = self._runner(item_status="Todo")
         ps.sync_fields(pm.Item(id="t2", type="task", title="T"), _CFG, "progress",

@@ -43,5 +43,19 @@ standalone: false
 # board-items.json's status: field and re-running `post` silently never moved the
 # board's Status column. The stage-driven task transitions (progress -> In
 # Progress, closeout -> Done) still override the vault value when a stage is given.
-version: 0.2.1
+# 0.2.2 = two more live-only bugs found in the same task-10 exercise (the first
+# real close-outs through the write path — agentm #223/#224, crickets #142):
+# (1) resolve_board_item()'s `gh project item-list` call had no --limit, so gh's
+# default 30-item page silently dropped any issue past the first page on a project
+# with 100+ items — a real issue read back as "not a project item yet" and every
+# field write no-op'd. Added --limit 1000 (matches check_project_sync.py's ceiling
+# for issue lists). (2) sync_fields()'s idempotent-skip compared against the
+# field's display-case name ("Track", "Status"), but `gh project item-list
+# --format json` keys per-field values by a lowercased name ("track", "status") —
+# the comparison never matched real gh output, so idempotent skip silently never
+# fired (Track "needed" a same-value edit on every run). Case-folds the lookup.
+# Both caught by re-running the identical close-out post live and confirming zero
+# further gh writes — the write path's own idempotency contract, verified against
+# real GitHub Project boards, not just fixtures.
+version: 0.2.2
 capabilities: [board-sync]
