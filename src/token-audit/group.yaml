@@ -14,5 +14,14 @@ standalone: true
 # cache_creation_input_tokens / cache_read_input_tokens / output_tokens all present;
 # cache_creation.ephemeral_5m_input_tokens and ephemeral_1h_input_tokens tracked
 # but priced at the same rate (TODO: distinguish when Part C needs it).
-version: 0.1.0
+# 0.1.1 = R0.7 repairs (Mythos readiness audit, 2026-07-01/02): pricing.py
+# re-pinned against the 2026-07-03 Anthropic pricing page — adds claude-fable-5
+# and claude-sonnet-5 rows (a pure fable-5 session priced at $0 before this);
+# analyzer.py's --by-phase attribution now matches the real
+# <command-name>/cmd</command-name> XML Claude Code encodes slash commands as,
+# with the raw '/cmd'-prefix match kept as a fallback for non-Claude-Code hosts
+# (the old startswith('/cmd') check never fired against a real transcript);
+# the phase-attribution test fixture is a literal real transcript snippet, not
+# a synthesized approximation.
+version: 0.1.1
 capabilities: [token-audit]

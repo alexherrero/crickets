@@ -28,6 +28,7 @@ _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
 _SCRIPTS = _ROOT / "src" / "token-audit" / "scripts"
 _FIXTURE = _ROOT / "scripts" / "fixtures" / "token_audit_synthesized.jsonl"
+_REAL_ENCODING_FIXTURE = _ROOT / "scripts" / "fixtures" / "token_audit_real_encoding.jsonl"
 
 
 def _load(name: str):
@@ -57,6 +58,18 @@ class TestCostUsd(unittest.TestCase):
     def test_opus_fresh_input_only(self):
         c = pricing.cost_usd(self._usage(it=1_000_000), "claude-opus-4-8")
         self.assertAlmostEqual(c, 5.00, places=6)
+
+    def test_fable_5_priced_nonzero(self):
+        # R0.7 regression: pricing.py used to pin only opus/sonnet/haiku, so a
+        # pure claude-fable-5 session priced at $0.00 (unknown-model fallback).
+        c = pricing.cost_usd(self._usage(it=1_000_000, ot=1_000_000), "claude-fable-5")
+        self.assertGreater(c, 0.0)
+        self.assertAlmostEqual(c, 60.00, places=6)
+
+    def test_sonnet_5_priced_nonzero(self):
+        c = pricing.cost_usd(self._usage(it=1_000_000, ot=1_000_000), "claude-sonnet-5")
+        self.assertGreater(c, 0.0)
+        self.assertAlmostEqual(c, 12.00, places=6)
 
     def test_opus_output_only(self):
         c = pricing.cost_usd(self._usage(ot=1_000_000), "claude-opus-4-8")
@@ -250,6 +263,26 @@ class TestPhaseAttribution(unittest.TestCase):
         # Every message in this fixture is preceded by a phase command
         unknown = [m for m in self.report.messages if m.phase == "unknown"]
         self.assertEqual(len(unknown), 0)
+
+
+class TestPhaseAttributionRealEncoding(unittest.TestCase):
+    """R0.7 regression: --by-phase must fire on the real Claude Code XML
+    encoding, not just a raw '/work' prefix.
+
+    fixtures/token_audit_real_encoding.jsonl's user line is a literal
+    transcript snippet captured from a real crickets session (2026-06-03,
+    `80d0ddda-9cc1-4b48-b339-b359950468ed`) — not a synthesized approximation.
+    A plain `text.startswith('/work')` check never matches it, because the
+    text begins with '<command-message>work</command-message>', not '/work'.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.report = analyzer.analyze_session(_REAL_ENCODING_FIXTURE, track_phases=True)
+
+    def test_real_encoding_fires_work_phase(self):
+        phases = [m.phase for m in self.report.messages]
+        self.assertEqual(phases, ["work"])
 
 
 if __name__ == "__main__":

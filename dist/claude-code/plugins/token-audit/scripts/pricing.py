@@ -4,8 +4,11 @@
 ONE source of truth — Part C (status-line meter) imports this module rather than
 maintaining a second table. To update pricing: edit PRICING here only.
 
-Verified 2026-06-14 from the Anthropic pricing page.
+Verified 2026-07-03 from the Anthropic pricing page (platform.claude.com/docs/en/about-claude/pricing).
 cache_write_per_mtok = 5-minute TTL rate (1.25× input).
+claude-sonnet-5 is pinned at its introductory rate ($2/$10 input/output),
+in effect through 2026-08-31; the standard rate ($3/$15) takes effect
+2026-09-01 and needs a re-pin then.
 # TODO: distinguish 1h TTL (2× input) once Part C needs it; the
 # cache_creation.ephemeral_1h_input_tokens sub-field already tracks it in JSONL.
 """
@@ -40,6 +43,18 @@ PRICING: dict[str, ModelPricing] = {
         output_per_mtok=5.00,
         cache_write_per_mtok=1.25,
         cache_read_per_mtok=0.10,
+    ),
+    "claude-fable-5": ModelPricing(
+        input_per_mtok=10.00,
+        output_per_mtok=50.00,
+        cache_write_per_mtok=12.50,
+        cache_read_per_mtok=1.00,
+    ),
+    "claude-sonnet-5": ModelPricing(
+        input_per_mtok=2.00,
+        output_per_mtok=10.00,
+        cache_write_per_mtok=2.50,
+        cache_read_per_mtok=0.20,
     ),
 }
 

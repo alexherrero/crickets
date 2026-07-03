@@ -19,6 +19,7 @@ Schema (Claude Code 1.x JSONL, verified 2026-06-14):
 from __future__ import annotations
 
 import json
+import re
 import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -33,6 +34,16 @@ from pricing import PRICING, cost_usd  # noqa: E402
 
 _WINDOW = timedelta(hours=5)
 _PHASE_CMDS = {"/plan", "/work", "/review", "/release", "/bugfix"}
+_PHASE_NAMES = {cmd.lstrip("/") for cmd in _PHASE_CMDS}
+# Live Claude Code transcripts encode a slash-command invocation as XML, e.g.
+# "<command-message>work</command-message>\n<command-name>/work</command-name>
+# \n<command-args>...</command-args>" — the raw '/work' text a human typed
+# never appears at the start of the message. Search for the <command-name>
+# marker first; keep the raw '/cmd' prefix as a fallback for non-Claude-Code
+# hosts that don't wrap slash commands in this XML.
+_COMMAND_NAME_RE = re.compile(
+    r"<command-name>/(" + "|".join(re.escape(n) for n in _PHASE_NAMES) + r")</command-name>"
+)
 
 
 @dataclass
@@ -116,11 +127,16 @@ def iter_messages(path: Path | str, *, track_phases: bool = False) -> Iterator[M
                 continue
             rtype = rec.get("type")
             if track_phases and rtype == "user":
-                text = _user_text(rec).lstrip()
-                for cmd in _PHASE_CMDS:
-                    if text.startswith(cmd):
-                        current_phase = cmd.lstrip("/")
-                        break
+                text = _user_text(rec)
+                m = _COMMAND_NAME_RE.search(text)
+                if m:
+                    current_phase = m.group(1)
+                else:
+                    stripped = text.lstrip()
+                    for cmd in _PHASE_CMDS:
+                        if stripped.startswith(cmd):
+                            current_phase = cmd.lstrip("/")
+                            break
                 continue
             if rtype != "assistant":
                 continue

@@ -1,0 +1,2 @@
+{"type":"user","timestamp":"2026-06-03T23:45:48.876Z","message":{"role":"user","content":[{"type":"text","text":"<command-message>work</command-message>\n<command-name>/work</command-name>\n<command-args>autonomously until you need me</command-args>"}]}}
+{"type":"assistant","timestamp":"2026-06-03T23:46:10.000Z","message":{"model":"claude-sonnet-4-6","usage":{"input_tokens":600,"cache_creation_input_tokens":0,"cache_read_input_tokens":1200,"output_tokens":80}}}
