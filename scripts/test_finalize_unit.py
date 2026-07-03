@@ -303,6 +303,7 @@ class TestDefaultPiiGuard(unittest.TestCase):
                 result = fu._pii_guard(str(repo_root))
         self.assertTrue(result, "scanner absent must fail OPEN (pass), not closed")
 
+    @unittest.skipUnless(fu._bash_works(), "functional bash required (Windows WSL stub)")
     def test_scanner_present_and_clean_passes(self):
         repo_root = self.tmp / "repo"
         repo_root.mkdir()
@@ -313,6 +314,7 @@ class TestDefaultPiiGuard(unittest.TestCase):
             result = fu._pii_guard(str(repo_root))
         self.assertTrue(result)
 
+    @unittest.skipUnless(fu._bash_works(), "functional bash required (Windows WSL stub)")
     def test_scanner_present_and_finds_pii_blocks(self):
         repo_root = self.tmp / "repo"
         repo_root.mkdir()
@@ -322,6 +324,20 @@ class TestDefaultPiiGuard(unittest.TestCase):
         with mock.patch.dict(os.environ, {"AGENT_TOOLKIT_PATH": str(self.tmp / "toolkit")}):
             result = fu._pii_guard(str(repo_root))
         self.assertFalse(result)
+
+    def test_bash_unavailable_is_fail_open(self):
+        # The Windows WSL-stub case: scanner found, bash can't execute — the
+        # guard must fail OPEN (the pre-push hook is the mandatory enforcer),
+        # not block every finalize on a bash-less host.
+        repo_root = self.tmp / "repo"
+        repo_root.mkdir()
+        self._write_scanner(
+            self.tmp / "toolkit" / "scripts" / "check-no-pii.sh", exit_code=0
+        )
+        with mock.patch.dict(os.environ, {"AGENT_TOOLKIT_PATH": str(self.tmp / "toolkit")}):
+            with mock.patch.object(fu, "_bash_works", return_value=False):
+                result = fu._pii_guard(str(repo_root))
+        self.assertTrue(result, "non-functional bash must fail OPEN, not closed")
 
 
 if __name__ == "__main__":

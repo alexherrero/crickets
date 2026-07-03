@@ -57,12 +57,26 @@ def _find_pii_scanner(repo_root: str) -> "Path | None":
     return None
 
 
+def _bash_works() -> bool:
+    """True iff `bash` on PATH actually executes. On Windows, System32's WSL
+    stub shadows Git Bash in subprocess PATH resolution and exits nonzero with
+    no distro installed — a scanner we cannot run is a scanner we don't have."""
+    try:
+        r = subprocess.run(["bash", "-c", "exit 0"], capture_output=True, timeout=10)
+        return r.returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
 def _pii_guard(repo_root: str) -> bool:
     """True iff the PII scan passes. Fail-open when the real scanner
-    (check-no-pii.sh) can't be found — the pre-push git hook is the mandatory
-    enforcer; this is a defense-in-depth pre-check, not the sole gate."""
+    (check-no-pii.sh) can't be found OR can't be executed (no functional
+    bash) — the pre-push git hook is the mandatory enforcer; this is a
+    defense-in-depth pre-check, not the sole gate."""
     scanner = _find_pii_scanner(repo_root)
     if scanner is None:
+        return True
+    if not _bash_works():
         return True
     try:
         r = subprocess.run(
