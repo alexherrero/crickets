@@ -928,6 +928,11 @@ def _post_main(args, cfg, runner, here, pm):
     # every `post` call syncs fields; only a progress/closeout stage flips Status.
     sync_fields(item, cfg, stage, runner=runner, dry_run=args.dry_run)
 
+    # Depth materialization for this item specifically (the bulk work-start
+    # sweep over every materialized item is the separate sync-nesting verb) —
+    # idempotent no-op once the sub-issue link exists.
+    sync_nesting(item, cfg, graph, runner=runner, dry_run=args.dry_run)
+
     # A single live read of the current body — real idempotency instead of
     # always forcing an update — for an item that already has a materialized
     # issue. Best-effort: fetch_current_body() degrades to None on any failure.

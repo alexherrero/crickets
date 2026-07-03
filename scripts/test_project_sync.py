@@ -1050,5 +1050,141 @@ class TestMainPersistence(unittest.TestCase):
             t.cleanup()
 
 
+_CONFORMANCE_FIXTURE = _ROOT / "scripts" / "fixtures" / "board-items-conformance.json"
+
+
+class TestConformanceSnapshots(unittest.TestCase):
+    """Task 7: the shared Version/Feature/Plan/Task fixture (one already-nested
+    pair, p1 under f1) driving --dry-run argv-snapshot tests for the full
+    `post` CLI path — fresh kickoff (comment + field-write + nesting all
+    fire), a repeat run of identical state (everything no-ops), and a
+    Status-only change (only the field-write fires). Snapshots the printed
+    argv lines verbatim so a silent gh-invocation-shape change breaks a test."""
+
+    _FIELD_LIST = json.dumps({"fields": [
+        {"id": "F_TRACK", "name": "Track", "options": [{"id": "O_V1", "name": "V1"}]},
+        {"id": "F_STATUS", "name": "Status",
+         "options": [{"id": "O_TODO", "name": "Todo"},
+                     {"id": "O_PROG", "name": "In Progress"},
+                     {"id": "O_DONE", "name": "Done"}]},
+    ]})
+
+    def _cfg_dir(self):
+        t = tempfile.TemporaryDirectory()
+        d = Path(t.name)
+        (d / "project.json").write_text(json.dumps(_CFG), encoding="utf-8")
+        (d / "board-items.json").write_text(
+            _CONFORMANCE_FIXTURE.read_text(encoding="utf-8"), encoding="utf-8")
+        return t, d / "project.json"
+
+    def _expected_body(self, commit, summary):
+        """The exact body t1 renders after apply_update folds this commit's
+        progress line — used as the injected 'current board body' so a
+        scenario can force a genuine body no-op."""
+        graph = pm.load(_CONFORMANCE_FIXTURE)
+        item = graph["t1"]
+        ps.apply_update(item, "task-progress", date="2026-07-03",
+                        commit=commit, summary=summary)
+        return ps.render_item(item, ps.project_repo_url(_CFG), _TEMPLATES, graph=graph)
+
+    def _runner(self, *, body, comments, item_status, parent_sub_issues, calls=None):
+        calls = calls if calls is not None else []
+
+        def runner(argv):
+            calls.append(argv)
+            if argv[:3] == ["gh", "issue", "view"] and "--json" in argv and "body" in argv:
+                return json.dumps({"body": body})
+            if argv[:3] == ["gh", "issue", "view"] and "comments" in argv:
+                return json.dumps({"comments": [{"body": c} for c in comments]})
+            if argv[:3] == ["gh", "project", "view"]:
+                return json.dumps({"id": "PROJECT_ID"})
+            if argv[:3] == ["gh", "project", "item-list"]:
+                return json.dumps({"items": [
+                    {"id": "ITEM_ID", "content": {"number": 103},
+                     "Track": "V1", "Status": item_status}]})
+            if argv[:3] == ["gh", "project", "field-list"]:
+                return self._FIELD_LIST
+            if argv[:3] == ["gh", "api", "graphql"]:
+                query = argv[4]
+                number = int(argv[-1].split("=", 1)[1])
+                if "addSubIssue" in query:
+                    return ""
+                if number == 102:  # the parent (plan p1, issue 102)
+                    nodes = [{"number": n} for n in parent_sub_issues]
+                    return json.dumps({"data": {"repository": {"issue": {
+                        "id": "NODE_P1", "number": 102, "subIssues": {"nodes": nodes}}}}})
+                return json.dumps({"data": {"repository": {"issue": {
+                    "id": f"NODE_{number}", "number": number,
+                    "subIssues": {"nodes": []}}}}})
+            return ""
+        return runner, calls
+
+    def test_fresh_kickoff_comment_field_write_and_nesting_all_fire(self):
+        t, cfg_p = self._cfg_dir()
+        try:
+            stale_body = "**① Goal:** persist lifecycle state to board-items.json  ·  **Done when:** re-run is a no-op"
+            runner, calls = self._runner(body=stale_body, comments=[],
+                                        item_status="Todo", parent_sub_issues=[])
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                rc = ps.main(["post", "--config", str(cfg_p), "--id", "t1",
+                              "--type", "task-progress", "--commit", "abc1234",
+                              "--summary", "kicked off", "--dry-run"], runner=runner)
+            out = buf.getvalue()
+        finally:
+            t.cleanup()
+        self.assertEqual(rc, 0)
+        self.assertIn("gh issue comment 103 --repo o/r --body", out)
+        self.assertIn("<!-- board:sha:abc1234 -->", out)
+        self.assertIn("gh project item-edit --id ITEM_ID --project-id PROJECT_ID "
+                      "--field-id F_STATUS --single-select-option-id O_PROG", out)
+        self.assertIn("addSubIssue", out)
+        self.assertIn("gh issue edit 103 --repo o/r", out)  # the body update
+
+    def test_repeat_run_of_identical_state_is_full_noop(self):
+        t, cfg_p = self._cfg_dir()
+        try:
+            matching_body = self._expected_body("abc1234", "kicked off")
+            runner, calls = self._runner(
+                body=matching_body,
+                comments=[ps.commit_comment_marker("abc1234")],
+                item_status="In Progress", parent_sub_issues=[103])
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                rc = ps.main(["post", "--config", str(cfg_p), "--id", "t1",
+                              "--type", "task-progress", "--commit", "abc1234",
+                              "--summary", "kicked off", "--dry-run"], runner=runner)
+            out = buf.getvalue()
+        finally:
+            t.cleanup()
+        self.assertEqual(rc, 0)
+        self.assertEqual(out, "")  # nothing printed — comment/field/nesting/body all no-op
+
+    def test_status_only_change_fires_only_the_field_write(self):
+        t, cfg_p = self._cfg_dir()
+        try:
+            matching_body = self._expected_body("abc1234", "kicked off")
+            runner, calls = self._runner(
+                body=matching_body,
+                comments=[ps.commit_comment_marker("abc1234")],
+                item_status="Todo",  # only Status hasn't flipped yet
+                parent_sub_issues=[103])
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                rc = ps.main(["post", "--config", str(cfg_p), "--id", "t1",
+                              "--type", "task-progress", "--commit", "abc1234",
+                              "--summary", "kicked off", "--dry-run"], runner=runner)
+            out = buf.getvalue()
+        finally:
+            t.cleanup()
+        self.assertEqual(rc, 0)
+        lines = [l for l in out.splitlines() if l.strip()]
+        self.assertEqual(len(lines), 1)
+        self.assertEqual(
+            lines[0],
+            "gh project item-edit --id ITEM_ID --project-id PROJECT_ID "
+            "--field-id F_STATUS --single-select-option-id O_PROG")
+
+
 if __name__ == "__main__":
     unittest.main()

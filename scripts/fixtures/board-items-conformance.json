@@ -1,0 +1,44 @@
+{
+  "_comment": "Shared conformance fixture (board-write-path task 7) — Version/Feature/Plan/Task with one already-nested pair (p1 under f1). Reused by test_project_sync.py's --dry-run argv-snapshot suite; not consumed by any live sync.",
+  "items": [
+    {
+      "id": "v1",
+      "type": "version",
+      "title": "V1 arc",
+      "issue": 100,
+      "track": "V1",
+      "status": "In Progress",
+      "fields": {"about": "the conformance arc"}
+    },
+    {
+      "id": "f1",
+      "type": "feature",
+      "parent": "v1",
+      "title": "Board write path",
+      "issue": 101,
+      "track": "V1",
+      "status": "In Progress",
+      "fields": {"goal": "close the write-path gap", "why_matters": "no more hand-tended board"}
+    },
+    {
+      "id": "p1",
+      "type": "plan",
+      "parent": "f1",
+      "title": "Board write path plan",
+      "issue": 102,
+      "track": "V1",
+      "status": "In Progress",
+      "fields": {"goal": "wire board-add, field writes, nesting, drift reports", "done_when": "green"}
+    },
+    {
+      "id": "t1",
+      "type": "task",
+      "parent": "p1",
+      "title": "Fix state persistence",
+      "issue": 103,
+      "track": "V1",
+      "status": "Todo",
+      "fields": {"goal": "persist lifecycle state to board-items.json", "done_when": "re-run is a no-op"}
+    }
+  ]
+}
