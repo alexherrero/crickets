@@ -36,5 +36,12 @@ standalone: false
 # to a no-op on an unreadable state rather than risking a duplicate; never creates a
 # field/option (a UI-only action). 79->107 project_sync tests, +3 project_model,
 # +10 report_drift, all green.
-version: 0.2.0
+# 0.2.1 = sync_fields() bugfix (found exercising the write path live, board-write-
+# path task 10): Status now syncs from item.status by default, same as every other
+# DC-2 field — a Feature/Version/Plan closeout has no flag-driven stage (only a
+# task's progress/closeout is flag-postable), so before this fix editing
+# board-items.json's status: field and re-running `post` silently never moved the
+# board's Status column. The stage-driven task transitions (progress -> In
+# Progress, closeout -> Done) still override the vault value when a stage is given.
+version: 0.2.1
 capabilities: [board-sync]

@@ -486,13 +486,16 @@ def sync_fields(item, cfg, stage=None, *, runner=None, dry_run=True, out=None):
     """Write the DC-2 fields (Track/Type/Priority/Start/Target/Status) for
     `item` onto its board item, idempotently — skip a field whose current
     board value already matches, so a re-run emits no needless item-edit.
-    `stage` ('progress' | 'closeout' | None) additionally drives the Status
-    lifecycle transition: 'progress' -> 'In Progress' (idempotent-skip covers
-    "already in progress" — this is what makes the Todo -> In Progress flip
-    happen exactly once, on the first progress post), 'closeout' -> 'Done'
-    plus closing the issue. `stage=None` (a full re-render with no lifecycle
-    flag) syncs everything except Status, which only ever moves at a named
-    transition.
+    Status syncs from the vault's own `item.status` by default — the same as
+    every other DC-2 field — so a Feature/Version/Plan closeout (which has no
+    flag-driven stage; only a task's progress/closeout is flag-postable) still
+    moves Status by editing `status:` in board-items.json and re-running
+    `post`. `stage` ('progress' | 'closeout' | None) overrides that vault value
+    for the two task lifecycle transitions a flag-driven post can't otherwise
+    carry: 'progress' -> 'In Progress' (idempotent-skip covers "already in
+    progress" — this is what makes the Todo -> In Progress flip happen exactly
+    once, on the first progress post), 'closeout' -> 'Done' plus closing the
+    issue.
 
     Never creates a field option (adding an option is a UI action, never an
     API mutation) — a field or option `gh project field-list` doesn't already
@@ -513,7 +516,7 @@ def sync_fields(item, cfg, stage=None, *, runner=None, dry_run=True, out=None):
 
     desired = {
         "Track": item.track, "Type": item.type, "Priority": item.priority,
-        "Start": item.start, "Target": item.target,
+        "Start": item.start, "Target": item.target, "Status": item.status,
     }
     if stage in _STATUS_ON_STAGE:
         desired["Status"] = _STATUS_ON_STAGE[stage]

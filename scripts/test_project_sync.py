@@ -786,8 +786,9 @@ class TestSyncFields(unittest.TestCase):
         self.assertEqual(close_calls, [["gh", "issue", "close", "9", "--repo", "o/r"]])
 
     def test_matching_field_is_idempotent_skip(self):
-        # Track already "V5" on the board AND item.track == "V5" -> no item-edit
-        # for Track; stage=None means Status is never touched either.
+        # Track already "V5" on the board AND item.track == "V5" -> no
+        # item-edit for Track; item.status is unset (None) on this fixture ->
+        # Status is skipped too (a value-less field is never written).
         runner, calls = self._runner(item_status="Todo")
         ps.sync_fields(self._task(), _CFG, None, runner=runner, dry_run=False)
         item_edit_calls = [c for c in calls if c[:3] == ["gh", "project", "item-edit"]]
@@ -798,6 +799,31 @@ class TestSyncFields(unittest.TestCase):
         # is skipped (idempotent-skip IS the Todo->In-Progress-once mechanism).
         runner, calls = self._runner(item_status="In Progress")
         ps.sync_fields(self._task(), _CFG, "progress", runner=runner, dry_run=False)
+        item_edit_calls = [c for c in calls if c[:3] == ["gh", "project", "item-edit"]]
+        self.assertEqual(item_edit_calls, [])
+
+    def test_status_syncs_from_vault_with_no_stage(self):
+        # A Feature/Version/Plan closeout has no flag-driven stage (only a
+        # task's progress/closeout is flag-postable) — Status must still move
+        # by editing board-items.json's status: field directly and re-running
+        # `post` with stage=None. Status is a DC-2 field like any other.
+        item = pm.Item(id="f1", type="feature", title="F", issue=9,
+                       track="V5", status="Done")
+        runner, calls = self._runner(item_status="In Progress")
+        ps.sync_fields(item, _CFG, None, runner=runner, dry_run=False)
+        item_edit_calls = [c for c in calls if c[:3] == ["gh", "project", "item-edit"]]
+        self.assertEqual(item_edit_calls,
+                         [ps.project_item_edit_select_argv(
+                             "PROJECT_ID", "ITEM_ID", "F_STATUS", "O_DONE")])
+
+    def test_status_from_vault_is_idempotent_once_board_matches(self):
+        # Second run against the same vault status: no-op — the write path's
+        # idempotency for a vault-authored Status flip, not just the
+        # stage-driven task transitions.
+        item = pm.Item(id="f1", type="feature", title="F", issue=9,
+                       track="V5", status="Done")
+        runner, calls = self._runner(item_status="Done")
+        ps.sync_fields(item, _CFG, None, runner=runner, dry_run=False)
         item_edit_calls = [c for c in calls if c[:3] == ["gh", "project", "item-edit"]]
         self.assertEqual(item_edit_calls, [])
 
