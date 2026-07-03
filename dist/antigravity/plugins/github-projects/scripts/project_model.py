@@ -238,3 +238,42 @@ def parent_chain(graph: dict, item_id: str) -> list:
         chain.append(graph[cur])
         cur = graph[cur].parent
     return chain
+
+
+# ── persistence (the write-back half of load()) ──────────────────────────────
+def item_to_dict(item: Item) -> dict:
+    """Serialize one Item back to board-items.json shape (the load_items()
+    inverse). Structural keys are omitted when None; non-structural values stay
+    nested under 'fields' (load_items()'s merge of an explicit 'fields' block
+    with top-level extras is a superset read, so writing everything back under
+    'fields' round-trips cleanly)."""
+    d: dict = {"id": item.id, "type": item.type, "title": item.title}
+    for key in ("parent", "track", "priority", "start", "target", "status",
+                "issue", "silent_source"):
+        value = getattr(item, key)
+        if value is not None:
+            d[key] = value
+    if item.fields:
+        d["fields"] = item.fields
+    return d
+
+
+def dump(graph: dict, path) -> None:
+    """Write `graph` back to the board-items.json at `path` (load()'s inverse).
+
+    Only the 'items' array is replaced; any other top-level keys already in the
+    file (e.g. a human-authored '_comment' or '_reconciled_at') are preserved
+    verbatim. A missing or unparsable file at `path` just means there is no
+    prior top-level metadata to preserve.
+    """
+    p = Path(path)
+    top: dict = {}
+    if p.exists():
+        try:
+            existing = json.loads(p.read_text(encoding="utf-8"))
+            if isinstance(existing, dict):
+                top = {k: v for k, v in existing.items() if k != "items"}
+        except (json.JSONDecodeError, OSError):
+            top = {}
+    top["items"] = [item_to_dict(it) for it in graph.values()]
+    p.write_text(json.dumps(top, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

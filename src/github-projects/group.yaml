@@ -23,5 +23,18 @@ standalone: false
 # 0.1.4 = check_project_sync.py: skip "missing" drift for vault items whose
 # referenced issue is closed (Done-feature history); adds fetch_closed_issue_numbers()
 # + closed_issue_numbers param to compute_drift (backward-compatible).
-version: 0.1.4
+# 0.2.0 = the board write-path (board-write-path plan, tasks 1-7) — closes the
+# designed-not-built gap: main() now persists lifecycle state to board-items.json
+# and captures a created issue's number (cricketsPluginsA#5); post_comment() posts
+# per-commit/task-close comments with SHA-keyed dedupe; sync_fields() writes the
+# DC-2 fields (Track/Type/Priority/Start/Target) idempotently and flips Status at
+# progress/closeout transitions; sync_nesting()/sync_all_nesting() nest materialized
+# Plan/Task issues under their parents via the native addSubIssue GraphQL mutation
+# (new sync-nesting CLI subcommand); report_drift.py runs check_project_sync's
+# detector unmodified and posts a report-only summary comment, idempotent by a
+# drift-content marker (new report-board-drift command). Every write path degrades
+# to a no-op on an unreadable state rather than risking a duplicate; never creates a
+# field/option (a UI-only action). 79->107 project_sync tests, +3 project_model,
+# +10 report_drift, all green.
+version: 0.2.0
 capabilities: [board-sync]

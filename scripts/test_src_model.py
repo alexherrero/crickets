@@ -233,13 +233,16 @@ class TestSrcModel(unittest.TestCase):
 
     def test_real_tree_commands_in_expected_groups(self):
         # command primitives live in developer-workflows (the phase commands),
-        # code-review (the standalone /code-review), and wiki-maintenance
+        # code-review (the standalone /code-review), wiki-maintenance
         # (recent-wiki-changes, folded in part 2; + wiki-watch, the part-4
-        # claude-only scheduling entry). No other group ships commands.
+        # claude-only scheduling entry), and github-projects (report-board-drift,
+        # the board-write-path task 6 scheduling entry — mirrors wiki-watch's
+        # pattern). No other group ships commands.
         groups = src_model.load_groups(_ROOT / "src")
         by = {g.slug: g for g in groups}
         cmd_groups = {g.slug for g in groups for p in g.primitives if p.kind == "command"}
-        self.assertEqual(cmd_groups, {"developer-workflows", "code-review", "design-docs", "wiki-maintenance", "token-audit"})
+        self.assertEqual(cmd_groups, {"developer-workflows", "code-review", "design-docs",
+                                      "wiki-maintenance", "token-audit", "github-projects"})
         dw_cmds = {p.name for p in by["developer-workflows"].primitives if p.kind == "command"}
         self.assertIn("plan", dw_cmds)
         cr_cmds = {p.name for p in by["code-review"].primitives if p.kind == "command"}

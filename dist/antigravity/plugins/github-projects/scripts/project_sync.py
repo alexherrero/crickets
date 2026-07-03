@@ -337,6 +337,323 @@ def project_item_edit_select_argv(project_id, item_id, field_id, option_id):
             "--single-select-option-id", option_id]
 
 
+def issue_view_argv(repo, number):
+    return ["gh", "issue", "view", str(number), "--repo", repo, "--json", "body"]
+
+
+_ISSUE_URL_RE = re.compile(r"/issues/(\d+)\s*$")
+
+
+def parse_created_issue_number(output):
+    """Extract the issue number from `gh issue create`'s stdout (the URL of
+    the created issue). Returns None on anything that isn't an issue URL."""
+    if not output:
+        return None
+    m = _ISSUE_URL_RE.search(output.strip())
+    return int(m.group(1)) if m else None
+
+
+def issue_comment_argv(repo, number, body):
+    return ["gh", "issue", "comment", str(number), "--repo", repo, "--body", body]
+
+
+def issue_comments_view_argv(repo, number):
+    return ["gh", "issue", "view", str(number), "--repo", repo, "--json", "comments"]
+
+
+def commit_comment_marker(sha):
+    return f"<!-- board:sha:{sha[:7]} -->"
+
+
+def taskclose_comment_marker(item_id):
+    return f"<!-- board:taskclose:{item_id} -->"
+
+
+def render_commit_comment(repo_url, date, sha, summary):
+    return (f"{fmt_date(date)} ({commit_link(repo_url, sha)}): {summary}\n"
+            f"{commit_comment_marker(sha)}")
+
+
+def render_taskclose_comment(repo_url, item_id, outcome, sha, date):
+    return (f"**Outcome:** {outcome}  ·  **Landed:** {commit_link(repo_url, sha)} · "
+            f"{fmt_date(date)}\n{taskclose_comment_marker(item_id)}")
+
+
+def has_comment_marker(cfg, issue, marker, runner=None):
+    """List existing comments (list-and-match — never `--search`, which lags
+    the search index and risks a duplicate post on a re-run after a partial
+    failure) and report whether `marker` already appears in one.
+
+    Returns True/False when the read succeeds, or None when it can't be
+    determined (gh absent, unauthenticated, malformed response) — the caller
+    must treat None as "do not post" (never risk a duplicate on an unknown
+    state), not as "not yet posted."
+    """
+    runner = runner or _run_gh
+    try:
+        raw = runner(issue_comments_view_argv(cfg["github"]["repo"], issue))
+        data = json.loads(raw) if isinstance(raw, str) else raw
+        return any(marker in (c.get("body") or "") for c in data.get("comments", []))
+    except Exception:
+        return None
+
+
+def post_comment(item, update_type, cfg, *, date, commit=None, summary=None,
+                 runner=None, dry_run=True, out=None):
+    """Post a per-commit or task-close comment with SHA-keyed dedupe, alongside
+    (never instead of) the existing body-fold. No-op when the item has no
+    materialized issue yet (nothing to comment on), or when `update_type` isn't
+    a task-progress/task-closeout post — plan/feature progress lands from the
+    full sync, the same boundary `apply_update` already draws.
+    """
+    runner = runner or _run_gh
+    out = out if out is not None else sys.stdout
+    if item.issue is None:
+        return None
+    try:
+        itype, stage = update_type.rsplit("-", 1)
+    except ValueError:
+        return None
+    if itype != "task" or stage not in ("progress", "closeout"):
+        return None
+
+    repo_url = project_repo_url(cfg)
+    if stage == "progress":
+        marker = commit_comment_marker(commit)
+        body = render_commit_comment(repo_url, date, commit, summary)
+    else:
+        marker = taskclose_comment_marker(item.id)
+        body = render_taskclose_comment(repo_url, item.id, summary, commit, date)
+
+    if has_comment_marker(cfg, item.issue, marker, runner=runner) is not False:
+        return None  # already posted, or state unknown — never risk a duplicate
+
+    argv = issue_comment_argv(cfg["github"]["repo"], item.issue, body)
+    if dry_run:
+        print(GhCommand(argv).render(), file=out)
+        return None
+    return runner(argv)
+
+
+_DATE_CANONICALS = frozenset({"Start", "Target"})
+_SELECT_CANONICALS = frozenset({"Track", "Type", "Priority", "Status"})
+_STATUS_ON_STAGE = {"progress": "In Progress", "closeout": "Done"}
+
+
+def field_label(cfg, canonical):
+    """The board's actual column name for a DC-2 canonical field name — the
+    per-install `fields` remap in project.json, defaulting to the canonical
+    name verbatim."""
+    return (cfg.get("fields") or {}).get(canonical.lower(), canonical)
+
+
+def resolve_project_node_id(cfg, runner=None):
+    """Resolve the Project (v2) node id via `gh project view`. Returns None on
+    any failure (gh absent/unauthenticated, malformed response) — the caller
+    must skip field sync rather than guess at an id."""
+    runner = runner or _run_gh
+    try:
+        raw = runner(["gh", "project", "view", str(cfg["github"]["number"]),
+                      "--owner", cfg["github"]["owner"], "--format", "json"])
+        data = json.loads(raw) if isinstance(raw, str) else raw
+        return data.get("id")
+    except Exception:
+        return None
+
+
+def resolve_board_item(cfg, issue, runner=None):
+    """Resolve `(item_node_id, current_field_values)` for `issue`'s project
+    item via a single `gh project item-list` read (current_field_values keyed
+    by the board's column names, e.g. 'Status'). Returns `(None, {})` when the
+    issue isn't yet a project item, or on any read failure — callers must skip
+    rather than guess at ids or current values.
+    """
+    runner = runner or _run_gh
+    try:
+        raw = runner(["gh", "project", "item-list", str(cfg["github"]["number"]),
+                      "--owner", cfg["github"]["owner"], "--format", "json"])
+        data = json.loads(raw) if isinstance(raw, str) else raw
+        for it in data.get("items", []):
+            content = it.get("content") or {}
+            if content.get("number") == issue:
+                return it.get("id"), it
+        return None, {}
+    except Exception:
+        return None, {}
+
+
+def sync_fields(item, cfg, stage=None, *, runner=None, dry_run=True, out=None):
+    """Write the DC-2 fields (Track/Type/Priority/Start/Target/Status) for
+    `item` onto its board item, idempotently — skip a field whose current
+    board value already matches, so a re-run emits no needless item-edit.
+    `stage` ('progress' | 'closeout' | None) additionally drives the Status
+    lifecycle transition: 'progress' -> 'In Progress' (idempotent-skip covers
+    "already in progress" — this is what makes the Todo -> In Progress flip
+    happen exactly once, on the first progress post), 'closeout' -> 'Done'
+    plus closing the issue. `stage=None` (a full re-render with no lifecycle
+    flag) syncs everything except Status, which only ever moves at a named
+    transition.
+
+    Never creates a field option (adding an option is a UI action, never an
+    API mutation) — a field or option `gh project field-list` doesn't already
+    resolve is skipped, not auto-created. No-op when the item has no issue,
+    isn't yet a project item, or the project/field ids can't be resolved.
+    """
+    runner = runner or _run_gh
+    out = out if out is not None else sys.stdout
+    if item.issue is None:
+        return []
+    project_id = resolve_project_node_id(cfg, runner=runner)
+    if project_id is None:
+        return []
+    item_id, current = resolve_board_item(cfg, item.issue, runner=runner)
+    if item_id is None:
+        return []
+    field_ids = resolve_field_ids(cfg, runner=runner)
+
+    desired = {
+        "Track": item.track, "Type": item.type, "Priority": item.priority,
+        "Start": item.start, "Target": item.target,
+    }
+    if stage in _STATUS_ON_STAGE:
+        desired["Status"] = _STATUS_ON_STAGE[stage]
+
+    rendered = []
+    for canonical, value in desired.items():
+        if value is None:
+            continue
+        label = field_label(cfg, canonical)
+        finfo = field_ids.get(label)
+        if finfo is None:
+            continue  # field doesn't exist on this board — never auto-create
+        if current.get(label) == value:
+            continue  # idempotent skip — already matches
+        if canonical in _DATE_CANONICALS:
+            argv = project_item_edit_date_argv(project_id, item_id, finfo["id"], value)
+        else:
+            option_id = finfo["options"].get(value)
+            if option_id is None:
+                continue  # option doesn't exist yet — never auto-create it
+            argv = project_item_edit_select_argv(project_id, item_id, finfo["id"], option_id)
+        cmd = GhCommand(argv)
+        line = cmd.render()
+        if dry_run:
+            print(line, file=out)
+        else:
+            runner(cmd.argv)
+        rendered.append(line)
+
+    if stage == "closeout":
+        close_argv = ["gh", "issue", "close", str(item.issue),
+                      "--repo", cfg["github"]["repo"]]
+        line = GhCommand(close_argv).render()
+        if dry_run:
+            print(line, file=out)
+        else:
+            runner(close_argv)
+        rendered.append(line)
+    return rendered
+
+
+_ISSUE_NODE_QUERY = (
+    "query($owner:String!,$repo:String!,$number:Int!){"
+    "repository(owner:$owner,name:$repo){issue(number:$number){"
+    "id number subIssues(first:100){nodes{number}}}}}"
+)
+
+_ADD_SUB_ISSUE_MUTATION = (
+    "mutation($issueId:ID!,$subIssueId:ID!){"
+    "addSubIssue(input:{issueId:$issueId,subIssueId:$subIssueId}){subIssue{id}}}"
+)
+
+
+def issue_node_query_argv(owner, repo_name, number):
+    return ["gh", "api", "graphql", "-f", f"query={_ISSUE_NODE_QUERY}",
+            "-f", f"owner={owner}", "-f", f"repo={repo_name}", "-F", f"number={number}"]
+
+
+def add_sub_issue_argv(issue_id, sub_issue_id):
+    return ["gh", "api", "graphql", "-f", f"query={_ADD_SUB_ISSUE_MUTATION}",
+            "-f", f"issueId={issue_id}", "-f", f"subIssueId={sub_issue_id}"]
+
+
+def _query_issue_node(owner, repo_name, number, runner=None):
+    """A single `gh api graphql` read of one issue's node id + its existing
+    sub-issue numbers. Returns None on any failure — the caller must skip
+    rather than guess at a node id or an existing-link decision."""
+    runner = runner or _run_gh
+    try:
+        raw = runner(issue_node_query_argv(owner, repo_name, number))
+        data = json.loads(raw) if isinstance(raw, str) else raw
+        return data["data"]["repository"]["issue"]
+    except Exception:
+        return None
+
+
+def sync_nesting(item, cfg, graph, *, runner=None, dry_run=True, out=None):
+    """Nest a materialized Plan/Task issue under its parent's issue via the
+    native `addSubIssue` GraphQL mutation (Task -> Plan -> Feature -> Version),
+    reusing the existing parent issue — never creating one.
+
+    No-op (returns None, no mutation) when: `item` isn't a plan/task, has no
+    materialized issue yet, its parent has no materialized issue yet, or the
+    sub-issue link already exists — checked by listing the parent's existing
+    sub-issues first (same list-not-search discipline as the comment dedupe).
+    """
+    runner = runner or _run_gh
+    out = out if out is not None else sys.stdout
+    if item.type not in ("plan", "task") or item.issue is None or item.parent is None:
+        return None
+    parent = (graph or {}).get(item.parent)
+    if parent is None or parent.issue is None:
+        return None
+    owner, _, repo_name = cfg["github"]["repo"].partition("/")
+
+    parent_node = _query_issue_node(owner, repo_name, parent.issue, runner=runner)
+    if parent_node is None:
+        return None
+    existing = {n.get("number") for n in
+               (parent_node.get("subIssues") or {}).get("nodes", [])}
+    if item.issue in existing:
+        return None  # already nested — no-op
+
+    child_node = _query_issue_node(owner, repo_name, item.issue, runner=runner)
+    if child_node is None:
+        return None
+
+    argv = add_sub_issue_argv(parent_node["id"], child_node["id"])
+    if dry_run:
+        print(GhCommand(argv).render(), file=out)
+        return None
+    return runner(argv)
+
+
+def sync_all_nesting(graph, cfg, active_plans=(), *, runner=None, dry_run=True, out=None):
+    """Depth materialization at work-start: nest every materialized Plan/Task
+    (DC-1's `materialize()` output) under its parent, one `sync_nesting` call
+    per item. Purely additive over the per-item core — no new decisions."""
+    pm = sys.modules.get("project_model") or _load_project_model(
+        Path(__file__).resolve().parent)
+    for item in pm.materialize(graph, active_plans):
+        sync_nesting(item, cfg, graph, runner=runner, dry_run=dry_run, out=out)
+
+
+def fetch_current_body(cfg, issue, runner=None):
+    """Fetch an existing issue's live body via a single `gh issue view` call,
+    so the idempotency check compares against real state instead of always
+    forcing an update. Never raises — gh absent, unauthenticated, the issue
+    missing, or a malformed response all degrade to None (the pre-existing
+    always-update behavior), since this is a best-effort preview/read, not a
+    write the caller can safely fail on."""
+    runner = runner or _run_gh
+    try:
+        raw = runner(issue_view_argv(cfg["github"]["repo"], issue))
+        data = json.loads(raw) if isinstance(raw, str) else raw
+        return data.get("body")
+    except Exception:
+        return None
+
+
 @dataclass
 class GhCommand:
     argv: list
@@ -420,6 +737,9 @@ def apply_update(item, update_type, *, date, commit=None, summary=None):
         if itype == "task":
             if not (commit and summary):
                 raise RenderError("task-progress needs --commit and --summary")
+            existing = item.fields.get("progress", [])
+            if any(e.get("sha") == commit for e in existing):
+                return item  # SHA-keyed dedupe: a re-post of the same commit is a no-op
             entry.update(sha=commit, progress=summary)
         elif itype == "plan":
             if not summary:
@@ -463,19 +783,23 @@ def _run_gh(argv):
 
 
 def execute(cmds, *, dry_run=True, runner=None, out=None) -> list:
-    """Run (or, under ``dry_run``, print) each GhCommand. Returns the rendered
-    argv strings (what ran / would run) for the caller to report or assert."""
+    """Run (or, under ``dry_run``, print) each GhCommand. Returns a list of
+    ``(argv_line, result)`` pairs — the rendered argv string for every command,
+    paired with the runner's return value when live (``None`` under
+    ``dry_run``, since nothing executed). The result half matters for a
+    ``gh issue create``, whose stdout carries the new issue's URL — dropping it
+    silently loses the only way to bind the created issue back to the item."""
     runner = runner or _run_gh
     out = out if out is not None else sys.stdout
-    rendered = []
+    results = []
     for c in cmds:
         line = c.render()
-        rendered.append(line)
         if dry_run:
             print(line, file=out)
+            results.append((line, None))
         else:
-            runner(c.argv)
-    return rendered
+            results.append((line, runner(c.argv)))
+    return results
 
 
 # ── id resolution (live; parsing is injected-runner testable) ────────────────
@@ -525,6 +849,14 @@ def _build_parser():
                       help="render the private view (keep silent-source attribution)")
     post.add_argument("--dry-run", action="store_true",
                       help="print the exact gh argv without executing")
+
+    nest = sub.add_parser("sync-nesting",
+                          help="nest every materialized Plan/Task under its parent")
+    nest.add_argument("--config", required=True, help="path to project.json")
+    nest.add_argument("--active-plan", action="append", default=[],
+                      dest="active_plans", help="plan id to materialize (repeatable)")
+    nest.add_argument("--dry-run", action="store_true",
+                      help="print the exact gh argv without executing")
     return p
 
 
@@ -541,14 +873,8 @@ def find_item(graph, *, issue=None, item_id=None):
     raise SyncError("post needs --issue or --id to locate the target item")
 
 
-def main(argv=None):
-    import datetime
+def _load_project_model(here):
     import importlib.util
-
-    args = _build_parser().parse_args(argv)
-    cfg = load_config(args.config)
-
-    here = Path(__file__).resolve().parent
     spec = importlib.util.spec_from_file_location(
         "project_model", here / "project_model.py")
     pm = importlib.util.module_from_spec(spec)
@@ -557,20 +883,78 @@ def main(argv=None):
     # which fails if the module isn't registered yet.
     sys.modules["project_model"] = pm
     spec.loader.exec_module(pm)
+    return pm
+
+
+def main(argv=None, *, runner=None):
+    args = _build_parser().parse_args(argv)
+    cfg = load_config(args.config)
+    runner = runner or _run_gh
+    here = Path(__file__).resolve().parent
+    pm = _load_project_model(here)
+
+    if args.cmd == "sync-nesting":
+        items_path = _items_path_from_cfg(cfg, args.config)
+        graph = pm.load(items_path)
+        sync_all_nesting(graph, cfg, args.active_plans, runner=runner,
+                         dry_run=args.dry_run)
+        return 0
+
+    return _post_main(args, cfg, runner, here, pm)
+
+
+def _post_main(args, cfg, runner, here, pm):
+    import datetime
 
     items_path = _items_path_from_cfg(cfg, args.config)
     graph = pm.load(items_path)
     item = find_item(graph, issue=args.issue, item_id=args.item_id)
 
     date = args.date or datetime.date.today().isoformat()
+    stage = None
     if args.update_type:
         apply_update(item, args.update_type, date=date,
                      commit=args.commit, summary=args.summary)
+        # The per-commit/task-close comment trail — a second surface alongside
+        # the body-fold above, not a replacement for it.
+        post_comment(item, args.update_type, cfg, date=date, commit=args.commit,
+                     summary=args.summary, runner=runner, dry_run=args.dry_run)
+        try:
+            _, stage = args.update_type.rsplit("-", 1)
+        except ValueError:
+            stage = None
+
+    # DC-2 board-field writes (idempotent) + the Status lifecycle transition —
+    # every `post` call syncs fields; only a progress/closeout stage flips Status.
+    sync_fields(item, cfg, stage, runner=runner, dry_run=args.dry_run)
+
+    # Depth materialization for this item specifically (the bulk work-start
+    # sweep over every materialized item is the separate sync-nesting verb) —
+    # idempotent no-op once the sub-issue link exists.
+    sync_nesting(item, cfg, graph, runner=runner, dry_run=args.dry_run)
+
+    # A single live read of the current body — real idempotency instead of
+    # always forcing an update — for an item that already has a materialized
+    # issue. Best-effort: fetch_current_body() degrades to None on any failure.
+    current_body = fetch_current_body(cfg, item.issue, runner=runner) \
+        if item.issue is not None else None
 
     # templates/ is a sibling of scripts/ — in src and in the emitted plugin alike.
     tdir = Path(args.templates) if args.templates else here.parent / "templates"
-    action, cmds = sync_item(item, cfg, tdir, graph=graph, public=not args.private)
-    execute(cmds, dry_run=args.dry_run)
+    action, cmds = sync_item(item, cfg, tdir, graph=graph, public=not args.private,
+                             current_body=current_body)
+    results = execute(cmds, dry_run=args.dry_run, runner=runner)
+
+    # --dry-run is a pure preview boundary: no board-items.json write, no
+    # issue-number capture. Live runs persist the graph so a re-run sees real
+    # state instead of re-deciding create/update from scratch every time.
+    if not args.dry_run:
+        if action.kind == "create" and results:
+            created = parse_created_issue_number(results[0][1])
+            if created is not None:
+                item.issue = created
+        pm.dump(graph, items_path)
+
     print(f"# {action.kind}: {item.id} (issue {item.issue})", file=sys.stderr)
     return 0
 

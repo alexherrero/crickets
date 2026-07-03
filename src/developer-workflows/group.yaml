@@ -248,5 +248,11 @@ enhances:
 # check-no-pii.sh discovery cascade instead of a phantom `python3 -m pii_scrubber`
 # module, fixing a guard that fail-closed (blocking every push) instead of the
 # docstring's intended fail-open (R0.6).
-version: 0.28.3
+# 0.29.0 = soft enhances edge onto github-projects' board-sync (board-write-path
+# plan, task 3) — declares that /work's step-10 close-out now posts a per-commit
+# progress comment + a task-close comment (SHA-keyed dedupe) alongside the existing
+# board-item body-fold, when github-projects is installed and gh is authenticated.
+# Rides the existing step-10 call site (project_sync.py post --type task-progress);
+# no command-doc change, no new probe. Validated clean by lint_src.py.
+version: 0.29.0
 capabilities: [setup, plan, work, review, release, bugfix, documentation]

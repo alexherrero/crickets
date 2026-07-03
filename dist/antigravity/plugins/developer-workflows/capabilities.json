@@ -8,5 +8,12 @@
     "bugfix",
     "documentation"
   ],
-  "version": "0.28.3"
+  "enhances": [
+    {
+      "capability": "board-sync",
+      "effect": "/work's task close-out (step 10) posts a per-commit progress comment + a task-close comment (SHA-keyed dedupe, list-and-match — never --search) alongside the existing board-item body-fold, when github-projects is installed and gh is authenticated",
+      "group": "github-projects"
+    }
+  ],
+  "version": "0.29.0"
 }
