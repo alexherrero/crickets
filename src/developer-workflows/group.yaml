@@ -244,5 +244,5 @@ standalone: true
 # check-no-pii.sh discovery cascade instead of a phantom `python3 -m pii_scrubber`
 # module, fixing a guard that fail-closed (blocking every push) instead of the
 # docstring's intended fail-open (R0.6).
-version: 0.28.2
+version: 0.28.3
 capabilities: [setup, plan, work, review, release, bugfix, documentation]
