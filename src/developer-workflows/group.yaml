@@ -237,5 +237,12 @@ standalone: true
 # decisions reference the development-lifecycle design's amendment log; the worktree
 # operator-authority rule + its config-opt-in refinement reference the developer-safety
 # design's amendment log. Docs/comments only — no behavior change.
-version: 0.28.1
+# 0.28.2 = R0 repairs (Mythos readiness audit, 2026-07-01/02): find_capability.py
+# gains the ~/Antigravity/agentm conventional-clone fallback tier find_process_seam.py
+# already had, so capability-gated dispatch stops silently no-opping on real installs
+# (R0.5); finalize_unit.py's default PII guard now shells out to the real
+# check-no-pii.sh discovery cascade instead of a phantom `python3 -m pii_scrubber`
+# module, fixing a guard that fail-closed (blocking every push) instead of the
+# docstring's intended fail-open (R0.6).
+version: 0.28.2
 capabilities: [setup, plan, work, review, release, bugfix, documentation]

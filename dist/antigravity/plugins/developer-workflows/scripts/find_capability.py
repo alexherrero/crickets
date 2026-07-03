@@ -35,6 +35,7 @@ def _find_capability_resolver() -> Path | None:
       1. $AGENTM_SCRIPTS_DIR/capability_resolver.py  (explicit override)
       2. <this-script-dir>/capability_resolver.py    (co-located install)
       3. <this-script-dir>/../lib/install/python/capability_resolver.py
+      4. ~/Antigravity/agentm/scripts/capability_resolver.py  (conventional clone)
     """
     here = Path(__file__).resolve().parent
     name = "capability_resolver.py"
@@ -44,6 +45,7 @@ def _find_capability_resolver() -> Path | None:
         candidates.append(Path(os.path.expanduser(env_dir)) / name)
     candidates.append(here / name)
     candidates.append(here / ".." / "lib" / "install" / "python" / name)
+    candidates.append(Path.home() / "Antigravity" / "agentm" / "scripts" / name)
     for c in candidates:
         if c.is_file():
             return c.resolve()
