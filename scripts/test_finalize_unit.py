@@ -285,11 +285,11 @@ class TestDefaultPiiGuard(unittest.TestCase):
 
     def _write_scanner(self, path: Path, exit_code: int) -> Path:
         path.parent.mkdir(parents=True, exist_ok=True)
-        # newline="\n": Windows write_text would emit CRLF and bash chokes on
-        # `exit 0\r` — the stub must stay LF for the guard's subprocess run.
-        path.write_text(
-            f"#!/usr/bin/env bash\nexit {exit_code}\n", encoding="utf-8", newline="\n"
-        )
+        # Pin LF endings: Windows text-mode writes would emit CRLF and bash
+        # chokes on `exit 0\r`. open(newline="\n") works on every Python
+        # (Path.write_text only grew `newline=` in 3.10).
+        with path.open("w", encoding="utf-8", newline="\n") as fh:
+            fh.write(f"#!/usr/bin/env bash\nexit {exit_code}\n")
         path.chmod(0o755)
         return path
 
