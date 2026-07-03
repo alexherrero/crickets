@@ -520,13 +520,15 @@ class TestExecute(unittest.TestCase):
                          runner=lambda argv: calls.append(argv), out=buf)
         self.assertEqual(calls, [])  # nothing executed
         self.assertIn("gh issue edit 7 --repo o/r --body body", buf.getvalue())
-        self.assertEqual(ran, ["gh issue edit 7 --repo o/r --body body"])
+        self.assertEqual(ran, [("gh issue edit 7 --repo o/r --body body", None)])
 
     def test_live_runs_via_injected_runner(self):
         calls = []
-        ps.execute(self._cmds(), dry_run=False, runner=lambda argv: calls.append(argv))
+        ran = ps.execute(self._cmds(), dry_run=False,
+                         runner=lambda argv: calls.append(argv) or "ok")
         self.assertEqual(calls, [["gh", "issue", "edit", "7", "--repo", "o/r",
                                   "--body", "body"]])
+        self.assertEqual(ran, [("gh issue edit 7 --repo o/r --body body", "ok")])
 
 
 class TestApplyUpdate(unittest.TestCase):
@@ -544,6 +546,17 @@ class TestApplyUpdate(unittest.TestCase):
         ps.apply_update(item, "task-progress", date="2026-06-14",
                         commit="new", summary="p1")
         self.assertEqual(len(item.fields["progress"]), 2)
+
+    def test_task_progress_same_sha_is_noop(self):
+        # SHA-keyed dedupe: re-posting the same commit must not duplicate the
+        # progress entry (a re-run on unchanged state writes nothing).
+        item = pm.Item(id="t", type="task", title="T", fields={})
+        ps.apply_update(item, "task-progress", date="2026-06-14",
+                        commit="abc", summary="did x")
+        ps.apply_update(item, "task-progress", date="2026-06-15",
+                        commit="abc", summary="did x again")
+        self.assertEqual(item.fields["progress"],
+                         [{"date": "2026-06-14", "sha": "abc", "progress": "did x"}])
 
     def test_task_progress_requires_commit_and_summary(self):
         item = pm.Item(id="t", type="task", title="T", fields={})
@@ -708,6 +721,82 @@ class TestCLIDryRun(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertIn("gh issue edit 9 --repo o/r", out)
         self.assertIn("(→ task): did it", out)
+
+
+class TestMainPersistence(unittest.TestCase):
+    """cricketsPluginsA#5 regression: main() must persist state back to
+    board-items.json, not just fold it into an in-memory Item that vanishes
+    when the process exits. Injected-runner, no live `gh` calls."""
+
+    def _cfg_dir(self, items):
+        t = tempfile.TemporaryDirectory()
+        d = Path(t.name)
+        (d / "project.json").write_text(json.dumps(_CFG), encoding="utf-8")
+        (d / "board-items.json").write_text(json.dumps({"items": items}),
+                                            encoding="utf-8")
+        return t, d / "project.json", d / "board-items.json"
+
+    def test_task_progress_persists_and_reruns_are_noop(self):
+        items = [
+            {"id": "v1", "type": "version", "title": "V"},
+            {"id": "f1", "type": "feature", "parent": "v1", "title": "F"},
+            {"id": "p1", "type": "plan", "parent": "f1", "title": "P"},
+            {"id": "t1", "type": "task", "parent": "p1", "title": "T", "issue": 9},
+        ]
+        t, cfg_p, items_p = self._cfg_dir(items)
+        try:
+            before = items_p.read_text(encoding="utf-8")
+
+            def runner(argv):
+                if argv[:3] == ["gh", "issue", "view"]:
+                    raise ps.SyncError("not found")  # forces current_body=None
+                return ""
+
+            rc1 = ps.main(["post", "--config", str(cfg_p), "--issue", "9",
+                          "--type", "task-progress", "--commit", "abc",
+                          "--summary", "did x"], runner=runner)
+            self.assertEqual(rc1, 0)
+            after_run1 = items_p.read_text(encoding="utf-8")
+            self.assertNotEqual(before, after_run1)  # (a) file changed on disk
+
+            rc2 = ps.main(["post", "--config", str(cfg_p), "--issue", "9",
+                          "--type", "task-progress", "--commit", "abc",
+                          "--summary", "did x again"], runner=runner)
+            self.assertEqual(rc2, 0)
+            after_run2 = items_p.read_text(encoding="utf-8")
+
+            reloaded = pm.load(items_p)
+            self.assertEqual(reloaded["t1"].fields["progress"],
+                             [{"date": reloaded["t1"].fields["progress"][0]["date"],
+                               "sha": "abc", "progress": "did x"}])
+            # (b) same-SHA re-run appends nothing new to item.fields["progress"]
+            self.assertEqual(len(reloaded["t1"].fields["progress"]), 1)
+        finally:
+            t.cleanup()
+
+    def test_create_action_persists_returned_issue_number(self):
+        items = [
+            {"id": "v2", "type": "version", "title": "V"},
+            {"id": "f2", "type": "feature", "parent": "v2", "title": "F"},
+            {"id": "p2", "type": "plan", "parent": "f2", "title": "P"},
+            {"id": "t2", "type": "task", "parent": "p2", "title": "New task"},
+        ]
+        t, cfg_p, items_p = self._cfg_dir(items)
+        try:
+            def runner(argv):
+                if argv[:3] == ["gh", "issue", "create"]:
+                    return "https://github.com/o/r/issues/999"
+                return ""
+
+            rc = ps.main(["post", "--config", str(cfg_p), "--id", "t2"],
+                        runner=runner)
+            self.assertEqual(rc, 0)
+
+            # (c) the create action's returned issue number lands in item.issue
+            reloaded = pm.load(items_p)
+            self.assertEqual(reloaded["t2"].issue, 999)
+        finally:
+            t.cleanup()
 
 
 if __name__ == "__main__":

@@ -227,5 +227,39 @@ class TestLoadFromFile(unittest.TestCase):
             self.assertEqual([c.id for c in graph["p-bs"].children], ["t1", "t2"])
 
 
+class TestDump(unittest.TestCase):
+    def test_dump_load_round_trips(self):
+        with tempfile.TemporaryDirectory() as t:
+            p = Path(t) / "board-items.json"
+            p.write_text(json.dumps(_fixture()), encoding="utf-8")
+            graph = pm.load(p)
+            graph["p-bs"].issue = 42
+            pm.dump(graph, p)
+            reloaded = pm.load(p)
+            self.assertEqual(reloaded["p-bs"].issue, 42)
+            self.assertEqual([c.id for c in reloaded["p-bs"].children], ["t1", "t2"])
+            self.assertEqual(reloaded["p-bs"].fields, {"goal": "ship", "done_when": "green"})
+
+    def test_dump_preserves_unrelated_top_level_keys(self):
+        with tempfile.TemporaryDirectory() as t:
+            p = Path(t) / "board-items.json"
+            data = _fixture()
+            data["_comment"] = "machine projection"
+            data["_reconciled_at"] = "2026-06-19"
+            p.write_text(json.dumps(data), encoding="utf-8")
+            graph = pm.load(p)
+            pm.dump(graph, p)
+            raw = json.loads(p.read_text(encoding="utf-8"))
+            self.assertEqual(raw["_comment"], "machine projection")
+            self.assertEqual(raw["_reconciled_at"], "2026-06-19")
+
+    def test_dump_omits_none_structural_fields(self):
+        with tempfile.TemporaryDirectory() as t:
+            p = Path(t) / "board-items.json"
+            pm.dump({"v": pm.Item(id="v", type="version", title="V")}, p)
+            raw = json.loads(p.read_text(encoding="utf-8"))
+            self.assertEqual(raw["items"], [{"id": "v", "type": "version", "title": "V"}])
+
+
 if __name__ == "__main__":
     unittest.main()

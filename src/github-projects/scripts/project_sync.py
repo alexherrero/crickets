@@ -337,6 +337,38 @@ def project_item_edit_select_argv(project_id, item_id, field_id, option_id):
             "--single-select-option-id", option_id]
 
 
+def issue_view_argv(repo, number):
+    return ["gh", "issue", "view", str(number), "--repo", repo, "--json", "body"]
+
+
+_ISSUE_URL_RE = re.compile(r"/issues/(\d+)\s*$")
+
+
+def parse_created_issue_number(output):
+    """Extract the issue number from `gh issue create`'s stdout (the URL of
+    the created issue). Returns None on anything that isn't an issue URL."""
+    if not output:
+        return None
+    m = _ISSUE_URL_RE.search(output.strip())
+    return int(m.group(1)) if m else None
+
+
+def fetch_current_body(cfg, issue, runner=None):
+    """Fetch an existing issue's live body via a single `gh issue view` call,
+    so the idempotency check compares against real state instead of always
+    forcing an update. Never raises — gh absent, unauthenticated, the issue
+    missing, or a malformed response all degrade to None (the pre-existing
+    always-update behavior), since this is a best-effort preview/read, not a
+    write the caller can safely fail on."""
+    runner = runner or _run_gh
+    try:
+        raw = runner(issue_view_argv(cfg["github"]["repo"], issue))
+        data = json.loads(raw) if isinstance(raw, str) else raw
+        return data.get("body")
+    except Exception:
+        return None
+
+
 @dataclass
 class GhCommand:
     argv: list
@@ -420,6 +452,9 @@ def apply_update(item, update_type, *, date, commit=None, summary=None):
         if itype == "task":
             if not (commit and summary):
                 raise RenderError("task-progress needs --commit and --summary")
+            existing = item.fields.get("progress", [])
+            if any(e.get("sha") == commit for e in existing):
+                return item  # SHA-keyed dedupe: a re-post of the same commit is a no-op
             entry.update(sha=commit, progress=summary)
         elif itype == "plan":
             if not summary:
@@ -463,19 +498,23 @@ def _run_gh(argv):
 
 
 def execute(cmds, *, dry_run=True, runner=None, out=None) -> list:
-    """Run (or, under ``dry_run``, print) each GhCommand. Returns the rendered
-    argv strings (what ran / would run) for the caller to report or assert."""
+    """Run (or, under ``dry_run``, print) each GhCommand. Returns a list of
+    ``(argv_line, result)`` pairs — the rendered argv string for every command,
+    paired with the runner's return value when live (``None`` under
+    ``dry_run``, since nothing executed). The result half matters for a
+    ``gh issue create``, whose stdout carries the new issue's URL — dropping it
+    silently loses the only way to bind the created issue back to the item."""
     runner = runner or _run_gh
     out = out if out is not None else sys.stdout
-    rendered = []
+    results = []
     for c in cmds:
         line = c.render()
-        rendered.append(line)
         if dry_run:
             print(line, file=out)
+            results.append((line, None))
         else:
-            runner(c.argv)
-    return rendered
+            results.append((line, runner(c.argv)))
+    return results
 
 
 # ── id resolution (live; parsing is injected-runner testable) ────────────────
@@ -541,12 +580,13 @@ def find_item(graph, *, issue=None, item_id=None):
     raise SyncError("post needs --issue or --id to locate the target item")
 
 
-def main(argv=None):
+def main(argv=None, *, runner=None):
     import datetime
     import importlib.util
 
     args = _build_parser().parse_args(argv)
     cfg = load_config(args.config)
+    runner = runner or _run_gh
 
     here = Path(__file__).resolve().parent
     spec = importlib.util.spec_from_file_location(
@@ -567,10 +607,28 @@ def main(argv=None):
         apply_update(item, args.update_type, date=date,
                      commit=args.commit, summary=args.summary)
 
+    # A single live read of the current body — real idempotency instead of
+    # always forcing an update — for an item that already has a materialized
+    # issue. Best-effort: fetch_current_body() degrades to None on any failure.
+    current_body = fetch_current_body(cfg, item.issue, runner=runner) \
+        if item.issue is not None else None
+
     # templates/ is a sibling of scripts/ — in src and in the emitted plugin alike.
     tdir = Path(args.templates) if args.templates else here.parent / "templates"
-    action, cmds = sync_item(item, cfg, tdir, graph=graph, public=not args.private)
-    execute(cmds, dry_run=args.dry_run)
+    action, cmds = sync_item(item, cfg, tdir, graph=graph, public=not args.private,
+                             current_body=current_body)
+    results = execute(cmds, dry_run=args.dry_run, runner=runner)
+
+    # --dry-run is a pure preview boundary: no board-items.json write, no
+    # issue-number capture. Live runs persist the graph so a re-run sees real
+    # state instead of re-deciding create/update from scratch every time.
+    if not args.dry_run:
+        if action.kind == "create" and results:
+            created = parse_created_issue_number(results[0][1])
+            if created is not None:
+                item.issue = created
+        pm.dump(graph, items_path)
+
     print(f"# {action.kind}: {item.id} (issue {item.issue})", file=sys.stderr)
     return 0
 
