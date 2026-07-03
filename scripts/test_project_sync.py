@@ -732,6 +732,91 @@ class TestResolveFieldIds(unittest.TestCase):
                           "--owner", "o", "--format", "json"])
 
 
+class TestSyncFields(unittest.TestCase):
+    """DC-2 field writes (task 4): idempotent, Status flips only at a named
+    lifecycle transition, never an option-creating mutation."""
+
+    _FIELD_LIST = json.dumps({"fields": [
+        {"id": "F_TRACK", "name": "Track",
+         "options": [{"id": "O_V5", "name": "V5"}]},
+        {"id": "F_STATUS", "name": "Status",
+         "options": [{"id": "O_TODO", "name": "Todo"},
+                     {"id": "O_PROG", "name": "In Progress"},
+                     {"id": "O_DONE", "name": "Done"}]},
+    ]})
+
+    def _runner(self, item_status, calls=None):
+        calls = calls if calls is not None else []
+
+        def runner(argv):
+            calls.append(argv)
+            if argv[:3] == ["gh", "project", "view"]:
+                return json.dumps({"id": "PROJECT_ID"})
+            if argv[:3] == ["gh", "project", "item-list"]:
+                return json.dumps({"items": [
+                    {"id": "ITEM_ID", "content": {"number": 9},
+                     "Track": "V5", "Status": item_status},
+                ]})
+            if argv[:3] == ["gh", "project", "field-list"]:
+                return self._FIELD_LIST
+            return ""
+        return runner, calls
+
+    def _task(self):
+        return pm.Item(id="t1", type="task", title="T", issue=9, track="V5")
+
+    def test_progress_flips_status_todo_to_in_progress(self):
+        runner, calls = self._runner(item_status="Todo")
+        expected_argv = ps.project_item_edit_select_argv(
+            "PROJECT_ID", "ITEM_ID", "F_STATUS", "O_PROG")
+        rendered = ps.sync_fields(self._task(), _CFG, "progress",
+                                  runner=runner, dry_run=False)
+        self.assertEqual(rendered, [ps.GhCommand(expected_argv).render()])
+        item_edit_calls = [c for c in calls if c[:3] == ["gh", "project", "item-edit"]]
+        self.assertEqual(item_edit_calls, [expected_argv])
+
+    def test_closeout_flips_status_and_closes_issue(self):
+        runner, calls = self._runner(item_status="In Progress")
+        ps.sync_fields(self._task(), _CFG, "closeout", runner=runner, dry_run=False)
+        item_edit_calls = [c for c in calls if c[:3] == ["gh", "project", "item-edit"]]
+        self.assertEqual(item_edit_calls,
+                         [ps.project_item_edit_select_argv(
+                             "PROJECT_ID", "ITEM_ID", "F_STATUS", "O_DONE")])
+        close_calls = [c for c in calls if c[:3] == ["gh", "issue", "close"]]
+        self.assertEqual(close_calls, [["gh", "issue", "close", "9", "--repo", "o/r"]])
+
+    def test_matching_field_is_idempotent_skip(self):
+        # Track already "V5" on the board AND item.track == "V5" -> no item-edit
+        # for Track; stage=None means Status is never touched either.
+        runner, calls = self._runner(item_status="Todo")
+        ps.sync_fields(self._task(), _CFG, None, runner=runner, dry_run=False)
+        item_edit_calls = [c for c in calls if c[:3] == ["gh", "project", "item-edit"]]
+        self.assertEqual(item_edit_calls, [])
+
+    def test_progress_repost_is_idempotent_once_in_progress(self):
+        # Already "In Progress" on the board -> the progress-stage Status write
+        # is skipped (idempotent-skip IS the Todo->In-Progress-once mechanism).
+        runner, calls = self._runner(item_status="In Progress")
+        ps.sync_fields(self._task(), _CFG, "progress", runner=runner, dry_run=False)
+        item_edit_calls = [c for c in calls if c[:3] == ["gh", "project", "item-edit"]]
+        self.assertEqual(item_edit_calls, [])
+
+    def test_no_issue_is_noop(self):
+        runner, calls = self._runner(item_status="Todo")
+        ps.sync_fields(pm.Item(id="t2", type="task", title="T"), _CFG, "progress",
+                       runner=runner, dry_run=False)
+        self.assertEqual(calls, [])
+
+    def test_never_creates_a_field_option(self):
+        # Static grep-lock: this write path must never call updateProjectV2Field
+        # or any option-creating mutation — only `item-edit` on options
+        # `field-list` already resolves.
+        src = (_SRC / "project_sync.py").read_text(encoding="utf-8")
+        self.assertNotIn("updateProjectV2Field", src)
+        self.assertNotIn("field create", src)
+        self.assertNotIn("option create", src)
+
+
 class TestCLIDryRun(unittest.TestCase):
     """End-to-end ``main(['post', ...])`` regression tests. The unit tests above
     drive sync_item/apply_update directly and so bypass main()'s three failure

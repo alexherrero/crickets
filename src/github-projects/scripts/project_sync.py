@@ -435,6 +435,126 @@ def post_comment(item, update_type, cfg, *, date, commit=None, summary=None,
     return runner(argv)
 
 
+_DATE_CANONICALS = frozenset({"Start", "Target"})
+_SELECT_CANONICALS = frozenset({"Track", "Type", "Priority", "Status"})
+_STATUS_ON_STAGE = {"progress": "In Progress", "closeout": "Done"}
+
+
+def field_label(cfg, canonical):
+    """The board's actual column name for a DC-2 canonical field name — the
+    per-install `fields` remap in project.json, defaulting to the canonical
+    name verbatim."""
+    return (cfg.get("fields") or {}).get(canonical.lower(), canonical)
+
+
+def resolve_project_node_id(cfg, runner=None):
+    """Resolve the Project (v2) node id via `gh project view`. Returns None on
+    any failure (gh absent/unauthenticated, malformed response) — the caller
+    must skip field sync rather than guess at an id."""
+    runner = runner or _run_gh
+    try:
+        raw = runner(["gh", "project", "view", str(cfg["github"]["number"]),
+                      "--owner", cfg["github"]["owner"], "--format", "json"])
+        data = json.loads(raw) if isinstance(raw, str) else raw
+        return data.get("id")
+    except Exception:
+        return None
+
+
+def resolve_board_item(cfg, issue, runner=None):
+    """Resolve `(item_node_id, current_field_values)` for `issue`'s project
+    item via a single `gh project item-list` read (current_field_values keyed
+    by the board's column names, e.g. 'Status'). Returns `(None, {})` when the
+    issue isn't yet a project item, or on any read failure — callers must skip
+    rather than guess at ids or current values.
+    """
+    runner = runner or _run_gh
+    try:
+        raw = runner(["gh", "project", "item-list", str(cfg["github"]["number"]),
+                      "--owner", cfg["github"]["owner"], "--format", "json"])
+        data = json.loads(raw) if isinstance(raw, str) else raw
+        for it in data.get("items", []):
+            content = it.get("content") or {}
+            if content.get("number") == issue:
+                return it.get("id"), it
+        return None, {}
+    except Exception:
+        return None, {}
+
+
+def sync_fields(item, cfg, stage=None, *, runner=None, dry_run=True, out=None):
+    """Write the DC-2 fields (Track/Type/Priority/Start/Target/Status) for
+    `item` onto its board item, idempotently — skip a field whose current
+    board value already matches, so a re-run emits no needless item-edit.
+    `stage` ('progress' | 'closeout' | None) additionally drives the Status
+    lifecycle transition: 'progress' -> 'In Progress' (idempotent-skip covers
+    "already in progress" — this is what makes the Todo -> In Progress flip
+    happen exactly once, on the first progress post), 'closeout' -> 'Done'
+    plus closing the issue. `stage=None` (a full re-render with no lifecycle
+    flag) syncs everything except Status, which only ever moves at a named
+    transition.
+
+    Never creates a field option (adding an option is a UI action, never an
+    API mutation) — a field or option `gh project field-list` doesn't already
+    resolve is skipped, not auto-created. No-op when the item has no issue,
+    isn't yet a project item, or the project/field ids can't be resolved.
+    """
+    runner = runner or _run_gh
+    out = out if out is not None else sys.stdout
+    if item.issue is None:
+        return []
+    project_id = resolve_project_node_id(cfg, runner=runner)
+    if project_id is None:
+        return []
+    item_id, current = resolve_board_item(cfg, item.issue, runner=runner)
+    if item_id is None:
+        return []
+    field_ids = resolve_field_ids(cfg, runner=runner)
+
+    desired = {
+        "Track": item.track, "Type": item.type, "Priority": item.priority,
+        "Start": item.start, "Target": item.target,
+    }
+    if stage in _STATUS_ON_STAGE:
+        desired["Status"] = _STATUS_ON_STAGE[stage]
+
+    rendered = []
+    for canonical, value in desired.items():
+        if value is None:
+            continue
+        label = field_label(cfg, canonical)
+        finfo = field_ids.get(label)
+        if finfo is None:
+            continue  # field doesn't exist on this board — never auto-create
+        if current.get(label) == value:
+            continue  # idempotent skip — already matches
+        if canonical in _DATE_CANONICALS:
+            argv = project_item_edit_date_argv(project_id, item_id, finfo["id"], value)
+        else:
+            option_id = finfo["options"].get(value)
+            if option_id is None:
+                continue  # option doesn't exist yet — never auto-create it
+            argv = project_item_edit_select_argv(project_id, item_id, finfo["id"], option_id)
+        cmd = GhCommand(argv)
+        line = cmd.render()
+        if dry_run:
+            print(line, file=out)
+        else:
+            runner(cmd.argv)
+        rendered.append(line)
+
+    if stage == "closeout":
+        close_argv = ["gh", "issue", "close", str(item.issue),
+                      "--repo", cfg["github"]["repo"]]
+        line = GhCommand(close_argv).render()
+        if dry_run:
+            print(line, file=out)
+        else:
+            runner(close_argv)
+        rendered.append(line)
+    return rendered
+
+
 def fetch_current_body(cfg, issue, runner=None):
     """Fetch an existing issue's live body via a single `gh issue view` call,
     so the idempotency check compares against real state instead of always
@@ -685,6 +805,7 @@ def main(argv=None, *, runner=None):
     item = find_item(graph, issue=args.issue, item_id=args.item_id)
 
     date = args.date or datetime.date.today().isoformat()
+    stage = None
     if args.update_type:
         apply_update(item, args.update_type, date=date,
                      commit=args.commit, summary=args.summary)
@@ -692,6 +813,14 @@ def main(argv=None, *, runner=None):
         # the body-fold above, not a replacement for it.
         post_comment(item, args.update_type, cfg, date=date, commit=args.commit,
                      summary=args.summary, runner=runner, dry_run=args.dry_run)
+        try:
+            _, stage = args.update_type.rsplit("-", 1)
+        except ValueError:
+            stage = None
+
+    # DC-2 board-field writes (idempotent) + the Status lifecycle transition —
+    # every `post` call syncs fields; only a progress/closeout stage flips Status.
+    sync_fields(item, cfg, stage, runner=runner, dry_run=args.dry_run)
 
     # A single live read of the current body — real idempotency instead of
     # always forcing an update — for an item that already has a materialized
