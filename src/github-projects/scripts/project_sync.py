@@ -555,6 +555,89 @@ def sync_fields(item, cfg, stage=None, *, runner=None, dry_run=True, out=None):
     return rendered
 
 
+_ISSUE_NODE_QUERY = (
+    "query($owner:String!,$repo:String!,$number:Int!){"
+    "repository(owner:$owner,name:$repo){issue(number:$number){"
+    "id number subIssues(first:100){nodes{number}}}}}"
+)
+
+_ADD_SUB_ISSUE_MUTATION = (
+    "mutation($issueId:ID!,$subIssueId:ID!){"
+    "addSubIssue(input:{issueId:$issueId,subIssueId:$subIssueId}){subIssue{id}}}"
+)
+
+
+def issue_node_query_argv(owner, repo_name, number):
+    return ["gh", "api", "graphql", "-f", f"query={_ISSUE_NODE_QUERY}",
+            "-f", f"owner={owner}", "-f", f"repo={repo_name}", "-F", f"number={number}"]
+
+
+def add_sub_issue_argv(issue_id, sub_issue_id):
+    return ["gh", "api", "graphql", "-f", f"query={_ADD_SUB_ISSUE_MUTATION}",
+            "-f", f"issueId={issue_id}", "-f", f"subIssueId={sub_issue_id}"]
+
+
+def _query_issue_node(owner, repo_name, number, runner=None):
+    """A single `gh api graphql` read of one issue's node id + its existing
+    sub-issue numbers. Returns None on any failure — the caller must skip
+    rather than guess at a node id or an existing-link decision."""
+    runner = runner or _run_gh
+    try:
+        raw = runner(issue_node_query_argv(owner, repo_name, number))
+        data = json.loads(raw) if isinstance(raw, str) else raw
+        return data["data"]["repository"]["issue"]
+    except Exception:
+        return None
+
+
+def sync_nesting(item, cfg, graph, *, runner=None, dry_run=True, out=None):
+    """Nest a materialized Plan/Task issue under its parent's issue via the
+    native `addSubIssue` GraphQL mutation (Task -> Plan -> Feature -> Version),
+    reusing the existing parent issue — never creating one.
+
+    No-op (returns None, no mutation) when: `item` isn't a plan/task, has no
+    materialized issue yet, its parent has no materialized issue yet, or the
+    sub-issue link already exists — checked by listing the parent's existing
+    sub-issues first (same list-not-search discipline as the comment dedupe).
+    """
+    runner = runner or _run_gh
+    out = out if out is not None else sys.stdout
+    if item.type not in ("plan", "task") or item.issue is None or item.parent is None:
+        return None
+    parent = (graph or {}).get(item.parent)
+    if parent is None or parent.issue is None:
+        return None
+    owner, _, repo_name = cfg["github"]["repo"].partition("/")
+
+    parent_node = _query_issue_node(owner, repo_name, parent.issue, runner=runner)
+    if parent_node is None:
+        return None
+    existing = {n.get("number") for n in
+               (parent_node.get("subIssues") or {}).get("nodes", [])}
+    if item.issue in existing:
+        return None  # already nested — no-op
+
+    child_node = _query_issue_node(owner, repo_name, item.issue, runner=runner)
+    if child_node is None:
+        return None
+
+    argv = add_sub_issue_argv(parent_node["id"], child_node["id"])
+    if dry_run:
+        print(GhCommand(argv).render(), file=out)
+        return None
+    return runner(argv)
+
+
+def sync_all_nesting(graph, cfg, active_plans=(), *, runner=None, dry_run=True, out=None):
+    """Depth materialization at work-start: nest every materialized Plan/Task
+    (DC-1's `materialize()` output) under its parent, one `sync_nesting` call
+    per item. Purely additive over the per-item core — no new decisions."""
+    pm = sys.modules.get("project_model") or _load_project_model(
+        Path(__file__).resolve().parent)
+    for item in pm.materialize(graph, active_plans):
+        sync_nesting(item, cfg, graph, runner=runner, dry_run=dry_run, out=out)
+
+
 def fetch_current_body(cfg, issue, runner=None):
     """Fetch an existing issue's live body via a single `gh issue view` call,
     so the idempotency check compares against real state instead of always
@@ -766,6 +849,14 @@ def _build_parser():
                       help="render the private view (keep silent-source attribution)")
     post.add_argument("--dry-run", action="store_true",
                       help="print the exact gh argv without executing")
+
+    nest = sub.add_parser("sync-nesting",
+                          help="nest every materialized Plan/Task under its parent")
+    nest.add_argument("--config", required=True, help="path to project.json")
+    nest.add_argument("--active-plan", action="append", default=[],
+                      dest="active_plans", help="plan id to materialize (repeatable)")
+    nest.add_argument("--dry-run", action="store_true",
+                      help="print the exact gh argv without executing")
     return p
 
 
@@ -782,15 +873,8 @@ def find_item(graph, *, issue=None, item_id=None):
     raise SyncError("post needs --issue or --id to locate the target item")
 
 
-def main(argv=None, *, runner=None):
-    import datetime
+def _load_project_model(here):
     import importlib.util
-
-    args = _build_parser().parse_args(argv)
-    cfg = load_config(args.config)
-    runner = runner or _run_gh
-
-    here = Path(__file__).resolve().parent
     spec = importlib.util.spec_from_file_location(
         "project_model", here / "project_model.py")
     pm = importlib.util.module_from_spec(spec)
@@ -799,6 +883,28 @@ def main(argv=None, *, runner=None):
     # which fails if the module isn't registered yet.
     sys.modules["project_model"] = pm
     spec.loader.exec_module(pm)
+    return pm
+
+
+def main(argv=None, *, runner=None):
+    args = _build_parser().parse_args(argv)
+    cfg = load_config(args.config)
+    runner = runner or _run_gh
+    here = Path(__file__).resolve().parent
+    pm = _load_project_model(here)
+
+    if args.cmd == "sync-nesting":
+        items_path = _items_path_from_cfg(cfg, args.config)
+        graph = pm.load(items_path)
+        sync_all_nesting(graph, cfg, args.active_plans, runner=runner,
+                         dry_run=args.dry_run)
+        return 0
+
+    return _post_main(args, cfg, runner, here, pm)
+
+
+def _post_main(args, cfg, runner, here, pm):
+    import datetime
 
     items_path = _items_path_from_cfg(cfg, args.config)
     graph = pm.load(items_path)

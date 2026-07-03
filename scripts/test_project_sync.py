@@ -817,6 +817,79 @@ class TestSyncFields(unittest.TestCase):
         self.assertNotIn("option create", src)
 
 
+class TestSyncNesting(unittest.TestCase):
+    """Depth materialization (task 5): native sub-issue nesting via the
+    addSubIssue GraphQL mutation, list-and-match dedupe against a parent's
+    existing sub-issues."""
+
+    def _graph(self):
+        return {
+            "f1": pm.Item(id="f1", type="feature", title="F", issue=8),
+            "p1": pm.Item(id="p1", type="plan", parent="f1", title="P", issue=9),
+            "t1": pm.Item(id="t1", type="task", parent="p1", title="T", issue=10),
+        }
+
+    def _runner(self, existing_sub_numbers=(), calls=None):
+        calls = calls if calls is not None else []
+
+        def runner(argv):
+            calls.append(argv)
+            if argv[:3] == ["gh", "api", "graphql"] and "query=query(" in argv[4]:
+                number = int(argv[-1].split("=", 1)[1])
+                if number == 8:  # the parent (feature f1, issue 8)
+                    nodes = [{"number": n} for n in existing_sub_numbers]
+                    return json.dumps({"data": {"repository": {"issue": {
+                        "id": "NODE_F1", "number": 8,
+                        "subIssues": {"nodes": nodes}}}}})
+                return json.dumps({"data": {"repository": {"issue": {
+                    "id": f"NODE_ISSUE_{number}", "number": number,
+                    "subIssues": {"nodes": []}}}}})
+            return ""
+        return runner, calls
+
+    def test_nests_task_under_its_parent(self):
+        graph = self._graph()
+        item = graph["p1"]  # plan p1 (issue 9), parent feature f1 (issue 8)
+        runner, calls = self._runner(existing_sub_numbers=[])
+        ps.sync_nesting(item, _CFG, graph, runner=runner, dry_run=False)
+        mutation_calls = [c for c in calls
+                          if "addSubIssue" in (c[4] if len(c) > 4 else "")]
+        self.assertEqual(len(mutation_calls), 1)
+        self.assertEqual(mutation_calls[0],
+                         ps.add_sub_issue_argv("NODE_F1", "NODE_ISSUE_9"))
+
+    def test_already_nested_is_noop(self):
+        graph = self._graph()
+        item = graph["p1"]
+        runner, calls = self._runner(existing_sub_numbers=[9])  # already linked
+        ps.sync_nesting(item, _CFG, graph, runner=runner, dry_run=False)
+        mutation_calls = [c for c in calls
+                          if "addSubIssue" in (c[4] if len(c) > 4 else "")]
+        self.assertEqual(mutation_calls, [])
+
+    def test_unmaterialized_parent_is_noop(self):
+        graph = self._graph()
+        graph["f1"].issue = None  # parent not yet on the board
+        runner, calls = self._runner()
+        ps.sync_nesting(graph["p1"], _CFG, graph, runner=runner, dry_run=False)
+        self.assertEqual(calls, [])
+
+    def test_non_plan_task_type_is_noop(self):
+        graph = self._graph()
+        runner, calls = self._runner()
+        ps.sync_nesting(graph["f1"], _CFG, graph, runner=runner, dry_run=False)
+        self.assertEqual(calls, [])
+
+    def test_sync_all_nesting_covers_materialized_items(self):
+        graph = self._graph()
+        runner, calls = self._runner(existing_sub_numbers=[])
+        ps.sync_all_nesting(graph, _CFG, ["p1"], runner=runner, dry_run=False)
+        mutation_calls = [c for c in calls
+                          if "addSubIssue" in (c[4] if len(c) > 4 else "")]
+        # Task t1 (parent p1, active) and Plan p1 (parent f1) both nest.
+        self.assertEqual(len(mutation_calls), 2)
+
+
 class TestCLIDryRun(unittest.TestCase):
     """End-to-end ``main(['post', ...])`` regression tests. The unit tests above
     drive sync_item/apply_update directly and so bypass main()'s three failure
@@ -883,6 +956,22 @@ class TestCLIDryRun(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertIn("gh issue edit 9 --repo o/r", out)
         self.assertIn("(→ task): did it", out)
+
+    def test_sync_nesting_cli_dry_runs(self):
+        items = [
+            {"id": "v5", "type": "version", "title": "V5 arc", "issue": 7},
+            {"id": "f", "type": "feature", "parent": "v5", "title": "F", "issue": 8},
+            {"id": "p1", "type": "plan", "parent": "f", "title": "P", "issue": 9},
+        ]
+        t, cfg_p = self._cfg_dir(items)
+        try:
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                rc = ps.main(["sync-nesting", "--config", str(cfg_p),
+                              "--active-plan", "p1", "--dry-run"])
+        finally:
+            t.cleanup()
+        self.assertEqual(rc, 0)
 
 
 class TestMainPersistence(unittest.TestCase):
