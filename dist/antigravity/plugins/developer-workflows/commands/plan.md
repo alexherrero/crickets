@@ -101,6 +101,8 @@ touches_architecture: true | false
 
 ### 1. <Task title>
 - **What:** <1-2 sentences>
+- **Work-type (optional):** <a token-audit routing_table.py work-type key, e.g. `mechanical-log-scraping` — only when the task's own dispatch shape is distinct from the plan's default `worker-build`>
+- **Tier hint (auto, only present when Work-type is set):** <rendered via `classify_work_type.render_tier_hint(work_type)` — never hand-typed>
 - **Verification:** <executable if possible>
 - **Status:** [ ]
 
@@ -111,6 +113,8 @@ touches_architecture: true | false
 ## Verification strategy
 <Which deterministic gates apply + project-specific extras.>
 ```
+
+**Tier hints (routed-dispatch amendment, graceful-skip).** Check availability: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/find_capability.py" token-audit`. On **exit 0**, for any task whose dispatch shape genuinely differs from the plan's own default (most tasks don't need this — leave `Work-type` unset and skip the hint entirely), declare `Work-type` as a `routing_table.py` key and render `Tier hint` via `classify_work_type.render_tier_hint(work_type)` — never hand-type the tier/model/effort values. On **exit 1** (unavailable) omit both fields; this is optional annotation, not a plan-grounding requirement.
 
 ### 4b. Self-check grounding (Hook 3 · design-doc §6.3)
 

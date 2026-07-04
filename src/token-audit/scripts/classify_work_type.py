@@ -154,3 +154,10 @@ def classify_work_type(role_name: str | None = None, declared: dict | None = Non
         tier_source=TIER_SOURCE_UNCLASSIFIED_DEFAULT,
         work_type=None,
     )
+
+
+def render_tier_hint(work_type: str) -> str:
+    """A staged-plan task's optional tier-hint line (PLAN-efficiency-dispatch
+    task 6), rendered from a declared work-type — never hand-typed."""
+    classification = classify_work_type(role_name=work_type)
+    return f"{classification.tier} · {classification.model_id} · {classification.effort} (tier-source: {classification.tier_source})"

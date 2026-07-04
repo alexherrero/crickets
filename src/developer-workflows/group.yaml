@@ -292,5 +292,10 @@ enhances:
 # (capability-gated on token-audit) and returning a loud stop announcement.
 # Never attempts to change the session's own model. Wired into work.md
 # step 6 only (per the task's own /work-scoped title).
-version: 0.29.6
+# 0.29.7 = PLAN-efficiency-dispatch task 6: plan.md's task template gains an
+# optional Work-type / Tier hint field pair, rendered via token-audit's
+# classify_work_type.render_tier_hint() (capability-gated, graceful-skip) —
+# only for a task whose dispatch shape genuinely differs from the plan's
+# own default; most tasks leave both unset.
+version: 0.29.7
 capabilities: [setup, plan, work, review, release, bugfix, documentation]

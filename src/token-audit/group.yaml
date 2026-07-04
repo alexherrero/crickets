@@ -59,5 +59,9 @@ standalone: true
 # cross-model reviewer (review.md), and documenter (plan.md, work.md)
 # dispatch sites to resolve + pass the alias, capability-gated,
 # graceful-skip to today's unrouted behavior when token-audit is absent.
-version: 0.2.4
+# 0.2.5 = PLAN-efficiency-dispatch task 6: classify_work_type.render_tier_hint()
+# renders a staged-plan task's optional tier-hint line from a declared
+# work-type. /plan's template + authoring instructions (developer-workflows)
+# reference it — this side just ships the render function.
+version: 0.2.5
 capabilities: [token-audit]
