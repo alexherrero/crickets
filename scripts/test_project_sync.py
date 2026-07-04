@@ -1183,7 +1183,8 @@ class TestConformanceSnapshots(unittest.TestCase):
             with contextlib.redirect_stdout(buf):
                 rc = ps.main(["post", "--config", str(cfg_p), "--id", "t1",
                               "--type", "task-progress", "--commit", "abc1234",
-                              "--summary", "kicked off", "--dry-run"], runner=runner)
+                              "--summary", "kicked off", "--date", "2026-07-03",
+                              "--dry-run"], runner=runner)
             out = buf.getvalue()
         finally:
             t.cleanup()
@@ -1207,7 +1208,8 @@ class TestConformanceSnapshots(unittest.TestCase):
             with contextlib.redirect_stdout(buf):
                 rc = ps.main(["post", "--config", str(cfg_p), "--id", "t1",
                               "--type", "task-progress", "--commit", "abc1234",
-                              "--summary", "kicked off", "--dry-run"], runner=runner)
+                              "--summary", "kicked off", "--date", "2026-07-03",
+                              "--dry-run"], runner=runner)
             out = buf.getvalue()
         finally:
             t.cleanup()
@@ -1227,7 +1229,8 @@ class TestConformanceSnapshots(unittest.TestCase):
             with contextlib.redirect_stdout(buf):
                 rc = ps.main(["post", "--config", str(cfg_p), "--id", "t1",
                               "--type", "task-progress", "--commit", "abc1234",
-                              "--summary", "kicked off", "--dry-run"], runner=runner)
+                              "--summary", "kicked off", "--date", "2026-07-03",
+                              "--dry-run"], runner=runner)
             out = buf.getvalue()
         finally:
             t.cleanup()
