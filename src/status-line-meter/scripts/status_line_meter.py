@@ -23,9 +23,14 @@ Minimum host version for used_percentage: v2.1.132.
 from __future__ import annotations
 
 import json
+import os
 import sys
 import tempfile
+import time
 from pathlib import Path
+
+_FIVE_HOURS_SECONDS = 5 * 3600
+_WEEK_SECONDS = 7 * 24 * 3600
 
 # ---------------------------------------------------------------------------
 # Runtime discovery of token-audit's pricing module.
@@ -153,6 +158,111 @@ def _get_session_stats(data: dict) -> dict | None:
 
 
 # ---------------------------------------------------------------------------
+# Budget readout (token-audit automation layer, PLAN-efficiency-automation task 5).
+#
+# Reads `session-cost` records (token-audit design's 2026-07-04 amendment) and
+# renders a 5h-window sum + a weekly sum against an operator-configured
+# ceiling — degrading the same way the existing cost badge does: missing
+# config, missing records, or any read error all omit the readout, never an
+# error string.
+#
+# NOTE (design divergence, honest not silent — Hook 4): task 4 (the Stop hook
+# that WRITES session-cost records) was deferred pending roadmap-session
+# confirmation (see progress-efficiency-automation.md), so this reader has no
+# real writer yet. The JSONL-log shape below and the env-var ceiling config
+# are this task's own placeholder integration, not a decision the design doc
+# locked — task 4, when it lands, should either conform to this shape or this
+# reader should be revisited to match whatever it actually writes.
+# ---------------------------------------------------------------------------
+
+def _default_session_cost_log_path() -> Path:
+    override = os.environ.get("CRICKETS_SESSION_COST_LOG")
+    if override:
+        return Path(override)
+    return Path(tempfile.gettempdir()) / "crickets_session_cost.jsonl"
+
+
+def _read_session_cost_records(path: Path) -> list[dict]:
+    """One JSON object per line: {model, tokens_by_kind, cost_usd, timestamp}.
+
+    Missing file, unreadable, or malformed lines -> skip/empty. Never raises.
+    """
+    try:
+        if not path.is_file():
+            return []
+        records: list[dict] = []
+        for line in path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rec = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(rec, dict):
+                records.append(rec)
+        return records
+    except Exception:
+        return []
+
+
+def _read_budget_ceiling() -> dict | None:
+    """{"window_5h": float, "weekly": float} (either or both keys), or None.
+
+    Configured via CRICKETS_BUDGET_5H / CRICKETS_BUDGET_WEEKLY env vars (USD).
+    Absent, empty, or unparseable -> None (readout omitted, not an error).
+    """
+    raw_5h = os.environ.get("CRICKETS_BUDGET_5H")
+    raw_weekly = os.environ.get("CRICKETS_BUDGET_WEEKLY")
+    ceiling: dict = {}
+    try:
+        if raw_5h:
+            ceiling["window_5h"] = float(raw_5h)
+        if raw_weekly:
+            ceiling["weekly"] = float(raw_weekly)
+    except ValueError:
+        return None
+    return ceiling or None
+
+
+def budget_readout(records: list[dict], ceiling: dict | None, now_epoch: float) -> str:
+    """Pure: fixture records + ceiling + now -> readout string, or "" if unconfigured.
+
+    Sums `cost_usd` for records whose `timestamp` (epoch seconds) falls
+    within the trailing 5h / 7-day window from `now_epoch`. Renders only the
+    ceiling keys actually configured.
+    """
+    if not ceiling:
+        return ""
+
+    window_sum = 0.0
+    week_sum = 0.0
+    for rec in records:
+        ts = rec.get("timestamp")
+        cost = rec.get("cost_usd")
+        if ts is None or cost is None:
+            continue
+        try:
+            age = now_epoch - float(ts)
+            cost = float(cost)
+        except (TypeError, ValueError):
+            continue
+        if age < 0:
+            continue
+        if age <= _FIVE_HOURS_SECONDS:
+            window_sum += cost
+        if age <= _WEEK_SECONDS:
+            week_sum += cost
+
+    parts: list[str] = []
+    if "window_5h" in ceiling:
+        parts.append(f"5h ${window_sum:.2f}/${ceiling['window_5h']:.2f}")
+    if "weekly" in ceiling:
+        parts.append(f"wk ${week_sum:.2f}/${ceiling['weekly']:.2f}")
+    return "  ·  ".join(parts)
+
+
+# ---------------------------------------------------------------------------
 # Rendering
 # ---------------------------------------------------------------------------
 
@@ -180,6 +290,17 @@ def render(data: dict) -> str:
                 floor_pct = floor_cost / total_cost * 100
                 parts.append(f"⌊{floor_pct:.0f}%⌋")
                 parts.append(f"${total_cost:.2f}")
+    except Exception:
+        pass
+
+    # Badge 4: budget readout (5h-window + weekly sums vs. a configured ceiling)
+    try:
+        ceiling = _read_budget_ceiling()
+        if ceiling:
+            records = _read_session_cost_records(_default_session_cost_log_path())
+            readout = budget_readout(records, ceiling, time.time())
+            if readout:
+                parts.append(readout)
     except Exception:
         pass
 

@@ -139,7 +139,7 @@
       ],
       "name": "status-line-meter",
       "source": "./dist/claude-code/plugins/status-line-meter",
-      "version": "0.1.3"
+      "version": "0.1.4"
     },
     {
       "capabilities": [
