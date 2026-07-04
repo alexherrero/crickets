@@ -5,9 +5,9 @@
 > **Period:** 2026-04-19 → 2026-05-23
 > **Paired with releases:** `agentm` v3.0.0 + `crickets` v1.0.0
 
-This document is the focused-survey retrospective of the V3 arc — the work that took `agentm` from v1.0.0 (Codex-removal sweep) to v3.0.0 (V3 close-out), and `crickets` from inception (v0.5.0 split-out) to v1.0.0 (public-API commitment).
+The V3 arc took `agentm` from v1.0.0 (Codex-removal sweep) to v3.0.0 (V3 close-out), and `crickets` from inception (v0.5.0 split-out) to v1.0.0 (public-API commitment). This page is the focused-survey retrospective of that arc.
 
-It exists for posterity (when the next arc starts, this is the source-of-truth for "what V3 was"), for future maintainers (so the design themes are read once not re-derived), and for the operator's later vault archive of V3 material.
+It exists so the next arc starts from a settled answer to "what V3 was," so future maintainers read the design themes once instead of re-deriving them, and so the operator has a record ready for the later vault archive of V3 material.
 
 ## 1. Scope
 
@@ -55,13 +55,13 @@ V3 closes with paired pair #13 — harness v3.0.0 + toolkit v1.0.0.
 
 **Sibling-reference over copy-with-parity.** Plan #10 shipped the `quality-gates` bundle after an operator-driven mid-plan pivot from COPY to sibling-reference. A bundle is now a manifest pointing at standalone primitives; the installer resolves `contents:` entries against the toolkit's standalone layout. Net effect: zero file duplication, zero drift surface, single source of truth (ADR 0010).
 
-**Evidence-tracking default-FAIL contract.** Plan #9 shipped a hook that blocks `[ ]` → `[x]` flips in `PLAN.md` unless the agent has demonstrably `Read` a spec-shaped file in this session. Hybrid resolver: heuristic (look for `**Evidence:**` task-body annotations or files named in the task) + per-task override + explicit opt-out with mandatory rationale (ADR 0009).
+**Evidence-tracking default-FAIL contract.** Plan #9 shipped a hook that blocks `[ ]` → `[x]` flips in `PLAN.md` unless the agent has demonstrably `Read` a spec-shaped file in this session. The resolver is a hybrid: it looks for `**Evidence:**` task-body annotations or files named in the task, allows a per-task override, and permits an explicit opt-out with mandatory rationale (ADR 0009).
 
-**Auto-recall in every harness phase.** Plan #8 wired `harness_memory.py recall` into `/setup`, `/plan`, `/work`, `/review`, `/release`, `/bugfix` at natural boundaries. Self-modulating offer-save (confidence-thresholded prompt). Cursor-tracked promotion (`.harness/.promoted-progress-cursor`) for plan-done end-of-plan reflection (ADR 0007).
+**Auto-recall in every harness phase.** Plan #8 wired `harness_memory.py recall` into every phase, `/setup` through `/bugfix`, at each one's natural boundary. The offer-save prompt modulates itself — it asks only when its confidence clears the threshold, so saving never becomes a nag. Promotion is tracked by a cursor at `.harness/.promoted-progress-cursor`, so a finished plan gets its end-of-plan reflection exactly once (ADR 0007).
 
 **Sub-letter spec amendment convention.** Adding §5b instead of inserting a new §6 preserves integer §-numbering — incoming wiki refs that cite "§N" stay valid. Established in plan #3, reinforced across plans #4 / #8 / #9. Line-range anchors still need manual updating, but the §-level contract is stable.
 
-**`.py`-sidecar installer pattern.** Plan #9 introduced the convention that a hook can ship a Python helper alongside its `.sh`/`.ps1` entry script. The installer extension was ~7 lines per OS; the integrity check had to be extended in parallel to allow `.py` files in `.claude/hooks/`. Pattern now reusable for future hooks that need stdlib-only Python helpers.
+**`.py`-sidecar installer pattern.** Plan #9 introduced the convention that a hook can ship a Python helper alongside its `.sh`/`.ps1` entry script. The installer extension was ~7 lines per OS; the integrity check had to be extended in parallel to allow `.py` files in `.claude/hooks/`. The pattern is now reusable for future hooks that need stdlib-only Python helpers.
 
 **Permeable A3 write boundary.** MemoryVault writes default to `personal-private/` but agents can write anywhere on explicit operator instruction or after confirmation. Read is universal; write is constrained-by-default. Established plan #7a part 4; reinforced by the adapt-don't-import sub-agent write allowlist in plan #7b.
 
@@ -96,12 +96,12 @@ Six plans had substantive mid-flight design changes initiated by the operator:
 - **Plan #9 Q1 evidence resolver.** Hybrid heuristic + override + explicit opt-out instead of strict path-list.
 - **Plan #14 (this plan) HLD constraint.** Operator-locked: HLD must stand on its own, no overt external prior-art references; operator review-and-approve gate before commit/push.
 
-Pattern: don't anchor on existing precedent; sanity-check "invasive alternative" framings against actual cost.
+The recurring lesson: don't anchor on existing precedent, and sanity-check any "invasive alternative" framing against its actual cost.
 
 ## 6. Deferred items + rationale
 
 - **#11 Wake-from-state** ⏸️ deferred 2026-05-23. Implicit `state on disk` already covers ~95%; no real crash has lost recoverable data through the 10-plan arc. Revisit triggers: (i) real crash loses data; (ii) #26 ships and reshapes WHERE state lives; (iii) #28 ships and absorbs the wake surface; (iv) #24 cross-device hits state-recovery friction.
-- **#16 Personal-knowledge consolidation** — gated on V4 vault architecture. Out of scope for V3 because the V3 vault tree is now stable but the comprehensive content-curation pass is a 2-3 session co-creation project, not a code-shipping plan.
+- **#16 Personal-knowledge consolidation** — gated on V4 vault architecture. Out of scope for V3 because the V3 vault tree is now stable but the full content-curation pass is a 2-3 session co-creation project, not a code-shipping plan.
 - **#18 Local-only embeddings** — already shipped mid-flight as a plan; no longer "deferred." Listed here for completeness.
 
 ## 7. TBD frontiers heading into V4
