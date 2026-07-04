@@ -9,15 +9,15 @@
 - [Maintain a wiki — wiki-watcher](Run-The-Wiki-Watcher)
 - [Review a change — code review](Use-Code-Review)
 - [In-flight decision review — /doubt](Use-Doubt-Review)
-- [Author a design](Author-A-Design) _(pending)_
+- [Author a design](Author-A-Design)
 - [Run a named plan](Run-A-Named-Plan)
 - [Spawn a worker in a worktree](Spawn-A-Worker-In-A-Worktree)
 - [Run isolated tasks](Run-Isolated-Tasks)
 - [Configure main branch protection](Configure-Main-Branch-Protection)
 - [Integrate a worker](Integrate-A-Worker)
 - [See every active plan](See-Every-Active-Plan)
-- [Run a coordinator-directed worker team](Run-A-Coordinator-Directed-Worker-Team) _(pending)_
-- [Install the vault backend](Install-The-Vault-Backend) _(pending)_
+- [Run a coordinator-directed worker team](Run-A-Coordinator-Directed-Worker-Team)
+- [Install the vault backend](Install-The-Vault-Backend)
 - [Sync a project board](Sync-A-Project-Board)
 ### 📖 [Reference](Reference)
 ### 🏛️ [Architecture](Architecture)

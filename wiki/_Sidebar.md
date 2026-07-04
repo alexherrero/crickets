@@ -14,7 +14,7 @@
 - [Launch readiness gate — /launch](Add-Launch-Readiness-Gate)
 - [Author a CI/CD pipeline — /ci-cd](Author-A-CICD-Pipeline)
 - [Record an architectural decision — /document-decision](Record-An-Architectural-Decision)
-- [Install the vault backend](Install-The-Vault-Backend) _(pending)_
+- [Install the vault backend](Install-The-Vault-Backend)
 ### 📖 [Reference](Reference)
 - [Plugin anatomy](Plugin-Anatomy)
 - [Repo layout](Repo-Layout)
@@ -27,7 +27,7 @@
 - [Hooks](Hooks)
 - [Evaluator](Evaluator)
 - [Antigravity Limitations](Antigravity-Limitations)
-- [Obsidian vault backend](Obsidian-Vault-Backend) _(pending)_
+- [Obsidian vault backend](Obsidian-Vault-Backend)
 - [Wiki Watch Config](Wiki-Watch-Config)
 - [Style-learning loop](Style-Learning-Loop)
 - [Modify a plugin](Modify-A-Plugin)

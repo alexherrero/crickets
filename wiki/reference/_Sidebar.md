@@ -27,7 +27,7 @@
 - [Hooks](Hooks)
 - [Evaluator](Evaluator)
 - [Named plans](Named-Plans)
-- [Coordinator roles](Coordinator-Roles) _(pending)_
+- [Coordinator roles](Coordinator-Roles)
 - [CI gates](CI-Gates)
 - [Compatibility](Compatibility)
 - [Antigravity Limitations](Antigravity-Limitations)
