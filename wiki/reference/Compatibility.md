@@ -27,6 +27,13 @@ Claude Code supports every plugin fully; the **Support** column reflects Antigra
 | `github-ci` | ✅ Supported | — |
 | `pii` | ✅ Supported | — |
 | `wiki-maintenance` | ⚠️ Partial | the slash commands + the `wiki-author` skill are Claude-only ([why](Antigravity-Limitations)) |
+| `design-docs` | ✅ Supported | — |
+| `github-projects` | ✅ Supported | — |
+| `obsidian-vault` | ⚠️ Partial | the `conflict-merger-session-start` hook is Claude-only (SessionStart) |
+| `releasing-conventions` | ✅ Supported | — |
+| `testing-conventions` | ✅ Supported | — |
+| `status-line-meter` | ❌ Claude Code only | built for the Claude Code status line; Antigravity has no status-line surface to target |
+| `token-audit` | ❌ Claude Code only | its only primitive, the `/token-audit` command, is Claude-only |
 
 ## Hook effectiveness
 

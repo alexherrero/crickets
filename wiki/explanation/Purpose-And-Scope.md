@@ -11,7 +11,7 @@ crickets exists so the agent customizations that travel with you — skills, sub
 | What is it? | A personal collection of agent customizations — skills, sub-agents, commands, hooks — shipped as **native host plugins** for Claude Code and Antigravity. |
 | Sibling to? | [`agentm`](https://github.com/alexherrero/agentm) — the phase-gated workflow harness. The harness owns *workflow*; crickets owns *customizations*. |
 | How does it install? | The host's plugin manager — `claude plugin install <plugin>@crickets`, the bootstrap one-liner, or a manual `--plugin-dir`. See [Install crickets plugins](Install-Into-Project). |
-| What's in it? | Six plugins (groups) generated from one source — see [Plugin anatomy](Plugin-Anatomy); the primitive kinds are in [Customization types](Customization-Types). |
+| What's in it? | 13 plugins (groups) generated from one source — see [Plugins](Plugins) for the roster and [Plugin anatomy](Plugin-Anatomy) for the shared structure; the primitive kinds are in [Customization types](Customization-Types). |
 | How is it built? | Author once under `src/<group>/`; `generate.py` emits a native plugin per host into `dist/`. |
 
 ## What it's for

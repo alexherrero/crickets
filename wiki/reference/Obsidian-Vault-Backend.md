@@ -5,7 +5,7 @@
 
 Obsidian Vault lets your agent keep its memory inside your own Obsidian vault instead of a store buried in a device-local folder. Everything the agent learns lands as plain Markdown you can open, read, and edit in Obsidian — and because the vault lives on Google Drive, that memory follows you from one device to the next. It also knows how to cope with the mess cloud sync leaves behind, spotting the conflict and duplicate files Drive scatters around so your memory stays clean. This is a storage backend the memory engine picks up and runs on its own, so nothing in your normal workflow calls it directly. It stands alone — it needs no other plugin, only a vault to point at.
 
-_Some of this page describes the backend's finished shape, which isn't fully live yet. The plugin is built and running alongside the engine's built-in store, but it isn't the default store yet. The health check and conflict detection are usable today; the rest is the target it's being proven against, not yet the shipped behaviour, and the sections below say which is which._
+_This plugin is the sole vault-backend implementation — the agentm kernel's built-in vault backend was deleted at the V5-3 cutover (agentm v5.5.0, 2026-06-17; see agentm's `scripts/backend_selection.py:32`). It's opt-in via `storage.backend=vault` (see [Install the vault backend](Install-The-Vault-Backend))._
 
 ### Diagram
 
@@ -66,15 +66,15 @@ The engine talks to every storage backend through the same small set of operatio
 | syncs across devices | yes — through Google Drive |
 | conflict strategy | a whole-file merge for Drive's conflicted copies |
 
-The exact per-operation contracts are still being finalized as the backend moves from running alongside the built-in store to replacing it.
+These per-operation contracts are locked and test-covered by the dedicated `obsidian-vault-conformance` CI job (see [CI gates](CI-Gates)).
 
 ### How the engine finds and uses it
 
 The engine discovers the plugin by looking in a known place under your plugin-install directory, and ranks a vault it detects there. If you tell the engine to use the vault backend but the plugin isn't installed, it stops and says so rather than quietly falling back to the device-local store. To keep concurrent writes safe it shares the engine's own write-lock rather than carrying a copy, and it only ever runs as part of a running engine. On install it reads your existing vault path in place — it never rewrites your config, and it moves no data, so there's nothing to re-set-up.
 
-### What's live today
+### What's live
 
-Two pieces are usable right now: the `vault-doctor` health check and the conflict detection behind it. The rest — the backend serving as your live memory store, and the proofs that let it replace the built-in one — is built but still being verified. Before the switch-over, the backend has to pass its checks: that it stores and reads back your Markdown exactly, that it matches the built-in store byte-for-byte while both run side by side, and that it correctly refuses a write when another session changed the same file first. That last check matters most — passing the round-trip proofs alone wouldn't catch a backend that had quietly lost its concurrency guard — so the switch-over gate asserts it directly. The full gate is described in the [obsidian-vault design](crickets-obsidian-vault).
+The backend is fully live — the sole vault-backend implementation since the V5-3 cutover (agentm v5.5.0, 2026-06-17). Beyond the `vault-doctor` health check and conflict detection, it serves as the actual memory store: it stores and reads back your Markdown exactly, and it correctly refuses a write when another session changed the same file first (the concurrency guard). The dedicated `obsidian-vault-conformance` CI job runs the conformance + discovery + doctor suites against a checked-out agentm kernel on every push (Linux + Windows) — see [CI gates](CI-Gates). The full contract is described in the [obsidian-vault design](crickets-obsidian-vault).
 
 ### Host coverage
 
@@ -91,8 +91,8 @@ The vault location is resolved at runtime, not baked into the plugin. The engine
 
 ## See also
 
-- [Install the vault backend](Install-The-Vault-Backend) — install the plugin and prove it matches the built-in store before the switch-over.
-- [CI gates](CI-Gates) — the gate battery this backend's proofs will join.
+- [Install the vault backend](Install-The-Vault-Backend) — install the plugin and point the engine at your vault.
+- [CI gates](CI-Gates) — the gate battery this backend's conformance suite runs in.
 - [Plugin anatomy](Plugin-Anatomy) — what a crickets plugin's `scripts/` payload is.
 - [Antigravity limitations](Antigravity-Limitations) — why the automatic session-start nudge is Claude-only, and the host-gap register it belongs to.
 - [obsidian-vault design](crickets-obsidian-vault) · [vault-git design](crickets-vault-git) — the deeper design.
