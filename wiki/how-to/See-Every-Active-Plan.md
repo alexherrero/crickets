@@ -4,7 +4,7 @@
 > **Goal:** List every active plan in the harness state dir — each plan's name, its `Status:` line, and the most-recent entry of its `progress*.md` — in one read-only dashboard, so a coordinator can see the queue before deciding what to `/work` next.
 > **Prereqs:** the `developer-workflows` plugin installed ([Install crickets plugins](Install-Into-Project)); at least one plan in the harness dir (the singleton `PLAN.md`, or named `PLAN-<slug>.md` pairs — see [Named plans](Named-Plans)).
 
-Use `/queue-status-lite` when several plans are in flight at once and you want a single view of all of them. It is the **read side** of the multi-plan surface: the `--name` writers ([Run a named plan](Run-A-Named-Plan)) drive one plan; this glance shows them all. It is **read-only by contract** — it surfaces the queue and decides nothing. It never claims, leases, assigns, or writes anything, and it is **not a gate**: picking a plan to `/work`, kicking off a `/review`, or merging is your call.
+Use `/queue-status-lite` when several plans are in flight at once and you want a single view of all of them. It is the **read side** of the multi-plan surface: the `--name` writers ([Run a named plan](Run-A-Named-Plan)) drive one plan; this glance shows them all. It only reads: it shows you the queue and leaves every decision — what to work, review, or merge — to you.
 
 ## Steps
 
@@ -17,7 +17,7 @@ Use `/queue-status-lite` when several plans are in flight at once and you want a
 
 2. **Read the dashboard.** One entry per active plan — its name, its `Status:` line, and the last line of the matching `progress*.md`. The command lists `PLAN.md` plus every `PLAN-<slug>.md`; archives (`PLAN.archive.*.md`) and GDrive conflict copies are skipped. The output is the bridge's verbatim render — the same shape whether an agentm clone is present or not (see [Named plans § Reading the queue](Named-Plans#reading-the-queue--queue-status-lite)).
 
-3. **Decide, then act.** The glance stops at showing. Choose the next move yourself — `/work --name <slug>` to work a plan, `/review --name <slug>` to review one, or nothing at all. The command will not recommend, assign, or record a choice.
+3. **Decide, then act.** The glance stops at showing. Choose the next move yourself — `/work --name <slug>` to work a plan, `/review --name <slug>` to review one, or nothing at all.
 
 ## Verify
 
@@ -27,7 +27,7 @@ Use `/queue-status-lite` when several plans are in flight at once and you want a
 
 ## Troubleshooting
 
-- **No agentm clone installed.** Expected and fine — the command renders a minimal local `.harness/` dashboard mirroring the agentm reader's format. The glance degrades gracefully rather than vanishing; this is the standalone behavior, not a failure.
+- **No agentm clone installed.** Expected and fine — the command renders a minimal local `.harness/` dashboard mirroring the agentm reader's format. The glance degrades gracefully rather than vanishing; this is the standalone behavior working as designed.
 - **A plan is missing from the list.** Confirm its file is named `PLAN.md` or `PLAN-<slug>.md` directly in the harness dir. Archived (`PLAN.archive.*.md`) and conflict-copy files are intentionally skipped.
 
 ## Related

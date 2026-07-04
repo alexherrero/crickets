@@ -51,7 +51,7 @@ They're **decoupled** — independent release cycles, and no shared install code
 
 - **Duplicating the state substrate.** `agentm` owns the durable phase state; a crickets plugin that touches a phase (`developer-workflows` shipping the spec itself, or `code-review` engaging at `/review`) reads/writes that substrate via the resolver bridge rather than reimplementing it, and graceful-skips when the capability is absent.
 - **Cross-host parity enforcement.** Each primitive declares its own `supported_hosts`; there's no "every primitive must support both hosts" rule. A Claude-only hook is fine.
-- **A catalog supermarket.** Small, opinionated, deliberate — each primitive earns its keep through use, not by being a catalog entry.
+- **A catalog supermarket.** The catalog stays small, opinionated, and deliberate — each primitive earns its keep through use, not by being a catalog entry.
 
 ## Related
 

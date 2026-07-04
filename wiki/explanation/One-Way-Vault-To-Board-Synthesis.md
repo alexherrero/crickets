@@ -29,7 +29,7 @@ Three properties make the projection trustworthy rather than merely automatic:
 - **Idempotent writes** — `project_sync.py post` is a create-or-update keyed by a stable id. Re-running it converges; it never duplicates. This is what makes the board *recoverable*: if it drifts, you re-sync and it's correct again, with no manual cleanup.
 - **A single write path** — exactly one path (`project_sync.py post`, backed by `gh`) ever writes to GitHub. There is no second writer to race, no back-channel to audit. The `--dry-run` boundary lets you see the render before any of it lands.
 
-Determinism plus idempotency plus one path is what turns "sync the board" from a risky bulk mutation into a safe, repeatable projection.
+Together, these properties turn "sync the board" from a risky bulk mutation into a safe, repeatable projection.
 
 ## What the board mirrors — and what stays vault-only
 
@@ -48,7 +48,7 @@ The vault's roadmap can name a *silent source* — attribution that is meaningfu
 
 The property that makes this plugin distinctive: **the plugin that maintains the boards is itself tracked on a board.** The crickets project's own roadmap (#41 is this very plugin) is synthesized onto crickets' GitHub Project #5; agentm's roadmap onto Project #2. So the work of building the board-synthesizer appears, as Features and an active Plan, on a board the board-synthesizer renders.
 
-This is not a gimmick — it's the strongest possible dogfood. If the projection is wrong, it's wrong about its own development, visibly. The meta-loop means the plugin's correctness is continuously under test against the one project whose state its authors know best.
+The meta-loop is the strongest dogfood available: if the projection is wrong, it's wrong about its own development, visibly. It means the plugin's correctness is continuously under test against the one project whose state its authors know best.
 
 ## Locked design calls
 

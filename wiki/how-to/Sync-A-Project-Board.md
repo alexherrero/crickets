@@ -34,7 +34,7 @@
 
 The inaugural backfill brings both boards (agentm Project #2, crickets Project #5) up to current state in one pass. It is the **one bulk write** and is **operator-gated** — it runs only on explicit approval, never automatically.
 
-Recipe: author the project's full state into `board-items.json` (in the vault `_harness/`, the renderer's source of truth — never raw `gh project item-create`, which the drift gate flags as an orphan), `--dry-run` the post to inspect the render, then — only on explicit operator approval — drop `--dry-run` to push. A re-fetch should report every item a `noop`. Both boards were backfilled this way: crickets #5 (18 open issues) and agentm #2 (16 items).
+Author the project's full state into `board-items.json`, in the vault `_harness/` — this is the renderer's source of truth; never create items with raw `gh project item-create`, which the drift gate flags as an orphan. Run the post with `--dry-run` first and inspect the render. Only on explicit operator approval, drop `--dry-run` to push. A re-fetch should report every item a `noop`. Both boards were backfilled this way: crickets #5 (18 open issues) and agentm #2 (16 items).
 
 > [!WARNING]
 > The backfill writes to live GitHub Projects. Always run the `--dry-run` render first and inspect it before approving the bulk push.
@@ -48,7 +48,7 @@ python3 "$CLAUDE_PLUGIN_ROOT/scripts/check_project_sync.py"
 # graceful-skip when no project.json or no gh; otherwise asserts vault == board
 ```
 
-It exits `0` when in sync (or graceful-skip), `1` on drift, `2` on an operational error. It checks four drift kinds — `create` / `missing` / `update` / `orphan` — and is wired into `scripts/check-all.sh` and `tests-linux.yml`.
+It checks four drift kinds: `create`, `missing`, `update`, and `orphan`. `tests-linux.yml` also runs it in CI.
 
 > [!NOTE]
 > With no `project.json` or no `gh` the gate **graceful-skips** — it is never an error to run the check on a repo that has no board wired.
