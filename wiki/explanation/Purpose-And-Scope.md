@@ -25,7 +25,7 @@ A place to keep agent customizations that:
 
 ## What it's NOT for
 
-- **Workflow primitives.** `/plan` · `/work` · `/review` · `/release` · `/bugfix` and their phase specs live in agentm. crickets's `developer-workflows` plugin *extracts* the phase loop, but the canonical specs stay in the harness.
+- **Workflow state substrate.** `agentm` owns the durable phase state (`.harness/PLAN.md` / `progress.md`, the vault write protocol, named-plan resolution) that `/plan` · `/work` · `/review` · `/release` · `/bugfix` run on. Since the V5 unbundling, each phase's canonical spec ships in crickets's `developer-workflows` plugin — `agentm` no longer vendors them, having retired the byte-duplicated copies.
 - **Project-specific config.** A particular project's `.claude/` / `.harness/` files belong in that project's repo. crickets ships *portable* customizations, not one codebase's lint config.
 - **Binary artifacts.** Text only — markdown, YAML, JSON, shell. A customization that needs binaries ships a pointer, not the bytes.
 
@@ -34,11 +34,14 @@ A place to keep agent customizations that:
 Sibling repos, cloned side by side (`~/Antigravity/agentm/`, `~/Antigravity/crickets/`):
 
 ```
-  agentm — phase-gated workflow + on-disk state
+  crickets — developer-workflows plugin ships the canonical phase specs
     /setup · /plan · /work · /review · /release · /bugfix
-        │  its phase specs suggest crickets plugins (graceful-skip — neither requires the other)
+        │  phase specs read/write agentm's durable state (graceful-skip — neither requires the other)
         ▼
-  crickets — customizations as native host plugins
+  agentm — durable state substrate + memory engine
+    .harness/PLAN.md · progress.md · vault write protocol · named-plan resolver
+
+  crickets ships every customization, phases included, the same way:
     src/<group>/  →  generate.py  →  dist/<host>/plugins/<group>/
 ```
 
@@ -46,7 +49,7 @@ They're **decoupled** — independent release cycles, and no shared install code
 
 ## Non-goals
 
-- **Replacing the harness's phases.** The phases stay in agentm; a crickets plugin that touches one (e.g. `code-review` at `/review`) engages via a capability probe and graceful-skips when absent.
+- **Duplicating the state substrate.** `agentm` owns the durable phase state; a crickets plugin that touches a phase (`developer-workflows` shipping the spec itself, or `code-review` engaging at `/review`) reads/writes that substrate via the resolver bridge rather than reimplementing it, and graceful-skips when the capability is absent.
 - **Cross-host parity enforcement.** Each primitive declares its own `supported_hosts`; there's no "every primitive must support both hosts" rule. A Claude-only hook is fine.
 - **A catalog supermarket.** Small, opinionated, deliberate — each primitive earns its keep through use, not by being a catalog entry.
 

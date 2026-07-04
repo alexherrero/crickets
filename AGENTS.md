@@ -8,20 +8,12 @@ This repo is a sibling to [`agentm`](https://github.com/alexherrero/agentm). The
 
 | Subdir | What it holds |
 |---|---|
-| `skills/` | Standalone skills — host-cross-cutting unless manifest narrows |
-| `commands/` | Standalone slash commands (Claude Code + Gemini CLI surface) |
-| `agents/` | Standalone sub-agents |
-| `hooks/` | Hooks (Claude Code today; others if/when they grow hook primitives) |
-| `mcp-servers/` | MCP server configs + launchers |
-| `bundles/` | Multi-primitive customizations packaged together — installer dispatches each primitive to its destination |
-| `status-line/`, `output-styles/` | Claude Code presentation surfaces |
-| `workflows/`, `rules/` | Antigravity-specific primitives |
-| `snippets/` | Fragments appended to `AGENTS.md` / `CLAUDE.md` at install time |
-| `settings-fragments/` | JSON fragments merged into host `settings.json` files |
-| `lib/install/` | Shared install plumbing (byte-identical to `agentm/lib/install/`) |
-| `scripts/` | Validators, CI helpers, the PII detector |
+| `src/<group>/` | Authored source for every customization — 13 plugin groups (`code-review`, `design-docs`, `developer-safety`, `developer-workflows`, `github-ci`, `github-projects`, `obsidian-vault`, `pii`, `releasing-conventions`, `status-line-meter`, `testing-conventions`, `token-audit`, `wiki-maintenance`); each groups its own skills/commands/agents/hooks/etc. |
+| `dist/` | Generated native plugins per host (`claude-code/`, `antigravity/`), committed — `scripts/generate.py build` regenerates it from `src/`, and a CI gate proves it matches. |
+| `scripts/` | `generate.py` (the src→dist generator), validators, CI helpers, the PII detector |
 | `templates/hooks/` | Hook templates installed into target projects (e.g. `pre-push`) |
 | `wiki/` | Diátaxis-shaped dogfood docs |
+| `bootstrap.sh` | The one-line install script |
 
 ## How to install
 
