@@ -1,0 +1,4 @@
+{
+  "_comment": "Shared fixture schema (PLAN-efficiency-automation task 7). The set of keys a handoff-pack prompt label must carry. PLAN-efficiency-dispatch's /work escalation tripwire is expected to emit labels conforming to this same key set, so both sides read this one file instead of each defining their own — the mechanism the plan's task 7 verification asks for ('confirmed by a shared fixture schema').",
+  "required_keys": ["tier", "model_id", "effort"]
+}

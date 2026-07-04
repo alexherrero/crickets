@@ -30,5 +30,12 @@ standalone: true
 # resolver: persona-declared -> role-name match -> UNCLASSIFIED-DEFAULT) land
 # first; the fan-out cost gate, /handoff-pack, and the routing-conformance
 # report land as later tasks in the same plan/version.
-version: 0.2.0
+# 0.2.1 = PLAN-efficiency-automation task 7: /handoff-pack command +
+# handoff_pack.py — generalizes the Mythos PROMPTS.md pattern; snapshots a
+# session's outputs into a handoff directory alongside paste-ready prompts,
+# each carrying a machine-readable {tier, model_id, effort} label (a
+# structured field in prompts.json, not a prose annotation) per the shared
+# fixture schema PLAN-efficiency-dispatch's escalation tripwire is expected
+# to conform to.
+version: 0.2.1
 capabilities: [token-audit]
