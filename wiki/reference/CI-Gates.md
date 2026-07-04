@@ -22,6 +22,7 @@ bash scripts/check-all.sh
 | `check-syntax` | `bash -n` every `.sh` (CI also AST-parses every `.ps1`) |
 | `check-hook-parity` | Asserts every `developer-safety` hook keeps its `.sh`/`.ps1` twins behaviorally paired — neither twin may reference a workspace-relative `.harness/…` path without first resolving the workspace from the host's hook-input contract (`workspacePaths` + a `cd`/`Set-Location`). |
 | `check-no-pii` | the PII regex scanner over the whole tree (crickets is public) |
+| `board sync` | `check_project_sync.py` — the vault==board drift oracle: computes the expected GitHub Project board state from `board-items.json` and diffs it against the live board (read-only `gh issue list`), failing on any drift; graceful-skip (exit 0) when there's no `project.json` or no `gh` |
 | `tag-reachability` | all git tags must point to commits reachable from `main` — concurrent-release coordination backstop; graceful-skip when `main` doesn't resolve (fresh repos, non-main default-branch names) |
 | `conformance-suite` | **Active.** A dedicated `obsidian-vault-conformance` CI job (Linux + Windows) runs the `obsidian-vault` plugin backend's conformance / discovery / doctor suites against a checked-out agentm kernel, on every push; local discovery rides `check-all.sh`'s unit-test gate with graceful-skip when the kernel isn't checked out. |
 
