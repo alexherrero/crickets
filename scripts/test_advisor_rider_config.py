@@ -13,7 +13,9 @@ stdlib only — no pytest.
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -94,6 +96,33 @@ class TestAdvisorAvailabilityLine(unittest.TestCase):
     def test_line_states_advisory_only_never_auto_switches(self):
         line = ar.advisor_availability_line("claude-opus-4-8")
         self.assertIn("never auto-switches", line)
+
+
+class TestReadAdvisorModel(unittest.TestCase):
+    def test_missing_project_json_returns_none(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.assertIsNone(ar.read_advisor_model(d))
+
+    def test_configured_value_is_read(self):
+        with tempfile.TemporaryDirectory() as d:
+            harness = Path(d) / ".harness"
+            harness.mkdir()
+            (harness / "project.json").write_text(json.dumps({"advisorModel": "claude-opus-4-8"}))
+            self.assertEqual(ar.read_advisor_model(d), "claude-opus-4-8")
+
+    def test_malformed_json_returns_none_not_an_error(self):
+        with tempfile.TemporaryDirectory() as d:
+            harness = Path(d) / ".harness"
+            harness.mkdir()
+            (harness / "project.json").write_text("{not valid json")
+            self.assertIsNone(ar.read_advisor_model(d))
+
+    def test_absent_key_returns_none(self):
+        with tempfile.TemporaryDirectory() as d:
+            harness = Path(d) / ".harness"
+            harness.mkdir()
+            (harness / "project.json").write_text(json.dumps({"isolation": {"mode": "direct"}}))
+            self.assertIsNone(ar.read_advisor_model(d))
 
 
 if __name__ == "__main__":

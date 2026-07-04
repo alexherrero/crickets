@@ -11,7 +11,9 @@ Task 7's job — this module owns the validation + rendering logic itself.
 """
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
+from pathlib import Path
 
 # Relative strength for the pairing constraint ONLY — not a general model
 # quality ranking. Equal rank means comparable generation (sonnet-4-6 and
@@ -94,6 +96,24 @@ def validate_advisor_rider(
             )
 
     return AdvisorValidation(valid=True)
+
+
+def read_advisor_model(root: str | Path) -> str | None:
+    """Read `advisorModel` from `<root>/.harness/project.json`.
+
+    Missing file, malformed JSON, wrong type, or absent/empty key all
+    collapse to None (task 7 consumes this at session-start; a config read
+    failure must never block session boot) — never raises.
+    """
+    pj = Path(root) / ".harness" / "project.json"
+    try:
+        data = json.loads(pj.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    if not isinstance(data, dict):
+        return None
+    value = data.get("advisorModel")
+    return value if isinstance(value, str) and value else None
 
 
 def advisor_availability_line(advisor_model: str | None) -> str:

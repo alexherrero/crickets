@@ -297,5 +297,16 @@ enhances:
 # classify_work_type.render_tier_hint() (capability-gated, graceful-skip) —
 # only for a task whose dispatch shape genuinely differs from the plan's
 # own default; most tasks leave both unset.
-version: 0.29.7
+# 0.29.8 = PLAN-efficiency-dispatch task 7: session_start_nudge.py + a new
+# read_advisor_model() on advisor_rider.py, wired into
+# harness-context-session-start's .sh (via CLAUDE_PLUGIN_ROOT + python3,
+# mirroring the obsidian-vault conflict-merger precedent) and .ps1 (a native
+# PowerShell port, no python3 dependency introduced into that twin) —
+# compares the live session model against the active plan's next unchecked
+# task's staged tier hint (task 6) and states advisor availability
+# (task 3). Advisory only; never switches the session's model. Verified
+# end-to-end against fixtures on the .sh side; the .ps1 twin could not be
+# executed locally (no pwsh on this machine) — relying on the Windows CI
+# leg to catch any syntax issue, noted in progress.md.
+version: 0.29.8
 capabilities: [setup, plan, work, review, release, bugfix, documentation]

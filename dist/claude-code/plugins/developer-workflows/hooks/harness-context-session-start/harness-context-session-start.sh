@@ -60,4 +60,47 @@ if [[ -d "$DESIGNS_DIR" ]]; then
     fi
 fi
 
+# ── Session-start tier + advisor nudge (PLAN-efficiency-dispatch task 7) ────────
+# Compares the live session model against the active plan's next unchecked
+# task's staged tier hint (task 6) and states advisor availability (task 3) —
+# advisory only, never switches the session's model. Graceful-skip when
+# CLAUDE_PLUGIN_ROOT is unset, the script is missing, or python3 errors.
+NUDGE_PY="${CLAUDE_PLUGIN_ROOT:-}/scripts/session_start_nudge.py"
+if [[ -n "${CLAUDE_PLUGIN_ROOT:-}" && -f "$NUDGE_PY" ]] && command -v python3 >/dev/null 2>&1; then
+    NUDGE="$(python3 -c '
+import importlib.util, json, sys
+from pathlib import Path
+
+nudge_py = sys.argv[1]
+plan_path = sys.argv[2]
+event_cwd = sys.argv[3]
+payload = sys.argv[4]
+
+spec = importlib.util.spec_from_file_location("session_start_nudge", nudge_py)
+ssn = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(ssn)
+advisor_rider = ssn.advisor_rider
+
+live_model = None
+try:
+    live_model = (json.loads(payload).get("model") or {}).get("id") or None
+except Exception:
+    pass
+
+plan_hint_model = None
+try:
+    plan_text = Path(plan_path).read_text(encoding="utf-8")
+    plan_hint_model = ssn.next_unchecked_task_tier_hint_model(plan_text)
+except Exception:
+    pass
+
+advisor_model = advisor_rider.read_advisor_model(event_cwd)
+
+print(ssn.session_start_nudge(live_model, plan_hint_model, advisor_model))
+' "$NUDGE_PY" "$PLAN" "$EVENT_CWD" "$PAYLOAD" 2>/dev/null || true)"
+    if [[ -n "$NUDGE" ]]; then
+        echo "[developer-workflows] $NUDGE"
+    fi
+fi
+
 exit 0
