@@ -14,6 +14,7 @@ bash scripts/check-all.sh
 | Gate | What it checks |
 |---|---|
 | `lint_src` | `src/` source of truth — `group.yaml` + every primitive's frontmatter (incl. the `standalone ⟺ requires: []` invariant and `enhances:` cross-references) |
+| `capability naming` | `check-capability-naming.py` — plugin and capability names obey the AG naming rule |
 | `unit tests` | the `scripts/` test suite (`test_*.py` — lint, model, generator, plus the CI-consistency check that enforces the both-places rule) |
 | `generate drift` | `generate.py check` — committed `dist/` matches a fresh generation, byte-for-byte |
 | `version bump` | each plugin whose `src/<slug>/**` changed must bump its `group.yaml` `version:` (compares against `origin/main`; graceful-skips when that ref is unresolvable) |
@@ -22,13 +23,9 @@ bash scripts/check-all.sh
 | `check-hook-parity` | Asserts every `developer-safety` hook keeps its `.sh`/`.ps1` twins behaviorally paired — neither twin may reference a workspace-relative `.harness/…` path without first resolving the workspace from the host's hook-input contract (`workspacePaths` + a `cd`/`Set-Location`). |
 | `check-no-pii` | the PII regex scanner over the whole tree (crickets is public) |
 | `tag-reachability` | all git tags must point to commits reachable from `main` — concurrent-release coordination backstop; graceful-skip when `main` doesn't resolve (fresh repos, non-main default-branch names) |
-| `conformance-suite` _(pending — V5-2)_ | **Not yet active.** Will assert the `obsidian-vault` plugin backend is GREEN on the V5-1-authored conformance suite (verb battery + byte-identical LF-exact markdown round-trip). _Filled by `/work` once the task ships._ |
-| `parallel-run` _(pending — V5-2)_ | **Not yet active.** Will assert the `obsidian-vault` plugin backend resolves byte-identically against the still-present built-in backend. _Filled by `/work` once the task ships._ |
+| `conformance-suite` | **Active.** A dedicated `obsidian-vault-conformance` CI job (Linux + Windows) runs the `obsidian-vault` plugin backend's conformance / discovery / doctor suites against a checked-out agentm kernel, on every push; local discovery rides `check-all.sh`'s unit-test gate with graceful-skip when the kernel isn't checked out. |
 
 It prints a PASS/FAIL table and exits non-zero on any failure. Run it before every commit.
-
-> [!NOTE]
-> The `conformance-suite` and `parallel-run` rows above are **pending (V5-2)** — forward-declared for the `obsidian-vault` plugin and not part of the active battery yet. Their green is what will trigger the later V5-3 cutover. See [Obsidian vault backend](Obsidian-Vault-Backend).
 
 ## The CI matrix
 
@@ -59,4 +56,4 @@ When a new check earns its keep, add it in **both places**: a `run` line in `scr
 - [Modify a plugin](Modify-A-Plugin) — the edit → generate → dogfood loop the gates protect.
 - [Manifest schema](Manifest-Schema) — the contract `lint_src` enforces.
 - [PII Guardrail](PII) — the interactive layer of the PII defense the gates back-stop.
-- [Obsidian vault backend](Obsidian-Vault-Backend) — the pending plugin whose conformance-suite + parallel-run gates are forward-declared above.
+- [Obsidian vault backend](Obsidian-Vault-Backend) — the vault backend plugin (sole vault-backend implementation since V5-3) whose conformance-suite gate is described above.
