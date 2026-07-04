@@ -272,5 +272,11 @@ enhances:
 # override) when token-audit is absent. bugfix.md/release.md/setup.md's
 # other documenter mentions were left unwired this task — noted in
 # progress, not silently incomplete.
-version: 0.29.3
+# 0.29.4 = PLAN-efficiency-dispatch task 3: advisor_rider.py — validates a
+# T0/T1 session's advisorModel pairing (rejects an advisor weaker than the
+# main session; flags claude-fable-5 as advisor version-gated at >=2.1.170
+# rather than silently allowing it) + the session-start availability-line
+# renderer Task 7 will call. Config wiring into an actual session-start
+# read is Task 7's job; this task ships validation + rendering only.
+version: 0.29.4
 capabilities: [setup, plan, work, review, release, bugfix, documentation]
