@@ -4,7 +4,7 @@
 > [!NOTE]
 > **Status: implemented.** The coordinator roster shipped as loose `agents/` role-definitions in `developer-workflows` 0.8.0 (V5-10 sibling #4 — `role-agent-defs`). All four roles live under `src/developer-workflows/agents/`.
 
-The **coordinator roster** is four loose role-definitions that compose onto the `developer-workflows` phase loop. They are **thin skins over capabilities that already exist** — no new engine, and no net-new sub-agent. Each role names a persona in the operator-as-coordinator flow (research → author a plan → execute it in a worktree → integrate it → read the queue) and binds to the commands and agents that already drive that step. Use this page to look up what each role wraps, whether it is read-only or active, its tool allowlist, and the forward-references it carries to surfaces that are not built yet.
+The **coordinator roster** is four loose role-definitions that compose onto the `developer-workflows` phase loop. They are **thin skins over capabilities that already exist** — no new engine, and no net-new sub-agent. Each role names a persona in the operator-as-coordinator flow (research → author a plan → execute it in a worktree → integrate it → read the queue) and binds to the commands and agents that already drive that step. Each entry below states what the role wraps, whether it's read-only or active, its tool allowlist, and any forward-reference to a surface not built yet.
 
 ## ⚡ Quick Reference
 
@@ -20,9 +20,9 @@ The **coordinator roster** is four loose role-definitions that compose onto the 
 
 ## The compose-onto-`developer-workflows` contract
 
-These are **roles, not new commands or a new engine.** Each is a loose `agents/` role-definition (a sub-agent definition under `src/developer-workflows/agents/`, beside the existing `explorer.md` / `evaluator.md`) that names a persona and points at the phase commands and agents that already do the work. A role adds no new mechanism — it wraps shipped surfaces:
+These are **roles** — thin layers that compose onto surfaces `developer-workflows` already ships. Each is a loose `agents/` role-definition (a sub-agent definition under `src/developer-workflows/agents/`, beside the existing `explorer.md` / `evaluator.md`) that names a persona and points at the phase commands and agents that already do the work. A role adds no new mechanism — it wraps shipped surfaces:
 
-- `researcher` dispatches the shipped `explorer` (codebase fan-out) and runs its own `WebFetch` for light web lookups, and forward-references the operator's global research agent for deep / multi-source work — composing with it when present, never vendoring or porting it. It is a front, not a fan-out engine of its own.
+- `researcher` dispatches the shipped `explorer` (codebase fan-out) and runs its own `WebFetch` for light web lookups, and forward-references the operator's global research agent for deep / multi-source work — composing with it when present, never vendoring or porting it. It fronts those capabilities without adding a fan-out engine of its own.
 - `tech-lead` is the authoring persona for the `/design → /plan` step — both shipped; `/design` is the upstream authoring step, `/plan` the floor it sequences down to (see below).
 - `worker` is the persona of a `/work` session — one per worktree, bound to its plan by the worktree-local `.harness/active-plan` marker that `/spawn-worker` drops, integrated back by `/integrate-worker`.
 - `project-manager` wraps the shipped `/queue-status-lite` read-model.
@@ -35,11 +35,11 @@ Because each role is a thin skin, the engine it rides is documented on the surfa
 
 The brief-research front of the loop — the persona that answers "what do we actually know before we plan this?" It is a **thin skin** owning no new engine: it composes two capabilities that already exist plus one forward-reference.
 
-- **In-repo fan-out** → the shipped `explorer` sub-agent (read-only `Read · Glob · Grep`). For "where does X live / how does Y work / what tests cover Z," `researcher` dispatches `explorer` and consumes its structured `file:line` summary — it does not re-implement codebase exploration.
-- **Light web lookups** → its own `WebFetch`. For a quick spec / API / changelog check it fetches directly, bounded by intent (a few targeted lookups), not a crawl.
-- **Deep / multi-source research** → a **forward-reference** to the operator's global research agent (e.g. a personally-installed `memory-idea-researcher`), composing with it **when present** and never vendoring, porting, or reaching into its internals. That agent is operator-personal and out of scope for this public plugin; `researcher` names it generically. When none is installed, `researcher` degrades gracefully to `explorer` + its own `WebFetch` — still useful, just shallower.
+- **In-repo fan-out.** For "where does X live / how does Y work / what tests cover Z," `researcher` dispatches the shipped `explorer` sub-agent (read-only `Read · Glob · Grep`) and consumes its structured `file:line` summary; it does not re-implement codebase exploration.
+- **Light web lookups.** For a quick spec / API / changelog check, `researcher` fetches directly with its own `WebFetch`, bounded to a few targeted lookups rather than a crawl.
+- **Deep or multi-source research.** `researcher` forward-references the operator's global research agent (e.g. a personally-installed `memory-idea-researcher`), composing with it **when present** and never vendoring, porting, or reaching into its internals. That agent is operator-personal and out of scope for this public plugin, so `researcher` names it generically. When none is installed, `researcher` degrades gracefully to `explorer` plus its own `WebFetch` — still useful, just shallower.
 
-Tool allowlist `Read · Glob · Grep · WebFetch` — no `Write`, `Edit`, or mutating Bash. Output is a structured research finding (1–3 sentence answer + `file:line` / web sources + open questions), never raw tool output; findings flow to `tech-lead` (`/plan`) or `worker` (`/work`), never into the tree itself.
+Its allowlist is `Read`, `Glob`, `Grep`, and `WebFetch`; it cannot write, edit, or run mutating Bash. Output is a structured research finding (1–3 sentence answer + `file:line` / web sources + open questions), never raw tool output; findings flow to `tech-lead` (`/plan`) or `worker` (`/work`), never into the tree itself.
 
 ### `tech-lead` (role, active)
 
@@ -62,7 +62,7 @@ The autonomous executor (full tool access) — the persona of a `/work` **sessio
 - Gates green before every `[x]`; one task, one commit; updates `PLAN-<slug>.md` + `progress-<slug>.md`.
 - Closes the loop via [`/integrate-worker <slug>`](Integrate-A-Worker) — a `--no-ff` merge that runs the full gate battery on the merged tree (red gate → hard-reset to pre-merge HEAD; conflict → abort), promotes `progress-<slug>.md` into mainline progress, and prunes the worktree. Integration is local-merge-only — no push.
 
-Never fans out parallel implementers: single-threaded execution is the load-bearing safety constraint, and the autonomy boundary is the per-task safety check, not the task count.
+Never fans out parallel implementers — single-threaded execution is the safety constraint everything else leans on, and the per-task safety check sets the autonomy boundary.
 
 ### `project-manager` (role, read-only)
 
@@ -72,7 +72,7 @@ The read-only coordinator glance — the persona that answers "what's the state 
 - each plan's progress at a glance,
 - worker-worktree state (via the read-only `doctor_worktrees.py` probe).
 
-Tool allowlist `Read · Glob · Grep · Bash` — and the `Bash` is **read-only by contract** (the `queue_status.py` reader and read-only probes, nothing that mutates). It shows the read-model's render **verbatim**, marking no task `[x]`, writing no `progress-<slug>.md`, activating no plan, merging nothing. It is a *glance, not a gate*: per **LC-5**, merge order is **human-decided** — the PM advises, it does not arbitrate.
+Its allowlist is `Read`, `Glob`, `Grep`, and `Bash`, and the Bash is read-only by contract — it runs the `queue_status.py` reader and the read-only probes, never anything that mutates. It shows you the read-model's render exactly as produced: it marks no task done, writes no progress file, activates no plan, and merges nothing. Merge order stays a human decision (**LC-5**) — the project-manager gives you the picture and leaves the call to you.
 
 > [!NOTE]
 > **crickets #41 (github-projects board-sync) has shipped** as `src/github-projects/scripts/project_sync.py` — a synced board view on top of the local queue, composing with `project-manager`'s read-model. (A `project_sync.py` idempotency bug is tracked separately in R2.3; it doesn't affect this factual correction.)
