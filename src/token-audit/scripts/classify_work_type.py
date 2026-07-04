@@ -56,6 +56,16 @@ ROLE_TO_WORK_TYPE: dict[str, str] = {
     "cross-model-reviewer": "research-adversarial-audit",
     "documenter": "wiki-mechanical-plus",
     "verification-clerk": "mechanical-log-scraping",
+    # Phase-command names (PLAN-efficiency-dispatch task 1) — the same
+    # classifier that resolves an ad-hoc dispatch role also resolves a
+    # phase command's routing nudge, one function, not a parallel table.
+    "plan": "author-transcription-shaped",
+    "review": "author-transcription-shaped",
+    "design": "author-transcription-shaped",
+    "spec": "author-transcription-shaped",
+    "interview-me": "author-transcription-shaped",
+    "work": "worker-build",
+    "bugfix": "worker-build",
 }
 
 # The fixed, hardcoded safe default — never derived from the table, so a

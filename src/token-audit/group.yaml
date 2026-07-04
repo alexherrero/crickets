@@ -45,5 +45,10 @@ standalone: true
 # PLAN-efficiency-dispatch's [PENDING-IMPL] scope, so this operates on a
 # structured DispatchRecord list (or --routing-fixture JSON) rather than a
 # regex over an announcement format that doesn't exist yet.
-version: 0.2.2
+# 0.2.3 = PLAN-efficiency-dispatch task 1 (rescoped after Task 0's negative
+# frontmatter-pin finding): ROLE_TO_WORK_TYPE gains the seven phase-command
+# names (plan/review/design/spec/interview-me -> author-transcription-shaped;
+# work/bugfix -> worker-build), so classify_work_type is the single source
+# for command routing nudges too, not just sub-agent dispatch roles.
+version: 0.2.3
 capabilities: [token-audit]
