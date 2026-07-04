@@ -5,7 +5,7 @@ kind: command
 supported_hosts: [claude-code]
 version: 0.1.0
 install_scope: project
-argument-hint: "[--session <session-id>] [--by-phase]"
+argument-hint: "[--session <session-id>] [--by-phase] [--routing [--routing-fixture <path>]]"
 ---
 
 You are running `/token-audit` — a deterministic cost analyzer for Claude Code session transcripts. All numbers come from `message.usage` fields in the JSONL + a pinned pricing table. No LLM estimation.
@@ -78,6 +78,30 @@ You are running `/token-audit` — a deterministic cost analyzer for Claude Code
    By phase
      plan   2 messages   $0.029000
      work   2 messages   $0.009650
+   ```
+
+   ### Routing conformance (only with `--routing`)
+
+   Model-used vs. work-type, cross-referenced against `routing_table.py` and counting no-announcement dispatches as violations.
+
+   **NOTE — provisional pending `PLAN-efficiency-dispatch`:** the mandatory fan-out announcement line this section reads is `[PENDING-IMPL]` (that plan's scope). Until it ships, extract dispatch records manually from whatever announcement-shaped text the transcript actually contains (role · agent count · model · tier source), or pass `--routing-fixture <path>` to a JSON file of `{role, agent_count, model_id, tier_source}` objects (`tier_source: null` and `model_id: null` together mean "no announcement at all" — the violation case). Call:
+
+   ```bash
+   python3 -c "
+   import sys, json
+   sys.path.insert(0, '${CLAUDE_PLUGIN_ROOT}/scripts')
+   from routing_conformance import DispatchRecord, conformance_report
+   records = [DispatchRecord(**r) for r in json.load(open('<records-path>'))]
+   print(json.dumps(conformance_report(records), indent=2))
+   "
+   ```
+
+   Render:
+   ```
+   Routing conformance
+     N dispatches  ·  M matched  ·  K mismatched  ·  V violation(s) (no announcement)
+     <role>  expected <model>  got <model or "NONE ANNOUNCED">  <MATCH|MISMATCH|VIOLATION-NO-ANNOUNCEMENT>
+     …
    ```
 
 4. **Implementation note for the operator.**

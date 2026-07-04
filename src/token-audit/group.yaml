@@ -37,5 +37,13 @@ standalone: true
 # structured field in prompts.json, not a prose annotation) per the shared
 # fixture schema PLAN-efficiency-dispatch's escalation tripwire is expected
 # to conform to.
-version: 0.2.1
+# 0.2.2 = PLAN-efficiency-automation task 8: routing_conformance.py + a new
+# /token-audit --routing section. Classifies model-used vs. work-type
+# against routing_table.py, counting no-announcement dispatches as
+# violations regardless of what the expected model would have been.
+# Provisional: the mandatory fan-out announcement line it reads is
+# PLAN-efficiency-dispatch's [PENDING-IMPL] scope, so this operates on a
+# structured DispatchRecord list (or --routing-fixture JSON) rather than a
+# regex over an announcement format that doesn't exist yet.
+version: 0.2.2
 capabilities: [token-audit]
