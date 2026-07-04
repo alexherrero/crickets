@@ -23,5 +23,12 @@ standalone: true
 # (the old startswith('/cmd') check never fired against a real transcript);
 # the phase-attribution test fixture is a literal real transcript snippet, not
 # a synthesized approximation.
-version: 0.1.1
+# 0.2.0 = PLAN-efficiency-automation (2026-07-04): the automation layer the
+# token-audit design's 2026-07-04 amendment specifies — routing_table.py (the
+# versioned work-type -> (tier, model_id, effort) table, parity-guarded
+# against pricing.py's PRICING keys) + classify_work_type.py (the three-step
+# resolver: persona-declared -> role-name match -> UNCLASSIFIED-DEFAULT) land
+# first; the fan-out cost gate, /handoff-pack, and the routing-conformance
+# report land as later tasks in the same plan/version.
+version: 0.2.0
 capabilities: [token-audit]
