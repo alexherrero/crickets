@@ -4,7 +4,7 @@
 > **Goal:** Install the crickets plugins into Claude Code and/or Antigravity as native host plugins.
 > **Prereqs:** `claude` (Claude Code) and/or `agy` (Antigravity) on your PATH; `git`. No clone needed for the one-liner or the Claude marketplace.
 
-crickets ships as **native host plugins** generated from one source ([Build system design](crickets-build-system)); the old `install.sh` dispatcher is gone ([Build system design](crickets-build-system)). There are six:
+crickets ships as **native host plugins** generated from one source; the old `install.sh` dispatcher is gone ([Build system design](crickets-build-system)). There are six:
 
 | Plugin | Standalone? | What it adds |
 |---|---|---|
@@ -15,7 +15,7 @@ crickets ships as **native host plugins** generated from one source ([Build syst
 | `pii` | standalone | the PII guardrail — scrubber skill + pre-push detector. |
 | `wiki-maintenance` | requires `developer-workflows` | Diátaxis wiki authoring + maintenance. |
 
-Three ways in; all land the same plugins.
+There are three ways to install — the one-liner, per-plugin by name or path, or a single plugin with no marketplace — and every route lands the same plugins, so pick whichever fits how much setup you want.
 
 ## Steps
 

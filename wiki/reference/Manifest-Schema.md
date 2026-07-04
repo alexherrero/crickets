@@ -19,7 +19,7 @@ The primitive's **group is the folder it lives in** — there is no `group:` fie
 
 ## The group manifest (`group.yaml`)
 
-One per `src/<group>/`; describes the plugin. The group **slug** is the folder name, never a field.
+One `group.yaml` sits in each `src/<group>/` and describes the plugin. The group **slug** is the folder name, never a field.
 
 | Field | Required | Type | Meaning |
 |---|---|---|---|

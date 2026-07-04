@@ -37,15 +37,15 @@ Defaults are operator-overridable via `claude --model` or the `/model` command. 
 
 ### Terse output style
 
-Scoped to inter-tool chatter only. The end-of-task status report is explicitly carved out — it must remain detailed. This mirrors the carve-out in the global CLAUDE.md block and is regression-tested by `tests/test_dw_terse_style.py`.
+The terse style is scoped to inter-tool chatter only. The end-of-task status report is explicitly carved out — it must remain detailed. This mirrors the carve-out in the global CLAUDE.md block and is regression-tested by `tests/test_dw_terse_style.py`.
 
 ### Edit-over-Write rule
 
-Prose rationale: `Write` re-emits the whole file as output tokens (~5x billed); `Edit` emits only the changed strings. The rule covers the `Edit`-vs-`Write` call and adds a `/clear`-not-`/compact` reminder to `plan.md` and `release.md`'s close-out section — the two commands that mark clean phase boundaries where state is on disk.
+`Write` re-emits the whole file as output tokens (~5x billed), while `Edit` emits only the changed strings. The rule covers the `Edit`-vs-`Write` call and adds a `/clear`-not-`/compact` reminder to `plan.md` and `release.md`'s close-out section — the two commands that mark clean phase boundaries where state is on disk.
 
 ### Compact-nudge hook
 
-Trigger: `UserPromptSubmit`. Threshold: context >= 60% (via `CLAUDE_CONTEXT_USAGE_PERCENTAGE` if present, or JSONL assistant-line count > 400 as proxy). Below threshold: silent no-op. Above threshold: emits `additionalContext` nudge explaining the compact-vs-clear trade-off. If Part B's `pricing.py` is installed, includes a rough numeric estimate. Nudge-only is the permanent ceiling — hooks cannot actuate `/compact`.
+The hook fires on `UserPromptSubmit` and stays silent below 60% context (read via `CLAUDE_CONTEXT_USAGE_PERCENTAGE` if present, or a JSONL assistant-line count over 400 as a proxy). Above the threshold it emits an `additionalContext` nudge explaining the compact-vs-clear trade-off, including a rough numeric estimate when Part B's `pricing.py` is installed. Nudge-only is the permanent ceiling — hooks cannot actuate `/compact`.
 
 ## Implementation
 

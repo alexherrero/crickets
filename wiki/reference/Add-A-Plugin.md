@@ -20,7 +20,7 @@ A crickets plugin is a **group folder** under `src/<group>/`; the folder name is
    # enhances: [developer-workflows]   # soft — augments the target when both are installed
    ```
 
-   Field contract + the `standalone ⟺ requires: []` invariant: [Manifest schema](Manifest-Schema).
+   The field contract, including the `standalone ⟺ requires: []` invariant, lives in [Manifest schema](Manifest-Schema).
 
 2. **Add its primitives** under their kind subdirs — `skills/<name>/SKILL.md`, `agents/<name>.md`, `commands/<name>.md`, `hooks/<name>/`. Each carries its own frontmatter ([add a skill](Add-A-Skill) walks one through). A group-wide helper script goes in `src/<group>/scripts/`.
 

@@ -3,7 +3,7 @@
 
 _One authored primitive, two hosts — how each kind lands on Claude Code and Antigravity, and where a host can't follow._
 
-crickets targets two hosts — **Claude Code** and **Antigravity** — from one source. A primitive declares `supported_hosts`, and the generator emits a host-shaped artifact for each: same `kind`, host-specific destination and packaging. Where a host can't honor a primitive, the gap is named rather than hidden.
+crickets targets two hosts — **Claude Code** and **Antigravity** — from one source. A primitive declares `supported_hosts`, and the generator emits a host-shaped artifact for each — the same `kind`, placed and packaged the way that host expects. Where a host can't honor a primitive, the gap is named rather than hidden.
 
 ## How it works
 
@@ -15,7 +15,7 @@ The generator mirrors the source layout into `dist/<host>/plugins/<group>/`, and
 | **`hook`** | `hooks/hooks.json` + `hooks/<name>/` | root `hooks.json` + `hooks/<name>/`; runs observe-only |
 | **`snippet`** | dropped — no instruction-file surface | `rules/<name>.md` |
 
-The two hosts agree on most paths and split in a few places: the plugin manifest (`.claude-plugin/plugin.json` vs a root `plugin.json`), the hook manifest location, and the marketplace pointer. Two splits are load-bearing — Claude Code drops `snippet`s (it has no instruction-file surface), and Antigravity runs hooks observe-only (it ignores exit codes and never reads stdout), so a hook that vetoes or injects is Claude-only-effective.
+The two hosts agree on most paths and split in a few places: the plugin manifest (`.claude-plugin/plugin.json` vs a root `plugin.json`), the hook manifest location, and the marketplace pointer. Two splits change what you can rely on — Claude Code drops `snippet`s (it has no instruction-file surface), and Antigravity runs hooks observe-only (it ignores exit codes and never reads stdout), so a hook that vetoes or injects is Claude-only-effective.
 
 ## How it fits
 

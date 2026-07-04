@@ -19,7 +19,7 @@ A primitive's `kind` field decides both what it does and where you author it —
 | **`output-style`** | a host output style (e.g. `terse`). |
 | **`rule`** | a standing rule fragment (e.g. `edit-over-write`). |
 
-Plugins compose two ways. A plugin `requires:` another when it hard-depends on it — it is then *integrated*, not `standalone`. A plugin `enhances:` another when it augments it only if both are installed: soft, and skipped when the target is absent.
+Plugins compose two ways. A plugin `requires:` another when it hard-depends on it — it is then *integrated*, not `standalone`. A plugin `enhances:` another when it augments it only if both are installed — the dependency is soft, and the enhancement is skipped when the target is absent.
 
 ## How it fits
 

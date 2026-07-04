@@ -137,11 +137,11 @@ Alongside writing the active named plan directly (`--name`), `/plan` can stage a
 
 The `--stage` / `--activate` modes are wired in [`commands/plan.md`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/commands/plan.md). Staged plans stay invisible to `/queue-status-lite` because `queue_status._list_plan_files` globs `PLAN-*.md` non-recursively, so the `queued-plans/` subdir is skipped.
 
-Locked by `scripts/test_stage_plan.py`.
+Executable tests in `scripts/test_stage_plan.py` lock this behavior.
 
 ## Reading the queue — `/queue-status-lite`
 
-The read complement to the `--name` writers above. `/queue-status-lite` lists every active plan in the harness dir — for each, its name, its `Status:` line, and the most-recent entry of the matching `progress*.md`. It takes no `--name` flag: it enumerates the whole queue, not one pair. It is read-only by contract — no claim, no lease, no arbitration, no writes, not a gate; the human stays the arbiter of who works which plan. The task recipe is in [See every active plan](See-Every-Active-Plan).
+`/queue-status-lite` is the read complement to the `--name` writers above — it lists every active plan in the harness dir, showing each plan's name, its `Status:` line, and the most-recent entry of the matching `progress*.md`. It takes no `--name` flag because it enumerates the whole queue, not one pair. It is read-only by contract: it claims nothing, leases nothing, and gates nothing, so the human stays the arbiter of who works which plan. The task recipe is in [See every active plan](See-Every-Active-Plan).
 
 | Property | Value |
 |---|---|
@@ -212,7 +212,7 @@ When an agentm clone is installed the bridge delegates to agentm's `queue_status
 | `_prune()` / `_branch_safe_gone()` | [`integrate_worker.py:217`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/integrate_worker.py#L217), [`:196`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/integrate_worker.py#L196) | Green-path cleanup: removes the worktree (worktree-first), then safe-deletes the branch with `git branch -d` (not `-D` — `--no-ff` made it an ancestor of HEAD). A promote/prune failure is reported but never undoes the merge. |
 | Command wiring | [`commands/integrate-worker.md`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/commands/integrate-worker.md) | The operator-facing `/integrate-worker`. Wires the real gate (`bash scripts/check-all.sh` on the merged tree), surfaces helper output verbatim, never pushes. |
 
-Locked by `scripts/test_integrate_worker.py`.
+Executable tests in `scripts/test_integrate_worker.py` lock this behavior.
 
 ### Pre-mutation guards
 
@@ -257,7 +257,7 @@ The four states, in precedence order:
 | `_format()` | [`doctor_worktrees.py:211`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/doctor_worktrees.py#L211) | Renders the report: a header tally (counts per status) plus, per worktree, its branch · status · plan slug, the worktree path (or `(no worktree)`), and a `→` detail line. Pure — formats a list into a string. |
 | `main()` | [`doctor_worktrees.py:239`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/doctor_worktrees.py#L239) | The CLI: parses `--project-root`, prints `_format(diagnose(root))`, and **returns `0` always** — a read-only diagnostic, never a gate. |
 
-Locked by `scripts/test_doctor_worktrees.py`.
+Executable tests in `scripts/test_doctor_worktrees.py` lock this behavior.
 
 ## `/work` argument parse rule
 

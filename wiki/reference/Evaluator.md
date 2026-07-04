@@ -1,7 +1,7 @@
 <!-- mode: reference -->
 # Evaluator
 
-A **read-only grader** sub-agent: it reads an artifact, applies an explicit rubric, and returns **PASS** or **NEEDS_WORK** with per-item reasoning. It runs in a fresh context that never saw the work, so it grades against the contract, not the author's intent. Tool allowlist `Read · Glob · Grep` only — no Bash, no writes, no network.
+The evaluator is a **read-only grader**. It reads an artifact, applies the rubric you supply, and returns **PASS** or **NEEDS_WORK** with per-item reasoning. It runs in a fresh context that never saw the work, so it grades against the contract, not the author's intent. Its allowlist is `Read`, `Glob`, and `Grep` only — it cannot run Bash, write files, or reach the network.
 
 ## How the infrastructure uses it
 
@@ -26,7 +26,7 @@ It is **not** a defect finder (use `adversarial-reviewer`), a prose reviewer (it
 | A need to *run* tests | ❌ — run them first, supply the output file |
 | A need to *fix* what fails | ❌ — read-only; route NEEDS_WORK back to `/work` |
 
-Mental model: the "did this match the contract?" check. If you can write the contract as a numbered list, the evaluator can grade it.
+Think of it as the did-this-match-the-contract check: if you can write the contract as a numbered list, the evaluator can grade it.
 
 ## Dispatch contract
 
