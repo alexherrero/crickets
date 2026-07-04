@@ -40,7 +40,7 @@ Invoking this phase **is** the authorization to run it to completion. The stop-g
 2. **Gates must be green before the task is marked `[x]`.** No "I'll fix this next session" on failed gates.
 3. **Never edit or delete a failing test to make it pass.** If a test is wrong, surface it and stop.
 4. **Feed full error output back** on gate failures — do not summarize. The exact error is the signal.
-5. **Cap iterations at 5 per gate.** If not green after 5, stop and report.
+5. **The escalation tripwire fires at 3 consecutive failures on the same gate for the same task** (`escalation_tripwire.py`, capability-gated on token-audit — see step 6). This supersedes the old flat 5-iteration cap: no session reaches a 4th attempt on an unresolved gate. If token-audit is absent, the tripwire still fires (degraded: loud stop, no handoff pack) — the cap is never silently longer just because the capability is missing.
 6. **Do not silently expand task scope.** If it turns out bigger than planned, stop and ask.
 7. **Do not touch `wiki/` during implementation.** Documentation updates are phase-boundary-only.
 8. **After gates are green (before committing), dispatch the `documenter` sub-agent** with the task spec + the diff (via the `wiki-maintenance` capability probe — exit 0 dispatch, exit 1 skip). It flips matching `pending → implemented` pages and adds operational pages if the task introduced one. Resolve `OPEN QUESTIONS` before committing.
@@ -145,7 +145,9 @@ Run in order, short-circuit on failure: **typecheck → lint → tests → build
 
 ### 6. Iterate on failures
 
-Feed the **full error output** into the next pass (don't summarize). Cap at **5 iterations** per gate — loops of 20+ mean a misunderstanding, not a fixable bug. If a test is itself wrong, **stop** — do not edit or delete it to go green; surface the defect and ask.
+Feed the **full error output** into the next pass (don't summarize). If a test is itself wrong, **stop** — do not edit or delete it to go green; surface the defect and ask.
+
+**Escalation tripwire.** Track consecutive failures on this task's current gate with `escalation_tripwire.py`'s `FailureCounter` (reset on a green pass, `record_failure()` on each red one). After each failure, call `check_and_maybe_fire()` — on the 3rd consecutive failure it writes a `/handoff-pack`-shaped escalation entry (packed context + a tier-labeled prompt, same machine-readable label format that command emits) to a vault escalation directory and returns a loud `ESCALATION:` announcement. Print it and **stop the session** — never attempt a 4th pass, and never change the session's own model to try to push through (the tripwire hands off; it does not self-escalate).
 
 ### 7. Update state
 
