@@ -254,5 +254,8 @@ enhances:
 # board-item body-fold, when github-projects is installed and gh is authenticated.
 # Rides the existing step-10 call site (project_sync.py post --type task-progress);
 # no command-doc change, no new probe. Validated clean by lint_src.py.
-version: 0.29.0
+# 0.29.1 = wiki-truth content fixes (PLAN-wiki-truth-crickets task 3): tech-lead.md
+# and project-manager.md updated to state /design and github-projects board-sync
+# are shipped, not forward-referenced. Docs/prose only — no behavior change.
+version: 0.29.1
 capabilities: [setup, plan, work, review, release, bugfix, documentation]

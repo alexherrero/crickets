@@ -145,22 +145,22 @@ class TestResearcherRole(_ReadOnlyRoleContract, unittest.TestCase):
 
 
 class TestTechLeadRole(_ActiveRoleContract, unittest.TestCase):
-    """`tech-lead` — the active brief-to-plan author; /plan floor, /design forward-ref."""
+    """`tech-lead` — the active brief-to-plan author; /design (shipped) upstream of /plan."""
 
     role = "tech-lead"
 
     def test_plan_is_the_current_floor(self):
         self.assertIn("/plan", _text(self.role))
 
-    def test_design_is_forward_referenced_not_shipped(self):
-        # The /design reference must be framed as not-yet-shipped (sibling #5),
-        # never as a current capability.
+    def test_design_is_shipped_not_forward_referenced(self):
+        # /design shipped at crickets v3.11.0 (2026-06-14) — tech-lead must describe
+        # it as a current capability, not a forward-reference / not-yet-shipped claim.
         text = _text(self.role)
         low = text.lower()
         self.assertIn("/design", text)
-        self.assertIn("not yet shipped", low)
-        self.assertIn("sibling #5", low)
-        self.assertIn("forward-reference", low)
+        self.assertIn("shipped", low)
+        self.assertNotIn("not yet shipped", low)
+        self.assertNotIn("forward-reference", low)
 
 
 class TestWorkerRole(_ActiveRoleContract, unittest.TestCase):
