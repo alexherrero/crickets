@@ -69,7 +69,7 @@
       ],
       "name": "developer-workflows",
       "source": "./dist/claude-code/plugins/developer-workflows",
-      "version": "0.29.4"
+      "version": "0.29.5"
     },
     {
       "capabilities": [

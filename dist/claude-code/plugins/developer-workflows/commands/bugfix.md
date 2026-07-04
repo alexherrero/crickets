@@ -53,7 +53,7 @@ Then **open the tracking issue** (graceful-skip): announce a one-sentence title 
 
 Find the **root cause**, not the first plausible one.
 - **Reproduce locally.** Can't reproduce? Note whether it's environment-specific, flaky (investigate timing/state), or not real.
-- **Read the code paths** — dispatch the `explorer` sub-agent for unfamiliar areas. Routed dispatch (graceful-skip): `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/find_capability.py" token-audit` exit 0 → resolve `classify_work_type('explorer')` + `agent_tool_alias(...)` and pass as the Agent tool's `model` param; exit 1 → dispatch with no `model` override, unchanged.
+- **Read the code paths** — dispatch the `explorer` sub-agent for unfamiliar areas. Routed dispatch (graceful-skip): `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/find_capability.py" token-audit` exit 0 → resolve `classify_work_type('explorer')` + `agent_tool_alias(...)` and pass as the Agent tool's `model` param; exit 1 → dispatch with no `model` override, unchanged. **Mandatory fan-out announcement (unconditional):** print `fanout_announcement.py`'s `render_announcement()` line before dispatching regardless of the probe's result; an `INHERITED` source at a frontier-tier (T3/T4) session triggers `needs_inheritance_pause()` — stop for confirmation, never proceed silently.
 - **Ask "why" three times** — the function threw → why? → input malformed → why? → the validator's regex was wrong.
 - **Note load-bearing assumptions** — what else depends on the broken behavior working as it currently does?
 

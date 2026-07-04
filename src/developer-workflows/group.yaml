@@ -278,5 +278,12 @@ enhances:
 # rather than silently allowing it) + the session-start availability-line
 # renderer Task 7 will call. Config wiring into an actual session-start
 # read is Task 7's job; this task ships validation + rendering only.
-version: 0.29.4
+# 0.29.5 = PLAN-efficiency-dispatch task 4: fanout_announcement.py — the
+# mandatory one-line-per-dispatch-group announcement (role/count/model/
+# tier-source: table row / agent frontmatter / UNCLASSIFIED-DEFAULT /
+# INHERITED) + the frontier-tier (T3/T4) silent-inheritance confirmation
+# pause. Wired into all 5 dispatch sites Task 2 touched (work.md/bugfix.md
+# explorer, review.md reviewers, plan.md/work.md documenter) as an
+# unconditional print, not gated on the token-audit probe.
+version: 0.29.5
 capabilities: [setup, plan, work, review, release, bugfix, documentation]
