@@ -2,11 +2,11 @@
 
 # Wiki-watch config
 
-The **wiki-watcher** keeps a wiki in sync with its source repo automatically, so docs track the code instead of drifting. It watches the repo's docs and code — `PLAN.md`, `ROADMAP.md`, `designs/`, ADRs, tracked `.md`, source — for **doc-worthy** changes, and dispatches the `documenter` to author the wiki update and open a PR for review. It is an **idempotent single-cycle engine you run on a loop**, not a daemon and not a one-shot: each invocation runs one `detect → judge → author → dispatch` cycle and exits, and something re-invokes it (Claude Code `/loop` or cron) so the wiki keeps up **asynchronously as you work** — cursors and a processed-set make repeated runs safe.
+The **wiki-watcher** keeps a wiki in sync with its source repo automatically, so docs track the code instead of drifting. It watches the repo's docs and code — `PLAN.md`, `ROADMAP.md`, `designs/`, ADRs, tracked `.md`, source — for **doc-worthy** changes, and dispatches the `documenter` to author the wiki update and open a PR for review. It is an **idempotent single-cycle engine you run on a loop**: each invocation runs one `detect → judge → author → dispatch` cycle and exits, and something re-invokes it (Claude Code `/loop` or cron) so the wiki keeps up **asynchronously as you work** — cursors and a processed-set make repeated runs safe.
 
-**It's the async path — not run synchronously.** The synchronous path is the phase-boundary dispatch built into the developer-workflows commands: `/plan`, `/work`, `/release`, and `/bugfix` run the same `documenter` in-session the moment a phase completes. The watcher reuses that documenter on a loop for doc-worthy changes that *aren't* tied to a phase boundary — work outside the harness flow, or a repo you aren't driving through the phase commands — which is why it's decoupled, autonomous, and PR-gated rather than synchronous. To drive it, see [How to run the wiki-watcher](Run-The-Wiki-Watcher); for the rationale, [the design](crickets-wiki).
+This is the async path, distinct from the synchronous one. The synchronous path is the phase-boundary dispatch built into the developer-workflows commands: `/plan`, `/work`, `/release`, and `/bugfix` run the same `documenter` in-session the moment a phase completes. The watcher reuses that documenter on a loop for doc-worthy changes that aren't tied to a phase boundary — work outside the harness flow, or a repo you aren't driving through the phase commands — which is why it runs decoupled, autonomous, and PR-gated. To drive it, see [How to run the wiki-watcher](Run-The-Wiki-Watcher); for the rationale, [the design](crickets-wiki).
 
-This page is the **config contract**. There is no dedicated config file — the watcher reads three sources, each owned by a different layer, and run config never lives in the vault: the vault holds the cross-device *index*, the on-host marker holds *run config*.
+There is no dedicated config file. The watcher reads three sources, and each lives with the layer that owns it: the device config says whether the watcher may run at all, the per-repo marker says how it runs, and the vault's repo registry says which wiki it writes to. Run config never lives in the vault — the vault carries the cross-device index, while everything about how this machine runs stays on this machine.
 
 ## ⚡ Quick Reference
 
@@ -20,7 +20,7 @@ All three are read defensively — an absent, unreadable, or malformed source re
 
 ## Enablement — `.agentm-config.json`
 
-Device-level on/off, read vault-free. The install prefix resolves from `$AGENTM_INSTALL_PREFIX` (default `~/.claude`). Two shapes are recognized — the nested block is canonical, the top-level key an alias:
+The device toggle is a plain on/off, read without touching the vault. The install prefix resolves from `$AGENTM_INSTALL_PREFIX` (default `~/.claude`). Two shapes are recognized — the nested block is canonical, the top-level key an alias:
 
 ```jsonc
 { "wiki_watch": { "enabled": true } }   // canonical
@@ -31,7 +31,7 @@ The watcher dispatches autonomously, so enablement is **opt-in**: an absent, unr
 
 ## Run config — `<repo>/.harness/wiki-watch.json`
 
-A per-repo marker carrying the run config. Its **presence is the per-repo opt-in** — no marker means the watcher skips that repo (a malformed marker also logs to stderr, then skips).
+The marker is a small per-repo file carrying the run config. Its **presence is the per-repo opt-in** — no marker means the watcher skips that repo (a malformed marker also logs to stderr, then skips).
 
 ```jsonc
 {
@@ -57,7 +57,7 @@ Every git / `gh` step graceful-skips on failure.
 
 ## Wiki target — the repo registry
 
-Which wiki a watched repo maps to. The registry (`<vault>/_meta/repos.json`) carries an optional per-entry `wiki_path`; the watcher matches the repo by `root_path` (precedence) or `slug`, then resolves:
+The registry says which wiki a watched repo writes to. The registry (`<vault>/_meta/repos.json`) carries an optional per-entry `wiki_path`; the watcher matches the repo by `root_path` (precedence) or `slug`, then resolves:
 
 | Case | Behavior |
 |---|---|
