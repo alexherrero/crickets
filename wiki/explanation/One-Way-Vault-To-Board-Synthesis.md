@@ -3,7 +3,7 @@
 > [!NOTE]
 > Implemented — catalog bundle #8 (roadmap #41). The `github-projects` plugin is built under `src/github-projects/`; the design calls below are locked and recorded in the [GitHub Projects design](crickets-github-projects). This page is the *why*; [GitHub Projects plugin](GitHub-Projects) is the reference surface and [Sync a project board](Sync-A-Project-Board) the operator recipe.
 
-The `github-projects` plugin answers a specific question: how does a project's state become legible to a human without making the human's view a second place that has to be kept in sync? The answer crickets settles on is **one-way deterministic synthesis** — the vault is the single source of truth, and the GitHub Project board is a *generated* mirror of it, never an editable peer. This page explains why that shape, what it buys, and the one structural property that makes it both safe and a little uncanny: the plugin that maintains the boards is itself tracked on a board.
+The `github-projects` plugin answers a specific question: how does a project's state become legible to a human without making the human's view a second place that has to be kept in sync? The answer crickets settles on is **one-way deterministic synthesis** — the vault is the single source of truth, and the GitHub Project board is a *generated* mirror of it, never an editable peer. That shape pays off in a specific way, and one structural property makes it both safe and a little uncanny: the plugin that maintains the boards is itself tracked on a board.
 
 ## Two sources of truth, one direction
 

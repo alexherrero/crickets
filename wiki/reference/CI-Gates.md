@@ -1,7 +1,7 @@
 <!-- mode: reference -->
 # CI gates
 
-What "is it green" means for crickets — the local gate battery, the CI matrix it mirrors, and where to look when something fails.
+"Is it green" has one answer in crickets: the local gate battery passes. This page lists every gate in it, the CI matrix that mirrors it, and where to look when one fails.
 
 ## ⚡ Quick Reference
 
@@ -38,7 +38,7 @@ Three OS workflows run on **every push and every PR**. All three run the toolcha
 | macOS (`macos-latest`) | [`tests-mac.yml`](https://github.com/alexherrero/crickets/blob/main/.github/workflows/tests-mac.yml) | toolchain gates · `.sh` + `.ps1` syntax · PII scan |
 | Windows (`windows-latest`, PowerShell 7+) | [`tests-windows.yml`](https://github.com/alexherrero/crickets/blob/main/.github/workflows/tests-windows.yml) | toolchain gates (under `PYTHONUTF8: 1`) · `.ps1` syntax · PII scan |
 
-The single `CI` badge on the README + wiki Home points at [`ci-all.yml`](https://github.com/alexherrero/crickets/blob/main/.github/workflows/ci-all.yml), an aggregate workflow that waits for all three OS workflows and reports a combined result. **Drill-down:** click the badge → the Actions tab → pick the failing OS → the failing step names the gate.
+The single `CI` badge on the README + wiki Home points at [`ci-all.yml`](https://github.com/alexherrero/crickets/blob/main/.github/workflows/ci-all.yml), an aggregate workflow that waits for all three OS workflows and reports a combined result. To drill into a failure, click the badge, open the Actions tab, and pick the failing OS; the failing step names the gate.
 
 ## What CI adds beyond the local battery
 

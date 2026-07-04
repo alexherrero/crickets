@@ -1,6 +1,6 @@
 # Compatibility
 
-Which hosts and OSes crickets runs on, and how each component behaves per host.
+crickets runs on Claude Code and Antigravity, on all three OSes — this table shows how each component behaves per host.
 
 ## ⚡ Quick Reference
 

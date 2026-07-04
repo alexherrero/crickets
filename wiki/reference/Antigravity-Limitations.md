@@ -2,7 +2,7 @@
 
 # Antigravity Limitations
 
-The following is a list of Antigravity (`agy`) limitations that constrain crickets customizations. Each entry records the gap as it affects our primitives, the mitigation, and when it can be re-assessed — the condition that makes it possible to address and close the gap. See the [agy CLI plugin docs](https://antigravity.google/docs/cli-plugins) for additional information on Antigravity's API.
+Antigravity (`agy`) is missing a few host surfaces that crickets primitives depend on, and this register tracks each one. Every entry names the gap as it hits our primitives, the workaround we ship in the meantime, and the condition that would let us close it for good. When Antigravity ships a missing surface, the entry is struck through and kept as history. The [agy CLI plugin docs](https://antigravity.google/docs/cli-plugins) describe what the host does expose today.
 
 ## ⚡ Quick Reference
 

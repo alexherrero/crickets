@@ -13,7 +13,7 @@ There are two operator-authority paths to a worker worktree:
 
 Both paths are operator authority. Silent authority-free spawn (no command, no config opt-in) stays forbidden per [Developer safety design](crickets-developer-safety).
 
-This page covers the **explicit-command path**. For the config-gated path, set `isolation.mode: worktree-per-plan` in `.harness/project.json` and run `/work` normally — the isolation check and auto-spawn run automatically. For the full command surface (arguments, the per-worktree plan marker, the guards), see [Named plans](Named-Plans#spawning-a-worker-worktree).
+The steps below take the explicit-command path. For the config-gated path, set `isolation.mode: worktree-per-plan` in `.harness/project.json` and run `/work` normally — the isolation check and auto-spawn run on their own. For the full command surface (arguments, the per-worktree plan marker, the guards), see [Named plans](Named-Plans#spawning-a-worker-worktree).
 
 ## Steps
 

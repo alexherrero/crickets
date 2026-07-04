@@ -1,7 +1,7 @@
 <!-- mode: reference -->
 # Style-learning loop
 
-The **voice layer** of the `wiki-maintenance` plugin: a style overlay every wiki draft is composed against, plus the edit-driven capture that grows it. Templates fix a page's *structure*; this fixes its *voice*, so the wiki reads as the operator's, not the agent's. It is **infrastructure, not a task** — the workflows that author your wiki run it, and each operator edit teaches a reusable lesson, so drafts converge on the house voice over time.
+The style-learning loop is the voice layer of the `wiki-maintenance` plugin — the style overlay every draft is composed against, and the edit-driven capture that grows it from your own edits. Templates fix a page's *structure*; this fixes its *voice*, so the wiki reads as the operator's, not the agent's. The workflows that author your wiki run it for you, so each edit teaches a lesson and drafts converge on your voice over time.
 
 ## ⚡ Quick Reference
 

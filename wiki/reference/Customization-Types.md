@@ -1,6 +1,6 @@
 # Customization types
 
-The primitive **kinds** crickets recognizes via each primitive's `kind` field. You author a primitive under its kind's subdir inside a plugin group — `src/<group>/<subdir>/<name>` — and the generator emits it into that group's plugin for each host in its `supported_hosts`. This page is what each kind *is* and when to reach for which; for where each lands see [Per-host paths](Per-Host-Paths), and for the frontmatter contract see [Manifest Schema](Manifest-Schema).
+crickets recognizes seven primitive kinds, declared in each primitive's `kind` field. You author a primitive under its kind's subdir inside a plugin group — `src/<group>/<subdir>/<name>` — and the generator emits it into that group's plugin for each host in its `supported_hosts`. For where each lands see [Per-host paths](Per-Host-Paths), and for the frontmatter contract see [Manifest Schema](Manifest-Schema).
 
 ## ⚡ Quick Reference
 
