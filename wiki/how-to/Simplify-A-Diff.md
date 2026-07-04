@@ -42,7 +42,7 @@ Run `/simplify` **after a feature lands**, not before — you need the tests gre
 - After a refactor that left scaffolding behind
 - Before opening a PR, to keep the diff reviewable
 
-**Do not run `/simplify` instead of `/code-review`** — they are complementary. `/code-review` finds bugs; `/simplify` finds complexity. Run both.
+**Do not run `/simplify` instead of `/code-review`** — run both; they look for different things (see the intro above).
 
 ## Troubleshooting
 
