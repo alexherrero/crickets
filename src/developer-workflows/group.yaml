@@ -263,5 +263,14 @@ enhances:
 # nudge text updated to match; work.md / bugfix.md now name opusplan explicitly
 # instead of a flat claude-opus-4-8 recommendation. Docs/prose + frontmatter
 # only — no behavior change.
-version: 0.29.2
+# 0.29.3 = PLAN-efficiency-dispatch task 2 (rescoped): wires the explorer
+# (work.md, bugfix.md), adversarial + cross-model reviewer (review.md), and
+# documenter (plan.md, work.md) dispatch sites to a new, separate
+# token-audit capability probe — resolves classify_work_type + agent_tool_
+# alias and passes the result as the Agent tool's model param when
+# available; graceful-skips to today's unrouted dispatch (no model
+# override) when token-audit is absent. bugfix.md/release.md/setup.md's
+# other documenter mentions were left unwired this task — noted in
+# progress, not silently incomplete.
+version: 0.29.3
 capabilities: [setup, plan, work, review, release, bugfix, documentation]

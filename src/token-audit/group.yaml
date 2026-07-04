@@ -50,5 +50,14 @@ standalone: true
 # names (plan/review/design/spec/interview-me -> author-transcription-shaped;
 # work/bugfix -> worker-build), so classify_work_type is the single source
 # for command routing nudges too, not just sub-agent dispatch roles.
-version: 0.2.3
+# 0.2.4 = PLAN-efficiency-dispatch task 2 (rescoped): agent_tool_alias() +
+# MODEL_ID_TO_AGENT_ALIAS map a routing_table.py model id to the Agent
+# tool's model param enum (sonnet/opus/haiku/fable) — never opusplan, which
+# is a session-level construct with no per-dispatch meaning. Adds
+# "evaluator" to ROLE_TO_WORK_TYPE (crickets' own verification-clerk-style
+# grader). Wires the explorer (work.md, bugfix.md), adversarial +
+# cross-model reviewer (review.md), and documenter (plan.md, work.md)
+# dispatch sites to resolve + pass the alias, capability-gated,
+# graceful-skip to today's unrouted behavior when token-audit is absent.
+version: 0.2.4
 capabilities: [token-audit]

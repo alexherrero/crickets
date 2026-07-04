@@ -56,6 +56,9 @@ ROLE_TO_WORK_TYPE: dict[str, str] = {
     "cross-model-reviewer": "research-adversarial-audit",
     "documenter": "wiki-mechanical-plus",
     "verification-clerk": "mechanical-log-scraping",
+    # crickets' own verification-clerk-style grader (developer-workflows:evaluator
+    # agent-def) — same shape (read-only, rubric-graded), same work-type.
+    "evaluator": "mechanical-log-scraping",
     # Phase-command names (PLAN-efficiency-dispatch task 1) — the same
     # classifier that resolves an ad-hoc dispatch role also resolves a
     # phase command's routing nudge, one function, not a parallel table.
@@ -73,6 +76,31 @@ ROLE_TO_WORK_TYPE: dict[str, str] = {
 UNCLASSIFIED_DEFAULT_TIER = "T1-Execute"
 UNCLASSIFIED_DEFAULT_MODEL_ID = "claude-sonnet-5"
 UNCLASSIFIED_DEFAULT_EFFORT = "medium"
+
+
+# The Agent tool's own `model` param accepts only these four short aliases —
+# never a full model-id string, never `opusplan` (a session-level construct
+# with no meaning for a single dispatched turn). Resolving a routing_table.py
+# concrete id down to this vocabulary is Task 2's job, not the table's: the
+# table stays the single place a model id is *spelled*, this is the single
+# place that spelling is *translated* for one specific dispatch mechanism.
+MODEL_ID_TO_AGENT_ALIAS: dict[str, str] = {
+    "claude-opus-4-8": "opus",
+    "claude-sonnet-5": "sonnet",
+    "claude-haiku-4-5": "haiku",
+    "claude-fable-5": "fable",
+}
+
+
+def agent_tool_alias(model_id: str) -> str | None:
+    """A routing_table.py model id -> the Agent tool's `model` param enum.
+
+    Returns None when `model_id` has no Agent-tool meaning (e.g. `opusplan`)
+    — callers must treat None as "omit the param, let the agent-def
+    frontmatter or the parent session's model apply," never guess a
+    substitute alias.
+    """
+    return MODEL_ID_TO_AGENT_ALIAS.get(model_id)
 
 
 @dataclass(frozen=True)

@@ -126,6 +126,8 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/task_isolation.py" check <plan_path> <tas
 
 If the task touches unfamiliar code, dispatch the `explorer` sub-agent for read-only fan-out ("Where is X handled? What tests exist for Y? Return file:line references."). Fan out only for multiple independent questions — for one question, just read.
 
+**Routed dispatch (graceful-skip).** Check availability: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/find_capability.py" token-audit`. On **exit 0**, resolve `classify_work_type('explorer')` then `agent_tool_alias(...)` (both in token-audit's `scripts/classify_work_type.py`) and pass the result as the Agent tool's `model` param. On **exit 1** (unavailable) dispatch exactly as above with no `model` override — today's behavior, unchanged.
+
 ### 4. Implement
 
 - Write code that satisfies the task's **What**. Write the tests that satisfy its **Verification** in the **same session** — tests-after is an anti-pattern; verification lands with the implementation.
@@ -153,7 +155,7 @@ Once all gates are green: edit the **resolved `PLAN.md`** to mark the task `[x]`
 
 ### 8. Update the wiki (post-gates, graceful-skip)
 
-Check availability: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/find_capability.py" wiki-maintenance`. On **exit 0** dispatch its `documenter` with the task's title + What + Verification and the diff — it flips `pending → implemented` **only if the diff proves it** (speculative flips are worse than missed ones), fills `## Implementation` with real `file:line` refs, and adds how-to pages for new operational concerns. Resolve `OPEN QUESTIONS` before committing; `NO CHANGES` is fine. On **exit 1** (unavailable, or no `CLAUDE_PLUGIN_ROOT`) skip silently. Not invoked during step 4.
+Check availability: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/find_capability.py" wiki-maintenance`. On **exit 0** dispatch its `documenter` with the task's title + What + Verification and the diff — it flips `pending → implemented` **only if the diff proves it** (speculative flips are worse than missed ones), fills `## Implementation` with real `file:line` refs, and adds how-to pages for new operational concerns. Resolve `OPEN QUESTIONS` before committing; `NO CHANGES` is fine. On **exit 1** (unavailable, or no `CLAUDE_PLUGIN_ROOT`) skip silently. Not invoked during step 4. **Routed dispatch (separate graceful-skip):** additionally check `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/find_capability.py" token-audit`; on exit 0, resolve `classify_work_type('documenter')` + `agent_tool_alias(...)` and pass as the dispatch's `model` param; on exit 1, no `model` override — unchanged.
 
 ### 9. Commit
 
