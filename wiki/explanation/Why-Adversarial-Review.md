@@ -2,7 +2,7 @@
 
 A reviewer told "this code is probably fine, take a look" tends to confirm it. A reviewer told "this code contains bugs — find them" tends to find them. Crickets' code-review primitives are framed adversarially on purpose: the reviewer must produce a failing test, a specific `file:line` defect, or an explicit "no issues found" — never vague prose approval.
 
-The reason is failure-mode coverage. A neutral review optimizes for plausibility ("looks reasonable"); an adversarial one optimizes for counterexamples ("here is where it breaks"). LLM reviewers in particular drift toward agreement when they aren't primed to disagree, so the framing is what makes the review load-bearing rather than decorative.
+The reason is failure-mode coverage. A neutral review optimizes for plausibility ("looks reasonable"); an adversarial one optimizes for counterexamples ("here is where it breaks"). LLM reviewers in particular drift toward agreement when they aren't primed to disagree, so the framing is what makes the review do real work instead of decorating the diff.
 
 ## Research & precedent
 

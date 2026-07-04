@@ -20,7 +20,7 @@ A place to keep agent customizations that:
 
 - **Travel across projects.** Install a plugin once; the host's plugin manager makes it available everywhere — nothing is copied per-project.
 - **Travel across hosts.** One source primitive (`kind` + `supported_hosts`) generates a Claude Code plugin *and* an Antigravity plugin.
-- **Stay version-controlled.** Customizations are markdown + YAML, so diffs, rollbacks, and audit history are first-class. The generated `dist/` is committed too, and a CI gate proves it matches `src/`.
+- **Stay version-controlled.** Customizations are markdown + YAML, so every change diffs, rolls back, and audits like ordinary code. The generated `dist/` is committed too, and a CI gate proves it matches `src/`.
 - **Don't bloat the workflow harness.** agentm stays focused on phase-gated workflow; crickets absorbs the customization growth.
 
 ## What it's NOT for
