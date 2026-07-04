@@ -11,7 +11,7 @@ The **coordinator roster** is four loose role-definitions that compose onto the 
 | Role | Kind | Mode | Wraps | Drives the loop step |
 |---|---|---|---|---|
 | `researcher` | role | read-only · `Read · Glob · Grep · WebFetch` | `explorer` + its own `WebFetch` + forward-ref to the operator's global research agent | the brief-research front of the loop |
-| `tech-lead` | role | active · full access | `/design` (forward-ref) → `/plan` | turns a brief into queued / named plans |
+| `tech-lead` | role | active · full access | `/design` → `/plan` | turns a brief into queued / named plans |
 | `worker` | role | active · full access | `/work` (one per worktree) | the autonomous executor |
 | `project-manager` | role | read-only · `Read · Glob · Grep · Bash` | `/queue-status-lite` | the coordinator's read-model over the queue |
 
@@ -23,7 +23,7 @@ The **coordinator roster** is four loose role-definitions that compose onto the 
 These are **roles, not new commands or a new engine.** Each is a loose `agents/` role-definition (a sub-agent definition under `src/developer-workflows/agents/`, beside the existing `explorer.md` / `evaluator.md`) that names a persona and points at the phase commands and agents that already do the work. A role adds no new mechanism — it wraps shipped surfaces:
 
 - `researcher` dispatches the shipped `explorer` (codebase fan-out) and runs its own `WebFetch` for light web lookups, and forward-references the operator's global research agent for deep / multi-source work — composing with it when present, never vendoring or porting it. It is a front, not a fan-out engine of its own.
-- `tech-lead` is the authoring persona for the `/design → /plan` step; `/plan` is its shipped floor today and `/design` is its forward-reference (see below).
+- `tech-lead` is the authoring persona for the `/design → /plan` step — both shipped; `/design` is the upstream authoring step, `/plan` the floor it sequences down to (see below).
 - `worker` is the persona of a `/work` session — one per worktree, bound to its plan by the worktree-local `.harness/active-plan` marker that `/spawn-worker` drops, integrated back by `/integrate-worker`.
 - `project-manager` wraps the shipped `/queue-status-lite` read-model.
 
@@ -51,8 +51,8 @@ The brief-to-plan authoring persona (full tool access): it turns a brief into an
 
 This lets `tech-lead` queue several plans and activate them one at a time, feeding the worker pool without singleton collisions. After it stages and activates a named plan, the **operator** runs `/spawn-worker <slug>` (operator-initiated, never autonomous — [Developer safety design](crickets-developer-safety)) to hand the plan to a worktree; `tech-lead` produces plans, it does not spawn worktrees.
 
-> [!IMPORTANT]
-> **`/design` is a forward-reference.** The richer author → translate → sequence authoring path (`/design`) is **not yet shipped** — it is V5-10 sibling #5 (Design-docs packaging). `tech-lead` forward-references it and must not claim it exists; its current floor is `/plan` (shipped). When sibling #5 lands, `/design` becomes the upstream step and `/plan` remains the floor it sequences down to.
+> [!NOTE]
+> **`/design` is the shipped upstream step.** The richer author → translate → sequence authoring path (`/design`, `src/developer-workflows/commands/design.md`) shipped at crickets v3.11.0 (2026-06-14). `tech-lead` authors via `/design` when a brief needs the fuller translate-and-sequence treatment, and drops straight to `/plan` (its original floor) for briefs that don't. `/design`'s output is a topo-ordered set of named plans that `/plan` still feeds one at a time.
 
 ### `worker` (role, active)
 
@@ -75,9 +75,9 @@ The read-only coordinator glance — the persona that answers "what's the state 
 Tool allowlist `Read · Glob · Grep · Bash` — and the `Bash` is **read-only by contract** (the `queue_status.py` reader and read-only probes, nothing that mutates). It shows the read-model's render **verbatim**, marking no task `[x]`, writing no `progress-<slug>.md`, activating no plan, merging nothing. It is a *glance, not a gate*: per **LC-5**, merge order is **human-decided** — the PM advises, it does not arbitrate.
 
 > [!NOTE]
-> **Forward-references.** `project-manager` forward-references two later surfaces, neither built here:
-> - **crickets #41** — github-projects board-sync (unbuilt; sequenced before V5-10 proper). The later "PM ⊃ #41" refinement: a synced board view on top of the local queue.
-> - **V5-11** — the chief-of-staff intelligence layer (`/standup`, readiness / safe-parallelization analysis, integration-order *advisory* — still advisory; LC-5 stands). It composes with this when it ships.
+> **crickets #41 (github-projects board-sync) has shipped** as `src/github-projects/scripts/project_sync.py` — a synced board view on top of the local queue, composing with `project-manager`'s read-model. (A `project_sync.py` idempotency bug is tracked separately in R2.3; it doesn't affect this factual correction.)
+>
+> `project-manager` still forward-references one later surface, not built here: **V5-11** — the chief-of-staff intelligence layer (`/standup`, readiness / safe-parallelization analysis, integration-order *advisory* — still advisory; LC-5 stands). It composes with this when it ships.
 
 ## Related
 

@@ -1,6 +1,6 @@
 ---
 name: tech-lead
-description: Active coordinator role — turns a brief into queued/named plans via the authoring path. /plan (shipped) is its current floor; the upstream /design authoring step is forward-referenced (V5-10 sibling #5, not yet shipped). Hands plans to workers. Full tool access.
+description: Active coordinator role — turns a brief into queued/named plans via the authoring path. /design (shipped) is the upstream author → translate → sequence step; /plan (shipped) is the floor it sequences down to. Hands plans to workers. Full tool access.
 kind: agent
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
@@ -22,9 +22,9 @@ tech-lead's working tool today is the shipped `/plan` phase command, including t
 
 This lets tech-lead queue several plans and activate them one at a time, feeding the worker pool without singleton collisions.
 
-## Upstream step — `/design` (forward-reference, not yet shipped)
+## Upstream step — `/design` (shipped)
 
-The richer authoring path tech-lead *gains* is `/design` — author → translate → sequence a design doc into a topo-ordered set of plans. **`/design` is not yet shipped in this plugin**: it is **V5-10 sibling #5** (Design-docs packaging). This is a **forward-reference**, not a current capability — tech-lead does not run `/design` today and must not claim it exists. When sibling #5 ships, `/design` becomes tech-lead's upstream step and `/plan` remains the floor it sequences down to. Until then, tech-lead authors plans directly with `/plan`.
+The richer authoring path tech-lead *gains* is `/design` — author → translate → sequence a design doc into a topo-ordered set of named plans (shipped crickets v3.11.0, 2026-06-14). tech-lead runs `/design` when a brief warrants the fuller design-doc treatment (human-gated approval, structural split into parts); `/plan` remains the floor `/design` sequences down to, and tech-lead still authors directly with `/plan` for briefs that don't need the heavier path.
 
 ## Where it sits in the loop
 
@@ -38,7 +38,6 @@ After tech-lead stages and activates a named plan, the **operator** runs `/spawn
 
 ## Anti-patterns
 
-- **Claiming `/design` is available.** It is forward-referenced (sibling #5); tech-lead uses `/plan` today.
 - **Spawning worktrees.** Worktree creation is operator-initiated via `/spawn-worker` — never a tech-lead side effect.
 - **Executing the plan it wrote.** Authoring is tech-lead; execution is `worker`. Keep the roles distinct so the plan is a real contract, not a verbal understanding.
 - **Writing to the singleton when juggling several plans.** Use `--name` / `--stage` / `--activate` so concurrent plans never collide.
