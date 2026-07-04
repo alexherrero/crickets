@@ -177,6 +177,8 @@ The loop **requests `done`** (the check battery `/work` and `/release` run — *
 
 ## Amendment log
 
+**2026-07-04 — phase-aware-model-routing: the folded ADR 0026 re-audit trigger has fired (P14c).** The host now documents `model:` + `effort:` frontmatter on skills/commands, applied for the turn the command runs (turn-scoped, not session-persistent). Consequence: the phase commands graduate from prompt-level nudge to frontmatter pin, rendered from the routing design's tier table; the nudge remains the cross-turn fallback. Why not leave it advisory: the host now applies the pin deterministically at the moment the work runs, and keeping a nudge where enforcement exists re-opens the silent-inheritance class (Mythos: 112 sub-agents inheriting Fable). Build lands in the P12 routed-dispatch plan; the `opusplan`-as-frontmatter-value question is that plan's opening spike (if rejected, `/work` pins `effort:` only and keeps the launch label for model). *Re-audit trigger:* host ships session-persistent command pins or per-invocation `effort` on the Agent tool.
+
 **2026-06-28 — lock-down sweep (operator review).** Converted the lifecycle-flow mermaid to a house-style hand-SVG (`diagrams/crickets-development-lifecycle.svg`). Confirmed development-lifecycle is the spine every other capability builds on — the plan→…→retire loop with `/bugfix` rejoining at `/release` (renamed `developer-workflows`→`development-lifecycle`, now owning the whole arc). The folded-ADR records and the newest-first log are unchanged. Locked as a v5–v8 guidepost.
 
 **2026-06-24 — folded ADRs 0002 / 0004 / 0023 / 0024 / 0026 / 0029 / 0030 into this design (AG Phase 4, move-and-retire).**
