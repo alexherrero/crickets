@@ -257,5 +257,11 @@ enhances:
 # 0.29.1 = wiki-truth content fixes (PLAN-wiki-truth-crickets task 3): tech-lead.md
 # and project-manager.md updated to state /design and github-projects board-sync
 # are shipped, not forward-referenced. Docs/prose only — no behavior change.
-version: 0.29.1
+# 0.29.2 = roster anti-drift fix (PLAN-efficiency-automation task 3): worker.md /
+# researcher.md / tech-lead.md model: frontmatter bumped claude-sonnet-4-6 ->
+# claude-sonnet-5; plan.md / review.md / design.md / spec.md / interview-me.md
+# nudge text updated to match; work.md / bugfix.md now name opusplan explicitly
+# instead of a flat claude-opus-4-8 recommendation. Docs/prose + frontmatter
+# only — no behavior change.
+version: 0.29.2
 capabilities: [setup, plan, work, review, release, bugfix, documentation]

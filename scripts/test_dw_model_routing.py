@@ -4,15 +4,21 @@
 Locks the load-bearing facts:
 
   * The three role agent defs carry the correct `model:` frontmatter field:
-    - worker     → claude-sonnet-4-6 (T1 executor; opusplan plan→execute split)
-    - researcher → claude-sonnet-4-6 (lighter; read-only / research)
-    - tech-lead  → claude-sonnet-4-6 (lighter; planning / authoring)
+    - worker     → claude-sonnet-5 (T1 executor; opusplan plan→execute split)
+    - researcher → claude-sonnet-5 (lighter; read-only / research)
+    - tech-lead  → claude-sonnet-5 (lighter; planning / authoring)
   * All five execution/planning commands contain a one-line routing nudge
     stating the recommended model (not just any mention of a model name):
-    - work, bugfix     → Opus 4.8 nudge
-    - plan, review, design → Sonnet 4.6 nudge
+    - work, bugfix     → opusplan nudge (named explicitly, not a flat Opus pin)
+    - plan, review, design → Sonnet 5 nudge
 
 `generate.py check` separately proves `dist/` mirrors the source.
+
+(PLAN-efficiency-automation task 3, 2026-07-04: bumped from claude-sonnet-4-6 /
+bare claude-opus-4-8 — the already-fired roster drift the token-audit design's
+amendment named. This test previously encoded that stale policy as the
+expected contract; the values below now match the fixed roster, not a
+weakened assertion.)
 """
 from __future__ import annotations
 
@@ -31,17 +37,17 @@ from src_model import read_frontmatter  # noqa: E402
 _ROUTING_NUDGE_MARKER = "Recommended model for this phase:"
 
 _AGENT_ROUTING = {
-    "worker": "claude-sonnet-4-6",
-    "researcher": "claude-sonnet-4-6",
-    "tech-lead": "claude-sonnet-4-6",
+    "worker": "claude-sonnet-5",
+    "researcher": "claude-sonnet-5",
+    "tech-lead": "claude-sonnet-5",
 }
 
 _COMMAND_ROUTING = {
-    "work": "claude-opus-4-8",
-    "bugfix": "claude-opus-4-8",
-    "plan": "claude-sonnet-4-6",
-    "review": "claude-sonnet-4-6",
-    "design": "claude-sonnet-4-6",
+    "work": "opusplan",
+    "bugfix": "opusplan",
+    "plan": "claude-sonnet-5",
+    "review": "claude-sonnet-5",
+    "design": "claude-sonnet-5",
 }
 
 
@@ -54,22 +60,22 @@ class TestAgentModelFrontmatter(unittest.TestCase):
     def test_worker_model_is_sonnet(self):
         fm = self._fm("worker")
         self.assertEqual(
-            fm.get("model"), "claude-sonnet-4-6",
-            "worker.md: expected model: claude-sonnet-4-6 (T1 executor; opusplan plan→execute split)",
+            fm.get("model"), "claude-sonnet-5",
+            "worker.md: expected model: claude-sonnet-5 (T1 executor; opusplan plan→execute split)",
         )
 
     def test_researcher_model_is_sonnet(self):
         fm = self._fm("researcher")
         self.assertEqual(
-            fm.get("model"), "claude-sonnet-4-6",
-            "researcher.md: expected model: claude-sonnet-4-6 (read-only research)",
+            fm.get("model"), "claude-sonnet-5",
+            "researcher.md: expected model: claude-sonnet-5 (read-only research)",
         )
 
     def test_tech_lead_model_is_sonnet(self):
         fm = self._fm("tech-lead")
         self.assertEqual(
-            fm.get("model"), "claude-sonnet-4-6",
-            "tech-lead.md: expected model: claude-sonnet-4-6 (planning/authoring)",
+            fm.get("model"), "claude-sonnet-5",
+            "tech-lead.md: expected model: claude-sonnet-5 (planning/authoring)",
         )
 
     def test_all_routing_models_match_policy(self):
@@ -100,19 +106,19 @@ class TestCommandRoutingNudge(unittest.TestCase):
         )
 
     def test_work_nudge_is_opus(self):
-        self._assert_nudge("work", "claude-opus-4-8")
+        self._assert_nudge("work", "opusplan")
 
     def test_bugfix_nudge_is_opus(self):
-        self._assert_nudge("bugfix", "claude-opus-4-8")
+        self._assert_nudge("bugfix", "opusplan")
 
     def test_plan_nudge_is_sonnet(self):
-        self._assert_nudge("plan", "claude-sonnet-4-6")
+        self._assert_nudge("plan", "claude-sonnet-5")
 
     def test_review_nudge_is_sonnet(self):
-        self._assert_nudge("review", "claude-sonnet-4-6")
+        self._assert_nudge("review", "claude-sonnet-5")
 
     def test_design_nudge_is_sonnet(self):
-        self._assert_nudge("design", "claude-sonnet-4-6")
+        self._assert_nudge("design", "claude-sonnet-5")
 
     def test_all_command_nudges_match_policy(self):
         for name, expected in _COMMAND_ROUTING.items():

@@ -12,7 +12,7 @@ You are running **interview-me** — a structured one-question-at-a-time brief e
 
 **Topic from the user:** $ARGUMENTS
 
-> **Recommended model for this phase:** Sonnet 4.6 (`claude-sonnet-4-6`). Override with `/model` if needed.
+> **Recommended model for this phase:** Sonnet 5 (`claude-sonnet-5`). Override with `/model` if needed.
 
 ## Overview
 

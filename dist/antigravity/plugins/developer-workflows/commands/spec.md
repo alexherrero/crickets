@@ -12,7 +12,7 @@ You are running the **spec** phase of the developer-workflows loop. Write a PRD 
 
 **Brief from the user:** $ARGUMENTS
 
-> **Recommended model for this phase:** Sonnet 4.6 (`claude-sonnet-4-6`) — lighter model for authoring. Override with `/model` if needed.
+> **Recommended model for this phase:** Sonnet 5 (`claude-sonnet-5`) — lighter model for authoring. Override with `/model` if needed.
 
 > **Spec-first discipline.** No `PLAN.md` before a `SPEC.md` for any non-trivial feature. A spec is the contract between intention and implementation. Its primary value is the out-of-scope section: the things you decided *not* to build, written down before anyone was tempted to build them.
 
