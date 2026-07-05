@@ -51,6 +51,30 @@ _FIXTURE_STDIN_TEMPLATES: dict[str, dict] = {
 _TRACEBACK_MARKER = "Traceback (most recent call last)"
 
 
+def _find_bash() -> str:
+    """Resolve a real (Git) bash — on Windows a bare `bash` PATH lookup can
+    resolve to `C:\\Windows\\System32\\bash.exe` (the WSL launcher stub)
+    ahead of Git's bash.exe, which fails every command with "Windows
+    Subsystem for Linux has no installed distributions" instead of running
+    it. GH's windows-latest runners ship Git Bash under Program Files;
+    `shell: bash` workflow steps special-case around this, but a raw Python
+    subprocess call does not, so resolve it explicitly here.
+    """
+    if os.name != "nt":
+        return "bash"
+    program_files = os.environ.get("ProgramFiles", r"C:\Program Files")
+    for candidate in (
+        Path(program_files) / "Git" / "bin" / "bash.exe",
+        Path(program_files) / "Git" / "usr" / "bin" / "bash.exe",
+    ):
+        if candidate.is_file():
+            return str(candidate)
+    return "bash"  # fall back to PATH lookup (may hit the WSL stub)
+
+
+_BASH = _find_bash()
+
+
 def _iter_hook_commands():
     """Yield (plugin_name, event, command, timeout) for every hooks.json entry."""
     if not _DIST_PLUGINS.is_dir():
@@ -84,17 +108,17 @@ def _run_hook(command: str, *, event: str, cwd: Path, plugin_root: str | None) -
     # — keep this test's dist/ reads read-only regardless of platform.
     env["PYTHONDONTWRITEBYTECODE"] = "1"
     fixture = dict(_FIXTURE_STDIN_TEMPLATES.get(event, {"session_id": "fixture", "hook_event_name": event}))
-    fixture["cwd"] = str(cwd)
-    # Invoke through bash explicitly (never `shell=True`) — hooks.json commands
-    # are POSIX shell syntax (`${CLAUDE_PLUGIN_ROOT}/...`) on every host,
-    # including Windows (Claude Code ships Git Bash there too). `shell=True`
-    # on Windows spawns cmd.exe, which passes `${CLAUDE_PLUGIN_ROOT}` through
-    # literally instead of expanding it — every hook "resolved" to a path
-    # containing the literal string `${CLAUDE_PLUGIN_ROOT}` and failed.
-    # `bash -c` gives POSIX expansion on all three OSes (windows-latest ships
-    # Git Bash; scripts/check-no-pii.sh already relies on it in tests-windows.yml).
+    fixture["cwd"] = cwd.as_posix()
+    # Invoke through (Git) bash explicitly (never `shell=True`) — hooks.json
+    # commands are POSIX shell syntax (`${CLAUDE_PLUGIN_ROOT}/...`) on every
+    # host, including Windows (Claude Code ships Git Bash there too).
+    # `shell=True` on Windows spawns cmd.exe, which passes
+    # `${CLAUDE_PLUGIN_ROOT}` through literally instead of expanding it —
+    # every hook "resolved" to a path containing the literal string and
+    # failed. `_BASH` (see `_find_bash`) gives POSIX expansion on all three
+    # OSes without hitting the WSL bash.exe stub PATH can resolve to first.
     return subprocess.run(
-        ["bash", "-c", command], input=json.dumps(fixture), env=env, cwd=str(cwd),
+        [_BASH, "-c", command], input=json.dumps(fixture), env=env, cwd=str(cwd),
         capture_output=True, text=True, timeout=30,
     )
 
@@ -121,7 +145,11 @@ class TestDistHooksFunctional(unittest.TestCase):
         commands = list(_iter_hook_commands())
         self.assertTrue(commands, "no hooks.json entries found under dist/claude-code/plugins/")
         for plugin_name, event, command, _timeout in commands:
-            plugin_root = str(_DIST_PLUGINS / plugin_name)
+            # POSIX-style (forward slashes) even on Windows: this value gets
+            # substituted into a bash command line (`${CLAUDE_PLUGIN_ROOT}/...`)
+            # — Git Bash's MSYS path translation wants a `D:/a/...` drive path,
+            # not the native `D:\a\...` backslash form `str()` would give here.
+            plugin_root = (_DIST_PLUGINS / plugin_name).as_posix()
             with self.subTest(plugin=plugin_name, event=event, command=command):
                 result = _run_hook(command, event=event, cwd=self.cwd, plugin_root=plugin_root)
                 self.assertEqual(
