@@ -15,6 +15,7 @@
 - [Author a CI/CD pipeline — /ci-cd](Author-A-CICD-Pipeline)
 - [Record an architectural decision — /document-decision](Record-An-Architectural-Decision)
 - [Install the vault backend](Install-The-Vault-Backend)
+- [Wire the status line](Wire-The-Status-Line)
 ### 📖 [Reference](Reference)
 - [Plugin anatomy](Plugin-Anatomy)
 - [Repo layout](Repo-Layout)

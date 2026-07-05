@@ -22,6 +22,7 @@ import json
 import os
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -358,6 +359,144 @@ class TestFloorShareEdgeCases(unittest.TestCase):
         finally:
             tmp.unlink(missing_ok=True)
             slm._cache_path(sid).unlink(missing_ok=True)
+
+
+class TestGoldenRender(unittest.TestCase):
+    """R2.3 task 8: one exact end-to-end string, not just per-badge assertIn
+    checks — locks in the full composed contract so a formatting/ordering/
+    separator regression is caught even if every individual badge is still
+    technically present."""
+
+    @classmethod
+    def setUpClass(cls):
+        if not _FIXTURE_TRANSCRIPT.exists():
+            raise unittest.SkipTest("fixture transcript not found")
+        if not slm._HAS_PRICING:
+            raise unittest.SkipTest("pricing module not found")
+
+    def setUp(self):
+        self.sid = "test-golden-render-001"
+        slm._cache_path(self.sid).unlink(missing_ok=True)
+        self._env_backup = {
+            k: os.environ.pop(k, None)
+            for k in ("CRICKETS_BUDGET_5H", "CRICKETS_BUDGET_WEEKLY", "CRICKETS_SESSION_COST_LOG")
+        }
+
+    def tearDown(self):
+        slm._cache_path(self.sid).unlink(missing_ok=True)
+        for k, v in self._env_backup.items():
+            if v is not None:
+                os.environ[k] = v
+
+    def test_full_payload_exact_string_no_budget_configured(self):
+        # Budget env vars unset (the default, out-of-the-box state) -> only
+        # the three transcript-analysis badges render; Badge 4 is absent.
+        data = _make_payload(transcript_path=str(_FIXTURE_TRANSCRIPT), session_id=self.sid)
+        result = slm.render(data)
+        self.assertEqual(result, "▌42%  ·  ⌊2%⌋  ·  $0.04")
+
+
+class TestBudgetReadoutPure(unittest.TestCase):
+    """budget_readout() is a pure function: fixture records + ceiling + now
+    -> readout string. No env vars, no filesystem — the seam CI can exercise
+    directly regardless of whether the write-side (task 4, deferred per the
+    module's own header note) exists yet."""
+
+    def test_no_ceiling_returns_empty(self):
+        self.assertEqual(slm.budget_readout([{"timestamp": 1000, "cost_usd": 5}], None, 1000), "")
+
+    def test_5h_window_sums_only_records_within_window(self):
+        now = 100_000.0
+        records = [
+            {"timestamp": now - 60, "cost_usd": 1.0},          # 1 min ago -> in window
+            {"timestamp": now - slm._FIVE_HOURS_SECONDS - 1, "cost_usd": 99.0},  # just outside
+        ]
+        readout = slm.budget_readout(records, {"window_5h": 10.0}, now)
+        self.assertEqual(readout, "5h $1.00/$10.00")
+
+    def test_weekly_sums_only_records_within_week(self):
+        now = 1_000_000.0
+        records = [
+            {"timestamp": now - 3600, "cost_usd": 2.0},                     # 1h ago -> in window
+            {"timestamp": now - slm._WEEK_SECONDS - 1, "cost_usd": 50.0},   # just outside
+        ]
+        readout = slm.budget_readout(records, {"weekly": 20.0}, now)
+        self.assertEqual(readout, "wk $2.00/$20.00")
+
+    def test_both_ceilings_render_both_parts_separated(self):
+        now = 100_000.0
+        records = [{"timestamp": now - 10, "cost_usd": 3.0}]
+        readout = slm.budget_readout(records, {"window_5h": 10.0, "weekly": 20.0}, now)
+        self.assertEqual(readout, "5h $3.00/$10.00  ·  wk $3.00/$20.00")
+
+    def test_malformed_record_skipped_not_raised(self):
+        now = 100_000.0
+        records = [{"timestamp": None, "cost_usd": 5.0}, {"timestamp": now, "cost_usd": "bad"}]
+        readout = slm.budget_readout(records, {"window_5h": 10.0}, now)
+        self.assertEqual(readout, "5h $0.00/$10.00")
+
+    def test_future_timestamp_excluded(self):
+        # A record newer than "now" (clock skew / bad data) must not count —
+        # age < 0 is excluded, never treated as "definitely recent."
+        now = 100_000.0
+        records = [{"timestamp": now + 3600, "cost_usd": 5.0}]
+        readout = slm.budget_readout(records, {"window_5h": 10.0}, now)
+        self.assertEqual(readout, "5h $0.00/$10.00")
+
+
+class TestBudgetReadoutIntegration(unittest.TestCase):
+    """render()'s Badge 4 wiring end-to-end: env-var config + a real
+    session-cost JSONL log on disk, through render() itself — not just the
+    pure budget_readout() helper. Confirms the "no config -> omitted, never
+    an error" degrade the wiki advertises actually holds, and that the badge
+    genuinely appears once configured (closing cricketsPluginsB#8's gap:
+    this path had zero coverage before task 8)."""
+
+    def setUp(self):
+        self.sid = "test-budget-integration-001"
+        slm._cache_path(self.sid).unlink(missing_ok=True)
+        self._env_backup = {
+            k: os.environ.pop(k, None)
+            for k in ("CRICKETS_BUDGET_5H", "CRICKETS_BUDGET_WEEKLY", "CRICKETS_SESSION_COST_LOG")
+        }
+
+    def tearDown(self):
+        slm._cache_path(self.sid).unlink(missing_ok=True)
+        for k, v in self._env_backup.items():
+            if v is not None:
+                os.environ[k] = v
+            else:
+                os.environ.pop(k, None)
+
+    def test_badge_absent_when_unconfigured(self):
+        data = _make_payload(transcript_path=None, session_id=self.sid)
+        result = slm.render(data)
+        self.assertNotIn("5h $", result)
+        self.assertNotIn("wk $", result)
+
+    def test_badge_present_when_configured_with_matching_log(self):
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".jsonl", delete=False, encoding="utf-8"
+        ) as f:
+            f.write(json.dumps({"timestamp": time.time(), "cost_usd": 1.23}) + "\n")
+            log_path = Path(f.name)
+        try:
+            os.environ["CRICKETS_BUDGET_5H"] = "10.00"
+            os.environ["CRICKETS_SESSION_COST_LOG"] = str(log_path)
+            data = _make_payload(transcript_path=None, session_id=self.sid)
+            result = slm.render(data)
+            self.assertIn("5h $1.23/$10.00", result)
+        finally:
+            log_path.unlink(missing_ok=True)
+
+    def test_badge_omitted_when_log_missing_even_if_configured(self):
+        # The write-side (task 4) is deferred — an operator who configures
+        # the env vars today gets an empty record set, not an error string.
+        os.environ["CRICKETS_BUDGET_5H"] = "10.00"
+        os.environ["CRICKETS_SESSION_COST_LOG"] = "/nonexistent/path/no-such-file.jsonl"
+        data = _make_payload(transcript_path=None, session_id=self.sid)
+        result = slm.render(data)
+        self.assertIn("5h $0.00/$10.00", result)
 
 
 if __name__ == "__main__":
