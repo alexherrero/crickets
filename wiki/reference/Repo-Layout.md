@@ -29,7 +29,7 @@ crickets/
 - **`scripts/`** — the generator and the gate battery (`check-all.sh` runs it all — [CI gates](CI-Gates)).
 - **`.claude-plugin/` + `.agents/plugins/`** — the repo-root marketplace pointers each host reads.
 - **`bootstrap.sh`** — installs the recommended plugin set in one line; only ever calls the hosts' native `plugin install`.
-- **`templates/hooks/pre-push`** — the PII enforcer a clone copies into `.git/hooks/` ([CONTRIBUTING](https://github.com/alexherrero/crickets/blob/main/CONTRIBUTING.md)).
+- **`src/pii/templates/hooks/pre-push`** — the PII enforcer a clone copies into `.git/hooks/` ([CONTRIBUTING](https://github.com/alexherrero/crickets/blob/main/CONTRIBUTING.md)).
 - **`wiki/`** — this documentation, published to the GitHub wiki on every push ([Wiki design](crickets-wiki)).
 
 ## Related

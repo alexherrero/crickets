@@ -9,7 +9,7 @@ install_scope: project
 
 # pii-scrubber
 
-Agent-facing PII guardrail. Companion to `scripts/check-no-pii.sh` (the detector) and `templates/hooks/pre-push` (the mandatory enforcer at push time). This skill is the **interactive layer**: when a finding surfaces, the skill helps the agent remediate rather than just failing.
+Agent-facing PII guardrail. Companion to `check-no-pii.sh` (the detector, bundled with this plugin at `scripts/check-no-pii.sh`) and `templates/hooks/pre-push` (the mandatory enforcer at push time). This skill is the **interactive layer**: when a finding surfaces, the skill helps the agent remediate rather than just failing.
 
 ## When to invoke
 
@@ -32,17 +32,17 @@ If you're an agent about to run `git push`, invoke this skill first. If the pre-
 
 ### 2. Locate and run the scanner
 
-The script lives at `<crickets-root>/scripts/check-no-pii.sh`. Locate it via:
+The detector ships bundled with this plugin (R2.4 task 7 — it used to live only in a sibling crickets checkout, which meant it was unreachable wherever `pii` was installed on its own). Locate it via, in order:
 
-- `$AGENT_TOOLKIT_PATH/scripts/check-no-pii.sh` if the env var is set
-- Sibling convention: `../crickets/scripts/check-no-pii.sh`
-- Common dev-machine paths: `~/Antigravity/crickets/`, `~/dev/crickets/`
+- `${CLAUDE_PLUGIN_ROOT}/scripts/check-no-pii.sh` — the bundled copy; resolves in any Claude Code / Antigravity session with this plugin installed, no sibling checkout needed.
+- `$AGENT_TOOLKIT_PATH/scripts/check-no-pii.sh` if the env var is set (an explicit override).
+- Sibling convention: `../crickets/scripts/check-no-pii.sh`, or common dev-machine paths (`~/Antigravity/crickets/`, `~/dev/crickets/`) — for developing on the crickets repo itself, where `${CLAUDE_PLUGIN_ROOT}` may not be set.
 
 ```bash
 bash <path>/scripts/check-no-pii.sh <mode>
 ```
 
-If the script isn't found, **stop and tell the user** — don't silently skip the check. Suggest: set `AGENT_TOOLKIT_PATH` or re-run `crickets/install.sh` on the target project.
+If the script isn't found via any of the above, **stop and tell the user** — don't silently skip the check. Report which candidates were tried; there is no separate installer to re-run — the detector ships with this plugin, so an unreachable copy means the plugin itself isn't installed correctly.
 
 ### 3. Interpret exit code
 
@@ -92,7 +92,7 @@ If the user explicitly wants to skip a finding (not redact, not allowlist):
    ```
    2026-05-12T15:30:00Z | docs/example.md:14 | email | bob@exam… | Used as a documentation example in a tutorial about email validation
    ```
-3. The override file is itself scanned by CI — any entry triggers a review reminder on the next CI run.
+3. The log is append-only and gitignored-adjacent visible history — a manual review trail, not (yet) CI-enforced. No automated job reads it today; a future `check-all.sh` gate that flags new entries for review is a real, un-built enhancement, not a current guarantee.
 4. **There is no silent suppression.** Every override is visible.
 
 ### 7. Re-scan and loop
@@ -133,7 +133,7 @@ The skill writes pending findings to `.pii-scrubber-pending.txt` (gitignored) so
 
 - **Do not bypass findings silently.** Every finding must be redacted, allowlisted, or overridden with a logged reason. There is no fourth option.
 - **Do not invent the override reason.** The user states the reason; the skill records it verbatim.
-- **Do not remove items from `.harness/.pii-overrides.log`.** It's append-only; CI reads it.
+- **Do not remove items from `.harness/.pii-overrides.log`.** It's append-only — the human-reviewable audit trail, even though no automated job reads it yet.
 - **Do not edit the scanner script or `.gitleaks.toml` without user direction.** If a pattern is wrong, surface it; the user updates the config.
 - **The pre-push hook is the final enforcer.** This skill is a courtesy layer that helps the agent fix PII *before* the hook blocks. The hook will catch anything that bypasses the skill.
 

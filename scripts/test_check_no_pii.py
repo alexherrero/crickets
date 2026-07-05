@@ -26,6 +26,7 @@ from pathlib import Path
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
 _SCRIPT = _ROOT / "scripts" / "check-no-pii.sh"
+_DIST_SCRIPT = _ROOT / "dist" / "claude-code" / "plugins" / "pii" / "scripts" / "check-no-pii.sh"
 
 
 def _find_bash() -> str:
@@ -97,9 +98,9 @@ def _make_fixture_repo(files: dict[str, str]) -> Path:
     return tmp
 
 
-def _run_scanner(repo: Path) -> subprocess.CompletedProcess:
+def _run_scanner(repo: Path, script: Path = _SCRIPT) -> subprocess.CompletedProcess:
     return subprocess.run(
-        [_BASH, str(_SCRIPT), "--all"],
+        [_BASH, str(script), "--all"],
         cwd=repo, capture_output=True, text=True, timeout=30,
     )
 
@@ -148,6 +149,35 @@ class TestCleanControlZeroFalsePositives(unittest.TestCase):
     def test_no_findings_reported(self):
         self.assertIn("clean (all mode)", self.result.stdout)
         self.assertNotIn("finding(s)", self.result.stderr)
+
+
+class TestPluginPayloadCopyCatchRate(unittest.TestCase):
+    """R2.4 task 7: check-no-pii.sh must be reachable + fully functional from
+    the *installed plugin location alone* — no sibling crickets checkout, no
+    repo-root shim. Re-runs the exact same planted-PII fixture against the
+    emitted dist/claude-code/plugins/pii/scripts/check-no-pii.sh copy.
+    Skips gracefully (not a failure) if dist/ hasn't been built yet."""
+
+    @classmethod
+    def setUpClass(cls):
+        if not _DIST_SCRIPT.is_file():
+            raise unittest.SkipTest("dist/ not built — run scripts/generate.py build first")
+        files = {f"planted-{kind}.txt": f"leading context\n{value}\ntrailing context\n"
+                 for kind, value in PLANTED.items()}
+        cls.repo = _make_fixture_repo(files)
+        cls.result = _run_scanner(cls.repo, script=_DIST_SCRIPT)
+
+    @classmethod
+    def tearDownClass(cls):
+        import shutil
+        if hasattr(cls, "repo"):
+            shutil.rmtree(cls.repo, ignore_errors=True)
+
+    def test_dist_copy_catches_every_planted_category(self):
+        stderr = self.result.stderr
+        missing = [kind for kind in PLANTED if f"{kind} match:" not in stderr]
+        self.assertEqual(missing, [], f"categories not caught by the dist copy: {missing}\nstderr={stderr}")
+        self.assertEqual(self.result.returncode, 1)
 
 
 if __name__ == "__main__":

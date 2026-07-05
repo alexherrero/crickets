@@ -84,7 +84,9 @@ class TestClaudeEmitter(unittest.TestCase):
         # 0.3.9 = recent-wiki-changes.sh/.ps1 $AGENTM_SCRIPTS_DIR env-override resolver;
         # 0.4.0 = restored documenter.md's normative template source (templates/README.md).
         self.assertEqual(self._plugin_json("wiki-maintenance")["version"], "0.4.0")
-        self.assertEqual(self._plugin_json("pii")["version"], "0.2.1")  # 0.2.1 = capabilities: [privacy]
+        # 0.3.0 = check-no-pii.sh + templates/hooks/pre-push moved into src/pii/
+        # so they actually ship inside the plugin payload (R2.4 task 7).
+        self.assertEqual(self._plugin_json("pii")["version"], "0.3.0")
 
     def test_dependencies_from_requires(self):
         # post-seed-retirement: github-ci depends on developer-workflows; wiki-maintenance

@@ -16,8 +16,8 @@ while IFS= read -r f; do
     fi
 done < <(find . -type f -name '*.sh' -not -path './.git/*')
 
-# Also check templates/hooks/pre-push (no .sh extension)
-for hook in templates/hooks/*; do
+# Also check src/pii/templates/hooks/pre-push (no .sh extension)
+for hook in src/pii/templates/hooks/*; do
     [[ -f "$hook" ]] || continue
     # Heuristic: scripts that start with shebang
     head -1 "$hook" | grep -q '^#!' || continue

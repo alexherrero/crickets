@@ -9,4 +9,11 @@ capabilities: [privacy]
 #          pii-scrubber skill and pre-push hook never have to catch these patterns.
 # 0.2.1 = declare capabilities: [privacy] (AG Phase-2 hygiene; capability name ≠
 #          plugin name — the pii→privacy plugin rename is Phase-3).
-version: 0.2.1
+# 0.3.0 = the detect + enforce layers (check-no-pii.sh, templates/hooks/pre-push)
+#          moved from repo-root into this group's own scripts/ + templates/hooks/ —
+#          they now actually ship inside the plugin payload instead of only
+#          existing in a sibling crickets checkout (R2.4 task 7). A thin repo-root
+#          shim keeps every existing caller (check-all.sh, tests-linux.yml, the
+#          installed pre-push hook) working unchanged. pii-scrubber's resolution
+#          order now prefers the bundled ${CLAUDE_PLUGIN_ROOT} copy first.
+version: 0.3.0
