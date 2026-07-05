@@ -89,4 +89,14 @@ class TestFindCapabilityResolverDiscovery(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    # R2.1 — dashboard visibility for cricketsPluginsA#0 (the already-fixed
+    # find_capability fallback-chain gap). Plain `python3 -m unittest
+    # discover` (check-all.sh's own invocation) never reaches this block;
+    # `--jsonl-out <path>` only matters when this file is run directly, e.g.
+    # from scripts/health/run-crickets-fast-tier.sh.
+    sys.path.insert(0, str(_HERE / "health"))
+    import jsonl_emit as _je  # noqa: E402
+    sys.exit(_je.run_module_as_health_check(
+        sys.modules[__name__], sys.argv,
+        suite="test_find_capability", check="cricketsPluginsA#0: find_capability fallback chain",
+    ))

@@ -341,4 +341,12 @@ class TestDefaultPiiGuard(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    # R2.1 — dashboard visibility for cricketsPluginsA#1 (the already-fixed
+    # finalize_unit PII-guard fail-open gap). See test_find_capability.py's
+    # matching block for the pattern this mirrors.
+    sys.path.insert(0, str(_HERE / "health"))
+    import jsonl_emit as _je  # noqa: E402
+    sys.exit(_je.run_module_as_health_check(
+        sys.modules[__name__], sys.argv,
+        suite="test_finalize_unit", check="cricketsPluginsA#1: finalize_unit PII guard fail-open",
+    ))

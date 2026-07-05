@@ -286,4 +286,18 @@ class TestPhaseAttributionRealEncoding(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    # R2.1 — dashboard visibility for cricketsPluginsB#0 (the already-fixed
+    # pricing re-pin). Scoped to TestCostUsd specifically (not the whole
+    # file, which also covers the unrelated analyzer/cache-split/phase-
+    # attribution behavior) — a bare namespace stands in for "module" so
+    # run_module_as_health_check's loadTestsFromModule sees only that class.
+    sys.path.insert(0, str(_HERE / "health"))
+    import jsonl_emit as _je  # noqa: E402
+
+    class _PricingOnly:
+        TestCostUsd = TestCostUsd
+
+    sys.exit(_je.run_module_as_health_check(
+        _PricingOnly, sys.argv,
+        suite="test_token_audit", check="cricketsPluginsB#0: pricing re-pin",
+    ))
