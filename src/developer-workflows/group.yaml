@@ -316,5 +316,10 @@ enhances:
 # group's own scripts/ — plan.md's ${CLAUDE_PLUGIN_ROOT}/scripts/check-plan-
 # grounding.py reference had been dangling since the dist payload never
 # bundled it (R2.5 task 9).
-version: 0.29.10
+# 0.29.11 = documenter-dispatch routed-dispatch trailer (ADR 0026 phase-aware
+# model routing) applied to bugfix.md/release.md/setup.md, matching work.md/
+# plan.md's existing copies — three phase commands were dispatching the
+# documenter with no model-routing wiring at all. New byte-identity drift
+# test locks all five copies going forward (R2.5 task 10).
+version: 0.29.11
 capabilities: [setup, plan, work, review, release, bugfix, documentation]
