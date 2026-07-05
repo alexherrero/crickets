@@ -75,10 +75,26 @@ def _run_hook(command: str, *, event: str, cwd: Path, plugin_root: str | None) -
         env["CLAUDE_PLUGIN_ROOT"] = plugin_root
     else:
         env.pop("CLAUDE_PLUGIN_ROOT", None)
+    # Some hooks (harness-context-session-start) import sibling .py modules
+    # from ${CLAUDE_PLUGIN_ROOT}/scripts/ — running them from the REAL dist
+    # location would otherwise leave __pycache__/*.pyc litter inside the
+    # tracked dist/ tree, which generate.py check then flags as unexpected
+    # drift. Not reproducible on a macOS interpreter with a redirected
+    # sys.pycache_prefix, but real on a stock CPython (e.g. CI's ubuntu-latest)
+    # — keep this test's dist/ reads read-only regardless of platform.
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
     fixture = dict(_FIXTURE_STDIN_TEMPLATES.get(event, {"session_id": "fixture", "hook_event_name": event}))
     fixture["cwd"] = str(cwd)
+    # Invoke through bash explicitly (never `shell=True`) — hooks.json commands
+    # are POSIX shell syntax (`${CLAUDE_PLUGIN_ROOT}/...`) on every host,
+    # including Windows (Claude Code ships Git Bash there too). `shell=True`
+    # on Windows spawns cmd.exe, which passes `${CLAUDE_PLUGIN_ROOT}` through
+    # literally instead of expanding it — every hook "resolved" to a path
+    # containing the literal string `${CLAUDE_PLUGIN_ROOT}` and failed.
+    # `bash -c` gives POSIX expansion on all three OSes (windows-latest ships
+    # Git Bash; scripts/check-no-pii.sh already relies on it in tests-windows.yml).
     return subprocess.run(
-        command, shell=True, input=json.dumps(fixture), env=env, cwd=str(cwd),
+        ["bash", "-c", command], input=json.dumps(fixture), env=env, cwd=str(cwd),
         capture_output=True, text=True, timeout=30,
     )
 
