@@ -11,8 +11,11 @@
 # board sync (graceful-skips when no .harness/project.json or no gh) ·
 # tag-reachability (all tags must point to main-reachable commits; graceful-skip
 # when no main branch exists).
-# (Host plugin validation — `claude/agy plugin validate` — needs those CLIs and
-# runs as a separate CI step.)
+# (Host plugin validation — `claude plugin validate` runs as a separate CI
+# step in tests-linux.yml, installing @anthropic-ai/claude-code first; this
+# script skips it since not every dev machine has that CLI. `agy plugin
+# validate` has no CI-installable form — agy is not npm-distributed — so it
+# stays dogfood-only, per wiki/reference/CI-Gates.md.)
 #
 # The "version bump" gate compares against origin/main by default and
 # graceful-skips when that ref is unresolvable (see scripts/check-version-bump.py).

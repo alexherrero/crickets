@@ -76,6 +76,23 @@ jobs:
         # default-branch names). In CI the full history is available (fetch-depth: 0
         # above), so origin/main resolves and the gate is live.
         run: python3 scripts/check_tag_reachability.py
+      - name: Install Claude Code CLI (for claude plugin validate)
+        run: npm install -g @anthropic-ai/claude-code
+      - name: Validate emitted Claude Code plugins (claude plugin validate)
+        # R2.1 / cricketsBuild#0+#2 — this claim ("runs as a separate CI step")
+        # was false since check-all.sh's creation (commit 875fbad); this step
+        # makes it true for the claude half. Non-strict: the marketplace entry's
+        # capabilities:/enhances: fields are deliberate soft-composition
+        # metadata Claude's schema doesn't recognize — it warns (harmless,
+        # ignored at load time) rather than errors, and --strict would wrongly
+        # turn that into a failure. `agy plugin validate` has no CI-installable
+        # form (agy is not npm-distributed) — stays dogfood-only, per
+        # wiki/reference/CI-Gates.md's existing honest phrasing.
+        run: |
+          claude plugin validate dist/claude-code/.claude-plugin/marketplace.json
+          for d in dist/claude-code/plugins/*/; do
+            claude plugin validate "$d"
+          done
 
   syntax:
     name: syntax

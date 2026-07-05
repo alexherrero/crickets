@@ -44,7 +44,8 @@ The single `CI` badge on the README + wiki Home points at [`ci-all.yml`](https:/
 
 - **gitleaks** — the industry-standard secret scanner, alongside `check-no-pii.sh` (two independent PII/secret layers; the pre-push git hook is the third, on your machine).
 - **PowerShell syntax** — `check-syntax.ps1` AST-parses every `.ps1` (locally this runs only where `pwsh` is installed).
-- *(Not in CI:)* **host plugin validation** — `claude plugin validate` / `agy` checks need the host CLIs, which GitHub runners don't carry; plugin loadability is proven at dogfood time instead.
+- **`claude plugin validate`** — runs in [`tests-linux.yml`](https://github.com/alexherrero/crickets/blob/main/.github/workflows/tests-linux.yml)'s `validate` job, which installs `@anthropic-ai/claude-code` via npm first, then validates `dist/claude-code/.claude-plugin/marketplace.json` and every `dist/claude-code/plugins/*/` directory non-strict (the marketplace `capabilities:`/`enhances:` fields are soft-composition metadata outside Claude's schema, and `--strict` would flag them as errors instead of the harmless warnings they are).
+- *(Not in CI:)* **`agy plugin validate`** — `agy` has no npm/CI-installable distribution, so Antigravity plugin loadability stays proven at dogfood time only.
 - **Wiki publish** — [`wiki-sync.yml`](https://github.com/alexherrero/crickets/blob/main/.github/workflows/wiki-sync.yml) (`[W] Update Wiki`) rsyncs `wiki/` to the GitHub wiki on every push to `main`, with a case-insensitive duplicate-basename check.
 
 ## Adding a gate
