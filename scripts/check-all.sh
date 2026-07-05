@@ -45,7 +45,13 @@ run() {
 
 run "lint_src"       python3 scripts/lint_src.py
 run "capability naming" python3 scripts/check-capability-naming.py
-run "unit tests"     bash -c "cd scripts && python3 -m unittest discover -p 'test_*.py'"
+# AGENTM_INSTALL_PREFIX + MEMORY_VAULT_PATH: isolate resolve_plan.py's R2.5
+# task 12 vault-mismatch guard from this MACHINE's own ~/.claude/.agentm-config.json
+# — a real operator install can have storage.backend=vault configured and
+# reachable, which would make dozens of tests that force the standalone
+# .harness/ fallback (seam=None / resolver=None) spuriously hit the new
+# refusal. Point the probe at a scratch path that never has a config file.
+run "unit tests"     env AGENTM_INSTALL_PREFIX="$ROOT/.no-such-agentm-prefix" MEMORY_VAULT_PATH="" bash -c "cd scripts && python3 -m unittest discover -p 'test_*.py'"
 run "evidence-tracker self-test" python3 src/code-review/hooks/evidence-tracker/evidence_tracker.py --mode self-test
 run "generate drift" python3 scripts/generate.py check
 run "dist-references" python3 scripts/check-dist-references.py

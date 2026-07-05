@@ -330,5 +330,17 @@ enhances:
 # the doctrine. The 0.18.0 entry above describes what that version
 # originally shipped (default-ON) and is left as historical record — this
 # entry is what's true now (R2.5 task 11).
-version: 0.29.12
+# 0.29.13 = R2.5 task 12: resolve_plan.resolve() refuses (exit 2) the repo-side
+# .harness/ fallback when agentm's own config independently confirms a
+# vault-backed memory layer is configured and reachable but its process seam
+# wasn't discoverable — the mismatch four separate sessions hit, landing plan
+# state on the wrong .harness/ tier with no warning. New
+# _vault_configured_and_reachable() probe (read-only, no cross-repo import) is
+# the evidence source; stage_plan.py's activate()/staging_path() inherit the
+# guard automatically since both compose onto resolve_plan.resolve(). New
+# harness_root_drift.py complements it with a fixture-only drift detector for
+# files that already landed on the wrong tier (never wired as a live
+# check-all.sh gate — a real checkout can carry legitimate pre-vault-cutover
+# archives that would false-positive forever).
+version: 0.29.13
 capabilities: [setup, plan, work, review, release, bugfix, documentation]

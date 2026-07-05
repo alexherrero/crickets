@@ -48,8 +48,15 @@ class TestStagingPath(unittest.TestCase):
 
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="sp-path-"))
+        # Isolate from the real machine's own agentm config (R2.5 task 12's new
+        # resolve_plan guard) — these tests exercise staging composition, not
+        # the vault-mismatch guard, so force it off regardless of what this
+        # machine's ~/.claude/.agentm-config.json actually says.
+        self._saved_vault_check = sp.resolve_plan._vault_configured_and_reachable
+        sp.resolve_plan._vault_configured_and_reachable = lambda **_k: False
 
     def tearDown(self):
+        sp.resolve_plan._vault_configured_and_reachable = self._saved_vault_check
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def test_standalone_derives_under_dot_harness(self):
@@ -112,8 +119,13 @@ class TestActivate(unittest.TestCase):
         self.queued.mkdir(parents=True, exist_ok=True)
         self.staged = self.queued / "PLAN-foo.md"
         self.active = self.harness / "PLAN-foo.md"
+        # Same isolation as TestStagingPath — activate() composes onto the same
+        # resolve_plan.resolve(), so it inherits the R2.5 task 12 guard too.
+        self._saved_vault_check = sp.resolve_plan._vault_configured_and_reachable
+        sp.resolve_plan._vault_configured_and_reachable = lambda **_k: False
 
     def tearDown(self):
+        sp.resolve_plan._vault_configured_and_reachable = self._saved_vault_check
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def test_happy_path_copies_bytes_verbatim(self):
@@ -264,8 +276,11 @@ class TestActivatePreflightReconcile(unittest.TestCase):
         self.queued.mkdir(parents=True, exist_ok=True)
         self.staged = self.queued / "PLAN-foo.md"
         self.active = self.harness / "PLAN-foo.md"
+        self._saved_vault_check = sp.resolve_plan._vault_configured_and_reachable
+        sp.resolve_plan._vault_configured_and_reachable = lambda **_k: False
 
     def tearDown(self):
+        sp.resolve_plan._vault_configured_and_reachable = self._saved_vault_check
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def _stage(self, *arts: str):
@@ -358,9 +373,14 @@ class TestMainCLI(unittest.TestCase):
         # install: point resolve_plan's auto-locator at nothing.
         self._saved = sp.resolve_plan.locate_resolver
         sp.resolve_plan.locate_resolver = lambda **_k: None
+        # Also isolate the R2.5 task 12 vault-mismatch guard — main() has no CLI
+        # flag to inject vault_check, so patch the module default directly.
+        self._saved_vault_check = sp.resolve_plan._vault_configured_and_reachable
+        sp.resolve_plan._vault_configured_and_reachable = lambda **_k: False
 
     def tearDown(self):
         sp.resolve_plan.locate_resolver = self._saved
+        sp.resolve_plan._vault_configured_and_reachable = self._saved_vault_check
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def _run(self, *argv: str) -> tuple[int, str, str]:

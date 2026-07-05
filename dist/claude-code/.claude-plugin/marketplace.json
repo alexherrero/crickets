@@ -69,7 +69,7 @@
       ],
       "name": "developer-workflows",
       "source": "./plugins/developer-workflows",
-      "version": "0.29.12"
+      "version": "0.29.13"
     },
     {
       "capabilities": [

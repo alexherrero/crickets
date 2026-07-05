@@ -12,6 +12,8 @@ from __future__ import annotations
 import importlib.util
 import io
 import contextlib
+import json
+import os
 import shutil
 import sys
 import tempfile
@@ -67,8 +69,15 @@ class TestFallback(unittest.TestCase):
 
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="rp-fallback-"))
+        # Isolate from the real machine's own agentm config (R2.5 task 12's new
+        # guard): these tests exercise the bare fallback, not the vault-mismatch
+        # guard, so force vault_check() False regardless of what this machine's
+        # ~/.claude/.agentm-config.json actually says.
+        self._saved_vault_check = rp._vault_configured_and_reachable
+        rp._vault_configured_and_reachable = lambda **_k: False
 
     def tearDown(self):
+        rp._vault_configured_and_reachable = self._saved_vault_check
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def _pair(self, *names: str) -> str:
@@ -179,6 +188,145 @@ class TestDelegation(unittest.TestCase):
         self.assertEqual(out, "")
 
 
+class TestVaultReachabilityGuard(unittest.TestCase):
+    """R2.5 task 12: refuse the repo-side `.harness/` fallback when agentm's own
+    config independently confirms a vault-backed memory layer is configured and
+    reachable — the guard against the four-repeat "plan state landed on the
+    wrong .harness/ tier" bug. Locked design call: default to refuse, not
+    warn-and-proceed.
+    """
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="rp-vaultguard-"))
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_mismatch_refuses_no_path_emitted(self):
+        # Seam absent (would fall back) + vault_check() True (a vault-backed
+        # layer really is configured and reachable) → refuse, exit 2, no path.
+        rc, out, err = rp.resolve("", str(self.tmp), seam=None, vault_check=lambda: True)
+        self.assertEqual(rc, 2)
+        self.assertEqual(out, "")
+        self.assertIn("refusing repo-side .harness/ fallback", err)
+        self.assertNotIn(str(self.tmp), out)
+
+    def test_no_mismatch_proceeds_exactly_as_before(self):
+        # Seam absent + vault_check() False (genuinely no vault configured, or
+        # configured-but-unreachable) → the ordinary fallback, unchanged.
+        rc, out, err = rp.resolve("", str(self.tmp), seam=None, vault_check=lambda: False)
+        self.assertEqual(rc, 0)
+        self.assertEqual(err, "")
+        base = self.tmp / ".harness"
+        self.assertEqual(out.strip(), f"{base / 'PLAN.md'}\t{base / 'progress.md'}")
+
+    def test_seam_present_never_consults_vault_check(self):
+        # A located seam is authoritative and delegates outright — the guard
+        # only fires on the fallback path. A vault_check that would refuse must
+        # never even be consulted when a seam is present.
+        stub = _write_stub(
+            self.tmp / "stub_ok.py",
+            "import sys\n"
+            "which = sys.argv[2]\n"
+            "sys.stdout.write('/v/PLAN.md\\n' if which == 'plan' else '/v/progress.md\\n')\n"
+            "sys.exit(0)\n",
+        )
+        called = []
+        rc, out, err = rp.resolve(
+            "", str(self.tmp), seam=stub,
+            vault_check=lambda: called.append(1) or True,
+        )
+        self.assertEqual(rc, 0)
+        self.assertEqual(out, "/v/PLAN.md\t/v/progress.md\n")
+        self.assertEqual(called, [])
+
+
+class TestVaultConfiguredAndReachableProbe(unittest.TestCase):
+    """Direct coverage of `_vault_configured_and_reachable`'s own resolution —
+    the evidence source the guard above consults."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="rp-vaultprobe-"))
+        self._saved_env = {
+            k: os.environ.get(k) for k in ("MEMORY_VAULT_PATH", "AGENTM_INSTALL_PREFIX")
+        }
+        os.environ.pop("MEMORY_VAULT_PATH", None)
+        os.environ.pop("AGENTM_INSTALL_PREFIX", None)
+
+    def tearDown(self):
+        for k, v in self._saved_env.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _write_config(self, prefix: Path, data: dict) -> None:
+        prefix.mkdir(parents=True, exist_ok=True)
+        (prefix / ".agentm-config.json").write_text(json.dumps(data), encoding="utf-8")
+
+    def test_env_override_existing_dir_true(self):
+        vault_dir = self.tmp / "envvault"
+        vault_dir.mkdir()
+        os.environ["MEMORY_VAULT_PATH"] = str(vault_dir)
+        self.assertTrue(rp._vault_configured_and_reachable())
+
+    def test_env_override_nonexistent_dir_false(self):
+        os.environ["MEMORY_VAULT_PATH"] = str(self.tmp / "does-not-exist")
+        self.assertFalse(rp._vault_configured_and_reachable())
+
+    def test_no_config_file_false(self):
+        empty_prefix = self.tmp / "no-config-here"
+        empty_prefix.mkdir()
+        self.assertFalse(rp._vault_configured_and_reachable(install_prefix=empty_prefix))
+
+    def test_config_vault_backend_reachable_true(self):
+        prefix = self.tmp / "prefix-ok"
+        vault_dir = self.tmp / "realvault"
+        vault_dir.mkdir()
+        self._write_config(prefix, {
+            "storage.backend": "vault",
+            "plugins.obsidian-vault.vault_path": str(vault_dir),
+        })
+        self.assertTrue(rp._vault_configured_and_reachable(install_prefix=prefix))
+
+    def test_config_vault_backend_but_path_missing_false(self):
+        # Configured but NOT reachable — both facts are required, not just one.
+        prefix = self.tmp / "prefix-unreachable"
+        self._write_config(prefix, {
+            "storage.backend": "vault",
+            "plugins.obsidian-vault.vault_path": str(self.tmp / "gone"),
+        })
+        self.assertFalse(rp._vault_configured_and_reachable(install_prefix=prefix))
+
+    def test_config_legacy_vault_path_key_fallback(self):
+        # Mirrors harness_memory.vault_path()'s own legacy flat-key fallback.
+        prefix = self.tmp / "prefix-legacy"
+        vault_dir = self.tmp / "legacyvault"
+        vault_dir.mkdir()
+        self._write_config(prefix, {
+            "storage.backend": "vault",
+            "vault_path": str(vault_dir),
+        })
+        self.assertTrue(rp._vault_configured_and_reachable(install_prefix=prefix))
+
+    def test_config_non_vault_backend_false(self):
+        prefix = self.tmp / "prefix-devicelocal"
+        vault_dir = self.tmp / "irrelevant"
+        vault_dir.mkdir()
+        self._write_config(prefix, {
+            "storage.backend": "device-local",
+            "plugins.obsidian-vault.vault_path": str(vault_dir),
+        })
+        self.assertFalse(rp._vault_configured_and_reachable(install_prefix=prefix))
+
+    def test_corrupt_config_false(self):
+        prefix = self.tmp / "prefix-corrupt"
+        prefix.mkdir()
+        (prefix / ".agentm-config.json").write_text("not json {{{", encoding="utf-8")
+        self.assertFalse(rp._vault_configured_and_reachable(install_prefix=prefix))
+
+
 class TestMainCLI(unittest.TestCase):
     """End-to-end main() over the fallback backend (delegate is unit-tested above)."""
 
@@ -188,9 +336,14 @@ class TestMainCLI(unittest.TestCase):
         # agentm install by stubbing out find_seam on the loaded bridge.
         self._saved = rp._bridge.find_seam
         rp._bridge.find_seam = lambda: None
+        # Also isolate the R2.5 task 12 vault-mismatch guard — main() has no CLI
+        # flag to inject vault_check, so patch the module default the same way.
+        self._saved_vault_check = rp._vault_configured_and_reachable
+        rp._vault_configured_and_reachable = lambda **_k: False
 
     def tearDown(self):
         rp._bridge.find_seam = self._saved
+        rp._vault_configured_and_reachable = self._saved_vault_check
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def _run(self, *argv: str) -> tuple[int, str, str]:

@@ -181,7 +181,57 @@ def _fallback(name: str, root: str) -> tuple[int, str, str]:
     return (0, f"{base / plan_fn}\t{base / prog_fn}\n", "")
 
 
-def resolve(name: str, root: str, *, seam=_AUTO, resolver=_AUTO) -> tuple[int, str, str]:
+# ── vault-reachability probe (R2.5 task 12) ─────────────────────────────────
+
+def _vault_configured_and_reachable(*, install_prefix: "str | os.PathLike | None" = None) -> bool:
+    """True iff agentm's OWN config independently confirms a vault-backed memory
+    layer is configured and reachable right now — read-only, no cross-repo import.
+
+    This is evidence for the guard in `resolve()` below, not a resolver: it never
+    re-derives resolve_plan's own path logic, and it deliberately does not import
+    agentm's `backend_selection.py` / `harness_memory.py` (DC-2: siblings not
+    layers — this bridge only ever proxies to agentm's CLI, never its Python).
+    Instead it reads the same two facts `harness_memory.vault_path()` checks,
+    directly off disk:
+
+      1. `$MEMORY_VAULT_PATH` env set and the path exists → vault reachable.
+      2. else `<install-prefix>/.agentm-config.json`'s `"storage.backend"` is
+         `"vault"` and its `"plugins.obsidian-vault.vault_path"` (falling back to
+         the legacy flat `"vault_path"` key) resolves to an existing directory.
+
+    `install_prefix` mirrors `agentm_config`'s own override precedence
+    (`$AGENTM_INSTALL_PREFIX`, else `~/.claude`) so this probe can never disagree
+    with agentm's own resolution about *where* to look — only about whether the
+    seam that reads it was discoverable.
+
+    Any error (file missing/corrupt, wrong type, path doesn't exist) → False.
+    That direction is deliberate: this only gates a REFUSAL in `resolve()`, so a
+    false negative just keeps today's behavior (repo-side fallback — correct for
+    a genuinely standalone install); a false positive would wrongly block a
+    legitimate resolution, which this must never do.
+    """
+    env_vault = os.environ.get("MEMORY_VAULT_PATH", "").strip()
+    if env_vault:
+        return Path(os.path.expanduser(env_vault)).is_dir()
+
+    prefix_env = os.environ.get("AGENTM_INSTALL_PREFIX", "").strip()
+    prefix = (
+        Path(install_prefix) if install_prefix is not None
+        else (Path(prefix_env) if prefix_env else Path.home() / ".claude")
+    )
+    try:
+        data = json.loads((prefix / ".agentm-config.json").read_text(encoding="utf-8"))
+    except Exception:
+        return False
+    if not isinstance(data, dict) or data.get("storage.backend") != "vault":
+        return False
+    vault_dir = data.get("plugins.obsidian-vault.vault_path") or data.get("vault_path")
+    if not isinstance(vault_dir, str) or not vault_dir.strip():
+        return False
+    return Path(os.path.expanduser(vault_dir)).is_dir()
+
+
+def resolve(name: str, root: str, *, seam=_AUTO, resolver=_AUTO, vault_check=_AUTO) -> tuple[int, str, str]:
     """Core: delegate to the V5-4 process seam, else fall back to `.harness/`.
 
     `seam` defaults to `_AUTO` (locate the seam via find_process_seam). A located
@@ -191,13 +241,44 @@ def resolve(name: str, root: str, *, seam=_AUTO, resolver=_AUTO) -> tuple[int, s
     `resolver` is a backward-compat alias for `seam` — callers that previously
     forwarded an injectable harness_memory path can now forward a process_seam
     path (or None for fallback) via the same keyword without source changes.
+
+    **R2.5 task 12 — the activation-tier guard.** `vault_check` is injectable
+    (tests only; defaults to `_vault_configured_and_reachable`). When the seam is
+    absent AND `vault_check()` is True, `resolve()` refuses (exit 2) instead of
+    silently returning the repo-side `.harness/` fallback: that mismatch —
+    agentm's own config says a vault-backed memory layer is configured and
+    reachable, yet its process seam could not be discovered here — is exactly
+    the bug four separate sessions hit, landing plan state on the wrong
+    `.harness/` tier with no warning. The refusal names the mismatch so the
+    operator fixes *discovery* (`$AGENTM_SCRIPTS_DIR`, or the conventional
+    sibling checkout) instead of silently forking plan state onto two roots.
+    Per the plan's locked design call, this defaults to refuse, not
+    warn-and-proceed. A genuinely standalone install (no agentm config at all)
+    is unaffected — `vault_check()` reads False and the fallback proceeds
+    exactly as before.
     """
     if seam is _AUTO and resolver is not _AUTO:
         seam = resolver  # backward-compat alias: resolver= → seam=
     if seam is _AUTO:
         seam = _bridge.find_seam() if _bridge is not None else None
     if seam is None:
-        return _fallback(name, root)
+        rc, out, err = _fallback(name, root)
+        if rc == 0:
+            check = _vault_configured_and_reachable if vault_check is _AUTO else vault_check
+            if check():
+                return (2, "", (
+                    "[resolve_plan] refusing repo-side .harness/ fallback: this "
+                    "install's own config declares storage.backend=vault with a "
+                    "reachable vault path, but agentm's process seam was not "
+                    "discoverable here (checked $AGENTM_SCRIPTS_DIR, this script's "
+                    "own directory, and the conventional ~/Antigravity/agentm "
+                    "sibling checkout). Writing to a repo-side .harness/ now would "
+                    "silently split this plan's state onto the wrong root instead "
+                    "of the vault-backed one every other session reads. Set "
+                    "$AGENTM_SCRIPTS_DIR to the sibling agentm/scripts directory, "
+                    "or verify the conventional checkout exists, and retry.\n"
+                ))
+        return rc, out, err
     return _delegate(seam, name, root)
 
 
