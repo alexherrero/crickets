@@ -44,7 +44,7 @@ At load time agentm's resolver (`capability_resolver.py`) matches names to insta
 
 **The honesty lints** (in the generator's `lint_src.py`) keep the graph sound: the named target must exist, nothing enhances itself, `enhances:` and `requires:` cannot name the same capability, and a named target must be declared in some plugin's `capabilities:`. A capability declares the names it provides in `capabilities:`; those are what others may target. All thirteen shipping plugins declare `capabilities:` today.
 
-**Version matching** is implemented in `capability_version_match.py` — a single-range semver check (`>=`, `>`, `<=`, `<`, `==`, `!=`, `~=`) that degrades to a non-match on malformed input rather than raising. A relationship can name a version range on its target; the open policy calls (enforce at load vs. call · warn vs. error) are in Risks.
+**Version matching** — `capability_version_match.py` (a single-range semver check: `>=`, `>`, `<=`, `<`, `==`, `!=`, `~=`, degrading to a non-match on malformed input rather than raising) exists in agentm. **`[PENDING-IMPL]`** — crickets does not yet wire it in: the `Enhance` dataclass (`scripts/src_model.py`) carries no version field, so there is no schema slot to name a version range on an `enhances:` relationship today, and nothing in crickets calls the matcher. The open policy calls (enforce at load vs. call · warn vs. error) are in Risks, alongside the schema/call-site gap.
 
 ### Capabilities compose with opinions
 
@@ -70,12 +70,12 @@ A v6.0 capability rename — `developer-workflows` → `development-lifecycle`, 
 
 - **agentm's resolver, via the bridge** — composition's by-name lookups resolve through agentm's `capability_resolver.py`, reached by crickets' `find_capability.py` (path-fallback + graceful-skip). The one-way arrow: crickets depends on agentm, never the reverse.
 - **The generator's lints** — `lint_src.py` enforces the four honesty lints over every plugin's `requires:` / `enhances:` / `capabilities:`; the [crickets build-system design](crickets-build-system.md) owns the generator.
-- **Version matching** — `capability_version_match.py` (agentm) backs any version range on a relationship.
+- **Version matching** — `capability_version_match.py` (agentm) exists, but crickets doesn't yet wire it in. **`[PENDING-IMPL]`** — the `Enhance` dataclass has no version field, so no relationship can name a version range on its target today.
 - **Sibling designs** — [agentm Opinions](https://github.com/alexherrero/agentm/wiki/agentm-opinions-and-gates) (the opinion surfaces + the request-by-name path), [agentm Personas](https://github.com/alexherrero/agentm/wiki/agentm-personas) (the persona tier that wields tool packages), [crickets build-system](crickets-build-system.md) (where the lints + `capabilities:` are generated).
 
 ## Risks & open questions
 
-- **Version-matching policy is unsettled** — the matcher exists, but whether a range is enforced at load or at call, and whether a mismatch warns or errors, is the per-capability sub-designs' to settle.
+- **Version-matching policy is unsettled** — the matcher exists, but whether a range is enforced at load or at call, and whether a mismatch warns or errors, is the per-capability sub-designs' to settle. More basically, it's **`[PENDING-IMPL]`** in crickets today: `Enhance` has no version field and nothing calls the matcher, so there's no schema slot for a range to enforce yet — the policy question is moot until the wiring lands.
 - **The opinion request-by-name path is designed, not built** — today tools hardwire their opinion; the migration is Phase-3/4 (the [Opinions design](https://github.com/alexherrero/agentm/wiki/agentm-opinions-and-gates)).
 - **`research` and `diagnostics` are newly designed, not yet built** — their precise depends/enhances are carried from their authored sub-designs; the edges land as they ship.
 - **Role-retirement is mid-flight** — `Coordinator-Roles.md` + the transitional agent-defs (`worker.md`, `tech-lead.md`, …) reconcile to the persona-wields-tools shape when role-retirement lands.
@@ -91,6 +91,8 @@ A v6.0 capability rename — `developer-workflows` → `development-lifecycle`, 
 - **Siblings:** [agentm Opinions](https://github.com/alexherrero/agentm/wiki/agentm-opinions-and-gates) · [agentm Personas](https://github.com/alexherrero/agentm/wiki/agentm-personas) · [crickets build-system](crickets-build-system.md) · `wiki/reference/Coordinator-Roles.md` (the transitional role agent-defs)
 
 ## Amendment log
+
+**2026-07-05 — doc-truth sweep: corrected a version-matching overclaim (PLAN-r2-ledger-and-dist task 8).** The "Version matching" paragraph and its Dependencies echo stated that `capability_version_match.py`-backed version ranges on `enhances:` are live and usable today. Confirmed against the code that this overclaims: crickets' `Enhance` dataclass (`scripts/src_model.py`) has no version field at all — no schema slot exists to name a range on an `enhances:` entry — and `grep -rln "capability_version_match\|version_match\|satisfies(" scripts/*.py src/*/scripts/*.py` (excluding tests) returns zero call sites in crickets. The matcher genuinely exists in agentm; crickets has neither the schema field nor a call site. Marked both spots `[PENDING-IMPL]` and folded the gap into the existing "Version-matching policy is unsettled" Risks bullet rather than replacing it, since the enforcement-policy question and the schema/call-site gap are both real and distinct. *Why not the alternative:* adding the version field to `Enhance` now would be new capability-schema work, which belongs to a build or design session, not a doc-truth sweep — fixing the doc's accuracy is in scope, extending the schema is not. *Re-audit trigger:* flip `[PENDING-IMPL]` to built when a version field lands on `Enhance` and `capability_version_match.py`/`satisfies()` gets a real call site in crickets.
 
 **2026-06-28 — lock-down sweep (operator review).** Converted the relationship-map mermaid to a house-style hand-SVG (`diagrams/crickets-composition.svg`); reversed this log to newest-first (the convention); and dropped the two dead ADR-number citations in the dependency-arrow paragraph (the repo split + the V5 unbundling now point to the [agentm HLD](https://github.com/alexherrero/agentm/wiki/agentm-hld) amendment log, matching the V5-6 treatment beside them). The folded ADR 0017/0027 records stay (this design owns them). No change to the composition contract. Locked as a v5–v8 guidepost.
 

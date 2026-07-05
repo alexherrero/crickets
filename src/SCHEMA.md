@@ -31,8 +31,9 @@ One per `src/<group>/`. The group **slug** is the folder name (not a field).
 name: GitHub CI
 description: CI workflows + dependency-update tooling (dependabot-fixer) for GitHub projects.
 category: Coding
-requires: [developer]
+requires: [developer-workflows]
 standalone: false
+capabilities: [ci-repair]
 ```
 
 ### Example — `src/pii/group.yaml`
@@ -43,6 +44,7 @@ description: Scan diffs/working tree for personal information before commit or p
 category: Coding
 requires: []
 standalone: true
+capabilities: [privacy]
 ```
 
 ### Example — soft composition (`enhances` + `capabilities`)
@@ -52,6 +54,7 @@ The enhancee declares what it offers; the enhancer declares what it augments. Bo
 ```yaml
 # src/developer-workflows/group.yaml — declares its capabilities
 name: Developer Workflows
+description: The phase-gated dev loop the other plugins build on.
 requires: []
 standalone: true
 capabilities: [setup, plan, work, review, release, bugfix]
@@ -60,8 +63,10 @@ capabilities: [setup, plan, work, review, release, bugfix]
 ```yaml
 # src/code-review/group.yaml — augments developer-workflows' `review` capability
 name: Code Review
+description: Adversarial review of any diff or PR.
 requires: []
 standalone: true
+capabilities: [adversarial-review]
 enhances:
   - group: developer-workflows
     capability: review
@@ -94,6 +99,6 @@ version: 0.1.0
 install_scope: project
 ```
 
-## Group-level assets — `scripts/`
+## Group-level assets — `scripts/` and `templates/`
 
-A group may carry a `src/<group>/scripts/` directory of **verbatim helper scripts** (e.g. `code-review/scripts/cross-review.sh`). Unlike the primitive kinds above, `scripts/` is **not a discovered primitive** — it has no frontmatter and no `kind`; the generator copies the whole directory **wholesale** into the emitted plugin at `dist/<host>/plugins/<group>/scripts/` (both hosts, host-agnostic). A primitive (e.g. an agent) references a bundled script via the host's plugin-root path (`${CLAUDE_PLUGIN_ROOT}/scripts/<name>` on Claude Code). `generate.py check` drift-gates the copied assets like any other emitted file.
+A group may carry a `src/<group>/scripts/` directory of **verbatim helper scripts** (e.g. `code-review/scripts/cross-review.sh`) and/or a `src/<group>/templates/` directory of verbatim template assets (e.g. `wiki-maintenance/templates/` — its section-template library and `wiki-sync.yml`). Unlike the primitive kinds above, neither is a **discovered primitive** — no frontmatter, no `kind`; the generator copies each directory **wholesale** into the emitted plugin at `dist/<host>/plugins/<group>/scripts/` or `.../templates/` (both hosts, host-agnostic). A primitive (e.g. an agent) references a bundled script via the host's plugin-root path (`${CLAUDE_PLUGIN_ROOT}/scripts/<name>` on Claude Code). Both copies exclude `__pycache__`, `*.pyc`, `.DS_Store`, and `.harness` (`scripts/src_model.py`'s `bundle_ignore()`). `generate.py check` drift-gates the copied assets like any other emitted file.
