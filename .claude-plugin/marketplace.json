@@ -21,7 +21,7 @@
       ],
       "name": "code-review",
       "source": "./dist/claude-code/plugins/code-review",
-      "version": "0.2.4"
+      "version": "0.2.5"
     },
     {
       "capabilities": [

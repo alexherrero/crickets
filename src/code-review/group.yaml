@@ -14,7 +14,11 @@ description: Standalone adversarial code review of any diff or PR — the advers
 # 0.2.4 = cross-review.sh's validate() is now sourceable in isolation (a
 # source-guard wraps the gemini-calling main() so a test can exercise the
 # real output-contract check without needing the gemini CLI installed).
-version: 0.2.4
+# 0.2.5 = evidence-tracker recognizes ABLATE_EVIDENCE_TRACKER=1 — the
+# mechanical-uplift baseline off-state (agentm PLAN-r3-uplift-scoring task 1,
+# R3.1a): enforcement disabled, the bad-flip fixture sails through
+# undetected (rc 0 instead of 2). Additive to the default-FAIL contract.
+version: 0.2.5
 category: Coding
 requires: []
 standalone: true

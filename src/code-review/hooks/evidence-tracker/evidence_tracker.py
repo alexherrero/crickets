@@ -583,6 +583,12 @@ def cli_check(stdin_text: str, project_root: Path) -> int:
         flipped_id = would_flip_checkbox(plan_path, tool_name, tool_input)
         if flipped_id is None:
             return 0
+        # ABLATE_EVIDENCE_TRACKER=1 (PLAN-r3-uplift-scoring task 1, R3.1a) —
+        # the mechanical-uplift baseline off-state: enforcement disabled, the
+        # flip sails through undetected. Additive to VERIFY_*_FAULT, never
+        # combined with it in one run.
+        if os.environ.get("ABLATE_EVIDENCE_TRACKER") == "1":
+            return 0
         # Determine the task + its requirement — from the plan file actually
         # being written (named or singleton), same derivation as above.
         actual_plan_path = resolve_plan_target(plan_path, tool_input)
@@ -1168,6 +1174,25 @@ class TestCLI(unittest.TestCase):
 
     def test_malformed_json_fails_open(self) -> None:
         rc = cli_check("{not json", self.root)
+        self.assertEqual(rc, 0)
+
+    def test_ablate_evidence_tracker_flip_sails_through_undetected(self) -> None:
+        """PLAN-r3-uplift-scoring task 1 (R3.1a): the same bad-flip fixture as
+        test_edit_blocks_without_evidence (rc == 2 on) now sails through
+        undetected (rc == 0 off) with ABLATE_EVIDENCE_TRACKER=1 — the
+        mechanical-uplift baseline for the evidence-tracker subsystem."""
+        os.environ["ABLATE_EVIDENCE_TRACKER"] = "1"
+        try:
+            rc = self._check({
+                "tool_name": "Edit",
+                "tool_input": {
+                    "file_path": str(self.plan_path),
+                    "old_string": "- **Verification:** tests/foo.py passes\n- **Status:** [ ]",
+                    "new_string": "- **Verification:** tests/foo.py passes\n- **Status:** [x] — done",
+                },
+            })
+        finally:
+            del os.environ["ABLATE_EVIDENCE_TRACKER"]
         self.assertEqual(rc, 0)
 
 
