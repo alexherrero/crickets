@@ -42,11 +42,12 @@ import composer  # noqa: E402 — sibling module, resolved via the sys.path inse
 # Templates ship alongside scripts/ at templates/<mode>.md.
 _TEMPLATES_DIR = _SCRIPTS_DIR.parent / "templates"
 
-# Per Diátaxis convention (matches harness's templates/wiki/ + check-wiki.py
-# expectations): tutorials/ is plural, others are singular. Map mode names to
-# their directory names here so author.py + classify.py share the convention.
+# The six-section documentation layout has NO tutorials/ folder: a tutorial
+# page folds into how-to/ (its `<!-- mode: tutorial -->` template hint is what
+# makes check-wiki.py's resolve_mode still treat it as a tutorial there —
+# mirrors migrate.py's already-reconciled _MODE_DIRS).
 _MODE_TO_DIR = {
-    "tutorial": "tutorials",
+    "tutorial": "how-to",
     "how-to": "how-to",
     "reference": "reference",
     "explanation": "explanation",

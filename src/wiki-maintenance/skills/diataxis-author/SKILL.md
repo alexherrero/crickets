@@ -253,19 +253,6 @@ python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/repair.py --stub -
 > [!NOTE]
 > **Sub-agent budget**: `--limit N` (no hard default) caps how many findings each interactive pass processes. For batched contexts (future idle-hook auto-repair, out of scope for v1), default would land at 3-5 to bound sub-agent dispatches.
 
-### `/diataxis repair`
-
-> [!NOTE]
-> **Status**: stub. Full body lands in plan #13 **part 3** (`check-repair`). See the [check-repair part](https://github.com/alexherrero/crickets/wiki/crickets-wiki) for the locked design.
-
-Interactive fix-application for drift detected by `/diataxis check`. Per finding: present suggested fix (cross-ref rewrite / mode reclassification / template realignment / split-mode-mixed-into-N-pages) + operator approves / edits / rejects. Pattern matches `/memory watchlist review`'s interactive flow. Mode-mixed splits dispatch `documenter` sub-agent (the mechanical-write worker). All file modifications preview-first; never silent.
-
-**Planned invocation shape** (subject to refinement in plan #13 part 3):
-
-```
-/diataxis repair [--mode <m>] [--limit N] [--stub]
-```
-
 ### `/diataxis migrate`
 
 One-shot migration of legacy audience-based wikis (`development/` + `operational/` + `design/` + `architecture/`) to the six-section documentation layout. Subsumes the harness's predecessor [`migrate-to-diataxis`](https://github.com/alexherrero/agentm/blob/main/harness/skills/migrate-to-diataxis.md) skill — same contract: preview-first, deterministic classification by heading shape per ADR 0004, `git mv` for blame preservation, mode-mixed pages flagged for human split (delegates to `/diataxis repair` for the actual split work). Auto-seeds `wiki/.diataxis` marker + `wiki/.diataxis-conventions.md` (per-repo overrides) post-migration. **Never commits** — operator stages + commits manually after reviewing diff (single-commit safety net via operator-driven commit boundary).
@@ -550,11 +537,6 @@ Python-side scripts can use whatever they need (network for ADR 0004 cross-refer
 
 ## Status
 
-This skill is **stub-shipped** as of v0.11.0-pre (plan #13 part 1). All 5 sub-commands have documented shape + planned invocation but no functional implementation yet. The 5 sub-commands fill in across plan #13 parts 2-5:
+This skill is **fully built**, not a stub — all 8 sub-commands (`author`, `check`, `repair`, `migrate`, `classify`, `capture`, `relocate`, `promote`) are implemented across 12 scripts under `scripts/`, with 8 dedicated test files (`scripts/test_diataxis_*.py` in the repo's top-level `scripts/`). Plan #13's original 5-part staged build (author-classify, check-repair, migrate-subsume, agentmemory-docs-release) has landed in full.
 
-- **Part 2** (`author-classify`): `/diataxis author` + `/diataxis classify` + `diataxis-evaluator` operational flow + 4 templates.
-- **Part 3** (`check-repair`): `/diataxis check` + `/diataxis repair` + `documenter` dispatch as worker.
-- **Part 4** (`migrate-subsume`): `/diataxis migrate` + harness predecessor deprecation notice.
-- **Part 5** (`agentmemory-docs-release`): AgentMemory read + write integration + new how-to + new ADR 0008 + paired release v0.11.0 + v2.4.3 + plan close-out.
-
-Re-audit triggers (per design doc Tech Debt + Risks): mode-classification false-positive rate (parent §1); convention drift across operator's three Diátaxis wikis (parent §2); `documenter` dispatch transition correctness (parent §3); AgentMemory write-back fatigue (parent §4).
+Re-audit triggers (per design doc Tech Debt + Risks — still standing regardless of build status): mode-classification false-positive rate (parent §1); convention drift across operator's three Diátaxis wikis (parent §2); `documenter` dispatch transition correctness (parent §3); AgentMemory write-back fatigue (parent §4).

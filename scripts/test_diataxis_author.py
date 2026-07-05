@@ -190,6 +190,21 @@ class TestMonolithEndToEnd(unittest.TestCase):
             )
             self.assertEqual(res["action"], "authored")
 
+    def test_tutorial_mode_writes_into_how_to_not_tutorials(self):
+        # R2.4 task 3 regression: _MODE_TO_DIR used to map tutorial -> "tutorials",
+        # a folder the six-section taxonomy retired. The template's own
+        # `<!-- mode: tutorial -->` hint is what makes check-wiki.py still
+        # resolve it as tutorial-mode once it lands in how-to/.
+        with tempfile.TemporaryDirectory() as td:
+            w = _mkwiki(td)
+            res = author.author_page(
+                "Learn Foo", "tutorial", wiki_root=w, resolved_style=_empty_style()
+            )
+            self.assertEqual(Path(res["target"]).parent, w / "how-to")
+            self.assertFalse((w / "tutorials").exists(), "tutorials/ must not be created")
+            written = Path(res["target"]).read_text(encoding="utf-8")
+            self.assertIn("<!-- mode: tutorial -->", written)
+
 
 class TestComponentOverviewPlacement(unittest.TestCase):
     """Task 2 — component-overview places end-to-end and composes its sections.

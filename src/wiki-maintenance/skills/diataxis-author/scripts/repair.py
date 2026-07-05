@@ -129,9 +129,10 @@ def _apply_repair(
         if not m:
             return {"action": "skipped", "reason": "could not parse target mode from msg"}
         target_mode = m.group(1)
-        # Map mode → dir per the established convention.
+        # Map mode -> dir per the six-section layout (no tutorials/ folder —
+        # mirrors author.py's _MODE_TO_DIR + migrate.py's _MODE_DIRS).
         mode_to_dir = {
-            "tutorial": "tutorials",
+            "tutorial": "how-to",
             "how-to": "how-to",
             "reference": "reference",
             "explanation": "explanation",

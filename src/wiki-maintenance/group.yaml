@@ -35,7 +35,11 @@ standalone: true
 # 0.3.6 = check-wiki rule (p) — the shape axis. Soft warns when an explanation page is
 # table-dominated (fact-dump; fenced diagrams/code don't count) or a reference page is mostly
 # prose / over a prose-word ceiling; the combined plugin-reference hybrid is exempt.
-version: 0.3.6
+# 0.3.7 = diataxis-author: author.py/repair.py's tutorial->dir map corrected from the
+# retired "tutorials" folder to "how-to" (matching migrate.py's already-reconciled map);
+# SKILL.md's Status section rewritten from stale "stub-shipped" to as-built (8
+# sub-commands, 12 scripts, 8 test files); duplicate stub /diataxis repair section deleted.
+version: 0.3.7
 capabilities: [wiki-maintenance]
 enhances:
   - group: developer-workflows
