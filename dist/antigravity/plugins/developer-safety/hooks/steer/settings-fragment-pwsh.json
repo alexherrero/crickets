@@ -1,6 +1,6 @@
 {
   "hooks": {
-    "PreToolUse": [
+    "UserPromptSubmit": [
       {
         "matcher": ".*",
         "hooks": [

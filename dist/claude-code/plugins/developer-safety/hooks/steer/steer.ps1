@@ -2,12 +2,18 @@
 # Mirrors steer.sh (incl. host-portable workspace resolution) for
 # Windows / pwsh hosts.
 #
-# Fires on Claude Code's PreToolUse event (matcher .*). If .harness/STEER.md
-# exists in the project root, prints its contents to stdout (Claude Code
-# injects into agent context) and renames it to STEER.consumed-<ts>.md.
+# Fires on Claude Code's UserPromptSubmit event (matcher .*). If
+# .harness/STEER.md exists in the project root, emits
+# {"additionalContext": "<contents>"} JSON on stdout (Claude Code's real
+# injection mechanism — see steer.sh's header for the R2.2 task 5 live-verify
+# note: PreToolUse stdout was never actually injected, despite this hook's
+# prior documentation) and renames it to STEER.consumed-<ts>.md.
 #
 # Operator usage:
 #   "Actually, do it this way..." | Out-File .harness/STEER.md
+#
+# The guidance now surfaces on the NEXT USER PROMPT, not the next tool call
+# within the same turn — see hook.md.
 #
 # See hook.md in this directory for full documentation.
 
@@ -46,8 +52,11 @@ try { Set-Location -LiteralPath $ws } catch { }
 $steerFile = '.harness/STEER.md'
 
 if (Test-Path -LiteralPath $steerFile -PathType Leaf) {
-    # Emit contents to stdout — Claude Code captures and injects.
-    Get-Content -LiteralPath $steerFile -Raw
+    # Emit {"additionalContext": "<contents>"} — Claude Code's UserPromptSubmit
+    # injection contract. ConvertTo-Json owns the encoding (never hand-rolled
+    # string escaping).
+    $content = Get-Content -LiteralPath $steerFile -Raw
+    @{ additionalContext = $content } | ConvertTo-Json -Compress
 
     # Rename for audit trail (UTC timestamp).
     $ts = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssZ')

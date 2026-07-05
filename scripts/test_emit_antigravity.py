@@ -112,13 +112,18 @@ class TestAntigravityEmitter(unittest.TestCase):
         self.assertNotIn("requires", by["developer-workflows"])
 
     def test_ag_hooks_named_with_relative_paths(self):
-        # the control hooks live in developer-safety post-seed-retirement
+        # the control hooks live in developer-safety post-seed-retirement.
+        # `steer` fires on UserPromptSubmit (R2.2 task 5 migration off the
+        # falsified PreToolUse-stdout-injection premise), which has no
+        # Antigravity equivalent — its script is still bundled but it gets no
+        # event registration, so it's absent from this dict entirely.
         hj = json.loads((self.agdist / "plugins" / "developer-safety" / "hooks.json").read_text(encoding="utf-8"))
-        self.assertEqual(set(hj), {"commit-on-stop", "kill-switch", "steer"})
+        self.assertEqual(set(hj), {"commit-on-stop", "kill-switch"})
         self.assertTrue(hj["commit-on-stop"]["enabled"])
         self.assertIn("Stop", hj["commit-on-stop"])
         self.assertIn("PreToolUse", hj["kill-switch"])
-        self.assertIn("PreToolUse", hj["steer"])
+        self.assertTrue((self.agdist / "plugins" / "developer-safety" / "hooks" / "steer" / "steer.sh").exists(),
+                        "steer's script must still be bundled even without an AG event registration")
         cmds = []
         for h in hj.values():
             for ev, entries in h.items():

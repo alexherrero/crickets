@@ -133,14 +133,20 @@ class TestClaudeEmitter(unittest.TestCase):
         hj = raw["hooks"]
         self.assertIn("Stop", hj)
         self.assertIn("PreToolUse", hj)
+        # steer moved PreToolUse -> UserPromptSubmit in R2.2 task 5 (the
+        # documented PreToolUse-stdout-injection mechanism was live-verified
+        # false); it no longer shares kill-switch's event.
+        self.assertIn("UserPromptSubmit", hj)
         stop_cmds = [h["command"] for e in hj["Stop"] for h in e.get("hooks", [])]
         self.assertTrue(any("${CLAUDE_PLUGIN_ROOT}/hooks/commit-on-stop/commit-on-stop.sh" in c
                             for c in stop_cmds), stop_cmds)
         pre_cmds = [h["command"] for e in hj["PreToolUse"] for h in e.get("hooks", [])]
         self.assertTrue(any("kill-switch/kill-switch.sh" in c for c in pre_cmds), pre_cmds)
-        self.assertTrue(any("steer/steer.sh" in c for c in pre_cmds), pre_cmds)
+        self.assertFalse(any("steer/steer.sh" in c for c in pre_cmds), pre_cmds)
+        prompt_cmds = [h["command"] for e in hj["UserPromptSubmit"] for h in e.get("hooks", [])]
+        self.assertTrue(any("steer/steer.sh" in c for c in prompt_cmds), prompt_cmds)
         # no raw .claude/hooks path leaks through
-        self.assertFalse(any(".claude/hooks" in c for c in stop_cmds + pre_cmds))
+        self.assertFalse(any(".claude/hooks" in c for c in stop_cmds + pre_cmds + prompt_cmds))
         # scripts bundled under the plugin
         self.assertTrue((self.cdist / "plugins" / "developer-safety" / "hooks" / "commit-on-stop" / "commit-on-stop.sh").exists())
 

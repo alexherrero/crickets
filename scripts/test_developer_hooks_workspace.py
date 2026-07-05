@@ -199,11 +199,26 @@ class TestSteerWorkspace(unittest.TestCase):
         (self.ws / ".harness" / "STEER.md").write_text(guidance, encoding="utf-8")
         r = _run(STEER, cwd=self.foreign, stdin=_ag_payload(self.ws))
         self.assertEqual(r.returncode, 0, f"stderr={r.stderr!r}")
-        self.assertIn(guidance, r.stdout, "steer must emit workspace STEER.md contents")
         self.assertFalse((self.ws / ".harness" / "STEER.md").exists(),
                          "steer must consume (rename) the workspace STEER.md")
         consumed = list((self.ws / ".harness").glob("STEER.consumed-*.md"))
         self.assertTrue(consumed, "steer must leave an audit-trail consumed file in the workspace")
+
+    def test_emits_additionalcontext_json_not_plain_text(self):
+        # R2.2 task 5: PreToolUse stdout injection was live-verified false;
+        # UserPromptSubmit's real injection contract is a JSON object with an
+        # `additionalContext` key, never raw text — a regression net for the
+        # v0.1.0->v0.2.0 mechanism migration.
+        guidance = "Three corrections:\n1. Use the helper.\n2. Don't add os.system."
+        (self.ws / ".harness" / "STEER.md").write_text(guidance, encoding="utf-8")
+        payload = json.dumps({
+            "cwd": str(self.ws), "hook_event_name": "UserPromptSubmit", "prompt": "continue",
+        })
+        r = _run(STEER, cwd=self.ws, stdin=payload)
+        self.assertEqual(r.returncode, 0, f"stderr={r.stderr!r}")
+        parsed = json.loads(r.stdout)
+        self.assertEqual(parsed, {"additionalContext": guidance},
+                         "steer must emit exactly {'additionalContext': <STEER.md contents>}, not plain text")
 
 
 @unittest.skipUnless(os.name == "posix", "bash hooks are posix; Windows uses .ps1")

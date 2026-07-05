@@ -22,7 +22,7 @@ Claude Code supports every plugin fully; the **Support** column reflects Antigra
 | Plugin | Support | Antigravity gaps |
 |---|---|---|
 | `developer-workflows` | ⚠️ Partial | the `harness-context` SessionStart hook is Claude-only |
-| `developer-safety` | ⚠️ Partial | its hooks fire but run **observe-only** (below) |
+| `developer-safety` | ⚠️ Partial | `kill-switch` fires observe-only; `steer` doesn't fire at all; `commit-on-stop` is fully effective (below) |
 | `code-review` | ⚠️ Partial | the `evidence-tracker` hook is Claude-only |
 | `github-ci` | ✅ Supported | — |
 | `pii` | ✅ Supported | — |
@@ -43,7 +43,7 @@ A hook can be *emitted* on a host without being *effective* there. Antigravity r
 |---|---|---|---|---|
 | `commit-on-stop` | `developer-safety` | ✅ effective | ✅ effective | pure side-effect (it commits) — no exit/stdout contract needed |
 | `kill-switch` | `developer-safety` | ✅ effective | ⚠️ advisory only | vetoes via exit code; Antigravity ignores exit codes |
-| `steer` | `developer-safety` | ✅ effective | ⚠️ advisory only | injects via stdout; Antigravity never reads hook stdout |
+| `steer` | `developer-safety` | ✅ effective | ❌ does not fire | fires on `UserPromptSubmit`; the generator skips registering that event for Antigravity, so the hook never runs there at all |
 | `evidence-tracker` | `code-review` | ✅ effective | ❌ Claude-only | needs the veto contract Antigravity lacks (`[claude-code]`) |
 | `harness-context` | `developer-workflows` | ✅ effective | ❌ Claude-only | SessionStart — Antigravity has no SessionStart surface |
 

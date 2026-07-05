@@ -27,17 +27,6 @@ set -uo pipefail
 
 MODEL="gemini-3.1-pro-preview"
 
-command -v gemini >/dev/null 2>&1 || {
-  echo "cross-review: gemini CLI not found — caller should fall back" >&2
-  exit 1
-}
-
-material=$(cat)
-if [[ -z "$material" ]]; then
-  echo "cross-review: no review material on stdin" >&2
-  exit 2
-fi
-
 # Use `read -r -d ''` for the heredoc assignment — `$(cat <<'EOF'...)` gets
 # confused by backticks inside fenced code blocks in the prompt body.
 IFS='' read -r -d '' framing <<'FRAMING_EOF' || true
@@ -93,34 +82,53 @@ call_gemini() {
   printf '%s\n' "$material" | gemini -p "$prompt" -m "$MODEL" -o text 2>/dev/null
 }
 
-output=$(call_gemini "$framing")
-rc=$?
-if [[ $rc -ne 0 || -z "$output" ]]; then
-  echo "cross-review: gemini call failed (exit $rc)" >&2
-  exit 1
+main() {
+  command -v gemini >/dev/null 2>&1 || {
+    echo "cross-review: gemini CLI not found — caller should fall back" >&2
+    exit 1
+  }
+
+  material=$(cat)
+  if [[ -z "$material" ]]; then
+    echo "cross-review: no review material on stdin" >&2
+    exit 2
+  fi
+
+  output=$(call_gemini "$framing")
+  rc=$?
+  if [[ $rc -ne 0 || -z "$output" ]]; then
+    echo "cross-review: gemini call failed (exit $rc)" >&2
+    exit 1
+  fi
+
+  if validate "$output"; then
+    printf '%s\n' "$output"
+    exit 0
+  fi
+
+  # Retry once with a sharper format nudge.
+  retry_nudge="Your previous response did not match the required output format. Respond again using EXACTLY ONE of the three forms (failing test, DEFECT:, or NO ISSUES FOUND). No prose preamble. No prose outside the form."
+  retry_framing="${framing}"$'\n\n'"${retry_nudge}"
+
+  output=$(call_gemini "$retry_framing")
+  rc=$?
+  if [[ $rc -ne 0 || -z "$output" ]]; then
+    echo "cross-review: gemini retry failed (exit $rc)" >&2
+    exit 1
+  fi
+
+  if validate "$output"; then
+    printf '%s\n' "$output"
+    exit 0
+  fi
+
+  echo "cross-review: contract violated after retry. Raw output follows on stderr." >&2
+  printf '%s\n' "$output" >&2
+  exit 2
+}
+
+# Sourcing this file (e.g. from a test harness that wants to call validate()
+# directly) must not run the gemini flow — only direct execution does.
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
 fi
-
-if validate "$output"; then
-  printf '%s\n' "$output"
-  exit 0
-fi
-
-# Retry once with a sharper format nudge.
-retry_nudge="Your previous response did not match the required output format. Respond again using EXACTLY ONE of the three forms (failing test, DEFECT:, or NO ISSUES FOUND). No prose preamble. No prose outside the form."
-retry_framing="${framing}"$'\n\n'"${retry_nudge}"
-
-output=$(call_gemini "$retry_framing")
-rc=$?
-if [[ $rc -ne 0 || -z "$output" ]]; then
-  echo "cross-review: gemini retry failed (exit $rc)" >&2
-  exit 1
-fi
-
-if validate "$output"; then
-  printf '%s\n' "$output"
-  exit 0
-fi
-
-echo "cross-review: contract violated after retry. Raw output follows on stderr." >&2
-printf '%s\n' "$output" >&2
-exit 2

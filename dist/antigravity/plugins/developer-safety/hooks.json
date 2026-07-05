@@ -28,20 +28,5 @@
       }
     ],
     "enabled": true
-  },
-  "steer": {
-    "PreToolUse": [
-      {
-        "hooks": [
-          {
-            "command": "bash ./hooks/steer/steer.sh",
-            "timeout": 5,
-            "type": "command"
-          }
-        ],
-        "matcher": ".*"
-      }
-    ],
-    "enabled": true
   }
 }

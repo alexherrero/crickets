@@ -11,7 +11,10 @@ description: Standalone adversarial code review of any diff or PR — the advers
 # not just the singleton .harness/PLAN.md — the default-FAIL contract was
 # silently dead on the multi-plan path every worker/named-plan session
 # actually uses (cricketsPluginsA#3, PLAN-r2-enforcement-and-sync task 1).
-version: 0.2.3
+# 0.2.4 = cross-review.sh's validate() is now sourceable in isolation (a
+# source-guard wraps the gemini-calling main() so a test can exercise the
+# real output-contract check without needing the gemini CLI installed).
+version: 0.2.4
 category: Coding
 requires: []
 standalone: true
