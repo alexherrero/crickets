@@ -20,4 +20,6 @@ capabilities: [storage-backend]
 # Antigravity SessionStart-nudge substitute).
 # 0.3.0 = V5-3 Part 1 task 4 — vault group rename: personal-private → personal
 # (3-part lockstep; doctor_vault.py message string updated to match).
-version: 0.3.0
+# 0.3.1 = vault-doctor SKILL.md's own vault-path check description still said
+# personal-private/ (doctor_vault.py's real check already said personal/) — doc-truth fix.
+version: 0.3.1

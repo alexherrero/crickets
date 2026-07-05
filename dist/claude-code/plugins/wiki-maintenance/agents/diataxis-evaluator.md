@@ -1,6 +1,6 @@
 ---
 name: diataxis-evaluator
-description: Read-only sub-agent for ambiguous Diátaxis mode-classification cases. Dispatched by `diataxis-author` skill's `/diataxis classify <file>` (operational from plan #13 part 2) and `/diataxis repair`'s mode-mixed split branch (plan #13 part 3). Reads a candidate page + the operator's per-repo conventions + ADR 0004's machine-enforceable rules; returns classification + confidence + rationale + (if mode-mixed) suggested split. Caller-supplies-inline-rubric pattern; tool allowlist is Read/Glob/Grep/WebFetch with no write access — adapt-don't-import-style architectural enforcement. Plan #13 part 1 ships the stub; operational flow lands in part 2.
+description: Read-only sub-agent for ambiguous Diátaxis mode-classification cases. Dispatched by `diataxis-author` skill's `/diataxis classify <file>` and `/diataxis repair`'s mode-mixed split branch. Reads a candidate page + the operator's per-repo conventions + the crickets-conventions design's documentation-domain machine-enforceable rules; returns classification + confidence + rationale + (if mode-mixed) suggested split. Caller-supplies-inline-rubric pattern; tool allowlist is Read/Glob/Grep/WebFetch with no write access — adapt-don't-import-style architectural enforcement.
 kind: agent
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
@@ -13,7 +13,7 @@ A read-only sub-agent dispatched by the [diataxis-author skill](../skills/diatax
 
 ## Two-tier classification (locked design from plan #13 part 1)
 
-1. **Tier 1 — heuristic** (deterministic Python in `scripts/classify.py`, lands plan #13 part 2): regex + heading-shape rules from ADR 0004's machine-enforceable rules + frontmatter signals + operator's per-repo `.diataxis-conventions.md` overrides. Returns mode + confidence; if confidence is high → emit classification + skip sub-agent.
+1. **Tier 1 — heuristic** (deterministic Python in `scripts/classify.py`): regex + heading-shape rules from the crickets-conventions design's documentation-domain machine-enforceable rules + frontmatter signals + operator's per-repo `.diataxis-conventions.md` overrides. Returns mode + confidence; if confidence is high → emit classification + skip sub-agent.
 
 2. **Tier 2 — sub-agent semantic judgment** (this sub-agent): triggered when Tier 1's confidence is below threshold (default 0.7, tunable via AgentMemory convention). Takes the page contents + 4-mode contract + operator conventions; returns classification + confidence + rationale + (if mode-mixed) suggested split into N pages.
 
@@ -29,7 +29,7 @@ Use the diataxis-evaluator sub-agent to classify the following wiki page.
 PAGE: <absolute path>
 TIER-1-HEURISTIC-RESULT: {mode: <tier1-guess>, confidence: <0.0-1.0>, rationale: <regex-match details>}
 PER-REPO-CONVENTIONS: <contents of <repo>/wiki/.diataxis-conventions.md if present, else "none">
-OPERATOR-CONVENTIONS: <contents of all <vault>/personal-private/_always-load/diataxis-*.md entries>
+OPERATOR-CONVENTIONS: <contents of all <vault>/personal/_always-load/diataxis-*.md entries>
 RUBRIC:
   Decide the page's target section (six-section documentation layout) + its check-wiki shape mode.
   Six sections — four always present (how-to · reference · designs · explanation) + two conditional
@@ -49,11 +49,11 @@ RUBRIC:
                 rationale: <1-3 sentences>, mode_mixed: <bool>, suggested_split: [{section, body_section_ranges}] | null}
 ```
 
-The sub-agent reads the page contents via Read tool + per-repo + operator conventions via Glob+Grep + (rarely, if needed for cross-reference) ADR 0004 via WebFetch. Returns the JSON. Never writes anything.
+The sub-agent reads the page contents via Read tool + per-repo + operator conventions via Glob+Grep + (rarely, if needed for cross-reference) the crickets-conventions design's documentation domain via WebFetch. Returns the JSON. Never writes anything.
 
 ## Tool allowlist
 
-**`Read, Glob, Grep, WebFetch`** — read-only file operations + bounded network access (WebFetch reserved for ADR 0004 cross-reference if the convention source isn't readily available locally; can be dropped in a future version if not exercised). **No Bash, no Write, no Edit.** The sub-agent CANNOT modify any file — the architectural enforcement is the same shape as `adapt-evaluator`'s write allowlist physically scoping to `_skill-watchlist/` only, except for `diataxis-evaluator` the scope is **zero writes**. Any classification + adaptation decision is returned to the caller for the caller to act on.
+**`Read, Glob, Grep, WebFetch`** — read-only file operations + bounded network access (WebFetch reserved for the crickets-conventions design's documentation-domain cross-reference if the convention source isn't readily available locally; can be dropped in a future version if not exercised). **No Bash, no Write, no Edit.** The sub-agent CANNOT modify any file — the architectural enforcement is the same shape as `adapt-evaluator`'s write allowlist physically scoping to `_skill-watchlist/` only, except for `diataxis-evaluator` the scope is **zero writes**. Any classification + adaptation decision is returned to the caller for the caller to act on.
 
 Writes attempted by this sub-agent are bugs in dispatch + should be caught at PR review time.
 
@@ -68,7 +68,7 @@ Writes attempted by this sub-agent are bugs in dispatch + should be caught at PR
 
 - **Page not found** — return error to caller (`{error: "page not found"}`); no classification attempted.
 - **Page is empty or pure whitespace** — return `{mode: "explanation", confidence: 0.3, rationale: "empty page; default to explanation; operator likely intends a stub"}`.
-- **Conventions file present but malformed** — log to stderr; fall back to ADR 0004 defaults.
+- **Conventions file present but malformed** — log to stderr; fall back to the crickets-conventions design's documentation-domain defaults.
 - **All 4 modes tie in scoring** — return `mode_mixed: true` + suggested split as best guess; caller handles operator confirmation.
 
 ## See also

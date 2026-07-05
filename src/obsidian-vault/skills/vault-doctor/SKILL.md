@@ -37,7 +37,7 @@ This skill is the thin interactive surface over the read-only probe
 
 | Check | Asserts | FAIL when |
 |---|---|---|
-| `vault-path` | the configured `vault_path` resolves to a real MemoryVault (the `vault_probe` shape: `_meta/repos.json` or `personal-private/`), recovering a nested `Obsidian/AgentMemory` via its parent | no `vault_path` configured, or the path does not exist |
+| `vault-path` | the configured `vault_path` resolves to a real MemoryVault (the `vault_probe` shape: `_meta/repos.json` or `personal/`), recovering a nested `Obsidian/AgentMemory` via its parent | no `vault_path` configured, or the path does not exist |
 | `backend` | selection resolves the `vault` protocol to **this plugin** — not the kernel built-in, not a silent demotion to device-local — routed through the engine's own `storage_preview`, so the row can't drift from runtime | the engine would refuse at runtime (plugin absent/unloadable; `vault` selected with no `vault_path`) |
 | `conflicts` | the conflict-merger detector finds **no** unresolved GDrive/DriveFS conflict files in the vault (and the `lost_and_found/` dump) | — (conflict files are a `WARN` to triage, never a hard install FAIL) |
 

@@ -39,7 +39,10 @@ standalone: true
 # retired "tutorials" folder to "how-to" (matching migrate.py's already-reconciled map);
 # SKILL.md's Status section rewritten from stale "stub-shipped" to as-built (8
 # sub-commands, 12 scripts, 8 test files); duplicate stub /diataxis repair section deleted.
-version: 0.3.7
+# 0.3.8 = doc-truth sweep: SKILL.md's ~20 absolute example paths -> repo-relative; SKILL.md's
+# + diataxis-evaluator.md's remaining "ADR 0004" citations repointed to the crickets-conventions
+# design's documentation domain (the retired ADR is folded there per the ADR-retirement convention).
+version: 0.3.8
 capabilities: [wiki-maintenance]
 enhances:
   - group: developer-workflows

@@ -13,7 +13,7 @@ The second major skill in `crickets` (after `memory`). Encodes the operator's Di
 
 **Position vs. `check-wiki.py` strict validator**: validators catch violations after-the-fact; diataxis-author provides **proactive** guidance at write time (template selection, mode classification, filename style). Both layers complement: skill prevents drift at write time; `check-wiki.py` catches drift at commit time + during `/diataxis check`.
 
-**Position vs. harness's `documenter` sub-agent**: documenter is the **mechanical write worker** (Diátaxis-aware writes per ADR 0004 §4); diataxis-author is the **operator-facing orchestration + guidance surface**. Skill dispatches documenter for splits + heavy writes — same separation as `/memory adapt-skills` (orchestration) vs. `adapt-evaluator` (sub-agent worker) from plan #7b task 4.
+**Position vs. harness's `documenter` sub-agent**: documenter is the **mechanical write worker** (Diátaxis-aware writes per the crickets-conventions design's documentation domain); diataxis-author is the **operator-facing orchestration + guidance surface**. Skill dispatches documenter for splits + heavy writes — same separation as `/memory adapt-skills` (orchestration) vs. `adapt-evaluator` (sub-agent worker).
 
 **Position vs. predecessor `migrate-to-diataxis` (harness-side)**: subsumed (plan #13 part 4). v1 ships the predecessor with a deprecation notice; follow-up harness release removes the file entirely after dogfood confirms diataxis-author is the better surface.
 
@@ -94,17 +94,17 @@ Live authoring guidance — operator invokes when starting a new wiki page. Skil
 
 ```bash
 # Explicit mode
-python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/author.py \
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/author.py \
   "Install crickets into a project" --mode how-to
 # → wiki/how-to/Install-Agent-Toolkit-Into-A-Project.md
 
 # Infer mode from intent
-python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/author.py \
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/author.py \
   "CLI reference for the installer" --intent "lookup table for all install.sh flags"
 # → wiki/reference/Cli-Reference-For-The-Installer.md  (inferred: reference)
 
 # Kebab-case filename style
-python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/author.py \
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/author.py \
   "Tutorial 3 — Advanced things" --mode tutorial --filename-style kebab-case
 # → wiki/how-to/tutorial-3-advanced-things.md  (onboarding page, marked <!-- mode: tutorial -->)
 ```
@@ -161,13 +161,13 @@ Drift detection — wraps `scripts/check-wiki.py` (harness-side) as a subprocess
 
 ```bash
 # Run against the toolkit's own wiki
-python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/check.py \
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/check.py \
   --wiki-root ~/Antigravity/crickets/wiki
 # Strict mode (escalate warnings)
-python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/check.py \
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/check.py \
   --wiki-root ~/Antigravity/crickets/wiki --strict
 # Custom check-wiki.py path
-python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/check.py \
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/check.py \
   --wiki-root /path/to/project/wiki \
   --check-wiki-py /path/to/check-wiki.py
 ```
@@ -229,12 +229,12 @@ Interactive fix-application for drift detected by `/diataxis check`. Per finding
 
 ```bash
 # Interactive review against ./wiki
-python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/repair.py
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/repair.py
 # Use a pre-recorded findings file (replay analysis)
-python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/check.py --wiki-root wiki > findings.json
-python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/repair.py --findings findings.json
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/check.py --wiki-root wiki > findings.json
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/repair.py --findings findings.json
 # CI smoke-safe with sub-agent stub + small limit
-python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/repair.py --stub --limit 3
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/repair.py --stub --limit 3
 ```
 
 #### Failure modes (graceful)
@@ -255,7 +255,7 @@ python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/repair.py --stub -
 
 ### `/diataxis migrate`
 
-One-shot migration of legacy audience-based wikis (`development/` + `operational/` + `design/` + `architecture/`) to the six-section documentation layout. Subsumes the harness's predecessor [`migrate-to-diataxis`](https://github.com/alexherrero/agentm/blob/main/harness/skills/migrate-to-diataxis.md) skill — same contract: preview-first, deterministic classification by heading shape per ADR 0004, `git mv` for blame preservation, mode-mixed pages flagged for human split (delegates to `/diataxis repair` for the actual split work). Auto-seeds `wiki/.diataxis` marker + `wiki/.diataxis-conventions.md` (per-repo overrides) post-migration. **Never commits** — operator stages + commits manually after reviewing diff (single-commit safety net via operator-driven commit boundary).
+One-shot migration of legacy audience-based wikis (`development/` + `operational/` + `design/` + `architecture/`) to the six-section documentation layout. Subsumes the harness's predecessor [`migrate-to-diataxis`](https://github.com/alexherrero/agentm/blob/main/harness/skills/migrate-to-diataxis.md) skill — same contract: preview-first, deterministic classification by heading shape per the crickets-conventions design's documentation domain, `git mv` for blame preservation, mode-mixed pages flagged for human split (delegates to `/diataxis repair` for the actual split work). Auto-seeds `wiki/.diataxis` marker + `wiki/.diataxis-conventions.md` (per-repo overrides) post-migration. **Never commits** — operator stages + commits manually after reviewing diff (single-commit safety net via operator-driven commit boundary).
 
 #### Invocation shape
 
@@ -321,13 +321,13 @@ Classification is deterministic (no LLM, no random sampling, no wall-clock).
 
 ```bash
 # Default: preview only (no flag) + hint
-python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/migrate.py
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/migrate.py
 # Explicit preview-only (preview-first contract)
-python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/migrate.py --preview
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/migrate.py --preview
 # Apply the migration
-python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/migrate.py --execute
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/migrate.py --execute
 # Skip prompts (synonym)
-python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/migrate.py --yes
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/migrate.py --yes
 ```
 
 #### Failure modes (graceful)
@@ -349,7 +349,7 @@ python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/migrate.py --yes
 
 ### `/diataxis classify <file>`
 
-Single-page mode classification — operator-debug surface + the `diataxis-evaluator` sub-agent's primary invocation surface for ambiguous cases. Takes a file path; returns mode + confidence + per-mode scores + rationale + `needs_subagent` flag. Tier-1 (deterministic Python heuristic in `classify.py`) handles clear cases via regex + heading-shape rules from ADR 0004. Tier-2 (`diataxis-evaluator` sub-agent — operational from this part) handles ambiguous mode-mixed pages where heuristic scoring is tight (default confidence threshold 0.7).
+Single-page mode classification — operator-debug surface + the `diataxis-evaluator` sub-agent's primary invocation surface for ambiguous cases. Takes a file path; returns mode + confidence + per-mode scores + rationale + `needs_subagent` flag. Tier-1 (deterministic Python heuristic in `classify.py`) handles clear cases via regex + heading-shape rules from the crickets-conventions design's documentation domain. Tier-2 (`diataxis-evaluator` sub-agent) handles ambiguous mode-mixed pages where heuristic scoring is tight (default confidence threshold 0.7).
 
 #### Invocation shape
 
@@ -393,21 +393,21 @@ The CLI itself doesn't dispatch sub-agents directly — it returns the marker + 
 
 ```bash
 # Clear tutorial page → mode: tutorial, confidence: 0.95
-python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/classify.py \
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/classify.py \
   wiki/how-to/01-Getting-Started.md
 
 # Ambiguous mode-mixed page → needs_subagent: true
-python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/classify.py \
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/classify.py \
   wiki/some/ambiguous.md
 # → {mode: "explanation", confidence: 0.575, mode_mixed: true, needs_subagent: true, ...}
 
 # Force Tier-1-only via --no-subagent (operator-debug)
-python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/classify.py \
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/classify.py \
   wiki/some/ambiguous.md --no-subagent
 # → {needs_subagent: false, ...} (Tier-1 verdict regardless of confidence)
 
 # CI smoke-safe: --stub avoids actual sub-agent dispatch
-python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/classify.py \
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/classify.py \
   wiki/some/ambiguous.md --stub
 # → {needs_subagent: true, dispatched_subagent: false, ...}
 ```
@@ -434,7 +434,7 @@ It composes the deterministic engine ([`scripts/capture.py`](scripts/capture.py)
 ```bash
 # `<draft>` is the originally-authored page (e.g. `git show HEAD:wiki/how-to/Foo.md`
 # saved to a temp file); `<edited>` is your edited version.
-python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/capture.py \
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/capture.py \
     propose --draft /tmp/foo.draft.md --edited wiki/how-to/Foo.md
 ```
 
@@ -447,7 +447,7 @@ python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/capture.py \
 **Step 4 — Write.** `capture.py save` writes the confirmed lesson to that scope's **on-demand** store via [`agentmemory_conventions.confirm_save_lesson()`](scripts/agentmemory_conventions.py) — **never** `_always-load`:
 
 ```bash
-python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/capture.py save \
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/capture.py save \
     --trigger hedging-adverbs --scope per-project --project-slug crickets \
     --guidance "In any how-to, cut hedging adverbs (just, simply, easily)." \
     --vault-path "$MEMORY_VAULT_PATH"
@@ -465,11 +465,11 @@ The store routing mirrors the resolver's read model (part 3 task 1): global → 
 
 ### `/diataxis relocate [--preview | --cleanup --yes | --rollback]`
 
-A **one-time, operator-run** migration that moves the global wiki/Diátaxis conventions out of the always-load tier (`<vault>/personal-private/_always-load/diataxis-*.md`, injected into **every** session's context) into the on-demand global store the resolver reads (`<vault>/projects/_global/wiki-style/*.md`) — so they load only when authoring. It touches your **live vault**, so it mirrors the [`migrate-harness-to-vault`](https://github.com/alexherrero/agentm/blob/main/scripts/migrate-harness-to-vault.sh) discipline: **preview-first, reversible, conflict-safe, never auto.**
+A **one-time, operator-run** migration that moves the global wiki/Diátaxis conventions out of the always-load tier (`<vault>/personal/_always-load/diataxis-*.md`, injected into **every** session's context) into the on-demand global store the resolver reads (`<vault>/projects/_global/wiki-style/*.md`) — so they load only when authoring. It touches your **live vault**, so it mirrors the [`migrate-harness-to-vault`](https://github.com/alexherrero/agentm/blob/main/scripts/migrate-harness-to-vault.sh) discipline: **preview-first, reversible, conflict-safe, never auto.**
 
 ```bash
 # 1. ALWAYS preview first — prints WOULD: lines, mutates nothing:
-python3 ~/Antigravity/crickets/skills/diataxis-author/scripts/relocate.py \
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/relocate.py \
     --preview --vault-path "$MEMORY_VAULT_PATH"
 # 2. Relocate (copies; leaves the source in place; records a rollback manifest):
 python3 …/relocate.py --vault-path "$MEMORY_VAULT_PATH"
@@ -518,7 +518,7 @@ git commit -m "style(base): promote <trigger>" && python3 scripts/generate.py bu
 
 **`Read, Write, Edit, Glob, Grep, Bash`** — `Bash` is required for the `check-wiki.py` subprocess invocation in `/diataxis check` (part 3) + `git mv` invocations in `/diataxis migrate` (part 4). Python scripts under `skills/diataxis-author/scripts/` (added in parts 2-5) handle the deterministic heavy lifting (mode classification heuristics, link rewriting, template loading). Sub-agent dispatch happens via the agent's standard task delegation; the skill body itself doesn't shell out to other agents.
 
-Python-side scripts can use whatever they need (network for ADR 0004 cross-reference via WebFetch if any; subprocess for git + check-wiki.py; filesystem for everything else) — the allowlist restriction is on the SKILL.md body itself, not the dispatched scripts.
+Python-side scripts can use whatever they need (network for the crickets-conventions design's documentation-domain cross-reference via WebFetch if any; subprocess for git + check-wiki.py; filesystem for everything else) — the allowlist restriction is on the SKILL.md body itself, not the dispatched scripts.
 
 ## Host scope
 
