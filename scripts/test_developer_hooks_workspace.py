@@ -240,6 +240,70 @@ class TestCommitOnStopWorkspace(unittest.TestCase):
         self.assertTrue(refs.stdout.strip(),
                         "commit-on-stop must snapshot the WORKSPACE repo, not skip from a foreign cwd")
 
+    def test_no_branch_or_tag_ref_touched_across_many_stop_events(self):
+        # R2.2 / PLAN-r2-enforcement-and-sync task 3: the documented contract
+        # (HEAD, the current branch, the real index, and the working tree are
+        # all unchanged) has no executable assertion — prove it holds across
+        # several real Stop events, not just one.
+        self._git("init", "-q")
+        (self.ws / "f.txt").write_text("v0", encoding="utf-8")
+        self._git("add", "-A")
+        self._git("commit", "-qm", "init")
+        branch_before = self._git("symbolic-ref", "--short", "HEAD").stdout
+        head_before = self._git("rev-parse", "HEAD").stdout
+        branches_before = self._git("for-each-ref", "refs/heads").stdout
+        tags_before = self._git("for-each-ref", "refs/tags").stdout
+
+        for i in range(3):
+            (self.ws / "f.txt").write_text(f"v{i}-dirty", encoding="utf-8")
+            r = _run(COMMIT_ON_STOP, cwd=self.ws, stdin="{}")
+            self.assertEqual(r.returncode, 0, f"stderr={r.stderr!r}")
+
+        self.assertEqual(branch_before, self._git("symbolic-ref", "--short", "HEAD").stdout,
+                         "current branch must never change")
+        self.assertEqual(head_before, self._git("rev-parse", "HEAD").stdout, "HEAD must never move")
+        self.assertEqual(branches_before, self._git("for-each-ref", "refs/heads").stdout,
+                         "no branch ref may be created or moved")
+        self.assertEqual(tags_before, self._git("for-each-ref", "refs/tags").stdout,
+                         "no tag ref may be created")
+
+    def test_prunes_to_most_recent_ten_across_twelve_snapshots(self):
+        # R2.2 task 3: the "history pruned to the last 10" contract has no
+        # executable assertion. 11 synthetic prior snapshots are pre-seeded
+        # with fabricated, strictly-increasing timestamps (bypassing the
+        # hook's own 1-second-granularity clock — 12 REAL invocations 1s
+        # apart would add ~13s per battery run for no extra coverage of the
+        # prune LOGIC itself, which runs identically regardless of how the
+        # prior refs got there); the 12th snapshot comes from one REAL
+        # invocation, which is also what actually exercises the prune step.
+        self._git("init", "-q")
+        (self.ws / "f.txt").write_text("v0", encoding="utf-8")
+        self._git("add", "-A")
+        self._git("commit", "-qm", "init")
+        head = self._git("rev-parse", "HEAD").stdout.strip()
+
+        fake_timestamps = [f"20260101T0000{i:02d}Z" for i in range(11)]
+        for ts in fake_timestamps:
+            r = self._git("update-ref", f"refs/auto-save/{ts}", head)
+            self.assertEqual(r.returncode, 0, r.stderr)
+
+        (self.ws / "f.txt").write_text("v-dirty", encoding="utf-8")
+        r = _run(COMMIT_ON_STOP, cwd=self.ws, stdin="{}")
+        self.assertEqual(r.returncode, 0, f"stderr={r.stderr!r}")
+
+        refs = self._git("for-each-ref", "--sort=-refname", "--format=%(refname)", "refs/auto-save")
+        surviving = [line for line in refs.stdout.splitlines() if line]
+        self.assertEqual(len(surviving), 10,
+                         f"expected exactly 10 surviving snapshots after pruning, got {len(surviving)}: {surviving}")
+        # The two OLDEST fakes (lexicographically smallest timestamps) must
+        # be the ones pruned — a non-tautological check: an off-by-one or a
+        # disabled prune step would leave 11 or 12 refs and fail the count
+        # assertion above; a wrong sort direction would prune the newest
+        # instead and fail this one.
+        for old_ts in fake_timestamps[:2]:
+            self.assertNotIn(f"refs/auto-save/{old_ts}", surviving,
+                             f"refs/auto-save/{old_ts} (one of the two oldest) should have been pruned")
+
 
 if __name__ == "__main__":
     unittest.main()
