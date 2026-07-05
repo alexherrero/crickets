@@ -98,6 +98,16 @@ def strip_ignore_blocks(text: str) -> str:
     return _IGNORE_BLOCK_RE.sub(lambda m: "\n" * m.group(0).count("\n"), text)
 
 
+# Structural nav pages (mirrors check-wiki.py's own exemption list) are bold-
+# heavy link indexes, not prose — the Tier-B metrics were calibrated against
+# prose-audit.json's explanation/how-to/reference corpus and don't apply here.
+_STRUCTURAL_NAV_FILENAMES = {"home.md", "_sidebar.md", "_footer.md", "readme.md"}
+
+
+def _is_structural_nav_file(path: Path) -> bool:
+    return path.name.lower() in _STRUCTURAL_NAV_FILENAMES
+
+
 def _line_ignored_ids(line: str) -> set[str]:
     m = _INLINE_IGNORE_RE.search(line)
     if not m:
@@ -198,7 +208,7 @@ def scan_file(path: Path, rules: list[dict]) -> list[Finding]:
                     snippet=m.group(0), hint=rule["hint"],
                 ))
 
-    if metric_rules:
+    if metric_rules and not _is_structural_nav_file(path):
         metrics = compute_metrics(text)
         for rule in metric_rules:
             value = metrics.get(rule["pattern"])

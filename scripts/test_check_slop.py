@@ -129,6 +129,23 @@ class TestMetricThresholds(unittest.TestCase):
             self.assertEqual(len(findings), 1)
             self.assertEqual(findings[0].rule_id, "x")
 
+    def test_structural_nav_files_skip_tier_b_metrics(self):
+        # Task 6 sweep finding: _Sidebar.md tripped bold-span-count (a bold-
+        # heavy link index is not prose) — nav files are exempt from Tier-B.
+        rule = {"id": "x", "severity": "warning", "kind": "metric",
+                "pattern": "bold_span_count_per_1k", "hint": "h",
+                "weight": 1, "threshold": 1, "source-url": "u"}
+        with tempfile.TemporaryDirectory() as tmp:
+            for name in ("_Sidebar.md", "Home.md", "_Footer.md", "README.md"):
+                f = Path(tmp) / name
+                f.write_text("**a** **b** **c** **d** **e**\n")
+                findings = slop.scan_file(f, [rule])
+                self.assertEqual(findings, [], f"{name} should skip Tier-B metrics")
+            f = Path(tmp) / "Storage-Seam-Concepts.md"
+            f.write_text("**a** **b** **c** **d** **e**\n")
+            findings = slop.scan_file(f, [rule])
+            self.assertEqual(len(findings), 1, "ordinary prose pages still scan Tier-B")
+
 
 class TestExitCodeTiers(unittest.TestCase):
     def _finding(self, severity):
@@ -248,9 +265,12 @@ class TestCorpusCalibration(unittest.TestCase):
         # ("**Goal:**" / "**Prereqs:**" are required fields, not slop) — these
         # tells are Tier-C judgment calls per research-slop-detection-voice.md
         # ("needs judgment ... NEVER the gate"), not this mechanical gate's scope.
+        # Storage-Seam-Concepts.md's load-bearing hit was thinned by the task-6
+        # sweep (PLAN-r3-voice-mechanism) -- it now surfaces the antithesis tell
+        # instead, still confirming the mechanism catches a real tell on this page.
         expected_rule_hits = {
             "agentm wiki/explanation/Named-Plans.md": None,  # score 3, any finding expected
-            "agentm wiki/explanation/Storage-Seam-Concepts.md": "voice-a4-load-bearing",
+            "agentm wiki/explanation/Storage-Seam-Concepts.md": "voice-a3-antithesis-comma-not",
         }
         for page, expected_id in expected_rule_hits.items():
             path = self._resolve(page)
