@@ -71,7 +71,7 @@ PATTERNS=(
     'email|[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
     'personal-path-mac|/Users/[a-zA-Z][a-zA-Z0-9_-]+/'
     'personal-path-linux|/home/[a-zA-Z][a-zA-Z0-9_-]+/'
-    'personal-path-windows|C:\\\\Users\\\\[a-zA-Z][a-zA-Z0-9_-]+'
+    'personal-path-windows|C:\\{1,2}Users\\{1,2}[a-zA-Z][a-zA-Z0-9_-]+'
     'openai-key|sk-[a-zA-Z0-9_-]{20,}'
     'github-token|gh[psuro]_[a-zA-Z0-9_-]{20,}'
     'gitlab-token|glpat-[a-zA-Z0-9_-]{20,}'

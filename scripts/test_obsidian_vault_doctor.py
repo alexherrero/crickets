@@ -159,7 +159,7 @@ class DoctorVaultPureRows(unittest.TestCase):
         # The expectation mirrors the production call *exactly* —
         # `os.path.expanduser("~/somedir")`, NOT `os.path.join(expanduser("~"),
         # "somedir")`. On Windows `expanduser` preserves the literal `/` in the
-        # suffix (`C:\Users\me/somedir`) while `os.path.join` inserts a native `\`,
+        # suffix (`C:\Users\<name>/somedir`) while `os.path.join` inserts a native `\`,
         # so the join form spuriously fails on Windows though the two coincide on
         # POSIX. Engine parity is the literal `expanduser` result — normalizing the
         # separator in production would reintroduce the very doctor-vs-engine gap
