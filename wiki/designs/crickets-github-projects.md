@@ -43,7 +43,7 @@ The sync runs **vault → board and never back.** `project_sync.py` is a single 
 
 Every taxonomy type — **version · feature · sub-feature · plan · task** (plus top-level `backlog-item` · `idea` · `bug`) — renders to **one real GitHub Issue** (not a draft card, so the nesting + Gantt roll-up work), and the parent chain becomes **native GitHub sub-issue nesting**: Version → Feature → Sub-feature → Plan → Task.
 
-**What materializes when** is the load-bearing partition (DC-1): everything **feature-and-up** — Versions, Features, Sub-features (+ top-level Backlog-items / Ideas) — is mirrored **the moment it exists, started or not** (it is the human-facing roadmap and must always be visible). **Plan + Task issues materialize only for the *active* plan**, at work-start — future plans/tasks live implicitly under their already-materialized feature until picked up, to bound issue volume. Never pre-persist task breakdowns; always persist features-and-up.
+**What materializes when** is the central partition (DC-1): everything **feature-and-up** — Versions, Features, Sub-features (+ top-level Backlog-items / Ideas) — is mirrored **the moment it exists, started or not** (it is the human-facing roadmap and must always be visible). **Plan + Task issues materialize only for the *active* plan**, at work-start — future plans/tasks live implicitly under their already-materialized feature until picked up, to bound issue volume. Never pre-persist task breakdowns; always persist features-and-up.
 
 ### The depth floor — at least four
 
