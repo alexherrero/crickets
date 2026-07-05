@@ -155,6 +155,31 @@ class TestKillSwitchWorkspace(unittest.TestCase):
         r = _run(KILL_SWITCH, cwd=self.foreign, stdin="")
         self.assertEqual(r.returncode, 0, "without a workspace signal, must not halt foreign cwd")
 
+    def test_blocks_next_call_then_unblocks_after_deactivation(self):
+        # R2.2 / PLAN-r2-enforcement-and-sync task 2: the individual states
+        # above are each tested in isolation (fresh STOP per test) — this
+        # proves the actual OPERATOR SEQUENCE as one fixture: activate, the
+        # very next tool call is blocked, deactivate, and a call issued
+        # AFTER deactivation succeeds normally (not just "some call, some
+        # time, in isolation, happens to return the right code").
+        payload = _ag_payload(self.ws)
+
+        # A call BEFORE activation succeeds — establishes the baseline.
+        before = _run(KILL_SWITCH, cwd=self.foreign, stdin=payload)
+        self.assertEqual(before.returncode, 0, "must be unblocked before activation")
+
+        # Activate (operator: touch .harness/STOP) — the NEXT call is blocked.
+        self._stop()
+        blocked = _run(KILL_SWITCH, cwd=self.foreign, stdin=payload)
+        self.assertEqual(blocked.returncode, 2, "next call after activation must block")
+        self.assertIn(".harness/STOP", blocked.stderr)
+
+        # Deactivate (operator: rm .harness/STOP) — a call issued AFTER
+        # deactivation succeeds normally again.
+        (self.ws / ".harness" / "STOP").unlink()
+        after = _run(KILL_SWITCH, cwd=self.foreign, stdin=payload)
+        self.assertEqual(after.returncode, 0, "call issued after deactivation must succeed")
+
 
 @unittest.skipUnless(os.name == "posix", "bash hooks are posix; Windows uses .ps1")
 class TestSteerWorkspace(unittest.TestCase):
