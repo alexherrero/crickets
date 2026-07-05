@@ -5,7 +5,13 @@ name: "[T] Linux Tests"
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'wiki/**'
+      - '**/*.md'
   pull_request:
+    paths-ignore:
+      - 'wiki/**'
+      - '**/*.md'
 
 jobs:
   validate:
