@@ -86,7 +86,10 @@ class TestClaudeEmitter(unittest.TestCase):
         self.assertEqual(self._plugin_json("wiki-maintenance")["version"], "0.4.0")
         # 0.3.0 = check-no-pii.sh + templates/hooks/pre-push moved into src/pii/
         # so they actually ship inside the plugin payload (R2.4 task 7).
-        self.assertEqual(self._plugin_json("pii")["version"], "0.3.0")
+        # 0.3.1 = check-no-pii.sh scan collapsed to one grep per file (fixes a
+        # 9.4x Windows-vs-Mac subprocess-spawn slowdown; PLAN-ci-walltime-diet
+        # task 1). Detection behavior unchanged.
+        self.assertEqual(self._plugin_json("pii")["version"], "0.3.1")
 
     def test_dependencies_from_requires(self):
         # post-seed-retirement: github-ci depends on developer-workflows; wiki-maintenance
