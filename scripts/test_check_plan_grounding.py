@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Tests for scripts/check-plan-grounding.py (AG Phase-2, Hook 3)."""
+"""Tests for src/developer-workflows/scripts/check-plan-grounding.py (AG Phase-2, Hook 3).
+
+R2.5 task 9: this script moved from repo-root scripts/ into
+src/developer-workflows/scripts/ so it actually ships inside the emitted
+plugin (plan.md's own `${CLAUDE_PLUGIN_ROOT}/scripts/check-plan-grounding.py`
+reference had been dangling — the dist payload never bundled it)."""
 from __future__ import annotations
 
 import importlib.util
@@ -8,8 +13,9 @@ import unittest
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
-_spec = importlib.util.spec_from_file_location(
-    "check_plan_grounding", _HERE / "check-plan-grounding.py")
+_ROOT = _HERE.parent
+_SCRIPT = _ROOT / "src" / "developer-workflows" / "scripts" / "check-plan-grounding.py"
+_spec = importlib.util.spec_from_file_location("check_plan_grounding", _SCRIPT)
 cpg = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(cpg)
 

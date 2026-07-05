@@ -312,5 +312,9 @@ enhances:
 # per-session read state at each task boundary (graceful-skip if
 # code-review isn't installed) — cricketsPluginsA#3, PLAN-r2-enforcement-
 # and-sync task 1.
-version: 0.29.9
+# 0.29.10 = check-plan-grounding.py moved from repo-root scripts/ into this
+# group's own scripts/ — plan.md's ${CLAUDE_PLUGIN_ROOT}/scripts/check-plan-
+# grounding.py reference had been dangling since the dist payload never
+# bundled it (R2.5 task 9).
+version: 0.29.10
 capabilities: [setup, plan, work, review, release, bugfix, documentation]

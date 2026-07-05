@@ -82,6 +82,50 @@ class TestConformanceReport(unittest.TestCase):
         self.assertEqual(report["matches"], 0)
         self.assertEqual(report["mismatches"], 0)
         self.assertEqual(report["violations_no_announcement"], 0)
+        self.assertEqual(report["inherited_or_default"], 0)
+
+
+class TestInheritedLabelHandling(unittest.TestCase):
+    """R2.5 task 9 / P12 addendum: below host 2.1.198, a built-in agent's own
+    fixed model default and true `model:` frontmatter inheritance surface
+    identically — no agent-def introspection exists yet to tell them apart.
+    An INHERITED record must count as its own class, never guessed into
+    MATCH/MISMATCH/VIOLATION either way."""
+
+    RECORDS = [
+        rc.DispatchRecord(role="explorer", agent_count=1, model_id="claude-sonnet-5", tier_source="ROLE-MATCH"),
+        rc.DispatchRecord(role="documenter", agent_count=1, model_id="claude-opus-4-8", tier_source="INHERITED"),
+        rc.DispatchRecord(role="tech-lead", agent_count=1, model_id="claude-sonnet-5", tier_source="INHERITED"),
+        rc.DispatchRecord(role="verification-clerk", agent_count=3, model_id=None, tier_source=None),
+    ]
+
+    def test_inherited_records_counted_in_their_own_bucket(self):
+        report = rc.conformance_report(self.RECORDS)
+        self.assertEqual(report["inherited_or_default"], 2)
+
+    def test_inherited_records_never_counted_as_match_mismatch_or_violation(self):
+        report = rc.conformance_report(self.RECORDS)
+        self.assertEqual(report["matches"], 1)          # explorer only
+        self.assertEqual(report["mismatches"], 0)        # neither INHERITED record guessed as a mismatch
+        self.assertEqual(report["violations_no_announcement"], 1)  # verification-clerk only
+
+    def test_inherited_records_status_is_its_own_label(self):
+        report = rc.conformance_report(self.RECORDS)
+        inherited = {d["role"] for d in report["details"] if d["status"] == "INHERITED-OR-DEFAULT"}
+        self.assertEqual(inherited, {"documenter", "tech-lead"})
+
+    def test_re_audit_trigger_named_explicitly_in_report_output(self):
+        # Not just in the module's docstring — a session reading the report
+        # dict alone (without opening the source) must still see the caveat.
+        report = rc.conformance_report(self.RECORDS)
+        self.assertIn("2.1.198", report["re_audit_trigger"])
+        self.assertIn("introspection", report["re_audit_trigger"])
+
+    def test_re_audit_trigger_present_even_with_no_inherited_records(self):
+        report = rc.conformance_report([
+            rc.DispatchRecord(role="explorer", agent_count=1, model_id="claude-sonnet-5", tier_source="ROLE-MATCH"),
+        ])
+        self.assertIn("2.1.198", report["re_audit_trigger"])
 
 
 if __name__ == "__main__":

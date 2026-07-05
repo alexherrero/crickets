@@ -76,7 +76,6 @@ _KNOWN_VIOLATIONS: frozenset[tuple[str, str]] = frozenset({
     ("developer-safety/hooks/commit-on-stop/hook.md", "../../wiki/how-to/Use-The-Base-Hooks.md"),
     ("developer-safety/hooks/kill-switch/hook.md", "../../wiki/how-to/Use-The-Base-Hooks.md"),
     ("developer-safety/hooks/steer/hook.md", "../../wiki/how-to/Use-The-Base-Hooks.md"),
-    ("developer-workflows/commands/plan.md", "${CLAUDE_PLUGIN_ROOT}/scripts/check-plan-grounding.py"),
     ("developer-workflows/commands/work.md", "${CLAUDE_PLUGIN_ROOT}/../code-review/hooks/evidence-tracker/evidence_tracker.py"),
 })
 

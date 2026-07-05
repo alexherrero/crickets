@@ -63,5 +63,9 @@ standalone: true
 # renders a staged-plan task's optional tier-hint line from a declared
 # work-type. /plan's template + authoring instructions (developer-workflows)
 # reference it — this side just ships the render function.
-version: 0.2.5
+# 0.2.6 = routing_conformance.py's P12 addendum: an INHERITED tier_source now
+# counts in its own inherited_or_default bucket, never guessed as a
+# match/mismatch/violation, with the host->=2.1.198 re-audit trigger named
+# explicitly in the report output (R2.5 task 9).
+version: 0.2.6
 capabilities: [token-audit]

@@ -50,6 +50,16 @@ def _expected_model_id(role: str) -> str:
     return classify_work_type.classify_work_type(role_name=role).model_id
 
 
+_INHERITED_RE_AUDIT_TRIGGER = (
+    "Below host >=2.1.198, a built-in agent's own fixed model default and true "
+    "model: frontmatter inheritance are indistinguishable without agent-def "
+    "introspection, so INHERITED records count as one class (neither penalized "
+    "nor credited) rather than a guessed MATCH/MISMATCH. Re-audit trigger: once "
+    "a host version exposes that introspection (tracked from 2.1.198), split "
+    "this class into its two real cases instead of the merged one."
+)
+
+
 def conformance_report(records: list[DispatchRecord]) -> dict:
     """Classify each dispatch record against the routing table's expectation.
 
@@ -57,16 +67,29 @@ def conformance_report(records: list[DispatchRecord]) -> dict:
     **announcement-rule violation**, counted regardless of what the expected
     model would have been — visibility of the gap is the point, not whether
     the gap happened to be harmless.
+
+    A record with `tier_source == "INHERITED"` (P12 addendum) is neither a
+    match nor a mismatch nor a violation: below host 2.1.198, an agent's own
+    fixed default and true `model:` inheritance both surface identically (no
+    agent-def introspection exists yet to tell them apart), so guessing
+    either way would silently miscount. These records land in their own
+    `inherited_or_default` bucket instead, with the re-audit trigger named
+    explicitly in the report output — not just in this module's docstring —
+    so a session reading the report alone still sees the caveat.
     """
     total = len(records)
     violations = 0
     matches = 0
     mismatches = 0
+    inherited_or_default = 0
     details: list[dict] = []
 
     for rec in records:
         expected = _expected_model_id(rec.role)
-        if rec.model_id is None:
+        if rec.tier_source == "INHERITED":
+            inherited_or_default += 1
+            status = "INHERITED-OR-DEFAULT"
+        elif rec.model_id is None:
             violations += 1
             status = "VIOLATION-NO-ANNOUNCEMENT"
         elif rec.model_id == expected:
@@ -89,5 +112,7 @@ def conformance_report(records: list[DispatchRecord]) -> dict:
         "matches": matches,
         "mismatches": mismatches,
         "violations_no_announcement": violations,
+        "inherited_or_default": inherited_or_default,
+        "re_audit_trigger": _INHERITED_RE_AUDIT_TRIGGER,
         "details": details,
     }
