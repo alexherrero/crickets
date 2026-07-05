@@ -188,6 +188,21 @@ class TestBaseStyleBannedLineRenderer(unittest.TestCase):
         for t in template_only_terms:
             self.assertNotIn(t, line)
 
+    def test_only_floor_eligible_terms_render(self):
+        # Genre-scoped (user-facing-prose.md) and research-catalog-only
+        # additions (tapestry, vibrant, ...) are NOT floor_eligible — they'd
+        # trip check.py's untiered scanner on ordinary prose if promoted.
+        pack = rule_pack.load_shipped_pack()
+        line = rule_pack.render_base_style_banned_line(pack)
+        non_floor_terms = [
+            r["pattern"] for r in pack["rules"]
+            if r["kind"] in ("word", "phrase") and not r.get("floor_eligible")
+        ]
+        self.assertTrue(non_floor_terms, "expected at least one non-floor-eligible term")
+        for t in non_floor_terms:
+            self.assertNotIn(t, line)
+        self.assertIn("load-bearing", line)
+
 
 if __name__ == "__main__":
     unittest.main()

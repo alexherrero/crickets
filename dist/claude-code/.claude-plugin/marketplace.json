@@ -176,7 +176,7 @@
       ],
       "name": "wiki-maintenance",
       "source": "./plugins/wiki-maintenance",
-      "version": "0.5.1"
+      "version": "0.5.2"
     }
   ]
 }

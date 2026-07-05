@@ -81,6 +81,10 @@ jobs:
         # --report forces exit 0 regardless of findings. Linux-only (deterministic
         # regex gate, no per-OS portability surface).
         run: python3 scripts/check-slop.py --report wiki
+      - name: Voice floor lags the rule pack (check-voice-floor-parity, report-only)
+        # PLAN-r3-voice-mechanism task 4 — catches base-style-guide.md's banned
+        # line falling behind the rule pack's floor-eligible terms.
+        run: python3 scripts/check-voice-floor-parity.py --report
       - name: Developer-safety .sh/.ps1 hook twins stay paired (check-hook-parity)
         # Anti-recurrence guard: a hook's .sh and .ps1 twins must stay
         # behaviorally paired — neither may read a workspace-relative .harness/…

@@ -12,58 +12,508 @@
     "precedence": "global → per-project → per-repo (narrower wins on an id conflict; distinct ids accumulate)"
   },
   "rules": [
-    { "id": "voice-a4-groundbreaking", "severity": "suggestion", "kind": "word", "pattern": "groundbreaking", "hint": "peacock word — strip, name the concrete mechanism instead", "weight": 1, "source-url": "docs-prose-style.md#banned" },
-    { "id": "voice-a4-deeply", "severity": "suggestion", "kind": "word", "pattern": "deeply", "hint": "peacock adverb — strip", "weight": 1, "source-url": "docs-prose-style.md#banned" },
-    { "id": "voice-a4-vital", "severity": "suggestion", "kind": "word", "pattern": "vital", "hint": "peacock word — strip", "weight": 1, "source-url": "docs-prose-style.md#banned" },
-    { "id": "voice-a4-crucial", "severity": "suggestion", "kind": "word", "pattern": "crucial", "hint": "peacock word — strip", "weight": 1, "source-url": "docs-prose-style.md#banned" },
-    { "id": "voice-a4-truly", "severity": "suggestion", "kind": "word", "pattern": "truly", "hint": "peacock adverb — strip", "weight": 1, "source-url": "docs-prose-style.md#banned" },
-    { "id": "voice-a4-pioneering", "severity": "suggestion", "kind": "word", "pattern": "pioneering", "hint": "peacock word — strip", "weight": 1, "source-url": "docs-prose-style.md#banned" },
-    { "id": "voice-a4-transformative", "severity": "suggestion", "kind": "word", "pattern": "transformative", "hint": "peacock word — strip", "weight": 1, "source-url": "docs-prose-style.md#banned" },
-    { "id": "voice-a4-visionary", "severity": "suggestion", "kind": "word", "pattern": "visionary", "hint": "peacock word — strip", "weight": 1, "source-url": "docs-prose-style.md#banned" },
-    { "id": "voice-a4-delve", "severity": "suggestion", "kind": "word", "pattern": "delve", "hint": "AI-tell single word (Kobak 2025: +~1500% in PubMed) — use a plain verb", "weight": 1, "source-url": "research-slop-detection-voice.md#tier-a" },
-    { "id": "voice-a2-this-journey", "severity": "warning", "kind": "phrase", "pattern": "this journey", "hint": "stock phrase — name the concrete work instead", "weight": 2, "source-url": "docs-prose-style.md#banned" },
-    { "id": "voice-a3-magic-of", "severity": "warning", "kind": "template", "pattern": "\\b(the magic of|ai[- ]powered magic|ai magic)\\b", "hint": "replace with the concrete mechanism (\"the execution engine behind X\")", "weight": 2, "source-url": "docs-prose-style.md#banned" },
-    { "id": "voice-a4-first-class", "severity": "suggestion", "kind": "word", "pattern": "first-class", "hint": "AI-tell adjective; term-of-art carve-out applies in technical/design prose — flag for a human call, don't auto-strip", "weight": 1, "source-url": "llm-tell-vocabulary.md" },
-    { "id": "voice-a4-seamless", "severity": "suggestion", "kind": "word", "pattern": "seamless", "hint": "AI-tell adjective — use \"smooth\"", "weight": 1, "source-url": "llm-tell-vocabulary.md" },
-    { "id": "voice-a4-robust", "severity": "suggestion", "kind": "word", "pattern": "robust", "hint": "AI-tell adjective; term-of-art carve-out applies (e.g. \"a robust retry path\")", "weight": 1, "source-url": "llm-tell-vocabulary.md" },
-    { "id": "voice-a4-leverage", "severity": "suggestion", "kind": "word", "pattern": "leverage", "hint": "AI-tell verb — use \"use\"", "weight": 1, "source-url": "llm-tell-vocabulary.md" },
-    { "id": "voice-a4-comprehensive", "severity": "suggestion", "kind": "word", "pattern": "comprehensive", "hint": "AI-tell adjective — use \"full\"", "weight": 1, "source-url": "llm-tell-vocabulary.md" },
-    { "id": "voice-a4-powerful", "severity": "suggestion", "kind": "word", "pattern": "powerful", "hint": "AI-tell adjective — use \"capable\"", "weight": 1, "source-url": "docs-prose-style.md#banned" },
-    { "id": "voice-a4-cutting-edge", "severity": "suggestion", "kind": "word", "pattern": "cutting-edge", "hint": "AI-tell adjective — name the concrete capability instead", "weight": 1, "source-url": "docs-prose-style.md#banned" },
-    { "id": "voice-a4-load-bearing", "severity": "suggestion", "kind": "word", "pattern": "load-bearing", "hint": "the agent's tell-word — name what depends on it, or use \"central\"/\"the part that matters\"", "weight": 1, "source-url": "llm-tell-vocabulary.md" },
-    { "id": "voice-a2-it-should-be-noted-that", "severity": "warning", "kind": "phrase", "pattern": "it should be noted that", "hint": "hedging — state the claim directly", "weight": 2, "source-url": "base-style-guide.md#banned" },
-    { "id": "voice-a2-it-is-worth-mentioning", "severity": "warning", "kind": "phrase", "pattern": "it is worth mentioning", "hint": "hedging — state the claim directly", "weight": 2, "source-url": "base-style-guide.md#banned" },
-    { "id": "voice-a4-arguably", "severity": "suggestion", "kind": "word", "pattern": "arguably", "hint": "hedging qualifier — strip", "weight": 1, "source-url": "base-style-guide.md#banned" },
-    { "id": "voice-a4-essentially", "severity": "suggestion", "kind": "word", "pattern": "essentially", "hint": "hedging qualifier — strip", "weight": 1, "source-url": "base-style-guide.md#banned" },
-    { "id": "voice-a2-stands-as-a-testament", "severity": "warning", "kind": "phrase", "pattern": "stands as a testament", "hint": "stock phrase", "weight": 2, "source-url": "research-slop-detection-voice.md#tier-a" },
-    { "id": "voice-a2-plays-a-pivotal-role", "severity": "warning", "kind": "phrase", "pattern": "plays a pivotal role", "hint": "stock phrase", "weight": 2, "source-url": "research-slop-detection-voice.md#tier-a" },
-    { "id": "voice-a2-its-worth-noting", "severity": "warning", "kind": "template", "pattern": "it'?s worth noting", "hint": "stock phrase / hedging", "weight": 2, "source-url": "research-slop-detection-voice.md#tier-a" },
-    { "id": "voice-a2-ever-evolving-landscape", "severity": "warning", "kind": "phrase", "pattern": "ever-evolving landscape", "hint": "stock phrase", "weight": 2, "source-url": "research-slop-detection-voice.md#tier-a" },
-    { "id": "voice-a2-nestled-in", "severity": "warning", "kind": "phrase", "pattern": "nestled in", "hint": "stock phrase", "weight": 2, "source-url": "research-slop-detection-voice.md#tier-a" },
-    { "id": "voice-a2-punches-above-its-weight", "severity": "warning", "kind": "template", "pattern": "punches (far )?above its weight", "hint": "marketing boast — state the function instead", "weight": 2, "source-url": "user-facing-prose.md" },
-    { "id": "voice-a2-tactical-suite", "severity": "warning", "kind": "phrase", "pattern": "tactical suite", "hint": "marketing boast", "weight": 2, "source-url": "user-facing-prose.md" },
-    { "id": "voice-a2-engineered-to", "severity": "warning", "kind": "phrase", "pattern": "engineered to", "hint": "marketing boast — state what it does", "weight": 2, "source-url": "user-facing-prose.md" },
-    { "id": "voice-a2-opinionated-and-powerful", "severity": "warning", "kind": "phrase", "pattern": "opinionated and powerful", "hint": "marketing boast", "weight": 2, "source-url": "user-facing-prose.md" },
-    { "id": "voice-a2-structural-backend", "severity": "suggestion", "kind": "phrase", "pattern": "structural backend", "hint": "architecture-metaphor label (user-facing-prose scope) — say what it does", "weight": 1, "source-url": "user-facing-prose.md" },
-    { "id": "voice-a2-execution-layer", "severity": "suggestion", "kind": "phrase", "pattern": "execution layer", "hint": "architecture-metaphor label (user-facing-prose scope) — high term-of-art collision risk, suggestion-only", "weight": 1, "source-url": "user-facing-prose.md" },
-    { "id": "voice-a2-substrate", "severity": "suggestion", "kind": "word", "pattern": "substrate", "hint": "architecture-metaphor label (user-facing-prose scope); this codebase also uses it as a legitimate term-of-art (durable-state substrate) — suggestion-only, high FP risk", "weight": 1, "source-url": "user-facing-prose.md" },
-    { "id": "voice-a2-backbone", "severity": "suggestion", "kind": "word", "pattern": "backbone", "hint": "architecture-metaphor label (user-facing-prose scope)", "weight": 1, "source-url": "user-facing-prose.md" },
-    { "id": "voice-a3-not-just-but", "severity": "warning", "kind": "template", "pattern": "\\bnot (just|only|merely)\\b.{0,60}(but|it'?s|—)", "hint": "A3 construction template — say the positive claim alone", "weight": 2, "source-url": "research-slop-detection-voice.md#tier-a" },
-    { "id": "voice-a3-antithesis-comma-not", "severity": "suggestion", "kind": "template", "pattern": ",\\s*not\\s+[a-z]", "hint": "the \"X, not Y\" antithesis — single occurrences are ordinary English (calibrated 2026-07-05: warning tier fired 70+ times on prose-audit.json's clean corpus); the real signal is density/repetition (Storage-Seam-Concepts.md's ~15 hits), a Tier-C judgment call — suggestion-only until a density-scored variant lands", "weight": 1, "source-url": "docs-prose-style.md#banned" },
-    { "id": "voice-a3-antithesis-not-but", "severity": "warning", "kind": "template", "pattern": "\\bit'?s not\\b.{0,40}\\bit'?s\\b", "hint": "the \"it's not Y, it's X\" antithesis", "weight": 2, "source-url": "docs-prose-style.md#banned" },
-    { "id": "voice-a3-rather-than", "severity": "suggestion", "kind": "template", "pattern": "—\\s*(never the reverse|rather than)\\b", "hint": "trailing antithesis tail — state the boundary positively", "weight": 1, "source-url": "docs-prose-style.md#banned" },
-    { "id": "voice-a3-prior-art-name-drop", "severity": "suggestion", "kind": "template", "pattern": "\\b(modeled after|inspired by)\\b", "hint": "prior-art name-drop — influences shape structure silently, they aren't cited in the text. Suggestion-only: calibrated 2026-07-05 against a brand-voice false positive (crickets wiki/Home.md's banner alt-text \"Inspired by the Noisy Cricket\" is playful brand copy, not a citation of another project's design — context matters, so this needs a human call rather than a hard warning", "weight": 1, "source-url": "docs-prose-style.md#banned" },
-    { "id": "voice-a1-ai-language-model", "severity": "error", "kind": "phrase", "pattern": "as an ai language model", "hint": "chat artifact — leaked assistant disclaimer", "weight": 5, "source-url": "research-slop-detection-voice.md#tier-a" },
-    { "id": "voice-a1-i-hope-this-helps", "severity": "error", "kind": "phrase", "pattern": "i hope this helps", "hint": "chat artifact", "weight": 5, "source-url": "research-slop-detection-voice.md#tier-a" },
-    { "id": "voice-a1-knowledge-cutoff", "severity": "error", "kind": "template", "pattern": "\\b(as of my (last update|knowledge cutoff)|my training data)\\b", "hint": "chat artifact — knowledge-cutoff disclaimer", "weight": 5, "source-url": "research-slop-detection-voice.md#tier-a" },
-    { "id": "voice-a1-citation-residue", "severity": "error", "kind": "template", "pattern": "\\b(oaicite|turn0search\\d*|utm_source=chatgpt\\.com)\\b", "hint": "citation/URL residue leaked from an assistant's browsing tool", "weight": 5, "source-url": "research-slop-detection-voice.md#tier-a" },
-    { "id": "voice-a4-tapestry", "severity": "suggestion", "kind": "word", "pattern": "tapestry", "hint": "A4 single word", "weight": 1, "source-url": "research-slop-detection-voice.md#tier-a" },
-    { "id": "voice-a4-pivotal", "severity": "suggestion", "kind": "word", "pattern": "pivotal", "hint": "A4 single word", "weight": 1, "source-url": "research-slop-detection-voice.md#tier-a" },
-    { "id": "voice-a4-intricate", "severity": "suggestion", "kind": "word", "pattern": "intricate", "hint": "A4 single word", "weight": 1, "source-url": "research-slop-detection-voice.md#tier-a" },
-    { "id": "voice-a4-vibrant", "severity": "suggestion", "kind": "word", "pattern": "vibrant", "hint": "A4 single word", "weight": 1, "source-url": "research-slop-detection-voice.md#tier-a" },
-    { "id": "voice-b-em-dash-rate", "severity": "warning", "kind": "metric", "pattern": "em_dash_rate_per_1k", "hint": "em-dash rate per 1k words — above threshold flags. Calibrated 2026-07-05 against prose-audit.json's 72 clean pages (observed max 61.22/1k) with margin; the operator's own approved register never trips it", "weight": 1, "threshold": 65, "source-url": "research-slop-detection-voice.md#tier-b" },
-    { "id": "voice-b-triad-density", "severity": "warning", "kind": "metric", "pattern": "triad_density_per_1k", "hint": "rule-of-three rhythmic triad density per 1k words — above threshold flags. Calibrated 2026-07-05 (observed max 11.83/1k on the clean corpus)", "weight": 1, "threshold": 13, "source-url": "research-slop-detection-voice.md#tier-b" },
-    { "id": "voice-b-bold-span-count", "severity": "warning", "kind": "metric", "pattern": "bold_span_count_per_1k", "hint": "bold-span (**...**) count per 1k words — above threshold flags. Calibrated 2026-07-05 (observed max 48.08/1k on the clean corpus)", "weight": 1, "threshold": 52, "source-url": "research-slop-detection-voice.md#tier-b" },
-    { "id": "voice-b-paragraph-variance", "severity": "warning", "kind": "metric", "pattern": "paragraph_length_variance_floor", "hint": "paragraph word-count variance (deterministic cousin of \"burstiness\") — BELOW threshold flags (uniform paragraph lengths read as machine-generated). Calibrated 2026-07-05 (observed min 3.50 on the clean corpus); set conservatively low to avoid false positives until more data accrues", "weight": 1, "threshold": 2, "source-url": "research-slop-detection-voice.md#tier-b" }
+    {
+      "id": "voice-a4-groundbreaking",
+      "severity": "suggestion",
+      "kind": "word",
+      "pattern": "groundbreaking",
+      "hint": "peacock word — strip, name the concrete mechanism instead",
+      "weight": 1,
+      "source-url": "docs-prose-style.md#banned",
+      "floor_eligible": true
+    },
+    {
+      "id": "voice-a4-deeply",
+      "severity": "suggestion",
+      "kind": "word",
+      "pattern": "deeply",
+      "hint": "peacock adverb — strip",
+      "weight": 1,
+      "source-url": "docs-prose-style.md#banned",
+      "floor_eligible": true
+    },
+    {
+      "id": "voice-a4-vital",
+      "severity": "suggestion",
+      "kind": "word",
+      "pattern": "vital",
+      "hint": "peacock word — strip",
+      "weight": 1,
+      "source-url": "docs-prose-style.md#banned",
+      "floor_eligible": true
+    },
+    {
+      "id": "voice-a4-crucial",
+      "severity": "suggestion",
+      "kind": "word",
+      "pattern": "crucial",
+      "hint": "peacock word — strip",
+      "weight": 1,
+      "source-url": "docs-prose-style.md#banned",
+      "floor_eligible": true
+    },
+    {
+      "id": "voice-a4-truly",
+      "severity": "suggestion",
+      "kind": "word",
+      "pattern": "truly",
+      "hint": "peacock adverb — strip",
+      "weight": 1,
+      "source-url": "docs-prose-style.md#banned",
+      "floor_eligible": true
+    },
+    {
+      "id": "voice-a4-pioneering",
+      "severity": "suggestion",
+      "kind": "word",
+      "pattern": "pioneering",
+      "hint": "peacock word — strip",
+      "weight": 1,
+      "source-url": "docs-prose-style.md#banned",
+      "floor_eligible": true
+    },
+    {
+      "id": "voice-a4-transformative",
+      "severity": "suggestion",
+      "kind": "word",
+      "pattern": "transformative",
+      "hint": "peacock word — strip",
+      "weight": 1,
+      "source-url": "docs-prose-style.md#banned",
+      "floor_eligible": true
+    },
+    {
+      "id": "voice-a4-visionary",
+      "severity": "suggestion",
+      "kind": "word",
+      "pattern": "visionary",
+      "hint": "peacock word — strip",
+      "weight": 1,
+      "source-url": "docs-prose-style.md#banned",
+      "floor_eligible": true
+    },
+    {
+      "id": "voice-a4-delve",
+      "severity": "suggestion",
+      "kind": "word",
+      "pattern": "delve",
+      "hint": "AI-tell single word (Kobak 2025: +~1500% in PubMed) — use a plain verb",
+      "weight": 1,
+      "source-url": "research-slop-detection-voice.md#tier-a",
+      "floor_eligible": true
+    },
+    {
+      "id": "voice-a2-this-journey",
+      "severity": "warning",
+      "kind": "phrase",
+      "pattern": "this journey",
+      "hint": "stock phrase — name the concrete work instead",
+      "weight": 2,
+      "source-url": "docs-prose-style.md#banned",
+      "floor_eligible": true
+    },
+    {
+      "id": "voice-a3-magic-of",
+      "severity": "warning",
+      "kind": "template",
+      "pattern": "\\b(the magic of|ai[- ]powered magic|ai magic)\\b",
+      "hint": "replace with the concrete mechanism (\"the execution engine behind X\")",
+      "weight": 2,
+      "source-url": "docs-prose-style.md#banned"
+    },
+    {
+      "id": "voice-a4-first-class",
+      "severity": "suggestion",
+      "kind": "word",
+      "pattern": "first-class",
+      "hint": "AI-tell adjective; term-of-art carve-out applies in technical/design prose — flag for a human call, don't auto-strip",
+      "weight": 1,
+      "source-url": "llm-tell-vocabulary.md",
+      "floor_eligible": true
+    },
+    {
+      "id": "voice-a4-seamless",
+      "severity": "suggestion",
+      "kind": "word",
+      "pattern": "seamless",
+      "hint": "AI-tell adjective — use \"smooth\"",
+      "weight": 1,
+      "source-url": "llm-tell-vocabulary.md",
+      "floor_eligible": true
+    },
+    {
+      "id": "voice-a4-robust",
+      "severity": "suggestion",
+      "kind": "word",
+      "pattern": "robust",
+      "hint": "AI-tell adjective; term-of-art carve-out applies (e.g. \"a robust retry path\")",
+      "weight": 1,
+      "source-url": "llm-tell-vocabulary.md",
+      "floor_eligible": true
+    },
+    {
+      "id": "voice-a4-leverage",
+      "severity": "suggestion",
+      "kind": "word",
+      "pattern": "leverage",
+      "hint": "AI-tell verb — use \"use\"",
+      "weight": 1,
+      "source-url": "llm-tell-vocabulary.md",
+      "floor_eligible": true
+    },
+    {
+      "id": "voice-a4-comprehensive",
+      "severity": "suggestion",
+      "kind": "word",
+      "pattern": "comprehensive",
+      "hint": "AI-tell adjective — use \"full\"",
+      "weight": 1,
+      "source-url": "llm-tell-vocabulary.md",
+      "floor_eligible": true
+    },
+    {
+      "id": "voice-a4-powerful",
+      "severity": "suggestion",
+      "kind": "word",
+      "pattern": "powerful",
+      "hint": "AI-tell adjective — use \"capable\"",
+      "weight": 1,
+      "source-url": "docs-prose-style.md#banned",
+      "floor_eligible": true
+    },
+    {
+      "id": "voice-a4-cutting-edge",
+      "severity": "suggestion",
+      "kind": "word",
+      "pattern": "cutting-edge",
+      "hint": "AI-tell adjective — name the concrete capability instead",
+      "weight": 1,
+      "source-url": "docs-prose-style.md#banned",
+      "floor_eligible": true
+    },
+    {
+      "id": "voice-a4-load-bearing",
+      "severity": "suggestion",
+      "kind": "word",
+      "pattern": "load-bearing",
+      "hint": "the agent's tell-word — name what depends on it, or use \"central\"/\"the part that matters\"",
+      "weight": 1,
+      "source-url": "llm-tell-vocabulary.md",
+      "floor_eligible": true
+    },
+    {
+      "id": "voice-a2-it-should-be-noted-that",
+      "severity": "warning",
+      "kind": "phrase",
+      "pattern": "it should be noted that",
+      "hint": "hedging — state the claim directly",
+      "weight": 2,
+      "source-url": "base-style-guide.md#banned",
+      "floor_eligible": true
+    },
+    {
+      "id": "voice-a2-it-is-worth-mentioning",
+      "severity": "warning",
+      "kind": "phrase",
+      "pattern": "it is worth mentioning",
+      "hint": "hedging — state the claim directly",
+      "weight": 2,
+      "source-url": "base-style-guide.md#banned",
+      "floor_eligible": true
+    },
+    {
+      "id": "voice-a4-arguably",
+      "severity": "suggestion",
+      "kind": "word",
+      "pattern": "arguably",
+      "hint": "hedging qualifier — strip",
+      "weight": 1,
+      "source-url": "base-style-guide.md#banned",
+      "floor_eligible": true
+    },
+    {
+      "id": "voice-a4-essentially",
+      "severity": "suggestion",
+      "kind": "word",
+      "pattern": "essentially",
+      "hint": "hedging qualifier — strip",
+      "weight": 1,
+      "source-url": "base-style-guide.md#banned",
+      "floor_eligible": true
+    },
+    {
+      "id": "voice-a2-stands-as-a-testament",
+      "severity": "warning",
+      "kind": "phrase",
+      "pattern": "stands as a testament",
+      "hint": "stock phrase",
+      "weight": 2,
+      "source-url": "research-slop-detection-voice.md#tier-a"
+    },
+    {
+      "id": "voice-a2-plays-a-pivotal-role",
+      "severity": "warning",
+      "kind": "phrase",
+      "pattern": "plays a pivotal role",
+      "hint": "stock phrase",
+      "weight": 2,
+      "source-url": "research-slop-detection-voice.md#tier-a"
+    },
+    {
+      "id": "voice-a2-its-worth-noting",
+      "severity": "warning",
+      "kind": "template",
+      "pattern": "it'?s worth noting",
+      "hint": "stock phrase / hedging",
+      "weight": 2,
+      "source-url": "research-slop-detection-voice.md#tier-a"
+    },
+    {
+      "id": "voice-a2-ever-evolving-landscape",
+      "severity": "warning",
+      "kind": "phrase",
+      "pattern": "ever-evolving landscape",
+      "hint": "stock phrase",
+      "weight": 2,
+      "source-url": "research-slop-detection-voice.md#tier-a"
+    },
+    {
+      "id": "voice-a2-nestled-in",
+      "severity": "warning",
+      "kind": "phrase",
+      "pattern": "nestled in",
+      "hint": "stock phrase",
+      "weight": 2,
+      "source-url": "research-slop-detection-voice.md#tier-a"
+    },
+    {
+      "id": "voice-a2-punches-above-its-weight",
+      "severity": "warning",
+      "kind": "template",
+      "pattern": "punches (far )?above its weight",
+      "hint": "marketing boast — state the function instead",
+      "weight": 2,
+      "source-url": "user-facing-prose.md"
+    },
+    {
+      "id": "voice-a2-tactical-suite",
+      "severity": "warning",
+      "kind": "phrase",
+      "pattern": "tactical suite",
+      "hint": "marketing boast",
+      "weight": 2,
+      "source-url": "user-facing-prose.md"
+    },
+    {
+      "id": "voice-a2-engineered-to",
+      "severity": "warning",
+      "kind": "phrase",
+      "pattern": "engineered to",
+      "hint": "marketing boast — state what it does",
+      "weight": 2,
+      "source-url": "user-facing-prose.md"
+    },
+    {
+      "id": "voice-a2-opinionated-and-powerful",
+      "severity": "warning",
+      "kind": "phrase",
+      "pattern": "opinionated and powerful",
+      "hint": "marketing boast",
+      "weight": 2,
+      "source-url": "user-facing-prose.md"
+    },
+    {
+      "id": "voice-a2-structural-backend",
+      "severity": "suggestion",
+      "kind": "phrase",
+      "pattern": "structural backend",
+      "hint": "architecture-metaphor label (user-facing-prose scope) — say what it does",
+      "weight": 1,
+      "source-url": "user-facing-prose.md"
+    },
+    {
+      "id": "voice-a2-execution-layer",
+      "severity": "suggestion",
+      "kind": "phrase",
+      "pattern": "execution layer",
+      "hint": "architecture-metaphor label (user-facing-prose scope) — high term-of-art collision risk, suggestion-only",
+      "weight": 1,
+      "source-url": "user-facing-prose.md"
+    },
+    {
+      "id": "voice-a2-substrate",
+      "severity": "suggestion",
+      "kind": "word",
+      "pattern": "substrate",
+      "hint": "architecture-metaphor label (user-facing-prose scope); this codebase also uses it as a legitimate term-of-art (durable-state substrate) — suggestion-only, high FP risk",
+      "weight": 1,
+      "source-url": "user-facing-prose.md"
+    },
+    {
+      "id": "voice-a2-backbone",
+      "severity": "suggestion",
+      "kind": "word",
+      "pattern": "backbone",
+      "hint": "architecture-metaphor label (user-facing-prose scope)",
+      "weight": 1,
+      "source-url": "user-facing-prose.md"
+    },
+    {
+      "id": "voice-a3-not-just-but",
+      "severity": "warning",
+      "kind": "template",
+      "pattern": "\\bnot (just|only|merely)\\b.{0,60}(but|it'?s|—)",
+      "hint": "A3 construction template — say the positive claim alone",
+      "weight": 2,
+      "source-url": "research-slop-detection-voice.md#tier-a"
+    },
+    {
+      "id": "voice-a3-antithesis-comma-not",
+      "severity": "suggestion",
+      "kind": "template",
+      "pattern": ",\\s*not\\s+[a-z]",
+      "hint": "the \"X, not Y\" antithesis — single occurrences are ordinary English (calibrated 2026-07-05: warning tier fired 70+ times on prose-audit.json's clean corpus); the real signal is density/repetition (Storage-Seam-Concepts.md's ~15 hits), a Tier-C judgment call — suggestion-only until a density-scored variant lands",
+      "weight": 1,
+      "source-url": "docs-prose-style.md#banned"
+    },
+    {
+      "id": "voice-a3-antithesis-not-but",
+      "severity": "warning",
+      "kind": "template",
+      "pattern": "\\bit'?s not\\b.{0,40}\\bit'?s\\b",
+      "hint": "the \"it's not Y, it's X\" antithesis",
+      "weight": 2,
+      "source-url": "docs-prose-style.md#banned"
+    },
+    {
+      "id": "voice-a3-rather-than",
+      "severity": "suggestion",
+      "kind": "template",
+      "pattern": "—\\s*(never the reverse|rather than)\\b",
+      "hint": "trailing antithesis tail — state the boundary positively",
+      "weight": 1,
+      "source-url": "docs-prose-style.md#banned"
+    },
+    {
+      "id": "voice-a3-prior-art-name-drop",
+      "severity": "suggestion",
+      "kind": "template",
+      "pattern": "\\b(modeled after|inspired by)\\b",
+      "hint": "prior-art name-drop — influences shape structure silently, they aren't cited in the text. Suggestion-only: calibrated 2026-07-05 against a brand-voice false positive (crickets wiki/Home.md's banner alt-text \"Inspired by the Noisy Cricket\" is playful brand copy, not a citation of another project's design — context matters, so this needs a human call rather than a hard warning",
+      "weight": 1,
+      "source-url": "docs-prose-style.md#banned"
+    },
+    {
+      "id": "voice-a1-ai-language-model",
+      "severity": "error",
+      "kind": "phrase",
+      "pattern": "as an ai language model",
+      "hint": "chat artifact — leaked assistant disclaimer",
+      "weight": 5,
+      "source-url": "research-slop-detection-voice.md#tier-a"
+    },
+    {
+      "id": "voice-a1-i-hope-this-helps",
+      "severity": "error",
+      "kind": "phrase",
+      "pattern": "i hope this helps",
+      "hint": "chat artifact",
+      "weight": 5,
+      "source-url": "research-slop-detection-voice.md#tier-a"
+    },
+    {
+      "id": "voice-a1-knowledge-cutoff",
+      "severity": "error",
+      "kind": "template",
+      "pattern": "\\b(as of my (last update|knowledge cutoff)|my training data)\\b",
+      "hint": "chat artifact — knowledge-cutoff disclaimer",
+      "weight": 5,
+      "source-url": "research-slop-detection-voice.md#tier-a"
+    },
+    {
+      "id": "voice-a1-citation-residue",
+      "severity": "error",
+      "kind": "template",
+      "pattern": "\\b(oaicite|turn0search\\d*|utm_source=chatgpt\\.com)\\b",
+      "hint": "citation/URL residue leaked from an assistant's browsing tool",
+      "weight": 5,
+      "source-url": "research-slop-detection-voice.md#tier-a"
+    },
+    {
+      "id": "voice-a4-tapestry",
+      "severity": "suggestion",
+      "kind": "word",
+      "pattern": "tapestry",
+      "hint": "A4 single word",
+      "weight": 1,
+      "source-url": "research-slop-detection-voice.md#tier-a"
+    },
+    {
+      "id": "voice-a4-pivotal",
+      "severity": "suggestion",
+      "kind": "word",
+      "pattern": "pivotal",
+      "hint": "A4 single word",
+      "weight": 1,
+      "source-url": "research-slop-detection-voice.md#tier-a"
+    },
+    {
+      "id": "voice-a4-intricate",
+      "severity": "suggestion",
+      "kind": "word",
+      "pattern": "intricate",
+      "hint": "A4 single word",
+      "weight": 1,
+      "source-url": "research-slop-detection-voice.md#tier-a"
+    },
+    {
+      "id": "voice-a4-vibrant",
+      "severity": "suggestion",
+      "kind": "word",
+      "pattern": "vibrant",
+      "hint": "A4 single word",
+      "weight": 1,
+      "source-url": "research-slop-detection-voice.md#tier-a"
+    },
+    {
+      "id": "voice-b-em-dash-rate",
+      "severity": "warning",
+      "kind": "metric",
+      "pattern": "em_dash_rate_per_1k",
+      "hint": "em-dash rate per 1k words — above threshold flags. Calibrated 2026-07-05 against prose-audit.json's 72 clean pages (observed max 61.22/1k) with margin; the operator's own approved register never trips it",
+      "weight": 1,
+      "threshold": 65,
+      "source-url": "research-slop-detection-voice.md#tier-b"
+    },
+    {
+      "id": "voice-b-triad-density",
+      "severity": "warning",
+      "kind": "metric",
+      "pattern": "triad_density_per_1k",
+      "hint": "rule-of-three rhythmic triad density per 1k words — above threshold flags. Calibrated 2026-07-05 (observed max 11.83/1k on the clean corpus)",
+      "weight": 1,
+      "threshold": 13,
+      "source-url": "research-slop-detection-voice.md#tier-b"
+    },
+    {
+      "id": "voice-b-bold-span-count",
+      "severity": "warning",
+      "kind": "metric",
+      "pattern": "bold_span_count_per_1k",
+      "hint": "bold-span (**...**) count per 1k words — above threshold flags. Calibrated 2026-07-05 (observed max 48.08/1k on the clean corpus)",
+      "weight": 1,
+      "threshold": 52,
+      "source-url": "research-slop-detection-voice.md#tier-b"
+    },
+    {
+      "id": "voice-b-paragraph-variance",
+      "severity": "warning",
+      "kind": "metric",
+      "pattern": "paragraph_length_variance_floor",
+      "hint": "paragraph word-count variance (deterministic cousin of \"burstiness\") — BELOW threshold flags (uniform paragraph lengths read as machine-generated). Calibrated 2026-07-05 (observed min 3.50 on the clean corpus); set conservatively low to avoid false positives until more data accrues",
+      "weight": 1,
+      "threshold": 2,
+      "source-url": "research-slop-detection-voice.md#tier-b"
+    }
   ]
 }

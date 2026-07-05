@@ -116,13 +116,20 @@ def load_rule_pack(
 def render_base_style_banned_line(pack: dict | None = None) -> str:
     """Render the comma-joined `banned:` line base-style-guide.md#L54 promotes from.
 
-    Only word/phrase-kind rules render (check.py's convention-drift scanner is a
-    literal comma-list matcher — templates and metrics aren't expressible there).
-    Deterministic: pack order in, same order out. A term containing a comma is
-    double-quoted (matches check.py's _TERM_RE quoting convention).
+    Only `floor_eligible: true` word/phrase-kind rules render — the blanket,
+    cross-context subset appropriate for the committed floor every draft
+    inherits (check.py's convention-drift scanner is untiered, so a genre-
+    scoped marketing phrase or an ordinary word like "vibrant" would trip on
+    ordinary prose if it were included here; those stay rule-pack/gate-only).
+    Templates and metrics never render (check.py's scanner is a literal
+    comma-list matcher). Deterministic: pack order in, same order out. A term
+    containing a comma is double-quoted (matches check.py's _TERM_RE quoting).
     """
     pack = pack if pack is not None else load_shipped_pack()
-    terms = [r["pattern"] for r in pack.get("rules", []) if r["kind"] in ("word", "phrase")]
+    terms = [
+        r["pattern"] for r in pack.get("rules", [])
+        if r["kind"] in ("word", "phrase") and r.get("floor_eligible")
+    ]
     rendered = [f'"{t}"' if "," in t else t for t in terms]
     return "banned: " + ", ".join(rendered)
 

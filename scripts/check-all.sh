@@ -58,6 +58,7 @@ run "dist-references" python3 scripts/check-dist-references.py
 run "version bump"   python3 scripts/check-version-bump.py
 run "check-wiki"     python3 src/wiki-maintenance/scripts/check-wiki.py --strict
 run "check-slop"     python3 scripts/check-slop.py --report wiki
+run "voice-floor-parity" python3 scripts/check-voice-floor-parity.py --report
 run "check-syntax"   bash scripts/check-syntax.sh
 run "hook-parity"    python3 scripts/check-hook-parity.py
 run "check-no-pii"   bash scripts/check-no-pii.sh --all
