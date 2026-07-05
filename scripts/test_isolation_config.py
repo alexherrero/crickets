@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Tests for src/developer-workflows/scripts/isolation_config.py (task 2).
+"""Tests for src/developer-workflows/scripts/isolation_config.py (task 2;
+R2.5 task 11 flipped the absent-config default from 'worktree-per-plan' to
+'direct' per the operator's worktree doctrine — ADR 0028 refining ADR 0022).
 
 Covers:
-  - read_isolation: missing / malformed / wrong-type → default; valid → set value
-  - should_auto_isolate: all three precedence layers (arg > file > default-ON)
+  - read_isolation: missing / malformed / wrong-type → 'direct' default; valid → set value
+  - should_auto_isolate: all three precedence layers (arg > file > code-default-OFF)
   - is_inside_worktree / resolve_main_worktree: real git repos where git is available
 
 Auto-discovered by check-all's `unit tests` gate.
@@ -61,14 +63,14 @@ class TestReadIsolation(unittest.TestCase):
     def test_missing_harness_returns_defaults(self):
         with tempfile.TemporaryDirectory() as t:
             cfg = ic.read_isolation(t)
-            self.assertEqual(cfg["mode"], "worktree-per-plan")
+            self.assertEqual(cfg["mode"], "direct")
             self.assertEqual(cfg["integration"], "pull-request")
 
     def test_missing_project_json_returns_defaults(self):
         with tempfile.TemporaryDirectory() as t:
             (Path(t) / ".harness").mkdir()
             cfg = ic.read_isolation(t)
-            self.assertEqual(cfg["mode"], "worktree-per-plan")
+            self.assertEqual(cfg["mode"], "direct")
             self.assertEqual(cfg["integration"], "pull-request")
 
     def test_malformed_json_returns_defaults(self):
@@ -77,7 +79,7 @@ class TestReadIsolation(unittest.TestCase):
             h.mkdir()
             (h / "project.json").write_text("not json {{{", encoding="utf-8")
             cfg = ic.read_isolation(t)
-            self.assertEqual(cfg["mode"], "worktree-per-plan")
+            self.assertEqual(cfg["mode"], "direct")
 
     def test_json_array_returns_defaults(self):
         with tempfile.TemporaryDirectory() as t:
@@ -85,14 +87,14 @@ class TestReadIsolation(unittest.TestCase):
             # write_project_json is for dicts; write directly
             (Path(t) / ".harness" / "project.json").write_text("[1,2,3]", encoding="utf-8")
             cfg = ic.read_isolation(t)
-            self.assertEqual(cfg["mode"], "worktree-per-plan")
+            self.assertEqual(cfg["mode"], "direct")
 
     def test_isolation_block_not_object_returns_defaults(self):
         with tempfile.TemporaryDirectory() as t:
             _write_project_json(Path(t) / ".harness",
                                 {"vault_project": "x", "github": {}, "isolation": "bad"})
             cfg = ic.read_isolation(t)
-            self.assertEqual(cfg["mode"], "worktree-per-plan")
+            self.assertEqual(cfg["mode"], "direct")
 
     def test_valid_mode_worktree_per_plan(self):
         with tempfile.TemporaryDirectory() as t:
@@ -118,7 +120,7 @@ class TestReadIsolation(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             _write_project_json(Path(t) / ".harness", {"isolation": {"mode": "auto"}})
             cfg = ic.read_isolation(t)
-            self.assertEqual(cfg["mode"], "worktree-per-plan")
+            self.assertEqual(cfg["mode"], "direct")
 
     def test_unknown_integration_value_returns_default(self):
         with tempfile.TemporaryDirectory() as t:
@@ -131,32 +133,34 @@ class TestReadIsolation(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             _write_project_json(Path(t) / ".harness", {"isolation": {"mode": 42}})
             cfg = ic.read_isolation(t)
-            self.assertEqual(cfg["mode"], "worktree-per-plan")
+            self.assertEqual(cfg["mode"], "direct")
 
     def test_absent_isolation_key_returns_defaults(self):
         with tempfile.TemporaryDirectory() as t:
             _write_project_json(Path(t) / ".harness", {"vault_project": "x"})
             cfg = ic.read_isolation(t)
-            self.assertEqual(cfg["mode"], "worktree-per-plan")
+            self.assertEqual(cfg["mode"], "direct")
             self.assertEqual(cfg["integration"], "pull-request")
 
 
 class TestShouldAutoIsolatePrecedence(unittest.TestCase):
-    """Precedence: command-arg > project.json > code-default-ON."""
+    """Precedence: command-arg > project.json > code-default-OFF."""
 
     def _root_with_mode(self, mode: str) -> tempfile.TemporaryDirectory:
         t = tempfile.TemporaryDirectory()
         _write_project_json(Path(t.name) / ".harness", {"isolation": {"mode": mode}})
         return t
 
-    def test_default_on_no_config_no_arg(self):
+    def test_default_off_no_config_no_arg(self):
+        # R2.5 task 11: no project.json → code-default is 'direct' (no
+        # auto-spawn) — the operator's worktree doctrine requires explicit
+        # authority (a durable config opt-in or an operator command), never
+        # a silent default-ON with no config at all.
         with tempfile.TemporaryDirectory() as t:
-            # No project.json → default-ON, but we're not in a git worktree so
-            # is_inside_worktree returns False (or graceful False on non-git dir).
             result = ic.should_auto_isolate(t, arg_no_isolate=False)
-            self.assertTrue(result)
+            self.assertFalse(result)
 
-    def test_arg_no_isolate_overrides_default_on(self):
+    def test_arg_no_isolate_with_no_config(self):
         with tempfile.TemporaryDirectory() as t:
             result = ic.should_auto_isolate(t, arg_no_isolate=True)
             self.assertFalse(result)
@@ -166,7 +170,7 @@ class TestShouldAutoIsolatePrecedence(unittest.TestCase):
             result = ic.should_auto_isolate(t, arg_no_isolate=True)
             self.assertFalse(result)
 
-    def test_config_direct_overrides_default_on(self):
+    def test_config_direct_stays_off(self):
         with self._root_with_mode("direct") as t:
             result = ic.should_auto_isolate(t)
             self.assertFalse(result)
@@ -175,6 +179,32 @@ class TestShouldAutoIsolatePrecedence(unittest.TestCase):
         with self._root_with_mode("worktree-per-plan") as t:
             result = ic.should_auto_isolate(t)
             self.assertTrue(result)
+
+
+class TestIsolationAuthorityConformance(unittest.TestCase):
+    """R2.5 task 11: locks the operator's worktree doctrine (~/.claude/CLAUDE.md
+    § Worktrees, ADR 0028 refining ADR 0022) as a permanent, named regression
+    test — distinct from the general precedence coverage above, so a future
+    reader who never saw this task's history still finds the doctrine
+    statement right next to the assertion it backs.
+
+    Authority = an explicit operator command (the invocation of /work etc.
+    itself, or --isolate) OR a durable `isolation.mode: worktree-per-plan`
+    config opt-in in .harness/project.json. Absent authority, the answer must
+    always be 'no auto-spawn' — never a silent default-ON."""
+
+    def test_no_authority_means_no_auto_spawn(self):
+        # A repo with no .harness/ at all: zero authority, zero config.
+        # cricketsPluginsA#2's exact reproduction — this must be False.
+        with tempfile.TemporaryDirectory() as t:
+            self.assertFalse(ic.should_auto_isolate(t))
+
+    def test_durable_config_opt_in_grants_authority(self):
+        # The other half of the doctrine: a durable config opt-in IS real
+        # authority, and must still work exactly as before this fix.
+        with tempfile.TemporaryDirectory() as t:
+            _write_project_json(Path(t) / ".harness", {"isolation": {"mode": "worktree-per-plan"}})
+            self.assertTrue(ic.should_auto_isolate(t))
 
 
 class TestWorktreeDetection(unittest.TestCase):

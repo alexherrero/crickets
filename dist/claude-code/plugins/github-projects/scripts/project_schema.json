@@ -73,14 +73,14 @@
     },
     "isolation": {
       "type": "object",
-      "description": "Controls whether the developer-workflows loop spawns a git worktree per plan and how it finalizes (PR vs direct push). Defaults to worktree-per-plan + pull-request when absent; a malformed or wrong-type block degrades safely to the default.",
+      "description": "Controls whether the developer-workflows loop spawns a git worktree per plan and how it finalizes (PR vs direct push). Defaults to direct + pull-request when absent; a malformed or wrong-type block degrades safely to the default (R2.5 task 11: absent-config auto-spawn requires explicit operator authority, per the operator's worktree doctrine — ADR 0028 refining ADR 0022).",
       "additionalProperties": false,
       "properties": {
         "mode": {
           "type": "string",
-          "description": "worktree-per-plan (default-ON) spawns an isolated git worktree per plan unit; direct commits on the current branch (pre-design behavior); worktree-per-task spawns a per-task worktree for each operator-declared-isolated task (Isolated: true in PLAN.md) — execution isolation without forcing per-task PRs.",
+          "description": "direct (default) commits on the current branch — the safe fallback absent explicit operator authority; worktree-per-plan spawns an isolated git worktree per plan unit, but only via an explicit `.harness/project.json` opt-in (never the code default); worktree-per-task spawns a per-task worktree for each operator-declared-isolated task (Isolated: true in PLAN.md) — execution isolation without forcing per-task PRs.",
           "enum": ["worktree-per-plan", "direct", "worktree-per-task"],
-          "default": "worktree-per-plan"
+          "default": "direct"
         },
         "integration": {
           "type": "string",

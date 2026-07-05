@@ -4,7 +4,16 @@
 Mirrors the graceful-reader pattern established by _read_vault_project():
 any IO/parse error collapses to the safe default — never raises.
 
-Precedence cascade: command-arg (--no-isolate) > project.json > code-default-ON.
+Precedence cascade: command-arg (--no-isolate) > project.json > code-default-OFF.
+
+R2.5 task 11: the absent-config default is 'direct' (no auto-spawn), per the
+operator's worktree doctrine (~/.claude/CLAUDE.md § Worktrees, ADR 0028
+refining ADR 0022) — authority to spawn a worktree requires an explicit
+operator command or a durable `isolation.mode: worktree-per-plan` config
+opt-in; a repo with no `.harness/project.json` at all must never silently
+auto-spawn. This was previously inverted (a missing/malformed config
+resolved to 'worktree-per-plan', auto-spawning with zero operator
+authority) — cricketsPluginsA#2.
 """
 from __future__ import annotations
 
@@ -13,7 +22,7 @@ import os
 import subprocess
 from pathlib import Path
 
-_DEFAULT_MODE = "worktree-per-plan"
+_DEFAULT_MODE = "direct"
 _DEFAULT_INTEGRATION = "pull-request"
 _ALLOWED_MODES = frozenset({"worktree-per-plan", "direct", "worktree-per-task"})
 _ALLOWED_INTEGRATIONS = frozenset({"pull-request", "direct-push"})
@@ -25,9 +34,11 @@ def read_isolation(root: str | os.PathLike) -> dict:
     """Read the isolation block from .harness/project.json.
 
     Returns {'mode': ..., 'integration': ...}, defaulting to
-    'worktree-per-plan' / 'pull-request' on any error (missing file, bad
-    JSON, wrong type, absent key — every failure path collapses to the safe
-    default rather than raising, mirroring _read_vault_project).
+    'direct' / 'pull-request' on any error (missing file, bad JSON, wrong
+    type, absent key — every failure path collapses to the safe default
+    rather than raising, mirroring _read_vault_project). 'direct' is the
+    doctrine-compliant fail-closed default — no config means no operator
+    authority to auto-spawn a worktree.
     """
     pj = Path(root) / ".harness" / "project.json"
     try:
@@ -117,20 +128,23 @@ def should_auto_isolate(root: str | os.PathLike, *,
                         arg_no_isolate: bool = False) -> bool:
     """Resolve whether the loop should auto-spawn a worktree for this plan.
 
-    Precedence: command-arg > project.json field > code-default-ON.
+    Precedence: command-arg > project.json field > code-default-OFF.
 
     Returns False when:
       - arg_no_isolate is True (command-arg wins)
       - is_inside_worktree(root) is True (single-owner guard — the loop owns
         isolation OR defers to an existing worktree, never both)
-      - project.json isolation.mode is 'direct' (only 'worktree-per-plan'
-        triggers auto-spawn; 'worktree-per-task' uses per-task spawning
-        mid-loop via task_isolation.py, not a plan-level spawn here)
+      - project.json isolation.mode is 'direct', absent, or unreadable (only
+        an explicit 'worktree-per-plan' triggers auto-spawn; 'worktree-per-task'
+        uses per-task spawning mid-loop via task_isolation.py, not a
+        plan-level spawn here)
 
-    Returns True (default-ON) when:
+    Returns True (opt-in-ON) only when:
       - no command-arg override
       - not inside an existing worktree
-      - mode == 'worktree-per-plan' (config or code default)
+      - mode == 'worktree-per-plan' via an EXPLICIT `.harness/project.json`
+        config — never the code default, which is 'direct' (no config, no
+        authority, no auto-spawn — the operator's worktree doctrine).
     """
     if arg_no_isolate:
         return False

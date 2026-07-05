@@ -57,5 +57,10 @@ standalone: false
 # Both caught by re-running the identical close-out post live and confirming zero
 # further gh writes — the write path's own idempotency contract, verified against
 # real GitHub Project boards, not just fixtures.
-version: 0.2.2
+# 0.2.3 = project_schema.json's isolation.mode description + default corrected
+# from worktree-per-plan to direct, matching developer-workflows' isolation_config.py
+# code-default flip (R2.5 task 11 — the operator's worktree doctrine, ADR 0028
+# refining ADR 0022; cricketsPluginsA#2). The schema was a stale live claim about
+# current behavior, not a historical record — corrected in place.
+version: 0.2.3
 capabilities: [board-sync]

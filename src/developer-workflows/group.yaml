@@ -321,5 +321,14 @@ enhances:
 # plan.md's existing copies — three phase commands were dispatching the
 # documenter with no model-routing wiring at all. New byte-identity drift
 # test locks all five copies going forward (R2.5 task 10).
-version: 0.29.11
+# 0.29.12 = isolation_config.py's absent-config default flipped from
+# worktree-per-plan (auto-spawn with zero operator authority) to direct —
+# the operator's worktree doctrine requires an explicit operator command or
+# a durable `isolation.mode: worktree-per-plan` config opt-in before any
+# worktree is spawned (ADR 0028 refining ADR 0022; cricketsPluginsA#2). New
+# TestIsolationAuthorityConformance regression class locks both halves of
+# the doctrine. The 0.18.0 entry above describes what that version
+# originally shipped (default-ON) and is left as historical record — this
+# entry is what's true now (R2.5 task 11).
+version: 0.29.12
 capabilities: [setup, plan, work, review, release, bugfix, documentation]

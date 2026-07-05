@@ -69,7 +69,7 @@
       ],
       "name": "developer-workflows",
       "source": "./plugins/developer-workflows",
-      "version": "0.29.11"
+      "version": "0.29.12"
     },
     {
       "capabilities": [
@@ -93,7 +93,7 @@
       "description": "One-way, deterministic board-sync — synthesizes a vault project's roadmap/plan/progress state onto a GitHub Project board via six locked per-type templates, a single idempotent project_sync.py write path, and a vault==board drift gate. The vault stays the agent's source of truth; the board is the generated human source.",
       "name": "github-projects",
       "source": "./plugins/github-projects",
-      "version": "0.2.2"
+      "version": "0.2.3"
     },
     {
       "capabilities": [
