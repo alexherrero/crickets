@@ -10,7 +10,12 @@ house defaults. Keep it tight.
 ## Voice
 
 - **Second person, direct.** "You" and "your" — not "the operator" or "the
-  user". The reader is being addressed; address them.
+  user". The reader is being addressed; address them. **Role-noun carve-out**
+  (2026-07-05, PLAN-r3-voice-mechanism task 5): this bans addressing *the
+  reader* in the third person, not every use of "the operator"/"the person" —
+  a design doc describing a *different* actor's role (e.g. "the operator
+  reviews the plan before the worker starts") is a legitimate role noun, not
+  a voice violation.
 - **One claim per sentence.** Target 15–25 words, one idea each. Plain language,
   direct verbs. No hedging ("it should be noted that", "it is worth mentioning"),
   no qualifiers ("arguably", "essentially"). The budget is guidance, not a gate —

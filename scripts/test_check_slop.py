@@ -168,6 +168,36 @@ class TestJsonlEmission(unittest.TestCase):
             self.assertEqual(record["weight"], 5)
 
 
+class TestRatifiedCarveOuts(unittest.TestCase):
+    """PLAN-r3-voice-mechanism task 5 verification 2 — the operator role-noun
+    and term-of-art carve-outs produce no error/warning-tier finding."""
+
+    def setUp(self):
+        import rule_pack
+        self.rules = rule_pack.load_shipped_pack()["rules"]
+
+    def test_role_noun_use_of_the_operator_produces_no_finding(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            f = Path(tmp) / "page.md"
+            f.write_text(
+                "The operator reviews the plan before the worker starts, "
+                "then the operator approves the release.\n"
+            )
+            findings = slop.scan_file(f, self.rules)
+            self.assertEqual(findings, [])
+
+    def test_term_of_art_first_class_produces_no_error_or_warning(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            f = Path(tmp) / "page.md"
+            f.write_text("The resolver treats named plans as a first-class primitive.\n")
+            findings = slop.scan_file(f, self.rules)
+            blocking = [f for f in findings if f.severity in ("error", "warning")]
+            self.assertEqual(blocking, [], f"expected no error/warning finding, got: {blocking}")
+            # It should still surface as a low-severity suggestion (findings, not failures).
+            ids = {fnd.rule_id for fnd in findings}
+            self.assertIn("voice-a4-first-class", ids)
+
+
 @unittest.skipUnless(_VAULT_PROSE_AUDIT.is_file(), "vault not reachable in this environment")
 class TestCorpusCalibration(unittest.TestCase):
     """Plan Task 2 verification 1 + 2 — run against the real calibration corpus."""

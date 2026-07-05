@@ -68,7 +68,12 @@ standalone: true
 # lessons into base-style-guide.md's committed floor via promote.py; added
 # a floor_eligible field to voice-rules.json marking the blanket-ban subset
 # appropriate for the floor (vs genre-scoped/research-catalog-only additions).
-version: 0.5.2
+# 0.5.3 = PLAN-r3-voice-mechanism task 5 — codified the role-noun carve-out
+# ("the operator"/"the person" is a legitimate role noun, not a third-person
+# violation, when it names a different actor's role) in base-style-guide.md,
+# next to the existing second-person ban. The term-of-art carve-out was
+# already written (2026-06-26); this closes the other private-memory-only gap.
+version: 0.5.3
 capabilities: [wiki-maintenance]
 enhances:
   - group: developer-workflows

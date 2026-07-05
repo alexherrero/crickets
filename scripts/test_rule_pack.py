@@ -204,5 +204,16 @@ class TestBaseStyleBannedLineRenderer(unittest.TestCase):
         self.assertIn("load-bearing", line)
 
 
+class TestRoleNounCarveOutIsWritten(unittest.TestCase):
+    """PLAN-r3-voice-mechanism task 5 verification 1 — the carve-out is a
+    written rule in the shared store, not a private-memory-only reference."""
+
+    def test_base_style_guide_carries_the_carve_out_clause(self):
+        text = _HERE.parent / "src" / "wiki-maintenance" / "skills" / "diataxis-author" / "style" / "base-style-guide.md"
+        content = text.read_text(encoding="utf-8")
+        self.assertIn("Role-noun carve-out", content)
+        self.assertIn("legitimate role noun", content)
+
+
 if __name__ == "__main__":
     unittest.main()

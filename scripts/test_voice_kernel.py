@@ -104,5 +104,17 @@ class TestStyleResolverComposesDemotedGenre(unittest.TestCase):
         self.assertIn(lesson.guidance[:40], composed)
 
 
+@unittest.skipUnless(_VAULT is not None, "vault not reachable in this environment")
+class TestRoleNounCarveOutWrittenInVaultStore(unittest.TestCase):
+    """PLAN-r3-voice-mechanism task 5 verification 1, vault half."""
+
+    def test_docs_prose_style_carries_the_carve_out_clause(self):
+        matches = list((_VAULT / "projects" / "_global" / "wiki-style").glob("*-docs-prose-style.md"))
+        self.assertTrue(matches, "expected the demoted docs-prose-style.md on-demand copy")
+        content = matches[0].read_text(encoding="utf-8")
+        self.assertIn("Role-noun carve-out", content)
+        self.assertIn("legitimate role noun", content)
+
+
 if __name__ == "__main__":
     unittest.main()
