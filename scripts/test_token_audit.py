@@ -266,23 +266,47 @@ class TestPhaseAttribution(unittest.TestCase):
 
 
 class TestPhaseAttributionRealEncoding(unittest.TestCase):
-    """R0.7 regression: --by-phase must fire on the real Claude Code XML
-    encoding, not just a raw '/work' prefix.
+    """R0.7 regression + R2.3 task 7 extension: --by-phase must fire on the
+    real Claude Code XML encoding, not just a raw '/work' prefix, for every
+    phase command the capability-pack battery is supposed to cover — and the
+    pricing re-pin (R0.7) must compose correctly with this fixture's models.
 
-    fixtures/token_audit_real_encoding.jsonl's user line is a literal
+    The middle segment (/work, claude-sonnet-4-6) is R0.7's original literal
     transcript snippet captured from a real crickets session (2026-06-03,
     `80d0ddda-9cc1-4b48-b339-b359950468ed`) — not a synthesized approximation.
     A plain `text.startswith('/work')` check never matches it, because the
     text begins with '<command-message>work</command-message>', not '/work'.
+    The /plan (claude-fable-5) and /review (claude-sonnet-5) segments added
+    for task 7 are synthesized in the identical real Claude Code XML shape —
+    not additional live captures — to exercise every phase this pack claims
+    to attribute and to prove the newer models' pricing composes against this
+    same encoding, not just the synthesized fixture in TestCostUsd.
     """
 
     @classmethod
     def setUpClass(cls):
         cls.report = analyzer.analyze_session(_REAL_ENCODING_FIXTURE, track_phases=True)
 
-    def test_real_encoding_fires_work_phase(self):
+    def test_real_encoding_fires_every_phase(self):
         phases = [m.phase for m in self.report.messages]
-        self.assertEqual(phases, ["work"])
+        self.assertEqual(phases, ["plan", "work", "review"])
+
+    def test_real_encoding_cost_nonzero_per_message(self):
+        for m in self.report.messages:
+            self.assertGreater(m.cost_usd, 0.0, f"{m.phase} ({m.model}) priced at $0")
+
+    def test_fable_5_message_cost_exact(self):
+        fable_msg = next(m for m in self.report.messages if m.model == "claude-fable-5")
+        self.assertEqual(fable_msg.phase, "plan")
+        self.assertAlmostEqual(fable_msg.cost_usd, 0.0079, places=6)
+
+    def test_sonnet_5_message_cost_exact(self):
+        sonnet5_msg = next(m for m in self.report.messages if m.model == "claude-sonnet-5")
+        self.assertEqual(sonnet5_msg.phase, "review")
+        self.assertAlmostEqual(sonnet5_msg.cost_usd, 0.0019, places=6)
+
+    def test_total_cost_nonzero(self):
+        self.assertAlmostEqual(self.report.total_cost_usd, 0.01316, places=6)
 
 
 if __name__ == "__main__":
