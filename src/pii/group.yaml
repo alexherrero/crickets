@@ -16,4 +16,10 @@ capabilities: [privacy]
 #          shim keeps every existing caller (check-all.sh, tests-linux.yml, the
 #          installed pre-push hook) working unchanged. pii-scrubber's resolution
 #          order now prefers the bundled ${CLAUDE_PLUGIN_ROOT} copy first.
-version: 0.3.0
+# 0.3.1 = check-no-pii.sh scan rewritten to spawn one grep per file (combined
+#          alternation regex) instead of one grep per (file, pattern) pair —
+#          fixes a 9.4x Windows-vs-Mac slowdown from per-file subprocess-spawn
+#          overhead under Git-Bash/MSYS2 (PLAN-ci-walltime-diet task 1).
+#          Detection behavior unchanged — verified byte-identical findings on
+#          the full repo tree + the planted-fixture catch-rate suite.
+version: 0.3.1
