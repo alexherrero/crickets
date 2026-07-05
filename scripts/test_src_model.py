@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import shutil
 import sys
 import tempfile
 import unittest
@@ -249,6 +250,59 @@ class TestSrcModel(unittest.TestCase):
         self.assertEqual(cr_cmds, {"code-review", "doubt", "simplify"})
         wm_cmds = {p.name for p in by["wiki-maintenance"].primitives if p.kind == "command"}
         self.assertEqual(wm_cmds, {"recent-wiki-changes", "wiki-watch", "wiki-init"})
+
+
+class TestBundleIgnore(unittest.TestCase):
+    """R2.1 / cricketsBuild#3: a stray `.harness/` under a group's `scripts/`
+    (or `templates/`) asset root must never leak into the emitted dist/."""
+
+    def _fixture_group(self, root: Path) -> "src_model.Group":
+        manifest = root / "fixture" / "group.yaml"
+        manifest.parent.mkdir(parents=True, exist_ok=True)
+        manifest.write_text("name: F\ndescription: d\nstandalone: true\n", encoding="utf-8")
+        return src_model.Group(
+            slug="fixture", name="F", description="d", category="Coding",
+            requires=[], standalone=True, manifest=manifest,
+        )
+
+    def test_planted_harness_dir_reproduces_the_gap_without_the_fix(self) -> None:
+        # Direct reproduction of the pre-fix gap: bundle_ignore()'s patterns
+        # alone (not the .harness fix) let a .harness/ dir through.
+        old_patterns = shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            src_scripts = root / "fixture" / "scripts"
+            (src_scripts / ".harness").mkdir(parents=True)
+            (src_scripts / ".harness" / "PLAN.md").write_text("x", encoding="utf-8")
+            (src_scripts / "real.py").write_text("x", encoding="utf-8")
+            dest = root / "dist-fixture"
+            shutil.copytree(src_scripts, dest, ignore=old_patterns)
+            self.assertTrue((dest / ".harness").exists(), "reproduction fixture is wrong — .harness should leak pre-fix")
+
+    def test_planted_harness_dir_excluded_after_the_fix(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            group = self._fixture_group(root)
+            src_scripts = root / "fixture" / "scripts"
+            (src_scripts / ".harness").mkdir(parents=True)
+            (src_scripts / ".harness" / "PLAN.md").write_text("x", encoding="utf-8")
+            (src_scripts / "real.py").write_text("x", encoding="utf-8")
+            plugin_dir = root / "dist" / "fixture"
+            src_model.copy_group_scripts(group, plugin_dir)
+            self.assertFalse((plugin_dir / "scripts" / ".harness").exists())
+            self.assertTrue((plugin_dir / "scripts" / "real.py").exists())
+
+    def test_planted_harness_dir_excluded_from_templates_too(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            group = self._fixture_group(root)
+            src_templates = root / "fixture" / "templates"
+            (src_templates / ".harness").mkdir(parents=True)
+            (src_templates / "real.md").write_text("x", encoding="utf-8")
+            plugin_dir = root / "dist" / "fixture"
+            src_model.copy_group_templates(group, plugin_dir)
+            self.assertFalse((plugin_dir / "templates" / ".harness").exists())
+            self.assertTrue((plugin_dir / "templates" / "real.md").exists())
 
 
 if __name__ == "__main__":

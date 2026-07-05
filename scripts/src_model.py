@@ -171,7 +171,11 @@ class Group:
 # it a factory avoids any shared-state surprise).
 def bundle_ignore():
     """The `ignore=` filter shared by all bundled-asset copytrees."""
-    return shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store")
+    # `.harness` (R2.1 / cricketsBuild#3): a plan-in-progress can leave a
+    # `.harness/` under a group's `scripts/`/`templates/` asset root — it's
+    # in .gitignore, but a bare copytree doesn't consult .gitignore, so
+    # without this it would leak into the emitted dist/ payload.
+    return shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store", ".harness")
 
 
 def copy_group_scripts(group: "Group", plugin_dir: Path) -> None:
