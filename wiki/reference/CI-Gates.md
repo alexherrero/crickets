@@ -3,6 +3,8 @@
 
 "Is it green" has one answer in crickets: the local gate battery passes. This page lists every gate in it, the CI matrix that mirrors it, and where to look when one fails.
 
+A push whose full diff is confined to `wiki/**` and/or `*.md` files skips the CI matrix entirely (`paths-ignore` on each workflow's `push`/`pull_request` triggers) — a diff mixing even one non-doc file with any number of doc files still runs it in full.
+
 ## ⚡ Quick Reference
 
 One command runs every deterministic gate locally:
