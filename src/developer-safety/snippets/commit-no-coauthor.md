@@ -2,7 +2,7 @@
 name: commit-no-coauthor
 description: Never append a Co-Authored-By trailer naming the agent or model to commit messages — the user is the sole author of intent.
 kind: snippet
-supported_hosts: [claude-code, antigravity]
+supported_hosts: [antigravity]
 version: 0.1.0
 install_scope: project
 ---

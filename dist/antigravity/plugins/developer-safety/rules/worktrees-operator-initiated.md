@@ -2,7 +2,7 @@
 name: worktrees-operator-initiated
 description: Git worktrees are a first-class workflow, but always operator-initiated — never spawn one autonomously; work on the current branch unless the operator hands you a worktree (e.g. via /spawn-worker).
 kind: snippet
-supported_hosts: [claude-code, antigravity]
+supported_hosts: [antigravity]
 version: 0.2.0
 install_scope: project
 ---

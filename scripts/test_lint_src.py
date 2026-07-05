@@ -52,9 +52,29 @@ class TestLintSrc(unittest.TestCase):
         (d / "SKILL.md").write_text(f"---\n{fm}\n---\n# {name}\n", encoding="utf-8")
         return d
 
+    def _snippet(self, group, name, *, hosts="[claude-code, antigravity]"):
+        d = self.src / group / "snippets"
+        d.mkdir(parents=True, exist_ok=True)
+        fm = f"name: {name}\ndescription: d\nkind: snippet\nsupported_hosts: {hosts}"
+        (d / f"{name}.md").write_text(f"---\n{fm}\n---\n# {name}\n", encoding="utf-8")
+        return d
+
     def test_valid_tree_passes(self):
         self._group("developer", standalone=True, requires=[])
         self._skill("developer", "foo")
+        self.assertEqual(lint_src.lint_tree(self.src), [])
+
+    def test_kind_host_expressibility_fails_when_emitter_drops_the_kind(self):
+        # kind=snippet, claude-code — src_model.KIND_HOST_EXPRESSIBLE says
+        # emit_claude.py has no instruction-file primitive for `snippet`.
+        self._group("developer", standalone=True, requires=[])
+        self._snippet("developer", "foo", hosts="[claude-code]")
+        errs = lint_src.lint_tree(self.src)
+        self.assertTrue(any("drops this kind on the floor" in e for e in errs), errs)
+
+    def test_kind_host_expressibility_passes_for_the_host_that_supports_it(self):
+        self._group("developer", standalone=True, requires=[])
+        self._snippet("developer", "foo", hosts="[antigravity]")
         self.assertEqual(lint_src.lint_tree(self.src), [])
 
     def test_missing_standalone_fails(self):

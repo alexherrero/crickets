@@ -11,7 +11,9 @@ Emits, per group, an Antigravity plugin under `dist/antigravity/plugins/<slug>/`
     under hooks/<name>/. Events with no AG equivalent (SessionStart /
     UserPromptSubmit) are skipped (the gap).
   - `mcp_config.json` merged from mcp-server primitives.
-  - `rules/` — snippets emit here (AG *can* ship instruction files, unlike Claude).
+  - `rules/` — snippet/rule/output-style primitives all emit here (AG *can*
+    ship instruction files, unlike Claude; output-style prose has no distinct
+    AG mechanism so it folds into the same standing-instruction surface).
 And one `.agents/plugins/marketplace.json` (AG marketplace shape) per host root.
 
 Only `antigravity`-supporting primitives are emitted. Registered via
@@ -73,8 +75,15 @@ class AntigravityEmitter(HostEmitter):
                 self._copy_component(prim, plugin_dir / _COMPONENT_SUBDIR[kind])
             elif kind == "hook":
                 self._emit_hook(prim, plugin_dir, ag_hooks)
-            elif kind == "snippet":
-                self._copy_component(prim, plugin_dir / "rules")  # AG ships rules/
+            elif kind in ("snippet", "rule", "output-style"):
+                # AG ships rules/ (unlike Claude) — snippet/rule are already
+                # instruction-file content, and output-style prose ("silence
+                # inter-tool chatter…") is functionally the same kind of
+                # standing instruction; AG has no distinct output-style
+                # mechanism, so it folds in here rather than getting dropped
+                # (cricketsBuild#1 — supported_hosts claimed antigravity for
+                # these kinds but the emitter dropped them on the floor).
+                self._copy_component(prim, plugin_dir / "rules")
             elif kind == "mcp-server":
                 self._merge_mcp(prim, mcp_servers)
             else:

@@ -24,6 +24,10 @@ primitive frontmatter:
   - required: `name`, `description`, `kind`, `supported_hosts`.
   - `kind` in the enum and matches the primitive's `<kind>/` folder.
   - `supported_hosts` a non-empty subset of {claude-code, antigravity}.
+  - kind×host expressibility (R2.1 / cricketsBuild#1): every host named in
+    `supported_hosts` must actually turn that `kind` into real emitted output
+    (`KIND_HOST_EXPRESSIBLE` in `src_model.py`) — catches a primitive
+    overstating support for a host whose emitter silently drops its kind.
   - `name` matches the primitive's dir (skill/hook) or file stem (agent).
 
 Run: `python3 scripts/lint_src.py`
@@ -47,6 +51,7 @@ except ImportError:  # graceful-skip when PyYAML is absent
 from src_model import (  # noqa: E402  (after the yaml guard by design)
     HOST_ENUM,
     KIND_ENUM,
+    KIND_HOST_EXPRESSIBLE,
     KNOWN_KIND_DIRS,
     PRIMITIVE_KINDS,
     read_frontmatter,
@@ -191,6 +196,15 @@ def lint_tree(src: Path) -> list[str]:
                     bad = set(hosts) - HOST_ENUM
                     if bad:
                         err(path, f"'supported_hosts' has unknown host(s) {sorted(bad)}", _line_of(path, "supported_hosts"))
+                    expressible = KIND_HOST_EXPRESSIBLE.get(kind, frozenset())
+                    unexpressible = set(hosts) - bad - expressible
+                    if unexpressible:
+                        err(path,
+                            f"'supported_hosts' claims {sorted(unexpressible)} for kind {kind!r}, "
+                            f"but that host's emitter drops this kind on the floor "
+                            f"(KIND_HOST_EXPRESSIBLE in src_model.py) — either add real "
+                            f"emission for it, or drop the host from supported_hosts",
+                            _line_of(path, "supported_hosts"))
             expected = name_of(path)
             if fm.get("name") and fm["name"] != expected:
                 err(path, f"'name' is {fm['name']!r} but the primitive is named {expected!r}", _line_of(path, "name"))

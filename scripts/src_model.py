@@ -32,6 +32,26 @@ PRIMITIVE_KINDS = {
     "rule": ("rules/*.md", lambda p: p.stem),
     "snippet": ("snippets/*.md", lambda p: p.stem),
 }
+# kind -> the hosts whose emitter actually turns that kind into real output
+# (R2.1 / cricketsBuild#1). A primitive's `supported_hosts:` frontmatter is a
+# CLAIM; this table is the corresponding fact, read from each emitter's own
+# dispatch (scripts/emit_claude.py, scripts/emit_antigravity.py). Kept in
+# sync manually — when an emitter's dispatch gains or drops a kind for a
+# host, update this table in the same change; `lint_src.py` fails a primitive
+# whose `supported_hosts` names a host not listed here for its kind.
+KIND_HOST_EXPRESSIBLE: dict[str, frozenset[str]] = {
+    "skill": frozenset({"claude-code", "antigravity"}),
+    "agent": frozenset({"claude-code", "antigravity"}),
+    "command": frozenset({"claude-code", "antigravity"}),
+    "hook": frozenset({"claude-code", "antigravity"}),
+    "mcp-server": frozenset({"claude-code", "antigravity"}),
+    "output-style": frozenset({"claude-code", "antigravity"}),
+    "rule": frozenset({"claude-code", "antigravity"}),
+    # emit_claude.py explicitly drops snippet ("Claude has no instruction-file
+    # primitive") — a deliberate, logged coverage gap, not a bug.
+    "snippet": frozenset({"antigravity"}),
+}
+
 KNOWN_KIND_DIRS = {"skills", "hooks", "agents", "commands", "snippets", "mcp", "output-styles", "rules", "scripts", "templates"}
 # `scripts/` and `templates/` are NOT primitive kinds — they're group-level asset
 # dirs copied verbatim into the emitted plugin (e.g. code-review's cross-review.sh;

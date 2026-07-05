@@ -30,4 +30,10 @@ capabilities: [recoverability]
 # request — is expected, not an exception. Snippet file + `name:` renamed to stay
 # matched; behavior for a session with no operator worktree request is unchanged.
 # 0.3.1 = declare capabilities: [recoverability] (AG Phase-2 capability-declaration hygiene).
-version: 0.3.2
+# 0.3.3 = commit-no-coauthor and worktrees-operator-initiated corrected
+# supported_hosts to [antigravity] only (R2.1 / cricketsBuild#1's kind×host
+# expressibility lint caught both claiming claude-code for kind: snippet,
+# which emit_claude.py has always dropped ("Claude has no instruction-file
+# primitive"). Claude Code users of this plugin never received this content;
+# this stops the false claim, it does not add a new emission path.
+version: 0.3.3
