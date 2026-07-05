@@ -15,8 +15,9 @@ PreToolUse JSON input on stdin. Behavior by tool name:
   other  → exit 0 (no-op)
 
 State lives at `<project-root>/.harness/.evidence-reads` (JSON, per-task
-file-path lists; gitignored; atomic write). Reset on `/work` session start
-per the harness `/work` spec §5b.
+file-path lists; gitignored; atomic write). Reset at each task boundary —
+the developer-workflows `/work` spec's step 9.5, graceful-skip if this
+plugin isn't installed.
 
 Evidence requirement per task (HYBRID):
   - HEURISTIC by default: file under tests/ or spec/, matches *.spec.* /
@@ -36,7 +37,9 @@ CLI:
 
 `reset` clears the state file (called by harness /work at session start).
 
-`self-test` runs the embedded unittest suite (32 tests).
+`self-test` runs the embedded unittest suite (61 tests) — also wired into
+`check-all.sh` directly so it's part of the standard battery, not just
+reachable via this CLI flag.
 """
 from __future__ import annotations
 
@@ -59,6 +62,15 @@ from typing import Optional
 
 _PLAN_REL = (".harness", "PLAN.md")
 _STATE_REL = (".harness", ".evidence-reads")
+
+# A named plan (dw 0.3.0's resolve_plan.py multi-plan contract) writes
+# .harness/PLAN-<slug>.md, never just the singleton PLAN.md — code-review has
+# no hard dependency on developer-workflows (standalone: true, requires: []),
+# so this mirrors the naming convention rather than importing the resolver.
+_PLAN_BASENAME_RE = re.compile(r"^PLAN(-[A-Za-z0-9][\w-]*)?\.md$")
+# The seam can redirect .harness/ to a vault-resident _harness/ (backend-
+# routed storage) — either dirname names a plan-holding directory.
+_HARNESS_DIRNAMES = frozenset({".harness", "_harness"})
 
 # Code-file extensions that count toward heuristic match. Markdown deliberately
 # excluded — tests/README.md should NOT satisfy evidence for a coding task.
@@ -412,33 +424,54 @@ def check_evidence_met(
 # would_flip_checkbox — detect Write/Edit ops that change [ ] to [x]
 # -----------------------------------------------------------------------------
 
-def would_flip_checkbox(
-    plan_path: Path,
-    tool_name: str,
-    tool_input: dict,
-) -> Optional[int]:
-    """If the tool op would flip a PLAN.md task's `[ ]` → `[x]`, return the
-    task id. Else None.
+def _is_plan_target(target_norm: str) -> bool:
+    """True if `target_norm` (already `normalize_path()`-processed) names a
+    `PLAN.md` / `PLAN-<slug>.md` file directly under a `.harness/` (or a
+    seam-resolved `_harness/`) directory — the singleton OR any named plan,
+    not just the singleton (cricketsPluginsA#3)."""
+    p = PurePosixPath(target_norm)
+    return p.parent.name in _HARNESS_DIRNAMES and bool(_PLAN_BASENAME_RE.match(p.name))
 
-    Handles Write (full content replace) and Edit (old_string → new_string).
+
+def resolve_plan_target(plan_path_hint: Path, tool_input: dict) -> Optional[Path]:
+    """Resolve the plan file a Write/Edit's `tool_input` actually targets, or
+    `None` if the target isn't a plan file at all.
+
+    `plan_path_hint` (the caller's singleton-convention path,
+    `<project_root>/.harness/PLAN.md`) anchors a *relative* target's project
+    root via its own `parent.parent` — it is never used as the file to read.
+    An *absolute* target (e.g. a vault-redirected `_harness/` path) resolves
+    on its own, so a named plan living outside the repo checkout still works.
     """
     target = tool_input.get("file_path") or tool_input.get("path") or ""
     if not target:
         return None
     target_norm = normalize_path(target)
-    plan_norm = normalize_path(str(plan_path))
-    # Match by suffix or exact — agents may pass absolute or relative paths.
-    if not (target_norm == plan_norm or target_norm.endswith("/" + plan_norm)
-            or plan_norm.endswith("/" + target_norm)
-            or PurePosixPath(target_norm).name == PurePosixPath(plan_norm).name
-            and target_norm.endswith(plan_norm)):
-        # Also allow plain ".harness/PLAN.md" relative target.
-        if not (target_norm.endswith(".harness/PLAN.md")
-                or target_norm == "PLAN.md"):
-            return None
+    if not _is_plan_target(target_norm):
+        return None
+    if Path(target_norm).is_absolute():
+        return Path(target_norm)
+    return plan_path_hint.parent.parent / target_norm
 
-    # Parse current PLAN.md.
-    current_tasks = parse_plan(plan_path)
+
+def would_flip_checkbox(
+    plan_path: Path,
+    tool_name: str,
+    tool_input: dict,
+) -> Optional[int]:
+    """If the tool op would flip a plan task's `[ ]` → `[x]`, return the
+    task id. Else None. Recognizes the singleton `.harness/PLAN.md` AND any
+    named `.harness/PLAN-<slug>.md` (see `resolve_plan_target`).
+
+    Handles Write (full content replace) and Edit (old_string → new_string).
+    """
+    actual_plan_path = resolve_plan_target(plan_path, tool_input)
+    if actual_plan_path is None:
+        return None
+
+    # Parse the plan file actually being written — not necessarily the
+    # caller's singleton `plan_path` hint.
+    current_tasks = parse_plan(actual_plan_path)
     current_states = {t.id: t.checkbox for t in current_tasks}
 
     if tool_name == "Write":
@@ -464,9 +497,9 @@ def would_flip_checkbox(
         if not (old_has_unchecked and new_has_checked):
             return None
         # Attribute to the task whose old_string appears in the current
-        # PLAN.md just after the H3 task header.
+        # plan file just after the H3 task header.
         try:
-            plan_text = plan_path.read_text(encoding="utf-8")
+            plan_text = actual_plan_path.read_text(encoding="utf-8")
         except OSError:
             return None
         idx = plan_text.find(old_str)
@@ -550,8 +583,10 @@ def cli_check(stdin_text: str, project_root: Path) -> int:
         flipped_id = would_flip_checkbox(plan_path, tool_name, tool_input)
         if flipped_id is None:
             return 0
-        # Determine the task + its requirement.
-        tasks = parse_plan(plan_path)
+        # Determine the task + its requirement — from the plan file actually
+        # being written (named or singleton), same derivation as above.
+        actual_plan_path = resolve_plan_target(plan_path, tool_input)
+        tasks = parse_plan(actual_plan_path)
         task = next((t for t in tasks if t.id == flipped_id), None)
         if task is None:
             # Edge case — task not parseable. Fail open.
@@ -1134,6 +1169,96 @@ class TestCLI(unittest.TestCase):
     def test_malformed_json_fails_open(self) -> None:
         rc = cli_check("{not json", self.root)
         self.assertEqual(rc, 0)
+
+
+class TestNamedPlanAwareness(unittest.TestCase):
+    """cricketsPluginsA#3: the flagship default-FAIL contract must fire on a
+    NAMED plan (`.harness/PLAN-<slug>.md`, dw 0.3.0's multi-plan contract —
+    the default path every worker/named-plan `/work` session actually uses),
+    not just the singleton `.harness/PLAN.md` this hook was pinned to."""
+
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        (self.root / ".harness").mkdir()
+        (self.root / "tests").mkdir()
+        (self.root / "tests" / "foo.py").write_text("# fixture", encoding="utf-8")
+        self.named_plan_path = self.root / ".harness" / "PLAN-my-feature.md"
+        self.named_plan_path.write_text(
+            "# Plan\n\n## Tasks\n\n"
+            "### 1. Task with heuristic\n"
+            "- **Verification:** tests/foo.py passes\n"
+            "- **Status:** [ ]\n",
+            encoding="utf-8",
+        )
+
+    def tearDown(self) -> None:
+        self.tmp.cleanup()
+
+    def _check(self, event: dict) -> int:
+        return cli_check(json.dumps(event), self.root)
+
+    def test_resolve_plan_target_accepts_named_plan(self) -> None:
+        plan_path_hint = self.root / ".harness" / "PLAN.md"  # the caller's singleton hint
+        resolved = resolve_plan_target(plan_path_hint, {"file_path": str(self.named_plan_path)})
+        self.assertEqual(resolved, self.named_plan_path)
+
+    def test_resolve_plan_target_rejects_non_plan_file(self) -> None:
+        plan_path_hint = self.root / ".harness" / "PLAN.md"
+        resolved = resolve_plan_target(plan_path_hint, {"file_path": str(self.root / ".harness" / "progress.md")})
+        self.assertIsNone(resolved)
+
+    def test_named_plan_flip_blocks_without_evidence(self) -> None:
+        # Before the fix, would_flip_checkbox never recognized this target at
+        # all (singleton-pinned match), so this flip silently passed (rc 0) —
+        # the flagship enforcement hook was dead on the default multi-plan path.
+        rc = self._check({
+            "tool_name": "Edit",
+            "tool_input": {
+                "file_path": str(self.named_plan_path),
+                "old_string": "- **Verification:** tests/foo.py passes\n- **Status:** [ ]",
+                "new_string": "- **Verification:** tests/foo.py passes\n- **Status:** [x] — done",
+            },
+        })
+        self.assertEqual(rc, 2, "named-plan flip must block exactly like the singleton case")
+
+    def test_named_plan_flip_allowed_after_read(self) -> None:
+        self._check({"tool_name": "Read", "tool_input": {"file_path": "tests/foo.py"}})
+        rc = self._check({
+            "tool_name": "Edit",
+            "tool_input": {
+                "file_path": str(self.named_plan_path),
+                "old_string": "- **Verification:** tests/foo.py passes\n- **Status:** [ ]",
+                "new_string": "- **Verification:** tests/foo.py passes\n- **Status:** [x] — done",
+            },
+        })
+        self.assertEqual(rc, 0)
+
+
+class TestWorkResetClearsBetweenTaskBoundaries(unittest.TestCase):
+    """The `/work` spec's per-task-boundary reset: after a task's checkbox
+    flips and the session moves on, a fresh task's evidence requirement must
+    not be satisfied by the PREVIOUS task's leftover reads once `--mode reset`
+    runs (the read-before-flip state clears between task boundaries)."""
+
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        (self.root / ".harness").mkdir()
+        self.state_path = self.root / ".harness" / ".evidence-reads"
+
+    def tearDown(self) -> None:
+        self.tmp.cleanup()
+
+    def test_reset_clears_reads_recorded_for_a_completed_task(self) -> None:
+        record_global_read(self.state_path, "tests/task1_evidence.py")
+        state_before = read_state(self.state_path)
+        self.assertIn("tests/task1_evidence.py", state_before.get("0", []))
+
+        reset_state(self.state_path)  # the harness /work spec's task-boundary reset call
+
+        state_after = read_state(self.state_path)
+        self.assertEqual(state_after, {}, "task-boundary reset must clear prior reads")
 
 
 if __name__ == "__main__":

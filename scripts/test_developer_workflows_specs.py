@@ -121,6 +121,15 @@ class TestWorkSpec(_NamedPlanWriterContract, unittest.TestCase):
         self.assertIn("On **exit 1** (unavailable, or no `CLAUDE_PLUGIN_ROOT`) "
                       "skip silently", self.text)
 
+    def test_evidence_tracker_reset_wired_at_task_boundary(self):
+        # cricketsPluginsA#3 (R2.2): the reset call the hook's own docstring
+        # long claimed happened "per the harness /work spec" never actually
+        # existed in this file — locks that the wiring is real, not just
+        # asserted from the other side.
+        self.assertIn(
+            'python3 "${CLAUDE_PLUGIN_ROOT}/../code-review/hooks/evidence-tracker/evidence_tracker.py" --mode reset',
+            self.text)
+
 
 class TestPlanSpec(_NamedPlanWriterContract, unittest.TestCase):
     """`/plan` can author a named PLAN-<slug>.md by consuming resolve_plan.py (T4)."""

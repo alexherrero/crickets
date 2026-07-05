@@ -4,7 +4,9 @@
 #
 #   bash scripts/check-all.sh
 #
-# Mirrors CI's deterministic gates: lint_src · capability-naming · unit tests · generate drift ·
+# Mirrors CI's deterministic gates: lint_src · capability-naming · unit tests ·
+# evidence-tracker self-test (61 embedded tests — the default-FAIL evidence
+# contract, named- and singleton-plan aware) · generate drift ·
 # dist-references (every emitted plugin's relative links + ${CLAUDE_PLUGIN_ROOT}
 # paths resolve inside the emitted tree; grandfathers known pre-existing gaps) ·
 # version bump · check-wiki --strict · check-syntax · hook-parity · check-no-pii ·
@@ -44,6 +46,7 @@ run() {
 run "lint_src"       python3 scripts/lint_src.py
 run "capability naming" python3 scripts/check-capability-naming.py
 run "unit tests"     bash -c "cd scripts && python3 -m unittest discover -p 'test_*.py'"
+run "evidence-tracker self-test" python3 src/code-review/hooks/evidence-tracker/evidence_tracker.py --mode self-test
 run "generate drift" python3 scripts/generate.py check
 run "dist-references" python3 scripts/check-dist-references.py
 run "version bump"   python3 scripts/check-version-bump.py

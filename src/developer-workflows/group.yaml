@@ -308,5 +308,9 @@ enhances:
 # end-to-end against fixtures on the .sh side; the .ps1 twin could not be
 # executed locally (no pwsh on this machine) — relying on the Windows CI
 # leg to catch any syntax issue, noted in progress.md.
-version: 0.29.8
+# 0.29.9 = /work step 9.5: reset the code-review evidence-tracker's
+# per-session read state at each task boundary (graceful-skip if
+# code-review isn't installed) — cricketsPluginsA#3, PLAN-r2-enforcement-
+# and-sync task 1.
+version: 0.29.9
 capabilities: [setup, plan, work, review, release, bugfix, documentation]

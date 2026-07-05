@@ -165,6 +165,10 @@ Check availability: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/find_capability.py" 
 
 One task, one commit, referencing the task. Follow project trailer conventions (check recent `git log`). **Do not add a `Co-Authored-By:` trailer** — the user is the sole author of intent, the agent is the tool. Don't use `--no-verify`; let pre-commit hooks run.
 
+### 9.5. Reset evidence-tracker state (graceful-skip)
+
+If `code-review`'s evidence-tracker is installed (`${CLAUDE_PLUGIN_ROOT}/../code-review/hooks/evidence-tracker/evidence_tracker.py` exists — check by path, no dedicated capability is declared for this), reset its per-session read state now that this task boundary is closed: `python3 "${CLAUDE_PLUGIN_ROOT}/../code-review/hooks/evidence-tracker/evidence_tracker.py" --mode reset`. This clears the read-before-flip state so the **next** task's evidence requirement is never silently satisfied by reads recorded for the task that just finished (cricketsPluginsA#3's reset gap). Silent no-op if the file doesn't exist (code-review not installed) or `CLAUDE_PLUGIN_ROOT` is unset.
+
 ### 10. Sync the task to the GitHub Project board (graceful-skip)
 
 Check availability: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/find_capability.py" board-sync`. On **exit 1** (unavailable, or no `CLAUDE_PLUGIN_ROOT`) skip silently — zero behavior change. On **exit 0** with `.harness/project.json` present and `gh` authed, after the commit:

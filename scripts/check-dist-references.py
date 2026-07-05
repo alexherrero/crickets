@@ -41,8 +41,8 @@ DIST = ROOT / "dist"
 _MD_LINK_RE = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
 _PLUGIN_ROOT_RE = re.compile(r"\$\{CLAUDE_PLUGIN_ROOT\}/([^\s\"'`)]+)")
 
-# (plugin-relative markdown file, dangling target — anchor stripped) pairs
-# found predating this gate (2026-07-04 first run). Two classes:
+# (plugin-relative markdown file, dangling target — anchor stripped) pairs.
+# Three classes:
 #   (a) cricketsPluginsB#3 — documenter.md's normative-source link; the
 #       content fix is PLAN-r2-docs-and-phase-loop R2.4 Task 6's job.
 #   (b) cricketsPluginsA#10 — hook/skill docs linking back to this repo's
@@ -50,10 +50,23 @@ _PLUGIN_ROOT_RE = re.compile(r"\$\{CLAUDE_PLUGIN_ROOT\}/([^\s\"'`)]+)")
 #       resolve once emitted — wiki/ ships in no plugin payload at all, and
 #       the hook cross-references assume a directory layout the plugins
 #       don't share. Real content debt this gate now makes visible; not
-#       this task's job to fix (Task 3 is "the gate that would have caught
-#       it, not the content fix").
-# This list must only shrink as each entry's owning plan lands its fix —
-# never grow; `--strict` ignores it entirely to reproduce the raw failure.
+#       Task 3's job to fix (Task 3 is "the gate that would have caught it,
+#       not the content fix").
+#   (c) a genuine, PERMANENT host boundary: `work.md` (host-agnostic,
+#       emitted to both claude-code and antigravity) references
+#       code-review's evidence-tracker CLI, which is declared
+#       `supported_hosts: [claude-code]` only (`hook.md`) — it is never
+#       emitted on antigravity at all, by design (PLAN-r2-enforcement-
+#       and-sync task 1). The reference resolves correctly in the
+#       claude-code copy (the only host where evidence-tracker, and thus
+#       this instruction, is ever actionable); it is structurally
+#       unreachable in the antigravity copy of the SAME prose, forever —
+#       not a defect a future task will "land a fix" for.
+# This list mostly shrinks as (a)/(b)-class entries' owning plans land their
+# fix; a (c)-class entry (a genuinely permanent host-boundary fact) may be
+# added when equally justified — never as a shortcut to skip fixing a real,
+# fixable gap. `--strict` ignores this list entirely to reproduce the raw
+# failure.
 _KNOWN_VIOLATIONS: frozenset[tuple[str, str]] = frozenset({
     ("wiki-maintenance/agents/documenter.md", "../documentation.md"),
     ("wiki-maintenance/commands/wiki-watch.md", "../../../wiki/reference/Antigravity-Limitations.md"),
@@ -70,6 +83,7 @@ _KNOWN_VIOLATIONS: frozenset[tuple[str, str]] = frozenset({
     ("developer-safety/hooks/kill-switch/hook.md", "../../wiki/how-to/Use-The-Base-Hooks.md"),
     ("developer-safety/hooks/steer/hook.md", "../../wiki/how-to/Use-The-Base-Hooks.md"),
     ("developer-workflows/commands/plan.md", "${CLAUDE_PLUGIN_ROOT}/scripts/check-plan-grounding.py"),
+    ("developer-workflows/commands/work.md", "${CLAUDE_PLUGIN_ROOT}/../code-review/hooks/evidence-tracker/evidence_tracker.py"),
 })
 
 

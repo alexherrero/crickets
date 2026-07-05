@@ -32,6 +32,14 @@ jobs:
         run: python3 scripts/check-capability-naming.py
       - name: Unit tests (scripts/ — lint_src, src_model, generate, …)
         run: cd scripts && python3 -m unittest discover -p 'test_*.py'
+      - name: evidence-tracker self-test (61 embedded tests)
+        # R2.2 / cricketsPluginsA#3 — the flagship default-FAIL evidence
+        # contract was pinned to the singleton .harness/PLAN.md and silently
+        # never fired on a named plan (.harness/PLAN-<slug>.md, the actual
+        # default multi-plan path); now resolves either. Wired here since
+        # this file lives under src/code-review/hooks/, not scripts/, so the
+        # unit-tests discover step above never reaches it.
+        run: python3 src/code-review/hooks/evidence-tracker/evidence_tracker.py --mode self-test
       - name: Generated dist/ in sync with src/ (generate.py check)
         run: python3 scripts/generate.py check
       - name: Emitted plugin references resolve inside their own dist tree (check-dist-references)

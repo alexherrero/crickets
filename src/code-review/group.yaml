@@ -6,7 +6,12 @@ description: Standalone adversarial code review of any diff or PR — the advers
 # security-auditor agent, test-engineer agent.
 # 0.2.1 = declare capabilities: [adversarial-review] so the agentm V5-8 capability
 # resolver can answer "is adversarial-review available?" (LC-5 cutover).
-version: 0.2.2
+# 0.2.2 = (undocumented prior bump)
+# 0.2.3 = evidence-tracker now recognizes a NAMED plan (.harness/PLAN-<slug>.md),
+# not just the singleton .harness/PLAN.md — the default-FAIL contract was
+# silently dead on the multi-plan path every worker/named-plan session
+# actually uses (cricketsPluginsA#3, PLAN-r2-enforcement-and-sync task 1).
+version: 0.2.3
 category: Coding
 requires: []
 standalone: true
