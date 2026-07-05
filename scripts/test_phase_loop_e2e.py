@@ -152,7 +152,10 @@ class TestPhaseLoopEndToEnd(unittest.TestCase):
             branches = _git(repo, "branch", "--list", "worker/" + slug, env=env).stdout
             self.assertIn("worker/" + slug, branches)
             worktree_list = _git(repo, "worktree", "list", env=env).stdout
-            self.assertIn(str(worktree), worktree_list)
+            # `git worktree list` always prints forward slashes, even on
+            # Windows, while str(Path(...)) there renders backslashes —
+            # compare via as_posix() so the substring check is platform-safe.
+            self.assertIn(worktree.as_posix(), worktree_list)
 
             # Stage 3 — the mechanical shape of a completed /work session.
             _do_the_work(worktree, slug, env)
