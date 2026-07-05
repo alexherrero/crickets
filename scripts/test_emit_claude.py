@@ -84,7 +84,8 @@ class TestClaudeEmitter(unittest.TestCase):
         # 0.3.9 = recent-wiki-changes.sh/.ps1 $AGENTM_SCRIPTS_DIR env-override resolver;
         # 0.4.0 = restored documenter.md's normative template source (templates/README.md).
         # 0.5.0 = PLAN-r3-voice-mechanism task 1 — voice-rules.json + rule_pack.py.
-        self.assertEqual(self._plugin_json("wiki-maintenance")["version"], "0.5.0")
+        # 0.5.1 = task 2 calibration — Tier-B thresholds + 2 severity downgrades.
+        self.assertEqual(self._plugin_json("wiki-maintenance")["version"], "0.5.1")
         # 0.3.0 = check-no-pii.sh + templates/hooks/pre-push moved into src/pii/
         # so they actually ship inside the plugin payload (R2.4 task 7).
         # 0.3.1 = check-no-pii.sh scan collapsed to one grep per file (fixes a

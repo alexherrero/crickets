@@ -56,7 +56,14 @@ standalone: true
 # vocabulary lessons, writing-voice.md) plus the research doc's A2/A3/A4 tell
 # catalog, with a vault-side overlay hook; diataxis-author/scripts/rule_pack.py
 # (loader + schema validation + overlay merge) and its test suite.
-version: 0.5.0
+# 0.5.1 = PLAN-r3-voice-mechanism task 2 calibration — voice-rules.json's 4
+# Tier-B metric rules gained real thresholds (calibrated against prose-audit.json's
+# 72 clean pages); the antithesis-comma-not + prior-art-name-drop templates
+# downgraded warning->suggestion after the same calibration pass proved them
+# high-FP at single-occurrence granularity (70+ false hits / a brand-voice
+# false positive respectively). test_rule_pack.py relocated to top-level
+# scripts/ (src/ tests weren't discovered by check-all.sh's unit-tests gate).
+version: 0.5.1
 capabilities: [wiki-maintenance]
 enhances:
   - group: developer-workflows

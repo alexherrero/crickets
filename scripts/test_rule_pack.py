@@ -17,11 +17,14 @@ import unittest
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(_HERE))
+_RULE_PACK_SCRIPTS = (
+    _HERE.parent / "src" / "wiki-maintenance" / "skills" / "diataxis-author" / "scripts"
+)
+sys.path.insert(0, str(_RULE_PACK_SCRIPTS))
 
 import rule_pack  # noqa: E402
 
-_PACK_PATH = _HERE.parent / "style" / "voice-rules.json"
+_PACK_PATH = _RULE_PACK_SCRIPTS.parent / "style" / "voice-rules.json"
 
 
 class TestSchemaValidity(unittest.TestCase):

@@ -76,6 +76,11 @@ jobs:
         # the pre-existing check-wiki gap that let 23 structural errors
         # accumulate in the crickets wiki unnoticed before this gate landed.
         run: python3 src/wiki-maintenance/scripts/check-wiki.py --strict
+      - name: Anti-slop voice gate (check-slop, report-only)
+        # PLAN-r3-voice-mechanism task 2 — report-only in both repos' batteries;
+        # --report forces exit 0 regardless of findings. Linux-only (deterministic
+        # regex gate, no per-OS portability surface).
+        run: python3 scripts/check-slop.py --report wiki
       - name: Developer-safety .sh/.ps1 hook twins stay paired (check-hook-parity)
         # Anti-recurrence guard: a hook's .sh and .ps1 twins must stay
         # behaviorally paired — neither may read a workspace-relative .harness/…
