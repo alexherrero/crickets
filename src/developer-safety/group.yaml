@@ -36,4 +36,9 @@ capabilities: [recoverability]
 # which emit_claude.py has always dropped ("Claude has no instruction-file
 # primitive"). Claude Code users of this plugin never received this content;
 # this stops the false claim, it does not add a new emission path.
-version: 0.3.3
+# 0.3.4 = new scripts/recoverability_classifier.py — the mechanical subset of
+# the recoverability doctrine (ref-delete reachability, tag-publication
+# status, fast-forward-vs-history-rewrite push classification); returns
+# NEEDS_JUDGMENT rather than guessing for anything git can't resolve on its
+# own (PLAN-r2-enforcement-and-sync task 4).
+version: 0.3.4
