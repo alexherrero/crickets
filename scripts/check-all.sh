@@ -5,6 +5,8 @@
 #   bash scripts/check-all.sh
 #
 # Mirrors CI's deterministic gates: lint_src · capability-naming · unit tests · generate drift ·
+# dist-references (every emitted plugin's relative links + ${CLAUDE_PLUGIN_ROOT}
+# paths resolve inside the emitted tree; grandfathers known pre-existing gaps) ·
 # version bump · check-wiki --strict · check-syntax · hook-parity · check-no-pii ·
 # board sync (graceful-skips when no .harness/project.json or no gh) ·
 # tag-reachability (all tags must point to main-reachable commits; graceful-skip
@@ -40,6 +42,7 @@ run "lint_src"       python3 scripts/lint_src.py
 run "capability naming" python3 scripts/check-capability-naming.py
 run "unit tests"     bash -c "cd scripts && python3 -m unittest discover -p 'test_*.py'"
 run "generate drift" python3 scripts/generate.py check
+run "dist-references" python3 scripts/check-dist-references.py
 run "version bump"   python3 scripts/check-version-bump.py
 run "check-wiki"     python3 src/wiki-maintenance/scripts/check-wiki.py --strict
 run "check-syntax"   bash scripts/check-syntax.sh

@@ -34,6 +34,14 @@ jobs:
         run: cd scripts && python3 -m unittest discover -p 'test_*.py'
       - name: Generated dist/ in sync with src/ (generate.py check)
         run: python3 scripts/generate.py check
+      - name: Emitted plugin references resolve inside their own dist tree (check-dist-references)
+        # R2.1 / cricketsPluginsB#3 — every relative markdown link and
+        # ${CLAUDE_PLUGIN_ROOT} path inside an emitted plugin payload must
+        # resolve to a real file, so a user who only installed the plugin
+        # (never checked out this repo) can actually follow it. Grandfathers
+        # known pre-existing gaps (documenter.md's ../documentation.md, the
+        # hook docs' unreachable wiki/ links) until their owning plans land.
+        run: python3 scripts/check-dist-references.py
       - name: Per-plugin version bumped when its src/ content changed
         # Anti-recurrence guard for the per-plugin-semver fix: a plugin whose
         # src/<slug>/** changed must bump its group.yaml `version:`, else
