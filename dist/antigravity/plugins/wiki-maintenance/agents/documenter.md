@@ -171,7 +171,7 @@ Review is adversarial code inspection; doc drift is `/release`'s concern. You ha
 
 ## Templates
 
-Four shapes defined in [`../documentation.md`](../documentation.md#templates):
+Four shapes defined in [`../templates/README.md`](../templates/README.md#templates):
 
 - **Template 1 — "Page":** default for narrative pages under `explanation/` and for reference pages. `#` H1 + summary paragraph + optional `⚡ Quick Reference` + semantic sections.
 - **Template 2 — "Status":** for `explanation/<feature-or-subsystem>.md`. Adds a GitHub-alert status callout (`pending | implemented | deprecated`) + `Intent` / `Design` / `Implementation` / `Notes` sections.
@@ -182,7 +182,7 @@ No YAML front-matter anywhere. Status is carried in GitHub-alert blocks.
 
 ## Stylistic conventions to enforce
 
-See [`../documentation.md`](../documentation.md#stylistic-conventions) for the full list. Highlights:
+See [`../templates/README.md`](../templates/README.md#stylistic-conventions) for the full list. Highlights:
 
 - Tables over bullet lists for comparative info.
 - Diagrams (ASCII or Mermaid) whenever a relationship is clearer drawn than described.

@@ -14,15 +14,12 @@ back to by hand. Extends the existing spec-grep pattern
 `${CLAUDE_PLUGIN_ROOT}` script references) from a single command's prose to
 every emitted markdown file in every plugin.
 
-Multiple dangling references ship today, undetected until this gate:
-`cricketsPluginsB#3` — `wiki-maintenance/agents/documenter.md` links
-`../documentation.md`, which has never existed in this repo. The *content*
-fix lands in `PLAN-r2-docs-and-phase-loop` R2.4 Task 6 — this gate's job is
-catching it, not fixing it. It is grandfathered in `_KNOWN_VIOLATIONS` below
-so this gate can land (and stay wired into `check-all.sh`) without
-retroactively failing the battery on a pre-existing defect a sibling plan
-owns; the grandfather list must only shrink, never grow — `--strict` ignores
-it entirely (used by the regression fixture + to reproduce the raw failure).
+Multiple dangling references shipped undetected until this gate landed;
+`cricketsPluginsB#3` (`documenter.md` -> `../documentation.md`, a file that
+never existed in this repo) was fixed in `PLAN-r2-docs-and-phase-loop` R2.4
+Task 6 and removed from `_KNOWN_VIOLATIONS` below. The grandfather list must
+only shrink, never grow — `--strict` ignores it entirely (used by the
+regression fixture + to reproduce the raw failure).
 
 Exit 0 clean (including grandfathered violations under default mode), 1 on
 any non-grandfathered dangling reference (or `--strict` finds any at all),
@@ -42,9 +39,7 @@ _MD_LINK_RE = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
 _PLUGIN_ROOT_RE = re.compile(r"\$\{CLAUDE_PLUGIN_ROOT\}/([^\s\"'`)]+)")
 
 # (plugin-relative markdown file, dangling target — anchor stripped) pairs.
-# Three classes:
-#   (a) cricketsPluginsB#3 — documenter.md's normative-source link; the
-#       content fix is PLAN-r2-docs-and-phase-loop R2.4 Task 6's job.
+# Two remaining classes ((a) cricketsPluginsB#3 was fixed + removed 2026-07-05):
 #   (b) cricketsPluginsA#10 — hook/skill docs linking back to this repo's
 #       wiki/ (or a cross-plugin doc) with a relative path that can never
 #       resolve once emitted — wiki/ ships in no plugin payload at all, and
@@ -68,7 +63,6 @@ _PLUGIN_ROOT_RE = re.compile(r"\$\{CLAUDE_PLUGIN_ROOT\}/([^\s\"'`)]+)")
 # fixable gap. `--strict` ignores this list entirely to reproduce the raw
 # failure.
 _KNOWN_VIOLATIONS: frozenset[tuple[str, str]] = frozenset({
-    ("wiki-maintenance/agents/documenter.md", "../documentation.md"),
     ("wiki-maintenance/commands/wiki-watch.md", "../../../wiki/reference/Antigravity-Limitations.md"),
     ("wiki-maintenance/commands/wiki-watch.md", "../../../wiki/reference/Wiki-Watch-Config.md"),
     ("wiki-maintenance/skills/diataxis-author/SKILL.md", "../memory/SKILL.md"),

@@ -95,9 +95,10 @@ class TestFindDanglingReferences(unittest.TestCase):
         self.assertEqual(findings, [])
 
     def test_known_violation_is_marked_grandfathered(self) -> None:
-        # Mirror the real cricketsPluginsB#3 grandfathered pair exactly.
-        _write(self.dist / "claude-code" / "plugins" / "wiki-maintenance" / "agents" / "documenter.md",
-               "See [here](../documentation.md#templates).\n")
+        # Mirror a real remaining grandfathered pair exactly (cricketsPluginsB#3's
+        # documenter.md -> ../documentation.md pair was fixed + removed 2026-07-05).
+        _write(self.dist / "claude-code" / "plugins" / "code-review" / "hooks" / "evidence-tracker" / "hook.md",
+               "See [here](../kill-switch/hook.md).\n")
         findings = cdr.find_dangling_references(self.dist)
         self.assertEqual(len(findings), 1)
         self.assertTrue(findings[0]["grandfathered"])
@@ -123,8 +124,8 @@ class TestMainExitCodes(unittest.TestCase):
         self.assertEqual(cdr.main(["--dist-root", str(self.dist)]), 1)
 
     def test_grandfathered_only_exits_0_in_default_mode_but_1_in_strict(self) -> None:
-        _write(self.dist / "claude-code" / "plugins" / "wiki-maintenance" / "agents" / "documenter.md",
-               "[x](../documentation.md#templates)\n")
+        _write(self.dist / "claude-code" / "plugins" / "code-review" / "hooks" / "evidence-tracker" / "hook.md",
+               "[x](../kill-switch/hook.md)\n")
         self.assertEqual(cdr.main(["--dist-root", str(self.dist)]), 0)
         self.assertEqual(cdr.main(["--dist-root", str(self.dist), "--strict"]), 1)
 

@@ -81,8 +81,9 @@ class TestClaudeEmitter(unittest.TestCase):
         # folder), SKILL.md Status rewritten to as-built, duplicate stub repair section dropped;
         # 0.3.8 = SKILL.md's absolute example paths -> repo-relative; SKILL.md's + diataxis-
         # evaluator.md's "ADR 0004" citations repointed to the crickets-conventions design;
-        # 0.3.9 = recent-wiki-changes.sh/.ps1 $AGENTM_SCRIPTS_DIR env-override resolver.
-        self.assertEqual(self._plugin_json("wiki-maintenance")["version"], "0.3.9")
+        # 0.3.9 = recent-wiki-changes.sh/.ps1 $AGENTM_SCRIPTS_DIR env-override resolver;
+        # 0.4.0 = restored documenter.md's normative template source (templates/README.md).
+        self.assertEqual(self._plugin_json("wiki-maintenance")["version"], "0.4.0")
         self.assertEqual(self._plugin_json("pii")["version"], "0.2.1")  # 0.2.1 = capabilities: [privacy]
 
     def test_dependencies_from_requires(self):

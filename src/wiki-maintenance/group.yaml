@@ -46,7 +46,11 @@ standalone: true
 # locating agentm's kernel scripts (agentm_config.py / repo_registry.py) — the dist
 # copy ships neither file nor a lib/ fallback dir, so the command was dead on arrival
 # in every distribution form; mirrors wiki_watch_config.py's find_agentm_script.
-version: 0.3.9
+# 0.4.0 = restored documenter.md's normative template source — ../documentation.md
+# never existed in this repo; added templates/README.md (Templates + Stylistic
+# conventions, restored from agentm's harness/documentation.md predecessor, which
+# this plugin subsumed) and repointed documenter.md's two links to it.
+version: 0.4.0
 capabilities: [wiki-maintenance]
 enhances:
   - group: developer-workflows
