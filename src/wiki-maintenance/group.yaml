@@ -50,7 +50,13 @@ standalone: true
 # never existed in this repo; added templates/README.md (Templates + Stylistic
 # conventions, restored from agentm's harness/documentation.md predecessor, which
 # this plugin subsumed) and repointed documenter.md's two links to it.
-version: 0.4.0
+# 0.5.0 = PLAN-r3-voice-mechanism task 1 — diataxis-author/style/voice-rules.json,
+# the versioned rule pack collapsing the five drifting banned-vocabulary stores
+# (docs-prose-style.md, base-style-guide.md:54, the user-facing-prose + llm-tell-
+# vocabulary lessons, writing-voice.md) plus the research doc's A2/A3/A4 tell
+# catalog, with a vault-side overlay hook; diataxis-author/scripts/rule_pack.py
+# (loader + schema validation + overlay merge) and its test suite.
+version: 0.5.0
 capabilities: [wiki-maintenance]
 enhances:
   - group: developer-workflows
