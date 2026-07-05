@@ -7,7 +7,11 @@
 # Usage:
 #   pwsh -File scripts\recent-wiki-changes.ps1 [-Repo <slug>] [-Days <N>] [-Limit <N>] [-VaultPath <path>]
 #
-# Env: MEMORY_VAULT_PATH, AGENTM_WIKI_RECENT_DAYS
+# Env: MEMORY_VAULT_PATH, AGENTM_WIKI_RECENT_DAYS, AGENTM_SCRIPTS_DIR (explicit
+# override for locating agentm kernel scripts — agentm_config.py /
+# repo_registry.py — when this script runs from its installed dist location,
+# which ships neither file nor a lib/ fallback dir; mirrors wiki_watch_config.py's
+# find_agentm_script resolver)
 #
 # Built as part of V4 #30 plan 2 task 6.
 
@@ -22,15 +26,38 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+$scriptDir = Split-Path -Parent $PSCommandPath
+
+# Locate an agentm kernel script (mirrors wiki_watch_config.py's
+# find_agentm_script — candidates, first hit wins): $env:AGENTM_SCRIPTS_DIR ->
+# co-located install -> ../lib/install/python/. Returns $null (not found) —
+# the dist-installed plugin ships none of these by default, so an unresolved
+# script is an expected, graceful-skip case, not a crash.
+function Find-AgentmScript {
+    param([string]$Name)
+    if ($env:AGENTM_SCRIPTS_DIR) {
+        $candidate = Join-Path $env:AGENTM_SCRIPTS_DIR $Name
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
+    }
+    $candidate = Join-Path $scriptDir $Name
+    if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
+    $candidate = Join-Path (Join-Path $scriptDir '..') "lib/install/python/$Name"
+    if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
+    return $null
+}
+
 if (-not $VaultPath) { $VaultPath = $env:MEMORY_VAULT_PATH }
 # v4.5.1: fall back to vault_path in .agentm-config.json when env+CLI empty.
 if (-not $VaultPath) {
-    try {
-        $VaultPath = (& python3 (Join-Path $PSScriptRoot 'agentm_config.py') '--get' 'vault_path' 2>$null | Out-String).Trim()
-    } catch { $VaultPath = '' }
+    $agentmConfigPy = Find-AgentmScript 'agentm_config.py'
+    if ($agentmConfigPy) {
+        try {
+            $VaultPath = (& python3 $agentmConfigPy '--get' 'vault_path' 2>$null | Out-String).Trim()
+        } catch { $VaultPath = '' }
+    }
 }
 if (-not $VaultPath -or -not (Test-Path -LiteralPath $VaultPath -PathType Container)) {
-    Write-Output '{"skipped": true, "reason": "MEMORY_VAULT_PATH unset AND no vault_path in .agentm-config.json (or resolved directory missing). Run agentm_config.py --vault-path <path> to set."}'
+    Write-Output '{"skipped": true, "reason": "MEMORY_VAULT_PATH unset AND no vault_path resolved (agentm_config.py unreachable -- set $env:AGENTM_SCRIPTS_DIR if agentm is installed separately from this plugin -- or no vault_path in .agentm-config.json, or resolved directory missing). Run agentm_config.py --vault-path <path> to set."}'
     exit 1
 }
 
@@ -42,13 +69,9 @@ if ($Days -le 0) {
     }
 }
 
-$scriptDir = Split-Path -Parent $PSCommandPath
-$registryPy = Join-Path $scriptDir 'repo_registry.py'
-if (-not (Test-Path $registryPy)) {
-    $registryPy = Join-Path (Join-Path $scriptDir '..') 'lib/install/python/repo_registry.py'
-}
-if (-not (Test-Path $registryPy)) {
-    Write-Error "repo_registry.py not found relative to $scriptDir"
+$registryPy = Find-AgentmScript 'repo_registry.py'
+if (-not $registryPy) {
+    Write-Output "{`"skipped`": true, `"reason`": `"repo_registry.py not found relative to $scriptDir or `$env:AGENTM_SCRIPTS_DIR -- the dist-installed plugin does not bundle the agentm kernel; set `$env:AGENTM_SCRIPTS_DIR to a checkout that has it.`"}"
     exit 1
 }
 

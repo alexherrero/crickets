@@ -23,10 +23,16 @@
 # Env:
 #   MEMORY_VAULT_PATH         vault root (required unless --vault-path passed)
 #   AGENTM_WIKI_RECENT_DAYS   default recent-window in days (default: 7)
+#   AGENTM_SCRIPTS_DIR        explicit override for locating agentm kernel scripts
+#                             (agentm_config.py / repo_registry.py) when this
+#                             script runs from its installed dist location, which
+#                             ships neither file nor a lib/ fallback dir (mirrors
+#                             wiki_watch_config.py's find_agentm_script resolver)
 #
 # Exit:
 #   0  success (may emit 0 rows if no recent changes)
-#   1  vault unavailable / registry empty (graceful-skip with JSON skip marker)
+#   1  vault unavailable / registry empty / agentm kernel scripts unresolved
+#      (graceful-skip with JSON skip marker)
 #   2  argument error
 
 set -euo pipefail
@@ -38,6 +44,29 @@ LIMIT=50
 
 print_help() {
     sed -n '/^# recent-wiki-changes.sh/,/^[^#]/p' "$0" | sed 's|^# \?||' | sed '$d'
+}
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Locate an agentm kernel script (mirrors wiki_watch_config.py's
+# find_agentm_script — candidates, first hit wins):
+#   1. $AGENTM_SCRIPTS_DIR/<name>          (explicit operator override)
+#   2. <this-script-dir>/<name>            (co-located install, e.g. this repo's src/)
+#   3. <this-script-dir>/../lib/install/python/<name>
+# Prints the resolved path and returns 0, or returns 1 with nothing printed —
+# the dist-installed plugin ships none of these by default, so an unresolved
+# script is an expected, graceful-skip case, not a crash.
+_find_agentm_script() {
+    local name="$1" candidate
+    if [[ -n "${AGENTM_SCRIPTS_DIR:-}" ]]; then
+        candidate="${AGENTM_SCRIPTS_DIR%/}/$name"
+        [[ -f "$candidate" ]] && { printf '%s' "$candidate"; return 0; }
+    fi
+    candidate="$SCRIPT_DIR/$name"
+    [[ -f "$candidate" ]] && { printf '%s' "$candidate"; return 0; }
+    candidate="$SCRIPT_DIR/../lib/install/python/$name"
+    [[ -f "$candidate" ]] && { printf '%s' "$candidate"; return 0; }
+    return 1
 }
 
 while [[ $# -gt 0 ]]; do
@@ -76,20 +105,19 @@ done
 # v4.5.1: resolution order: --vault-path CLI → $MEMORY_VAULT_PATH env (set as
 # $VAULT_PATH default above) → vault_path in .agentm-config.json.
 if [[ -z "$VAULT_PATH" ]]; then
-    VAULT_PATH="$(python3 "$(dirname "$0")/agentm_config.py" --get vault_path 2>/dev/null || true)"
+    AGENTM_CONFIG_PY="$(_find_agentm_script agentm_config.py || true)"
+    if [[ -n "$AGENTM_CONFIG_PY" ]]; then
+        VAULT_PATH="$(python3 "$AGENTM_CONFIG_PY" --get vault_path 2>/dev/null || true)"
+    fi
 fi
 if [[ -z "$VAULT_PATH" || ! -d "$VAULT_PATH" ]]; then
-    echo '{"skipped": true, "reason": "MEMORY_VAULT_PATH unset AND no vault_path in .agentm-config.json (or resolved directory missing). Run agentm_config.py --vault-path <path> to set."}'
+    echo '{"skipped": true, "reason": "MEMORY_VAULT_PATH unset AND no vault_path resolved (agentm_config.py unreachable — set $AGENTM_SCRIPTS_DIR if agentm is installed separately from this plugin — or no vault_path in .agentm-config.json, or resolved directory missing). Run agentm_config.py --vault-path <path> to set."}'
     exit 1
 fi
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REGISTRY_PY="$SCRIPT_DIR/repo_registry.py"
-if [[ ! -f "$REGISTRY_PY" ]]; then
-    REGISTRY_PY="$SCRIPT_DIR/../lib/install/python/repo_registry.py"
-fi
-if [[ ! -f "$REGISTRY_PY" ]]; then
-    echo "Error: repo_registry.py not found relative to $SCRIPT_DIR" >&2
+REGISTRY_PY="$(_find_agentm_script repo_registry.py || true)"
+if [[ -z "$REGISTRY_PY" ]]; then
+    echo '{"skipped": true, "reason": "repo_registry.py not found relative to '"$SCRIPT_DIR"' or $AGENTM_SCRIPTS_DIR — the dist-installed plugin does not bundle the agentm kernel; set $AGENTM_SCRIPTS_DIR to a checkout that has it."}'
     exit 1
 fi
 

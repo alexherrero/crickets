@@ -80,8 +80,9 @@ class TestClaudeEmitter(unittest.TestCase):
         # 0.3.7 = diataxis-author tutorial->dir map corrected to how-to (retired tutorials/
         # folder), SKILL.md Status rewritten to as-built, duplicate stub repair section dropped;
         # 0.3.8 = SKILL.md's absolute example paths -> repo-relative; SKILL.md's + diataxis-
-        # evaluator.md's "ADR 0004" citations repointed to the crickets-conventions design.
-        self.assertEqual(self._plugin_json("wiki-maintenance")["version"], "0.3.8")
+        # evaluator.md's "ADR 0004" citations repointed to the crickets-conventions design;
+        # 0.3.9 = recent-wiki-changes.sh/.ps1 $AGENTM_SCRIPTS_DIR env-override resolver.
+        self.assertEqual(self._plugin_json("wiki-maintenance")["version"], "0.3.9")
         self.assertEqual(self._plugin_json("pii")["version"], "0.2.1")  # 0.2.1 = capabilities: [privacy]
 
     def test_dependencies_from_requires(self):
