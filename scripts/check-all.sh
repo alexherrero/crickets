@@ -45,6 +45,7 @@ run() {
 
 run "lint_src"       python3 scripts/lint_src.py
 run "capability naming" python3 scripts/check-capability-naming.py
+run "no-dangling-name" python3 scripts/check-no-dangling-name.py
 # AGENTM_INSTALL_PREFIX + MEMORY_VAULT_PATH: isolate resolve_plan.py's R2.5
 # task 12 vault-mismatch guard from this MACHINE's own ~/.claude/.agentm-config.json
 # — a real operator install can have storage.backend=vault configured and
