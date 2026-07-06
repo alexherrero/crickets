@@ -9,6 +9,7 @@ The `bash scripts/check-all.sh` battery this repo's own [`ci-battery`](../rules/
 | `lint_src` | `src/` tree structural validity — `group.yaml` fields, primitive frontmatter, kind/host expressibility |
 | `capability naming` | declared `capabilities:` names follow the naming convention |
 | `no-dangling-name` | no plugin/capability name is referenced but never declared |
+| `conventions conformance` | a plugin marking `<!-- consults-conventions-domain: X -->` in a command/skill declares `conventions` in `requires:`/`enhances:` |
 | `unit tests` | the full `scripts/test_*.py` suite via `unittest discover` |
 | `evidence-tracker self-test` | the code-review evidence-tracker hook's own self-test |
 | `generate drift` | `dist/` matches what `scripts/generate.py build` would produce from `src/` |

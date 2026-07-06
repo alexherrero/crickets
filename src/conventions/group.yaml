@@ -34,4 +34,9 @@ capabilities: [testing-conventions, releasing-conventions, conventions]
 #          recognized group-level asset dir (like scripts/templates/) in
 #          scripts/src_model.py + both emitters, so it actually ships in
 #          dist/, not just the source tree.
-version: 0.3.0
+# 0.4.0 = PLAN-wave-c-design-and-conventions task 6: the Phase-2 conformance
+#          gate (scripts/check_conventions_conformance.py), wired into
+#          check-all.sh + tests-linux.yml. Checks declaration, not content:
+#          a plugin marking <!-- consults-conventions-domain: X --> in a
+#          command/skill must declare conventions in requires:/enhances:.
+version: 0.4.0

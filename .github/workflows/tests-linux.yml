@@ -57,6 +57,12 @@ jobs:
         # rename mechanism. Permissive of dual-declared old names; only fails on
         # a reference that resolves to nothing.
         run: python3 scripts/check-no-dangling-name.py
+      - name: Conventions Phase-2 conformance gate (check_conventions_conformance)
+        # PLAN-wave-c-design-and-conventions task 6 — a plugin marking
+        # <!-- consults-conventions-domain: X --> in a command/skill must
+        # declare conventions in requires:/enhances:; checks declaration, not
+        # content correctness.
+        run: python3 scripts/check_conventions_conformance.py
       - name: Unit tests (scripts/ — lint_src, src_model, generate, …)
         # AGENTM_INSTALL_PREFIX + MEMORY_VAULT_PATH: isolate resolve_plan.py's
         # R2.5 task 12 vault-mismatch guard from the runner's environment — see
