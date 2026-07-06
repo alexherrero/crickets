@@ -95,7 +95,7 @@ class TestAntigravityEmitter(unittest.TestCase):
         self.assertEqual(set(by),
                          {"code-review", "conventions", "design", "developer-safety",
                           "development-lifecycle", "diagnostics", "github-projects",
-                          "maintenance", "obsidian-vault", "privacy",
+                          "maintenance", "obsidian-vault", "privacy", "research",
                           "tokens", "wiki"})
         # wiki re-categorized Coding → documentation in part 1; rest stay Coding
         expected_category = {"wiki": "documentation"}
