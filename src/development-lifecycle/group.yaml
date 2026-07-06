@@ -369,5 +369,39 @@ enhances:
 #          import — the duplicate-with-drift-test pattern the PR helpers
 #          already use, guarded by a new
 #          test_preflight_reconcile_frontmatter_re_parity.py.
-version: 0.31.1
+# 0.32.0 = worktree-native-flow task 2 (PLAN-worktree-native-flow): `/work`'s
+#          and `/bugfix`'s auto-spawn step now calls the host's own worktree
+#          primitive (Claude Code `EnterWorktree`; Antigravity New-Worktree-
+#          Mode) instead of the bespoke `spawn_worker.py` — new
+#          `worktree_marker.py` carries only what's left once the host owns
+#          creation: the LC-6 pre-flight-reconcile guard, the bare-slug
+#          `.harness/active-plan` marker write, and the LC-2 `vault_project`
+#          divergent-override copy. `/spawn-worker` and `/integrate-worker`
+#          (full operator-facing commands, not thin wrappers) retire entirely
+#          per operator scope decision — the auto-spawn-and-PR flow now covers
+#          both jobs end-to-end; `spawn_worker.py`/`integrate_worker.py` and
+#          their dedicated test files are deleted, along with
+#          `integrate_prepare.py`/`integrate-prepare.sh` (solely
+#          `integrate_worker.py`'s deferred-version-bump helper for its
+#          now-retired local-merge model — this plan's own constraint already
+#          moves version-bumping inline per-task, so nothing is lost) and
+#          `test_phase_loop_e2e.py` (its entire premise was the retired
+#          subprocess-driven spawn→work→integrate chain; a host-tool-driven
+#          worktree step can't be subprocess-simulated the same way — the
+#          plan's live-PR acceptance-gate demo is the new flow's real E2E
+#          proof). `doctor_worktrees.py`'s `import spawn_worker` is stubbed to
+#          an inline constant as a stopgap; its whole detection model is
+#          rewritten against the new convention in task 5.
+# 0.33.0 = worktree-native-flow tasks 3+4: `finalize_unit.py` now takes an
+#          explicit `--branch` (the real branch `EnterWorktree` returned) instead
+#          of re-deriving the retired `worker/<slug>` guess; `/work`'s step 12
+#          passes it through, carries the close-out summary as the PR body, and
+#          keeps the worktree (`ExitWorktree keep`, never `remove` — the branch
+#          has an open PR against it). `pr_helpers.finalize_pr` now arms
+#          `gh pr merge --auto --squash` immediately after `gh pr create`
+#          (non-fatal to the PR-open result if the arm itself fails — a PR that
+#          opened but didn't arm still did its own job). "Allow auto-merge" is
+#          enabled on both agentm + crickets (one-time repo setting, done
+#          alongside this code change, not left as a manual follow-up).
+version: 0.33.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

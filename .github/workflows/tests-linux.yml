@@ -2,21 +2,26 @@ name: "[T] Linux Tests"
 # NOTE: ci-all.yml waits on this workflow by FILENAME (tests-linux.yml). Renaming this
 # file breaks the aggregate + the badge. (scripts/test_ci_consistency.py asserts it.)
 
+# Worktree-native flow (ratified 2026-07-06): the full battery now gates on
+# pull_request, not push to main — main only ever merges a PR whose required
+# checks already passed. pull_request deliberately carries no paths-ignore
+# (a required check that a trigger-level filter can skip would block a
+# docs-only PR's merge forever); the docs/wiki diet returns as a job-level
+# no-op under PLAN-per-plan-ci. push keeps its diet — it now runs only the
+# light `syntax` job below (every other job is pull_request-only).
 on:
   push:
     branches: [main]
     paths-ignore:
       - 'wiki/**'
       - '**/*.md'
-  pull_request:
-    paths-ignore:
-      - 'wiki/**'
-      - '**/*.md'
+  pull_request: {}
 
 jobs:
   validate:
     name: validate
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         # Full history so the version-bump guard can resolve its base ref
@@ -142,6 +147,7 @@ jobs:
   pii-guardrails:
     name: pii-guardrails
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         # gitleaks scans the commit range with `git log <parent>^..<HEAD>` and
@@ -169,6 +175,7 @@ jobs:
     # checkout can't perturb the other gates' scope.
     name: obsidian-vault conformance (vs agentm kernel)
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Check out the sibling agentm kernel

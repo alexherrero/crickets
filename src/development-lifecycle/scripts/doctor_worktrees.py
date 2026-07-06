@@ -50,15 +50,16 @@ import sys
 from pathlib import Path
 from typing import NamedTuple
 
-# `spawn_worker` owns the `worker/<slug>` convention — import it for the single
-# source of truth on the branch prefix rather than re-hardcoding "worker/".
+# TEMPORARY (worktree-native-flow task 2): `spawn_worker.py` — the prior single
+# source of truth for this prefix — is retired. Inlined here as a stopgap so this
+# probe's import doesn't break mid-plan; task 5 rewrites this module's whole
+# detection model against the `EnterWorktree` convention (`.claude/worktrees/`,
+# `worktree-<name>` branches), at which point this constant goes away too.
 _HERE = Path(__file__).resolve().parent
 if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 
-import spawn_worker  # noqa: E402  — owns `_BRANCH_PREFIX`
-
-_PREFIX = spawn_worker._BRANCH_PREFIX  # "worker/"
+_PREFIX = "worker/"
 
 # Status constants (one per worktree; mutually exclusive, precedence-ordered).
 ACTIVE = "active"

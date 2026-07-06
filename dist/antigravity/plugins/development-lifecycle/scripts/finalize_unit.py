@@ -90,6 +90,7 @@ def _pii_guard(repo_root: str) -> bool:
 
 def finalize_unit(
     slug: str, repo_root: str, *,
+    branch: str | None = None,
     title: str | None = None,
     body: str | None = None,
     no_pr: bool = False,
@@ -102,9 +103,18 @@ def finalize_unit(
       1. no_pr=True (command-arg) → direct push, no PR
       2. isolation.integration == 'direct-push' (config) → direct push, no PR
       3. gh unavailable → fall back to direct push + announce the downgrade
-      4. default → push worker/<slug> branch + open PR
+      4. default → push `branch` + open PR (armed for auto-merge)
 
     PII guard runs BEFORE any push (inherited from pr_helpers contract).
+
+    `branch` is the actual branch name the worktree landed on — since the host's
+    own worktree primitive (`EnterWorktree` / New-Worktree-Mode) owns naming now,
+    this is no longer derivable from `slug` alone (it used to be the fixed
+    `worker/<slug>` `spawn_worker.py` always produced). Callers that know the real
+    branch (the `/work` / `/bugfix` auto-spawn flow) MUST pass it. The
+    `worker/<slug>` fallback below only serves callers with no worktree at all
+    (direct mode) or legacy call sites that haven't been updated — the branch name
+    is irrelevant on the direct-push path since `finalize_direct` never reads it.
     """
     config = read_isolation(repo_root)
     # Direct when: explicit --no-pr flag, integration=direct-push, OR mode=direct
@@ -113,8 +123,8 @@ def finalize_unit(
     # on behalf of a non-isolated run).
     use_direct = no_pr or config["integration"] == "direct-push" or config["mode"] == "direct"
 
-    branch = f"{_BRANCH_PREFIX}{slug}"
-    pr_title = title or f"worker/{slug}: plan complete"
+    branch = branch or f"{_BRANCH_PREFIX}{slug}"
+    pr_title = title or f"{branch}: plan complete"
     pr_body = body or f"Automated PR for completed plan unit `{slug}`."
 
     if use_direct:
@@ -139,6 +149,9 @@ def main(argv: list[str]) -> int:
         description="Finalize a completed plan unit (push + PR or fallback to direct push).",
     )
     p.add_argument("slug", help="plan slug (bare, e.g. 'my-plan')")
+    p.add_argument("--branch", default=None,
+                   help="the actual worktree branch name (from EnterWorktree); "
+                        "falls back to the legacy worker/<slug> guess if omitted")
     p.add_argument("--project-root", default=None)
     p.add_argument("--title", default=None)
     p.add_argument("--body", default=None)
@@ -147,7 +160,8 @@ def main(argv: list[str]) -> int:
     ns = p.parse_args(argv[1:])
     root = ns.project_root if ns.project_root is not None else os.getcwd()
 
-    result = finalize_unit(ns.slug, root, title=ns.title, body=ns.body, no_pr=ns.no_pr)
+    result = finalize_unit(ns.slug, root, branch=ns.branch, title=ns.title,
+                           body=ns.body, no_pr=ns.no_pr)
 
     if result.pr_url:
         sys.stdout.write(f"PR opened: {result.pr_url}\n")
