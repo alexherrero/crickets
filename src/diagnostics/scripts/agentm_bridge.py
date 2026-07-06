@@ -18,6 +18,8 @@ _MEMORY_SCRIPTS_REL = Path("harness") / "skills" / "memory" / "scripts"
 
 _recall_module = None
 _loaded = False
+_save_module = None
+_save_loaded = False
 
 
 def _candidate_dirs() -> list[Path]:
@@ -34,6 +36,13 @@ def _candidate_dirs() -> list[Path]:
 def _find_memory_scripts_dir() -> "Path | None":
     for candidate in _candidate_dirs():
         if (candidate / "recall.py").is_file():
+            return candidate
+    return None
+
+
+def _find_save_scripts_dir() -> "Path | None":
+    for candidate in _candidate_dirs():
+        if (candidate / "save.py").is_file():
             return candidate
     return None
 
@@ -69,8 +78,43 @@ def query_semantic(vault: Path, query_text: str, *, filter_expr: str, k: int = 5
     return module.query(vault=vault, query_text=query_text, filter_expr=filter_expr, k=k)
 
 
+def load_save_module():
+    """Return agentm's save module, loaded once and cached. None if agentm
+    is unresolvable."""
+    global _save_module, _save_loaded
+    if _save_loaded:
+        return _save_module
+    _save_loaded = True
+    scripts_dir = _find_save_scripts_dir()
+    if scripts_dir is None:
+        _save_module = None
+        return None
+    _save_module = _load_module("agentm_save_bridge", scripts_dir / "save.py")
+    return _save_module
+
+
+def write_failure_incident(
+    vault: Path, *, slug: str, body: str, project: str, fingerprint: str, tags: list
+) -> Path:
+    """Write a kind="failure-incident" entry via agentm's save_entry(). Unlike
+    query_semantic's graceful empty-list fallback, there is no fallback for a
+    write -- raises RuntimeError if agentm is unresolvable (the mandatory
+    privacy scrub agentm's save_entry runs for this kind cannot be skipped by
+    routing around agentm)."""
+    module = load_save_module()
+    if module is None:
+        raise RuntimeError("agentm is unresolvable -- cannot write a failure-incident entry")
+    group = f"projects/{project}/failure-incident"
+    return module.save_entry(
+        vault, "failure-incident", slug, body,
+        group=group, tags=tags, fingerprint=fingerprint,
+    )
+
+
 def _reset_cache_for_tests() -> None:
     """Test-only: clear the module-level cache between isolated test cases."""
-    global _recall_module, _loaded
+    global _recall_module, _loaded, _save_module, _save_loaded
     _recall_module = None
     _loaded = False
+    _save_module = None
+    _save_loaded = False
