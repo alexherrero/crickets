@@ -110,16 +110,16 @@ get_files() {
 # ── self-skip ─────────────────────────────────────────────────────────────
 SELF_SKIP_PATHS=(
     'scripts/check-no-pii.sh'                # repo-root shim
-    'src/pii/scripts/check-no-pii.sh'        # canonical (R2.4 task 7 — moved into src/pii/)
-    'dist/claude-code/plugins/pii/scripts/check-no-pii.sh'   # generated copy
-    'dist/antigravity/plugins/pii/scripts/check-no-pii.sh'   # AG generated copy
+    'src/privacy/scripts/check-no-pii.sh'    # canonical (R2.4 task 7 — moved into src/pii/; re-pointed to src/privacy/ at the AG Wave A rename 2)
+    'dist/claude-code/plugins/privacy/scripts/check-no-pii.sh'   # generated copy
+    'dist/antigravity/plugins/privacy/scripts/check-no-pii.sh'   # AG generated copy
     '.gitleaks.toml'
-    'src/pii/skills/pii-scrubber/SKILL.md'   # v3.0 SoT copy (example-PII docs)
-    'dist/claude-code/plugins/pii/skills/pii-scrubber/SKILL.md'   # v3.0 generated copy (same example-PII docs)
-    'dist/antigravity/plugins/pii/skills/pii-scrubber/SKILL.md'   # v3.0 AG generated copy (same example-PII docs)
-    'src/pii/templates/hooks/pre-push'       # canonical (R2.4 task 7 — moved into src/pii/)
-    'dist/claude-code/plugins/pii/templates/hooks/pre-push'  # generated copy
-    'dist/antigravity/plugins/pii/templates/hooks/pre-push'  # AG generated copy
+    'src/privacy/skills/pii-scrubber/SKILL.md'   # v3.0 SoT copy (example-PII docs)
+    'dist/claude-code/plugins/privacy/skills/pii-scrubber/SKILL.md'   # v3.0 generated copy (same example-PII docs)
+    'dist/antigravity/plugins/privacy/skills/pii-scrubber/SKILL.md'   # v3.0 AG generated copy (same example-PII docs)
+    'src/privacy/templates/hooks/pre-push'       # canonical (R2.4 task 7 — moved into src/pii/; re-pointed to src/privacy/ at the AG Wave A rename 2)
+    'dist/claude-code/plugins/privacy/templates/hooks/pre-push'  # generated copy
+    'dist/antigravity/plugins/privacy/templates/hooks/pre-push'  # AG generated copy
     'CONTRIBUTING.md'
 )
 

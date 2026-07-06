@@ -75,18 +75,6 @@
     },
     {
       "capabilities": [
-        "ci-repair"
-      ],
-      "dependencies": [
-        "development-lifecycle"
-      ],
-      "description": "CI workflows + dependency-update tooling — the dependabot-fixer skill that repairs breakage on Dependabot PRs.",
-      "name": "github-ci",
-      "source": "./plugins/github-ci",
-      "version": "0.1.2"
-    },
-    {
-      "capabilities": [
         "board-sync"
       ],
       "dependencies": [
@@ -99,6 +87,20 @@
     },
     {
       "capabilities": [
+        "github-ci",
+        "ci-repair",
+        "maintenance"
+      ],
+      "dependencies": [
+        "development-lifecycle"
+      ],
+      "description": "CI workflows + dependency-update tooling — the dependabot-fixer skill that repairs breakage on Dependabot PRs.",
+      "name": "maintenance",
+      "source": "./plugins/maintenance",
+      "version": "0.2.0"
+    },
+    {
+      "capabilities": [
         "storage-backend"
       ],
       "description": "The Obsidian/Google-Drive vault storage backend for the agentm memory engine — re-homed out of the kernel behind the V5-1 storage seam. Ships the `vault` named backend (and, across V5-2, the vault-specific machinery) as an agentm-discovered scripts/ payload.",
@@ -108,12 +110,13 @@
     },
     {
       "capabilities": [
+        "pii",
         "privacy"
       ],
       "description": "Scan diffs and the working tree for personal information (emails, personal paths, API keys, phone numbers) before commit or push.",
-      "name": "pii",
-      "source": "./plugins/pii",
-      "version": "0.3.1"
+      "name": "privacy",
+      "source": "./plugins/privacy",
+      "version": "0.4.0"
     },
     {
       "capabilities": [

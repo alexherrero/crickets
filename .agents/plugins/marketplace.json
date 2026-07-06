@@ -96,24 +96,6 @@
     },
     {
       "capabilities": [
-        "ci-repair"
-      ],
-      "category": "Coding",
-      "name": "github-ci",
-      "policy": {
-        "authentication": "ON_INSTALL",
-        "installation": "AVAILABLE"
-      },
-      "requires": [
-        "development-lifecycle"
-      ],
-      "source": {
-        "path": "./dist/antigravity/plugins/github-ci",
-        "source": "local"
-      }
-    },
-    {
-      "capabilities": [
         "board-sync"
       ],
       "category": "Coding",
@@ -127,6 +109,26 @@
       ],
       "source": {
         "path": "./dist/antigravity/plugins/github-projects",
+        "source": "local"
+      }
+    },
+    {
+      "capabilities": [
+        "github-ci",
+        "ci-repair",
+        "maintenance"
+      ],
+      "category": "Coding",
+      "name": "maintenance",
+      "policy": {
+        "authentication": "ON_INSTALL",
+        "installation": "AVAILABLE"
+      },
+      "requires": [
+        "development-lifecycle"
+      ],
+      "source": {
+        "path": "./dist/antigravity/plugins/maintenance",
         "source": "local"
       }
     },
@@ -147,16 +149,17 @@
     },
     {
       "capabilities": [
+        "pii",
         "privacy"
       ],
       "category": "Coding",
-      "name": "pii",
+      "name": "privacy",
       "policy": {
         "authentication": "ON_INSTALL",
         "installation": "AVAILABLE"
       },
       "source": {
-        "path": "./dist/antigravity/plugins/pii",
+        "path": "./dist/antigravity/plugins/privacy",
         "source": "local"
       }
     },

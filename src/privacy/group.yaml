@@ -1,9 +1,8 @@
-name: PII Guardrail
+name: Privacy
 description: Scan diffs and the working tree for personal information (emails, personal paths, API keys, phone numbers) before commit or push.
 category: Coding
 requires: []
 standalone: true
-capabilities: [privacy]
 # 0.1.0 = initial versioned release (version: field previously absent).
 # 0.2.0 = add pii-patterns rule: proactive stand-in conventions so the
 #          pii-scrubber skill and pre-push hook never have to catch these patterns.
@@ -22,4 +21,11 @@ capabilities: [privacy]
 #          overhead under Git-Bash/MSYS2 (PLAN-ci-walltime-diet task 1).
 #          Detection behavior unchanged — verified byte-identical findings on
 #          the full repo tree + the planted-fixture catch-rate suite.
-version: 0.3.1
+# 0.4.0 = AG Wave A rename 2 (PLAN-wave-a-renames-2 task 2): directory renamed
+#          pii -> privacy. capabilities regains [pii] alongside [privacy] — the
+#          directory move (not just the Phase-2 capability-hygiene pass) is what
+#          this wave dualizes. Skill/script slugs (pii-patterns, pii-scrubber,
+#          pii_scrubber.py) are left unchanged; that primitive-level rename is a
+#          separate naming-hygiene call the design doesn't force.
+version: 0.4.0
+capabilities: [pii, privacy]
