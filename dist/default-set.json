@@ -1,7 +1,7 @@
 {
   "plugins": [
     "code-review",
-    "design-docs",
+    "design",
     "developer-safety",
     "development-lifecycle",
     "github-projects",

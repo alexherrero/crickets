@@ -8,7 +8,7 @@ install_scope: project
 argument-hint: author <slug|brief> (default)  |  translate <slug>  |  sequence <slug>
 ---
 
-You are running the **design** command — the upstream authoring step of the developer-workflows loop. `/design` sits *above* `/plan`: where `/plan` turns a brief into a task list, `/design` walks a human through a real design doc, gates on human approval, splits the approved design into structural parts, and emits one named plan per part for `/work` + `/review` to execute.
+You are running the **design** command — the upstream authoring step of the development-lifecycle loop. `/design` sits *above* `/plan`: where `/plan` turns a brief into a task list, `/design` walks a human through a real design doc, gates on human approval, splits the approved design into structural parts, and emits one named plan per part for `/work` + `/review` to execute.
 
 **Arguments:** $ARGUMENTS
 
@@ -64,9 +64,9 @@ The host-specific external-review handoff (the Antigravity/Gemini transfer-conte
 
 This is a public repo. Never write the vault path or any PII token into a committed file; the helpers resolve confidential paths at runtime so nothing host-specific is baked in.
 
-### Behavioral contract (developer-workflows commands)
+### Behavioral contract (development-lifecycle commands)
 
-When a design covers a developer-workflows command or agent lifecycle step, verify these two checklist items before finalizing:
+When a design covers a development-lifecycle command or agent lifecycle step, verify these two checklist items before finalizing:
 
 1. **Recoverability-gate compliance** — does the command treat invocation as authorization to run to completion? Recoverable actions (push, tag, gh release, create) must proceed announced; only genuinely unrecoverable ones stop. A design step that inserts "summarize and wait" after each recoverable action is a contract defect.
 2. **Close-out autonomy** — are close-out and bookkeeping steps (plan archiving, `progress.md` appends, ROADMAP moves) autonomous — never gated on explicit approval? If a step pauses for confirmation before archiving a completed artifact or writing a log entry, that is a defect.
@@ -310,12 +310,12 @@ parent_part_slug: <the part's part_slug>
 
 ### Step 4 — Write via `stage_plan.py` (first activated, rest queued — never the singleton)
 
-The named-plan name for each part is `<doc-slug>-<part-slug>`. Use the shipped writer; **never** write `PLAN.md` directly.
+The named-plan name for each part is `<doc-slug>-<part-slug>`. Use the shipped writer — cross-plugin, since `stage_plan.py` lives in **development-lifecycle** (a hard `requires:` dependency, always installed alongside this plugin); **never** write `PLAN.md` directly.
 
 - **First part (topo-order):**
-  1. Get the staging path: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/stage_plan.py" path <doc-slug>-<first-part-slug>` → write the PLAN body there.
-  2. Activate it: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/stage_plan.py" activate <doc-slug>-<first-part-slug>` → promotes it to the active `PLAN-<doc-slug>-<first-part-slug>.md`. `activate` is **guarded** — exit 2 if an active plan of that name already exists; surface it, never clobber.
-- **Each remaining part:** get its staging `path` (`stage_plan.py path <doc-slug>-<part-slug>`) and write the PLAN body there — it stays inert in `queued-plans/`, invisible to `/work` until a coordinator activates it.
+  1. Get the staging path: `python3 "${CLAUDE_PLUGIN_ROOT}/../development-lifecycle/scripts/stage_plan.py" path <doc-slug>-<first-part-slug>` → write the PLAN body there.
+  2. Activate it: `python3 "${CLAUDE_PLUGIN_ROOT}/../development-lifecycle/scripts/stage_plan.py" activate <doc-slug>-<first-part-slug>` → promotes it to the active `PLAN-<doc-slug>-<first-part-slug>.md`. `activate` is **guarded** — exit 2 if an active plan of that name already exists; surface it, never clobber.
+- **Each remaining part:** get its staging `path` (`stage_plan.py path <doc-slug>-<part-slug>`, same cross-plugin invocation) and write the PLAN body there — it stays inert in `queued-plans/`, invisible to `/work` until a coordinator activates it.
 
 If a staged or active file already exists on a re-run, show the diff and ask **Overwrite / Keep existing / Cancel** per file — **never silent-clobber** (mirrors translate's Step 5).
 

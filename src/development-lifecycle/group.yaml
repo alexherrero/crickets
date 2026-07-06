@@ -352,5 +352,14 @@ enhances:
 # resolve" via the capability declare (that mechanism only covers runtime
 # capability-name lookups, not the static directory-slug edges lint_src.py
 # checks).
-version: 0.30.0
+# 0.31.0 = AG Wave A rename 2 (PLAN-wave-a-renames-2 task 4): spec.md/
+#          interview-me.md/document-decision.md commands + design_doc.py/
+#          design_sequence.py/design-doc.md template moved OUT to the design
+#          plugin (the /design command family's proper home). This group's own
+#          design.md was the full /design implementation — design's copy was
+#          only a thin delegate stub; the full copy moved to design/commands/
+#          verbatim (self-references repointed) and this group's copy is
+#          deleted. No capability drop: spec/interview-me/document-decision
+#          were never separately declared capabilities of this group.
+version: 0.31.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

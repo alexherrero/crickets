@@ -1,0 +1,8 @@
+{
+  "capabilities": [
+    "design-docs",
+    "design",
+    "architecture"
+  ],
+  "version": "0.2.0"
+}

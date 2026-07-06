@@ -25,15 +25,17 @@
     },
     {
       "capabilities": [
-        "design"
+        "design-docs",
+        "design",
+        "architecture"
       ],
       "dependencies": [
         "development-lifecycle"
       ],
       "description": "Design-doc and ADR authoring — the /design command (author → translate → sequence) and the ADR skill for capturing architectural decisions with re-audit triggers.",
-      "name": "design-docs",
-      "source": "./plugins/design-docs",
-      "version": "0.1.3"
+      "name": "design",
+      "source": "./plugins/design",
+      "version": "0.2.0"
     },
     {
       "capabilities": [
@@ -71,7 +73,7 @@
       ],
       "name": "development-lifecycle",
       "source": "./plugins/development-lifecycle",
-      "version": "0.30.0"
+      "version": "0.31.0"
     },
     {
       "capabilities": [

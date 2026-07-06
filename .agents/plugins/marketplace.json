@@ -28,10 +28,12 @@
     },
     {
       "capabilities": [
-        "design"
+        "design-docs",
+        "design",
+        "architecture"
       ],
       "category": "Coding",
-      "name": "design-docs",
+      "name": "design",
       "policy": {
         "authentication": "ON_INSTALL",
         "installation": "AVAILABLE"
@@ -40,7 +42,7 @@
         "development-lifecycle"
       ],
       "source": {
-        "path": "./dist/antigravity/plugins/design-docs",
+        "path": "./dist/antigravity/plugins/design",
         "source": "local"
       }
     },

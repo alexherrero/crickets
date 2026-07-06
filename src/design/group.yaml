@@ -1,0 +1,23 @@
+name: Design
+description: Design-doc and ADR authoring — the /design command (author → translate → sequence) and the ADR skill for capturing architectural decisions with re-audit triggers.
+category: Coding
+requires: [development-lifecycle]
+standalone: false
+capabilities: [design-docs, design, architecture]
+# 0.1.1 = declare capabilities: [design] (AG Phase-2 capability-declaration hygiene).
+# 0.1.3 = AG Wave A rename 1: requires: [developer-workflows] -> [development-lifecycle]
+#          (the group's directory renamed; both capability names still resolve).
+# 0.2.0 = AG Wave A rename 2 (PLAN-wave-a-renames-2 task 4): directory renamed
+#          design-docs -> design; re-homed development-lifecycle's spec.md/
+#          interview-me.md/document-decision.md commands + design_doc.py/
+#          design_sequence.py/design-doc.md template into this plugin (they
+#          were living in development-lifecycle only because /design predated
+#          this plugin's split). De-duped the two /design command copies —
+#          development-lifecycle's copy was the full implementation,
+#          design-docs' was a thin delegate stub; the full copy now lives here
+#          verbatim (self-referential prose repointed developer-workflows ->
+#          development-lifecycle; stage_plan.py calls repointed cross-plugin
+#          to development-lifecycle, a hard requires: dependency, since that
+#          helper stays there). capabilities dualizes [design-docs, design]
+#          alongside the existing architecture declare.
+version: 0.2.0
