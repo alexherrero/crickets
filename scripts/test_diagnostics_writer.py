@@ -21,25 +21,58 @@ _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
 _SRC = _ROOT / "src" / "diagnostics" / "scripts"
 
-# Snapshot BEFORE any real-bridge activity: agentm's save.py/recall.py insert
-# their own scripts dir onto sys.path (and bare-import siblings like
-# permeable_boundary/vault_lock into sys.modules) as a side effect of being
-# loaded -- a real, process-global mutation that otherwise leaks into whatever
-# test file runs next alphabetically (observed: test_diataxis_capture.py's own
-# permeable_boundary-unavailable expectation broke once this file's real bridge
-# calls had run first in the same process). Restored in tearDownClass.
+# agentm's save.py/recall.py insert their own scripts dir onto sys.path (and
+# bare-import siblings like permeable_boundary/vault_lock into sys.modules) as
+# a side effect of being loaded -- a real, process-global mutation that
+# otherwise leaks into whatever test file runs next alphabetically (observed:
+# test_diataxis_capture.py's own permeable_boundary-unavailable expectation
+# broke once this file's real bridge calls had run first in the same
+# process). Cleaned up in tearDownClass.
 #
-# sys.modules cleanup is filtered by file path (agentm's tree only), not a
-# blanket new-keys diff -- a blanket diff also deletes unrelated modules some
-# OTHER test file happens to bare-import for the first time during this
-# window (observed: test_finalize_unit.py's own `import finalize_unit`,
-# which broke a same-object monkeypatch once purged and re-imported fresh).
-_SYS_PATH_SNAPSHOT = list(sys.path)
+# Both the sys.modules purge AND the sys.path cleanup are filtered by path,
+# not a blanket snapshot-restore -- a blanket restore also reverts sys.path
+# entries some OTHER test module inserted at ITS OWN import time (module
+# imports all happen during `discover`, before any test method runs), which
+# that module then relies on later in a test method (observed:
+# test_obsidian_vault_conformance.py inserts agentm's top-level scripts/ dir
+# at module load so its setUpClass can `import storage_seam` -- a blanket
+# `sys.path[:] = snapshot` here silently stripped that entry back out before
+# that setUpClass ran, breaking it with ModuleNotFoundError). Same reasoning
+# already applies to the sys.modules purge below (a blanket new-keys diff
+# also deletes unrelated modules some OTHER test file happens to bare-import
+# for the first time during this window -- observed: test_finalize_unit.py's
+# own `import finalize_unit`, which broke a same-object monkeypatch once
+# purged and re-imported fresh).
+#
+# The path-marker filter alone still isn't enough for `storage_seam` /
+# `backend_selection`: test_obsidian_vault_conformance.py's own module-load
+# code bare-imports those from agentm's top-level scripts/ dir (caching
+# module objects `backend_selection` binds `registry`/`StorageBackend` to at
+# ITS import time). If this file's purge deletes those sys.modules entries
+# anyway, a later bare `import storage_seam` in that other file's setUpClass
+# re-executes the module from disk into a SECOND, distinct module object --
+# same file, different identity, so `issubclass(plugin_cls, StorageBackend)`
+# there silently fails against the wrong `StorageBackend` class and
+# `_load_vault_plugin_backend` returns None. So the purge additionally
+# excludes any name already cached before this class's own real-bridge
+# activity started (`cls._pre_existing_modules`, snapshotted in setUpClass)
+# -- only names genuinely new since then are agentm-path-purged.
 _AGENTM_PATH_MARKERS = ("/agentm/harness/", "/agentm/scripts/")
+# Narrower than _AGENTM_PATH_MARKERS on purpose: this is the exact dir
+# save.py/recall.py insert onto sys.path -- NOT agentm's top-level scripts/,
+# which other test modules (e.g. test_obsidian_vault_conformance.py) insert
+# themselves and still need.
+_REAL_BRIDGE_SYS_PATH_MARKER = "/agentm/harness/skills/memory/scripts"
 
 
-def _purge_agentm_modules():
+def _purge_real_bridge_sys_path():
+    sys.path[:] = [p for p in sys.path if _REAL_BRIDGE_SYS_PATH_MARKER not in p]
+
+
+def _purge_agentm_modules(pre_existing_names):
     for name, mod in list(sys.modules.items()):
+        if name in pre_existing_names:
+            continue
         f = getattr(mod, "__file__", None)
         if f and any(marker in f for marker in _AGENTM_PATH_MARKERS):
             del sys.modules[name]
@@ -60,6 +93,12 @@ ladder = _load("diagnostics_recall_ladder_for_writer_test", _SRC / "recall_ladde
 class FailureIncidentWriterTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        # Snapshot right before the first real-bridge call -- not at this
+        # file's own import time -- since discovery has already imported
+        # every test module by now, including ones that cached their own
+        # agentm modules earlier and still need them (see the module-level
+        # comment above).
+        cls._pre_existing_modules = set(sys.modules)
         # Integration-style: needs the real agentm sibling checkout (a local
         # dev-machine convention, not present in CI, which has no sibling
         # repo). Skip gracefully rather than error -- matches the codebase's
@@ -70,8 +109,8 @@ class FailureIncidentWriterTests(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        sys.path[:] = _SYS_PATH_SNAPSHOT
-        _purge_agentm_modules()
+        _purge_real_bridge_sys_path()
+        _purge_agentm_modules(cls._pre_existing_modules)
 
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
