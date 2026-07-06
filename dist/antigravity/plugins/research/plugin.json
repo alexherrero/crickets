@@ -5,5 +5,5 @@
   },
   "description": "Discovery-to-watchlist research primitives. idea-search is a read-only scan over the agentm recall engine surfacing existing vault/codebase entries relevant to a question. learn-forward and codebase-improvement (scheduled mining/detection onto the idea incubator, riding agentm's forward-experience runner) land in later tasks of this same plan.",
   "name": "research",
-  "version": "0.1.0"
+  "version": "0.1.1"
 }
