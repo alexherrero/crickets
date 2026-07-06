@@ -172,7 +172,7 @@ Append to `.harness/progress.md`:
 <YYYY-MM-DD HH:MM> /setup — initialized harness for this project (stack: <X>, gates: <list>)
 ```
 
-Then return a ≤5-bullet summary (harness at `.harness/`; stack; gates configured; `init.sh` boots clean; next `/plan <first brief>`).
+Then return a ≤5-bullet summary (harness at `.harness/`; stack; gates configured; `init.sh` boots clean; next `/plan <first brief>`), plus one standing, non-blocking doctrine reminder — not a hook, not a gate, just a line in the output: *"A worktree you're done with should be closed out (kept intentionally, or removed) rather than left dangling — the periodic shepherd reclaims what's provably safe to reclaim on its own schedule, but it isn't a substitute for you closing out work you know is finished."*
 
 ## Failure modes to avoid
 

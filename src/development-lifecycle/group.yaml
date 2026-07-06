@@ -420,5 +420,11 @@ enhances:
 #          new `.harness/jobs/worktree-shepherd-{agentm,crickets}.yaml`
 #          manifests (device-local, gitignored, dry-run per the runner's own
 #          convention for new jobs — promote after a few observed cycles).
-version: 0.34.0
+# 0.34.1 = worktree-native-flow task 7: `/setup`'s scaffold-output summary
+#          gains a standing, non-blocking doctrine reminder — close out a
+#          worktree you're done with rather than leave it dangling — the
+#          human-facing complement to task 5's shepherd. New
+#          test_setup_worktree_reminder.py positively pins the line (no prior
+#          test existed for setup.md's prose at all).
+version: 0.34.1
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]
