@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Tests for src/developer-workflows/scripts/doctor_worktrees.py (V5-10 sibling #3, Task 4).
 
-The read-only health probe over the coordinator's `worker/<slug>` worktrees
+The read-only health probe over the coordinator's `worktree-<slug>` worktrees
 (Risk #6). Every test builds a throwaway temp git repo, drives real
 `git worktree add` / `git merge` / `shutil.rmtree`, and exercises the actual
 classifier — there is no stubbing of git here, because the whole contract is
@@ -15,7 +15,7 @@ Load-bearing assertions:
     HEAD, on-disk dirs) is byte-identical before and after `diagnose()` runs,
     even with a prunable worktree present (the probe must NOT prune it);
   - `_format` tallies + lines up every report; `main()` returns 0 always
-    (a report, never a gate), including on a repo with no workers at all.
+    (a report, never a gate), including on a repo with no worktree-<slug>s at all.
 """
 from __future__ import annotations
 
@@ -66,7 +66,7 @@ def _init_repo(repo: Path) -> None:
 
 def _add_worktree(repo: Path, tmp: Path, slug: str, *, commit: bool = True,
                   marker: str | None = "__slug__") -> tuple[str, Path]:
-    """Create a real `worker/<slug>` worktree.
+    """Create a real `worktree-<slug>` worktree.
 
     `commit` adds a distinct file + commit so the branch is ahead of main (it
     won't be a trivial ancestor). `marker` writes `.harness/active-plan`:
@@ -74,7 +74,7 @@ def _add_worktree(repo: Path, tmp: Path, slug: str, *, commit: bool = True,
     literal string writes that verbatim (e.g. `"   \\n"` for a blank marker);
     `None` writes no marker at all (the missing-marker case).
     """
-    branch = f"worker/{slug}"
+    branch = f"worktree-{slug}"
     wt = tmp / f"wt-{slug}"
     _git(repo, "worktree", "add", "-b", branch, str(wt))
     if commit:
@@ -124,11 +124,11 @@ class TestDiagnoseClassification(unittest.TestCase):
         _add_worktree(self.repo, self.tmp, "blank", marker="   \n")
         # dir-gone: registered worktree whose directory was removed → ORPHANED.
         _, wt_gone = _add_worktree(self.repo, self.tmp, "gone")
-        # no-worktree: a bare worker branch with no checkout → ORPHANED.
-        _git(self.repo, "branch", "worker/lone")
+        # no-worktree: a bare worktree-<slug> branch with no checkout → ORPHANED.
+        _git(self.repo, "branch", "worktree-lone")
 
-        # Land `worker/done` on main (no prune) so it reads as merged-but-unpruned.
-        _git(self.repo, "merge", "--no-ff", "worker/done", "-m", "land done")
+        # Land `worktree-done` on main (no prune) so it reads as merged-but-unpruned.
+        _git(self.repo, "merge", "--no-ff", "worktree-done", "-m", "land done")
         # Remove the dir-gone worktree's directory behind git's back.
         shutil.rmtree(wt_gone)
 
@@ -142,10 +142,10 @@ class TestDiagnoseClassification(unittest.TestCase):
         self.assertEqual(reports["gone"].status, dw.ORPHANED)
         self.assertEqual(reports["lone"].status, dw.ORPHANED)
 
-        # Plan mapping is the bare slug; branch carries the worker/ prefix.
+        # Plan mapping is the bare slug; branch carries the worktree- prefix.
         for slug, r in reports.items():
             self.assertEqual(r.slug, slug)
-            self.assertEqual(r.branch, f"worker/{slug}")
+            self.assertEqual(r.branch, f"worktree-{slug}")
         # The no-worktree orphan has no path; the active one does.
         self.assertIsNone(reports["lone"].worktree)
         self.assertIsNotNone(reports["act"].worktree)
@@ -158,7 +158,7 @@ class TestDiagnoseClassification(unittest.TestCase):
         self.assertIn("act", report.detail)
 
     def test_branch_equal_to_main_is_merged_not_active(self):
-        # A worker branch with no commits ahead is trivially an ancestor of HEAD;
+        # A worktree branch with no commits ahead is trivially an ancestor of HEAD;
         # with a marker present it must read MERGED (a prune candidate), not ACTIVE.
         _add_worktree(self.repo, self.tmp, "even", commit=False)
         report = {r.slug: r for r in dw.diagnose(str(self.repo))}["even"]
@@ -180,8 +180,8 @@ class TestReadOnly(unittest.TestCase):
         _, wt_act = _add_worktree(self.repo, self.tmp, "act")
         _, wt_done = _add_worktree(self.repo, self.tmp, "done")
         _, wt_gone = _add_worktree(self.repo, self.tmp, "gone")
-        _git(self.repo, "branch", "worker/lone")
-        _git(self.repo, "merge", "--no-ff", "worker/done", "-m", "land done")
+        _git(self.repo, "branch", "worktree-lone")
+        _git(self.repo, "merge", "--no-ff", "worktree-done", "-m", "land done")
         shutil.rmtree(wt_gone)  # leaves a prunable entry git would clean on `prune`
 
         tracked = [wt_act, wt_done, wt_gone]
@@ -193,12 +193,12 @@ class TestReadOnly(unittest.TestCase):
         # And it actually saw the prunable worktree (didn't silently drop it).
         self.assertEqual({r.slug for r in reports}, {"act", "done", "gone", "lone"})
         # The prunable entry is still registered (the probe refused to prune it).
-        self.assertIn("worker/gone", _git(self.repo, "worktree", "list", "--porcelain").stdout)
-        # And the worker branches survive (no `branch -d` happened).
+        self.assertIn("worktree-gone", _git(self.repo, "worktree", "list", "--porcelain").stdout)
+        # And the worktree branches survive (no `branch -d` happened).
         for slug in ("act", "done", "gone", "lone"):
             self.assertEqual(
                 _git(self.repo, "rev-parse", "--verify", "--quiet",
-                     f"refs/heads/worker/{slug}", check=False).returncode, 0)
+                     f"refs/heads/worktree-{slug}", check=False).returncode, 0)
 
 
 class TestFormatAndMain(unittest.TestCase):
@@ -221,27 +221,27 @@ class TestFormatAndMain(unittest.TestCase):
     def test_empty_repo_reports_nothing_and_exits_zero(self):
         rc, out, err = self._run_main("--project-root", str(self.repo))
         self.assertEqual(rc, 0)
-        self.assertIn("no worker", out)
+        self.assertIn("no worktree-<slug>", out)
 
     def test_main_lists_each_worktree_with_status_and_plan(self):
         _add_worktree(self.repo, self.tmp, "act")
         _add_worktree(self.repo, self.tmp, "nomark", marker=None)
         rc, out, err = self._run_main("--project-root", str(self.repo))
         self.assertEqual(rc, 0)  # read-only diagnostic — never a gate
-        self.assertIn("worker/act", out)
-        self.assertIn("worker/nomark", out)
+        self.assertIn("worktree-act", out)
+        self.assertIn("worktree-nomark", out)
         self.assertIn(dw.ACTIVE, out)
         self.assertIn(dw.DANGLING, out)
         self.assertIn("plan: act", out)
 
     def test_format_tally_counts_every_status(self):
         reports = [
-            dw.WorkerWorktree("a", "worker/a", "/x/a", dw.ACTIVE, "d"),
-            dw.WorkerWorktree("b", "worker/b", "/x/b", dw.MERGED, "d"),
-            dw.WorkerWorktree("c", "worker/c", None, dw.ORPHANED, "d"),
+            dw.WorkerWorktree("a", "worktree-a", "/x/a", dw.ACTIVE, "d"),
+            dw.WorkerWorktree("b", "worktree-b", "/x/b", dw.MERGED, "d"),
+            dw.WorkerWorktree("c", "worktree-c", None, dw.ORPHANED, "d"),
         ]
         text = dw._format(reports)
-        self.assertIn("3 worker", text)
+        self.assertIn("3 worktree", text)
         self.assertIn("1 active", text)
         self.assertIn("1 merged-but-unpruned", text)
         self.assertIn("1 orphaned", text)

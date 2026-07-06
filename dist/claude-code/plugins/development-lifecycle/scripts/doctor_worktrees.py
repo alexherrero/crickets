@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
-"""Read-only health probe over the coordinator's `worker/<slug>` worktrees (Risk #6).
+"""Read-only health probe over `/work`'s auto-spawned `worktree-<slug>` worktrees.
 
-The coordinator runs this to *see* the state of every worker before deciding what
-to prune or integrate. It is the diagnostic complement to the mutating lifecycle
-(`/spawn-worker` creates, `/integrate-worker` lands + prunes): this command only
-**lists and classifies** — it never removes a worktree, deletes a branch, or
-touches the integration branch. The operator prunes on demand once they've read
-the report.
+Rewritten for the host-native worktree flow (worktree-native-flow task 5):
+`spawn_worker.py`'s `worker/<slug>` + sibling-`<repo>.worktrees/` convention is
+retired; `EnterWorktree` (Claude Code) / New-Worktree-Mode (Antigravity) create
+branches named `worktree-<name>` inside `.claude/worktrees/<name>` instead — this
+probe now anchors on THAT convention. It is the read-only detector half of the
+shepherd sidecar (`worktree_shepherd.py`, which reclaims + rebases); this module
+only **lists and classifies** — it never removes a worktree, deletes a branch, or
+touches the integration branch.
 
     doctor_worktrees.py [--project-root <path>]
-    # stdout: one line per worker/<slug> worktree, with its status + plan mapping
+    # stdout: one line per worktree-<slug> worktree, with its status + plan mapping
 
-Each `worker/<slug>` worktree (or lingering worker branch) is classified into
-exactly one of four states, in precedence order:
+Each `worktree-<slug>` worktree (or lingering branch) is classified into exactly
+one of four states, in precedence order:
 
     orphaned         — the branch has no worktree at all (already pruned, or never
                        checked out), OR its registered worktree's directory is gone
@@ -23,18 +25,18 @@ exactly one of four states, in precedence order:
                        `.harness/active-plan` marker (missing or blank), so a
                        `/work` session inside it could not bind to its named plan.
     merged-but-unpruned — on disk, marker present, and the branch is already merged
-                       into the integration branch. Either an integration that did
-                       not prune, or work that landed by hand — a prune candidate.
+                       into the integration branch. Either the PR merged without a
+                       prune, or work that landed by hand — a prune candidate.
     active           — on disk, marker present, branch NOT yet merged. Work in
                        progress; leave it alone.
 
-The integration reference is the repo's current `HEAD` (normally `main`), matching
-`integrate_worker.py`, which merges into the checked-out branch. The probe is
-anchored on worker branches (`git for-each-ref refs/heads/worker/`) correlated
-with `git worktree list --porcelain`, so it reports both lingering branches and
-prunable worktrees. (A worktree whose branch ref was surgically deleted while it
-stayed on disk — "branch gone, dir lingers" — needs manual ref surgery to create
-and is out of scope; git refuses to delete a branch checked out in a worktree.)
+The integration reference is the repo's current `HEAD` (normally `main`). The
+probe is anchored on worktree branches (`git for-each-ref refs/heads/worktree-`)
+correlated with `git worktree list --porcelain`, so it reports both lingering
+branches and prunable worktrees. (A worktree whose branch ref was surgically
+deleted while it stayed on disk — "branch gone, dir lingers" — needs manual ref
+surgery to create and is out of scope; git refuses to delete a branch checked out
+in a worktree.)
 
 **Read-only by contract.** Exit code is always 0 — this is a report, not a gate.
 Every git call is a query (`list`, `for-each-ref`, `merge-base --is-ancestor`);
@@ -59,7 +61,7 @@ _HERE = Path(__file__).resolve().parent
 if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 
-_PREFIX = "worker/"
+_PREFIX = "worktree-"
 
 # Status constants (one per worktree; mutually exclusive, precedence-ordered).
 ACTIVE = "active"
@@ -69,7 +71,7 @@ DANGLING = "dangling-marker"
 
 
 class WorkerWorktree(NamedTuple):
-    """One classified worker worktree (or lingering worker branch)."""
+    """One classified `/work`-spawned worktree (or lingering branch)."""
     slug: str
     branch: str
     worktree: str | None  # the worktree path, or None when the branch has none
@@ -131,9 +133,14 @@ def _worktrees(root: str | os.PathLike) -> list[dict]:
 
 
 def _worker_branches(root: str | os.PathLike) -> list[str]:
-    """Every `worker/<slug>` branch, sorted. Any git error collapses to []."""
+    """Every `worktree-<slug>` branch, sorted. Any git error collapses to []."""
     try:
-        r = _git(["for-each-ref", "--format=%(refname:short)", f"refs/heads/{_PREFIX}"], root)
+        # `for-each-ref`'s pattern matches by path COMPONENT, not string prefix —
+        # `refs/heads/worker/` (old convention) matched fine since it ends on a
+        # `/` boundary, but `refs/heads/worktree-` does not (git requires a `*`
+        # to do a string-prefix match within a path component; verified live —
+        # without it this silently returns nothing, no error).
+        r = _git(["for-each-ref", "--format=%(refname:short)", f"refs/heads/{_PREFIX}*"], root)
     except (OSError, subprocess.SubprocessError):
         return []
     if r.returncode != 0:
@@ -163,7 +170,7 @@ def _read_marker(wt: Path) -> str | None:
 # ── core (pure: returns data, prints/mutates nothing) ─────────────────────────
 
 def diagnose(root: str | os.PathLike, *, integration_ref: str = "HEAD") -> list[WorkerWorktree]:
-    """Classify every `worker/<slug>` worktree / lingering worker branch. Read-only.
+    """Classify every `worktree-<slug>` worktree / lingering branch. Read-only.
 
     Anchored on worker branches, correlated with the worktree list, so it reports
     both branches with no worktree and worktrees whose directory is gone. Returns
@@ -199,7 +206,7 @@ def diagnose(root: str | os.PathLike, *, integration_ref: str = "HEAD") -> list[
             reports.append(WorkerWorktree(
                 slug, branch, path, MERGED,
                 "branch is merged into the integration branch — prune candidate "
-                "(`/integrate-worker` already ran, or it landed by hand)"))
+                "(its PR already merged, or it landed by hand)"))
         else:
             reports.append(WorkerWorktree(
                 slug, branch, path, ACTIVE,
@@ -211,13 +218,13 @@ def diagnose(root: str | os.PathLike, *, integration_ref: str = "HEAD") -> list[
 
 def _format(reports: list[WorkerWorktree]) -> str:
     if not reports:
-        return "[doctor_worktrees] no worker/<slug> worktrees or branches found.\n"
+        return "[doctor_worktrees] no worktree-<slug> worktrees or branches found.\n"
     counts: dict[str, int] = {}
     for r in reports:
         counts[r.status] = counts.get(r.status, 0) + 1
     tally = ", ".join(f"{counts[s]} {s}" for s in (ACTIVE, MERGED, DANGLING, ORPHANED)
                       if s in counts)
-    lines = [f"[doctor_worktrees] {len(reports)} worker worktree(s)/branch(es): {tally}"]
+    lines = [f"[doctor_worktrees] {len(reports)} worktree(s)/branch(es): {tally}"]
     width = max(len(r.branch) for r in reports)
     for r in reports:
         where = r.worktree if r.worktree else "(no worktree)"
@@ -230,7 +237,7 @@ def _format(reports: list[WorkerWorktree]) -> str:
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="doctor_worktrees.py",
-        description="Read-only: list + classify worker/<slug> worktrees (active / "
+        description="Read-only: list + classify worktree-<slug> worktrees (active / "
                     "merged-but-unpruned / dangling-marker / orphaned). Mutates nothing.",
     )
     p.add_argument("--project-root", default=None, help="project root (default: cwd)")
