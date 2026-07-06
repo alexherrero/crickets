@@ -21,18 +21,28 @@ _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
 _SRC = _ROOT / "src" / "diagnostics" / "scripts"
 
-# Snapshot BEFORE any real-bridge activity -- see test_diagnostics_writer.py's
-# matching comment: agentm's save.py/recall.py mutate sys.path/sys.modules as
-# a side effect of being loaded, which otherwise leaks into whatever test file
-# runs next alphabetically. Restored in tearDownClass. sys.modules cleanup is
-# filtered by file path (agentm's tree only) -- see test_diagnostics_writer.py
-# for why a blanket new-keys diff is unsafe.
-_SYS_PATH_SNAPSHOT = list(sys.path)
+# See test_diagnostics_writer.py's matching comment: agentm's save.py/
+# recall.py mutate sys.path/sys.modules as a side effect of being loaded,
+# which otherwise leaks into whatever test file runs next alphabetically.
+# Cleaned up in tearDownClass -- both the sys.path cleanup and the
+# sys.modules purge are filtered by path, not a blanket snapshot-restore
+# (see test_diagnostics_writer.py for why a blanket restore/diff is unsafe
+# for each). The sys.modules purge additionally excludes names already
+# cached before this class's own real-bridge activity started (see
+# test_diagnostics_writer.py's `cls._pre_existing_modules` comment for why --
+# storage_seam/backend_selection class-identity, not just a stale cache).
 _AGENTM_PATH_MARKERS = ("/agentm/harness/", "/agentm/scripts/")
+_REAL_BRIDGE_SYS_PATH_MARKER = "/agentm/harness/skills/memory/scripts"
 
 
-def _purge_agentm_modules():
+def _purge_real_bridge_sys_path():
+    sys.path[:] = [p for p in sys.path if _REAL_BRIDGE_SYS_PATH_MARKER not in p]
+
+
+def _purge_agentm_modules(pre_existing_names):
     for name, mod in list(sys.modules.items()):
+        if name in pre_existing_names:
+            continue
         f = getattr(mod, "__file__", None)
         if f and any(marker in f for marker in _AGENTM_PATH_MARKERS):
             del sys.modules[name]
@@ -92,6 +102,9 @@ _CORPUS = [
 class DiagnoseEndToEndTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        # Snapshot right before the first real-bridge call -- see
+        # test_diagnostics_writer.py's matching setUpClass comment.
+        cls._pre_existing_modules = set(sys.modules)
         # See test_diagnostics_writer.py: needs the real agentm sibling
         # checkout, absent in CI. Skip gracefully rather than error.
         if diagnose_mod.writer.agentm_bridge.load_save_module() is None:
@@ -99,8 +112,8 @@ class DiagnoseEndToEndTests(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        sys.path[:] = _SYS_PATH_SNAPSHOT
-        _purge_agentm_modules()
+        _purge_real_bridge_sys_path()
+        _purge_agentm_modules(cls._pre_existing_modules)
 
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
