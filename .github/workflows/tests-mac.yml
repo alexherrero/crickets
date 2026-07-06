@@ -2,21 +2,25 @@ name: "[T] Mac Tests"
 # NOTE: ci-all.yml waits on this workflow by FILENAME (tests-mac.yml). Renaming this
 # file breaks the aggregate + the badge. (scripts/test_ci_consistency.py asserts it.)
 
+# Worktree-native flow (ratified 2026-07-06): gates on pull_request, not push
+# to main. pull_request carries no paths-ignore — a required check a
+# trigger-level filter could skip would block a docs-only PR's merge
+# forever; the diet returns as a job-level no-op under PLAN-per-plan-ci.
+# push runs nothing here; tests-linux.yml's `syntax` job is the one light
+# check that still runs on push.
 on:
   push:
     branches: [main]
     paths-ignore:
       - 'wiki/**'
       - '**/*.md'
-  pull_request:
-    paths-ignore:
-      - 'wiki/**'
-      - '**/*.md'
+  pull_request: {}
 
 jobs:
   validate:
     name: validate
     runs-on: macos-latest
+    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Install Python deps
@@ -45,6 +49,7 @@ jobs:
   checks:
     name: checks
     runs-on: macos-latest
+    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       # macos-latest ships python3 and pwsh 7+ preinstalled.

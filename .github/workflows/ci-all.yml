@@ -11,16 +11,13 @@ name: "[T] CI All"
 #
 # Mirrors the same workflow in the sibling agentm repo (plan #15 task 7).
 
+# Worktree-native flow (ratified 2026-07-06): the aggregate only matters for
+# gating a PR merge, so it's pull_request-only now — no push trigger, no
+# paths-ignore (a required check a trigger-level filter could skip would
+# block a docs-only PR's merge forever; the diet returns as a job-level
+# no-op under PLAN-per-plan-ci).
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - 'wiki/**'
-      - '**/*.md'
-  pull_request:
-    paths-ignore:
-      - 'wiki/**'
-      - '**/*.md'
+  pull_request: {}
 
 jobs:
   aggregate:
@@ -35,7 +32,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
-          SHA: ${{ github.sha }}
+          # On pull_request, github.sha is the ephemeral merge commit, but the
+          # per-OS workflow runs are recorded under the PR *head* SHA (mirrors
+          # agentm's ci-all.yml, which already carried this fix — crickets'
+          # copy predates going pull_request-primary and needs it now too).
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -e
           # Coupled by FILENAME to .github/workflows/<wf>.yml — renaming a test
