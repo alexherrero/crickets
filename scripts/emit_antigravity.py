@@ -30,7 +30,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from generate import HostEmitter, dump_json, write_utf8  # noqa: E402
-from src_model import Group, Primitive, bundle_ignore, copy_group_scripts, copy_group_templates, enhances_to_json  # noqa: E402
+from src_model import Group, Primitive, bundle_ignore, copy_group_scripts, copy_group_templates, copy_group_reference, enhances_to_json  # noqa: E402
 
 HOST = "antigravity"
 
@@ -97,6 +97,7 @@ class AntigravityEmitter(HostEmitter):
                        dump_json({"mcpServers": mcp_servers}))
         copy_group_scripts(group, plugin_dir)
         copy_group_templates(group, plugin_dir)
+        copy_group_reference(group, plugin_dir)
 
         # capabilities.json sidecar — persists capabilities:/enhances: alongside
         # the plugin.json so the agentm resolver can read them after `agy plugin

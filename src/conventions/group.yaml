@@ -26,4 +26,12 @@ capabilities: [testing-conventions, releasing-conventions, conventions]
 #          rules/skills/reference shape (graceful on an unknown domain).
 #          no-change-detector is NOT included here -- it's code-quality's
 #          domain per crickets-conventions.md's own table, not this task's.
-version: 0.2.0
+# 0.3.0 = PLAN-wave-c-design-and-conventions task 5: the documentation domain
+#          (rules/documentation.md, citing check-wiki.py's single-mode-per-
+#          page + length-ceiling + naming-uniqueness rules) and the new
+#          reference/ shape (gate-inventory.md, features-json-schema.md --
+#          objective house facts, cited not gated). reference/ is now a
+#          recognized group-level asset dir (like scripts/templates/) in
+#          scripts/src_model.py + both emitters, so it actually ships in
+#          dist/, not just the source tree.
+version: 0.3.0
