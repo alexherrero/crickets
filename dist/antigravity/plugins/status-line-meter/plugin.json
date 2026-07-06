@@ -1,9 +1,0 @@
-{
-  "author": {
-    "name": "alexherrero",
-    "url": "https://github.com/alexherrero/crickets"
-  },
-  "description": "Live context/cost meter for the Claude Code status line — used-%, 5h-window cost, and floor-share badge. Enhances token-audit with continuous live metering.",
-  "name": "status-line-meter",
-  "version": "0.1.4"
-}

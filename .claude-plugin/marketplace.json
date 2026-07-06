@@ -136,28 +136,14 @@
     },
     {
       "capabilities": [
-        "status-line-meter"
-      ],
-      "description": "Live context/cost meter for the Claude Code status line — used-%, 5h-window cost, and floor-share badge. Enhances token-audit with continuous live metering.",
-      "enhances": [
-        {
-          "capability": "token-audit",
-          "effect": "live continuous metering via the Claude Code status line",
-          "group": "token-audit"
-        }
-      ],
-      "name": "status-line-meter",
-      "source": "./dist/claude-code/plugins/status-line-meter",
-      "version": "0.1.4"
-    },
-    {
-      "capabilities": [
-        "token-audit"
+        "status-line-meter",
+        "token-audit",
+        "tokens"
       ],
       "description": "Deterministic transcript-JSONL cost analyzer — per-message cost curve, 5h rolling window, floor breakdown, and cache-read vs cache-write vs fresh-input split. Prerequisite for Part C (status-line meter) and Part G (heat-based floor).",
-      "name": "token-audit",
-      "source": "./dist/claude-code/plugins/token-audit",
-      "version": "0.2.6"
+      "name": "tokens",
+      "source": "./dist/claude-code/plugins/tokens",
+      "version": "0.3.0"
     },
     {
       "capabilities": [

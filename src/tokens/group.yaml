@@ -1,4 +1,4 @@
-name: Token Audit
+name: Tokens
 description: Deterministic transcript-JSONL cost analyzer — per-message cost curve, 5h rolling window, floor breakdown, and cache-read vs cache-write vs fresh-input split. Prerequisite for Part C (status-line meter) and Part G (heat-based floor).
 category: Coding
 requires: []
@@ -67,5 +67,15 @@ standalone: true
 # counts in its own inherited_or_default bucket, never guessed as a
 # match/mismatch/violation, with the host->=2.1.198 re-audit trigger named
 # explicitly in the report output (R2.5 task 9).
-version: 0.2.6
-capabilities: [token-audit]
+# 0.3.0 = AG Wave A rename 2 (PLAN-wave-a-renames-2 task 6): folds
+#          status-line-meter in — status_line_meter.py moves into this
+#          group's own scripts/; its standalone enhances: edge onto
+#          token-audit dissolves (no longer a cross-plugin edge, since the
+#          source plugin no longer exists). Then the directory renames
+#          token-audit -> tokens. capabilities dualizes
+#          [status-line-meter, token-audit, tokens] — all three names
+#          keep resolving. Fold-then-rename in one task avoids a transient
+#          state where tokens exists under the old name with the fold
+#          half-done.
+version: 0.3.0
+capabilities: [status-line-meter, token-audit, tokens]

@@ -187,38 +187,18 @@
     },
     {
       "capabilities": [
-        "status-line-meter"
+        "status-line-meter",
+        "token-audit",
+        "tokens"
       ],
       "category": "Coding",
-      "enhances": [
-        {
-          "capability": "token-audit",
-          "effect": "live continuous metering via the Claude Code status line",
-          "group": "token-audit"
-        }
-      ],
-      "name": "status-line-meter",
+      "name": "tokens",
       "policy": {
         "authentication": "ON_INSTALL",
         "installation": "AVAILABLE"
       },
       "source": {
-        "path": "./dist/antigravity/plugins/status-line-meter",
-        "source": "local"
-      }
-    },
-    {
-      "capabilities": [
-        "token-audit"
-      ],
-      "category": "Coding",
-      "name": "token-audit",
-      "policy": {
-        "authentication": "ON_INSTALL",
-        "installation": "AVAILABLE"
-      },
-      "source": {
-        "path": "./dist/antigravity/plugins/token-audit",
+        "path": "./dist/antigravity/plugins/tokens",
         "source": "local"
       }
     },
