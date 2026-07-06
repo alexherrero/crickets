@@ -3,7 +3,7 @@ description: Universal control + safety layer — kill-switch, steer, commit-on-
 category: Coding
 requires: []
 standalone: true
-enhances: [developer-workflows]
+enhances: [development-lifecycle]
 capabilities: [recoverability]
 # Per-plugin marketplace version. Bump on every release that ships new/changed
 # primitives so `claude plugin update developer-safety@crickets` actually pulls
@@ -46,4 +46,5 @@ capabilities: [recoverability]
 # actually true). Real behavior change: guidance now surfaces on the next
 # submitted prompt, not the next tool call; no longer fires on Antigravity
 # at all (no UserPromptSubmit equivalent there).
-version: 0.3.5
+# 0.3.6 = AG Wave A rename 1: enhances: [developer-workflows] -> [development-lifecycle].
+version: 0.3.6

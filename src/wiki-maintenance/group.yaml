@@ -73,9 +73,10 @@ standalone: true
 # violation, when it names a different actor's role) in base-style-guide.md,
 # next to the existing second-person ban. The term-of-art carve-out was
 # already written (2026-06-26); this closes the other private-memory-only gap.
-version: 0.5.3
+# 0.5.4 = AG Wave A rename 1: enhances target developer-workflows -> development-lifecycle.
+version: 0.5.4
 capabilities: [wiki-maintenance]
 enhances:
-  - group: developer-workflows
+  - group: development-lifecycle
     capability: documentation
     effect: "phase commands dispatch the documenter to author/repair wiki pages at phase boundaries"

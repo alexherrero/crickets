@@ -1,8 +1,10 @@
 name: Design Docs
 description: Design-doc and ADR authoring — the /design command (author → translate → sequence) and the ADR skill for capturing architectural decisions with re-audit triggers.
 category: Coding
-requires: [developer-workflows]
+requires: [development-lifecycle]
 standalone: false
 capabilities: [design]
 # 0.1.1 = declare capabilities: [design] (AG Phase-2 capability-declaration hygiene).
-version: 0.1.2
+# 0.1.3 = AG Wave A rename 1: requires: [developer-workflows] -> [development-lifecycle]
+#          (the group's directory renamed; both capability names still resolve).
+version: 0.1.3

@@ -1,9 +1,10 @@
 name: Testing Conventions
 description: Day-to-day testing principles — tests-are-sacred, verification-first, and the 3-layer pyramid — for Developer-tier users.
 category: Coding
-requires: [developer-workflows]
+requires: [development-lifecycle]
 standalone: false
 capabilities: [testing-conventions]
 # 0.1.1 = declare capabilities: [testing-conventions] (AG Phase-2 hygiene;
 #          transitional self-name — merges into `conventions` with resolver aliasing in Phase-3).
-version: 0.1.1
+# 0.1.2 = AG Wave A rename 1: requires: [developer-workflows] -> [development-lifecycle].
+version: 0.1.2

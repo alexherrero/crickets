@@ -1,7 +1,7 @@
 name: GitHub Projects
 description: One-way, deterministic board-sync — synthesizes a vault project's roadmap/plan/progress state onto a GitHub Project board via six locked per-type templates, a single idempotent project_sync.py write path, and a vault==board drift gate. The vault stays the agent's source of truth; the board is the generated human source.
 category: Coding
-requires: [developer-workflows]
+requires: [development-lifecycle]
 standalone: false
 # Per-plugin marketplace version (see developer-workflows/group.yaml for the
 # rationale). 0.1.0 = first cut of the github-projects group (roadmap #41 /
@@ -62,5 +62,6 @@ standalone: false
 # code-default flip (R2.5 task 11 — the operator's worktree doctrine, ADR 0028
 # refining ADR 0022; cricketsPluginsA#2). The schema was a stale live claim about
 # current behavior, not a historical record — corrected in place.
-version: 0.2.3
+# 0.2.4 = AG Wave A rename 1: requires: [developer-workflows] -> [development-lifecycle].
+version: 0.2.4
 capabilities: [board-sync]
