@@ -4,7 +4,7 @@ status: launched
 kind: design
 scope: feature
 area: crickets/development-lifecycle
-governs: [src/developer-workflows/]
+governs: [src/development-lifecycle/]
 parent: crickets-hld.md
 seeded: 2026-06-20
 approved: 2026-06-22
@@ -192,6 +192,8 @@ The loop **requests `done`** (the check battery `/work` and `/release` run — *
 - **Up:** [crickets HLD](crickets-hld.md) · [composition](crickets-composition.md) · [agentm Opinions](https://github.com/alexherrero/agentm/wiki/agentm-opinions-and-gates) (`done`, `how-we-engineer`) · [agentm Personas](https://github.com/alexherrero/agentm/wiki/agentm-personas) (loop / goal launch modes) · [agentm model-effort-routing](https://github.com/alexherrero/agentm/wiki/agentm-model-effort-routing) (the tier policy) · [crickets token-audit](https://github.com/alexherrero/crickets/wiki/crickets-token-audit) (the concrete routing table)
 
 ## Amendment log
+
+**2026-07-05 — `governs:` frontmatter re-pointed to `src/development-lifecycle/` (PLAN-wave-a-renames-1 task 3).** The directory this task's rename moved (`src/developer-workflows/` → `src/development-lifecycle/`); the design's coverage moves with it. No content change — the design already narrated the rename in the 2026-06-28 entry below; this closes the stale frontmatter path that entry left behind.
 
 **2026-07-05 — Pipelined wake-on-CI cadence: one-task lag instead of synchronous per-task blocking (PLAN-ci-walltime-diet task 2).** The prior text's "gates required green before `[x]`" didn't distinguish local battery from remote CI, and in practice every task-commit paid a full synchronous wake-on-CI wait before its checkmark — measured across agentm+crickets, 2026-07-03..05: ~6.04 combined hours of CI-All wait in a single 2-day window, 90-94% of it Windows-leg execution time, against a push pattern of 4-10 tagged task-commits per plan. `/work` still pushes every task and the full matrix still runs on every push — nothing is skipped. What changes: the session doesn't block on that push's CI before starting the next task; before the *next* task's `[x]`, the *previous* task's CI is confirmed green (cheap by then — it's usually already finished in the background). A red CI on the previous task still stops the session immediately, just one task later than today.
 

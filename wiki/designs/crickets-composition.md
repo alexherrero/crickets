@@ -4,7 +4,7 @@ status: launched
 kind: design
 scope: feature
 area: crickets/composition
-governs: [src/developer-workflows/scripts/find_capability.py, scripts/suggest_enhancers.py, src/*/group.yaml]
+governs: [src/development-lifecycle/scripts/find_capability.py, scripts/suggest_enhancers.py, src/*/group.yaml]
 parent: crickets-hld.md
 seeded: 2026-06-20
 approved: 2026-06-22
@@ -91,6 +91,8 @@ A v6.0 capability rename — `developer-workflows` → `development-lifecycle`, 
 - **Siblings:** [agentm Opinions](https://github.com/alexherrero/agentm/wiki/agentm-opinions-and-gates) · [agentm Personas](https://github.com/alexherrero/agentm/wiki/agentm-personas) · [crickets build-system](crickets-build-system.md) · `wiki/reference/Coordinator-Roles.md` (the transitional role agent-defs)
 
 ## Amendment log
+
+**2026-07-05 — `governs:` path re-pointed: `src/developer-workflows/scripts/find_capability.py` -> `src/development-lifecycle/scripts/find_capability.py` (PLAN-wave-a-renames-1 task 3, staging-miss caught at work-time).** The AG Wave A rename 1 moved the directory this stamp names a file under; staging's "only crickets-development-lifecycle.md claims `src/developer-workflows/`" check matched the whole-directory bracket form and missed this file-scoped stamp. No content change beyond the path.
 
 **2026-07-05 — doc-truth sweep: corrected a version-matching overclaim (PLAN-r2-ledger-and-dist task 8).** The "Version matching" paragraph and its Dependencies echo stated that `capability_version_match.py`-backed version ranges on `enhances:` are live and usable today. Confirmed against the code that this overclaims: crickets' `Enhance` dataclass (`scripts/src_model.py`) has no version field at all — no schema slot exists to name a range on an `enhances:` entry — and `grep -rln "capability_version_match\|version_match\|satisfies(" scripts/*.py src/*/scripts/*.py` (excluding tests) returns zero call sites in crickets. The matcher genuinely exists in agentm; crickets has neither the schema field nor a call site. Marked both spots `[PENDING-IMPL]` and folded the gap into the existing "Version-matching policy is unsettled" Risks bullet rather than replacing it, since the enforcement-policy question and the schema/call-site gap are both real and distinct. *Why not the alternative:* adding the version field to `Enhance` now would be new capability-schema work, which belongs to a build or design session, not a doc-truth sweep — fixing the doc's accuracy is in scope, extending the schema is not. *Re-audit trigger:* flip `[PENDING-IMPL]` to built when a version field lands on `Enhance` and `capability_version_match.py`/`satisfies()` gets a real call site in crickets.
 
