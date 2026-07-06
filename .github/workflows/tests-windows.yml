@@ -8,6 +8,10 @@ name: "[T] Windows Tests"
 # forever; the diet returns as a job-level no-op under PLAN-per-plan-ci.
 # push runs nothing here; tests-linux.yml's `syntax` job is the one light
 # check that still runs on push.
+#
+# PLAN-per-plan-ci task 3: also callable via `workflow_call` (the nightly
+# main-HEAD backstop) — see tests-linux.yml's `on:` block comment for the
+# `full_battery` input's full rationale.
 on:
   push:
     branches: [main]
@@ -15,12 +19,17 @@ on:
       - 'wiki/**'
       - '**/*.md'
   pull_request: {}
+  workflow_call:
+    inputs:
+      full_battery:
+        type: boolean
+        default: true
 
 jobs:
   validate:
     name: validate
     runs-on: windows-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || inputs.full_battery
     env:
       # Force UTF-8 stdio — windows-latest's default cp1252 console encoding
       # is the historical breakage class here (plan #13 caught it live).
@@ -54,7 +63,7 @@ jobs:
   checks:
     name: checks
     runs-on: windows-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || inputs.full_battery
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       # windows-latest ships pwsh 7+ and Python preinstalled.
@@ -76,7 +85,7 @@ jobs:
     # checked out in this dedicated job.
     name: obsidian-vault conformance (vs agentm kernel)
     runs-on: windows-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || inputs.full_battery
     env:
       PYTHONUTF8: "1"
     steps:

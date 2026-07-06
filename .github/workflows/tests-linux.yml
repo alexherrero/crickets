@@ -9,6 +9,12 @@ name: "[T] Linux Tests"
 # docs-only PR's merge forever); the docs/wiki diet returns as a job-level
 # no-op under PLAN-per-plan-ci. push keeps its diet — it now runs only the
 # light `syntax` job below (every other job is pull_request-only).
+#
+# PLAN-per-plan-ci task 3: also callable via `workflow_call` (the nightly
+# main-HEAD backstop invokes all three OS workflows this way). `full_battery`
+# stands in for "treat this like a pull_request" — the `if:` conditions below
+# check it alongside `github.event_name` so the nightly caller gets the same
+# jobs a real PR would, without the callee needing to know why it was called.
 on:
   push:
     branches: [main]
@@ -16,12 +22,17 @@ on:
       - 'wiki/**'
       - '**/*.md'
   pull_request: {}
+  workflow_call:
+    inputs:
+      full_battery:
+        type: boolean
+        default: true
 
 jobs:
   validate:
     name: validate
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || inputs.full_battery
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         # Full history so the version-bump guard can resolve its base ref
@@ -147,7 +158,7 @@ jobs:
   pii-guardrails:
     name: pii-guardrails
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || inputs.full_battery
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         # gitleaks scans the commit range with `git log <parent>^..<HEAD>` and
@@ -175,7 +186,7 @@ jobs:
     # checkout can't perturb the other gates' scope.
     name: obsidian-vault conformance (vs agentm kernel)
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || inputs.full_battery
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Check out the sibling agentm kernel
