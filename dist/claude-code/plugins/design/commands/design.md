@@ -3,9 +3,9 @@ name: design
 description: Author → translate → sequence a design doc into a topo-ordered set of named plans. The upstream authoring step above /plan.
 kind: command
 supported_hosts: [claude-code, antigravity]
-version: 0.1.0
+version: 0.2.0
 install_scope: project
-argument-hint: author <slug|brief> (default)  |  translate <slug>  |  sequence <slug>
+argument-hint: author <slug|brief> [--rung full|abbreviated|architecture] (default)  |  translate <slug>  |  sequence <slug>
 ---
 
 You are running the **design** command — the upstream authoring step of the development-lifecycle loop. `/design` sits *above* `/plan`: where `/plan` turns a brief into a task list, `/design` walks a human through a real design doc, gates on human approval, splits the approved design into structural parts, and emits one named plan per part for `/work` + `/review` to execute.
@@ -77,17 +77,25 @@ These items are derived from `corrections.md` seeds via the upstream-guardrail m
 
 `author` is the **only** verb that transitions `Status` (`draft → review → final`); it never advances past `final`. It runs in one of three modes by the target doc's existing Status: **bootstrap** (no doc yet), **authoring** (`draft`), **review pass** (`review`). Save after every section so a partial draft survives an interrupted session.
 
-**Inputs.** `<slug>` (filename identifier — required for a new doc, inferred from the path on resume) and `--visibility {confidential|published}` (defaults to `confidential`). Visibility routes the output path per *Storage resolution* above: `confidential` → `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_doc.py" harness-root` then `<harness>/designs/<slug>.md`; `published` → `wiki/designs/<slug>.md`. To resume, locate the doc through the same two-path lookup (if both exist, ask which); never hardcode the confidential root.
+**Inputs.** `<slug>` (filename identifier — required for a new doc, inferred from the path on resume), `--visibility {confidential|published}` (defaults to `confidential`), and `--rung {full|abbreviated|architecture}` (defaults to `full` — new-doc only; ignored on resume, where the existing doc's own section set already fixed the rung). Visibility routes the output path per *Storage resolution* above: `confidential` → `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_doc.py" harness-root` then `<harness>/designs/<slug>.md`; `published` → `wiki/designs/<slug>.md`. To resume, locate the doc through the same two-path lookup (if both exist, ask which); never hardcode the confidential root.
+
+**Rungs (v0.2.0, PLAN-wave-c-design-and-conventions).** Three templates, one command:
+
+| `--rung` | Template | Shape | When |
+|---|---|---|---|
+| `full` (default) | `templates/design-doc.md` | 10 sections + Document History table | the default — a feature/capability design that warrants the full walk (Alternatives Considered, Migrations, Project management, Operations) |
+| `abbreviated` | `templates/abbreviated-design.md` | 7 sections (Objective/Overview/Design/Dependencies/Risks & open questions/References) + Amendment log | today's AG shape-spec — a single-system child design or capability smaller than the full rung warrants |
+| `architecture` | `templates/architecture-hld.md` | Objective/Composition/Architecture review/Dependencies/Risks & open questions/References + Amendment log, plus `children:`/`governs:` frontmatter | a parent-of-children HLD or a cross-system design — generalized from agentm's real `agentm-hld.md`/`agentm-foundations-hld.md` |
 
 ### Step 1 — Bootstrap (new doc only)
 
 If the target path doesn't exist:
 
 1. Confirm the title (default: derive from the slug → title case).
-2. Copy the template at `${CLAUDE_PLUGIN_ROOT}/templates/design-doc.md` to the target path.
-3. Prefill frontmatter: `title` ← confirmed title; `status: draft`; `visibility` ← caller's choice; `author` ← read from `.git/config`'s `[user] name = …` (if unreadable/absent, **prompt** the human — never leave `author` blank); `contributors: []`; `created`/`updated`/`last_major_revision` ← today (`YYYY-MM-DD`).
-4. Seed the Document History table with the initial row: `| <today> | Initial draft created via /design author. | draft |`.
-5. Confirm the path + Status: draft, then start the section walk.
+2. Copy the rung's template — `${CLAUDE_PLUGIN_ROOT}/templates/design-doc.md` (`full`), `abbreviated-design.md` (`abbreviated`), or `architecture-hld.md` (`architecture`) — to the target path.
+3. Prefill frontmatter: `title` ← confirmed title; `status: draft`; `visibility` ← caller's choice (the `full` template only — `abbreviated`/`architecture` route by the resolver the same way, but their frontmatter has no `visibility:` field of its own, matching the real AG living-design corpus); `author` ← read from `.git/config`'s `[user] name = …` (if unreadable/absent, **prompt** the human — never leave `author` blank, `full` rung only — `abbreviated`/`architecture` don't carry `author`/`contributors`, matching their real precedent); `created`/`updated`/`last_major_revision` ← today (`YYYY-MM-DD`, `full` rung) or `seeded` ← today (`abbreviated`/`architecture`).
+4. Seed the closing log with the initial entry — the Document History table row `| <today> | Initial draft created via /design author. | draft |` (`full`), or the Amendment log's first bullet `**<today>** — Initial draft created via /design author --rung <rung>.` (`abbreviated`/`architecture`).
+5. Confirm the path + Status: draft, then start the section walk — in the rung's own template order (Step 2 below spells out the `full` walk in detail; `abbreviated`/`architecture` walk their own template's sections top to bottom, the same way, just a shorter list).
 
 If the path already exists, skip bootstrap — the doc's existing Status picks the mode (authoring on `draft`, review pass on `review`).
 
