@@ -1,11 +1,16 @@
-name: GitHub CI
+name: Maintenance
 description: CI workflows + dependency-update tooling — the dependabot-fixer skill that repairs breakage on Dependabot PRs.
 category: Coding
 requires: [development-lifecycle]
 standalone: false
-capabilities: [ci-repair]
 # Per-plugin marketplace version. 0.1.1 = first explicit version + declare
 # capabilities: [ci-repair] (AG Phase-2 capability-declaration hygiene); supersedes
 # the implicit 0.1.0 default so `claude plugin update github-ci@crickets` pulls it.
 # 0.1.2 = AG Wave A rename 1: requires: [developer-workflows] -> [development-lifecycle].
-version: 0.1.2
+# 0.2.0 = AG Wave A rename 2 (PLAN-wave-a-renames-2 task 1): directory renamed
+#          github-ci -> maintenance per crickets-maintenance.md's Migrations spec;
+#          capabilities dualize [github-ci, ci-repair, maintenance] (dependabot-fixer
+#          becomes a primitive within maintenance rather than its own capability
+#          noun). Zero behavior change — dependabot-fixer's fix loop is unchanged.
+version: 0.2.0
+capabilities: [github-ci, ci-repair, maintenance]
