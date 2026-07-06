@@ -8,5 +8,13 @@ description: >-
 category: Coding
 requires: [development-lifecycle]
 standalone: false
-version: 0.1.0
+# 0.1.1 = fix idea_search.py's agentm_bridge import: a bare `sys.path.insert`
+#          + `import agentm_bridge` collides with any OTHER plugin that owns
+#          its own agentm_bridge.py (e.g. src/maintenance/scripts/), since
+#          Python's import cache returns whichever loaded first to every
+#          later bare `import agentm_bridge` regardless of sys.path order --
+#          observed as an AttributeError in a same-process, cross-plugin
+#          test run (PLAN-wave-c-maintenance task 3). Now a private,
+#          uniquely-named file-path load. Zero behavior change otherwise.
+version: 0.1.1
 capabilities: [research]
