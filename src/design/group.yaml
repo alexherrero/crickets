@@ -42,4 +42,10 @@ capabilities: [design-docs, design, architecture]
 #          rung against its template). commands/design.md gains --rung
 #          {full|abbreviated|architecture} (own frontmatter version 0.1.0
 #          -> 0.2.0).
-version: 0.3.0
+# 0.4.0 = PLAN-wave-c-design-and-conventions task 3: /design finalize, a new
+#          standing maintenance verb (scripts/design_finalize.py) --
+#          collapses same-day Amendment-log entries; flags (never silently
+#          collapses over) a stale [PENDING-IMPL] placeholder, doc-level
+#          per the design call in task 1/2's own commit (governs: target
+#          exists on disk while the doc still claims it's unbuilt).
+version: 0.4.0

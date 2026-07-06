@@ -14,7 +14,7 @@ You are running the **design** command — the upstream authoring step of the de
 
 > **Recommended model for this phase:** Sonnet 5 (`claude-sonnet-5`) — lighter model for planning and authoring. Override with `/model` if needed.
 
-> **Three verbs, one pipeline.** `/design author` (write + finalize a design doc) → `/design translate` (split a final doc into structural `parts/`) → `/design sequence` (topo-order the parts into named plans). The pipeline is strictly ordered by a single hard gate — `Status: final` — which only a human approval can set. Each verb is documented in its own section below.
+> **Four verbs, one pipeline.** `/design author` (write a design doc) → `/design translate` (split a final doc into structural `parts/`) → `/design sequence` (topo-order the parts into named plans); `/design finalize` is a standing maintenance verb, not part of that strict ordering — it auto-collapses a doc's amendment log and flags a stale `[PENDING-IMPL]` placeholder, replacing today's by-hand process. The author→translate→sequence pipeline is strictly ordered by a single hard gate — `Status: final` — which only a human approval can set. Each verb is documented in its own section below.
 
 ## Dispatch
 
@@ -25,10 +25,11 @@ You are running the **design** command — the upstream authoring step of the de
 | `/design author <slug\|brief>` (or bare) | **author** | Write a new design doc or resume/review an in-progress one. The **only** verb that transitions `Status`. |
 | `/design translate <slug>` | **translate** | Split a `Status: final` doc into structural `parts/<part-slug>.md`. Refuses on non-final. |
 | `/design sequence <slug>` | **sequence** | Topo-order `parts/` into named plans (first activated, rest queued). Refuses on non-final. |
+| `/design finalize <slug>` | **finalize** | Collapse same-day amendment-log entries; flag (never silently collapse over) a stale `[PENDING-IMPL]` placeholder. Any Status; not part of the author→translate→sequence ordering. |
 
 ## Shared conventions
 
-These hold across all three verbs.
+These hold across all four verbs.
 
 ### Status lifecycle (the hard gate)
 
@@ -336,3 +337,24 @@ Append one row and bump `updated` to today; Status stays `final`:
 ```
 
 After `sequence`, the design hand-off is complete — the rest is the normal `/work` → `/review` → `/release` loop on the generated named plans.
+
+## `/design finalize` — collapse the amendment log + flag stale placeholders
+
+A standing maintenance verb (v0.1.0, PLAN-wave-c-design-and-conventions task 3), not part of the author→translate→sequence pipeline — runnable on a doc at any `Status`, replacing today's by-hand amendment-log tidy-up + `[PENDING-IMPL]` re-audit.
+
+**Inputs.** `<slug>` (or full path — same two-path lookup as `translate`).
+
+### Step 1 — Stale-placeholder check (never silently collapse over one)
+
+Run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_finalize.py" <path> --repo-root <repo-root>`.
+
+- **Exit 0** → no stale placeholder; the tool's stdout is the doc with its amendment log collapsed. Present the diff, then ask **Write / Cancel**.
+- **Exit 2** → a `[PENDING-IMPL]` marker is stale (the doc's own `governs:` target already exists on disk, but the doc still claims it's unbuilt) — **halt**, surface stderr verbatim (it names the `governs:` glob that already resolved), and point the human at the marker to resolve by hand (either the primitive genuinely shipped — flip the marker to as-built prose — or `governs:` is stale itself and needs narrowing). Never auto-collapse past this; a stale placeholder is a real doc/reality mismatch, not a formatting nit.
+
+Design call (documented, not silently decided — no per-marker staleness convention exists to build against): staleness is doc-level (the whole doc's `governs:` target exists), not per-marker — mirrors both `scripts/health/designed_vs_built.py`'s own built/designed-not-built signal and the real "flip `[PENDING-IMPL]` markers now the engine shipped" commits already in this repo's history, which flip every marker in a doc together once its governed target ships.
+
+### Step 2 — Write
+
+On **Write**: overwrite `<path>` with the collapsed text (`--write`), matching the full design-doc template's own "consolidate before the doc is presented/committed" convention for Document History, generalized to the Amendment-log rung's bulleted shape. On **Cancel**: halt, write nothing.
+
+`finalize` never changes `Status` and never touches any section other than the amendment log.

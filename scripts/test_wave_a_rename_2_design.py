@@ -36,13 +36,17 @@ class TestWaveARename2Design(unittest.TestCase):
 
     def test_design_md_retains_both_sources_distinct_content(self):
         text = (_REPO_ROOT / "src" / "design" / "commands" / "design.md").read_text(encoding="utf-8")
-        # From development-lifecycle's full implementation (the surviving copy):
-        self.assertIn("Three verbs, one pipeline", text)
+        # From development-lifecycle's full implementation (the surviving copy).
+        # "Three verbs, one pipeline" became "Four verbs, one pipeline" when
+        # /design finalize landed (PLAN-wave-c-design-and-conventions task 3)
+        # -- same dispatch-table framing this test actually checks for, just
+        # accurately counting the now-real fourth verb.
+        self.assertIn("Four verbs, one pipeline", text)
         self.assertIn("Status lifecycle (the hard gate)", text)
         self.assertIn("design_sequence.py", text)
         # From design-docs' stub (the delegate-pointer framing folds into the
         # surviving copy's own "upstream authoring step" framing — confirm the
-        # three-verb dispatch table the stub also carried is present):
+        # dispatch table the stub also carried is present):
         self.assertIn("/design translate <slug>", text)
         self.assertIn("/design sequence <slug>", text)
 
