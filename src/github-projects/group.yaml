@@ -63,5 +63,19 @@ standalone: false
 # refining ADR 0022; cricketsPluginsA#2). The schema was a stale live claim about
 # current behavior, not a historical record — corrected in place.
 # 0.2.4 = AG Wave A rename 1: requires: [developer-workflows] -> [development-lifecycle].
-version: 0.2.4
+# 0.2.5 = live-drift bugfix (found auditing Project #5 against a growing issue
+# batch, #150-152): `post`'s CREATE path built `gh issue create` via
+# `build_commands()` but never threaded the returned issue URL into a follow-up
+# `gh project item-add` — `build_commands()` already supported an `issue_url` arg
+# for exactly this, but the CLI (`_post_main`) never supplied it, so every issue
+# `post` created was rendered + body-synced but silently never linked onto the
+# board (its Status field then had nothing to write to, even though
+# check_project_sync.py reported "in sync" — that check only compares body
+# content, not project-item linkage). `_post_main` now runs the item-add as a
+# second phase once the created issue's URL is known (dry-run previews it with a
+# placeholder URL). 8 backlog issues were found already drifted this way; 5
+# live vault-tracked ones (#26/#146/#150/#151/#152) were relinked + field-synced
+# by hand — 3 closed non-vault "plan orphans" (#24/#25/#27) were deliberately
+# left off Project #5, matching the earlier orphan-cleanup plan's intent.
+version: 0.2.5
 capabilities: [board-sync]
