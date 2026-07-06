@@ -1,4 +1,4 @@
-<!-- Status: implemented. A growing register of Antigravity (agy) host gaps that constrain crickets primitives — three rows today (scheduling · hooks · multi-agent orchestration). Append a row when a new agy gap blocks/degrades a crickets customization; strike + "resolved YYYY-MM-DD" when the host ships the missing surface. Compatibility summarizes these gaps and links here for the detail. -->
+<!-- Status: implemented. A growing register of Antigravity (agy) host gaps that constrain crickets primitives — four rows today (scheduling · hooks · multi-agent orchestration · scheduled-task durability). Append a row when a new agy gap blocks/degrades a crickets customization; strike + "resolved YYYY-MM-DD" when the host ships the missing surface. Compatibility summarizes these gaps and links here for the detail. -->
 
 # Antigravity Limitations
 
@@ -11,6 +11,7 @@ Antigravity (`agy`) is missing a few host surfaces that crickets primitives depe
 | 1 | **Scheduling / triggers** — no installable trigger path for a shipped plugin | wiki-watcher scheduling | Claude-first scheduling (`/loop` / cron); the watcher *engine* is cross-host | `agy` ships a file-based or plugin-installable scheduled-task surface | 🟡 mitigated |
 | 2 | **Hooks** — no file-based hook surface (Python decorators only) | the five crickets hooks | run Claude-effective; observe-only on Antigravity ([Hooks](Hooks)) | `agy` ships a file-based / plugin-installable hook surface | 🟡 mitigated |
 | 3 | **Multi-agent orchestration** — no plugin-author spawn-policy surface | orchestration policy | the sub-agent-as-skill pattern (ship agents the parent can spawn) | `agy` exposes a plugin-author orchestration surface | 🟡 mitigated |
+| 4 | **Scheduled-task durability** — an in-flight scheduled task does not survive an app restart/sleep; it silently transitions to `CANCELED` instead of firing late or catching up | wiki-watcher scheduling · the agentm runner | rely on OS cron/launchd, not Antigravity's native Scheduled Tasks, for anything that must survive the app being closed | `agy` ships a persistence/catch-up guarantee for its scheduled-task primitive | 🟡 mitigated |
 
 ## 1 — Scheduling / triggers
 
@@ -43,6 +44,16 @@ The `obsidian-vault` plugin's `conflict-merger-session-start` hook is a concrete
 **Mitigation.** The sub-agent-as-skill pattern is what crickets controls; the spawning is the parent agent's call. Deeper policy (specifying spawn rules via a manifest) would need a customization kind we don't have — and its value over letting the agent reason dynamically is unclear.
 
 **Re-assess when** `agy` exposes a plugin-author orchestration-policy surface.
+
+## 4 — Scheduled-task durability
+
+**The gap.** Antigravity's scheduled-task primitive does not persist an in-flight task across an app restart or the machine sleeping. Hands-on verified 2026-07-06 (agentm-runner.md's Wave-B close-out): a task scheduled to fire in 180 seconds, with the app terminated before the fire time and reopened well after it, did not fire on reopen — `manage_task` reported its status as `CANCELED`, and the agent environment logged `[Notice] All your subagents and background tasks have been stopped due to server restart.` The task is dropped, not deferred or re-queued.
+
+**Why it matters.** This is distinct from gap #1 (no plugin-installable trigger path): even a task an operator or agent schedules directly through the native surface doesn't survive the app being closed at the wrong moment. Anything that depends on "missed while off, catches up on wake" — the agentm runner's `lookback` window, or a future wiki-watcher schedule — cannot rely on Antigravity's own Scheduled Tasks to deliver that guarantee, regardless of whether a plugin could install the trigger.
+
+**Mitigation.** Use OS cron/launchd for anything that must survive the device sleeping or the app closing — it runs independent of Antigravity's app lifecycle entirely. Antigravity Scheduled Tasks remains fine for same-session, app-stays-open use, just not as a durable heartbeat.
+
+**Re-assess when** `agy` ships a persistence or catch-up guarantee for its scheduled-task primitive (e.g., a due-but-missed task fires on next app open instead of canceling).
 
 ## Resolving a gap
 
