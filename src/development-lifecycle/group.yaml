@@ -426,5 +426,16 @@ enhances:
 #          human-facing complement to task 5's shepherd. New
 #          test_setup_worktree_reminder.py positively pins the line (no prior
 #          test existed for setup.md's prose at all).
-version: 0.34.1
+# 0.34.2 = fix(pr_helpers.py): "nothing to commit" is not a finalize failure.
+#          Found live running PLAN-worktree-native-flow's own task 9 (agentm
+#          companion) acceptance demo: under the one-task-one-commit
+#          discipline (/work step 9), the plan's final task is already
+#          committed by the time finalize_pr/finalize_direct run, so `git
+#          commit` routinely reports "nothing to commit, working tree
+#          clean" (exit 1) — the pre-fix code treated ANY non-zero commit rc
+#          as fatal, so finalize could never actually reach push/PR-open in
+#          the normal case. Now only a commit failure whose output isn't
+#          git's own benign message is fatal. 2 new regression tests in
+#          test_finalize_unit.py.
+version: 0.34.2
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

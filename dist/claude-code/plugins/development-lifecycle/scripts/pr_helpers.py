@@ -83,14 +83,21 @@ def finalize_pr(
 
     The PII guard runs BEFORE any push (the order is the contract); a failed
     guard aborts before the push. Every step graceful-skips (no raise).
+
+    "Nothing to commit" is NOT a failure here — under the one-task-one-commit
+    discipline (`/work` step 9), every task's own work is already committed by
+    the time the plan's final task reaches this finalize step, so there is
+    routinely nothing left to add. Only a genuine commit failure (a non-zero
+    rc whose output isn't git's own "nothing to commit" message — a failing
+    pre-commit hook, for instance) is fatal.
     """
     run = runner or _default_runner
     steps: list = []
 
     rc, out = run(["git", "add", "-A"], repo_root); steps.append(("add", rc))
     rc, out = run(["git", "commit", "-m", title], repo_root); steps.append(("commit", rc))
-    if rc != 0:
-        return DispatchResult(ok=False, action="pr", reason="nothing to commit / commit failed",
+    if rc != 0 and "nothing to commit" not in out:
+        return DispatchResult(ok=False, action="pr", reason=f"commit failed: {out}",
                               branch=branch, steps=steps)
     commit = _head_sha(run, repo_root)
 
@@ -135,13 +142,14 @@ def finalize_direct(
     """Direct-commit opt-in: commit on current branch -> PII GUARD -> push.
 
     Same PII-before-push ordering as finalize_pr; graceful-skip on any failure.
+    "Nothing to commit" is not a failure — see finalize_pr's docstring.
     """
     run = runner or _default_runner
     steps: list = []
     rc, out = run(["git", "add", "-A"], repo_root); steps.append(("add", rc))
     rc, out = run(["git", "commit", "-m", message], repo_root); steps.append(("commit", rc))
-    if rc != 0:
-        return DispatchResult(ok=False, action="direct", reason="nothing to commit / commit failed",
+    if rc != 0 and "nothing to commit" not in out:
+        return DispatchResult(ok=False, action="direct", reason=f"commit failed: {out}",
                               steps=steps)
     commit = _head_sha(run, repo_root)
     pii_ok = pii_guard(repo_root)

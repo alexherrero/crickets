@@ -87,6 +87,54 @@ class TestFinalizeUnitPRPath(unittest.TestCase):
             self.assertTrue(result.ok)
             self.assertEqual(result.action, "pr")
 
+    def test_pr_path_already_committed_by_the_final_task_still_opens_pr(self):
+        # Under the one-task-one-commit discipline (/work step 9), the final
+        # task's own work is already committed by the time finalize runs — so
+        # `git commit` here routinely reports "nothing to commit". That must
+        # NOT be treated as a failure; it must fall through to push + PR-open
+        # exactly as if there had been something fresh to commit. (Regression:
+        # found live running the worktree-native-flow acceptance demo — the
+        # pre-fix behavior returned ok=False, "nothing to commit / commit
+        # failed", never reaching push at all.)
+        with tempfile.TemporaryDirectory() as t:
+            _write_isolation_cfg(Path(t), "worktree-per-plan", "pull-request")
+            runner = _runner_sequence([
+                (0, ""),  # gh auth status
+                (0, ""),  # git add
+                (1, "On branch worktree-foo\nnothing to commit, working tree clean"),  # git commit
+                (0, "abc1234"),  # git rev-parse HEAD
+                (0, ""),  # git push
+                (0, "https://github.com/o/r/pull/1"),  # gh pr create
+            ])
+            result = fu.finalize_unit(
+                "myplan", t,
+                runner=runner,
+                pii_guard_fn=lambda root: True,
+            )
+            self.assertTrue(result.ok, result.reason)
+            self.assertEqual(result.action, "pr")
+            self.assertEqual(result.pr_url, "https://github.com/o/r/pull/1")
+
+    def test_pr_path_genuine_commit_failure_still_fails(self):
+        # A real commit failure (e.g. a failing pre-commit hook) must NOT be
+        # swallowed just because its rc matches the "nothing to commit"
+        # tolerance's non-zero shape — only the specific benign message is
+        # forgiven.
+        with tempfile.TemporaryDirectory() as t:
+            _write_isolation_cfg(Path(t), "worktree-per-plan", "pull-request")
+            runner = _runner_sequence([
+                (0, ""),  # gh auth status
+                (0, ""),  # git add
+                (1, "error: pre-commit hook failed"),  # git commit
+            ])
+            result = fu.finalize_unit(
+                "myplan", t,
+                runner=runner,
+                pii_guard_fn=lambda root: True,
+            )
+            self.assertFalse(result.ok)
+            self.assertIn("commit failed", result.reason)
+
     def test_pr_path_pii_blocked_no_push(self):
         with tempfile.TemporaryDirectory() as t:
             _write_isolation_cfg(Path(t), "worktree-per-plan", "pull-request")
