@@ -71,7 +71,7 @@ The gates are not uniform across hosts. `commit-on-stop` is a pure side-effect, 
 
 ### The boundary
 
-`developer-safety` is **orthogonal to [privacy](crickets-privacy.md)** — a control layer and a data-protection layer are different concerns; `pii` was deliberately *not* folded here. The recoverability doctrine *names* privacy's pre-push PII guard as a mandatory carve-out, but it does not own it (the same goes for worker-tree initiation authority and `/integrate-worker` — carve-outs the doctrine names but other plugins own).
+`developer-safety` is **orthogonal to [privacy](crickets-privacy.md)** — a control layer and a data-protection layer are different concerns; `pii` was deliberately *not* folded here. The recoverability doctrine *names* privacy's pre-push PII guard as a mandatory carve-out, but it does not own it (the same goes for worktree-spawn authority and the PR-merge-on-green step that closes a plan — carve-outs the doctrine names but other plugins own).
 
 ### Opinions
 
@@ -96,7 +96,7 @@ The gates are not uniform across hosts. `commit-on-stop` is a pure side-effect, 
 - **Doctrine:** `~/.claude/CLAUDE.md` (push + worktree policy; `worktrees-operator-initiated`)
 - **Up:** [crickets HLD](crickets-hld.md) · [composition](crickets-composition.md) · [conventions](crickets-conventions.md) (cites the snippets)
 
-## Amendment log
+**2026-07-06 — carve-out language updated to name the authority pair directly, now that the commands it used to cite are gone (PLAN-worktree-native-flow task 8, docs sweep).** The `worktrees-operator-initiated` carve-out previously named the explicit commands `/spawn-worker` and `/integrate-worker` as the two authority paths; both commands are deleted outright (not migrated). The carve-out now names the authority pair itself, independent of any specific command: an explicit operator instruction to spawn a worktree, or the durable `isolation.mode: worktree-per-plan` config opt-in in `.harness/project.json` (ADR 0028's channel). Auto-spawn, when authorized, now calls the host's own worktree primitive (Claude Code `EnterWorktree`; Antigravity New-Worktree-Mode / `invoke_subagent`) directly rather than a bespoke script, and a plan's close-out is a PR opened by `finalize_unit.py` with auto-merge armed, not an operator-invoked integrate step. This is a wording reconciliation only — the authority doctrine and the auto-merge-on-green call are already recorded in the entry below; this entry closes the stale command-name references the body carried past that amendment.
 
 **2026-07-06 — worktree-native flow: the `worktrees-operator-initiated` and `/integrate-worker` carve-outs retire, for agentm + crickets only (operator-ratified 2026-07-06; ROADMAP-MASTER § Ratified 2026-07-06; adjudicated via the W1 verdict memo + Fable judgment pass).**
 

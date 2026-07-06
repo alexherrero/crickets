@@ -18,8 +18,8 @@ Look up here what a name maps to, how the name is resolved, the standalone-fallb
 | `/plan --activate <slug>` | `queued-plans/PLAN-<slug>.md` → `PLAN-<slug>.md` (promoted) | — | promotes staged → active |
 | `/review` | `PLAN.md` | — | singleton |
 | `/review --name <slug>` | `PLAN-<slug>.md` | — | named pair |
-| `/spawn-worker <name>` | — (creates a worktree bound to the named plan) | — | operator-initiated worktree + `worker/<name>` branch ([Spawning a worker worktree](#spawning-a-worker-worktree)) |
-| `/integrate-worker <name>` | — | `progress-<slug>.md` appended into `progress.md` | merges `worker/<slug>` → `main` only if the integrated tree passes the full gate, then prunes ([Integrating a worker](#integrating-a-worker)) |
+| `/work` (auto-spawn, `isolation.mode: worktree-per-plan`) | — (host creates a worktree; `worktree_marker.py` binds it to the plan) | — | host-native worktree at `.claude/worktrees/<name>` on branch `worktree-<name>` ([Spawning a worker worktree](#spawning-a-worker-worktree)) |
+| `/work` (final task, auto-close) | — | plan's close-out summary becomes the PR body | pushes the branch, opens a PR via `finalize_unit.py`, arms `gh pr merge --auto --squash` ([Closing out a plan](#closing-out-a-plan)) |
 | `/design author [<slug>]` | the design doc (not a PLAN) | — | walks the 10-section template, drives `draft → review → final` ([The `/design` command](#the-design-command)) |
 | `/design translate` | `<doc-dir>/parts/<part-slug>.md` (writes parts, reads the doc) | — | gates on `Status: final`, splits the doc into structural parts |
 | `/design sequence` | `PLAN-<doc-slug>-<part-slug>.md` (active) + `queued-plans/PLAN-<doc-slug>-<part-slug>.md` (staged) | — | one named plan per part via `stage_plan.py`; never touches the singleton `PLAN.md` |
@@ -168,76 +168,58 @@ When an agentm clone is installed the bridge delegates to agentm's `queue_status
 
 ## Spawning a worker worktree
 
-`/spawn-worker <name>` gives a named plan its own isolated checkout. It is operator-initiated — a normal session never spawns a worktree on its own. It fits the coordinator flow after a plan is staged and activated: `/plan --stage` → `/plan --activate` → `/spawn-worker` → launch a `/work` session in the new worktree. The task recipe is in [Spawn a worker in a worktree](Spawn-A-Worker-In-A-Worktree).
+`/work`'s auto-spawn step gives a named plan its own isolated checkout using the host's own worktree primitive — Claude Code's `EnterWorktree` tool, or Antigravity's New-Worktree-Mode / `invoke_subagent`. It is authority-gated, not autonomous by default: it fires only when `.harness/project.json` sets `isolation.mode: worktree-per-plan` (a durable operator config opt-in) or the operator explicitly asks for a worktree. There is no separate spawn command to run — the isolation check happens inside `/work` itself, at step 1.5. The task recipe is in [Run a named plan](Run-A-Named-Plan).
 
 | Property | Value |
 |---|---|
-| Command | `/spawn-worker <name>` |
-| Argument | `<name>` — the worker name; also the named plan slug it binds to |
-| Worktree | a new `git worktree` on a fresh `worker/<name>` branch |
-| Plan binding | writes the plan name into the worktree's local `.harness/active-plan` marker, so `/work` inside the worktree resolves *its* named plan without re-passing `--name` |
-| `vault_project` | reproduces a divergent `vault_project` into the worktree as a fallback only |
-| Guard | refuses (no-clobber) if the worktree path or the `worker/<name>` branch already exists, or the name is empty/singleton |
-| Helper | wraps `scripts/spawn_worker.py` (inside the `developer-workflows` plugin), invoked as `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/spawn_worker.py" <name>`; accepts `--project-root <path>` / `--worktree-path <path>`. Stdlib-only; mirrors `resolve_plan.py`'s pure-core + injectable-backend shape. Exit codes: `0` ok (worktree path on stdout), `1` graceful-skip (located resolver, no resolvable harness), `2` loud refusal (empty/singleton/unsafe name, no-clobber path/branch collision, resolver refusal, or failed `git worktree add` — never a partial spawn) |
+| Trigger | `/work` (or `/bugfix`) step 1.5, when `isolation_config.should_auto_isolate()` returns true |
+| Worktree creation | the host's native primitive — `EnterWorktree` (Claude Code) or New-Worktree-Mode / `invoke_subagent` (Antigravity) |
+| Location | `.claude/worktrees/<name>` on a fresh branch named `worktree-<name>` |
+| Plan binding | `worktree_marker.py` writes the plan name into the worktree's local `.harness/active-plan` marker, so `/work` inside the worktree resolves *its* named plan without re-passing `--name` — the one piece of the old `spawn_worker.py` with no host equivalent, since neither host has a concept of "plan" |
+| `vault_project` | `worktree_marker.py` reproduces a divergent `vault_project` into the worktree as a fallback only (the LC-2 behavior `spawn_worker.py` used to carry) |
+| Preflight | `worktree_marker.py` also carries the LC-6 "already shipped" preflight-reconcile guard |
+| Guard | an in-worktree single-owner check (`is_inside_worktree()`) prevents nested spawns |
 
 > [!NOTE]
-> **Operator authority, two forms.** Worker worktrees require operator authority — either an explicit `/spawn-worker` command (where the invocation is the authority) or a durable `isolation.mode: worktree-per-plan` config opt-in in `.harness/project.json` (where the config field is the authority). Silent authority-free auto-spawn stays forbidden. Both forms are decided in the [Developer safety design](crickets-developer-safety).
->
-> With `isolation.mode: worktree-per-plan` set, `/work` and `/bugfix` auto-spawn a `worker/<slug>` worktree at step 1.5 (isolation check) and finalize it (push + open PR) at the plan's end via `finalize_unit.py`. The `isolation_config.should_auto_isolate()` check is the authority gate; `is_inside_worktree()` prevents nested spawns.
+> **Operator authority, two forms.** Worker worktrees require operator authority — either an explicit operator instruction to spawn one, or a durable `isolation.mode: worktree-per-plan` config opt-in in `.harness/project.json`. Silent authority-free auto-spawn stays forbidden. Both forms are decided in the [Developer safety design](crickets-developer-safety).
 
-## Integrating a worker
+## Closing out a plan
 
-`/integrate-worker <name>` is the coordinator-side counterpart to [`/spawn-worker`](#spawning-a-worker-worktree) — it lands a finished worker, closing the lifecycle: `/plan --stage` → `/plan --activate` → `/spawn-worker` → run `/work` in the worktree → `/integrate-worker`. It is operator-initiated and merge order is human-decided; it never auto-sequences merges. The gate runs on the integrated (post-merge) tree, not the worker branch in isolation, and a red gate hard-resets `main` so it is never left broken. The task recipe is in [Integrate a worker](Integrate-A-Worker).
+On the plan's **final** task, `/work` calls `finalize_unit.py` with the real branch `EnterWorktree` returned. This is the entire replacement for the old manual local-merge-then-gate-then-hard-reset flow — a PR gated by a required status check structurally cannot merge red, so there's no separate post-merge rollback step to run.
 
 | Property | Value |
 |---|---|
-| Command | `/integrate-worker <name>` |
-| Argument | `<name>` — the worker name; also the named plan slug it was spawned on; optional `--project-root <path>` |
-| Merge | `git merge --no-ff worker/<slug>` → `main` (preserves the worker's per-task commits + records an explicit integration point) |
-| Gate | `scripts/check-all.sh` (the full 10-gate battery) run on the **post-merge / integrated** tree |
-| On RED gate | hard-resets `main` back to the captured pre-merge HEAD; leaves the worktree intact for inspection; prints the gate output |
-| On merge CONFLICT | `git merge --abort`; leaves the worktree intact |
-| On GREEN | appends `progress-<slug>.md` into the singleton `progress.md` (additive — named file kept), then prunes: removes the worktree (worktree-first), then `git branch -d worker/<slug>` (safe — `--no-ff` recorded the merge) |
-| Does **not** | push `main` (local merge only — push stays the operator's act); delete/archive the vault named plan/progress pair; auto-resolve conflicts; auto-sequence merges |
-| Helper | wraps `scripts/integrate_worker.py` (inside the `developer-workflows` plugin), invoked as `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/integrate_worker.py" <name>`. Stdlib-only; mirrors `resolve_plan.py` / `spawn_worker.py`'s pure-core + injectable-backend shape |
-| Exit codes | `0` integrated · `1` graceful-skip (located resolver, no resolvable `_harness/`) · `2` loud (guard refusal · conflict aborted · red gate rolled back) |
+| Trigger | the plan's final task, after its own CI has gone green |
+| Push | `finalize_unit.py --branch <branch>` pushes the worktree's branch |
+| PR | opens a PR via `gh pr create`, using the plan's close-out summary as the PR body |
+| Auto-merge | `pr_helpers.finalize_pr` arms `gh pr merge --auto --squash` immediately after the PR opens — the merge itself happens once required checks (the `aggregate` status check) go green, with no further operator invocation |
+| Worktree | `/work` runs `ExitWorktree keep` — never remove, since the branch still has an open PR against it |
+| Repo setting | "Allow auto-merge" must be enabled once per repo (already on for `agentm` and `crickets`) |
 
-### Implementation
+### Orphan + stalled-PR shepherd
 
-| Component | Location | Role |
-|---|---|---|
-| `integrate()` | [`integrate_worker.py:312`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/integrate_worker.py#L312) | Pure-core `integrate(name, root, *, gate, resolver)`. Runs every guard (resolve-first), the `--no-ff` merge, the gate on the merged tree, and on green the promote-then-prune — returns the exit code. |
-| `git merge --no-ff` | [`integrate_worker.py:375`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/integrate_worker.py#L375) | The integration merge. Preserves the worker's per-task commits and records an explicit integration point; a conflict is `git merge --abort`-ed and a red gate hard-resets to the captured pre-merge HEAD. |
-| `_promote()` | [`integrate_worker.py:236`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/integrate_worker.py#L236) | Green-path, additive: appends the worker's `progress-<slug>.md` plus a one-line integration record into the singleton `progress.md` (named file kept). Runs **before** prune. |
-| `_prune()` / `_branch_safe_gone()` | [`integrate_worker.py:217`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/integrate_worker.py#L217), [`:196`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/scripts/integrate_worker.py#L196) | Green-path cleanup: removes the worktree (worktree-first), then safe-deletes the branch with `git branch -d` (not `-D` — `--no-ff` made it an ancestor of HEAD). A promote/prune failure is reported but never undoes the merge. |
-| Command wiring | [`commands/integrate-worker.md`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/commands/integrate-worker.md) | The operator-facing `/integrate-worker`. Wires the real gate (`bash scripts/check-all.sh` on the merged tree), surfaces helper output verbatim, never pushes. |
+A periodic sidecar, `worktree_shepherd.py`, runs via `agentm-runner` (a scheduler, not a bespoke cron) and does two things the read-only `doctor_worktrees.py` probe never did on its own: it reclaims worktrees/branches that are orphaned (branch has no worktree, or the worktree's directory is gone), old enough (a few days), and provably safe (every commit already on the branch's remote copy, or the branch never diverged at all — anything not provably safe is left alone); and for an open PR GitHub reports as `BEHIND` its base branch (a sibling plan's PR merged first), it runs `gh pr update-branch` to rebase it, recording any resulting merge conflict rather than swallowing it.
 
-Executable tests in `scripts/test_integrate_worker.py` lock this behavior.
-
-### Pre-mutation guards
-
-All run before any merge — a refusal (exit 2) leaves `main` and the worktree untouched, so there is no partial integration to clean up. The command refuses when:
-
-| Condition | Behavior |
+| Property | Value |
 |---|---|
-| `<name>` empty or the singleton | refuse — `<name>` must be a real named-plan slug |
-| `worker/<slug>` branch missing | refuse — nothing to integrate |
-| worktree undiscoverable | refuse — cannot locate the worker's checkout |
-| `main` working tree dirty | refuse — would entangle in-flight changes with the merge |
-| plan/progress pair unresolvable | refuse — the resolver's refusal is authoritative and propagated verbatim |
+| Script | `worktree_shepherd.py` |
+| Schedule | via `agentm-runner`, cadence: a few days |
+| Reclaims | orphaned worktrees/branches, only when provably safe (fully merged into the branch's remote, or never diverged) |
+| Rebases | a `BEHIND` open PR, via `gh pr update-branch` |
+| On conflict | records it — never silently swallowed |
 
-### Orphaned-worktree doctor probe
+### Worktree doctor probe
 
-A read-only `doctor_worktrees.py` (operator-run) lists every `worker/<slug>` worktree and classifies each with its plan mapping. It is the cleanup complement to `/integrate-worker` — zero mutation; the coordinator prunes on demand. The probe correlates worker branches (`git for-each-ref refs/heads/worker/`) with `git worktree list --porcelain`, so it reports both lingering branches with no worktree and worktrees whose directory is gone — not only the worktrees on disk.
+A read-only `doctor_worktrees.py` (operator-run) lists every `worktree-<slug>` worktree and classifies each with its plan mapping. It mutates nothing — the operator (or the shepherd, when provably safe) prunes on demand. The probe correlates worktree branches (`git for-each-ref refs/heads/worktree-`) with `git worktree list --porcelain`, so it reports both lingering branches with no worktree and worktrees whose directory is gone — not only the worktrees on disk.
 
 | Property | Value |
 |---|---|
 | Script | `doctor_worktrees.py` (read-only); optional `--project-root <path>` (default: cwd) |
-| Lists | every `worker/<slug>` worktree, plus any lingering `worker/<slug>` branch with no worktree |
+| Lists | every `worktree-<slug>` worktree, plus any lingering `worktree-<slug>` branch with no worktree |
 | Classifies each | `active` · `merged-but-unpruned` · `orphaned` · `dangling-marker` (mutually exclusive, precedence-ordered) |
 | Per-worktree | the worktree's plan mapping (the `.harness/active-plan` marker's bare slug) + status + a `→` detail line |
-| Integration ref | the repo's current `HEAD` (normally `main`), matching `integrate_worker.py` |
-| Mutates | nothing — every git call is a query (`list`, `for-each-ref`, `merge-base --is-ancestor`); the coordinator prunes on demand once they read the report |
+| Integration ref | the repo's current `HEAD` (normally `main`) |
+| Mutates | nothing — every git call is a query (`list`, `for-each-ref`, `merge-base --is-ancestor`); the operator or the shepherd prunes on demand once they read the report |
 | Exit | **always `0`** — a report, not a gate |
 
 The four states, in precedence order:
@@ -314,10 +296,8 @@ The bare paths are byte-identical to the singleton literals, locked by an execut
 ## Related
 
 - [Author a design](Author-A-Design) — the task recipe for the upstream `/design` authoring step (`author` → `translate` → `sequence`).
-- [Run a named plan](Run-A-Named-Plan) — the task recipe for driving `/work --name <slug>` and friends.
-- [Spawn a worker in a worktree](Spawn-A-Worker-In-A-Worktree) — the task recipe for `/spawn-worker`: hand an activated named plan to a worker in its own checkout.
-- [Integrate a worker](Integrate-A-Worker) — the task recipe for `/integrate-worker`: land a finished worker's branch on `main` only if the integrated tree still passes the gate.
-- [Development lifecycle design — gate the integrated tree](crickets-development-lifecycle) — the decision behind the gate-on-merged-tree + hard-reset-rollback rows in [Integrating a worker](#integrating-a-worker).
+- [Run a named plan](Run-A-Named-Plan) — the task recipe for driving `/work --name <slug>` and friends, including the auto-spawn + auto-close-out flow.
+- [Development lifecycle design — worktree-native flow](crickets-development-lifecycle) — the decision behind host-native worktree creation and the PR-gated close-out replacing the old merge-then-gate-then-hard-reset model.
 - [See every active plan](See-Every-Active-Plan) — the read-side recipe: `/queue-status-lite` for a one-glance view of the queue.
 - [Developer Workflows](Developer-Workflows) — the phase-loop plugin these commands belong to.
 - [Why phase-gating](Why-Phase-Gating) — why the loop is gated and state lives on disk.

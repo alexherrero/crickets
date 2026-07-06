@@ -15,7 +15,7 @@ This is the core loop the `developer-workflows` plugin gives you. Each phase doe
 
 1. **Plan.** Run `/plan <brief>` to turn your brief into a task list with pass/fail criteria, written to `PLAN.md`. No code is written in this phase — it's just the plan. (When you have more than one change in flight at once, give each its own name — see [Run a named plan](Run-A-Named-Plan).)
 
-2. **Work.** Run `/work` to implement the plan. It works the tasks in order, one at a time, updating `progress.md` as it goes, and it stops only when a safety check fails or it needs a decision from you — otherwise it runs to the end of the plan. For a larger change, break the work into isolated worktrees with [`/spawn-worker`](Spawn-A-Worker-In-A-Worktree) and land them with [`/integrate-worker`](Integrate-A-Worker).
+2. **Work.** Run `/work` to implement the plan. It works the tasks in order, one at a time, updating `progress.md` as it goes, and it stops only when a safety check fails or it needs a decision from you — otherwise it runs to the end of the plan. For a larger change, `/work` itself spawns the plan its own isolated worktree (via the host's native worktree primitive) and closes it out with an auto-merging pull request, when [`isolation.mode: worktree-per-plan`](Run-A-Named-Plan) is configured or you ask for a worktree explicitly — you don't run a separate spawn or integrate command.
 
 3. **Review.** Run `/review` to put the change through an adversarial pass. The reviewer assumes the code has bugs and has to produce a failing test or a specific line-number defect, not a "looks good to me." Deterministic checks — typecheck, lint, tests — come first; the review adds to them.
 

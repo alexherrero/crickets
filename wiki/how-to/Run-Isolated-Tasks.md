@@ -72,7 +72,7 @@ For non-isolated tasks, step 2.5 exits 1 and `/work` proceeds directly — no wo
 
 ## Related
 
-- [Spawn a worker in a worktree](Spawn-A-Worker-In-A-Worktree) — plan-level worktree isolation via `/spawn-worker`.
+- [Run a named plan](Run-A-Named-Plan) — plan-level worktree isolation: `/work`'s own auto-spawn, gated on `isolation.mode: worktree-per-plan`.
 - [Run a coordinator-directed worker team](Run-A-Coordinator-Directed-Worker-Team) — multi-worker parallel execution.
 - [Named plans](Named-Plans) — how plan slugs and `.harness/active-plan` bind workers to plans.
 - [Developer Workflows](../architecture/plugins/Developer-Workflows) — full primitive reference.

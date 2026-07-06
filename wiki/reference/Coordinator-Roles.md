@@ -24,7 +24,7 @@ These are **roles** — thin layers that compose onto surfaces `developer-workfl
 
 - `researcher` dispatches the shipped `explorer` (codebase fan-out) and runs its own `WebFetch` for light web lookups, and forward-references the operator's global research agent for deep / multi-source work — composing with it when present, never vendoring or porting it. It fronts those capabilities without adding a fan-out engine of its own.
 - `tech-lead` is the authoring persona for the `/design → /plan` step — both shipped; `/design` is the upstream authoring step, `/plan` the floor it sequences down to (see below).
-- `worker` is the persona of a `/work` session — one per worktree, bound to its plan by the worktree-local `.harness/active-plan` marker that `/spawn-worker` drops, integrated back by `/integrate-worker`.
+- `worker` is the persona of a `/work` session — one per worktree, bound to its plan by the worktree-local `.harness/active-plan` marker that `worktree_marker.py` writes once `/work`'s own auto-spawn step has created the worktree, integrated back via the auto-merging PR `finalize_unit.py` opens at the plan's final task.
 - `project-manager` wraps the shipped `/queue-status-lite` read-model.
 
 Because each role is a thin skin, the engine it rides is documented on the surface it wraps — see [Named plans](Named-Plans) for the command surface and [Evaluator](Evaluator) / the agent specs for the agents.
@@ -49,18 +49,18 @@ The brief-to-plan authoring persona (full tool access): it turns a brief into an
 - `/plan --stage <slug>` — stage a plan into the inactive `queued-plans/` tier (invisible to `/work` and `/queue-status-lite`).
 - `/plan --activate <slug>` — promote a staged plan to the active `PLAN-<slug>.md` (no-clobber guarded).
 
-This lets `tech-lead` queue several plans and activate them one at a time, feeding the worker pool without singleton collisions. After it stages and activates a named plan, the **operator** runs `/spawn-worker <slug>` (operator-initiated, never autonomous — [Developer safety design](crickets-developer-safety)) to hand the plan to a worktree; `tech-lead` produces plans, it does not spawn worktrees.
+This lets `tech-lead` queue several plans and activate them one at a time, feeding the worker pool without singleton collisions. After it stages and activates a named plan, running `/work` against it is what hands the plan to a worktree — `/work`'s own auto-spawn step creates the worktree via the host's native primitive when authorized (an explicit operator instruction, or the durable `isolation.mode: worktree-per-plan` config opt-in — never autonomous, [Developer safety design](crickets-developer-safety)); `tech-lead` produces plans, it does not spawn worktrees itself.
 
 > [!NOTE]
 > **`/design` is the shipped upstream step.** The richer author → translate → sequence authoring path (`/design`, `src/developer-workflows/commands/design.md`) shipped at crickets v3.11.0 (2026-06-14). `tech-lead` authors via `/design` when a brief needs the fuller translate-and-sequence treatment, and drops straight to `/plan` (its original floor) for briefs that don't. `/design`'s output is a topo-ordered set of named plans that `/plan` still feeds one at a time.
 
 ### `worker` (role, active)
 
-The autonomous executor (full tool access) — the persona of a `/work` **session, one per worktree**, not a sub-agent dispatched inside the coordinator. It binds to its plan via the worktree-local `.harness/active-plan` marker that [`/spawn-worker`](Spawn-A-Worker-In-A-Worktree) drops: a `/work` session launched **inside** the `worker/<slug>` worktree resolves its own `PLAN-<slug>.md` from the marker — **no `--name` needed**.
+The autonomous executor (full tool access) — the persona of a `/work` **session, one per worktree**, not a sub-agent dispatched inside the coordinator. It binds to its plan via the worktree-local `.harness/active-plan` marker that `worktree_marker.py` writes once the host has created the worktree: a `/work` session launched **inside** the `worktree-<slug>` worktree resolves its own `PLAN-<slug>.md` from the marker — **no `--name` needed**.
 
 - Runs `/work` autonomously through the bound plan's **full** task list, single-threaded, with the per-task safety pre-check gating each task (stop-and-ask only on a hard-to-reverse / ambiguous / scope-drifting / unverifiable task).
 - Gates green before every `[x]`; one task, one commit; updates `PLAN-<slug>.md` + `progress-<slug>.md`.
-- Closes the loop via [`/integrate-worker <slug>`](Integrate-A-Worker) — a `--no-ff` merge that runs the full gate battery on the merged tree (red gate → hard-reset to pre-merge HEAD; conflict → abort), promotes `progress-<slug>.md` into mainline progress, and prunes the worktree. Integration is local-merge-only — no push.
+- Closes the loop on its own, at the plan's final task: `finalize_unit.py` pushes the branch, opens a PR carrying the plan's close-out summary, and arms `gh pr merge --auto --squash` — the PR merges once required checks go green, with no separate operator-invoked integrate step. `/work` then runs `ExitWorktree keep`, since the branch still has an open PR against it.
 
 Never fans out parallel implementers — single-threaded execution is the safety constraint everything else leans on, and the per-task safety check sets the autonomy boundary.
 
@@ -81,7 +81,7 @@ Its allowlist is `Read`, `Glob`, `Grep`, and `Bash`, and the Bash is read-only b
 
 ## Related
 
-- [Named plans](Named-Plans) — the command surface the roles wrap: `/work`, `/plan`, `/spawn-worker`, `/integrate-worker`, `/queue-status-lite`.
+- [Named plans](Named-Plans) — the command surface the roles wrap: `/work`, `/plan`, `/queue-status-lite`, and the auto-spawn / auto-close-out worktree flow inside `/work`.
 - [Run a coordinator-directed worker team](Run-A-Coordinator-Directed-Worker-Team) — the playbook that ties the roster together end to end.
 - [Evaluator](Evaluator) — a companion read-only agent in `developer-workflows/agents/`; the same tight-allowlist pattern the read-only roles follow.
-- [Spawn a worker in a worktree](Spawn-A-Worker-In-A-Worktree) · [Integrate a worker](Integrate-A-Worker) · [See every active plan](See-Every-Active-Plan) — the worker-lifecycle recipes the `worker` and `project-manager` roles drive.
+- [Run a named plan](Run-A-Named-Plan) · [See every active plan](See-Every-Active-Plan) — the worker-lifecycle recipes the `worker` and `project-manager` roles drive.

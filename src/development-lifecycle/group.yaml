@@ -403,5 +403,28 @@ enhances:
 #          opened but didn't arm still did its own job). "Allow auto-merge" is
 #          enabled on both agentm + crickets (one-time repo setting, done
 #          alongside this code change, not left as a manual follow-up).
-version: 0.33.0
+# 0.34.0 = worktree-native-flow task 5: `doctor_worktrees.py` rewritten against
+#          the `EnterWorktree` convention (`worktree-<slug>` branches, not the
+#          retired `worker/<slug>`) — caught + fixed a real bug live in the
+#          process: `for-each-ref`'s pattern match is by path COMPONENT, not
+#          string prefix, so `refs/heads/worktree-` (no trailing `*`) silently
+#          matched nothing; needs `refs/heads/worktree-*`. New
+#          `worktree_shepherd.py` (red-test-first, 14 tests) adds the two
+#          mutating duties `doctor_worktrees.py` deliberately doesn't do:
+#          orphan reclaim (age threshold + `is_safe_to_reclaim` — every commit
+#          already on the remote copy, or the branch never diverged at all;
+#          anything not provably safe is left alone, never guessed away) and
+#          stalled-PR rebase (`gh pr update-branch` on any open PR GitHub
+#          reports `BEHIND` its base; a resulting conflict is recorded and
+#          surfaced, never silently left). Wired into `agentm-runner` via two
+#          new `.harness/jobs/worktree-shepherd-{agentm,crickets}.yaml`
+#          manifests (device-local, gitignored, dry-run per the runner's own
+#          convention for new jobs — promote after a few observed cycles).
+# 0.34.1 = worktree-native-flow task 7: `/setup`'s scaffold-output summary
+#          gains a standing, non-blocking doctrine reminder — close out a
+#          worktree you're done with rather than leave it dangling — the
+#          human-facing complement to task 5's shepherd. New
+#          test_setup_worktree_reminder.py positively pins the line (no prior
+#          test existed for setup.md's prose at all).
+version: 0.34.1
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

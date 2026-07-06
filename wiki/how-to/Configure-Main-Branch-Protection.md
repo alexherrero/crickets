@@ -4,7 +4,7 @@
 > **Goal:** Enable the four GitHub branch-protection controls that the worktree-per-plan isolation loop assumes — required CI status checks, PR-only merges with squash/rebase, no force-push, and linear history — so concurrent plan workers cannot race on tags or merge order.
 > **Prereqs:** GitHub repository admin access (Settings → Branches); at least one push to `main` so the branch exists; the repo's CI workflows set up (so you can add them as required status checks). See [CI gates](CI-Gates) for the full gate list.
 
-The worktree-per-plan loop creates one `worker/<slug>` branch per plan and merges it into `main` via a PR. Two concurrent plan workers can both create a tag pointing to a branch tip — the force-push-on-shared-tag trap — unless `main` is protected. The four controls below make that trap structurally unreachable.
+The worktree-per-plan loop creates one `worktree-<slug>` branch per plan and merges it into `main` via a PR that `finalize_unit.py` opens with auto-merge armed. Two concurrent plan workers can both create a tag pointing to a branch tip — the force-push-on-shared-tag trap — unless `main` is protected. The four controls below make that trap structurally unreachable.
 
 ## Steps
 
@@ -28,7 +28,7 @@ In your GitHub repository: **Settings → Branches → Add branch protection rul
 - Enable **"Require a pull request before merging"**.
 - Under **Allowed merge methods**, enable only **Squash merging** and/or **Rebase merging**. Disable **Merge commits**.
 
-*Why:* The loop pushes each plan unit as a `worker/<slug>` branch and merges it via PR. Allowing direct pushes to `main` bypasses the per-plan CI gate. Merge commits produce non-linear history that makes reachability checks ambiguous when two plans land concurrently.
+*Why:* The loop pushes each plan unit as a `worktree-<slug>` branch and merges it via PR. Allowing direct pushes to `main` bypasses the per-plan CI gate. Merge commits produce non-linear history that makes reachability checks ambiguous when two plans land concurrently.
 
 ### 4. Disallow force pushes
 
@@ -59,4 +59,4 @@ Expected: `allow_force_pushes: false`, `linear_history: true`, status checks lis
 
 - [CI gates](CI-Gates) — the full gate battery the required status checks reference
 - [Development lifecycle design — Concurrent-release coordination](crickets-development-lifecycle) — why this model was chosen and the re-audit trigger if plan concurrency grows past a handful of simultaneous landers
-- [Spawn a worker in a worktree](Spawn-A-Worker-In-A-Worktree) — how the loop creates the `worker/<slug>` branch this protection applies to
+- [Run a named plan](Run-A-Named-Plan) — how `/work`'s auto-spawn step creates the `worktree-<slug>` branch this protection applies to
