@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""Bridge to agentm's memory-save engine, for the `debt` kind (crickets
-wave-c-maintenance, task 3).
+"""Bridge to agentm's memory-save engine, for maintenance's new memory
+kinds -- `debt` (task 3) and `content-refresh-watchlist` (task 4) (crickets
+wave-c-maintenance).
 
 Locates agentm's harness/skills/memory/scripts/ dir via the same
 path-fallback convention as src/diagnostics/scripts/agentm_bridge.py, then
-file-path-loads save.py so tech-debt-inventory can call save_entry() in-
-process. `debt` is a new kind convention over the existing engine -- no
-schema change (crickets-maintenance.md) -- so this bridge only adds a thin
-wrapper, not a new write path.
+file-path-loads save.py so maintenance's primitives can call save_entry()
+in-process. Each kind is a convention over the existing engine -- no schema
+change (crickets-maintenance.md) -- so this bridge only adds thin wrappers,
+not a new write path.
 """
 from __future__ import annotations
 
@@ -72,6 +73,20 @@ def write_debt_entry(vault: Path, *, slug: str, body: str, group: str = "persona
         raise RuntimeError("agentm is unresolvable -- cannot write a debt entry")
     try:
         return module.save_entry(vault, "debt", slug, body, group=group, tags=tags or [])
+    except FileExistsError:
+        return None
+
+
+def write_content_refresh_watchlist_entry(vault: Path, *, slug: str, body: str, group: str = "personal", tags: "list | None" = None) -> "Path | None":
+    """Write a kind="content-refresh-watchlist" entry via agentm's
+    save_entry(). Judgment-bound drift surfaces here instead of being
+    auto-edited (Locked design call). Returns the written path, or None if
+    an entry with this slug already exists."""
+    module = load_save_module()
+    if module is None:
+        raise RuntimeError("agentm is unresolvable -- cannot write a content-refresh watchlist entry")
+    try:
+        return module.save_entry(vault, "content-refresh-watchlist", slug, body, group=group, tags=tags or [])
     except FileExistsError:
         return None
 

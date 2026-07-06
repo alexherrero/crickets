@@ -21,5 +21,9 @@ standalone: false
 # 0.2.2 = PLAN-wave-c-maintenance task 3: tech-debt-inventory (a standing,
 #          recallable `debt`-kind entry per planted item, idempotent via
 #          save_entry's own FileExistsError-on-existing-slug guard).
-version: 0.2.2
+# 0.2.3 = PLAN-wave-c-maintenance task 4: content-refresh (mechanical vs.
+#          judgment-bound classifier -- a rename-shaped diff auto-applies,
+#          a genuinely new entry surfaces to the `content-refresh-
+#          watchlist` kind instead of being auto-edited).
+version: 0.2.3
 capabilities: [github-ci, ci-repair, maintenance]
