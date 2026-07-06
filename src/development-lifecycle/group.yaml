@@ -1,4 +1,4 @@
-name: Developer Workflows
+name: Development Lifecycle
 description: The phase-gated developer loop — /setup /plan /work /review /release /bugfix — extracted from agentm as a standalone native plugin. The base other dev plugins enhance.
 category: Coding
 requires: []
@@ -342,5 +342,15 @@ enhances:
 # files that already landed on the wrong tier (never wired as a live
 # check-all.sh gate — a real checkout can carry legitimate pre-vault-cutover
 # archives that would false-positive forever).
-version: 0.29.13
-capabilities: [setup, plan, work, review, release, bugfix, documentation]
+# 0.30.0 = AG Wave A rename 1 (PLAN-wave-a-renames-1 task 1): directory
+# renamed src/developer-workflows/ -> src/development-lifecycle/; the
+# declare-both-names mechanism (crickets-composition.md, 2026-06-28
+# amendment) adds `development-lifecycle` to `capabilities:` alongside the
+# retained `developer-workflows` name — no separate alias map, both names
+# keep resolving. The eight consumer `requires:`/`enhances:` group-slug
+# edges are re-pointed in this same task's task 2, not left to "just
+# resolve" via the capability declare (that mechanism only covers runtime
+# capability-name lookups, not the static directory-slug edges lint_src.py
+# checks).
+version: 0.30.0
+capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]
