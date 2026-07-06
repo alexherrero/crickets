@@ -1,0 +1,8 @@
+{
+  "capabilities": [
+    "testing-conventions",
+    "releasing-conventions",
+    "conventions"
+  ],
+  "version": "0.1.0"
+}

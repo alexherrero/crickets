@@ -1,6 +1,7 @@
 {
   "plugins": [
     "code-review",
+    "conventions",
     "design",
     "developer-safety",
     "development-lifecycle",
@@ -8,9 +9,7 @@
     "maintenance",
     "obsidian-vault",
     "privacy",
-    "releasing-conventions",
     "status-line-meter",
-    "testing-conventions",
     "token-audit",
     "wiki"
   ]

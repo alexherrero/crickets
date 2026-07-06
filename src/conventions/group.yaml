@@ -1,0 +1,18 @@
+name: Conventions
+description: Day-to-day testing + release discipline in one plugin — tests-are-sacred, verification-first, the 3-layer pyramid, the pre-release checklist, changelog-shape, and paired-release coordination for cross-repo releases.
+category: Coding
+requires: [development-lifecycle]
+standalone: false
+capabilities: [testing-conventions, releasing-conventions, conventions]
+# 0.1.0 = AG Wave A rename 2 (PLAN-wave-a-renames-2 task 5): testing-conventions
+#          + releasing-conventions merge into this group per crickets-conventions.md's
+#          Migrations spec — a flat merge (neither source had scripts/, only
+#          rules/ + skills/, one file each). capabilities dualizes both
+#          transitional self-names alongside the merged conventions noun. The
+#          four pre-existing primitives (no-skip-tests.md, version-bump-required.md,
+#          the testing-conventions skill, the ship-release skill) are unchanged.
+#          "Migrate the homeless conventions in" (agentic-engineering/ci-battery/
+#          no-change-detector rules from AGENTS.md) is descoped to a Wave-C
+#          follow-up per the plan's own locked design call — this task is the
+#          rename mechanic only.
+version: 0.1.0

@@ -25,6 +25,20 @@
     },
     {
       "capabilities": [
+        "testing-conventions",
+        "releasing-conventions",
+        "conventions"
+      ],
+      "dependencies": [
+        "development-lifecycle"
+      ],
+      "description": "Day-to-day testing + release discipline in one plugin — tests-are-sacred, verification-first, the 3-layer pyramid, the pre-release checklist, changelog-shape, and paired-release coordination for cross-repo releases.",
+      "name": "conventions",
+      "source": "./dist/claude-code/plugins/conventions",
+      "version": "0.1.0"
+    },
+    {
+      "capabilities": [
         "design-docs",
         "design",
         "architecture"
@@ -122,18 +136,6 @@
     },
     {
       "capabilities": [
-        "releasing-conventions"
-      ],
-      "dependencies": [
-        "development-lifecycle"
-      ],
-      "description": "Ship-release workflow and release discipline — pre-release checklist, changelog-shape convention, and paired-release discipline for cross-repo coordinated releases.",
-      "name": "releasing-conventions",
-      "source": "./dist/claude-code/plugins/releasing-conventions",
-      "version": "0.2.2"
-    },
-    {
-      "capabilities": [
         "status-line-meter"
       ],
       "description": "Live context/cost meter for the Claude Code status line — used-%, 5h-window cost, and floor-share badge. Enhances token-audit with continuous live metering.",
@@ -147,18 +149,6 @@
       "name": "status-line-meter",
       "source": "./dist/claude-code/plugins/status-line-meter",
       "version": "0.1.4"
-    },
-    {
-      "capabilities": [
-        "testing-conventions"
-      ],
-      "dependencies": [
-        "development-lifecycle"
-      ],
-      "description": "Day-to-day testing principles — tests-are-sacred, verification-first, and the 3-layer pyramid — for Developer-tier users.",
-      "name": "testing-conventions",
-      "source": "./dist/claude-code/plugins/testing-conventions",
-      "version": "0.1.2"
     },
     {
       "capabilities": [

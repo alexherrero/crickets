@@ -28,6 +28,26 @@
     },
     {
       "capabilities": [
+        "testing-conventions",
+        "releasing-conventions",
+        "conventions"
+      ],
+      "category": "Coding",
+      "name": "conventions",
+      "policy": {
+        "authentication": "ON_INSTALL",
+        "installation": "AVAILABLE"
+      },
+      "requires": [
+        "development-lifecycle"
+      ],
+      "source": {
+        "path": "./dist/antigravity/plugins/conventions",
+        "source": "local"
+      }
+    },
+    {
+      "capabilities": [
         "design-docs",
         "design",
         "architecture"
@@ -167,24 +187,6 @@
     },
     {
       "capabilities": [
-        "releasing-conventions"
-      ],
-      "category": "Coding",
-      "name": "releasing-conventions",
-      "policy": {
-        "authentication": "ON_INSTALL",
-        "installation": "AVAILABLE"
-      },
-      "requires": [
-        "development-lifecycle"
-      ],
-      "source": {
-        "path": "./dist/antigravity/plugins/releasing-conventions",
-        "source": "local"
-      }
-    },
-    {
-      "capabilities": [
         "status-line-meter"
       ],
       "category": "Coding",
@@ -202,24 +204,6 @@
       },
       "source": {
         "path": "./dist/antigravity/plugins/status-line-meter",
-        "source": "local"
-      }
-    },
-    {
-      "capabilities": [
-        "testing-conventions"
-      ],
-      "category": "Coding",
-      "name": "testing-conventions",
-      "policy": {
-        "authentication": "ON_INSTALL",
-        "installation": "AVAILABLE"
-      },
-      "requires": [
-        "development-lifecycle"
-      ],
-      "source": {
-        "path": "./dist/antigravity/plugins/testing-conventions",
         "source": "local"
       }
     },
