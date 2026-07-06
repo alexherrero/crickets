@@ -57,9 +57,21 @@ class TestNamingRule(unittest.TestCase):
             [])
 
     def test_opinion_names_banned(self):
-        for bad in ("efficiency", "quality", "good", "done"):
+        # The canonical nine-name catalog (agentm-opinion-registry.md,
+        # 2026-06-26) — reconciled from a stale 4-name set that missed 6 of
+        # these and banned 2 ("efficiency", "quality") never in the catalog.
+        for bad in ("done", "good", "efficient", "how-we-engineer",
+                    "recoverable", "private", "ready", "simple", "worth-knowing"):
             v = ccn.find_naming_violations({"x": [bad]})
             self.assertTrue(any(bad in m and "Opinion" in m for m in v), (bad, v))
+
+    def test_stale_pre_reconciliation_names_no_longer_banned(self):
+        # "efficiency" and "quality" were never real Opinion names — the old
+        # 4-name set banned them by mistake. Confirms the fix actually
+        # narrows as well as widens the guard, not just adds to it.
+        for not_an_opinion in ("efficiency", "quality"):
+            v = ccn.find_naming_violations({"x": [not_an_opinion]})
+            self.assertEqual(v, [])
 
     # --- the live set conforms (regression on real src/) ---
 
@@ -82,7 +94,7 @@ class TestNamingRule(unittest.TestCase):
             (src / "bad").mkdir(parents=True)
             (src / "bad" / "group.yaml").write_text(
                 "name: B\ndescription: d\nstandalone: true\nrequires: []\n"
-                "capabilities: [efficiency]\n", encoding="utf-8")
+                "capabilities: [ready]\n", encoding="utf-8")
             self.assertEqual(ccn.main(["--src", str(src)]), 1)
 
 

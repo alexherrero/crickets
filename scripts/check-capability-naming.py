@@ -43,8 +43,13 @@ SRC = ROOT / "src"
 WORKFLOWS_EXCEPTION = "developer-workflows"
 BANNED_SUFFIX = "-workflows"
 # Opinion surfaces tools request by name — never legal as a capability name.
-# (Extensible: add new Opinion surfaces here as agentm names them.)
-OPINION_NAMES = frozenset({"efficiency", "quality", "good", "done"})
+# The canonical nine-name catalog (agentm-opinion-registry.md's amendment
+# log, 2026-06-26) — reconciled here from a stale 4-name set that both
+# missed 6 real catalog names and guarded 2 that were never in it.
+OPINION_NAMES = frozenset({
+    "done", "good", "efficient", "how-we-engineer", "recoverable",
+    "private", "ready", "simple", "worth-knowing",
+})
 
 
 def name_violation(name: str, *, kind: str, source: str) -> str | None:
