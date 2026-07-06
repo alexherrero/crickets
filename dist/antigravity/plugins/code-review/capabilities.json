@@ -6,8 +6,8 @@
     {
       "capability": "review",
       "effect": "/review dispatches the adversarial reviewers (failing test / DEFECT: file:line / NO ISSUES FOUND)",
-      "group": "developer-workflows"
+      "group": "development-lifecycle"
     }
   ],
-  "version": "0.2.5"
+  "version": "0.2.6"
 }

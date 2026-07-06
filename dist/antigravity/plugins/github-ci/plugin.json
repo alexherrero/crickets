@@ -5,5 +5,5 @@
   },
   "description": "CI workflows + dependency-update tooling — the dependabot-fixer skill that repairs breakage on Dependabot PRs.",
   "name": "github-ci",
-  "version": "0.1.1"
+  "version": "0.1.2"
 }

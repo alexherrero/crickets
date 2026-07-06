@@ -6,8 +6,8 @@
     {
       "capability": "documentation",
       "effect": "phase commands dispatch the documenter to author/repair wiki pages at phase boundaries",
-      "group": "developer-workflows"
+      "group": "development-lifecycle"
     }
   ],
-  "version": "0.5.3"
+  "version": "0.5.4"
 }

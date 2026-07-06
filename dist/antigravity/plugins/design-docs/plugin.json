@@ -5,5 +5,5 @@
   },
   "description": "Design-doc and ADR authoring — the /design command (author → translate → sequence) and the ADR skill for capturing architectural decisions with re-audit triggers.",
   "name": "design-docs",
-  "version": "0.1.2"
+  "version": "0.1.3"
 }

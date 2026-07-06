@@ -16,24 +16,24 @@
         {
           "capability": "review",
           "effect": "/review dispatches the adversarial reviewers (failing test / DEFECT: file:line / NO ISSUES FOUND)",
-          "group": "developer-workflows"
+          "group": "development-lifecycle"
         }
       ],
       "name": "code-review",
       "source": "./dist/claude-code/plugins/code-review",
-      "version": "0.2.5"
+      "version": "0.2.6"
     },
     {
       "capabilities": [
         "design"
       ],
       "dependencies": [
-        "developer-workflows"
+        "development-lifecycle"
       ],
       "description": "Design-doc and ADR authoring — the /design command (author → translate → sequence) and the ADR skill for capturing architectural decisions with re-audit triggers.",
       "name": "design-docs",
       "source": "./dist/claude-code/plugins/design-docs",
-      "version": "0.1.2"
+      "version": "0.1.3"
     },
     {
       "capabilities": [
@@ -42,15 +42,17 @@
       "description": "Universal control + safety layer — kill-switch, steer, commit-on-stop hooks plus commit-no-coauthor / worktrees-operator-initiated conventions. Usable in any session; enhances developer-workflows (its hooks engage across the phase loop) when both are installed.",
       "enhances": [
         {
-          "group": "developer-workflows"
+          "group": "development-lifecycle"
         }
       ],
       "name": "developer-safety",
       "source": "./dist/claude-code/plugins/developer-safety",
-      "version": "0.3.5"
+      "version": "0.3.6"
     },
     {
       "capabilities": [
+        "developer-workflows",
+        "development-lifecycle",
         "setup",
         "plan",
         "work",
@@ -67,33 +69,33 @@
           "group": "github-projects"
         }
       ],
-      "name": "developer-workflows",
-      "source": "./dist/claude-code/plugins/developer-workflows",
-      "version": "0.29.13"
+      "name": "development-lifecycle",
+      "source": "./dist/claude-code/plugins/development-lifecycle",
+      "version": "0.30.0"
     },
     {
       "capabilities": [
         "ci-repair"
       ],
       "dependencies": [
-        "developer-workflows"
+        "development-lifecycle"
       ],
       "description": "CI workflows + dependency-update tooling — the dependabot-fixer skill that repairs breakage on Dependabot PRs.",
       "name": "github-ci",
       "source": "./dist/claude-code/plugins/github-ci",
-      "version": "0.1.1"
+      "version": "0.1.2"
     },
     {
       "capabilities": [
         "board-sync"
       ],
       "dependencies": [
-        "developer-workflows"
+        "development-lifecycle"
       ],
       "description": "One-way, deterministic board-sync — synthesizes a vault project's roadmap/plan/progress state onto a GitHub Project board via six locked per-type templates, a single idempotent project_sync.py write path, and a vault==board drift gate. The vault stays the agent's source of truth; the board is the generated human source.",
       "name": "github-projects",
       "source": "./dist/claude-code/plugins/github-projects",
-      "version": "0.2.3"
+      "version": "0.2.4"
     },
     {
       "capabilities": [
@@ -118,12 +120,12 @@
         "releasing-conventions"
       ],
       "dependencies": [
-        "developer-workflows"
+        "development-lifecycle"
       ],
       "description": "Ship-release workflow and release discipline — pre-release checklist, changelog-shape convention, and paired-release discipline for cross-repo coordinated releases.",
       "name": "releasing-conventions",
       "source": "./dist/claude-code/plugins/releasing-conventions",
-      "version": "0.2.1"
+      "version": "0.2.2"
     },
     {
       "capabilities": [
@@ -146,12 +148,12 @@
         "testing-conventions"
       ],
       "dependencies": [
-        "developer-workflows"
+        "development-lifecycle"
       ],
       "description": "Day-to-day testing principles — tests-are-sacred, verification-first, and the 3-layer pyramid — for Developer-tier users.",
       "name": "testing-conventions",
       "source": "./dist/claude-code/plugins/testing-conventions",
-      "version": "0.1.1"
+      "version": "0.1.2"
     },
     {
       "capabilities": [
@@ -171,12 +173,12 @@
         {
           "capability": "documentation",
           "effect": "phase commands dispatch the documenter to author/repair wiki pages at phase boundaries",
-          "group": "developer-workflows"
+          "group": "development-lifecycle"
         }
       ],
       "name": "wiki-maintenance",
       "source": "./dist/claude-code/plugins/wiki-maintenance",
-      "version": "0.5.3"
+      "version": "0.5.4"
     }
   ]
 }

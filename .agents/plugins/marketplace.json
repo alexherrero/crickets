@@ -13,7 +13,7 @@
         {
           "capability": "review",
           "effect": "/review dispatches the adversarial reviewers (failing test / DEFECT: file:line / NO ISSUES FOUND)",
-          "group": "developer-workflows"
+          "group": "development-lifecycle"
         }
       ],
       "name": "code-review",
@@ -37,7 +37,7 @@
         "installation": "AVAILABLE"
       },
       "requires": [
-        "developer-workflows"
+        "development-lifecycle"
       ],
       "source": {
         "path": "./dist/antigravity/plugins/design-docs",
@@ -51,7 +51,7 @@
       "category": "Coding",
       "enhances": [
         {
-          "group": "developer-workflows"
+          "group": "development-lifecycle"
         }
       ],
       "name": "developer-safety",
@@ -66,6 +66,8 @@
     },
     {
       "capabilities": [
+        "developer-workflows",
+        "development-lifecycle",
         "setup",
         "plan",
         "work",
@@ -82,13 +84,13 @@
           "group": "github-projects"
         }
       ],
-      "name": "developer-workflows",
+      "name": "development-lifecycle",
       "policy": {
         "authentication": "ON_INSTALL",
         "installation": "AVAILABLE"
       },
       "source": {
-        "path": "./dist/antigravity/plugins/developer-workflows",
+        "path": "./dist/antigravity/plugins/development-lifecycle",
         "source": "local"
       }
     },
@@ -103,7 +105,7 @@
         "installation": "AVAILABLE"
       },
       "requires": [
-        "developer-workflows"
+        "development-lifecycle"
       ],
       "source": {
         "path": "./dist/antigravity/plugins/github-ci",
@@ -121,7 +123,7 @@
         "installation": "AVAILABLE"
       },
       "requires": [
-        "developer-workflows"
+        "development-lifecycle"
       ],
       "source": {
         "path": "./dist/antigravity/plugins/github-projects",
@@ -169,7 +171,7 @@
         "installation": "AVAILABLE"
       },
       "requires": [
-        "developer-workflows"
+        "development-lifecycle"
       ],
       "source": {
         "path": "./dist/antigravity/plugins/releasing-conventions",
@@ -209,7 +211,7 @@
         "installation": "AVAILABLE"
       },
       "requires": [
-        "developer-workflows"
+        "development-lifecycle"
       ],
       "source": {
         "path": "./dist/antigravity/plugins/testing-conventions",
@@ -240,7 +242,7 @@
         {
           "capability": "documentation",
           "effect": "phase commands dispatch the documenter to author/repair wiki pages at phase boundaries",
-          "group": "developer-workflows"
+          "group": "development-lifecycle"
         }
       ],
       "name": "wiki-maintenance",

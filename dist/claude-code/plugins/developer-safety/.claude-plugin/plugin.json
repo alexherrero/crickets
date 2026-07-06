@@ -5,5 +5,5 @@
   },
   "description": "Universal control + safety layer — kill-switch, steer, commit-on-stop hooks plus commit-no-coauthor / worktrees-operator-initiated conventions. Usable in any session; enhances developer-workflows (its hooks engage across the phase loop) when both are installed.",
   "name": "developer-safety",
-  "version": "0.3.5"
+  "version": "0.3.6"
 }
