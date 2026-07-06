@@ -91,6 +91,13 @@ _CORPUS = [
 
 class DiagnoseEndToEndTests(unittest.TestCase):
     @classmethod
+    def setUpClass(cls):
+        # See test_diagnostics_writer.py: needs the real agentm sibling
+        # checkout, absent in CI. Skip gracefully rather than error.
+        if diagnose_mod.writer.agentm_bridge.load_save_module() is None:
+            raise unittest.SkipTest("agentm sibling checkout unavailable -- real-bridge test skipped")
+
+    @classmethod
     def tearDownClass(cls):
         sys.path[:] = _SYS_PATH_SNAPSHOT
         _purge_agentm_modules()

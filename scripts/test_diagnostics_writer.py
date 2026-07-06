@@ -59,6 +59,16 @@ ladder = _load("diagnostics_recall_ladder_for_writer_test", _SRC / "recall_ladde
 
 class FailureIncidentWriterTests(unittest.TestCase):
     @classmethod
+    def setUpClass(cls):
+        # Integration-style: needs the real agentm sibling checkout (a local
+        # dev-machine convention, not present in CI, which has no sibling
+        # repo). Skip gracefully rather than error -- matches the codebase's
+        # own convention for an absent optional dependency (e.g. agentm's own
+        # tests skip when sqlite-vec is unavailable).
+        if writer.agentm_bridge.load_save_module() is None:
+            raise unittest.SkipTest("agentm sibling checkout unavailable -- real-bridge test skipped")
+
+    @classmethod
     def tearDownClass(cls):
         sys.path[:] = _SYS_PATH_SNAPSHOT
         _purge_agentm_modules()
