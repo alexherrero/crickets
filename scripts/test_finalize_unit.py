@@ -16,6 +16,7 @@ import importlib.util
 import json
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -340,6 +341,70 @@ class TestDefaultPiiGuard(unittest.TestCase):
             fh.write(f"#!/usr/bin/env bash\nexit {exit_code}\n")
         path.chmod(0o755)
         return path
+
+    def _write_scoped_scanner(self, path: Path) -> Path:
+        """A minimal --all/--diff-aware stub: exit 1 iff PHONELIKE appears in
+        the scanned scope (--all: every tracked file; --diff <range>: only
+        files changed in that range) — just enough to prove the scoping
+        argument actually changes what gets scanned, without depending on the
+        real check-no-pii.sh's regex.
+        """
+        path.parent.mkdir(parents=True, exist_ok=True)
+        script = (
+            "#!/usr/bin/env bash\n"
+            "set -e\n"
+            "if [ \"$1\" = \"--diff\" ]; then\n"
+            "  files=$(git diff --name-only \"$2\")\n"
+            "else\n"
+            "  files=$(git ls-files)\n"
+            "fi\n"
+            "for f in $files; do\n"
+            "  if [ -f \"$f\" ] && grep -q PHONELIKE \"$f\"; then exit 1; fi\n"
+            "done\n"
+            "exit 0\n"
+        )
+        with path.open("w", encoding="utf-8", newline="\n") as fh:
+            fh.write(script)
+        path.chmod(0o755)
+        return path
+
+    def _git(self, repo: Path, *args: str) -> None:
+        subprocess.run(["git", *args], cwd=str(repo), check=True,
+                       capture_output=True, text=True)
+
+    @unittest.skipUnless(fu._bash_works(), "functional bash required (Windows WSL stub)")
+    def test_preexisting_finding_outside_the_diff_does_not_block_finalize(self):
+        # Regression: found live running PLAN-worktree-native-flow's own
+        # task-9 acceptance demo in agentm — a pre-existing checksums file
+        # (unrelated to the plan being finalized) tripped the scanner's
+        # phone-number pattern on a hex substring, and --all mode blocked
+        # EVERY finalize call on content nobody was ever going to push.
+        repo = self.tmp / "repo"
+        repo.mkdir()
+        self._git(repo, "init", "-q", "-b", "main")
+        self._git(repo, "config", "user.email", "test@example.com")
+        self._git(repo, "config", "user.name", "Test")
+        self._git(repo, "config", "commit.gpgsign", "false")
+        # Pre-existing, unrelated file with a "finding" — already on main
+        # before this plan's branch ever forked.
+        (repo / "checksums.txt").write_text("deadbeefPHONELIKEdeadbeef\n", encoding="utf-8")
+        self._git(repo, "add", "-A")
+        self._git(repo, "commit", "-q", "-m", "seed with pre-existing finding")
+
+        # The plan's own branch, with a clean, unrelated change.
+        self._git(repo, "checkout", "-q", "-b", "worktree-demo")
+        (repo / "note.md").write_text("clean content\n", encoding="utf-8")
+        self._git(repo, "add", "-A")
+        self._git(repo, "commit", "-q", "-m", "the actual plan work")
+
+        scanner = self._write_scoped_scanner(
+            self.tmp / "toolkit" / "scripts" / "check-no-pii.sh")
+        with mock.patch.dict(os.environ, {"AGENT_TOOLKIT_PATH": str(self.tmp / "toolkit")}):
+            result = fu._pii_guard(str(repo))
+        self.assertTrue(
+            result,
+            "a pre-existing finding OUTSIDE the diff range must not block "
+            "finalize — only what's actually being pushed should be scanned")
 
     def test_scanner_absent_is_fail_open(self):
         repo_root = self.tmp / "repo"

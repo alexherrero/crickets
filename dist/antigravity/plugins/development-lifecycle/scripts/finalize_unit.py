@@ -68,21 +68,44 @@ def _bash_works() -> bool:
         return False
 
 
+def _diff_base(repo_root: str) -> str | None:
+    """The merge-base with the default branch, for scoping the PII scan to
+    what's actually about to be pushed. Tries `origin/main` first (the base
+    a host-created worktree actually forked from), falling back to local
+    `main`. None on any failure — the caller falls back to `--all`."""
+    for ref in ("origin/main", "main"):
+        r = subprocess.run(["git", "merge-base", "HEAD", ref], cwd=repo_root,
+                           capture_output=True, text=True, timeout=10)
+        if r.returncode == 0 and r.stdout.strip():
+            return r.stdout.strip()
+    return None
+
+
 def _pii_guard(repo_root: str) -> bool:
     """True iff the PII scan passes. Fail-open when the real scanner
     (check-no-pii.sh) can't be found OR can't be executed (no functional
     bash) — the pre-push git hook is the mandatory enforcer; this is a
-    defense-in-depth pre-check, not the sole gate."""
+    defense-in-depth pre-check, not the sole gate.
+
+    Scoped to `--diff <merge-base>..HEAD`, matching the real enforcer (the
+    pre-push hook) — NOT `--all`. `--all` scans the entire working tree,
+    including pre-existing content this finalize call never touched; a repo
+    that already has one `--all`-mode false positive anywhere (a checksum
+    file whose hex digits happen to contain a phone-number-shaped substring,
+    for instance) would permanently block every finalize call, forever, on
+    content nobody is actually about to push. Falls back to `--all` only if
+    the merge-base can't be resolved at all (never silently skips the guard).
+    """
     scanner = _find_pii_scanner(repo_root)
     if scanner is None:
         return True
     if not _bash_works():
         return True
+    base = _diff_base(repo_root)
+    args = ["bash", str(scanner), "--diff", f"{base}..HEAD"] if base else \
+           ["bash", str(scanner), "--all"]
     try:
-        r = subprocess.run(
-            ["bash", str(scanner), "--all"],
-            cwd=repo_root, capture_output=True, timeout=30,
-        )
+        r = subprocess.run(args, cwd=repo_root, capture_output=True, timeout=30)
         return r.returncode == 0
     except (OSError, subprocess.SubprocessError):
         return True

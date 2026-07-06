@@ -437,5 +437,18 @@ enhances:
 #          the normal case. Now only a commit failure whose output isn't
 #          git's own benign message is fatal. 2 new regression tests in
 #          test_finalize_unit.py.
-version: 0.34.2
+# 0.34.3 = fix(finalize_unit.py): `_pii_guard` scopes to `--diff <merge-
+#          base>..HEAD`, not `--all`. Found live in the same acceptance demo,
+#          immediately after 0.34.2's fix let finalize reach the PII guard for
+#          the first time: agentm's pre-existing `lib/install/.checksums.txt`
+#          (SHA-256 hex hashes) contains a substring that matches the
+#          scanner's phone-number pattern — `--all` mode blocked EVERY
+#          finalize call in agentm on content nobody was ever going to push,
+#          not just this one. Scoped to the merge-base with `origin/main` (or
+#          local `main`), matching what the real enforcer (the pre-push git
+#          hook) already scans — falls back to `--all` only if no merge-base
+#          resolves at all. New regression test in test_finalize_unit.py
+#          reproduces the exact shape (a pre-existing finding outside the
+#          diff range must not block).
+version: 0.34.3
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]
