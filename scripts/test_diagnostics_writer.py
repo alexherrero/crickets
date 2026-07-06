@@ -21,6 +21,29 @@ _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
 _SRC = _ROOT / "src" / "diagnostics" / "scripts"
 
+# Snapshot BEFORE any real-bridge activity: agentm's save.py/recall.py insert
+# their own scripts dir onto sys.path (and bare-import siblings like
+# permeable_boundary/vault_lock into sys.modules) as a side effect of being
+# loaded -- a real, process-global mutation that otherwise leaks into whatever
+# test file runs next alphabetically (observed: test_diataxis_capture.py's own
+# permeable_boundary-unavailable expectation broke once this file's real bridge
+# calls had run first in the same process). Restored in tearDownClass.
+#
+# sys.modules cleanup is filtered by file path (agentm's tree only), not a
+# blanket new-keys diff -- a blanket diff also deletes unrelated modules some
+# OTHER test file happens to bare-import for the first time during this
+# window (observed: test_finalize_unit.py's own `import finalize_unit`,
+# which broke a same-object monkeypatch once purged and re-imported fresh).
+_SYS_PATH_SNAPSHOT = list(sys.path)
+_AGENTM_PATH_MARKERS = ("/agentm/harness/", "/agentm/scripts/")
+
+
+def _purge_agentm_modules():
+    for name, mod in list(sys.modules.items()):
+        f = getattr(mod, "__file__", None)
+        if f and any(marker in f for marker in _AGENTM_PATH_MARKERS):
+            del sys.modules[name]
+
 
 def _load(name, path):
     spec = importlib.util.spec_from_file_location(name, path)
@@ -35,6 +58,11 @@ ladder = _load("diagnostics_recall_ladder_for_writer_test", _SRC / "recall_ladde
 
 
 class FailureIncidentWriterTests(unittest.TestCase):
+    @classmethod
+    def tearDownClass(cls):
+        sys.path[:] = _SYS_PATH_SNAPSHOT
+        _purge_agentm_modules()
+
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
         self.vault = Path(self._tmp.name) / "vault"

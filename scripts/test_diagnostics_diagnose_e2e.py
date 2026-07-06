@@ -21,6 +21,22 @@ _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
 _SRC = _ROOT / "src" / "diagnostics" / "scripts"
 
+# Snapshot BEFORE any real-bridge activity -- see test_diagnostics_writer.py's
+# matching comment: agentm's save.py/recall.py mutate sys.path/sys.modules as
+# a side effect of being loaded, which otherwise leaks into whatever test file
+# runs next alphabetically. Restored in tearDownClass. sys.modules cleanup is
+# filtered by file path (agentm's tree only) -- see test_diagnostics_writer.py
+# for why a blanket new-keys diff is unsafe.
+_SYS_PATH_SNAPSHOT = list(sys.path)
+_AGENTM_PATH_MARKERS = ("/agentm/harness/", "/agentm/scripts/")
+
+
+def _purge_agentm_modules():
+    for name, mod in list(sys.modules.items()):
+        f = getattr(mod, "__file__", None)
+        if f and any(marker in f for marker in _AGENTM_PATH_MARKERS):
+            del sys.modules[name]
+
 
 def _load(name, path):
     spec = importlib.util.spec_from_file_location(name, path)
@@ -74,6 +90,11 @@ _CORPUS = [
 
 
 class DiagnoseEndToEndTests(unittest.TestCase):
+    @classmethod
+    def tearDownClass(cls):
+        sys.path[:] = _SYS_PATH_SNAPSHOT
+        _purge_agentm_modules()
+
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
         self.vault = Path(self._tmp.name) / "vault"
