@@ -27,7 +27,7 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
-_HOOK_DIR = _ROOT / "src" / "developer-workflows" / "hooks" / "compact-nudge-resume"
+_HOOK_DIR = _ROOT / "src" / "development-lifecycle" / "hooks" / "compact-nudge-resume"
 _HOOK_SCRIPT = _HOOK_DIR / "compact-nudge-resume.py"
 _HOOK_MD = _HOOK_DIR / "hook.md"
 

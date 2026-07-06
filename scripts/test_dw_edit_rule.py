@@ -20,9 +20,9 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
-_RULE = _ROOT / "src" / "developer-workflows" / "rules" / "edit-over-write.md"
-_PLAN_CMD = _ROOT / "src" / "developer-workflows" / "commands" / "plan.md"
-_RELEASE_CMD = _ROOT / "src" / "developer-workflows" / "commands" / "release.md"
+_RULE = _ROOT / "src" / "development-lifecycle" / "rules" / "edit-over-write.md"
+_PLAN_CMD = _ROOT / "src" / "development-lifecycle" / "commands" / "plan.md"
+_RELEASE_CMD = _ROOT / "src" / "development-lifecycle" / "commands" / "release.md"
 
 sys.path.insert(0, str(_HERE))
 from src_model import read_frontmatter  # noqa: E402

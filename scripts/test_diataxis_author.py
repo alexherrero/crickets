@@ -29,7 +29,7 @@ from unittest import mock
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
-_SKILL = _ROOT / "src" / "wiki-maintenance" / "skills" / "diataxis-author"
+_SKILL = _ROOT / "src" / "wiki" / "skills" / "diataxis-author"
 _SKILL_SCRIPTS = _SKILL / "scripts"
 _TEMPLATES = _SKILL / "templates"
 

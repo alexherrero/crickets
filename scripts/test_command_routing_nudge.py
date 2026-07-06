@@ -20,8 +20,10 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
-_COMMANDS = _ROOT / "src" / "developer-workflows" / "commands"
-_TA_SCRIPTS = _ROOT / "src" / "token-audit" / "scripts"
+_COMMANDS = _ROOT / "src" / "development-lifecycle" / "commands"
+# design.md re-homed to the design plugin (PLAN-wave-a-renames-2 task 4).
+_DESIGN_COMMANDS = _ROOT / "src" / "design" / "commands"
+_TA_SCRIPTS = _ROOT / "src" / "tokens" / "scripts"
 
 _ROUTING_NUDGE_MARKER = "Recommended model for this phase:"
 
@@ -43,7 +45,9 @@ _PHASE_COMMANDS = ("plan", "review", "design", "spec", "interview-me", "work", "
 
 class TestCommandRoutingNudgeMatchesTable(unittest.TestCase):
     def _nudge_text(self, command: str) -> str:
-        return (_COMMANDS / f"{command}.md").read_text(encoding="utf-8")
+        # design/spec/interview-me re-homed to the design plugin (task 4).
+        base = _DESIGN_COMMANDS if command in ("design", "spec", "interview-me") else _COMMANDS
+        return (base / f"{command}.md").read_text(encoding="utf-8")
 
     def test_every_phase_command_has_a_classifiable_work_type(self):
         for command in _PHASE_COMMANDS:

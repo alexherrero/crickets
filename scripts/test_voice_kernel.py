@@ -18,7 +18,7 @@ _CRICKETS_ROOT = _SCRIPTS.parent
 _AGENTM_ROOT = Path(os.environ.get("AGENTM_REPO_ROOT", "").strip() or (_CRICKETS_ROOT.parent / "agentm"))
 
 _RULE_PACK_SCRIPTS = (
-    _CRICKETS_ROOT / "src" / "wiki-maintenance" / "skills" / "diataxis-author" / "scripts"
+    _CRICKETS_ROOT / "src" / "wiki" / "skills" / "diataxis-author" / "scripts"
 )
 if str(_RULE_PACK_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_RULE_PACK_SCRIPTS))

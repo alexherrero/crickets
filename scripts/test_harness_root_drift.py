@@ -17,7 +17,7 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
-_SRC = _ROOT / "src" / "developer-workflows" / "scripts" / "harness_root_drift.py"
+_SRC = _ROOT / "src" / "development-lifecycle" / "scripts" / "harness_root_drift.py"
 
 
 def _load():

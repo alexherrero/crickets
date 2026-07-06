@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-PLUGIN_SRC = REPO / "src" / "wiki-maintenance"
+PLUGIN_SRC = REPO / "src" / "wiki"
 DIST = REPO / "dist"
 
 
@@ -62,7 +62,7 @@ class TestWorkflowTemplates(unittest.TestCase):
 
     def test_template_bundles_to_both_hosts(self):
         for host in ("claude-code", "antigravity"):
-            base = DIST / host / "plugins" / "wiki-maintenance"
+            base = DIST / host / "plugins" / "wiki"
             self.assertTrue((base / self.SYNC).is_file(), f"{host} missing wiki workflow")
 
     def test_workflow_job_name_is_opinionated(self):

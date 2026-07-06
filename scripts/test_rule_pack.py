@@ -18,7 +18,7 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 _RULE_PACK_SCRIPTS = (
-    _HERE.parent / "src" / "wiki-maintenance" / "skills" / "diataxis-author" / "scripts"
+    _HERE.parent / "src" / "wiki" / "skills" / "diataxis-author" / "scripts"
 )
 sys.path.insert(0, str(_RULE_PACK_SCRIPTS))
 
@@ -209,7 +209,7 @@ class TestRoleNounCarveOutIsWritten(unittest.TestCase):
     written rule in the shared store, not a private-memory-only reference."""
 
     def test_base_style_guide_carries_the_carve_out_clause(self):
-        text = _HERE.parent / "src" / "wiki-maintenance" / "skills" / "diataxis-author" / "style" / "base-style-guide.md"
+        text = _HERE.parent / "src" / "wiki" / "skills" / "diataxis-author" / "style" / "base-style-guide.md"
         content = text.read_text(encoding="utf-8")
         self.assertIn("Role-noun carve-out", content)
         self.assertIn("legitimate role noun", content)

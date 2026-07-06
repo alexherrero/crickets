@@ -23,7 +23,7 @@ from unittest import mock
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
-_SRC = _ROOT / "src" / "developer-workflows" / "scripts" / "find_process_seam.py"
+_SRC = _ROOT / "src" / "development-lifecycle" / "scripts" / "find_process_seam.py"
 
 
 def _load():

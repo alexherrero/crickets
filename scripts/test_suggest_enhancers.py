@@ -58,14 +58,15 @@ class TestSuggestEnhancers(unittest.TestCase):
         self.assertIn("wf", out)
 
     def test_real_marketplace_partial_set(self):
-        # the REAL committed marketplace: with developer-workflows installed but
-        # not developer-safety, the real enhances:[developer-workflows] edge drives
-        # a developer-safety suggestion.
+        # the REAL committed marketplace: with development-lifecycle installed
+        # (ex-developer-workflows, AG Wave A rename 1) but not developer-safety,
+        # the real enhances:[development-lifecycle] edge drives a
+        # developer-safety suggestion.
         mk_path = _ROOT / "dist" / "claude-code" / ".claude-plugin" / "marketplace.json"
         mk = json.loads(mk_path.read_text(encoding="utf-8"))
-        sugs = se.suggestions(mk, ["developer-workflows"])
+        sugs = se.suggestions(mk, ["development-lifecycle"])
         self.assertIn({"enhancer": "developer-safety",
-                       "enhancee": "developer-workflows"}, sugs)
+                       "enhancee": "development-lifecycle"}, sugs)
         # full set → no suggestion for developer-safety
         full = [p["name"] for p in mk["plugins"]]
         self.assertEqual(

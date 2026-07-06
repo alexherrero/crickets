@@ -18,7 +18,7 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
-_WW_SCRIPTS = _ROOT / "src" / "wiki-maintenance" / "scripts"
+_WW_SCRIPTS = _ROOT / "src" / "wiki" / "scripts"
 
 
 def _load(name: str):

@@ -28,8 +28,11 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
-_AGENTS = _ROOT / "src" / "developer-workflows" / "agents"
-_COMMANDS = _ROOT / "src" / "developer-workflows" / "commands"
+_AGENTS = _ROOT / "src" / "development-lifecycle" / "agents"
+_COMMANDS = _ROOT / "src" / "development-lifecycle" / "commands"
+# design.md re-homed to the design plugin (PLAN-wave-a-renames-2 task 4) —
+# every other command in _COMMAND_ROUTING still lives under development-lifecycle.
+_DESIGN_COMMANDS = _ROOT / "src" / "design" / "commands"
 
 sys.path.insert(0, str(_HERE))
 from src_model import read_frontmatter  # noqa: E402
@@ -92,7 +95,8 @@ class TestCommandRoutingNudge(unittest.TestCase):
     """Each command prompt contains a routing nudge line naming the correct model."""
 
     def _text(self, name: str) -> str:
-        return (_COMMANDS / f"{name}.md").read_text(encoding="utf-8")
+        base = _DESIGN_COMMANDS if name == "design" else _COMMANDS
+        return (base / f"{name}.md").read_text(encoding="utf-8")
 
     def _assert_nudge(self, name: str, expected_model: str) -> None:
         text = self._text(name)

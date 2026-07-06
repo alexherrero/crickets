@@ -22,7 +22,7 @@ import unittest
 from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parent
-CHECK_WIKI_SRC = SCRIPTS / ".." / "src" / "wiki-maintenance" / "scripts" / "check-wiki.py"
+CHECK_WIKI_SRC = SCRIPTS / ".." / "src" / "wiki" / "scripts" / "check-wiki.py"
 
 # Manifest of which test file exercises each rule's red+green pair, both
 # directions confirmed by direct reading at authoring time (2026-07-05):
@@ -76,7 +76,7 @@ def _load(mod_name: str, filename: str):
     return mod
 
 
-cw = _load("check_wiki_rules_under_test", "../src/wiki-maintenance/scripts/check-wiki.py")
+cw = _load("check_wiki_rules_under_test", "../src/wiki/scripts/check-wiki.py")
 
 _WIKI_ROOT = Path("/wiki")  # a nominal root — rule functions never touch disk here
 

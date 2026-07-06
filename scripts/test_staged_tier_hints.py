@@ -17,8 +17,8 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
-_SCRIPTS = _ROOT / "src" / "token-audit" / "scripts"
-_PLAN_MD = _ROOT / "src" / "developer-workflows" / "commands" / "plan.md"
+_SCRIPTS = _ROOT / "src" / "tokens" / "scripts"
+_PLAN_MD = _ROOT / "src" / "development-lifecycle" / "commands" / "plan.md"
 
 
 def _load(name: str):

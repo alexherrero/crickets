@@ -22,11 +22,14 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
-_SCRIPTS = _ROOT / "src" / "developer-workflows" / "scripts"
+_SCRIPTS = _ROOT / "src" / "design" / "scripts"
+# stage_plan.py stays in development-lifecycle (it was never part of the
+# /design command family's task-4 re-home).
+_DW_SCRIPTS = _ROOT / "src" / "development-lifecycle" / "scripts"
 
 
-def _load(name: str):
-    src = _SCRIPTS / f"{name}.py"
+def _load(name: str, scripts_dir: Path = _SCRIPTS):
+    src = scripts_dir / f"{name}.py"
     spec = importlib.util.spec_from_file_location(name, src)
     m = importlib.util.module_from_spec(spec)
     sys.modules[name] = m
@@ -35,7 +38,7 @@ def _load(name: str):
 
 
 ds = _load("design_sequence")
-stage_plan = _load("stage_plan")
+stage_plan = _load("stage_plan", _DW_SCRIPTS)
 
 
 def _part(slug: str, deps: list[str], *, scope: str = "M") -> str:

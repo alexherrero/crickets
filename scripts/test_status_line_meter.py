@@ -28,14 +28,14 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
-_SRC = _ROOT / "src" / "status-line-meter" / "scripts"
+_SRC = _ROOT / "src" / "tokens" / "scripts"
 _FIXTURE_TRANSCRIPT = _ROOT / "scripts" / "fixtures" / "token_audit_synthesized.jsonl"
 
 
 def _load_slm():
     """Load status_line_meter with the src/token-audit/scripts/ on sys.path
     so runtime discovery finds pricing.py (the same as the installed case)."""
-    ta_scripts = _ROOT / "src" / "token-audit" / "scripts"
+    ta_scripts = _ROOT / "src" / "tokens" / "scripts"
     if str(ta_scripts) not in sys.path:
         sys.path.insert(0, str(ta_scripts))
     spec = importlib.util.spec_from_file_location(

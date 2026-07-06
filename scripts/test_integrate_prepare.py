@@ -25,7 +25,7 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
-_DW_SCRIPTS = _ROOT / "src" / "developer-workflows" / "scripts"
+_DW_SCRIPTS = _ROOT / "src" / "development-lifecycle" / "scripts"
 
 
 def _load(name: str, path: Path):

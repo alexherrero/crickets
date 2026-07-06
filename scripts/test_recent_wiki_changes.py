@@ -22,7 +22,7 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
-_SCRIPT = _ROOT / "src" / "wiki-maintenance" / "scripts" / "recent-wiki-changes.sh"
+_SCRIPT = _ROOT / "src" / "wiki" / "scripts" / "recent-wiki-changes.sh"
 
 def _stub_agentm_config(vault_dir: str) -> str:
     return (

@@ -22,7 +22,7 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
-_SRC = _ROOT / "src" / "developer-workflows" / "scripts" / "queue_status.py"
+_SRC = _ROOT / "src" / "development-lifecycle" / "scripts" / "queue_status.py"
 
 
 def _load():

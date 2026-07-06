@@ -26,7 +26,7 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
-_SCRIPTS = _ROOT / "src" / "token-audit" / "scripts"
+_SCRIPTS = _ROOT / "src" / "tokens" / "scripts"
 _FIXTURE = _ROOT / "scripts" / "fixtures" / "token_audit_synthesized.jsonl"
 _REAL_ENCODING_FIXTURE = _ROOT / "scripts" / "fixtures" / "token_audit_real_encoding.jsonl"
 

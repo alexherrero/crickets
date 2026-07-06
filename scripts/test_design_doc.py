@@ -20,7 +20,7 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
-_SCRIPTS = _ROOT / "src" / "developer-workflows" / "scripts"
+_SCRIPTS = _ROOT / "src" / "design" / "scripts"
 
 
 def _load(name: str):

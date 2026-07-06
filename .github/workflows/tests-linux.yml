@@ -36,6 +36,11 @@ jobs:
         # AG Phase-2 conformance gate: bans the reserved -workflows suffix (except
         # the developer-workflows spine) and Opinion names as capability/plugin names.
         run: python3 scripts/check-capability-naming.py
+      - name: No dangling plugin/capability-name references (check-no-dangling-name)
+        # AG Wave A repoints task 1 — permanent regression net for the wave's
+        # rename mechanism. Permissive of dual-declared old names; only fails on
+        # a reference that resolves to nothing.
+        run: python3 scripts/check-no-dangling-name.py
       - name: Unit tests (scripts/ — lint_src, src_model, generate, …)
         # AGENTM_INSTALL_PREFIX + MEMORY_VAULT_PATH: isolate resolve_plan.py's
         # R2.5 task 12 vault-mismatch guard from the runner's environment — see

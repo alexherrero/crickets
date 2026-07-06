@@ -26,7 +26,7 @@ from pathlib import Path
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
 _SCRIPT = _ROOT / "scripts" / "check-no-pii.sh"
-_DIST_SCRIPT = _ROOT / "dist" / "claude-code" / "plugins" / "pii" / "scripts" / "check-no-pii.sh"
+_DIST_SCRIPT = _ROOT / "dist" / "claude-code" / "plugins" / "privacy" / "scripts" / "check-no-pii.sh"
 
 
 def _find_bash() -> str:

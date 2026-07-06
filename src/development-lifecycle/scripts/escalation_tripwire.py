@@ -20,7 +20,7 @@ from pathlib import Path
 FIRE_THRESHOLD = 3
 
 _HERE = Path(__file__).resolve().parent
-_TA_SCRIPTS = _HERE.parent.parent / "token-audit" / "scripts"
+_TA_SCRIPTS = _HERE.parent.parent / "tokens" / "scripts"
 
 _HAS_HANDOFF_PACK = False
 HandoffEntry = None

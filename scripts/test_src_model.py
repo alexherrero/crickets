@@ -36,11 +36,10 @@ class TestSrcModel(unittest.TestCase):
         groups = src_model.load_groups(_ROOT / "src")
         by = {g.slug: g for g in groups}
         self.assertEqual(set(by),
-                         {"code-review", "design-docs", "developer-safety",
-                          "developer-workflows", "github-ci", "github-projects",
-                          "obsidian-vault", "pii", "releasing-conventions",
-                          "status-line-meter", "testing-conventions",
-                          "token-audit", "wiki-maintenance"})
+                         {"code-review", "conventions", "design", "developer-safety",
+                          "development-lifecycle", "github-projects",
+                          "maintenance", "obsidian-vault", "privacy",
+                          "tokens", "wiki"})
         # obsidian-vault (V5-2): the re-homed `vault` storage backend lands as a
         # group asset under scripts/ (LC-2 — engine-consumed, not a host primitive).
         # Task 2 additionally re-homed the vault-specific conflict-merger out of the
@@ -66,15 +65,18 @@ class TestSrcModel(unittest.TestCase):
         self.assertTrue(ov.has_group_assets())
         self.assertTrue(ov.supports("claude-code"))
         self.assertTrue(ov.supports("antigravity"))
-        # composition: the developer seed is retired (part 6); github-ci still requires
-        # developer-workflows. wiki-maintenance flipped to standalone + an enhance during the
+        # composition: the developer seed is retired (part 6); maintenance still requires
+        # development-lifecycle (AG Wave A rename 2: github-ci -> maintenance,
+        # requires: re-pointed developer-workflows -> development-lifecycle at
+        # renames-1). wiki flipped to standalone + an enhance during the
         # scaffold (part 1, capability-less); the documenter-wiring part tightened the enhance
-        # to target the 'documentation' capability now declared on developer-workflows.
-        self.assertEqual(by["github-ci"].requires, ["developer-workflows"])
-        wm = by["wiki-maintenance"]
+        # to target the 'documentation' capability, now declared on development-lifecycle
+        # (AG Wave A rename 1: developer-workflows -> development-lifecycle).
+        self.assertEqual(by["maintenance"].requires, ["development-lifecycle"])
+        wm = by["wiki"]
         self.assertEqual(wm.requires, [])
         self.assertTrue(wm.standalone)
-        self.assertEqual([e.group for e in wm.enhances], ["developer-workflows"])
+        self.assertEqual([e.group for e in wm.enhances], ["development-lifecycle"])
         self.assertEqual(wm.enhances[0].capability, "documentation")
         # part 2 folded in the bucket-A primitives (copy-not-move from agentm);
         # part 3 task 2 added the read-only style-scope-evaluator agent (DC-4);
@@ -90,26 +92,29 @@ class TestSrcModel(unittest.TestCase):
             ("wiki-watch", "skill"),
             ("recent-wiki-changes", "command"), ("wiki-watch", "command"),
             ("wiki-init", "command")})
-        self.assertEqual(by["pii"].requires, [])
-        self.assertTrue(by["pii"].standalone)
-        self.assertFalse(by["github-ci"].standalone)
-        self.assertEqual(len(by["pii"].primitives), 2)  # 0.2.0: skill + pii-patterns rule
-        # developer-workflows: standalone base; the six phase capabilities (setup..bugfix)
-        # plus 'documentation' — added by wiki-maintenance's documenter-wiring part so that
-        # plugin's enhance can target capability: documentation (the deferred half of part-1 DC-1).
-        dw = by["developer-workflows"]
+        self.assertEqual(by["privacy"].requires, [])
+        self.assertTrue(by["privacy"].standalone)
+        self.assertFalse(by["maintenance"].standalone)
+        self.assertEqual(len(by["privacy"].primitives), 2)  # 0.2.0: skill + pii-patterns rule
+        # development-lifecycle (AG Wave A rename 1, ex-developer-workflows):
+        # standalone base; the six phase capabilities (setup..bugfix) plus
+        # 'documentation' — added by wiki-maintenance's documenter-wiring part
+        # so that plugin's enhance can target capability: documentation (the
+        # deferred half of part-1 DC-1).
+        dw = by["development-lifecycle"]
         self.assertTrue(dw.standalone)
         self.assertEqual(dw.requires, [])
         self.assertEqual(dw.capabilities,
-                         ["setup", "plan", "work", "review", "release", "bugfix", "documentation"])
+                         ["developer-workflows", "development-lifecycle",
+                          "setup", "plan", "work", "review", "release", "bugfix", "documentation"])
         dw_cmds = {p.name for p in dw.primitives if p.kind == "command"}
         self.assertLessEqual({"setup", "plan", "work"}, dw_cmds)
-        # developer-safety (part 3/6): standalone, enhances developer-workflows
+        # developer-safety (part 3/6): standalone, enhances development-lifecycle
         # (the first real enhances edge), carries the 3 control hooks.
         ds = by["developer-safety"]
         self.assertTrue(ds.standalone)
         self.assertEqual(ds.requires, [])
-        self.assertEqual([e.group for e in ds.enhances], ["developer-workflows"])
+        self.assertEqual([e.group for e in ds.enhances], ["development-lifecycle"])
         ds_hooks = {p.name for p in ds.primitives if p.kind == "hook"}
         self.assertLessEqual({"kill-switch", "steer", "commit-on-stop"}, ds_hooks)
         # code-review (part 4/6): standalone, capability-targeted enhances edge,
@@ -119,7 +124,7 @@ class TestSrcModel(unittest.TestCase):
         self.assertEqual(cr.requires, [])
         self.assertEqual(len(cr.enhances), 1)
         self.assertEqual((cr.enhances[0].group, cr.enhances[0].capability),
-                         ("developer-workflows", "review"))
+                         ("development-lifecycle", "review"))
         cr_agents = {p.name for p in cr.primitives if p.kind == "agent"}
         self.assertLessEqual({"adversarial-reviewer", "adversarial-reviewer-cross"}, cr_agents)
         # a primitive's shape (commit-on-stop now lives in developer-safety)
@@ -129,7 +134,7 @@ class TestSrcModel(unittest.TestCase):
 
     def test_supports_host(self):
         by = {g.slug: g for g in src_model.load_groups(_ROOT / "src")}
-        self.assertTrue(by["developer-workflows"].supports("claude-code"))
+        self.assertTrue(by["development-lifecycle"].supports("claude-code"))
 
     def test_deterministic_order(self):
         a = [g.slug for g in src_model.load_groups(_ROOT / "src")]
@@ -233,22 +238,24 @@ class TestSrcModel(unittest.TestCase):
             self.assertEqual(sn.root, src / "sf" / "snippets" / "no-coauthor.md")
 
     def test_real_tree_commands_in_expected_groups(self):
-        # command primitives live in developer-workflows (the phase commands),
-        # code-review (the standalone /code-review), wiki-maintenance
+        # command primitives live in development-lifecycle (the phase commands),
+        # code-review (the standalone /code-review), wiki
         # (recent-wiki-changes, folded in part 2; + wiki-watch, the part-4
-        # claude-only scheduling entry), and github-projects (report-board-drift,
-        # the board-write-path task 6 scheduling entry — mirrors wiki-watch's
-        # pattern). No other group ships commands.
+        # claude-only scheduling entry), design (spec/interview-me/document-decision/
+        # design — re-homed from development-lifecycle at AG Wave A rename 2
+        # task 4), tokens (handoff-pack/token-audit), and github-projects
+        # (report-board-drift, the board-write-path task 6 scheduling entry —
+        # mirrors wiki-watch's pattern). No other group ships commands.
         groups = src_model.load_groups(_ROOT / "src")
         by = {g.slug: g for g in groups}
         cmd_groups = {g.slug for g in groups for p in g.primitives if p.kind == "command"}
-        self.assertEqual(cmd_groups, {"developer-workflows", "code-review", "design-docs",
-                                      "wiki-maintenance", "token-audit", "github-projects"})
-        dw_cmds = {p.name for p in by["developer-workflows"].primitives if p.kind == "command"}
+        self.assertEqual(cmd_groups, {"development-lifecycle", "code-review", "design",
+                                      "wiki", "tokens", "github-projects"})
+        dw_cmds = {p.name for p in by["development-lifecycle"].primitives if p.kind == "command"}
         self.assertIn("plan", dw_cmds)
         cr_cmds = {p.name for p in by["code-review"].primitives if p.kind == "command"}
         self.assertEqual(cr_cmds, {"code-review", "doubt", "simplify"})
-        wm_cmds = {p.name for p in by["wiki-maintenance"].primitives if p.kind == "command"}
+        wm_cmds = {p.name for p in by["wiki"].primitives if p.kind == "command"}
         self.assertEqual(wm_cmds, {"recent-wiki-changes", "wiki-watch", "wiki-init"})
 
 

@@ -26,7 +26,7 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
-_AGENTS = _ROOT / "src" / "developer-workflows" / "agents"
+_AGENTS = _ROOT / "src" / "development-lifecycle" / "agents"
 
 sys.path.insert(0, str(_HERE))
 from src_model import read_frontmatter  # noqa: E402

@@ -85,7 +85,7 @@ class TestComputePrimitiveActions(unittest.TestCase):
 
 class TestPrimitiveEnumeration(unittest.TestCase):
     def test_plugin_primitives_real_dist(self):
-        dw = rp.plugin_primitives(rp.PLUGINS_ROOT / "developer-workflows")
+        dw = rp.plugin_primitives(rp.PLUGINS_ROOT / "development-lifecycle")
         self.assertIn(("command", "work"), dw)
         self.assertIn(("command", "plan"), dw)
         self.assertIn(("agent", "explorer"), dw)
@@ -94,7 +94,7 @@ class TestPrimitiveEnumeration(unittest.TestCase):
         self.assertFalse(any(kind == "hook" for kind, _ in dw))
 
     def test_plugin_primitives_includes_skills_and_agents(self):
-        wm = rp.plugin_primitives(rp.PLUGINS_ROOT / "wiki-maintenance")
+        wm = rp.plugin_primitives(rp.PLUGINS_ROOT / "wiki")
         self.assertIn(("agent", "documenter"), wm)
         self.assertIn(("skill", "diataxis-author"), wm)
 
@@ -289,9 +289,15 @@ class TestApplyRetirement(unittest.TestCase):
 
 class TestRealMarketplace(unittest.TestCase):
     def test_marketplace_reflects_the_rename(self):
+        # AG Wave A rename 2 (PLAN-wave-a-renames-2 task 3) renamed
+        # wiki-maintenance -> wiki, reversing the direction the v3.2.0-era
+        # comment this test used to encode. offered_plugins() reads the real
+        # marketplace.json's plugin `name` fields — dual-declare only extends
+        # each group's `capabilities:` list, not that name field, so the old
+        # slug is genuinely absent from the marketplace now.
         offered = rp.offered_plugins()
-        self.assertIn("wiki-maintenance", offered)
-        self.assertNotIn("wiki", offered, "the v3.2.0 rename should have removed 'wiki'")
+        self.assertIn("wiki", offered)
+        self.assertNotIn("wiki-maintenance", offered, "the AG Wave A rename should have removed 'wiki-maintenance'")
         self.assertGreaterEqual(len(offered), 6)
 
 

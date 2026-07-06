@@ -27,7 +27,7 @@ from unittest import mock
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
-_SRC = _ROOT / "src" / "developer-workflows" / "scripts" / "find_governing_design.py"
+_SRC = _ROOT / "src" / "development-lifecycle" / "scripts" / "find_governing_design.py"
 
 
 def _load():

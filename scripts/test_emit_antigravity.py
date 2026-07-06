@@ -54,7 +54,7 @@ class TestAntigravityEmitter(unittest.TestCase):
 
     def test_plugin_json_no_native_dependencies(self):
         # AG composition is thin — plugin.json never carries dependencies.
-        for slug in ("developer-workflows", "pii", "github-ci", "wiki-maintenance"):
+        for slug in ("development-lifecycle", "privacy", "maintenance", "wiki"):
             d = self._plugin_json(slug)
             self.assertEqual(d["name"], slug)
             self.assertNotIn("dependencies", d)
@@ -62,29 +62,29 @@ class TestAntigravityEmitter(unittest.TestCase):
 
     def test_components_copied_for_ag_supporting_only(self):
         d = self.agdist / "plugins"
-        self.assertTrue((d / "pii" / "skills" / "pii-scrubber" / "SKILL.md").exists())
-        self.assertTrue((d / "github-ci" / "skills" / "dependabot-fixer" / "SKILL.md").exists())
-        self.assertTrue((d / "developer-workflows" / "agents" / "evaluator.md").exists())
-        self.assertTrue((d / "wiki-maintenance" / "agents" / "diataxis-evaluator.md").exists())
+        self.assertTrue((d / "privacy" / "skills" / "pii-scrubber" / "SKILL.md").exists())
+        self.assertTrue((d / "maintenance" / "skills" / "dependabot-fixer" / "SKILL.md").exists())
+        self.assertTrue((d / "development-lifecycle" / "agents" / "evaluator.md").exists())
+        self.assertTrue((d / "wiki" / "agents" / "diataxis-evaluator.md").exists())
         # part 2 fold-in: documenter + diataxis-author support AG → present;
         # wiki-author + recent-wiki-changes are claude-only → absent from AG.
         # part 3 task 2: style-scope-evaluator supports AG (clones the evaluator mold) → present.
-        self.assertTrue((d / "wiki-maintenance" / "agents" / "style-scope-evaluator.md").exists())
-        self.assertTrue((d / "wiki-maintenance" / "agents" / "documenter.md").exists())
-        self.assertTrue((d / "wiki-maintenance" / "skills" / "diataxis-author" / "SKILL.md").exists())
-        self.assertFalse((d / "wiki-maintenance" / "skills" / "wiki-author").exists())
-        self.assertFalse((d / "wiki-maintenance" / "commands" / "recent-wiki-changes.md").exists())
+        self.assertTrue((d / "wiki" / "agents" / "style-scope-evaluator.md").exists())
+        self.assertTrue((d / "wiki" / "agents" / "documenter.md").exists())
+        self.assertTrue((d / "wiki" / "skills" / "diataxis-author" / "SKILL.md").exists())
+        self.assertFalse((d / "wiki" / "skills" / "wiki-author").exists())
+        self.assertFalse((d / "wiki" / "commands" / "recent-wiki-changes.md").exists())
         # part 4 task 4 (DC-W4: Claude-first scheduling): the wiki-watch SKILL is
         # cross-host → present on AG; the wiki-watch COMMAND is claude-only → absent.
         # The engine group scripts are bundled host-agnostically → present.
-        self.assertTrue((d / "wiki-maintenance" / "skills" / "wiki-watch" / "SKILL.md").exists())
-        self.assertFalse((d / "wiki-maintenance" / "commands" / "wiki-watch.md").exists())
-        self.assertTrue((d / "wiki-maintenance" / "scripts" / "wiki_watch_cycle.py").exists())
+        self.assertTrue((d / "wiki" / "skills" / "wiki-watch" / "SKILL.md").exists())
+        self.assertFalse((d / "wiki" / "commands" / "wiki-watch.md").exists())
+        self.assertTrue((d / "wiki" / "scripts" / "wiki_watch_cycle.py").exists())
 
     def test_thin_composition_no_inlined_base(self):
-        # github-ci requires developer-workflows but carries ONLY its own
-        # primitive — no required-plugin components inlined.
-        gci = self.agdist / "plugins" / "github-ci"
+        # maintenance (ex-github-ci) requires development-lifecycle but carries
+        # ONLY its own primitive — no required-plugin components inlined.
+        gci = self.agdist / "plugins" / "maintenance"
         self.assertFalse((gci / "agents" / "evaluator.md").exists())
         self.assertEqual([p.name for p in (gci / "skills").iterdir()], ["dependabot-fixer"])
 
@@ -93,23 +93,21 @@ class TestAntigravityEmitter(unittest.TestCase):
         self.assertEqual(mk["interface"]["displayName"], "Crickets")
         by = {p["name"]: p for p in mk["plugins"]}
         self.assertEqual(set(by),
-                         {"code-review", "design-docs", "developer-safety",
-                          "developer-workflows", "pii", "github-ci",
-                          "github-projects", "obsidian-vault",
-                          "releasing-conventions", "status-line-meter",
-                          "testing-conventions",
-                          "token-audit", "wiki-maintenance"})
-        # wiki-maintenance re-categorized Coding → documentation in part 1; rest stay Coding
-        expected_category = {"wiki-maintenance": "documentation"}
+                         {"code-review", "conventions", "design", "developer-safety",
+                          "development-lifecycle", "github-projects",
+                          "maintenance", "obsidian-vault", "privacy",
+                          "tokens", "wiki"})
+        # wiki re-categorized Coding → documentation in part 1; rest stay Coding
+        expected_category = {"wiki": "documentation"}
         for p in mk["plugins"]:
             self.assertEqual(p["source"], {"source": "local", "path": f"./plugins/{p['name']}"})
             self.assertEqual(p["policy"]["installation"], "AVAILABLE")
             self.assertEqual(p["category"], expected_category.get(p["name"], "Coding"))
         # requires documented (thin) on dependents, absent on standalone
-        self.assertEqual(by["github-ci"]["requires"], ["developer-workflows"])
-        self.assertNotIn("requires", by["wiki-maintenance"])
-        self.assertNotIn("requires", by["pii"])
-        self.assertNotIn("requires", by["developer-workflows"])
+        self.assertEqual(by["maintenance"]["requires"], ["development-lifecycle"])
+        self.assertNotIn("requires", by["wiki"])
+        self.assertNotIn("requires", by["privacy"])
+        self.assertNotIn("requires", by["development-lifecycle"])
 
     def test_ag_hooks_named_with_relative_paths(self):
         # the control hooks live in developer-safety post-seed-retirement.

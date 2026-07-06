@@ -30,7 +30,7 @@ from unittest import mock
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
-_SCRIPTS = _ROOT / "src" / "developer-workflows" / "scripts"
+_SCRIPTS = _ROOT / "src" / "development-lifecycle" / "scripts"
 
 
 def _load(name: str):

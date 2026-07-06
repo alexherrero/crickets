@@ -21,9 +21,9 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
-_DW = _ROOT / "src" / "developer-workflows"
-_COMMAND = _DW / "commands" / "design.md"
-_TEMPLATE = _DW / "templates" / "design-doc.md"
+_DESIGN = _ROOT / "src" / "design"
+_COMMAND = _DESIGN / "commands" / "design.md"
+_TEMPLATE = _DESIGN / "templates" / "design-doc.md"
 
 sys.path.insert(0, str(_HERE))
 from src_model import read_frontmatter  # noqa: E402

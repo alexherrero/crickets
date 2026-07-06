@@ -22,8 +22,8 @@ from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[1]
 _SCAN_DIRS = (
-    _ROOT / "src" / "developer-workflows" / "commands",
-    _ROOT / "src" / "developer-workflows" / "scripts",
+    _ROOT / "src" / "development-lifecycle" / "commands",
+    _ROOT / "src" / "development-lifecycle" / "scripts",
 )
 _SCAN_SUFFIXES = (".md", ".py", ".sh")
 # The admin bypass as a CLI flag token (`gh pr merge --admin`), not the substring

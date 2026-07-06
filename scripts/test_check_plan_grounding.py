@@ -14,7 +14,7 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
-_SCRIPT = _ROOT / "src" / "developer-workflows" / "scripts" / "check-plan-grounding.py"
+_SCRIPT = _ROOT / "src" / "development-lifecycle" / "scripts" / "check-plan-grounding.py"
 _spec = importlib.util.spec_from_file_location("check_plan_grounding", _SCRIPT)
 cpg = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(cpg)

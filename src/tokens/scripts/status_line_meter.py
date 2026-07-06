@@ -14,8 +14,10 @@ Rendered format (each badge is independently optional):
 Any missing field, null value, or exception → graceful-skip (omit the badge,
 never hang, never print an error to stdout that would corrupt the status line).
 
-Cross-plugin: runtime-discovers token-audit's pricing.py from the sibling
-plugins directory. Degrades gracefully to used-% only when token-audit is absent.
+Same-plugin: pricing.py is a sibling in this group's own scripts/ (the
+status-line-meter capability folded into token-audit at the AG Wave A rename,
+PLAN-wave-a-renames-2 task 6). Degrades gracefully to used-% only if pricing.py
+is somehow missing.
 
 Verified against Claude Code v2.1.153 status-line JSON schema (2026-06-14).
 Minimum host version for used_percentage: v2.1.132.
@@ -33,14 +35,12 @@ _FIVE_HOURS_SECONDS = 5 * 3600
 _WEEK_SECONDS = 7 * 24 * 3600
 
 # ---------------------------------------------------------------------------
-# Runtime discovery of token-audit's pricing module.
-# Both plugins install as sibling directories under the same plugins root:
-#   <plugins>/status-line-meter/scripts/  ← __file__
-#   <plugins>/token-audit/scripts/pricing.py
+# pricing.py is a same-directory sibling since the status-line-meter fold
+# (PLAN-wave-a-renames-2 task 6) — no more cross-plugin discovery needed.
 # Works in src/ (for tests), dist/, and at installed location.
 # ---------------------------------------------------------------------------
 _HERE = Path(__file__).resolve().parent
-_TA_SCRIPTS = _HERE.parent.parent / "token-audit" / "scripts"
+_TA_SCRIPTS = _HERE
 
 _HAS_PRICING = False
 cost_usd = None  # populated below if pricing module found

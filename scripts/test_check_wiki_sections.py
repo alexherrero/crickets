@@ -34,7 +34,7 @@ def _load(mod_name: str, filename: str):
     return mod
 
 
-cw = _load("check_wiki_sections_under_test", "../src/wiki-maintenance/scripts/check-wiki.py")
+cw = _load("check_wiki_sections_under_test", "../src/wiki/scripts/check-wiki.py")
 
 OPTIONAL = {"Safety", "Host gaps", "Limitations"}
 

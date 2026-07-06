@@ -61,7 +61,7 @@ class TestClaudeEmitter(unittest.TestCase):
         # future bumps without re-hardcoding numbers here.
         src_model = sys.modules["src_model"]
         declared = {g.slug: g.version for g in src_model.load_groups(_ROOT / "src")}
-        for slug in ("developer-workflows", "pii", "github-ci", "wiki-maintenance"):
+        for slug in ("development-lifecycle", "privacy", "maintenance", "wiki"):
             d = self._plugin_json(slug)
             self.assertEqual(d["name"], slug)
             self.assertTrue(d.get("description"))
@@ -87,55 +87,55 @@ class TestClaudeEmitter(unittest.TestCase):
         # 0.5.1 = task 2 calibration — Tier-B thresholds + 2 severity downgrades.
         # 0.5.2 = task 4 — floor promotion + floor_eligible field.
         # 0.5.3 = task 5 — role-noun carve-out codified in base-style-guide.md.
-        self.assertEqual(self._plugin_json("wiki-maintenance")["version"], "0.5.3")
+        self.assertEqual(self._plugin_json("wiki")["version"], "0.6.0")
         # 0.3.0 = check-no-pii.sh + templates/hooks/pre-push moved into src/pii/
         # so they actually ship inside the plugin payload (R2.4 task 7).
         # 0.3.1 = check-no-pii.sh scan collapsed to one grep per file (fixes a
         # 9.4x Windows-vs-Mac subprocess-spawn slowdown; PLAN-ci-walltime-diet
         # task 1). Detection behavior unchanged.
-        self.assertEqual(self._plugin_json("pii")["version"], "0.3.1")
+        # 0.4.0 = AG Wave A rename 2: directory pii -> privacy.
+        self.assertEqual(self._plugin_json("privacy")["version"], "0.4.0")
 
     def test_dependencies_from_requires(self):
-        # post-seed-retirement: github-ci depends on developer-workflows; wiki-maintenance
-        # flipped to standalone (no requires) in the wiki-maintenance scaffold (part 1).
-        self.assertEqual(self._plugin_json("github-ci").get("dependencies"), ["developer-workflows"])
-        self.assertNotIn("dependencies", self._plugin_json("wiki-maintenance"))
-        self.assertNotIn("dependencies", self._plugin_json("pii"))
-        self.assertNotIn("dependencies", self._plugin_json("developer-workflows"))
+        # post-seed-retirement: maintenance (ex-github-ci) depends on
+        # development-lifecycle; wiki (ex-wiki-maintenance) flipped to
+        # standalone (no requires) in the wiki-maintenance scaffold (part 1).
+        self.assertEqual(self._plugin_json("maintenance").get("dependencies"), ["development-lifecycle"])
+        self.assertNotIn("dependencies", self._plugin_json("wiki"))
+        self.assertNotIn("dependencies", self._plugin_json("privacy"))
+        self.assertNotIn("dependencies", self._plugin_json("development-lifecycle"))
 
     def test_components_copied(self):
         d = self.cdist / "plugins"
-        self.assertTrue((d / "pii" / "skills" / "pii-scrubber" / "SKILL.md").exists())
-        self.assertTrue((d / "github-ci" / "skills" / "dependabot-fixer" / "SKILL.md").exists())
-        self.assertTrue((d / "developer-workflows" / "agents" / "evaluator.md").exists())
-        self.assertTrue((d / "wiki-maintenance" / "agents" / "diataxis-evaluator.md").exists())
+        self.assertTrue((d / "privacy" / "skills" / "pii-scrubber" / "SKILL.md").exists())
+        self.assertTrue((d / "maintenance" / "skills" / "dependabot-fixer" / "SKILL.md").exists())
+        self.assertTrue((d / "development-lifecycle" / "agents" / "evaluator.md").exists())
+        self.assertTrue((d / "wiki" / "agents" / "diataxis-evaluator.md").exists())
         # part 2 fold-in (copy-not-move from agentm): all five primitives + skill
         # subdirs (generator copytree's the whole skill root) + group scripts.
         # part 3 task 2 added the read-only style-scope-evaluator agent (both hosts).
-        self.assertTrue((d / "wiki-maintenance" / "agents" / "style-scope-evaluator.md").exists())
-        self.assertTrue((d / "wiki-maintenance" / "agents" / "documenter.md").exists())
-        self.assertTrue((d / "wiki-maintenance" / "skills" / "wiki-author" / "SKILL.md").exists())
-        self.assertTrue((d / "wiki-maintenance" / "skills" / "diataxis-author" / "SKILL.md").exists())
-        self.assertTrue((d / "wiki-maintenance" / "skills" / "diataxis-author" / "scripts" / "classify.py").exists())
-        self.assertTrue((d / "wiki-maintenance" / "skills" / "diataxis-author" / "templates" / "how-to.md").exists())
-        self.assertTrue((d / "wiki-maintenance" / "commands" / "recent-wiki-changes.md").exists())
-        self.assertTrue((d / "wiki-maintenance" / "scripts" / "check-wiki.py").exists())
-        self.assertTrue((d / "wiki-maintenance" / "scripts" / "recent-wiki-changes.sh").exists())
+        self.assertTrue((d / "wiki" / "agents" / "style-scope-evaluator.md").exists())
+        self.assertTrue((d / "wiki" / "agents" / "documenter.md").exists())
+        self.assertTrue((d / "wiki" / "skills" / "wiki-author" / "SKILL.md").exists())
+        self.assertTrue((d / "wiki" / "skills" / "diataxis-author" / "SKILL.md").exists())
+        self.assertTrue((d / "wiki" / "skills" / "diataxis-author" / "scripts" / "classify.py").exists())
+        self.assertTrue((d / "wiki" / "skills" / "diataxis-author" / "templates" / "how-to.md").exists())
+        self.assertTrue((d / "wiki" / "commands" / "recent-wiki-changes.md").exists())
+        self.assertTrue((d / "wiki" / "scripts" / "check-wiki.py").exists())
+        self.assertTrue((d / "wiki" / "scripts" / "recent-wiki-changes.sh").exists())
         # part 4 task 4: the wiki-watch skill (cross-host) + command (claude-only
         # scheduling entry) + the engine group scripts (bundled both hosts).
-        self.assertTrue((d / "wiki-maintenance" / "skills" / "wiki-watch" / "SKILL.md").exists())
-        self.assertTrue((d / "wiki-maintenance" / "commands" / "wiki-watch.md").exists())
-        self.assertTrue((d / "wiki-maintenance" / "scripts" / "wiki_watch_cycle.py").exists())
+        self.assertTrue((d / "wiki" / "skills" / "wiki-watch" / "SKILL.md").exists())
+        self.assertTrue((d / "wiki" / "commands" / "wiki-watch.md").exists())
+        self.assertTrue((d / "wiki" / "scripts" / "wiki_watch_cycle.py").exists())
 
     def test_marketplace_lists_all_with_resolving_sources(self):
         mk = json.loads((self.cdist / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
         self.assertEqual({p["name"] for p in mk["plugins"]},
-                         {"code-review", "design-docs", "developer-safety",
-                          "developer-workflows", "pii", "github-ci",
-                          "github-projects", "obsidian-vault",
-                          "releasing-conventions", "status-line-meter",
-                          "testing-conventions",
-                          "token-audit", "wiki-maintenance"})
+                         {"code-review", "conventions", "design", "developer-safety",
+                          "development-lifecycle", "github-projects",
+                          "maintenance", "obsidian-vault", "privacy",
+                          "tokens", "wiki"})
         for p in mk["plugins"]:
             self.assertEqual(p["source"], f"./plugins/{p['name']}")
             self.assertTrue((self.cdist / "plugins" / p["name"]).is_dir())

@@ -32,7 +32,7 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
-_CMDS = _ROOT / "src" / "developer-workflows" / "commands"
+_CMDS = _ROOT / "src" / "development-lifecycle" / "commands"
 
 # The execution commands that carry the inlined doctrine block, in canonical
 # order (release.md is the byte-identity reference).

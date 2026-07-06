@@ -27,7 +27,7 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
-_CMDS = _ROOT / "src" / "developer-workflows" / "commands"
+_CMDS = _ROOT / "src" / "development-lifecycle" / "commands"
 
 # A .py file needs an interpreter; `bash <pyfile>` is the bug class these specs
 # guard against (it survived only because the probe is graceful-skip).
@@ -198,7 +198,7 @@ class TestQueueStatusLiteSpec(unittest.TestCase):
         # (c) The command ships into both generated plugin trees. `generate.py
         # check` (in check-all) separately proves they are byte-identical to src.
         for host in ("antigravity", "claude-code"):
-            p = (_ROOT / "dist" / host / "plugins" / "developer-workflows"
+            p = (_ROOT / "dist" / host / "plugins" / "development-lifecycle"
                  / "commands" / "queue-status-lite.md")
             self.assertTrue(p.is_file(), f"missing dist command for {host}: {p}")
 

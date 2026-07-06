@@ -27,7 +27,7 @@ class TestNoStaleModelRoster(unittest.TestCase):
     def test_no_stale_sonnet_4_6_in_agent_defs_or_commands(self):
         hits = []
         for pattern_dir in ("agents", "commands"):
-            d = _CRICKETS_ROOT / "src" / "developer-workflows" / pattern_dir
+            d = _CRICKETS_ROOT / "src" / "development-lifecycle" / pattern_dir
             for f in sorted(d.glob("*.md")):
                 text = f.read_text(encoding="utf-8")
                 if _STALE in text:
@@ -36,7 +36,7 @@ class TestNoStaleModelRoster(unittest.TestCase):
 
     def test_work_and_bugfix_name_opusplan_not_bare_opus(self):
         for name in ("work.md", "bugfix.md"):
-            f = _CRICKETS_ROOT / "src" / "developer-workflows" / "commands" / name
+            f = _CRICKETS_ROOT / "src" / "development-lifecycle" / "commands" / name
             text = f.read_text(encoding="utf-8")
             self.assertIn("opusplan", text, f"{name} should name opusplan explicitly")
 
