@@ -35,10 +35,13 @@ class TestSrcModel(unittest.TestCase):
     def test_real_tree_shape(self):
         groups = src_model.load_groups(_ROOT / "src")
         by = {g.slug: g for g in groups}
+        # "research" (wave-c-research task 1): a scripts-only dir with no
+        # group.yaml yet -- load_groups discovers it by directory presence
+        # alone, ahead of task 4's group.yaml + primitives.
         self.assertEqual(set(by),
                          {"code-review", "conventions", "design", "developer-safety",
                           "development-lifecycle", "diagnostics", "github-projects",
-                          "maintenance", "obsidian-vault", "privacy",
+                          "maintenance", "obsidian-vault", "privacy", "research",
                           "tokens", "wiki"})
         # obsidian-vault (V5-2): the re-homed `vault` storage backend lands as a
         # group asset under scripts/ (LC-2 — engine-consumed, not a host primitive).

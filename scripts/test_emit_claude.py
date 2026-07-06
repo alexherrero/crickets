@@ -134,7 +134,7 @@ class TestClaudeEmitter(unittest.TestCase):
         self.assertEqual({p["name"] for p in mk["plugins"]},
                          {"code-review", "conventions", "design", "developer-safety",
                           "development-lifecycle", "diagnostics", "github-projects",
-                          "maintenance", "obsidian-vault", "privacy",
+                          "maintenance", "obsidian-vault", "privacy", "research",
                           "tokens", "wiki"})
         for p in mk["plugins"]:
             self.assertEqual(p["source"], f"./plugins/{p['name']}")
