@@ -5,6 +5,25 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.25.0] — 2026-07-06 — Minor: worktree-native flow — host worktrees + PR-per-plan
+
+**MINOR.** `/work` and `/bugfix` no longer spawn worktrees through the bespoke `spawn_worker.py` — they call the installed host's own worktree primitive directly (Claude Code `EnterWorktree`; Antigravity New-Worktree-Mode/`invoke_subagent`), then bind it to the named plan with a new, much smaller `worktree_marker.py`. `/spawn-worker` and `/integrate-worker`, the two full standalone commands that wrapped `spawn_worker.py`/`integrate_worker.py`, retire entirely — the auto-spawn-and-PR flow now covers both jobs end-to-end. A plan's final task pushes its branch, opens a PR carrying the close-out summary, and arms `gh pr merge --auto --squash` immediately; "Allow auto-merge" is enabled on this repo (and [agentm](https://github.com/alexherrero/agentm)). A new `worktree_shepherd.py` runs on the `agentm-runner` scheduler to reclaim provably-safe orphaned worktrees and rebase any PR GitHub reports behind its base. This is the load-bearing sequencing note: branch protection (`required_linear_history`, the `aggregate` required check) was already live before this release, landed in the prior wave specifically so a PR gated by it structurally cannot merge red — the old local merge-then-gate-then-hard-reset model this release retires had become redundant machinery duplicating a guarantee GitHub's own protection already provides more strongly, not a safety net worth keeping alongside it.
+
+### Added
+
+- **Host-native worktree auto-spawn** — `/work` / `/bugfix`'s isolation-check step calls `EnterWorktree` / New-Worktree-Mode instead of `spawn_worker.py`; new `worktree_marker.py` carries the LC-6 preflight-reconcile guard and the LC-2 `vault_project` divergent-override copy that script used to do, with none of its git-worktree-creation/rollback/locking machinery (the host owns that now).
+- **PR-per-plan close-out with armed auto-merge** — `finalize_unit.py` takes an explicit `--branch` (the real branch the host primitive returned, not a `worker/<slug>` guess) and `pr_helpers.finalize_pr` arms `gh pr merge --auto --squash` right after `gh pr create` (non-fatal if the arm itself fails).
+- **`worktree_shepherd.py`** — reclaims worktrees/branches that are orphaned, old enough, and provably safe (every commit already on the remote copy, or the branch never diverged — anything not provably safe is left alone), and rebases any open PR GitHub reports `BEHIND` its base via `gh pr update-branch`, recording rather than swallowing a resulting conflict. Runs on `agentm-runner`, not a bespoke cron.
+- **`/setup`'s scaffold output** gains a standing, non-blocking reminder to close out worktrees rather than leave them dangling — the human-facing complement to the shepherd.
+
+### Changed
+
+- **`doctor_worktrees.py`** (the read-only worktree diagnostic) recognizes `worktree-<slug>` branches instead of the retired `worker/<slug>` convention. The rewrite caught a live bug: `git for-each-ref`'s pattern match is by path component, not string prefix, so the naive port silently matched zero branches until the pattern gained a trailing `*`.
+
+### Removed
+
+- **`spawn_worker.py`, `integrate_worker.py`, `/spawn-worker`, `/integrate-worker`** — deleted outright, not migrated, along with `integrate_prepare.py`/`integrate-prepare.sh` (that script's own deferred-version-bump helper, moot now that version bumps happen inline per-task) and every dedicated test file for all of the above. Two wiki how-to pages entirely about the retired commands are deleted too, with every inbound link repointed to the new automatic flow.
+
 ## [v3.24.0] — 2026-07-06 — Minor: AG Wave A — the v6.0 rename wave
 
 **MINOR.** The headline is **AG Wave A**: seven plugins rename or merge to their settled capability nouns — `developer-workflows` → `development-lifecycle`, `github-ci` → `maintenance`, `pii` → `privacy`, `wiki-maintenance` → `wiki`, `design-docs` → `design` (re-homing `/design`'s full implementation + `spec`/`interview-me`/`document-decision` out of `development-lifecycle`, de-duping the two `/design` copies with no content loss), `testing-conventions` + `releasing-conventions` merge into `conventions`, and `status-line-meter` folds into `token-audit` before that renames to `tokens`. Every rename **declares both the old and new capability name** in `capabilities:` (crickets-composition.md's declare-both-names mechanism) — no separate alias map, nothing breaks for an install still using an old name. A new permanent `check-no-dangling-name.py` gate closes the wave: it never flags an old name still in use, only a reference that resolves to nothing. The rest of this release is unreleased work from several already-completed plans that hadn't shipped yet: a versioned anti-slop voice gate, CI wall-time trimming, per-dispatch model/effort routing, and a run of `github-projects` board-sync depth + drift fixes.
