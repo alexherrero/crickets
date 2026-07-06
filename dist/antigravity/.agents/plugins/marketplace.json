@@ -205,6 +205,24 @@
     },
     {
       "capabilities": [
+        "research"
+      ],
+      "category": "Coding",
+      "name": "research",
+      "policy": {
+        "authentication": "ON_INSTALL",
+        "installation": "AVAILABLE"
+      },
+      "requires": [
+        "development-lifecycle"
+      ],
+      "source": {
+        "path": "./plugins/research",
+        "source": "local"
+      }
+    },
+    {
+      "capabilities": [
         "status-line-meter",
         "token-audit",
         "tokens"

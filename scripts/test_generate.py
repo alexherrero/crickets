@@ -127,10 +127,14 @@ class TestCheck(unittest.TestCase):
 
     def test_default_set_emitted(self):
         ds = json.loads((self.dist / "default-set.json").read_text(encoding="utf-8"))
+        # default-set.json lists every discovered src/ group slug unconditionally
+        # (generate.py's _emit, unfiltered by supports()) -- "research" (wave-c-
+        # research task 1) already exists as a scripts-only dir with no group.yaml
+        # yet, so it's discovered here ahead of task 4's group.yaml + primitives.
         self.assertEqual(ds["plugins"],
                          ["code-review", "conventions", "design", "developer-safety",
                           "development-lifecycle", "diagnostics", "github-projects",
-                          "maintenance", "obsidian-vault", "privacy",
+                          "maintenance", "obsidian-vault", "privacy", "research",
                           "tokens", "wiki"])
 
     def test_changed_file_fails(self):
