@@ -31,7 +31,7 @@ Invoking this phase **is** the authorization to run it to completion. The stop-g
 
 **Close-out autonomy.** Archiving a completed plan (`PLAN.md` → `PLAN.archive.YYYYMMDD-<slug>.md`) and the rest of close-out bookkeeping (append `progress.md`, move the ROADMAP item to Completed/SHIPPED, update staging notes) is **recoverable → autonomous** — never stop to ask approval to archive or to do close-out bookkeeping.
 
-**Carve-outs — unchanged by this doctrine.** Worker-tree initiation requires operator authority — either an explicit `/spawn-worker` command or a durable `isolation.mode: worktree-per-plan` config opt-in; silent authority-free auto-spawn stays forbidden; `/integrate-worker` stays operator-initiated; the PII pre-push hook + `pii-scrubber` invocation stay mandatory; the no-`Co-Authored-By` commit rule is untouched.
+**Carve-outs — unchanged by this doctrine.** Worktree initiation requires operator authority — a durable `isolation.mode: worktree-per-plan` config opt-in (this command's own auto-spawn) or an explicit operator instruction to use a worktree; silent authority-free auto-spawn stays forbidden; integration lands via the plan's own PR + required-check gate, armed for auto-merge (`/spawn-worker` and `/integrate-worker` are retired — the auto-spawn-and-PR flow now covers both jobs end-to-end); the PII pre-push hook + `pii-scrubber` invocation stay mandatory; the no-`Co-Authored-By` commit rule is untouched.
 <!-- END recoverability-gate -->
 
 ## Non-negotiable constraints
@@ -80,9 +80,11 @@ Run the isolation check — **operator authority required**: this step fires onl
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/isolation_config.py" check [--no-isolate if $ARGUMENTS contains --no-isolate] [--project-root <root>]
 ```
 
-- **Exit 0** (should auto-spawn): run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/spawn_worker.py" <slug>` (the plan's slug). On success the helper prints the new worktree path; **announce the spawn** ("Auto-spawning worktree at `<path>` — operator config-gated"), then proceed from inside the new worktree for all subsequent steps.
+- **Exit 0** (should auto-spawn): call the **host's own worktree primitive** — Claude Code: `EnterWorktree` with `name` set to the plan's slug; Antigravity: New-Worktree-Mode / `invoke_subagent` (best-effort, per Antigravity-Limitations). Do not invent a worktree path or branch name — read back whatever the primitive actually returns (Claude Code: `.claude/worktrees/<name>` on branch `worktree-<name>`, not the retired `<repo>.worktrees/<slug>` / `worker/<slug>` convention). Then bind it: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/worktree_marker.py" write <worktree-path> <slug> <plan-path> --project-root <original-root>` (the `<plan-path>` is the resolved path from step 1 — never re-resolved here).
+  - **Exit 0**: **announce the spawn** ("Auto-spawning worktree at `<path>` — operator config-gated"), then proceed from inside the new worktree for all subsequent steps.
+  - **Exit 3** (LC-6 already-shipped no-op): the plan shipped before this session got here — exit the worktree (`ExitWorktree` `remove`, or the Antigravity equivalent; nothing was written to it) and report the `already shipped` message. Stop; do not proceed to step 2.
+  - **Exit 2**: surface stderr, exit/remove the now-orphaned worktree, and stop. Do not retry.
 - **Exit 1** (no auto-spawn): proceed directly — no worktree needed (mode is `direct`, no config, or single-owner guard fired because we're already inside a worktree).
-- Any non-zero from `spawn_worker.py` → surface stderr and stop. Do not retry.
 
 **Note:** `--no-isolate` in `$ARGUMENTS` is the command-arg override that wins over any config setting.
 
@@ -114,7 +116,7 @@ If `mode` is `worktree-per-task`, run the task isolation check before starting t
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/task_isolation.py" check <plan_path> <task_num>
 ```
 
-- **Exit 0** (task is isolated): spawn a per-task worktree for this task — `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/spawn_worker.py" <plan-slug>-task-<N>`. Announce: *"Spawning per-task worktree for task N — operator-declared isolated (N× CI cost)."* Proceed with steps 3–9 from inside the task worktree. After step 9 (commit): merge the task branch back with `git merge --no-ff <task-branch>` from the plan's main context, then prune with `git worktree remove <path>` + `git branch -d <task-branch>`. Resume the task loop in the plan's main context.
+- **Exit 0** (task is isolated): spawn a per-task worktree for this task via the host's own primitive — `EnterWorktree` with `name` set to `<plan-slug>-task-<N>` (Antigravity: New-Worktree-Mode / `invoke_subagent`, best-effort) — then bind it with `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/worktree_marker.py" write <worktree-path> <plan-slug> <plan-path> --project-root <original-root>` (the marker binds to the *plan* slug, not the task-scoped worktree name — a per-task worktree still resolves the same plan). Announce: *"Spawning per-task worktree for task N — operator-declared isolated (N× CI cost)."* Proceed with steps 3–9 from inside the task worktree. After step 9 (commit): merge the task branch back with `git merge --no-ff <task-branch>` (the branch name the primitive returned) from the plan's main context, then prune with `ExitWorktree` `remove` (or the Antigravity equivalent). Resume the task loop in the plan's main context.
 - **Exit 1** (task is not isolated): proceed directly in the current context — no worktree spawned.
 - **Exit 2** or any error from `task_isolation.py`: surface stderr and stop.
 
