@@ -15,4 +15,15 @@ capabilities: [testing-conventions, releasing-conventions, conventions]
 #          no-change-detector rules from AGENTS.md) is descoped to a Wave-C
 #          follow-up per the plan's own locked design call — this task is the
 #          rename mechanic only.
-version: 0.1.0
+# 0.2.0 = PLAN-wave-c-design-and-conventions task 4: the homeless-domain
+#          migration lands. New skills/agentic-engineering/SKILL.md (the
+#          harness discipline, migrated verbatim from agentm's AGENTS.md +
+#          harness/principles.md + the operator's global ~/.claude/CLAUDE.md)
+#          and rules/ci-battery.md (the gate-battery standard, migrated from
+#          agentm AGENTS.md's "Running the checks" section, generalized off
+#          agentm's own project-specific gate list). New scripts/
+#          conventions_domain.py resolves a domain name to its on-disk
+#          rules/skills/reference shape (graceful on an unknown domain).
+#          no-change-detector is NOT included here -- it's code-quality's
+#          domain per crickets-conventions.md's own table, not this task's.
+version: 0.2.0
