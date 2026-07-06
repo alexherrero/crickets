@@ -57,6 +57,17 @@ def record(vault: Path, fingerprint: str, project: str, path: str) -> None:
     _save_index(vault, index)
 
 
+def find_canonical_fingerprint(vault: Path, project: str, path: str) -> "str | None":
+    """Reverse lookup: given a vault-relative entry path, return the canonical
+    (non-alias) fingerprint currently indexed for it, or None if the entry
+    predates the sidecar index (e.g. written before diagnostics existed)."""
+    prefix = f"{project}::"
+    for key, entry in load_index(vault).items():
+        if key.startswith(prefix) and entry.get("path") == path and "alias_of" not in entry:
+            return key[len(prefix):]
+    return None
+
+
 def add_alias(vault: Path, canonical_fingerprint: str, alias_fingerprint: str, project: str) -> None:
     """Attach a Layer-2-drifted fingerprint as an alias of an existing incident
     (task 3's self-reinforcing convergence). A subsequent lookup() on the alias

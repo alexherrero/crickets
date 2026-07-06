@@ -34,9 +34,28 @@ agentm_bridge = _load_sibling("agentm_bridge", "agentm_bridge.py")
 
 _DEFAULT_K = 5
 
+# Self-reinforcing alias mechanism (task 3): a Layer-2 top candidate at or
+# above this score auto-attaches the queried fingerprint as an alias of the
+# candidate's existing incident, so a repeat of this same drifted fingerprint
+# converges to a Layer-1 hit next time. Below threshold: no side effect --
+# a merely-related candidate is not the same incident.
+_ALIAS_CONFIDENCE_THRESHOLD = 0.75
+
 
 def _layer2_filter_expr(project: str) -> str:
     return f"kind=failure-incident AND project={project} AND status=active"
+
+
+def _maybe_attach_alias(vault: Path, fingerprint: str, project: str, candidates: list) -> None:
+    if not candidates:
+        return
+    top = candidates[0]
+    if top.get("score", 0) < _ALIAS_CONFIDENCE_THRESHOLD:
+        return
+    canonical = fingerprint_index.find_canonical_fingerprint(vault, project, top["path"])
+    if canonical is None:
+        return  # the matched entry predates the sidecar index -- no-op, not an error
+    fingerprint_index.add_alias(vault, canonical, fingerprint, project)
 
 
 def recall(
@@ -51,6 +70,7 @@ def recall(
     """Classify->recall entry point. Returns either:
       {"layer": 1, "path": <entry path>}
       {"layer": 2, "candidates": [<ranked candidate dict>, ...]}
+    A confident Layer-2 top candidate self-reinforces (see _maybe_attach_alias).
     """
     hit = fingerprint_index.lookup(vault, fingerprint, project)
     if hit is not None:
@@ -59,4 +79,5 @@ def recall(
     candidates = agentm_bridge.query_semantic(
         vault, query_text, filter_expr=_layer2_filter_expr(project), k=k
     )
+    _maybe_attach_alias(vault, fingerprint, project, candidates)
     return {"layer": 2, "candidates": candidates}
