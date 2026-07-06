@@ -53,7 +53,7 @@ Use this flow when you want to author one or more named plans **ahead of time** 
 ## Related
 
 - [Named plans](Named-Plans) — the lookup: invocation → files, the parse rule, the resolver + standalone-fallback paths.
-- [Spawn a worker in a worktree](Spawn-A-Worker-In-A-Worktree) — hand an activated named plan to a worker in its own checkout via `/spawn-worker`.
+- Once a named plan is activated, running `/work` against it is enough to hand it to its own worktree — with `isolation.mode: worktree-per-plan` set in `.harness/project.json` (or an explicit operator instruction), `/work` auto-spawns the worktree via the host's own worktree primitive, binds it to the plan, and closes it out with an auto-merging pull request when the plan's final task lands. There's no separate spawn or integrate command to run. See [Named plans § Spawning a worker worktree](Named-Plans#spawning-a-worker-worktree) for the mechanism.
 - [Developer Workflows](Developer-Workflows) — the phase-loop plugin these commands belong to.
 - [Install crickets plugins](Install-Into-Project) — get `developer-workflows` onto your host.
 - [Why phase-gating](Why-Phase-Gating) — why the loop is gated and state lives on disk.

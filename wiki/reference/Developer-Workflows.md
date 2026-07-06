@@ -19,7 +19,7 @@ How it composes — what enhances the loop, what requires it, and the AgentM sub
 
 Developer Workflows moves a change from a rough **idea** to a shipped feature, one gated step at a time, and its commands map onto that flow.
 
-You start with an **idea** — a brief, a feature request, a bug. When it is still fuzzy, `/interview-me` draws out what you actually want. **Research** then fills in what the agent hasn't seen: a read-only sweep of the codebase, and the web when it helps. With the shape clearer, you move to **architecture and design** — `/spec` writes a short PRD, and `/design` takes a design doc to a human-approved final and splits it into parts. Those parts become **plans**: `/plan` turns a brief into a task list with pass/fail criteria, and a larger design fans out into several ordered, named plans. Then the **work** — `/work` runs a plan's tasks one at a time, stopping only when a safety check fails or it needs a decision; for bigger efforts you break the work out into isolated worktrees with `/spawn-worker` and land them with `/integrate-worker`. Every change is **reviewed** adversarially at `/review` and shipped through the `/release` gate, with `/bugfix` as the shorter Report → Analyze → Fix → Verify track for defects.
+You start with an **idea** — a brief, a feature request, a bug. When it is still fuzzy, `/interview-me` draws out what you actually want. **Research** then fills in what the agent hasn't seen: a read-only sweep of the codebase, and the web when it helps. With the shape clearer, you move to **architecture and design** — `/spec` writes a short PRD, and `/design` takes a design doc to a human-approved final and splits it into parts. Those parts become **plans**: `/plan` turns a brief into a task list with pass/fail criteria, and a larger design fans out into several ordered, named plans. Then the **work** — `/work` runs a plan's tasks one at a time, stopping only when a safety check fails or it needs a decision; for bigger efforts, `/work` itself spawns the plan its own isolated worktree via the host's native worktree primitive and closes it out with an auto-merging pull request, when `isolation.mode: worktree-per-plan` is configured or you ask for one explicitly — there's no separate spawn or integrate command to run. Every change is **reviewed** adversarially at `/review` and shipped through the `/release` gate, with `/bugfix` as the shorter Report → Analyze → Fix → Verify track for defects.
 
 The whole loop runs on disk, not in the conversation: the plan, its progress, and the project's state live in files, which is what lets one plan span many sessions.
 
@@ -58,8 +58,6 @@ Each primitive links to the source that implements it. The phase and ship comman
 | [`/spec`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/commands/spec.md) | command | Write a PRD (objectives, UX, structure, tests, out-of-scope) before any code. |
 | [`/interview-me`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/commands/interview-me.md) | command | One-question interview loop to extract what an underspecified ask really wants. |
 | [`/queue-status-lite`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/commands/queue-status-lite.md) | command | Read-only glance at every active plan and its latest progress line. |
-| [`/spawn-worker`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/commands/spawn-worker.md) | command | Operator-initiated — give a named plan its own `worker/<name>` worktree. |
-| [`/integrate-worker`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/commands/integrate-worker.md) | command | Land a finished worker branch on integration if the merged tree still passes the battery. |
 | [`/observe`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/commands/observe.md) | command | Instrumentation discipline — structured logging, RED metrics, tracing, symptom alerts. |
 | [`/deprecate`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/commands/deprecate.md) | command | Deprecation lifecycle — compulsory vs advisory, zombie-code removal. |
 | [`/launch`](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/commands/launch.md) | command | Pre-launch readiness gate — checklist, feature-flag lifecycle, monitoring first. |
@@ -81,7 +79,7 @@ No configuration — the plugin works out of the box. The phase commands read an
 ## See also
 
 - [Named plans](Named-Plans) · [See every active plan](See-Every-Active-Plan) — the multi-plan surface.
-- [Spawn a worker in a worktree](Spawn-A-Worker-In-A-Worktree) · [Run isolated tasks](Run-Isolated-Tasks) · [Integrate a worker](Integrate-A-Worker) — the worktree lifecycle.
+- [Run a named plan](Run-A-Named-Plan) · [Run isolated tasks](Run-Isolated-Tasks) — the worktree lifecycle, including `/work`'s own auto-spawn + auto-close-out.
 - [Evaluator](Evaluator) — the `/review` grader's dispatch contract.
 - [Code Review](Code-Review) · [Developer Safety](Developer-Safety) — the siblings that enhance the loop.
 - [Why phase-gating](Why-Phase-Gating) · [Why adversarial review](Why-Adversarial-Review) — why the loop is shaped this way.

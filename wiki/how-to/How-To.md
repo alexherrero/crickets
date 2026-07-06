@@ -60,9 +60,7 @@ Task-focused recipes for the crickets plugins. For field-level detail like plugi
 
 | How-to | What it does |
 |---|---|
-| [Spawn a worker in a worktree](Spawn-A-Worker-In-A-Worktree) | Hand a named plan to an isolated worker. |
 | [Run isolated tasks](Run-Isolated-Tasks) | Run work in an isolated checkout, away from main. |
-| [Integrate a worker](Integrate-A-Worker) | Land a finished worker's branch, gated on green. |
 | [Configure main branch protection](Configure-Main-Branch-Protection) | Set the rules the integration gate expects. |
 | [Run a coordinator-directed worker team](Run-A-Coordinator-Directed-Worker-Team) | Coordinate several workers on one plan. |
 
