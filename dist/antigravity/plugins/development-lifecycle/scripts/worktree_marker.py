@@ -14,12 +14,15 @@ per this plan's own constraint).
 
 Exit codes:
     0 — marker written. `.harness/project.json` is also written into the
-        worktree whenever the original repo has one, carrying its `isolation`
-        block verbatim (so `isolation_config.read_isolation()` resolves the
-        same way inside the worktree as outside it — `.harness/` is
-        gitignored, so a freshly host-created worktree otherwise has no
-        project.json at all) plus `vault_project`, iff that override diverges
-        from the origin basename (LC-2, unchanged).
+        worktree whenever the original repo has one, as a copy of the
+        original's full project.json (so `isolation_config.read_isolation()`
+        and every other plugin that reads this file — e.g. github-projects'
+        board-sync, which needs `vault_project` / `github` / `fields` /
+        `items_source` — resolve the same way inside the worktree as outside
+        it; `.harness/` is gitignored, so a freshly host-created worktree
+        otherwise has no project.json at all), with `vault_project` refreshed
+        on top iff that override diverges from the origin basename (LC-2,
+        unchanged).
     2 — loud: empty slug, worktree path does not exist / is not a directory, or
         the marker write itself failed. Never a partial write: the pre-flight
         check runs before any write.
@@ -112,9 +115,14 @@ def _worktree_project_json(root: str | os.PathLike) -> dict | None:
     instance) would see the code-default (`direct`) instead of the ORIGINAL
     repo's real `isolation.mode` / `isolation.integration`, silently
     mis-resolving the very setting that got the worktree spawned in the first
-    place. The `isolation` block is therefore always carried over verbatim
-    when the original repo has one; `vault_project` rides along only when it
-    diverges from the origin basename (LC-2, unchanged from before).
+    place. Other plugins read the same file too (github-projects' board-sync
+    needs `vault_project` / `github` / `fields` / `items_source`), so the fix
+    is to carry over a COPY of the original's full project.json rather than
+    a fresh dict built from an allowlist of keys — a minimal rebuild silently
+    drops whatever the allowlist forgot. `vault_project` is refreshed on top
+    of the copy only when it diverges from the origin basename (LC-2,
+    unchanged from before); the rest of the original document rides along
+    verbatim.
     """
     pj = Path(root) / ".harness" / "project.json"
     try:
@@ -122,9 +130,10 @@ def _worktree_project_json(root: str | os.PathLike) -> dict | None:
     except Exception:
         data = None
 
-    out: dict = {}
-    if isinstance(data, dict) and isinstance(data.get("isolation"), dict):
-        out["isolation"] = data["isolation"]
+    if not isinstance(data, dict):
+        return None
+
+    out = dict(data)
     if _needs_vault_project_copy(root):
         out["vault_project"] = _read_vault_project(root)
     return out or None
