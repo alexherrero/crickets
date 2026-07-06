@@ -13,7 +13,7 @@ set -euo pipefail
 CRICKETS_REPO="${CRICKETS_REPO:-$HOME/Antigravity/crickets}"
 CRICKETS_GIT="${CRICKETS_GIT:-https://github.com/alexherrero/crickets.git}"
 
-if [ ! -d "$CRICKETS_REPO/.git" ]; then
+if [ ! -e "$CRICKETS_REPO/.git" ]; then
     echo "==> cloning crickets to $CRICKETS_REPO"
     git clone --quiet --depth 1 "$CRICKETS_GIT" "$CRICKETS_REPO"
 fi

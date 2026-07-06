@@ -119,12 +119,17 @@ class TestVaultProjectFallback(WorktreeMarkerTestCase):
         self.assertTrue(copied.is_file())
         self.assertEqual(json.loads(copied.read_text())["vault_project"], "different")
 
-    def test_no_copy_when_override_matches_origin(self):
+    def test_copies_full_original_even_when_override_matches_origin(self):
+        # The original document is always carried over verbatim once it
+        # exists — the divergence check only decides whether vault_project
+        # gets refreshed on top, not whether the file is written at all.
         _init_repo(self.repo, origin="example.com:org/myrepo.git")
         self._write_project_json("myrepo")
         rc, _out, err = wm.write_marker(self.worktree, "foo", self.plan, self.repo)
         self.assertEqual(rc, 0, err)
-        self.assertFalse((self.worktree / ".harness" / "project.json").exists())
+        copied = self.worktree / ".harness" / "project.json"
+        self.assertTrue(copied.is_file())
+        self.assertEqual(json.loads(copied.read_text())["vault_project"], "myrepo")
 
     def test_no_copy_when_project_json_absent(self):
         _init_repo(self.repo, origin="https://github.com/org/myrepo.git")
@@ -239,6 +244,30 @@ class TestIsolationBlockCarryover(WorktreeMarkerTestCase):
         rc, _out, err = wm.write_marker(self.worktree, "foo", self.plan, self.repo)
         self.assertEqual(rc, 0, err)
         self.assertFalse((self.worktree / ".harness" / "project.json").exists())
+
+    def test_non_isolation_keys_survive_the_copy(self):
+        # Regression: check_project_sync.py / project_sync.py (github-projects
+        # plugin) require `vault_project` and `github` in every .harness/
+        # project.json they read, including inside a spawned worktree — a
+        # rebuild from an isolation/vault_project-only allowlist silently
+        # dropped `github` / `fields` / `items_source` and broke board-sync
+        # for every plan worked under the worktree-per-plan flow.
+        _init_repo(self.repo)
+        h = self.repo / ".harness"
+        h.mkdir(parents=True, exist_ok=True)
+        (h / "project.json").write_text(json.dumps({
+            "isolation": {"mode": "worktree-per-plan", "integration": "pull-request"},
+            "vault_project": "crickets",
+            "github": {"owner": "org", "number": 5, "url": "https://github.com/org/x", "repo": "x"},
+            "fields": {"Status": "status-field-id"},
+            "items_source": "gh-cli",
+        }), encoding="utf-8")
+        rc, _out, err = wm.write_marker(self.worktree, "foo", self.plan, self.repo)
+        self.assertEqual(rc, 0, err)
+        copied = json.loads((self.worktree / ".harness" / "project.json").read_text())
+        self.assertEqual(copied["github"]["owner"], "org")
+        self.assertEqual(copied["fields"], {"Status": "status-field-id"})
+        self.assertEqual(copied["items_source"], "gh-cli")
 
 
 class TestOriginBasename(WorktreeMarkerTestCase):
