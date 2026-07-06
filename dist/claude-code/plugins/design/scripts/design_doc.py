@@ -41,20 +41,51 @@ Exit codes (aligned with the sibling helpers so the surface is transparent):
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import os
 import re
 import sys
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
-if str(_HERE) not in sys.path:
-    sys.path.insert(0, str(_HERE))
+
+
+def _load_resolve_plan():
+    """Load resolve_plan.py from the sibling development-lifecycle plugin.
+
+    design/ hard-requires development-lifecycle (group.yaml `requires:`), so
+    this sibling is always co-installed — but DC-2 forbids a plain cross-plugin
+    `import` (a same-directory `import resolve_plan` worked before the AG Wave
+    A rename 2 moved this file out of development-lifecycle/scripts/; it's a
+    different plugin now). Resolve the sibling's `scripts/` the same way the
+    `${CLAUDE_PLUGIN_ROOT}/../development-lifecycle/scripts/...` shell pattern
+    already used elsewhere in this repo does (commands/design.md's stage_plan.py
+    calls, work.md's evidence_tracker.py reference): one level up from this
+    plugin's own root, into the sibling plugin, into its scripts/. `_HERE.parent`
+    is this plugin's root under any install layout (src/ tree, dist/<host>/
+    plugins/, or a real host's plugin cache) since it's the same directory
+    `${CLAUDE_PLUGIN_ROOT}` resolves to at runtime — mirrored here via the env
+    var when set, falling back to `_HERE.parent` for local/test invocation.
+    """
+    plugin_root = Path(os.environ.get("CLAUDE_PLUGIN_ROOT") or _HERE.parent)
+    sibling = (plugin_root / ".." / "development-lifecycle" / "scripts" / "resolve_plan.py").resolve()
+    if not sibling.is_file():
+        raise ModuleNotFoundError(
+            f"resolve_plan.py not found at {sibling} — design/ requires development-lifecycle "
+            "to be installed alongside it"
+        )
+    spec = importlib.util.spec_from_file_location("resolve_plan", sibling)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules.setdefault("resolve_plan", mod)
+    spec.loader.exec_module(mod)
+    return mod
+
 
 # One owner of active-pair resolution (precedence, vault redirect, slug-safety,
 # the dangling-marker loud-error): the sibling bridge. Reuse its `_AUTO` sentinel
 # verbatim so `resolver=` passes through transparently — tests inject `resolver=None`
 # to force the `.harness/` fallback, or a stub Path to force the delegate branch.
-import resolve_plan  # noqa: E402
+resolve_plan = _load_resolve_plan()
 
 _AUTO = resolve_plan._AUTO
 

@@ -33,18 +33,20 @@ effects (it only reads files and tests path existence; it never writes or mutate
 from __future__ import annotations
 
 import os
-import sys
+import re
 from pathlib import Path
 
-_HERE = Path(__file__).resolve().parent
-if str(_HERE) not in sys.path:
-    sys.path.insert(0, str(_HERE))
+# `_FRONTMATTER_RE` duplicates design_doc.py's constant of the same name
+# (crickets/design, a different plugin as of the AG Wave A rename 2 — DC-2
+# forbids a cross-plugin Python import, "siblings not layers"). Kept in sync
+# by test_preflight_reconcile.py's drift test against design_doc's live copy,
+# the same duplicate-with-drift-test pattern the PR helpers use (probe #3
+# found cross-plugin import unavailable there too).
+_FRONTMATTER_RE = re.compile(r"\A---[ \t]*\n(.*?)\n---[ \t]*(?:\n|\Z)", re.DOTALL)
 
-# One owner of the leading frontmatter-block regex + the minimal scalar parse: the
-# design_doc sibling. We need a *list* field here, which its scalar parser skips
-# (it ignores indented lines), so the block-list parse below mirrors
-# design_sequence._dependencies_from_block — generalized to an arbitrary key.
-import design_doc  # noqa: E402
+# The block-list parse below mirrors design_sequence._dependencies_from_block
+# (generalized to an arbitrary key) — we need a *list* field here, which
+# design_doc's own scalar parser skips (it ignores indented lines).
 
 _ARTIFACTS_KEY = "expected_artifacts"
 
@@ -113,7 +115,7 @@ def expected_artifacts(plan_path: str | os.PathLike) -> list[str]:
         text = Path(plan_path).read_text(encoding="utf-8")
     except OSError:
         return []
-    m = design_doc._FRONTMATTER_RE.match(text)
+    m = _FRONTMATTER_RE.match(text)
     if not m:
         return []
     return _list_field(m.group(1), _ARTIFACTS_KEY)

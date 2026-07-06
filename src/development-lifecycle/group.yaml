@@ -361,5 +361,13 @@ enhances:
 #          verbatim (self-references repointed) and this group's copy is
 #          deleted. No capability drop: spec/interview-me/document-decision
 #          were never separately declared capabilities of this group.
-version: 0.31.0
+# 0.31.1 = fix(preflight_reconcile.py): the 0.31.0 move broke its
+#          `import design_doc` (a same-directory import when design_doc.py
+#          lived here; a cross-plugin DC-2 violation once it moved). Fixed
+#          by duplicating the one constant it actually needed
+#          (`_FRONTMATTER_RE`, a stdlib regex) instead of a cross-plugin
+#          import — the duplicate-with-drift-test pattern the PR helpers
+#          already use, guarded by a new
+#          test_preflight_reconcile_frontmatter_re_parity.py.
+version: 0.31.1
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

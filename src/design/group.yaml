@@ -20,4 +20,14 @@ capabilities: [design-docs, design, architecture]
 #          to development-lifecycle, a hard requires: dependency, since that
 #          helper stays there). capabilities dualizes [design-docs, design]
 #          alongside the existing architecture declare.
-version: 0.2.0
+# 0.2.1 = fix(design_doc.py): the task-4 move broke `import resolve_plan` —
+#          it was a same-directory import while design_doc.py lived in
+#          development-lifecycle/scripts/; now a cross-plugin DC-2 violation.
+#          Discovered live when PLAN-wave-a-repoints tried to activate and
+#          stage_plan.py crashed with ModuleNotFoundError (design_doc.py is
+#          on preflight_reconcile.py's import chain). Fixed with a
+#          `_load_resolve_plan()` bridge that loads the sibling
+#          development-lifecycle plugin's resolve_plan.py by file path
+#          (mirrors resolve_plan.py's own `_load_bridge()` for
+#          find_process_seam.py) instead of a plain `import`.
+version: 0.2.1
