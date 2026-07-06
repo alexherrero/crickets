@@ -959,14 +959,31 @@ def _post_main(args, cfg, runner, here, pm):
                              current_body=current_body)
     results = execute(cmds, dry_run=args.dry_run, runner=runner)
 
-    # --dry-run is a pure preview boundary: no board-items.json write, no
-    # issue-number capture. Live runs persist the graph so a re-run sees real
-    # state instead of re-deciding create/update from scratch every time.
-    if not args.dry_run:
-        if action.kind == "create" and results:
+    # A fresh CREATE only produces an issue — `gh issue create` never adds it to
+    # the project board. `gh project item-add` needs the issue's URL, which only
+    # exists after `gh issue create` returns, so it's threaded here as a second
+    # phase rather than folded into build_commands's static plan (found live:
+    # issues created via `post` were silently never linked to the board).
+    if action.kind == "create":
+        add_cmd = None
+        if args.dry_run:
+            add_cmd = GhCommand(project_item_add_argv(
+                cfg["github"]["owner"], cfg["github"]["number"],
+                issue_url(project_repo_url(cfg), "<new-issue-number>")))
+        elif results:
             created = parse_created_issue_number(results[0][1])
             if created is not None:
                 item.issue = created
+                add_cmd = GhCommand(project_item_add_argv(
+                    cfg["github"]["owner"], cfg["github"]["number"],
+                    issue_url(project_repo_url(cfg), created)))
+        if add_cmd is not None:
+            execute([add_cmd], dry_run=args.dry_run, runner=runner)
+
+    # --dry-run is a pure preview boundary: no board-items.json write. Live runs
+    # persist the graph so a re-run sees real state instead of re-deciding
+    # create/update from scratch every time.
+    if not args.dry_run:
         pm.dump(graph, items_path)
 
     print(f"# {action.kind}: {item.id} (issue {item.issue})", file=sys.stderr)

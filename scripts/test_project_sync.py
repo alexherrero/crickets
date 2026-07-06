@@ -1088,7 +1088,10 @@ class TestMainPersistence(unittest.TestCase):
         ]
         t, cfg_p, items_p = self._cfg_dir(items)
         try:
+            calls = []
+
             def runner(argv):
+                calls.append(argv)
                 if argv[:3] == ["gh", "issue", "create"]:
                     return "https://github.com/o/r/issues/999"
                 return ""
@@ -1100,8 +1103,33 @@ class TestMainPersistence(unittest.TestCase):
             # (c) the create action's returned issue number lands in item.issue
             reloaded = pm.load(items_p)
             self.assertEqual(reloaded["t2"].issue, 999)
+
+            # regression: a fresh CREATE must also link the new issue onto the
+            # project board — `gh issue create` alone never does this (found
+            # live: a growing batch of issues silently never landed on the
+            # board).
+            item_add_calls = [c for c in calls if c[:3] == ["gh", "project", "item-add"]]
+            self.assertEqual(item_add_calls, [
+                ["gh", "project", "item-add", "5", "--owner", "o",
+                 "--url", "https://github.com/o/r/issues/999"],
+            ])
         finally:
             t.cleanup()
+
+    def test_create_dry_run_previews_item_add(self):
+        items = [{"id": "v3", "type": "version", "title": "V", "about": "x"}]
+        t, cfg_p, _ = self._cfg_dir(items)
+        try:
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                rc = ps.main(["post", "--config", str(cfg_p), "--id", "v3",
+                              "--dry-run"])
+            out = buf.getvalue()
+        finally:
+            t.cleanup()
+        self.assertEqual(rc, 0)
+        self.assertIn("gh issue create --repo o/r", out)
+        self.assertIn("gh project item-add 5 --owner o --url", out)
 
 
 _CONFORMANCE_FIXTURE = _ROOT / "scripts" / "fixtures" / "board-items-conformance.json"
