@@ -1,4 +1,4 @@
-name: Wiki Maintenance
+name: Wiki
 description: Opinionated, template-driven wiki maintenance — the wiki-author authoring/learning
   skill, the documenter agent, the diataxis-evaluator, recent-wiki-changes, and the check-wiki.py
   linter. Maintains a wiki in the operator's voice; enhances developer-workflows' phase-boundary
@@ -74,8 +74,13 @@ standalone: true
 # next to the existing second-person ban. The term-of-art carve-out was
 # already written (2026-06-26); this closes the other private-memory-only gap.
 # 0.5.4 = AG Wave A rename 1: enhances target developer-workflows -> development-lifecycle.
-version: 0.5.4
-capabilities: [wiki-maintenance]
+# 0.6.0 = AG Wave A rename 2 (PLAN-wave-a-renames-2 task 3): directory renamed
+#          wiki-maintenance -> wiki per crickets-wiki.md's Migrations spec;
+#          capabilities dualize [wiki-maintenance, wiki]. check-all.sh's
+#          check-wiki call site re-pointed to src/wiki/scripts/check-wiki.py
+#          (the linter moves with the directory).
+version: 0.6.0
+capabilities: [wiki-maintenance, wiki]
 enhances:
   - group: development-lifecycle
     capability: documentation

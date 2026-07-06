@@ -169,7 +169,8 @@
     },
     {
       "capabilities": [
-        "wiki-maintenance"
+        "wiki-maintenance",
+        "wiki"
       ],
       "description": "Opinionated, template-driven wiki maintenance — the wiki-author authoring/learning skill, the documenter agent, the diataxis-evaluator, recent-wiki-changes, and the check-wiki.py linter. Maintains a wiki in the operator's voice; enhances developer-workflows' phase-boundary documentation when both are installed.",
       "enhances": [
@@ -179,9 +180,9 @@
           "group": "development-lifecycle"
         }
       ],
-      "name": "wiki-maintenance",
-      "source": "./plugins/wiki-maintenance",
-      "version": "0.5.4"
+      "name": "wiki",
+      "source": "./plugins/wiki",
+      "version": "0.6.0"
     }
   ]
 }

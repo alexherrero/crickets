@@ -1,6 +1,7 @@
 {
   "capabilities": [
-    "wiki-maintenance"
+    "wiki-maintenance",
+    "wiki"
   ],
   "enhances": [
     {
@@ -9,5 +10,5 @@
       "group": "development-lifecycle"
     }
   ],
-  "version": "0.5.4"
+  "version": "0.6.0"
 }

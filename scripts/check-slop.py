@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """check-slop.py — deterministic anti-slop prose gate (PLAN-r3-voice-mechanism
 task 2). Reads the versioned voice rule pack (Task 1's
-src/wiki-maintenance/skills/diataxis-author/style/voice-rules.json, via
+src/wiki/skills/diataxis-author/style/voice-rules.json, via
 rule_pack.py) and scans markdown files for banned vocabulary, stock-phrase
 templates, and Tier-B countable-metric drift.
 
@@ -67,7 +67,7 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 _RULE_PACK_SCRIPTS = (
-    _HERE.parent / "src" / "wiki-maintenance" / "skills" / "diataxis-author" / "scripts"
+    _HERE.parent / "src" / "wiki" / "skills" / "diataxis-author" / "scripts"
 )
 if str(_RULE_PACK_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_RULE_PACK_SCRIPTS))

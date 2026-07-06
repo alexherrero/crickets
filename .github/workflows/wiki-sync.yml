@@ -4,7 +4,7 @@ name: "[W] Update Wiki"
 # parameterized from. Two jobs:
 #
 #   lint-wiki  — runs crickets' SINGLE-SOURCE gate
-#                (src/wiki-maintenance/scripts/check-wiki.py — the same one
+#                (src/wiki/scripts/check-wiki.py — the same one
 #                check-all.sh runs; crickets IS the source, so no vendored copy).
 #   update-wiki — mirrors wiki/ to the GitHub Wiki, but only `needs: lint-wiki`
 #                (a structurally-broken wiki never publishes) and only on the
@@ -21,11 +21,11 @@ on:
   push:
     paths:
       - 'wiki/**'
-      - 'src/wiki-maintenance/scripts/check-wiki.py'
+      - 'src/wiki/scripts/check-wiki.py'
   pull_request:
     paths:
       - 'wiki/**'
-      - 'src/wiki-maintenance/scripts/check-wiki.py'
+      - 'src/wiki/scripts/check-wiki.py'
   workflow_dispatch:
 
 permissions:
@@ -39,7 +39,7 @@ jobs:
 
       - name: Lint wiki/ structure
         # crickets' single-source gate (same one check-all.sh runs); stdlib-only.
-        run: python3 src/wiki-maintenance/scripts/check-wiki.py --strict --root wiki
+        run: python3 src/wiki/scripts/check-wiki.py --strict --root wiki
 
   update-wiki:
     needs: lint-wiki

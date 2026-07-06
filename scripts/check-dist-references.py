@@ -63,12 +63,12 @@ _PLUGIN_ROOT_RE = re.compile(r"\$\{CLAUDE_PLUGIN_ROOT\}/([^\s\"'`)]+)")
 # fixable gap. `--strict` ignores this list entirely to reproduce the raw
 # failure.
 _KNOWN_VIOLATIONS: frozenset[tuple[str, str]] = frozenset({
-    ("wiki-maintenance/commands/wiki-watch.md", "../../../wiki/reference/Antigravity-Limitations.md"),
-    ("wiki-maintenance/commands/wiki-watch.md", "../../../wiki/reference/Wiki-Watch-Config.md"),
-    ("wiki-maintenance/skills/diataxis-author/SKILL.md", "../memory/SKILL.md"),
-    ("wiki-maintenance/skills/wiki-watch/SKILL.md", "../../../wiki/how-to/Run-The-Wiki-Watcher.md"),
-    ("wiki-maintenance/skills/wiki-watch/SKILL.md", "../../../wiki/reference/Antigravity-Limitations.md"),
-    ("wiki-maintenance/skills/wiki-watch/SKILL.md", "../../../wiki/reference/Wiki-Watch-Config.md"),
+    ("wiki/commands/wiki-watch.md", "../../../wiki/reference/Antigravity-Limitations.md"),
+    ("wiki/commands/wiki-watch.md", "../../../wiki/reference/Wiki-Watch-Config.md"),
+    ("wiki/skills/diataxis-author/SKILL.md", "../memory/SKILL.md"),
+    ("wiki/skills/wiki-watch/SKILL.md", "../../../wiki/how-to/Run-The-Wiki-Watcher.md"),
+    ("wiki/skills/wiki-watch/SKILL.md", "../../../wiki/reference/Antigravity-Limitations.md"),
+    ("wiki/skills/wiki-watch/SKILL.md", "../../../wiki/reference/Wiki-Watch-Config.md"),
     ("code-review/hooks/evidence-tracker/hook.md", "../../wiki/how-to/Use-The-Evidence-Tracker-Hook.md"),
     ("code-review/hooks/evidence-tracker/hook.md", "../commit-on-stop/hook.md"),
     ("code-review/hooks/evidence-tracker/hook.md", "../kill-switch/hook.md"),

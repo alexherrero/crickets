@@ -238,7 +238,8 @@
     },
     {
       "capabilities": [
-        "wiki-maintenance"
+        "wiki-maintenance",
+        "wiki"
       ],
       "category": "documentation",
       "enhances": [
@@ -248,13 +249,13 @@
           "group": "development-lifecycle"
         }
       ],
-      "name": "wiki-maintenance",
+      "name": "wiki",
       "policy": {
         "authentication": "ON_INSTALL",
         "installation": "AVAILABLE"
       },
       "source": {
-        "path": "./dist/antigravity/plugins/wiki-maintenance",
+        "path": "./dist/antigravity/plugins/wiki",
         "source": "local"
       }
     }

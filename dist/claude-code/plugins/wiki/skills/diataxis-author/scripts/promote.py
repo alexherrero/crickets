@@ -5,7 +5,7 @@
 # Graduates a PROVEN overlay voice lesson — from the on-demand store the resolver
 # reads (`<vault>/projects/_global/wiki-style/<date>-<trigger>.md`, per-project,
 # or a per-repo `.diataxis-conventions.md`) — INTO the committed repo base
-# `src/wiki-maintenance/skills/diataxis-author/style/base-style-guide.md`, so
+# `src/wiki/skills/diataxis-author/style/base-style-guide.md`, so
 # every fresh draft inherits it without the overlay. This is the `promote` path
 # SKILL.md forward-references; it closes the style-learning loop.
 #
@@ -34,7 +34,7 @@ from pathlib import Path
 
 # The committed base, relative to a crickets repo root. Resolution targets this
 # under `src/` ONLY — never the `dist/` copy.
-REL_BASE = Path("src/wiki-maintenance/skills/diataxis-author/style/base-style-guide.md")
+REL_BASE = Path("src/wiki/skills/diataxis-author/style/base-style-guide.md")
 
 # Sections of base-style-guide.md a bullet can land under.
 _SECTIONS = ("Voice", "Banned", "Structure")
@@ -48,7 +48,7 @@ def resolve_base(repo_root: str | Path | None = None, *, _starts=None) -> Path |
 
     With `repo_root`: target `<repo_root>/REL_BASE` (returned only if it exists).
     Without: walk up from this script's dir + CWD, returning the first ancestor
-    that contains `src/wiki-maintenance/.../base-style-guide.md`. Returning None
+    that contains `src/wiki/.../base-style-guide.md`. Returning None
     is the *enforcement* path — an installed plugin (only `dist/`, no `src/`) has
     no maintainer src tree, so promotion is refused rather than writing `dist/`.
     """

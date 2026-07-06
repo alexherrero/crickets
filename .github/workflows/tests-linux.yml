@@ -75,7 +75,7 @@ jobs:
         # deterministic; no need to run per OS). Added 2026-05-29 to close
         # the pre-existing check-wiki gap that let 23 structural errors
         # accumulate in the crickets wiki unnoticed before this gate landed.
-        run: python3 src/wiki-maintenance/scripts/check-wiki.py --strict
+        run: python3 src/wiki/scripts/check-wiki.py --strict
       - name: Anti-slop voice gate (check-slop, report-only)
         # PLAN-r3-voice-mechanism task 2 — report-only in both repos' batteries;
         # --report forces exit 0 regardless of findings. Linux-only (deterministic

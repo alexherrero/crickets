@@ -56,7 +56,7 @@ run "evidence-tracker self-test" python3 src/code-review/hooks/evidence-tracker/
 run "generate drift" python3 scripts/generate.py check
 run "dist-references" python3 scripts/check-dist-references.py
 run "version bump"   python3 scripts/check-version-bump.py
-run "check-wiki"     python3 src/wiki-maintenance/scripts/check-wiki.py --strict
+run "check-wiki"     python3 src/wiki/scripts/check-wiki.py --strict
 run "check-slop"     python3 scripts/check-slop.py --report wiki
 run "voice-floor-parity" python3 scripts/check-voice-floor-parity.py --report
 run "check-syntax"   bash scripts/check-syntax.sh

@@ -36,7 +36,7 @@ jobs:
       - name: Generated dist/ in sync with src/ (generate.py check)
         run: python3 scripts/generate.py check
       - name: Lint wiki (Diátaxis)
-        run: python3 src/wiki-maintenance/scripts/check-wiki.py --strict
+        run: python3 src/wiki/scripts/check-wiki.py --strict
       - name: Developer-safety .sh/.ps1 hook twins stay paired (check-hook-parity)
         # See tests-linux.yml for the rationale; runs per OS so the static parity
         # check rides every runner the .ps1 behavioral mirror does.
