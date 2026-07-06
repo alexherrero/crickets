@@ -18,5 +18,8 @@ standalone: false
 #          scripts/ primitives. check-version-bump requires a bump per
 #          shipped-content change, ahead of task 5's own version-bump task;
 #          tasks 3-4 bump again as they land.
-version: 0.2.1
+# 0.2.2 = PLAN-wave-c-maintenance task 3: tech-debt-inventory (a standing,
+#          recallable `debt`-kind entry per planted item, idempotent via
+#          save_entry's own FileExistsError-on-existing-slug guard).
+version: 0.2.2
 capabilities: [github-ci, ci-repair, maintenance]
