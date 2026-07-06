@@ -47,7 +47,7 @@ class CoauthorGuardHookTests(unittest.TestCase):
             "\n"
             "A body line that stays.\n"
             "\n"
-            "Co-Authored-By: Claude <noreply@anthropic.com>\n"
+            "Co-Authored-By: Claude <noreply@example.com>\n"
         )
         self.msg_file.write_text(original, encoding="utf-8")
         self._run_hook()
