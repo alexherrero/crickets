@@ -28,7 +28,25 @@ jobs:
       actions: read
 
     steps:
+      - uses: actions/checkout@v4
+
+      - name: Classify the diff — docs-only fast path
+        id: classify
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          files=$(gh pr diff "${{ github.event.pull_request.number }}" --name-only)
+          if python3 scripts/ci_diff_classifier.py $files; then
+            echo "docs_only=true" >> "$GITHUB_OUTPUT"
+            echo "docs-only diff — skipping the full-matrix wait"
+          else
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+            echo "code-touching diff — waiting on the full matrix"
+          fi
+
       - name: Wait for and verify the 3 OS workflows
+        if: steps.classify.outputs.docs_only != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}

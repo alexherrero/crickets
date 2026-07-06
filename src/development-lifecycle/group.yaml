@@ -467,5 +467,8 @@ enhances:
 #          `vault_project` copy is unchanged (still conditional on
 #          divergence), just no longer the ONLY reason a project.json gets
 #          written. 5 new regression tests in test_worktree_marker.py.
-version: 0.34.4
+# 0.34.5 = PLAN-per-plan-ci task 4: wake-on-CI language sweep — release.md's
+#          push→wait-on-CI note now clarifies it's the lighter push-to-main
+#          job, not the full-matrix PR check-suite /work moved onto.
+version: 0.34.5
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

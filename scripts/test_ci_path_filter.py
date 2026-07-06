@@ -7,14 +7,17 @@ PLAN-worktree-native-flow).
 `push` to `pull_request` (crickets-conventions.md's ci-battery amendment).
 A trigger-level `paths-ignore` on a REQUIRED `pull_request` check would mean
 a docs-only PR's check never reports, which blocks that PR's merge forever —
-so the docs/wiki diet is deliberately NOT carried onto `pull_request` this
-wave. It survives only on `push` for the 3 OS workflows (which now run just
-the light `syntax`/no-op path on push) and disappears entirely from
-`ci-all.yml`, which dropped its `push` trigger outright (the aggregate only
-ever gated a PR merge, so it has no push-side job left to skip). The diet
-returns as a job-level, diff-aware no-op inside `ci-all` under the follow-on
-`PLAN-per-plan-ci` — at that point the `pull_request`-side assertions below
-should flip back to "docs-only IS skippable."
+so the docs/wiki diet is permanently NOT carried onto `pull_request` as a
+trigger-level filter. It survives only on `push` for the 3 OS workflows
+(which now run just the light `syntax`/no-op path on push) and disappears
+entirely from `ci-all.yml`, which dropped its `push` trigger outright (the
+aggregate only ever gated a PR merge, so it has no push-side job left to
+skip). The diet returns as a job-level, diff-aware no-op INSIDE `ci-all`'s
+`aggregate` job (`PLAN-per-plan-ci` task 1, `scripts/ci_diff_classifier.py`)
+— filtering moves from "does this trigger fire" to "does this job's wait
+step actually run once it has." See `test_ci_diff_classifier.py` for that
+mechanism's coverage; the assertions below (no trigger-level paths-ignore on
+`pull_request`, ever) are permanent, not an interim state to flip later.
 
 Reads the real `paths-ignore` glob out of each test workflow's `on:` block and
 replays it against two synthetic file lists: a docs-only diff and a mixed
@@ -90,17 +93,21 @@ class TestDocsOnlyDiffSkipsMatrix(unittest.TestCase):
             "ci-all.yml should have no push trigger — it only gates PR merges now",
         )
 
-    def test_docs_only_diff_is_not_yet_skippable_on_pull_request(self):
-        """Deliberate interim state (rider 3, Fable judgment pass): a required
-        pull_request check can't carry a trigger-level paths-ignore, or a
-        docs-only PR's check never reports and the merge hangs forever. Flips
-        back to assertTrue once PLAN-per-plan-ci lands the job-level diet."""
+    def test_pull_request_never_carries_a_trigger_level_paths_ignore(self):
+        """Permanent, not interim (Locked design call, PLAN-per-plan-ci): a
+        required pull_request check can never carry a trigger-level
+        paths-ignore, or a docs-only PR's check never reports and the merge
+        hangs forever (Fable rider 3). The docs-only diet returns as a
+        job-level, diff-aware no-op inside ci-all's aggregate job instead —
+        see test_ci_diff_classifier.py for that mechanism's own coverage.
+        This assertion does NOT flip; it's the permanent shape, not a
+        placeholder for one."""
         for wf in WORKFLOWS:
             _, pr_patterns = load_paths_ignore(wf)
             self.assertFalse(
                 is_skippable(DOCS_ONLY_DIFF, pr_patterns),
-                f"{wf}: pull_request should carry no paths-ignore until "
-                f"PLAN-per-plan-ci's job-level diet lands",
+                f"{wf}: pull_request must never carry a trigger-level "
+                f"paths-ignore — the diet lives at the job level instead",
             )
 
     def test_mixed_code_and_docs_diff_never_skips_matrix(self):
