@@ -37,7 +37,7 @@ class TestSrcModel(unittest.TestCase):
         by = {g.slug: g for g in groups}
         self.assertEqual(set(by),
                          {"code-review", "conventions", "design", "developer-safety",
-                          "development-lifecycle", "github-projects",
+                          "development-lifecycle", "diagnostics", "github-projects",
                           "maintenance", "obsidian-vault", "privacy",
                           "tokens", "wiki"})
         # obsidian-vault (V5-2): the re-homed `vault` storage backend lands as a
