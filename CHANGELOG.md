@@ -5,6 +5,30 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.24.0] — 2026-07-06 — Minor: AG Wave A — the v6.0 rename wave
+
+**MINOR.** The headline is **AG Wave A**: seven plugins rename or merge to their settled capability nouns — `developer-workflows` → `development-lifecycle`, `github-ci` → `maintenance`, `pii` → `privacy`, `wiki-maintenance` → `wiki`, `design-docs` → `design` (re-homing `/design`'s full implementation + `spec`/`interview-me`/`document-decision` out of `development-lifecycle`, de-duping the two `/design` copies with no content loss), `testing-conventions` + `releasing-conventions` merge into `conventions`, and `status-line-meter` folds into `token-audit` before that renames to `tokens`. Every rename **declares both the old and new capability name** in `capabilities:` (crickets-composition.md's declare-both-names mechanism) — no separate alias map, nothing breaks for an install still using an old name. A new permanent `check-no-dangling-name.py` gate closes the wave: it never flags an old name still in use, only a reference that resolves to nothing. The rest of this release is unreleased work from several already-completed plans that hadn't shipped yet: a versioned anti-slop voice gate, CI wall-time trimming, per-dispatch model/effort routing, and a run of `github-projects` board-sync depth + drift fixes.
+
+### Added
+
+- **AG Wave A rename mechanism** — `check-no-dangling-name.py`, wired into `check-all.sh`: walks every `group.yaml` `requires:`/`enhances:` edge and every `find_capability.py <name>` invocation across `src/` and `wiki/`, flagging only a reference that resolves to neither an existing directory nor a declared capability. Permissive of dual-declared old names by design — a different, later gate polices actual removal.
+- **Anti-slop voice gate** (`wiki-maintenance` → `wiki`, PLAN-r3-voice-mechanism) — a versioned banned-vocabulary/stock-phrase rule pack (`voice-rules.json`) plus `check-slop.py` (report-only) and `check-voice-floor-parity.py` (floor-vs-rule-pack drift), promoting several Tonal lessons (load-bearing/powerful/cutting-edge, positive framing, warm complete sentences) into the committed `base-style-guide.md` floor.
+- **CI path-filtered matrices** (PLAN-ci-walltime-diet) — docs/wiki-only diffs skip the full OS test matrix; a pipelined one-task-lag wake-on-CI cadence replaces synchronous per-task blocking.
+- **Per-dispatch model/effort routing** (PLAN-efficiency-automation + PLAN-efficiency-dispatch, `token-audit` → `tokens`) — a versioned work-type routing table + `classify_work_type` resolver, a mandatory fan-out announcement with a loud pause on frontier-tier silent inheritance, staged per-task tier hints, a routing-conformance report, `/handoff-pack`, a pre-flight fan-out cost gate, and a session-start advisor-tier nudge.
+- **`github-projects` depth + lifecycle sync** — native sub-issue nesting for depth materialization, DC-2 field writes including Status-lifecycle transitions, per-commit + task-close issue comments (SHA-keyed dedupe), and a scheduled report-only drift cycle.
+
+### Changed
+
+- **`/design`'s full implementation moves to the `design` plugin** — it was living in `development-lifecycle` only because `/design` predated the plugin split; `design-docs`' thin delegate stub is replaced by the real copy, reconciled with no content loss.
+- **`status_line_meter.py`'s pricing discovery** simplifies to a same-directory import now that the fold makes `pricing.py` a sibling, not a cross-plugin lookup.
+- **`developer-safety`'s `steer` hook** migrated `PreToolUse` → `UserPromptSubmit` after a live-verify falsified the documented `PreToolUse`-stdout-injection premise; the isolation-authority default flips to `direct` (an explicit `/spawn-worker` or a durable config opt-in is required before any worktree is spawned).
+
+### Internal
+
+- Two production cross-plugin imports broken by the `design` re-home (`design_doc.py`'s `resolve_plan` lookup, `preflight_reconcile.py`'s `design_doc` lookup) were caught live when staging the wave's closing plan and fixed with a file-path bridge and a duplicated stdlib regex, respectively — not test-fixture drift, real runtime breakage.
+- The rename-day path sweep reconciled roughly 80 test files against the renamed tree — mechanical path fixes where a hardcoded `src/<old-slug>/` constant moved, contract updates (not weakenings) where an assertion's premise had genuinely changed (`test_reconcile_plugins.py`'s marketplace-offering check inverted correctly for the direction this wave's rename actually runs).
+- R0.5–R0.7 repairs: `find_capability.py` gains the conventional-clone fallback tier, the PII pre-push guard is fail-open (not fail-closed) again, and `pricing.py` re-pins against current model rates.
+
 ## [v3.23.0] — 2026-07-01 — Minor: governance arc closes, release tooling consolidates
 
 **MINOR.** The bulk of this release is the Architecture-Governance track reaching its finish line: all 17 crickets ADRs fold into the amendment logs of the living designs that own them, `wiki/decisions/` retires, six superseded standalone designs subsume into their capability owners, and every one of the 13 shipped plugins gains a combined Architecture+Reference wiki page with house-style SVGs replacing mermaid throughout. The most immediately useful change is the newest: **`releasing-conventions:ship-release`** now owns both release discipline and release mechanics in one place, absorbing what used to be a second, drifting copy of the same skill maintained separately in agentm ([agentm v5.11.0](https://github.com/alexherrero/agentm/releases/tag/v5.11.0) pairs with this release). Also ships: relicensing from MIT to Apache-2.0 (code) + CC-BY-4.0 (docs/prompts) + a trademark policy, the autonomous `/work` executor moving to Sonnet 4.6 for cheaper long build stretches, and a couple of real bug fixes.

@@ -59,7 +59,7 @@ The [wiki](https://github.com/alexherrero/crickets/wiki) covers everything there
 - [Reference](https://github.com/alexherrero/crickets/wiki/Reference) — plugin anatomy, the manifest schema, and the install modes.
 
 > [!NOTE]
-> **Latest release: [v3.23.0](https://github.com/alexherrero/crickets/releases/tag/v3.23.0).** Releasing is one skill now — `ship-release` runs the pre-release checklist and then cuts the release, including the mechanics that used to live in AgentM. Crickets is also dual-licensed now (code Apache-2.0, docs and prompts CC-BY-4.0), and every plugin has a combined reference page in the wiki.
+> **Latest release: [v3.24.0](https://github.com/alexherrero/crickets/releases/tag/v3.24.0).** Seven plugins rename or merge to their settled capability nouns (`developer-workflows` → `development-lifecycle`, `github-ci` → `maintenance`, `pii` → `privacy`, `wiki-maintenance` → `wiki`, `design-docs` → `design`, `testing-conventions` + `releasing-conventions` → `conventions`, `status-line-meter` folds into `token-audit` → `tokens`) — every old name keeps resolving, nothing breaks for an existing install.
 
 ---
 
