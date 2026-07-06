@@ -10,6 +10,7 @@ Symptom-first lookup for when something stops working — find your symptom, fol
 | A plugin isn't loading / a command is missing | [plugin isn't loading](#a-plugin-isnt-loading-or-a-commandskill-is-missing) |
 | A hook didn't fire | [hook didn't fire](#a-hook-didnt-fire) |
 | A host update broke something | [host update broke something](#a-host-update-broke-something) |
+| A custom agent's declared tools aren't honored | [agent tools aren't honored](#a-custom-agents-declared-tools-arent-honored) |
 | CI is red | [CI is red](#ci-is-red) |
 | The wiki published wrong | [wiki published wrong](#the-wiki-published-wrong) |
 | The wiki-watcher did nothing | [watcher did nothing](#the-wiki-watcher-did-nothing) |
@@ -40,6 +41,14 @@ When a host release changes its plugin surface (paths, manifest schema, hook eve
 2. **Reproduce cheaply:** `claude plugin validate dist/claude-code/plugins/<plugin>` (or load it with `--plugin-dir`); the `agy` path-install on Antigravity.
 3. **Fix at the right layer.** Host-specifics live in the generator's **per-host emitters** (`scripts/emit_claude.py` / `emit_antigravity.py`) — a surface change is usually a one-place emitter fix. If the host *dropped* a capability instead, narrow the affected primitive's `supported_hosts:`.
 4. **Regenerate, dogfood, commit `src/` + `dist/` together** ([Modify a plugin](Modify-A-Plugin)). If it's an Antigravity gap, record it with a re-address trigger in [Antigravity limitations](Antigravity-Limitations).
+
+## A custom agent's declared tools aren't honored
+
+Symptom: dispatching a plugin-defined custom agent (e.g. `development-lifecycle:explorer`, `tools: Read, Glob, Grep` in its frontmatter) returns a sub-agent that reports it has **none** of its declared tools and instead only sees the session's ambient MCP connector tools (Slack, Jira, a CRM, etc. — whatever happens to be attached to that session). Built-in agent types (`Explore`, `general-purpose`) dispatched in the same session get full, correct tool access.
+
+1. **Check crickets' side first, but expect it to be clean.** Every crickets agent's `tools:` frontmatter is a plain comma-separated allowlist (`grep -rn "^tools:" src/*/agents/*.md`), copied byte-for-byte into `dist/` by the generator (it does no `tools:` transformation) — confirm with `diff src/<plugin>/agents/<name>.md dist/claude-code/plugins/<plugin>/agents/<name>.md`. If those match and the shape matches the [documented schema](https://code.claude.com/docs/en/sub-agents) (`tools` is *not* one of the fields the docs list as "ignored for plugin subagents" — only `hooks`, `mcpServers`, and `permissionMode` are), the frontmatter is not the bug.
+2. **This is a host tool-dispatch gap, not a crickets bug.** Anthropic's own tracker has open reports of exactly this class of fragility — plugin-scoped subagents not receiving the tool set their frontmatter (or inheritance) implies (`anthropics/claude-code` issues #13605, #30280). The symptom here (a plugin agent losing its *entire* declared core-tool allowlist and falling back to the session's ambient MCP set) is a more complete inversion than either issue documents, and was observed from a broad, connector-heavy "Cowork"-style session — evidence points at that runtime's agent-dispatch layer not resolving plugin-scoped `tools:` allowlists correctly, rather than at anything crickets ships.
+3. **Workaround, not a fix:** until the host confirms this is resolved, prefer the built-in `Explore` or `general-purpose` agent types over crickets' plugin-defined agents (`explorer`, `researcher`, `project-manager`, etc.) when running in a host/session of uncertain tool-dispatch fidelity — built-ins have reliably received correct tool access in every case observed so far. There is nothing to change in crickets' agent manifests for this.
 
 ## CI is red
 
