@@ -37,7 +37,7 @@ class TestSrcModel(unittest.TestCase):
         by = {g.slug: g for g in groups}
         self.assertEqual(set(by),
                          {"code-review", "conventions", "design", "developer-safety",
-                          "development-lifecycle", "github-projects",
+                          "development-lifecycle", "diagnostics", "github-projects",
                           "maintenance", "obsidian-vault", "privacy",
                           "tokens", "wiki"})
         # obsidian-vault (V5-2): the re-homed `vault` storage backend lands as a
@@ -243,14 +243,15 @@ class TestSrcModel(unittest.TestCase):
         # (recent-wiki-changes, folded in part 2; + wiki-watch, the part-4
         # claude-only scheduling entry), design (spec/interview-me/document-decision/
         # design — re-homed from development-lifecycle at AG Wave A rename 2
-        # task 4), tokens (handoff-pack/token-audit), and github-projects
+        # task 4), tokens (handoff-pack/token-audit), github-projects
         # (report-board-drift, the board-write-path task 6 scheduling entry —
-        # mirrors wiki-watch's pattern). No other group ships commands.
+        # mirrors wiki-watch's pattern), and diagnostics (/diagnose, wave-c-diagnostics).
+        # No other group ships commands.
         groups = src_model.load_groups(_ROOT / "src")
         by = {g.slug: g for g in groups}
         cmd_groups = {g.slug for g in groups for p in g.primitives if p.kind == "command"}
         self.assertEqual(cmd_groups, {"development-lifecycle", "code-review", "design",
-                                      "wiki", "tokens", "github-projects"})
+                                      "wiki", "tokens", "github-projects", "diagnostics"})
         dw_cmds = {p.name for p in by["development-lifecycle"].primitives if p.kind == "command"}
         self.assertIn("plan", dw_cmds)
         cr_cmds = {p.name for p in by["code-review"].primitives if p.kind == "command"}

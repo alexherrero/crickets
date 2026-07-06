@@ -84,13 +84,13 @@ class TestBuildClean(unittest.TestCase):
             self.assertEqual(rc, 0)
             self.assertEqual(sorted(seen),
                              ["code-review", "conventions", "design", "developer-safety",
-                              "development-lifecycle", "github-projects",
+                              "development-lifecycle", "diagnostics", "github-projects",
                               "maintenance", "obsidian-vault", "privacy",
                               "tokens", "wiki"])
             mk = json.loads((dist / "claude-code" / "marketplace.json").read_text())
             self.assertEqual({e["name"] for e in mk["plugins"]},
                              {"code-review", "conventions", "design", "developer-safety",
-                              "development-lifecycle", "github-projects",
+                              "development-lifecycle", "diagnostics", "github-projects",
                               "maintenance", "obsidian-vault", "privacy",
                               "tokens", "wiki"})
 
@@ -129,7 +129,7 @@ class TestCheck(unittest.TestCase):
         ds = json.loads((self.dist / "default-set.json").read_text(encoding="utf-8"))
         self.assertEqual(ds["plugins"],
                          ["code-review", "conventions", "design", "developer-safety",
-                          "development-lifecycle", "github-projects",
+                          "development-lifecycle", "diagnostics", "github-projects",
                           "maintenance", "obsidian-vault", "privacy",
                           "tokens", "wiki"])
 

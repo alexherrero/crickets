@@ -1,0 +1,12 @@
+{
+  "author": {
+    "name": "alexherrero",
+    "url": "https://github.com/alexherrero/crickets"
+  },
+  "dependencies": [
+    "development-lifecycle"
+  ],
+  "description": "Deterministic-first failure diagnosis. /diagnose classifies a failure, recalls it via a fingerprint-first exact-match ladder (semantic fallback only on a miss), ranks hypotheses, and writes one scrubbed kind:failure-incident memory entry.",
+  "name": "diagnostics",
+  "version": "0.1.0"
+}

@@ -118,6 +118,24 @@
     },
     {
       "capabilities": [
+        "diagnostics"
+      ],
+      "category": "Coding",
+      "name": "diagnostics",
+      "policy": {
+        "authentication": "ON_INSTALL",
+        "installation": "AVAILABLE"
+      },
+      "requires": [
+        "development-lifecycle"
+      ],
+      "source": {
+        "path": "./plugins/diagnostics",
+        "source": "local"
+      }
+    },
+    {
+      "capabilities": [
         "board-sync"
       ],
       "category": "Coding",

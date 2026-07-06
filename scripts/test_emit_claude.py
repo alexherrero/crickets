@@ -133,7 +133,7 @@ class TestClaudeEmitter(unittest.TestCase):
         mk = json.loads((self.cdist / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
         self.assertEqual({p["name"] for p in mk["plugins"]},
                          {"code-review", "conventions", "design", "developer-safety",
-                          "development-lifecycle", "github-projects",
+                          "development-lifecycle", "diagnostics", "github-projects",
                           "maintenance", "obsidian-vault", "privacy",
                           "tokens", "wiki"})
         for p in mk["plugins"]:

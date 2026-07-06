@@ -1,0 +1,12 @@
+name: Diagnostics
+description: Deterministic-first failure diagnosis. /diagnose classifies a failure, recalls it via a fingerprint-first exact-match ladder (semantic fallback only on a miss), ranks hypotheses, and writes one scrubbed kind:failure-incident memory entry.
+category: Coding
+requires: [development-lifecycle]
+standalone: false
+# 0.1.0 = initial build (wave-c-diagnostics): fingerprint normalizer, the
+#          three-layer recall ladder (classify -> Layer-1 exact match ->
+#          Layer-2 semantic fallback), the self-reinforcing fingerprint
+#          alias mechanism, the scrubbed failure-incident writer, and the
+#          /diagnose command wiring all five together end to end.
+version: 0.1.0
+capabilities: [diagnostics]
