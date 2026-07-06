@@ -193,13 +193,15 @@ When to `/review` rather than straight to the next `/work`: the task touched sec
 Run the finalization helper — **recoverable, announce + proceed**:
 
 ```
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/finalize_unit.py" <slug> [--project-root <root>] [--title "<plan title>"] [--no-pr if $ARGUMENTS contains --no-pr]
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/finalize_unit.py" <slug> --branch <worktree-branch> [--project-root <root>] [--title "<plan title>: plan complete — <close-out summary first line>"] [--body "<full close-out summary, the same content progress.md's close-out entry gets>"] [--no-pr if $ARGUMENTS contains --no-pr]
 ```
 
-The helper reads `isolation.integration` from `.harness/project.json` and acts accordingly:
-- **`pull-request` (default):** PII guard → push `worker/<slug>` → `gh pr create`. **`gh pr create` is recoverable** (the PR can be closed/reverted) → announce + proceed.
+`<worktree-branch>` is the branch step 1.5's `EnterWorktree` call actually returned — never assume `worker/<slug>` (that convention retired with `spawn_worker.py`). The helper reads `isolation.integration` from `.harness/project.json` and acts accordingly:
+- **`pull-request` (default):** PII guard → push `<worktree-branch>` → `gh pr create` with the close-out summary as its body → **arm auto-merge** (`gh pr merge --auto --squash`, immediately after PR creation). **`gh pr create` and `gh pr merge --auto` are both recoverable** (closeable / revertable) → announce + proceed. A PR that opens but fails to arm (e.g. "Allow auto-merge" isn't enabled on the repo yet — task 4's one-time setting) still counts as success; the helper surfaces the arm failure in its reason, not as a hard stop — merge it by hand and go fix the repo setting.
 - **`direct-push`:** PII guard → push on current branch (no PR).
 - **`gh` unavailable / unauthenticated / no remote:** fall back to direct push + announce the downgrade. A completed unit of work is **never hard-stopped** by a missing `gh` — the push always goes through.
+
+After the helper returns, `ExitWorktree` `keep` (never `remove` — the branch has an open PR against it; the shepherd in task 5 or the PR's own merge is what eventually cleans it up).
 
 Announce what's about to happen before running. A non-zero exit from the helper is a hard stop — surface the full error output.
 

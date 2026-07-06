@@ -392,5 +392,16 @@ enhances:
 #          proof). `doctor_worktrees.py`'s `import spawn_worker` is stubbed to
 #          an inline constant as a stopgap; its whole detection model is
 #          rewritten against the new convention in task 5.
-version: 0.32.0
+# 0.33.0 = worktree-native-flow tasks 3+4: `finalize_unit.py` now takes an
+#          explicit `--branch` (the real branch `EnterWorktree` returned) instead
+#          of re-deriving the retired `worker/<slug>` guess; `/work`'s step 12
+#          passes it through, carries the close-out summary as the PR body, and
+#          keeps the worktree (`ExitWorktree keep`, never `remove` — the branch
+#          has an open PR against it). `pr_helpers.finalize_pr` now arms
+#          `gh pr merge --auto --squash` immediately after `gh pr create`
+#          (non-fatal to the PR-open result if the arm itself fails — a PR that
+#          opened but didn't arm still did its own job). "Allow auto-merge" is
+#          enabled on both agentm + crickets (one-time repo setting, done
+#          alongside this code change, not left as a manual follow-up).
+version: 0.33.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

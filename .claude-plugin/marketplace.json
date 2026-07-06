@@ -87,7 +87,7 @@
       ],
       "name": "development-lifecycle",
       "source": "./dist/claude-code/plugins/development-lifecycle",
-      "version": "0.32.0"
+      "version": "0.33.0"
     },
     {
       "capabilities": [

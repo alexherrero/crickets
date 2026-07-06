@@ -10,7 +10,12 @@ byte-identical on the contract surface by test_pr_helpers_drift.py.
 
 THE CONTRACT (must not drift from wiki_watch_dispatch.py):
   - PII guard runs BEFORE any push — this is the ordering invariant
-  - finalize_pr:  add → commit → pii-guard → push → pr-create (steps order)
+  - finalize_pr:  add → commit → pii-guard → push → pr-create → pr-merge-auto
+    (steps order; the auto-merge arm is development-lifecycle-only — it does
+    NOT flip .ok on failure, since a PR that opened but failed to arm still
+    did its own job. wiki_watch_dispatch.py's copy has no such step; the drift
+    test only pins the PII-before-push ordering, not step-for-step parity, so
+    this divergence is within contract.)
   - finalize_direct: add → commit → pii-guard → push             (steps order)
   - DispatchResult carries .steps for audit/test inspection
 
@@ -108,8 +113,19 @@ def finalize_pr(
     if rc != 0:
         return DispatchResult(ok=False, action="pr", reason=f"gh pr create failed: {out}",
                               branch=branch, commit=commit, steps=steps)
-    return DispatchResult(ok=True, action="pr", branch=branch, commit=commit,
-                          pr_url=out.strip() or None, steps=steps)
+    pr_url = out.strip() or None
+
+    # Arm auto-merge immediately after opening — "Allow auto-merge" (a one-time
+    # repo setting) makes this available but does not merge anything on its own;
+    # this is the actual arm. Non-fatal: a PR that opened but failed to arm still
+    # succeeded at its own job (the operator can arm it manually), so this does
+    # NOT flip `ok` to False — it's recorded in `steps` for the caller to surface.
+    merge_rc, merge_out = run(["gh", "pr", "merge", "--auto", "--squash", branch], repo_root)
+    steps.append(("pr-merge-auto", merge_rc))
+    reason = "" if merge_rc == 0 else f"opened but auto-merge arm failed: {merge_out}"
+
+    return DispatchResult(ok=True, action="pr", reason=reason, branch=branch,
+                          commit=commit, pr_url=pr_url, steps=steps)
 
 
 def finalize_direct(
