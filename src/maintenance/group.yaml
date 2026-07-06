@@ -12,5 +12,18 @@ standalone: false
 #          capabilities dualize [github-ci, ci-repair, maintenance] (dependabot-fixer
 #          becomes a primitive within maintenance rather than its own capability
 #          noun). Zero behavior change — dependabot-fixer's fix loop is unchanged.
-version: 0.2.0
+# 0.2.1 = PLAN-wave-c-maintenance tasks 1-2: deps-currency (read-only pre-CI
+#          drift surfacing) + cve-security-patch (advisory-driven pre-CI
+#          patch, advisory handed in — no live GHSA/NVD polling) land as new
+#          scripts/ primitives. check-version-bump requires a bump per
+#          shipped-content change, ahead of task 5's own version-bump task;
+#          tasks 3-4 bump again as they land.
+# 0.2.2 = PLAN-wave-c-maintenance task 3: tech-debt-inventory (a standing,
+#          recallable `debt`-kind entry per planted item, idempotent via
+#          save_entry's own FileExistsError-on-existing-slug guard).
+# 0.2.3 = PLAN-wave-c-maintenance task 4: content-refresh (mechanical vs.
+#          judgment-bound classifier -- a rename-shaped diff auto-applies,
+#          a genuinely new entry surfaces to the `content-refresh-
+#          watchlist` kind instead of being auto-edited).
+version: 0.2.3
 capabilities: [github-ci, ci-repair, maintenance]
