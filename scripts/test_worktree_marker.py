@@ -178,6 +178,69 @@ class TestVaultProjectFallback(WorktreeMarkerTestCase):
         self.assertFalse((self.worktree / ".harness" / "project.json").exists())
 
 
+class TestIsolationBlockCarryover(WorktreeMarkerTestCase):
+    """`.harness/` is gitignored, so a freshly host-created worktree has no
+    project.json at all — `isolation_config.read_isolation()` run from inside
+    it would otherwise always see the code-default, never the original repo's
+    real isolation.mode/integration. Regression: found live running
+    PLAN-worktree-native-flow's own task-9 acceptance demo — finalize_unit.py
+    resolved mode=direct inside the worktree even though the original repo
+    declared worktree-per-plan, and pushed without -u as a result."""
+
+    def _write_isolation_cfg(self, mode: str, integration: str) -> None:
+        h = self.repo / ".harness"
+        h.mkdir(parents=True, exist_ok=True)
+        (h / "project.json").write_text(
+            json.dumps({"isolation": {"mode": mode, "integration": integration}}),
+            encoding="utf-8")
+
+    def test_isolation_block_carried_over_verbatim(self):
+        _init_repo(self.repo)
+        self._write_isolation_cfg("worktree-per-plan", "pull-request")
+        rc, _out, err = wm.write_marker(self.worktree, "foo", self.plan, self.repo)
+        self.assertEqual(rc, 0, err)
+        copied = json.loads((self.worktree / ".harness" / "project.json").read_text())
+        self.assertEqual(copied["isolation"],
+                         {"mode": "worktree-per-plan", "integration": "pull-request"})
+
+    def test_isolation_carried_even_when_vault_project_does_not_diverge(self):
+        # The old LC-2-only logic wrote NOTHING here (vault_project absent
+        # entirely) — the isolation block must still land regardless.
+        _init_repo(self.repo, origin="https://github.com/org/myrepo.git")
+        self._write_isolation_cfg("worktree-per-plan", "pull-request")
+        rc, _out, err = wm.write_marker(self.worktree, "foo", self.plan, self.repo)
+        self.assertEqual(rc, 0, err)
+        copied = json.loads((self.worktree / ".harness" / "project.json").read_text())
+        self.assertIn("isolation", copied)
+        self.assertNotIn("vault_project", copied)
+
+    def test_both_isolation_and_divergent_vault_project_carried_together(self):
+        _init_repo(self.repo, origin="https://github.com/org/myrepo.git")
+        h = self.repo / ".harness"
+        h.mkdir(parents=True, exist_ok=True)
+        (h / "project.json").write_text(json.dumps({
+            "isolation": {"mode": "worktree-per-plan", "integration": "pull-request"},
+            "vault_project": "different",
+        }), encoding="utf-8")
+        rc, _out, err = wm.write_marker(self.worktree, "foo", self.plan, self.repo)
+        self.assertEqual(rc, 0, err)
+        copied = json.loads((self.worktree / ".harness" / "project.json").read_text())
+        self.assertEqual(copied["isolation"]["mode"], "worktree-per-plan")
+        self.assertEqual(copied["vault_project"], "different")
+
+    def test_no_project_json_written_when_original_has_neither(self):
+        _init_repo(self.repo)
+        rc, _out, err = wm.write_marker(self.worktree, "foo", self.plan, self.repo)
+        self.assertEqual(rc, 0, err)
+        self.assertFalse((self.worktree / ".harness" / "project.json").exists())
+
+    def test_no_project_json_at_all_leaves_worktree_without_one(self):
+        self.repo.mkdir(parents=True, exist_ok=True)
+        rc, _out, err = wm.write_marker(self.worktree, "foo", self.plan, self.repo)
+        self.assertEqual(rc, 0, err)
+        self.assertFalse((self.worktree / ".harness" / "project.json").exists())
+
+
 class TestOriginBasename(WorktreeMarkerTestCase):
     def test_https_url(self):
         _init_repo(self.repo, origin="https://github.com/org/myrepo.git")

@@ -450,5 +450,22 @@ enhances:
 #          resolves at all. New regression test in test_finalize_unit.py
 #          reproduces the exact shape (a pre-existing finding outside the
 #          diff range must not block).
-version: 0.34.3
+# 0.34.4 = fix(worktree_marker.py): carry the `isolation` block into every
+#          worktree, not just a divergent `vault_project`. Found live in the
+#          same acceptance demo, immediately after 0.34.3's fix let finalize
+#          reach the push step for the first time: `.harness/` is gitignored,
+#          so a freshly host-created worktree has NO project.json at all —
+#          `isolation_config.read_isolation()` run from inside it (by
+#          finalize_unit.py, at close-out) always saw the code-default
+#          (`direct`), never the ORIGINAL repo's real `isolation.mode` /
+#          `integration`. finalize_unit then wrongly took the direct-push
+#          branch (bare `git push`, no `-u`) and failed with "no upstream
+#          branch" on a plan whose project.json plainly says
+#          `worktree-per-plan` + `pull-request`. `.harness/project.json` is
+#          now always written into the worktree (carrying `isolation`
+#          verbatim) whenever the original repo has one — LC-2's
+#          `vault_project` copy is unchanged (still conditional on
+#          divergence), just no longer the ONLY reason a project.json gets
+#          written. 5 new regression tests in test_worktree_marker.py.
+version: 0.34.4
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

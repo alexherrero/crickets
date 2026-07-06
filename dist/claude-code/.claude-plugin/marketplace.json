@@ -87,7 +87,7 @@
       ],
       "name": "development-lifecycle",
       "source": "./plugins/development-lifecycle",
-      "version": "0.34.3"
+      "version": "0.34.4"
     },
     {
       "capabilities": [

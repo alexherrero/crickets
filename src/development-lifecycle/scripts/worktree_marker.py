@@ -13,8 +13,13 @@ per this plan's own constraint).
     worktree_marker.py write <worktree-path> <slug> <plan-path> [--project-root <root>]
 
 Exit codes:
-    0 — marker written (project.json copied too, iff the vault_project override
-        diverges from the origin basename).
+    0 — marker written. `.harness/project.json` is also written into the
+        worktree whenever the original repo has one, carrying its `isolation`
+        block verbatim (so `isolation_config.read_isolation()` resolves the
+        same way inside the worktree as outside it — `.harness/` is
+        gitignored, so a freshly host-created worktree otherwise has no
+        project.json at all) plus `vault_project`, iff that override diverges
+        from the origin basename (LC-2, unchanged).
     2 — loud: empty slug, worktree path does not exist / is not a directory, or
         the marker write itself failed. Never a partial write: the pre-flight
         check runs before any write.
@@ -97,6 +102,34 @@ def _needs_vault_project_copy(root: str | os.PathLike) -> bool:
     return origin is None or vp != origin
 
 
+def _worktree_project_json(root: str | os.PathLike) -> dict | None:
+    """The `.harness/project.json` content to write into the new worktree, or
+    None if there's nothing worth carrying over.
+
+    `.harness/` is gitignored, so a freshly host-created worktree has NO
+    project.json at all — any code that later runs `isolation_config.
+    read_isolation()` from inside it (finalize_unit.py at close-out, for
+    instance) would see the code-default (`direct`) instead of the ORIGINAL
+    repo's real `isolation.mode` / `isolation.integration`, silently
+    mis-resolving the very setting that got the worktree spawned in the first
+    place. The `isolation` block is therefore always carried over verbatim
+    when the original repo has one; `vault_project` rides along only when it
+    diverges from the origin basename (LC-2, unchanged from before).
+    """
+    pj = Path(root) / ".harness" / "project.json"
+    try:
+        data = json.loads(pj.read_text(encoding="utf-8"))
+    except Exception:
+        data = None
+
+    out: dict = {}
+    if isinstance(data, dict) and isinstance(data.get("isolation"), dict):
+        out["isolation"] = data["isolation"]
+    if _needs_vault_project_copy(root):
+        out["vault_project"] = _read_vault_project(root)
+    return out or None
+
+
 # ── core ────────────────────────────────────────────────────────────────────
 
 def write_marker(worktree_path: str | os.PathLike, slug: str,
@@ -127,12 +160,10 @@ def write_marker(worktree_path: str | os.PathLike, slug: str,
         marker_dir.mkdir(parents=True, exist_ok=True)
         (marker_dir / "active-plan").write_text(f"{norm}\n", encoding="utf-8")
 
-        if _needs_vault_project_copy(root):
-            import shutil
-            shutil.copyfile(
-                str(Path(root) / ".harness" / "project.json"),
-                str(marker_dir / "project.json"),
-            )
+        project_json = _worktree_project_json(root)
+        if project_json is not None:
+            (marker_dir / "project.json").write_text(
+                json.dumps(project_json, indent=2) + "\n", encoding="utf-8")
     except Exception as exc:
         return (2, "", f"[worktree_marker] marker write failed ({exc}).\n")
 
