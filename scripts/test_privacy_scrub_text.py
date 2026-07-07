@@ -100,8 +100,9 @@ class ScrubTextRealBridgeTests(unittest.TestCase):
         self.assertIn("[REDACTED-EMAIL]", result)
 
     def test_redacts_personal_path(self):
-        result = scrub_text_mod.scrub_text("log at /Users/alex/secret/file.log")
-        self.assertNotIn("/Users/alex/", result)
+        # /Users/alexherrero/ -- allowlisted handle, not a real personal path.
+        result = scrub_text_mod.scrub_text("log at /Users/alexherrero/secret/file.log")
+        self.assertNotIn("/Users/alexherrero/", result)
         self.assertIn("[REDACTED-PATH]", result)
 
     def test_redacts_api_key_shape(self):
@@ -111,8 +112,10 @@ class ScrubTextRealBridgeTests(unittest.TestCase):
         self.assertIn("[REDACTED-API-KEY]", result)
 
     def test_redacts_phone_number(self):
-        result = scrub_text_mod.scrub_text("call me at 212-555-9876")
-        self.assertNotIn("212-555-9876", result)
+        # 555-0123 -- NANP reserved fictional prefix (RFC-analog convention
+        # this codebase's own check-no-pii.sh allowlists), not a real number.
+        result = scrub_text_mod.scrub_text("call me at 212-555-0123")
+        self.assertNotIn("212-555-0123", result)
         self.assertIn("[REDACTED-PHONE]", result)
 
     def test_clean_text_passes_through_unchanged(self):
