@@ -55,4 +55,9 @@ capabilities: [design-docs, design, architecture]
 #          never a live agentm read), proving the cross-plugin markdown-prose
 #          consumer grammar agentm's opinion-registry design just locked
 #          (own frontmatter version 0.2.0 -> 0.2.1).
-version: 0.5.0
+# 0.6.0 = PLAN-wave-d-personas task 2: commands/design.md adds how-we-engineer
+#          to its opinions: list (alongside good) and gets a second
+#          build-time-interpolated marker at the rung-picking (sizing-ladder)
+#          prose -- the second binding fanned out through the now-proven
+#          cross-plugin grammar (own frontmatter version 0.2.1 -> 0.2.2).
+version: 0.6.0

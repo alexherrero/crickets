@@ -3,10 +3,10 @@ name: design
 description: Author → translate → sequence a design doc into a topo-ordered set of named plans. The upstream authoring step above /plan.
 kind: command
 supported_hosts: [claude-code, antigravity]
-version: 0.2.1
+version: 0.2.2
 install_scope: project
 argument-hint: author <slug|brief> [--rung full|abbreviated|architecture] (default)  |  translate <slug>  |  sequence <slug>
-opinions: [good]
+opinions: [good, how-we-engineer]
 ---
 
 You are running the **design** command — the upstream authoring step of the development-lifecycle loop. `/design` sits *above* `/plan`: where `/plan` turns a brief into a task list, `/design` walks a human through a real design doc, gates on human approval, splits the approved design into structural parts, and emits one named plan per part for `/work` + `/review` to execute.
@@ -88,6 +88,11 @@ These items are derived from `corrections.md` seeds via the upstream-guardrail m
 | `full` (default) | `templates/design-doc.md` | 10 sections + Document History table | the default — a feature/capability design that warrants the full walk (Alternatives Considered, Migrations, Project management, Operations) |
 | `abbreviated` | `templates/abbreviated-design.md` | 7 sections (Objective/Overview/Design/Dependencies/Risks & open questions/References) + Amendment log | today's AG shape-spec — a single-system child design or capability smaller than the full rung warrants |
 | `architecture` | `templates/architecture-hld.md` | Objective/Composition/Architecture review/Dependencies/Risks & open questions/References + Amendment log, plus `children:`/`governs:` frontmatter | a parent-of-children HLD or a cross-system design — generalized from agentm's real `agentm-hld.md`/`agentm-foundations-hld.md` |
+
+Picking the rung is the sizing call the standard below governs — match the template to the work's actual scope, not a reflexive default to `full`:
+
+<!-- opinion:how-we-engineer -->
+<!-- /opinion:how-we-engineer -->
 
 ### Step 1 — Bootstrap (new doc only)
 
