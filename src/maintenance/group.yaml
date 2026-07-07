@@ -25,5 +25,13 @@ standalone: false
 #          judgment-bound classifier -- a rename-shaped diff auto-applies,
 #          a genuinely new entry surfaces to the `content-refresh-
 #          watchlist` kind instead of being auto-edited).
-version: 0.2.3
+# 0.2.4 = PLAN-wave-d-cross-wiring task 1: dependabot-fixer's Diagnose step
+#          now calls diagnostics' shared diagnose() engine (graceful-skip
+#          find_capability.py probe, falling back to the old inline
+#          category+confidence reasoning when diagnostics isn't installed)
+#          instead of reasoning fresh every time. The confidence-gate proxy
+#          mapping (no confidence score exists on the shared engine) is
+#          locked in the plan and documented in SKILL.md itself. The bounded
+#          fix loop is unchanged -- only diagnosis moved.
+version: 0.2.4
 capabilities: [github-ci, ci-repair, maintenance]

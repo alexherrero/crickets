@@ -2,5 +2,12 @@
   "capabilities": [
     "diagnostics"
   ],
-  "version": "0.1.2"
+  "enhances": [
+    {
+      "capability": "ci-repair",
+      "effect": "dependabot-fixer's Diagnose step calls diagnose() instead of reasoning fresh every time, with a confidence-gate proxy over the outcome field standing in for /diagnose's absent confidence score",
+      "group": "maintenance"
+    }
+  ],
+  "version": "0.1.3"
 }
