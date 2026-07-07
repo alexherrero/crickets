@@ -1,0 +1,17 @@
+{
+  "session-cost-capture": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "command": "bash ./hooks/session-cost-capture/session-cost-capture.sh",
+            "timeout": 30,
+            "type": "command"
+          }
+        ],
+        "matcher": ".*"
+      }
+    ],
+    "enabled": true
+  }
+}

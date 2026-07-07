@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/session-cost-capture.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

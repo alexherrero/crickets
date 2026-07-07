@@ -77,5 +77,15 @@ standalone: true
 #          keep resolving. Fold-then-rename in one task avoids a transient
 #          state where tokens exists under the old name with the fold
 #          half-done.
-version: 0.3.0
+# 0.4.0 = PLAN-wave-d-tokens-and-privacy task 1: session_cost_writer.py +
+#          the session-cost-capture Stop hook (.sh/.ps1 twins) absorb the
+#          never-staged PLAN-session-cost-capture micro-plan's capture half
+#          verbatim (2026-07-05 decision record) — writes one `kind:
+#          session-cost` memory entry per model observed in a closing
+#          session's transcript, via agentm's save_entry() bridge.
+#          Graceful no-op (no memory backend configured, agentm
+#          unresolvable, missing transcript) never blocks session close.
+#          Task 3 adds dreaming_trend_stub.py, a correctly-gated-dark stub
+#          for the not-yet-built Wave-E trend-analysis review hook.
+version: 0.4.0
 capabilities: [status-line-meter, token-audit, tokens]
