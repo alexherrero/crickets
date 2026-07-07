@@ -256,6 +256,19 @@ class TestClaudeEmitter(unittest.TestCase):
             self.assertTrue((cmds / "plan.md").exists())
             self.assertFalse((cmds / "agonly.md").exists())
 
+    def test_opinions_good_interpolated_into_design_command(self):
+        # PLAN-opinion-consumer-grammar task 2: design/commands/design.md
+        # declares opinions: [good] with a marker in its Step-6 review-pass
+        # prose -- generate.py must have baked the committed snapshot's body
+        # in at build time (real src/ tree, via setUp's real build).
+        design_md = (self.cdist / "plugins" / "design" / "commands" / "design.md").read_text(encoding="utf-8")
+        snapshot_body = (_ROOT / "scripts" / "opinion-snapshots" / "good.md").read_text(encoding="utf-8")
+        snapshot_body = snapshot_body.split("---", 2)[2].strip()
+        self.assertIn(snapshot_body, design_md)
+        self.assertIn("<!-- opinion:good -->", design_md)
+        self.assertIn("<!-- /opinion:good -->", design_md)
+        self.assertIn("opinions: [good]", design_md)
+
     def test_snippet_discovered_dropped(self):
         # a discovered `snippet` primitive is DROPPED on Claude (no instruction-file
         # primitive) — emit_claude notes it on stderr; nothing lands in dist/.

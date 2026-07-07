@@ -25,7 +25,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from generate import HostEmitter, dump_json, write_utf8  # noqa: E402  (registered by generate._load_emitters)
-from src_model import Group, Primitive, bundle_ignore, copy_group_scripts, copy_group_templates, copy_group_reference, enhances_to_json  # noqa: E402
+from src_model import Group, Primitive, bundle_ignore, copy_group_scripts, copy_group_templates, copy_group_reference, enhances_to_json, render_primitive_text  # noqa: E402
 
 HOST = "claude-code"
 
@@ -126,7 +126,10 @@ class ClaudeEmitter(HostEmitter):
             shutil.copytree(prim.root, dest_dir / prim.root.name, dirs_exist_ok=True,
                             ignore=bundle_ignore())
         else:
-            shutil.copy2(prim.root, dest_dir / prim.root.name)
+            # render_primitive_text is a no-op (raw bytes) for a primitive with
+            # no `opinions:` frontmatter key — every other single-file primitive
+            # emits byte-identical to the plain copy2 this replaces.
+            write_utf8(dest_dir / prim.root.name, render_primitive_text(prim))
 
     # ── hooks ──────────────────────────────────────────────────────────────
     def _emit_hook(self, prim: Primitive, plugin_dir: Path, hooks: dict) -> None:
