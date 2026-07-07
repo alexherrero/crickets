@@ -14,6 +14,8 @@ You are running the **plan** phase of the developer-workflows loop. Turn a brief
 
 > **Recommended model for this phase:** Sonnet 5 (`claude-sonnet-5`) — lighter model for planning and authoring. Override with `/model` if needed.
 
+> **Workflow-step persona (advisory, graceful-skip).** `/plan` wears the **Tech-Lead** persona for this phase — the phase spec is the source of truth for this adoption (`agentm-persona-activation.md`'s workflow-step path; a persona's `triggers:` field feeds only sub-agent routing, never this lookup). Check: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/resolve_workflow_persona.py" plan-phase`. **Exit 0** → read the printed persona's manifest (`<agentm-root>/personas/<name>.md`) and hold its stance + `opinions:` for this session. **Exit 1** (agentm absent, or no persona declared for this step) → proceed with this phase's own prose, unchanged — a clean graceful-skip. An operator who already put on a different persona this session keeps it — pass `--explicit <that-name>` so the resolved answer reflects the override (explicit invocation always wins over the workflow-step default).
+
 > **Standalone + storage-agnostic.** State is plain `.harness/<file>` unless a hosting memory layer redirects it. A plan exists so a later `/work` session has a shared contract (not a verbal understanding that evaporates with context), scope is fixed before you're deep in code, and verification is pre-negotiated — the single biggest lever on review quality.
 
 ## When to use

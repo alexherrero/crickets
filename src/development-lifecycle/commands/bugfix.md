@@ -14,6 +14,8 @@ You are running the **bugfix** pipeline of the developer-workflows loop. Bugs ha
 
 > **Recommended model for this phase:** `opusplan` — Opus 4.8 plans, Sonnet 5 executes the long autonomous stretch. Override with `/model` if needed.
 
+> **Workflow-step persona (advisory, graceful-skip).** `/bugfix` wears the **Troubleshooter / SRE** persona for this phase — the phase spec is the source of truth for this adoption (`agentm-persona-activation.md`'s workflow-step path; a persona's `triggers:` field feeds only sub-agent routing, never this lookup). Check: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/resolve_workflow_persona.py" bugfix-phase`. **Exit 0** → read the printed persona's manifest (`<agentm-root>/personas/<name>.md`) and hold its stance + `opinions:` for this session. **Exit 1** (agentm absent, or no persona declared for this step) → proceed with this phase's own prose, unchanged — a clean graceful-skip. An operator who already put on a different persona this session keeps it — pass `--explicit <that-name>` so the resolved answer reflects the override (explicit invocation always wins over the workflow-step default).
+
 <!-- BEGIN recoverability-gate · canonical · byte-identical across work.md · bugfix.md · release.md (scripts/ drift test enforces) -->
 ## Recoverability gate (autonomy doctrine)
 

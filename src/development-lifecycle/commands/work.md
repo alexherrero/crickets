@@ -14,6 +14,8 @@ You are running the **work** phase of the developer-workflows loop. Work through
 
 > **Recommended model for this phase:** `opusplan` — Opus 4.8 plans, Sonnet 5 executes the long autonomous stretch. Override with `/model` if needed.
 
+> **Workflow-step persona (advisory, graceful-skip).** `/work` wears the **Engineer** persona for this phase — the phase spec is the source of truth for this adoption (`agentm-persona-activation.md`'s workflow-step path; a persona's `triggers:` field feeds only sub-agent routing, never this lookup). Check: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/resolve_workflow_persona.py" work-phase`. **Exit 0** → read the printed persona's manifest (`<agentm-root>/personas/<name>.md`) and hold its stance + `opinions:` for this session. **Exit 1** (agentm absent, or no persona declared for this step) → proceed with this phase's own prose, unchanged — a clean graceful-skip. An operator who already put on a different persona this session keeps it — pass `--explicit <that-name>` so the resolved answer reflects the override (explicit invocation always wins over the workflow-step default).
+
 > The session works the **whole task list autonomously** — the unit is the plan, not a single task. What keeps that safe is the **per-task safety pre-check**: before each task, decide whether it can be done safely and autonomously, and stop to ask if it can't (or if a clarification is needed). Single-threaded execution is the load-bearing constraint — never fan out parallel implementers; the autonomy boundary is the safety check, not the task count.
 
 <!-- BEGIN recoverability-gate · canonical · byte-identical across work.md · bugfix.md · release.md (scripts/ drift test enforces) -->
