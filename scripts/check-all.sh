@@ -10,9 +10,10 @@
 # dist-references (every emitted plugin's relative links + ${CLAUDE_PLUGIN_ROOT}
 # paths resolve inside the emitted tree; grandfathers known pre-existing gaps) ·
 # version bump · check-wiki --strict · check-syntax · hook-parity · check-no-pii ·
-# board sync (graceful-skips when no .harness/project.json or no gh) ·
-# tag-reachability (all tags must point to main-reachable commits; graceful-skip
-# when no main branch exists).
+# opinion-snapshot-parity (report-only; graceful-skips when no agentm sibling
+# to diff scripts/opinion-snapshots/ against) · board sync (graceful-skips
+# when no .harness/project.json or no gh) · tag-reachability (all tags must
+# point to main-reachable commits; graceful-skip when no main branch exists).
 # (Host plugin validation — `claude plugin validate` runs as a separate CI
 # step in tests-linux.yml, installing @anthropic-ai/claude-code first; this
 # script skips it since not every dev machine has that CLI. `agy plugin
@@ -61,6 +62,7 @@ run "version bump"   python3 scripts/check-version-bump.py
 run "check-wiki"     python3 src/wiki/scripts/check-wiki.py --strict
 run "check-slop"     python3 scripts/check-slop.py --report wiki
 run "voice-floor-parity" python3 scripts/check-voice-floor-parity.py --report
+run "opinion-snapshot-parity" python3 scripts/check-opinion-snapshot-parity.py --report
 run "check-syntax"   bash scripts/check-syntax.sh
 run "hook-parity"    python3 scripts/check-hook-parity.py
 run "check-no-pii"   bash scripts/check-no-pii.sh --all
