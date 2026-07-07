@@ -50,6 +50,22 @@ SELF_PROVIDER_BINDINGS: dict[str, dict] = {
         "caller": _ROOT / "src" / "code-review" / "agents" / "adversarial-reviewer.md",
         "anchors": ["failing test", "no issues found"],
     },
+    # PLAN-wave-d-personas task 3: development-lifecycle's own two direct
+    # bindings. work.md is the canonical `done` site -- the check-battery /
+    # task-marker / progress.md triad the stub states lives there most
+    # completely. bugfix.md is the canonical `how-we-engineer` site -- not
+    # work.md/plan.md (the plan's own first guess): "Report -> Analyze ->
+    # Fix -> Verify" is the one phrase, verbatim, from the stub that appears
+    # in exactly one command file, confirmed by grep across all six before
+    # picking it (never the first hit assumed).
+    "done": {
+        "caller": _ROOT / "src" / "development-lifecycle" / "commands" / "work.md",
+        "anchors": ["marked `[x]`", "progress.md"],
+    },
+    "how-we-engineer": {
+        "caller": _ROOT / "src" / "development-lifecycle" / "commands" / "bugfix.md",
+        "anchors": ["Report → Analyze → Fix → Verify"],
+    },
 }
 
 

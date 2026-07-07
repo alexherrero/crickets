@@ -3,9 +3,10 @@ name: bugfix
 description: Bug triage pipeline — Report → Analyze → Fix → Verify. Use instead of /plan + /work for defects.
 kind: command
 supported_hosts: [claude-code, antigravity]
-version: 0.2.0
+version: 0.2.1
 install_scope: project
 argument-hint: <bug report, issue link, or reproduction steps>
+opinions: [how-we-engineer]
 ---
 
 You are running the **bugfix** pipeline of the developer-workflows loop. Bugs have different failure modes than features — root cause vs. symptom, reproduction-is-half-the-work, mandatory regression tests — so they get a dedicated pipeline, **not** `/plan` + `/work` (which lets the discipline lapse).

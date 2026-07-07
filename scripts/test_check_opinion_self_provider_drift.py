@@ -6,8 +6,9 @@ anchor trips the check red (1); reverting clears it; a missing caller/stub
 file is a usage error (2), not silent drift; a stale anchor against the
 live stub prints a warning without changing the exit code (the check's own
 upkeep, not the caller's drift); graceful-skip (0) when agentm is absent;
-`--report` forces 0; the shipped real binding (adversarial-reviewer.md vs.
-agentm's opinions/good.md) is clean today.
+`--report` forces 0; the shipped real bindings (adversarial-reviewer.md vs.
+opinions/good.md; work.md vs. opinions/done.md; bugfix.md vs.
+opinions/how-we-engineer.md, PLAN-wave-d-personas task 3) are clean today.
 """
 from __future__ import annotations
 
@@ -112,6 +113,78 @@ class TestMainRedThenGreenViaMonkeypatchedBinding(unittest.TestCase):
         self.assertEqual(rc, 0)
 
 
+class TestMainRedThenGreenForDoneBinding(unittest.TestCase):
+    """PLAN-wave-d-personas task 3: same red-then-green shape as the `good`
+    binding above, isolated via a monkeypatched `done` entry."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="opinion-drift-done-"))
+        self.agentm_dir = _write(
+            self.tmp / "agentm-opinions" / "done.md",
+            "---\nname: done\n---\nthe task marked `[x]`, progress.md updated.\n").parent
+        self.caller = _write(self.tmp / "caller.md", "the task marked `[x]`, progress.md updated.\n")
+        self._patched = mock.patch.dict(
+            drift.SELF_PROVIDER_BINDINGS,
+            {"done": {"caller": self.caller, "anchors": ["marked `[x]`", "progress.md"]}},
+            clear=True,
+        )
+        self._patched.start()
+
+    def tearDown(self):
+        self._patched.stop()
+
+    def test_clean_binding_exits_zero(self):
+        rc = drift.main(["--agentm-opinions-dir", str(self.agentm_dir)])
+        self.assertEqual(rc, 0)
+
+    def test_caller_dropping_an_anchor_exits_nonzero(self):
+        self.caller.write_text("the task marked `[x]` only.\n", encoding="utf-8")
+        rc = drift.main(["--agentm-opinions-dir", str(self.agentm_dir)])
+        self.assertEqual(rc, 1)
+
+    def test_reverting_the_drop_clears_it(self):
+        self.caller.write_text("the task marked `[x]` only.\n", encoding="utf-8")
+        self.assertEqual(drift.main(["--agentm-opinions-dir", str(self.agentm_dir)]), 1)
+        self.caller.write_text("the task marked `[x]`, progress.md updated.\n", encoding="utf-8")
+        self.assertEqual(drift.main(["--agentm-opinions-dir", str(self.agentm_dir)]), 0)
+
+
+class TestMainRedThenGreenForHowWeEngineerBinding(unittest.TestCase):
+    """PLAN-wave-d-personas task 3: same red-then-green shape as the `good`
+    binding above, isolated via a monkeypatched `how-we-engineer` entry."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="opinion-drift-hwe-"))
+        self.agentm_dir = _write(
+            self.tmp / "agentm-opinions" / "how-we-engineer.md",
+            "---\nname: how-we-engineer\n---\na Report → Analyze → Fix → Verify pass.\n").parent
+        self.caller = _write(self.tmp / "caller.md", "a Report → Analyze → Fix → Verify pass.\n")
+        self._patched = mock.patch.dict(
+            drift.SELF_PROVIDER_BINDINGS,
+            {"how-we-engineer": {"caller": self.caller, "anchors": ["Report → Analyze → Fix → Verify"]}},
+            clear=True,
+        )
+        self._patched.start()
+
+    def tearDown(self):
+        self._patched.stop()
+
+    def test_clean_binding_exits_zero(self):
+        rc = drift.main(["--agentm-opinions-dir", str(self.agentm_dir)])
+        self.assertEqual(rc, 0)
+
+    def test_caller_dropping_an_anchor_exits_nonzero(self):
+        self.caller.write_text("a patch-and-hope fix, no pipeline.\n", encoding="utf-8")
+        rc = drift.main(["--agentm-opinions-dir", str(self.agentm_dir)])
+        self.assertEqual(rc, 1)
+
+    def test_reverting_the_drop_clears_it(self):
+        self.caller.write_text("a patch-and-hope fix, no pipeline.\n", encoding="utf-8")
+        self.assertEqual(drift.main(["--agentm-opinions-dir", str(self.agentm_dir)]), 1)
+        self.caller.write_text("a Report → Analyze → Fix → Verify pass.\n", encoding="utf-8")
+        self.assertEqual(drift.main(["--agentm-opinions-dir", str(self.agentm_dir)]), 0)
+
+
 class TestGracefulSkipWhenAgentmAbsent(unittest.TestCase):
     def test_missing_agentm_dir_skips_with_zero(self):
         with tempfile.TemporaryDirectory() as t:
@@ -121,16 +194,18 @@ class TestGracefulSkipWhenAgentmAbsent(unittest.TestCase):
 
 
 class TestRealShippedBindingIsCleanOrSkips(unittest.TestCase):
-    """Not hermetic by design -- exercises the real adversarial-reviewer.md
-    against a real ~/Antigravity/agentm clone, when present, mirroring
+    """Not hermetic by design -- exercises every real shipped binding (good/
+    adversarial-reviewer.md, done/work.md, how-we-engineer/bugfix.md) against
+    a real ~/Antigravity/agentm clone, when present, mirroring
     check-opinion-snapshot-parity.py's equivalent real-tree test."""
 
-    def test_shipped_good_binding_is_clean_or_skips(self):
+    def test_shipped_bindings_are_clean_or_skip(self):
         rc = drift.main([])
         self.assertIn(rc, (0, 1))
         if rc == 1:
-            self.fail("src/code-review/agents/adversarial-reviewer.md no longer "
-                      "mirrors agentm's opinions/good.md anchors — review both")
+            self.fail("a real SELF_PROVIDER_BINDINGS caller no longer mirrors its "
+                      "agentm opinions/<name>.md anchors — review both (see stdout "
+                      "above for which binding drifted)")
 
 
 if __name__ == "__main__":

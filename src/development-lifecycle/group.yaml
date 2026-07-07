@@ -495,5 +495,15 @@ enhances:
 #          before the manual explorer dispatch / "ask why three times" pass
 #          runs. Additive only -- /diagnose ranks hypotheses, it does not
 #          conclude root cause, and the manual reasoning pass is unchanged.
-version: 0.35.2
+# 0.36.0 = PLAN-wave-d-personas (the opinion-consumer conformance sweep, not
+#          the earlier archived roster plan of the same name) task 3:
+#          work.md declares opinions: [done], bugfix.md declares
+#          opinions: [how-we-engineer] -- self-provider bindings, honesty-
+#          checked by scripts/check-opinion-self-provider-drift.py's
+#          SELF_PROVIDER_BINDINGS registry (no marker/interpolation, same as
+#          good/code-review's adversarial-reviewer.md). Canonical sites
+#          confirmed by grep, not assumed -- bugfix.md, not plan.md/work.md,
+#          is how-we-engineer's site (the stub's "Report -> Analyze -> Fix
+#          -> Verify" phrase appears verbatim in exactly one command file).
+version: 0.36.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]
