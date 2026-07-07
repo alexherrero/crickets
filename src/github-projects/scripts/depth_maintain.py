@@ -9,17 +9,17 @@ floor** the design (`crickets-github-projects.md` "The depth floor — at least
 four") names, and either **materializes** the missing intermediate level or
 **flags it for operator judgment** when materialization would require content
 this module cannot infer (e.g. what a Feature's Plans should actually be
-named).
+named). Two levels are checked, symmetrically:
 
-**What "collapsed" means here, precisely.** A Feature (or Sub-feature) has
-**zero materialized Plan children** in the graph, while a **real, on-disk plan
-file** exists that the operator intends for that Feature. Nothing in
-`project_model.py`'s schema links a Feature's board-item id to a vault plan
-file's slug (no `plan_id` field, confirmed against `project_schema.json` and
-the graph's `Item` dataclass) — so this module never *guesses* that link via
-fuzzy title matching, which would risk silently materializing the wrong Plan
-under the wrong Feature. It recognizes exactly two **explicit** signals, and
-flags for operator judgment when neither is present:
+**Feature -> Plan.** A Feature (or Sub-feature) has **zero materialized Plan
+children** in the graph, while a **real, on-disk plan file** exists that the
+operator intends for that Feature. Nothing in `project_model.py`'s schema
+links a Feature's board-item id to a vault plan file's slug (no `plan_id`
+field, confirmed against `project_schema.json` and the graph's `Item`
+dataclass) — so this module never *guesses* that link via fuzzy title
+matching, which would risk silently materializing the wrong Plan under the
+wrong Feature. It recognizes exactly two **explicit** signals, and flags for
+operator judgment when neither is present:
 
 1. **Slug-equals-feature-id** — a plan file `PLAN-<feature_id>.md` exists (the
    plan file is named after the Feature's own board-item id). This is the
@@ -31,14 +31,25 @@ flags for operator judgment when neither is present:
    AG-track feature whose plan predates a rename). An explicit field always
    wins over the id-equality convention when both are present.
 
-Materialization itself never invents a Plan's `title`/`goal`/`done_when` (this
-module cannot infer human-authored content) — it appends a minimal Plan item
-(id = the matched slug, type "plan", parent = the feature's id, title = the
-plan file's own H1 heading text) to the graph and lets the existing
-`project_sync.py`/`sync_all_nesting()` primitives do the actual board write on
-the next `post`/`sync-nesting` run. This module only ever edits the in-memory
-graph (or `board-items.json` via the existing `project_model.dump()`); it never
-calls `gh` itself — reuses `project_sync.py`'s write path, never duplicates it.
+**Plan -> Task.** A Plan that is ALREADY a materialized graph item (bound to
+a known slug — a Plan only exists in the graph at all once matched at the
+Feature level above, or authored directly) has **zero materialized Task
+children**, while its own bound `PLAN-<slug>.md` file's task checklist (the
+`### N. <title>` headings every plan in this harness already uses — the same
+convention `queue_status_lite`/`resolve_plan` treat as load-bearing) lists
+real tasks. Unlike the Feature level, there is no id-matching ambiguity here:
+the Plan's own graph id already carries the slug that resolved it, so a
+missing Task is unambiguously "this plan's own checklist has an entry with no
+board-item counterpart yet" — always auto-materializable, never flagged.
+
+Materialization itself never invents a Plan's `title`/`goal`/`done_when` or a
+Task's `title` beyond what the source file already states (a plan's H1, or a
+task heading's own text) — it appends a minimal Item to the graph and lets the
+existing `project_sync.py`/`sync_all_nesting()` primitives do the actual board
+write on the next `post`/`sync-nesting` run. This module only ever edits the
+in-memory graph (or `board-items.json` via the existing `project_model.dump()`);
+it never calls `gh` itself — reuses `project_sync.py`'s write path, never
+duplicates it.
 
 stdlib only.
 """
@@ -74,6 +85,12 @@ _DEPTH_HOLDING_TYPES = frozenset({"feature", "sub-feature"})
 _PLAN_FILE_RE = re.compile(r"^PLAN-(?P<slug>.+)\.md$")
 
 _H1_RE = re.compile(r"^#\s+(.+?)\s*$", re.MULTILINE)
+
+# A plan's own task checklist headings: "### 1. Do the thing" (the convention
+# every plan in this harness already uses — see PLAN-wave-d-github-projects.md
+# itself). Captures the task's number (for a stable, deterministic id) and its
+# title text.
+_TASK_HEADING_RE = re.compile(r"^###\s+(?P<num>\d+)\.\s+(?P<title>.+?)\s*$", re.MULTILINE)
 
 
 @dataclass
@@ -175,6 +192,67 @@ def find_depth_gaps(graph: dict, plan_slugs: dict) -> list:
     return gaps
 
 
+@dataclass
+class TaskGap:
+    """One materialized Plan found with zero Task children, while its own
+    bound plan file's checklist lists real tasks."""
+    plan_id: str
+    plan_path: Path
+    missing: list   # [(task_num: str, title: str), ...] not yet in the graph
+
+
+def find_task_gaps(graph: dict, plan_slugs: dict) -> list:
+    """Scan `graph` for a materialized `plan` item with zero Task children,
+    whose own bound `PLAN-<plan.id>.md` (from `plan_slugs`) lists `### N.
+    <title>` task headings not yet represented as Task items under it.
+
+    Unlike `find_depth_gaps`, there is no id-ambiguity to flag here: a Plan
+    only ever exists in the graph bound to the slug that resolved it, so its
+    own checklist is unambiguously *its* source of truth — always
+    auto-materializable, never a TaskGap with nothing to flag against.
+    A Plan whose slug has no corresponding `PLAN-<slug>.md` on disk (e.g. an
+    already-completed/archived plan with no live task-file) is skipped, not
+    flagged — an archived plan's Task breakdown is history, not a gap.
+    """
+    gaps: list = []
+    for item in graph.values():
+        if item.type != "plan":
+            continue
+        if any(c.type == "task" for c in item.children):
+            continue
+        plan_path = plan_slugs.get(item.id)
+        if plan_path is None:
+            continue
+        try:
+            text = plan_path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        headings = _TASK_HEADING_RE.findall(text)
+        if headings:
+            gaps.append(TaskGap(item.id, plan_path, list(headings)))
+    return gaps
+
+
+def materialize_task_gap(gap: TaskGap, graph: dict) -> list:
+    """Add a minimal Task Item for each of `gap.missing`'s headings into
+    `graph` IN PLACE (id = "<plan_id>-t<N>", parent = gap.plan_id, title =
+    the heading's own text). Idempotent — skips a task-number id that's
+    already present, so a re-run over unchanged state adds nothing twice.
+    Returns the list of newly-added Items (empty when all already exist).
+    """
+    pm = _project_model()
+    added = []
+    for num, title in gap.missing:
+        item_id = f"{gap.plan_id}-t{num}"
+        if item_id in graph:
+            continue
+        item = pm.Item(id=item_id, type="task", title=title.strip(), parent=gap.plan_id)
+        graph[item.id] = item
+        graph[gap.plan_id].children.append(item)
+        added.append(item)
+    return added
+
+
 def materialize_gap(gap: DepthGap, graph: dict) -> "object | None":
     """Add a minimal Plan Item for an auto-materializable `gap` into `graph`
     IN PLACE (id = gap.plan_item_id, parent = gap.feature_id, title = the plan
@@ -201,19 +279,23 @@ def materialize_gap(gap: DepthGap, graph: dict) -> "object | None":
 
 
 def run(graph: dict, harness_dir, *, materialize=True) -> dict:
-    """The depth-maintainer's one entrypoint: find gaps, optionally
-    materialize the auto-resolvable ones in place. Returns a summary dict:
+    """The depth-maintainer's one entrypoint: find gaps at both levels
+    (Feature->Plan, Plan->Task), optionally materialize the auto-resolvable
+    ones in place. Returns a summary dict:
 
         {"materialized": [Item, ...], "flagged": [DepthGap, ...]}
 
     `materialize=False` previews only (no graph mutation) — mirrors the
-    dry-run boundary the rest of this plugin already uses.
+    dry-run boundary the rest of this plugin already uses. Feature->Plan runs
+    first so a newly-materialized Plan is immediately eligible for its own
+    Plan->Task pass in the same cycle (its bound plan file's checklist is
+    checked right away, not only on a later run).
     """
     plan_slugs = list_plan_slugs(harness_dir)
-    gaps = find_depth_gaps(graph, plan_slugs)
     materialized = []
     flagged = []
-    for gap in gaps:
+
+    for gap in find_depth_gaps(graph, plan_slugs):
         if gap.matched_slug is not None:
             if materialize:
                 item = materialize_gap(gap, graph)
@@ -221,6 +303,11 @@ def run(graph: dict, harness_dir, *, materialize=True) -> dict:
                     materialized.append(item)
         else:
             flagged.append(gap)
+
+    if materialize:
+        for task_gap in find_task_gaps(graph, plan_slugs):
+            materialized.extend(materialize_task_gap(task_gap, graph))
+
     return {"materialized": materialized, "flagged": flagged}
 
 
@@ -248,7 +335,7 @@ def main(argv=None) -> int:
 
     result = run(graph, args.harness_dir, materialize=not args.dry_run)
     for item in result["materialized"]:
-        print(f"materialized plan:{item.id} under {item.parent}")
+        print(f"materialized {item.type}:{item.id} under {item.parent}")
     for gap in result["flagged"]:
         print(f"FLAGGED  feature:{gap.feature_id} ({gap.feature_title!r}) — {gap.reason}")
     if not args.dry_run and result["materialized"]:

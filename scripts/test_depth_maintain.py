@@ -221,6 +221,117 @@ class TestMaterializeGap(unittest.TestCase):
         self.assertEqual(graph["some-feature"].children, [])
 
 
+_PLAN_BODY = """# Ship It
+
+## Tasks
+
+### 1. First task
+- What: do the first thing.
+
+### 2. Second task
+- What: do the second thing.
+"""
+
+
+class TestFindTaskGaps(unittest.TestCase):
+    def _plan_with_zero_tasks(self):
+        return _graph([
+            {"id": "v5", "type": "version", "title": "V5 arc", "about": "x"},
+            {"id": "f-bs", "type": "feature", "parent": "v5", "title": "Board sync",
+             "goal": "g", "why_matters": "w"},
+            {"id": "p-bs", "type": "plan", "parent": "f-bs", "title": "Build it",
+             "fields": {"goal": "ship", "done_when": "green"}},
+        ])
+
+    def test_plan_with_checklist_and_no_tasks_is_a_gap(self):
+        graph = self._plan_with_zero_tasks()
+        with tempfile.TemporaryDirectory() as t:
+            d = Path(t)
+            (d / "PLAN-p-bs.md").write_text(_PLAN_BODY, encoding="utf-8")
+            slugs = dm.list_plan_slugs(d)
+            gaps = dm.find_task_gaps(graph, slugs)
+        self.assertEqual(len(gaps), 1)
+        self.assertEqual(gaps[0].plan_id, "p-bs")
+        self.assertEqual(gaps[0].missing,
+                         [("1", "First task"), ("2", "Second task")])
+
+    def test_plan_with_task_children_already_is_never_a_gap(self):
+        graph = _graph([
+            {"id": "v5", "type": "version", "title": "V5 arc", "about": "x"},
+            {"id": "f-bs", "type": "feature", "parent": "v5", "title": "Board sync",
+             "goal": "g", "why_matters": "w"},
+            {"id": "p-bs", "type": "plan", "parent": "f-bs", "title": "Build it",
+             "fields": {"goal": "ship", "done_when": "green"}},
+            {"id": "t1", "type": "task", "parent": "p-bs", "title": "Task 1"},
+        ])
+        with tempfile.TemporaryDirectory() as t:
+            d = Path(t)
+            (d / "PLAN-p-bs.md").write_text(_PLAN_BODY, encoding="utf-8")
+            slugs = dm.list_plan_slugs(d)
+            gaps = dm.find_task_gaps(graph, slugs)
+        self.assertEqual(gaps, [])
+
+    def test_no_bound_plan_file_is_skipped_not_flagged(self):
+        # An already-completed/archived plan with no live PLAN-<slug>.md —
+        # its empty Task list is history, not a gap.
+        graph = self._plan_with_zero_tasks()
+        gaps = dm.find_task_gaps(graph, {})
+        self.assertEqual(gaps, [])
+
+    def test_plan_file_with_no_task_headings_is_not_a_gap(self):
+        graph = self._plan_with_zero_tasks()
+        with tempfile.TemporaryDirectory() as t:
+            d = Path(t)
+            (d / "PLAN-p-bs.md").write_text("# Ship It\n\nNo tasks yet.\n",
+                                            encoding="utf-8")
+            slugs = dm.list_plan_slugs(d)
+            gaps = dm.find_task_gaps(graph, slugs)
+        self.assertEqual(gaps, [])
+
+
+class TestMaterializeTaskGap(unittest.TestCase):
+    def test_materializes_one_task_per_heading(self):
+        graph = _graph([
+            {"id": "v5", "type": "version", "title": "V5 arc", "about": "x"},
+            {"id": "f-bs", "type": "feature", "parent": "v5", "title": "Board sync",
+             "goal": "g", "why_matters": "w"},
+            {"id": "p-bs", "type": "plan", "parent": "f-bs", "title": "Build it",
+             "fields": {"goal": "ship", "done_when": "green"}},
+        ])
+        with tempfile.TemporaryDirectory() as t:
+            d = Path(t)
+            (d / "PLAN-p-bs.md").write_text(_PLAN_BODY, encoding="utf-8")
+            slugs = dm.list_plan_slugs(d)
+            gaps = dm.find_task_gaps(graph, slugs)
+            added = dm.materialize_task_gap(gaps[0], graph)
+        self.assertEqual(len(added), 2)
+        self.assertEqual([i.title for i in added], ["First task", "Second task"])
+        self.assertEqual([c.id for c in graph["p-bs"].children],
+                         ["p-bs-t1", "p-bs-t2"])
+        self.assertEqual(graph["p-bs-t1"].parent, "p-bs")
+        self.assertEqual(graph["p-bs-t1"].type, "task")
+
+    def test_idempotent_second_call_adds_nothing(self):
+        graph = _graph([
+            {"id": "v5", "type": "version", "title": "V5 arc", "about": "x"},
+            {"id": "f-bs", "type": "feature", "parent": "v5", "title": "Board sync",
+             "goal": "g", "why_matters": "w"},
+            {"id": "p-bs", "type": "plan", "parent": "f-bs", "title": "Build it",
+             "fields": {"goal": "ship", "done_when": "green"}},
+        ])
+        with tempfile.TemporaryDirectory() as t:
+            d = Path(t)
+            (d / "PLAN-p-bs.md").write_text(_PLAN_BODY, encoding="utf-8")
+            slugs = dm.list_plan_slugs(d)
+            gaps = dm.find_task_gaps(graph, slugs)
+            first = dm.materialize_task_gap(gaps[0], graph)
+            gaps2 = dm.find_task_gaps(graph, slugs)  # now has task children -> no gap
+            second = dm.materialize_task_gap(gaps[0], graph) if gaps2 else []
+        self.assertEqual(len(first), 2)
+        self.assertEqual(gaps2, [])  # re-scan sees the plan as already full-depth
+        self.assertEqual(len(graph["p-bs"].children), 2)  # no duplicates
+
+
 class TestRun(unittest.TestCase):
     def test_full_depth_no_op_zero_writes(self):
         """A fixture already at full depth -> no-op, zero writes (plan's own
@@ -255,6 +366,42 @@ class TestRun(unittest.TestCase):
         self.assertIn("plan-some-feature", graph)
         self.assertEqual(graph["plan-some-feature"].type, "plan")
         self.assertEqual(graph["some-feature"].type, "feature")  # untouched
+
+    def test_materializes_plan_then_its_own_tasks_in_one_cascade(self):
+        # An already-materialized Plan with no Task children -> both levels
+        # resolve in a single run() call: the Plan gap is Feature->Plan (n/a
+        # here, it's already materialized), so this exercises Plan->Task alone
+        # while a sibling Feature gap also resolves in the same pass.
+        graph = _graph([
+            {"id": "v5", "type": "version", "title": "V5 arc", "about": "x"},
+            {"id": "f-bs", "type": "feature", "parent": "v5", "title": "Board sync",
+             "goal": "g", "why_matters": "w"},
+            {"id": "p-bs", "type": "plan", "parent": "f-bs", "title": "Build it",
+             "fields": {"goal": "ship", "done_when": "green"}},
+        ])
+        with tempfile.TemporaryDirectory() as t:
+            d = Path(t)
+            (d / "PLAN-p-bs.md").write_text(_PLAN_BODY, encoding="utf-8")
+            result = dm.run(graph, d)
+        self.assertEqual(len(result["materialized"]), 2)
+        self.assertEqual(result["flagged"], [])
+        self.assertEqual(set(graph["p-bs"].children[i].id for i in range(2)),
+                         {"p-bs-t1", "p-bs-t2"})
+
+    def test_dry_run_never_materializes_tasks_either(self):
+        graph = _graph([
+            {"id": "v5", "type": "version", "title": "V5 arc", "about": "x"},
+            {"id": "f-bs", "type": "feature", "parent": "v5", "title": "Board sync",
+             "goal": "g", "why_matters": "w"},
+            {"id": "p-bs", "type": "plan", "parent": "f-bs", "title": "Build it",
+             "fields": {"goal": "ship", "done_when": "green"}},
+        ])
+        with tempfile.TemporaryDirectory() as t:
+            d = Path(t)
+            (d / "PLAN-p-bs.md").write_text(_PLAN_BODY, encoding="utf-8")
+            result = dm.run(graph, d, materialize=False)
+        self.assertEqual(result["materialized"], [])
+        self.assertEqual(graph["p-bs"].children, [])
 
     def test_dry_run_previews_without_mutating_graph(self):
         graph = _graph([
