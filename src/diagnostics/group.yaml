@@ -8,5 +8,10 @@ standalone: false
 #          Layer-2 semantic fallback), the self-reinforcing fingerprint
 #          alias mechanism, the scrubbed failure-incident writer, and the
 #          /diagnose command wiring all five together end to end.
-version: 0.1.0
+# 0.1.1 = writer.py's _build_body() now requests the how-we-engineer opinion
+#          by name (opinion_resolve, via a new agentm_bridge.py path-fallback
+#          to agentm's top-level scripts/), folding the resolved text into a
+#          written incident's ## Opinion: how-we-engineer section
+#          (PLAN-wave-d-opinion-wiring task 1).
+version: 0.1.1
 capabilities: [diagnostics]

@@ -12,10 +12,12 @@ stdlib only -- no pytest.
 from __future__ import annotations
 
 import importlib.util
+import os
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
@@ -173,6 +175,78 @@ class FailureIncidentWriterTests(unittest.TestCase):
         )
         self.assertEqual(result["layer"], 1)
         self.assertTrue(result["path"].endswith(".md"))
+
+    def test_written_entry_includes_resolved_how_we_engineer_opinion(self):
+        # Real-bridge: proves the incident body carries agentm's actual
+        # opinions/how-we-engineer.md base text, resolved via
+        # opinion_resolve() -- not a duplicated/inline copy (PLAN-wave-d-
+        # opinion-wiring task 1).
+        target = writer.write_failure_incident(
+            self.vault,
+            project="crickets",
+            fingerprint="fp-opinion-test",
+            namespace="test",
+            symptom="assertion failed in test_bar",
+            hypotheses=["stale fixture"],
+        )
+        content = target.read_text(encoding="utf-8")
+        self.assertIn("## Opinion: how-we-engineer", content)
+        self.assertIn("phase discipline", content)  # opinions/how-we-engineer.md's base body
+
+
+class FailureIncidentOpinionWiringUnitTests(unittest.TestCase):
+    """Hermetic: writer._build_body() calls opinion_resolve("how-we-engineer")
+    via a planted fake opinion_resolver.py -- no real agentm sibling needed.
+    Mirrors test_find_capability.py's fake-module-on-disk injection idiom."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _plant_fake_opinion_resolver(self, body: str) -> Path:
+        scripts_dir = self.tmp / "fake_agentm_scripts"
+        scripts_dir.mkdir(parents=True, exist_ok=True)
+        (scripts_dir / "opinion_resolver.py").write_text(
+            "def opinion_resolve(name, *, root=None, supplement_dir=None):\n"
+            "    return {\n"
+            f"        'name': name, 'reason': 'base-only', 'base': {body!r},\n"
+            "        'supplement': None, 'question': None, 'implements': None,\n"
+            "        'composes': [],\n"
+            "    }\n",
+            encoding="utf-8",
+        )
+        return scripts_dir
+
+    def test_build_body_folds_in_resolved_opinion_text(self):
+        scripts_dir = self._plant_fake_opinion_resolver("Fake how-we-engineer body.")
+        with mock.patch.dict(os.environ, {"AGENTM_SCRIPTS_DIR": str(scripts_dir)}):
+            writer.agentm_bridge._reset_cache_for_tests()
+            body = writer._build_body(
+                symptom="s", root_cause=None, fix_or_workaround=None,
+                outcome=None, hypotheses=None,
+            )
+        self.assertIn("Fake how-we-engineer body.", body)
+        self.assertIn("## Opinion: how-we-engineer", body)
+        writer.agentm_bridge._reset_cache_for_tests()
+
+    def test_build_body_degrades_gracefully_when_resolver_absent(self):
+        empty_home = self.tmp / "empty_home"
+        empty_home.mkdir()
+        with mock.patch.dict(os.environ, {"AGENTM_SCRIPTS_DIR": ""}, clear=False):
+            with mock.patch.object(Path, "home", return_value=empty_home):
+                writer.agentm_bridge._reset_cache_for_tests()
+                body = writer._build_body(
+                    symptom="s", root_cause=None, fix_or_workaround=None,
+                    outcome=None, hypotheses=None,
+                )
+                writer.agentm_bridge._reset_cache_for_tests()
+        # No opinion section when agentm is unresolvable -- graceful-skip,
+        # never raises, never blocks the incident write.
+        self.assertNotIn("## Opinion: how-we-engineer", body)
+        self.assertIn("## Symptom", body)
 
 
 if __name__ == "__main__":
