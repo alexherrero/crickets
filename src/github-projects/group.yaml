@@ -94,5 +94,15 @@ standalone: false
 # auto-closed or edited (the plan's own locked design call, carried forward
 # from the superseded chief-of-staff plan). report_drift.py/
 # github-projects:report-board-drift itself stays report-only and unmodified.
-version: 0.3.1
+# 0.3.2 = AG Wave D task 4: new planner_maintain.py composes depth_maintain.py
+# + drift_correct.py into one entrypoint (depth pass persists to
+# board-items.json before the drift pass runs, so a just-materialized
+# Plan/Task is visible to its own disk re-read) + a new planner-maintain
+# command for explicit invocation. Wired into development-lifecycle's
+# work.md step 10 and release.md steps 7/8 at the existing graceful-skip
+# board-sync gate (development-lifecycle 0.34.7 -> 0.34.8). No dispatcher
+# exists yet that reads a persona's modes:/triggers: and routes into this —
+# that plumbing (persona_resolve.py/persona_compile.py) lives in agentm and
+# validates shape only; when it ships, it calls this same script.
+version: 0.3.2
 capabilities: [board-sync]
