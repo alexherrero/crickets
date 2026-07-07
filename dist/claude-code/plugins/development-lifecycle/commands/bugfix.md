@@ -3,7 +3,7 @@ name: bugfix
 description: Bug triage pipeline — Report → Analyze → Fix → Verify. Use instead of /plan + /work for defects.
 kind: command
 supported_hosts: [claude-code, antigravity]
-version: 0.1.0
+version: 0.2.0
 install_scope: project
 argument-hint: <bug report, issue link, or reproduction steps>
 ---
@@ -55,11 +55,12 @@ Then **open the tracking issue** (graceful-skip): announce a one-sentence title 
 
 Find the **root cause**, not the first plausible one.
 - **Reproduce locally.** Can't reproduce? Note whether it's environment-specific, flaky (investigate timing/state), or not real.
+- **Seed a starting hypothesis set from the shared `/diagnose` engine (additive, mechanized, runs before the explorer dispatch below).** Check availability: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/find_capability.py" diagnostics`. **Exit 0** → run `python3 "${CLAUDE_PLUGIN_ROOT}/../diagnostics/scripts/diagnose.py" --project <slug> <reproduction-traceback-file>` against the reproduction traceback captured above. On `outcome == "layer1_hit"`, fold the returned `path` + `namespace` into `## Analysis` as a starting hypothesis — a prior matching failure-incident is already on file. On `outcome == "written"` (cold start — no prior incident), fold the returned `hypotheses` in instead; this is a graceful no-op, never an error, and never blocks the manual flow below. **Exit 1** (diagnostics unavailable) → skip silently, proceed with an empty hypothesis seed. **`/diagnose` ranks hypotheses; it does not conclude root cause** — this seed is additive context for the passes below, never a replacement for them.
 - **Read the code paths** — dispatch the `explorer` sub-agent for unfamiliar areas. Routed dispatch (graceful-skip): `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/find_capability.py" token-audit` exit 0 → resolve `classify_work_type('explorer')` + `agent_tool_alias(...)` and pass as the Agent tool's `model` param; exit 1 → dispatch with no `model` override, unchanged. **Mandatory fan-out announcement (unconditional):** print `fanout_announcement.py`'s `render_announcement()` line before dispatching regardless of the probe's result; an `INHERITED` source at a frontier-tier (T3/T4) session triggers `needs_inheritance_pause()` — stop for confirmation, never proceed silently.
 - **Ask "why" three times** — the function threw → why? → input malformed → why? → the validator's regex was wrong.
 - **Note load-bearing assumptions** — what else depends on the broken behavior working as it currently does?
 
-Write findings under `## Analysis` (Reproduction / Root cause `file:line` / Why it happened / Scope / Fix strategy). If the root cause is actually a **design flaw**, **stop** and escalate to `/plan` — patching a symptom of a design flaw creates two bugs. Post the Analysis to the tracking issue as a comment (announce + proceed; skip silently if no issue).
+Write findings under `## Analysis` (Reproduction / Root cause `file:line` / Why it happened / Scope / Fix strategy) — the `/diagnose` hypothesis seed and the explorer's read informs this, but the "why three times" root-cause narrative is still a human/LLM reasoning pass, not a mechanized conclusion. If the root cause is actually a **design flaw**, **stop** and escalate to `/plan` — patching a symptom of a design flaw creates two bugs. Post the Analysis to the tracking issue as a comment (announce + proceed; skip silently if no issue).
 
 ### 3. Fix
 

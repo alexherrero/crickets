@@ -100,7 +100,7 @@ class DependabotFixerDiagnoseWiringTests(unittest.TestCase):
     def test_cold_start_aborts_recurrence_proceeds_with_prior_fix(self):
         traceback_text = (
             "Traceback (most recent call last):\n"
-            '  File "/home/runner/work/proj/proj/ci.py", line 42, in build\n'
+            '  File "/Users/alexherrero/proj/ci.py", line 42, in build\n'
             "    raise RuntimeError(\"incompatible peer dependency: libbar>=2.0\")\n"
             "RuntimeError: incompatible peer dependency: libbar>=2.0\n"
         )

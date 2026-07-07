@@ -87,7 +87,7 @@
       ],
       "name": "development-lifecycle",
       "source": "./plugins/development-lifecycle",
-      "version": "0.35.1"
+      "version": "0.35.2"
     },
     {
       "capabilities": [
@@ -106,7 +106,7 @@
       ],
       "name": "diagnostics",
       "source": "./plugins/diagnostics",
-      "version": "0.1.3"
+      "version": "0.1.4"
     },
     {
       "capabilities": [
