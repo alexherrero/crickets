@@ -85,5 +85,14 @@ standalone: false
 # operator judgment when neither signal resolves — never guesses via fuzzy
 # title matching. Composes on project_model.py/project_sync.py; never calls
 # `gh` itself, never modifies sync_fields/sync_nesting/resolve_field_ids.
-version: 0.3.0
+# 0.3.1 = AG Wave D — the Planner (TPM) persona's drift-corrector (new
+# drift_correct.py): independently re-derives update/orphan drift (never
+# parses check_project_sync.compute_drift's string lines, and never modifies
+# that module) and acts on it — `update` calls project_sync.py's existing
+# `post` body-sync path by item id (the same idempotent write it already
+# does manually); `orphan` is surfaced as an operator-facing flag and NEVER
+# auto-closed or edited (the plan's own locked design call, carried forward
+# from the superseded chief-of-staff plan). report_drift.py/
+# github-projects:report-board-drift itself stays report-only and unmodified.
+version: 0.3.1
 capabilities: [board-sync]
