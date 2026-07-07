@@ -6,6 +6,7 @@ so the two share one parser. Requires PyYAML (CI installs it).
 """
 from __future__ import annotations
 
+import os
 import re
 import shutil
 from dataclasses import dataclass, field
@@ -70,6 +71,95 @@ def read_frontmatter(path: Path):
     if not m:
         return None
     return yaml.safe_load(m.group(1)) or {}
+
+
+def strip_frontmatter(text: str) -> str:
+    """Return `text` with a leading YAML frontmatter block removed, or `text`
+    unchanged if it has none. Mirrors `read_frontmatter`'s own delimiter match."""
+    m = re.match(r"^---\n.*?\n---\n?", text, re.S)
+    return text[m.end():] if m else text
+
+
+# opinion-consumer markdown-prose grammar (PLAN-opinion-consumer-grammar task 2).
+# A primitive that is genuine cross-plugin reuse of an opinion (its `opinions:`
+# name does NOT `implements:` the primitive's own capability) declares the name
+# in `opinions:` and marks the splice point in its own body with an HTML-comment
+# pair, `<!-- opinion:<name> --> ... <!-- /opinion:<name> -->`. At emit time the
+# marked block's contents are replaced with the committed snapshot's body (never
+# a live agentm read — see scripts/check-opinion-snapshot-parity.py). A
+# self-provider primitive (its opinion `implements:` itself) declares `opinions:`
+# too, but has no marker in its body — it stays hardwired prose, honesty-checked
+# separately, and this function is a no-op for it (no marker to replace).
+_OPINION_SNAPSHOTS_DIR = Path(__file__).resolve().parent / "opinion-snapshots"
+
+
+def find_agentm_opinions_dir() -> Path | None:
+    """Locate agentm's opinions/ dir via path-fallback, or None. Shared by
+    every opinion-honesty gate that needs a live agentm read (verification
+    only -- never generate.py's build path, which reads only the committed
+    snapshot store above).
+
+    Mirrors find_capability.py's _find_capability_resolver candidate order:
+      1. $AGENTM_SCRIPTS_DIR/../opinions   (explicit override)
+      2. <this-script-dir>/../opinions     (co-located install)
+      3. ~/Antigravity/agentm/opinions     (conventional clone)
+    """
+    here = Path(__file__).resolve().parent
+    candidates: list[Path] = []
+    env_dir = os.environ.get("AGENTM_SCRIPTS_DIR", "").strip()
+    if env_dir:
+        candidates.append(Path(os.path.expanduser(env_dir)) / ".." / "opinions")
+    candidates.append(here / ".." / "opinions")
+    candidates.append(Path.home() / "Antigravity" / "agentm" / "opinions")
+    for c in candidates:
+        if c.is_dir():
+            return c.resolve()
+    return None
+
+
+def _opinion_marker_re(name: str) -> re.Pattern:
+    open_tag = re.escape(f"<!-- opinion:{name} -->")
+    close_tag = re.escape(f"<!-- /opinion:{name} -->")
+    return re.compile(f"{open_tag}.*?{close_tag}", re.S)
+
+
+def interpolate_opinions(text: str, opinions: list, snapshots_dir: Path | None = None) -> str:
+    """Splice each declared opinion's committed-snapshot body into its marker
+    pair inside `text`. A name with no marker present, or no matching snapshot
+    file, is left untouched (covers the self-provider case, and a not-yet-baked
+    cross-plugin opinion) -- so this is always safe to call unconditionally."""
+    snapshots_dir = snapshots_dir or _OPINION_SNAPSHOTS_DIR
+    for name in opinions:
+        pattern = _opinion_marker_re(str(name))
+        if not pattern.search(text):
+            continue
+        snapshot_path = snapshots_dir / f"{name}.md"
+        if not snapshot_path.is_file():
+            continue
+        body = strip_frontmatter(snapshot_path.read_text(encoding="utf-8")).strip()
+        replacement = f"<!-- opinion:{name} -->\n{body}\n<!-- /opinion:{name} -->"
+        # No count= limit: every marker pair for this name gets spliced, not
+        # just the first. A primitive with the same opinion's marker repeated
+        # (e.g. referenced in two sections) must not silently keep stale seed
+        # prose in its second occurrence (found in review, PLAN-opinion-
+        # consumer-grammar close-out — not triggered by any shipped primitive
+        # today, but the marker syntax is a one-way door for every future
+        # cross-plugin binding).
+        text = pattern.sub(lambda _m, r=replacement: r, text)
+    return text
+
+
+def render_primitive_text(prim: "Primitive", snapshots_dir: Path | None = None) -> str:
+    """Return a single-file primitive's emitted text, with any declared
+    `opinions:` markers interpolated from the committed snapshot store — ready
+    for `write_utf8`. A primitive with no `opinions:` frontmatter key returns
+    its source text unchanged -- byte-identical (once `write_utf8`-encoded) to
+    the plain `copy2` this replaces, for every primitive that doesn't opt in."""
+    text = prim.root.read_text(encoding="utf-8")
+    opinions = prim.frontmatter.get("opinions") or []
+    if not opinions:
+        return text
+    return interpolate_opinions(text, opinions, snapshots_dir)
 
 
 @dataclass

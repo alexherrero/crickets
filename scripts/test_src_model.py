@@ -360,5 +360,102 @@ class TestReferenceShape(unittest.TestCase):
         self.assertNotIn("reference", src_model.PRIMITIVE_KINDS)
 
 
+@unittest.skipUnless(HAVE_YAML, "PyYAML required")
+class TestOpinionInterpolation(unittest.TestCase):
+    """PLAN-opinion-consumer-grammar task 2: interpolate_opinions() /
+    render_primitive_text() -- the generate.py-build-time splice of a
+    committed opinion snapshot into a cross-plugin consumer's marker pair."""
+
+    def _snapshot(self, tmp: Path, name: str, body: str) -> Path:
+        snap_dir = tmp / "opinion-snapshots"
+        snap_dir.mkdir(parents=True, exist_ok=True)
+        (snap_dir / f"{name}.md").write_text(
+            f"---\nname: {name}\nkind: opinion\n---\n{body}\n", encoding="utf-8")
+        return snap_dir
+
+    def test_marker_present_and_snapshot_found_splices_the_body(self):
+        with tempfile.TemporaryDirectory() as t:
+            tmp = Path(t)
+            snap_dir = self._snapshot(tmp, "good", "The standard prose.")
+            text = "before\n<!-- opinion:good -->\nold stale text\n<!-- /opinion:good -->\nafter\n"
+            out = src_model.interpolate_opinions(text, ["good"], snap_dir)
+            self.assertIn("The standard prose.", out)
+            self.assertNotIn("old stale text", out)
+            self.assertIn("before\n<!-- opinion:good -->", out)
+            self.assertIn("<!-- /opinion:good -->\nafter", out)
+
+    def test_no_marker_present_leaves_text_untouched(self):
+        # the self-provider case: opinions: is declared but there's no marker
+        # to splice into -- the caller's own hardwired prose stays as-is.
+        with tempfile.TemporaryDirectory() as t:
+            tmp = Path(t)
+            snap_dir = self._snapshot(tmp, "good", "The standard prose.")
+            text = "no marker anywhere in this body\n"
+            out = src_model.interpolate_opinions(text, ["good"], snap_dir)
+            self.assertEqual(out, text)
+
+    def test_marker_present_but_no_snapshot_leaves_text_untouched(self):
+        # a cross-plugin opinion not yet baked (no snapshot file shipped yet) --
+        # never crash, never blank the marker.
+        with tempfile.TemporaryDirectory() as t:
+            snap_dir = Path(t) / "opinion-snapshots"
+            snap_dir.mkdir()
+            text = "<!-- opinion:good -->\noriginal\n<!-- /opinion:good -->\n"
+            out = src_model.interpolate_opinions(text, ["good"], snap_dir)
+            self.assertEqual(out, text)
+
+    def test_repeated_marker_pair_for_the_same_opinion_splices_every_occurrence(self):
+        # Regression: interpolate_opinions() previously used re.sub(count=1),
+        # which left a second occurrence of the same opinion's marker holding
+        # stale seed prose (found in adversarial review, close-out).
+        with tempfile.TemporaryDirectory() as t:
+            tmp = Path(t)
+            snap_dir = self._snapshot(tmp, "good", "THE-STANDARD")
+            text = ("A <!-- opinion:good -->STALE-FIRST<!-- /opinion:good --> B "
+                    "<!-- opinion:good -->STALE-SECOND<!-- /opinion:good --> C")
+            out = src_model.interpolate_opinions(text, ["good"], snap_dir)
+            self.assertEqual(out.count("THE-STANDARD"), 2)
+            self.assertNotIn("STALE-FIRST", out)
+            self.assertNotIn("STALE-SECOND", out)
+
+    def test_multiple_opinions_each_spliced_independently(self):
+        with tempfile.TemporaryDirectory() as t:
+            tmp = Path(t)
+            snap_dir = self._snapshot(tmp, "good", "GOOD-BODY")
+            (snap_dir / "efficient.md").write_text(
+                "---\nname: efficient\nkind: opinion\n---\nEFFICIENT-BODY\n", encoding="utf-8")
+            text = ("<!-- opinion:good -->\nx\n<!-- /opinion:good -->\n"
+                    "<!-- opinion:efficient -->\ny\n<!-- /opinion:efficient -->\n")
+            out = src_model.interpolate_opinions(text, ["good", "efficient"], snap_dir)
+            self.assertIn("GOOD-BODY", out)
+            self.assertIn("EFFICIENT-BODY", out)
+
+    def test_render_primitive_text_no_opinions_key_returns_source_unchanged(self):
+        with tempfile.TemporaryDirectory() as t:
+            tmp = Path(t)
+            f = tmp / "cmd.md"
+            f.write_text("---\nname: x\nkind: command\n---\n# X\n", encoding="utf-8")
+            prim = src_model.Primitive(
+                name="x", kind="command", supported_hosts=["claude-code"],
+                manifest=f, root=f, frontmatter={"name": "x", "kind": "command"})
+            self.assertEqual(src_model.render_primitive_text(prim), f.read_text(encoding="utf-8"))
+
+    def test_render_primitive_text_with_opinions_key_interpolates(self):
+        with tempfile.TemporaryDirectory() as t:
+            tmp = Path(t)
+            snap_dir = self._snapshot(tmp, "good", "THE-STANDARD")
+            f = tmp / "cmd.md"
+            f.write_text(
+                "---\nname: x\nkind: command\nopinions: [good]\n---\n"
+                "# X\n<!-- opinion:good -->\nstale\n<!-- /opinion:good -->\n",
+                encoding="utf-8")
+            prim = src_model.Primitive(
+                name="x", kind="command", supported_hosts=["claude-code"],
+                manifest=f, root=f, frontmatter={"name": "x", "kind": "command", "opinions": ["good"]})
+            out = src_model.render_primitive_text(prim, snap_dir)
+            self.assertIn("THE-STANDARD", out)
+            self.assertNotIn("stale", out)
+
+
 if __name__ == "__main__":
     unittest.main()

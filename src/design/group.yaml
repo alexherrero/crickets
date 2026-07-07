@@ -48,4 +48,11 @@ capabilities: [design-docs, design, architecture]
 #          collapses over) a stale [PENDING-IMPL] placeholder, doc-level
 #          per the design call in task 1/2's own commit (governs: target
 #          exists on disk while the doc still claims it's unbuilt).
-version: 0.4.0
+# 0.5.0 = PLAN-opinion-consumer-grammar task 2: commands/design.md declares
+#          opinions: [good] and gets its first build-time-interpolated
+#          section -- generate.py now bakes the `good` opinion's committed
+#          snapshot body into the Step 6 review-pass prose (a marker pair,
+#          never a live agentm read), proving the cross-plugin markdown-prose
+#          consumer grammar agentm's opinion-registry design just locked
+#          (own frontmatter version 0.2.0 -> 0.2.1).
+version: 0.5.0

@@ -123,7 +123,7 @@ Rename `github-ci` → `maintenance` *in place*: `group.yaml` name + `capabiliti
 
 ### Opinions it consumes
 
-maintenance **requests `done`** — a repair is not finished until `verify.sh` passes and the residual risks are stated honestly (the repair guarantees are `done` applied to a fix) — and composes **`good`** when it leans on code-review / diagnostics. *(Hardwired today; request-by-name is Phase-3/4 — the [Opinions design](https://github.com/alexherrero/agentm/wiki/agentm-opinions-and-gates).)*
+maintenance's `dependabot-fixer` applies its **own** local completion criterion — a repair is not finished until `verify.sh` passes and the residual risks are stated honestly — philosophically in the spirit of `done`, and composes **`good`** when it leans on code-review / diagnostics. *(Not a grounded `done` binding: a 2026-07-07 grounding pass, PLAN-opinion-consumer-grammar task 4, found no citation of `done`'s actual prose — the `check-all.sh`/`PLAN.md`/`progress.md` triad — anywhere in `src/maintenance/`; `verify.sh`-exit-0 is `dependabot-fixer`'s own standalone criterion, not a shared standard. See [composition](crickets-composition.md)'s Amendment log for the full finding. Wiring a real `done` binding would require the standard's prose to be authored here first — out of scope until a future change does that.)*
 
 ## Dependencies
 
@@ -155,6 +155,8 @@ The rename is **in place**: the plugin directory `github-ci` → `maintenance`, 
 - **Up:** [crickets HLD](crickets-hld.md) · [composition](crickets-composition.md) · [agentm Personas](https://github.com/alexherrero/agentm/wiki/agentm-personas) (Maintainer — the persona this is the executing arm of)
 
 ## Amendment log
+
+**2026-07-07 — corrected the `done` binding claim; no real prose site exists (PLAN-opinion-consumer-grammar task 4 grounding pass).** A grounding pass across `src/maintenance/` for any real prose stating the `done` standard found none — `dependabot-fixer/SKILL.md`'s `verify.sh`-exit-0 criterion is philosophically similar but not a citation of `done`'s actual prose (which names development-lifecycle's `check-all.sh`/`PLAN.md`/`progress.md` triad, a mismatch for a skill that runs standalone). Reworded "Opinions it consumes" above from "requests `done` ... hardwired today" (implying a real, undeclared binding waiting on request-by-name plumbing) to state plainly that no grounded binding exists yet. *Why not author the missing prose here:* out of this plan's scope (the consumer grammar, not net-new opinion-standard content) — deferred to whoever next substantively touches maintenance. *Re-audit trigger:* if `dependabot-fixer` (or a future maintenance primitive) is changed to cite `done`'s actual prose, reclassify this as a grounded binding and wire it via the now-proven markdown-prose consumer grammar ([composition](crickets-composition.md)).
 
 **2026-06-28 — lock-down sweep (operator review).** Resized the primitives diagram to the house ~1.3× convention (`diagrams/crickets-maintenance.svg`). Confirmed maintenance keeps a shipped codebase healthy (deps repair + currency · CVE patching · tech-debt inventory; `dependabot-fixer` delivered, the rest greenfield) and its composition (calls `diagnostics`, pairs with `privacy`, `content-refresh` re-pins `token-audit` pricing, `model-drift-detector` triggers it). No content change. Locked as a v5–v8 guidepost.
 

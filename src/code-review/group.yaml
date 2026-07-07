@@ -19,7 +19,14 @@ description: Standalone adversarial code review of any diff or PR — the advers
 # R3.1a): enforcement disabled, the bad-flip fixture sails through
 # undetected (rc 0 instead of 2). Additive to the default-FAIL contract.
 # 0.2.6 = AG Wave A rename 1: enhances target developer-workflows -> development-lifecycle.
-version: 0.2.6
+# 0.2.7 = PLAN-opinion-consumer-grammar task 3: agents/adversarial-reviewer.md
+# declares opinions: [good] -- code-review IS good's implements: artifact
+# (self-provider, per the locked agentm opinion-registry consumer grammar),
+# so this stays hardwired, no interpolation, honesty-checked by a new
+# check-opinion-self-provider-drift.py that flags the agentm opinions/good.md
+# stub falling out of sync with this file's own prose, never the reverse
+# (own frontmatter version 0.1.0 -> 0.1.1).
+version: 0.2.7
 category: Coding
 requires: []
 standalone: true

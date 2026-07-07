@@ -3,9 +3,10 @@ name: design
 description: Author → translate → sequence a design doc into a topo-ordered set of named plans. The upstream authoring step above /plan.
 kind: command
 supported_hosts: [claude-code, antigravity]
-version: 0.2.0
+version: 0.2.1
 install_scope: project
 argument-hint: author <slug|brief> [--rung full|abbreviated|architecture] (default)  |  translate <slug>  |  sequence <slug>
+opinions: [good]
 ---
 
 You are running the **design** command — the upstream authoring step of the development-lifecycle loop. `/design` sits *above* `/plan`: where `/plan` turns a brief into a task list, `/design` walks a human through a real design doc, gates on human approval, splits the approved design into structural parts, and emits one named plan per part for `/work` + `/review` to execute.
@@ -139,7 +140,16 @@ After all sections are filled, present a summary (sections filled, sub-attrs des
 
 ### Step 6 — Review pass (invoked on a `Status: review` doc)
 
-Announce review-pass mode, then walk each section (Context → … → Operations) and each Quality-Attributes sub-attr, prompting **Approve / Revise / Skip**:
+Announce review-pass mode, then walk each section (Context → … → Operations) and each Quality-Attributes sub-attr, prompting **Approve / Revise / Skip**, holding each section to the standard below:
+
+<!-- opinion:good -->
+Good means it survives an adversarial pass primed to assume bugs exist, not
+a friendly skim. The standard is a failing test, a specific file:line
+defect, or an explicit "no issues found" after genuinely looking — prose
+critique without one of those three is not a review.
+<!-- /opinion:good -->
+
+Applied to a design doc: an **Approve** means the section survives a hostile read, not that it looks plausible on a skim; a vague or unverifiable claim gets **Revise**, not a pass.
 
 - **Approve** — passes unchanged (track the count).
 - **Revise** — reopen the section via the Step-2 walk (accept new content, replace).

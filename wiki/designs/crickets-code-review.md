@@ -69,7 +69,7 @@ A PreToolUse hook (shipped here, enforcing [development-lifecycle](crickets-deve
 
 ### Opinions it consumes
 
-code-review **implements `good`** — the adversarial-review contract *is* what `good` looks like applied to code: a change has to survive a hostile read, and a finding has to be a falsifiable `file:line`, not an opinion. *(The standard is hardwired in the reviewers today; requesting `good` by name — `opinion_request("good")` — is the Phase-3/4 registry work, the [Opinions design](https://github.com/alexherrero/agentm/wiki/agentm-opinions-and-gates).)*
+code-review **implements `good`** — the adversarial-review contract *is* what `good` looks like applied to code: a change has to survive a hostile read, and a finding has to be a falsifiable `file:line`, not an opinion. *(The standard is hardwired in the reviewers — `adversarial-reviewer.md` declares `opinions: [good]` frontmatter as a **self-provider** binding, per the locked [agentm opinion-registry consumer grammar](https://github.com/alexherrero/agentm/wiki/agentm-opinions-and-gates): code-review IS the `good` opinion's `implements:` artifact, so it stays hardwired with no interpolation, and `scripts/check-opinion-self-provider-drift.py` (PLAN-opinion-consumer-grammar task 3, 2026-07-07) flags agentm's `opinions/good.md` stub if it drifts from this file's own prose. Full request-by-name resolution — `opinion_request("good")` at runtime — remains future registry work.)*
 
 ## Dependencies
 
@@ -81,7 +81,7 @@ code-review **implements `good`** — the adversarial-review contract *is* what 
 
 ## Risks & open questions
 
-- **The `good` opinion is hardwired today** — the three-form contract is embedded in the reviewers; requesting `good` by name (`opinion_request`) is Phase-3/4 (the [Opinions design](https://github.com/alexherrero/agentm/wiki/agentm-opinions-and-gates)). **`[PENDING-IMPL]`** — wire the request-by-name when the Opinion registry ships; until then the hardwired contract *is* `good`.
+- **The `good` opinion is hardwired today, now declared + drift-checked** — the three-form contract is embedded in the reviewers, and `adversarial-reviewer.md`'s `opinions: [good]` frontmatter (PLAN-opinion-consumer-grammar task 3, 2026-07-07) makes the binding explicit + monitored (`check-opinion-self-provider-drift.py`) rather than silently implicit; requesting `good` by name (`opinion_request`) at runtime is still future registry work (the [Opinions design](https://github.com/alexherrero/agentm/wiki/agentm-opinions-and-gates)). **`[PENDING-IMPL]`** — wire the request-by-name when the Opinion registry ships; until then the hardwired-but-declared contract *is* `good`.
 - **The cross-model reviewer depends on an external CLI** (Gemini) — opt-in per invocation, editable to another model in `cross-review.sh`, and graceful-fallback to the in-process reviewer; not a hard dependency. **It also crosses a trust boundary** — the raw diff goes to a third-party model with no redaction today; composing `privacy`'s `pii-scrubber` (Dependencies) closes it (`[PENDING-IMPL]`).
 - **The `{domain}-review` family is future scope** — peer-review beyond code (`design-review`, `doc-review`) arrives as sibling plugins, not a bloated single one.
 - **Re-audit triggers:** wire `opinion_request("good")` when the registry ships; add `{domain}-review` siblings when peer-review beyond code is needed.
@@ -92,6 +92,8 @@ code-review **implements `good`** — the adversarial-review contract *is* what 
 - **Up / composes:** [crickets HLD](crickets-hld.md) · [composition](crickets-composition.md) · [agentm Opinions](https://github.com/alexherrero/agentm/wiki/agentm-opinions-and-gates) (`good`)
 
 ## Amendment log
+
+**2026-07-07 — self-provider `good` binding declared + drift-checked (PLAN-opinion-consumer-grammar task 3).** `adversarial-reviewer.md` gained `opinions: [good]` frontmatter — a **self-provider** binding under the locked agentm opinion-registry consumer grammar (code-review IS the `good` opinion's `implements:` artifact, so it stays hardwired with no interpolation). `scripts/check-opinion-self-provider-drift.py` now flags agentm's `opinions/good.md` stub if it drifts from this file's own prose (never the reverse). Updated "Opinions it consumes" and the hardwired-opinion risk bullet to reflect that the binding is now explicit and monitored, not silently implicit — full `opinion_request("good")` runtime resolution is unchanged, still `[PENDING-IMPL]`. *Note for `crickets-composition.md` readers:* this does not move code-review off composition's "still hardwired" list — a self-provider binding stays hardwired by design; only cross-plugin bindings (e.g. `design`→`good`) move to "interpolated." *Re-audit trigger:* `opinion_request("good")` ships at runtime, or the drift check's anchor list needs revision as this file's prose evolves.
 
 **2026-06-28 — lock-down sweep (operator review).** Converted the structure mermaid to a house-style hand-SVG (`diagrams/crickets-code-review.svg`). Confirmed code-review is *an implementation of `good` applied to code* and the falsifiable-findings-only invariant (failing test / `file:line` / `NO ISSUES`; prose rejected). The folded ADR 0009 record and the newest-first log are unchanged. Locked as a v5–v8 guidepost.
 
