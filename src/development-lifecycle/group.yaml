@@ -484,5 +484,10 @@ enhances:
 #          troubleshooter) via the new resolve_workflow_persona.py bridge —
 #          explicit invocation still wins, graceful-skip when agentm is
 #          absent. Additive; no existing behavior changes.
-version: 0.35.0
+# 0.35.1 = AG Wave D task 4: work.md step 10 and release.md steps 7/8 now
+#          also invoke the Planner (TPM) maintenance cycle
+#          (github-projects/scripts/planner_maintain.py) at the same
+#          graceful-skip board-sync gate they already call project_sync.py
+#          post from — no new gate, no new capability probe.
+version: 0.35.1
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

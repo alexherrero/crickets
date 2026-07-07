@@ -77,5 +77,32 @@ standalone: false
 # live vault-tracked ones (#26/#146/#150/#151/#152) were relinked + field-synced
 # by hand — 3 closed non-vault "plan orphans" (#24/#25/#27) were deliberately
 # left off Project #5, matching the earlier orphan-cleanup plan's intent.
-version: 0.2.5
+# 0.3.0 = AG Wave D — the Planner (TPM) persona's depth-maintainer (new
+# depth_maintain.py): scans board-items.json for a Feature/Sub-feature with
+# zero materialized Plan children while a real, active PLAN-<slug>.md exists,
+# and either materializes the missing Plan in-memory (id-equals-feature-id
+# convention, or an explicit fields.plan_slug override) or flags it for
+# operator judgment when neither signal resolves — never guesses via fuzzy
+# title matching. Composes on project_model.py/project_sync.py; never calls
+# `gh` itself, never modifies sync_fields/sync_nesting/resolve_field_ids.
+# 0.3.1 = AG Wave D — the Planner (TPM) persona's drift-corrector (new
+# drift_correct.py): independently re-derives update/orphan drift (never
+# parses check_project_sync.compute_drift's string lines, and never modifies
+# that module) and acts on it — `update` calls project_sync.py's existing
+# `post` body-sync path by item id (the same idempotent write it already
+# does manually); `orphan` is surfaced as an operator-facing flag and NEVER
+# auto-closed or edited (the plan's own locked design call, carried forward
+# from the superseded chief-of-staff plan). report_drift.py/
+# github-projects:report-board-drift itself stays report-only and unmodified.
+# 0.3.2 = AG Wave D task 4: new planner_maintain.py composes depth_maintain.py
+# + drift_correct.py into one entrypoint (depth pass persists to
+# board-items.json before the drift pass runs, so a just-materialized
+# Plan/Task is visible to its own disk re-read) + a new planner-maintain
+# command for explicit invocation. Wired into development-lifecycle's
+# work.md step 10 and release.md steps 7/8 at the existing graceful-skip
+# board-sync gate (development-lifecycle 0.34.7 -> 0.34.8). No dispatcher
+# exists yet that reads a persona's modes:/triggers: and routes into this —
+# that plumbing (persona_resolve.py/persona_compile.py) lives in agentm and
+# validates shape only; when it ships, it calls this same script.
+version: 0.3.2
 capabilities: [board-sync]
