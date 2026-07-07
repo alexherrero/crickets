@@ -24,11 +24,11 @@ approved: 2026-06-23
 Research runs in two modes:
 
 - **On-demand** — answer a question now: `explorer` *(delivered)*, `researcher` *(delivered)*, and a new `idea-search` *(greenfield)* — find what's already in the vault before reaching outward.
-- **Scheduled forward-learning** *(designed)* — reach approved sources on a cadence, bring back what's worth knowing, surface it; leans on agentm's scheduler + approved-source pipeline.
+- **Scheduled forward-learning** *(delivered)* — reach approved sources on a cadence, bring back what's worth knowing, surface it; leans by name on agentm's scheduler + approved-source pipeline.
 
-![The research capability: on-demand (explorer · researcher · idea-search) enhances /plan and forward-refs the operator-personal deep-research agent; scheduled forward-learning (learn-forward · codebase-improvement — designed) leans by name on agentm's forward-experience engine (scheduler + approved sources)](diagrams/crickets-research.svg)
+![The research capability: on-demand (explorer · researcher · idea-search) enhances /plan and forward-refs the operator-personal deep-research agent; scheduled forward-learning (learn-forward · codebase-improvement) leans by name on agentm's forward-experience engine (scheduler + approved sources)](diagrams/crickets-research.svg)
 
-*Two modes — on-demand (ships) and scheduled forward-learning (designed, leaning by name on agentm's unbuilt substrate); deep multi-source work is forward-referenced to an operator-personal agent; the on-demand half enhances `/plan`.*
+*Two modes — on-demand and scheduled forward-learning both ship; scheduled forward-learning leans by name on agentm's forward-experience substrate (built 2026-07-07); deep multi-source work is forward-referenced to an operator-personal agent; the on-demand half enhances `/plan`.*
 
 ## Design
 
@@ -46,25 +46,25 @@ Research runs in two modes:
 - *Automated:* dispatches `explorer` for in-repo fan-out and runs its own `WebFetch` for a few targeted lookups; **forward-references an operator-personal deep-research agent by name** when one is installed, degrading to `explorer` + `WebFetch` otherwise. The bounded-web boundary is deliberate — unbounded crawling is the named anti-pattern.
 - *Artifacts:* none — read-only.
 
-### `idea-search` — find what's known first *(greenfield)*
+### `idea-search` — find what's known first *(delivered)*
 
 - *Entry:* `idea-search <question>` — invoked before reaching outward, to surface ideas already captured in the vault + codebase that bear on the question.
 - *Exit:* a ranked set of existing relevant entries, so research starts from what's known.
 - *Automated:* a read-only scan over the recall engine.
 - *Artifacts:* none — reads memory, writes nothing.
 
-**`[PENDING-IMPL]`** — build `idea-search` over the recall engine (documenter); it does not exist today.
+Delivered — `src/research/scripts/idea_search.py`, covered by `scripts/test_research_idea_search.py`.
 
-### Scheduled forward-learning — `learn-forward` + `codebase-improvement` *(designed)*
+### Scheduled forward-learning — `learn-forward` + `codebase-improvement` *(delivered)*
 
-- *Entry:* a scheduled trigger (the agentm scheduler).
+- *Entry:* a scheduled trigger (the agentm scheduler, via a job manifest's `command:`).
 - *Exit:* surfaced findings — `learn-forward`: ideas mined from approved sources; `codebase-improvement`: stale-pattern findings in the operator's own repos — **surfaced, never adopted silently**.
-- *Automated:* `learn-forward` routes to approved sources on a cadence; `codebase-improvement` applies research insights to detect stale patterns.
-- *Artifacts:* findings land in the **idea incubator / watchlist** for operator review, via the memory engine.
+- *Automated:* `learn-forward` (`src/research/scripts/learn_forward.py`) is a thin wrapper that calls agentm's real `run_forward_learning()` in-process via `agentm_bridge.py`'s `load_forward_learning_module()`; `codebase-improvement` (`src/research/scripts/codebase_improvement.py`) is self-contained — it scans a target repo for a stale pattern via plain substring match (stdlib-only, no AST) and never edits the repo.
+- *Artifacts:* `learn-forward` surfaces via agentm's own forward-learning output path; `codebase-improvement` writes exactly one watchlist finding per stale pattern found, in the same entry shape `forward_learning.py` uses (`personal/_watchlist/codebase-improvement/<slug>.md`, `status: pending-review` frontmatter), so agentm's `watchlist_review.py` picks it up as part of the same merged review surface — **surfaced, never adopted silently**.
 
-Both lean **by name** on agentm's **forward-experience substrate** — the scheduler + approved-source pipeline — which are designed-not-built (the [Experience design](https://github.com/alexherrero/agentm/wiki/agentm-experience-and-dreaming)). `research` names the interface and uses it; it does not absorb the substrate (the one-way rule).
+Both lean **by name** on agentm's **forward-experience substrate** — the scheduler + approved-source pipeline — built 2026-07-07 as `PLAN-wave-e-experience` task 1 on agentm (`harness/skills/memory/scripts/forward_learning.py`, config at `_meta/forward-learning-sources.json`, job registration via `templates/jobs/forward-learning.yaml` against `scripts/runner/manifest.py`). `research` names the interface and uses it; it does not absorb the substrate (the one-way rule) — `codebase_improvement.py` calls no private agentm function, only writing the shared watchlist entry shape.
 
-**`[PENDING-IMPL]`** — build `learn-forward` + `codebase-improvement` once the agentm scheduler + approved-source pipeline ship (documenter); the on-demand half ships first, with no dependency on unbuilt infrastructure.
+Shipped as `PLAN-wave-c-research-forward-learning` (all 3 tasks: `learn-forward`, `codebase-improvement`, plugin wiring — `src/research/group.yaml` bumped 0.1.1 → 0.2.0). Covered by `scripts/test_research_learn_forward.py` (3 tests) and `scripts/test_research_codebase_improvement.py` (4 tests).
 
 ### The adapt-don't-import boundary
 
@@ -72,7 +72,7 @@ Both lean **by name** on agentm's **forward-experience substrate** — the sched
 
 ### First slice
 
-`explorer` + `researcher` + a new `idea-search`. Defer all scheduled forward-learning until the agentm forward-experience substrate is built. This ships a real research capability without touching unbuilt infrastructure.
+`explorer` + `researcher` + a new `idea-search`. Scheduled forward-learning (`learn-forward` + `codebase-improvement`) followed once the agentm forward-experience substrate shipped (`PLAN-wave-e-experience` task 1, 2026-07-07) — landed via `PLAN-wave-c-research-forward-learning`. This ships a real research capability without touching unbuilt infrastructure at each step.
 
 ### Opinions it consumes
 
@@ -81,7 +81,7 @@ research leans on **`how-we-engineer`** — it feeds the plan → design → arc
 ## Dependencies
 
 - **enhances `development-lifecycle`'s `plan`** (soft) — research informs the brief before planning; `researcher` sits at the front of the loop. It works standalone, so it enhances rather than requires the loop (matching the composition map).
-- **leans by name on the agentm forward-experience substrate** (scheduler + approved-source pipeline — designed-not-built) for the scheduled half ([Experience design](https://github.com/alexherrero/agentm/wiki/agentm-experience-and-dreaming)); it rests on the agentm substrate, one-way.
+- **leans by name on the agentm forward-experience substrate** (scheduler + approved-source pipeline — built 2026-07-07, `PLAN-wave-e-experience` task 1) for the scheduled half ([Experience design](https://github.com/alexherrero/agentm/wiki/agentm-experience-and-dreaming)); it rests on the agentm substrate, one-way.
 - **leans on the recall engine** for `idea-search` ([agentm Memory System](https://github.com/alexherrero/agentm/wiki/agentm-memory-system)).
 - **composes with an operator-personal deep-research agent by forward-reference** when present — by name and contract.
 - **borders the adapt-don't-import seam** (one-way: discovery → watchlist → operator-gate).
@@ -90,19 +90,21 @@ research leans on **`how-we-engineer`** — it feeds the plan → design → arc
 ## Risks & open questions
 
 - **Deep multi-source research is forward-referenced.** `researcher` references an operator-personal deep-research agent by name + contract when one is installed, degrading to `explorer` + bounded `WebFetch` otherwise. Revisit if the forward-reference proves insufficient in real use.
-- **The scheduled half is blocked** on the agentm scheduler + approved-source pipeline (designed-not-built) — named and deferred. It stays in this design (one capability, not a split — operator-decided).
+- **The scheduled half shipped** (`PLAN-wave-c-research-forward-learning`, 2026-07-07) once the agentm scheduler + approved-source pipeline landed (`PLAN-wave-e-experience` task 1, same date). It stays in this design (one capability, not a split — operator-decided).
 - **`idea-search`'s relevance bar** — a vault scan that surfaces stale or tangential ideas wastes the "find what's known first" step; calibrate the recall threshold so it returns genuinely-bearing entries, not everything adjacent.
-- **Re-audit triggers:** flip the `[PENDING-IMPL]` markers as `idea-search`, then the scheduled workflows, land; revisit the forward-reference approach only if it proves insufficient in real use.
+- **Re-audit triggers:** revisit the forward-reference approach only if it proves insufficient in real use; re-verify `learn-forward` / `codebase-improvement` against agentm's forward-learning shapes (`_meta/forward-learning-sources.json`, `templates/jobs/forward-learning.yaml`) if agentm changes them, since this design's own build re-confirmed those shapes had drifted from the original guess (JSON config, not YAML; a real job-manifest schema, not a mockable `Scheduler` object) before consuming them.
 
 ## References
 
 - **The agents:** `researcher` + `explorer` (read-only; `researcher` forward-references an operator-personal deep-research agent when present)
-- **The forward-experience substrate it leans on (designed-not-built):** [agentm Experience design](https://github.com/alexherrero/agentm/wiki/agentm-experience-and-dreaming) (the scheduler + approved-source learning)
+- **The forward-experience substrate it leans on (built 2026-07-07):** [agentm Experience design](https://github.com/alexherrero/agentm/wiki/agentm-experience-and-dreaming) (the scheduler + approved-source learning — `harness/skills/memory/scripts/forward_learning.py`)
 - **The recall engine `idea-search` leans on:** agentm `harness/skills/memory/scripts/recall.py` ([agentm Memory System](https://github.com/alexherrero/agentm/wiki/agentm-memory-system))
 - **The adapt-don't-import seam it borders:** agentm `harness/skills/memory/scripts/adapt_skills.py` · `harness/agents/adapt-evaluator.md` (discovery → watchlist → operator-gate)
 - **Siblings:** [crickets HLD](crickets-hld.md) · [composition](crickets-composition.md) · [agentm Personas](https://github.com/alexherrero/agentm/wiki/agentm-personas) (Researcher) · [agentm Experience](https://github.com/alexherrero/agentm/wiki/agentm-experience-and-dreaming)
 
 ## Amendment log
+
+**2026-07-07 — scheduled forward-learning shipped; `research` is now fully delivered (PLAN-wave-c-research-forward-learning).** `learn-forward` (`src/research/scripts/learn_forward.py`) and `codebase-improvement` (`src/research/scripts/codebase_improvement.py`) landed, unblocking the `[PENDING-IMPL]` this design named at approval. `learn-forward` is a thin wrapper leaning **by name** on agentm's real forward-learning pipeline (`harness/skills/memory/scripts/forward_learning.py`, shipped the same day as `PLAN-wave-e-experience` task 1 — the substrate this design was waiting on); `agentm_bridge.py` (idea-search's existing bridge module) gained `load_forward_learning_module()`, the same resolver pattern `load_recall_module()` already used. `codebase-improvement` is self-contained — stdlib-only substring scan for a stale pattern, writes exactly one watchlist finding per hit in `forward_learning.py`'s own entry shape, never edits the scanned repo, calls no private agentm function. `src/research/group.yaml` bumped 0.1.1 → 0.2.0. Flipped every `(designed)` / `[PENDING-IMPL]` marker in this doc to `(delivered)` for the scheduled half, and separately corrected a stale `idea-search` `[PENDING-IMPL]` marker left over from before that primitive shipped (unrelated to this plan; `idea_search.py` + its test suite already existed). *Why worth recording precisely:* this plan's own unblock condition was re-verified against real agentm artifacts, not design prose, before the session started — and two of the three original guesses had drifted (config is JSON against `_meta/forward-learning-sources.json`, not YAML; job registration is a real schema in `templates/jobs/forward-learning.yaml` against `scripts/runner/manifest.py`, not a mockable `Scheduler` object). *Re-audit trigger:* if agentm changes either shape again, re-verify `learn_forward.py` / `agentm_bridge.py` against the new shape before trusting this doc's file references.
 
 **2026-07-07 — corrected the `how-we-engineer` binding claim; no real prose site exists (PLAN-wave-d-personas task 1 grounding pass).** `src/research/` carries exactly two files (`scripts/agentm_bridge.py`, `scripts/idea_search.py`) — zero skill/command markdown, so there is no static-prose site for the grammar to bind. Reworded "Opinions it consumes" above from "hardwired today" (implying a real, undeclared binding waiting on request-by-name plumbing) to state plainly that no grounded binding exists yet — the same shape `PLAN.archive.20260707-opinion-consumer-grammar.md` task 4 already found for `maintenance`/`wiki`. *Why not author the missing prose here:* out of this plan's scope (the consumer grammar, not net-new opinion-standard content) — deferred to whoever next substantively touches research. *Re-audit trigger:* if a future change adds real `how-we-engineer`-shaped prose to a shipped `src/research/` file, reclassify this as a grounded binding and wire it via the markdown-prose consumer grammar ([composition](crickets-composition.md)).
 

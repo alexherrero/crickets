@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
-"""Bridge to agentm's memory-recall engine, read-only (crickets wave-c-research).
+"""Bridge to agentm's memory-recall + forward-learning engines, read/discovery-
+only (crickets wave-c-research).
 
 Locates agentm's harness/skills/memory/scripts/ dir via the same path-fallback
 convention as src/diagnostics/scripts/agentm_bridge.py, then file-path-loads
-recall.py so idea-search can call its hybrid query engine in-process. Absent
-agentm -> graceful-skip (query_semantic returns []), never raises.
+recall.py (idea-search) and forward_learning.py (learn-forward,
+PLAN-wave-c-research-forward-learning task 1) so each primitive can call
+agentm's real engines in-process. Absent agentm -> graceful-skip
+(query_semantic returns []; load_forward_learning_module returns None),
+never raises.
 
 Deliberately narrower than diagnostics' bridge: this module never resolves or
-loads agentm's save.py -- idea-search has no write path to bypass in the
-first place, rather than a write path that merely goes unused.
+loads agentm's save.py directly -- forward_learning.py's own writes (to
+personal/_watchlist/ + _meta/forward-learning-cache/) already route through
+agentm's save/write primitives internally; this bridge adds no new write path
+of its own.
 """
 from __future__ import annotations
 
@@ -21,6 +27,9 @@ _MEMORY_SCRIPTS_REL = Path("harness") / "skills" / "memory" / "scripts"
 
 _recall_module = None
 _loaded = False
+
+_forward_learning_module = None
+_fl_loaded = False
 
 
 def _candidate_dirs() -> list[Path]:
@@ -72,8 +81,28 @@ def query_semantic(vault: Path, query_text: str, *, filter_expr: "str | None" = 
     return module.query(vault=vault, query_text=query_text, filter_expr=filter_expr, k=k)
 
 
+def load_forward_learning_module():
+    """Return agentm's forward_learning module (PLAN-wave-e-experience task
+    1's approved-source pipeline), loaded once and cached. None if agentm is
+    unresolvable (graceful-skip, not an error) -- same posture as
+    load_recall_module. Lives in the same scripts dir as recall.py, so the
+    same resolver applies unchanged."""
+    global _forward_learning_module, _fl_loaded
+    if _fl_loaded:
+        return _forward_learning_module
+    _fl_loaded = True
+    scripts_dir = _find_memory_scripts_dir()
+    if scripts_dir is None:
+        _forward_learning_module = None
+        return None
+    _forward_learning_module = _load_module("research_forward_learning_bridge", scripts_dir / "forward_learning.py")
+    return _forward_learning_module
+
+
 def _reset_cache_for_tests() -> None:
     """Test-only: clear the module-level cache between isolated test cases."""
-    global _recall_module, _loaded
+    global _recall_module, _loaded, _forward_learning_module, _fl_loaded
     _recall_module = None
     _loaded = False
+    _forward_learning_module = None
+    _fl_loaded = False

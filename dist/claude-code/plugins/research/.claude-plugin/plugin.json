@@ -6,7 +6,7 @@
   "dependencies": [
     "development-lifecycle"
   ],
-  "description": "Discovery-to-watchlist research primitives. idea-search is a read-only scan over the agentm recall engine surfacing existing vault/codebase entries relevant to a question. learn-forward and codebase-improvement (scheduled mining/detection onto the idea incubator, riding agentm's forward-experience runner) land in later tasks of this same plan.",
+  "description": "Discovery-to-watchlist research primitives. idea-search is a read-only scan over the agentm recall engine surfacing existing vault/codebase entries relevant to a question. learn-forward leans by name on agentm's approved-source forward-learning pipeline to mine operator-configured sources onto the watchlist. codebase-improvement applies a research insight's stale pattern against the operator's own repo, surfacing exactly one watchlist finding per match -- never auto-editing. All three are strictly discovery-surfacing: findings land in the watchlist for operator review, nothing is ever auto-adopted.",
   "name": "research",
-  "version": "0.1.1"
+  "version": "0.2.0"
 }

@@ -2,12 +2,29 @@ name: Research
 description: >-
   Discovery-to-watchlist research primitives. idea-search is a read-only
   scan over the agentm recall engine surfacing existing vault/codebase
-  entries relevant to a question. learn-forward and codebase-improvement
-  (scheduled mining/detection onto the idea incubator, riding agentm's
-  forward-experience runner) land in later tasks of this same plan.
+  entries relevant to a question. learn-forward leans by name on agentm's
+  approved-source forward-learning pipeline to mine operator-configured
+  sources onto the watchlist. codebase-improvement applies a research
+  insight's stale pattern against the operator's own repo, surfacing
+  exactly one watchlist finding per match -- never auto-editing. All three
+  are strictly discovery-surfacing: findings land in the watchlist for
+  operator review, nothing is ever auto-adopted.
 category: Coding
 requires: [development-lifecycle]
 standalone: false
+# 0.2.0 = learn-forward + codebase-improvement land (PLAN-wave-c-research-
+#          forward-learning tasks 1-2), the two research primitives the
+#          0.1.1 description forward-referenced as blocked on agentm's
+#          forward-experience substrate. learn-forward extends
+#          agentm_bridge.py with load_forward_learning_module() (same
+#          resolver as load_recall_module() -- forward_learning.py lives in
+#          the same agentm scripts dir as recall.py). codebase-improvement
+#          is a self-contained stdlib scan writing directly in
+#          forward_learning.py's own watchlist entry shape (no private
+#          agentm function called -- the shape is small enough to duplicate
+#          honestly). Minor bump: new capability surface, no breaking change
+#          to idea-search's existing shape.
+#
 # 0.1.1 = fix idea_search.py's agentm_bridge import: a bare `sys.path.insert`
 #          + `import agentm_bridge` collides with any OTHER plugin that owns
 #          its own agentm_bridge.py (e.g. src/maintenance/scripts/), since
@@ -16,5 +33,5 @@ standalone: false
 #          observed as an AttributeError in a same-process, cross-plugin
 #          test run (PLAN-wave-c-maintenance task 3). Now a private,
 #          uniquely-named file-path load. Zero behavior change otherwise.
-version: 0.1.1
+version: 0.2.0
 capabilities: [research]
