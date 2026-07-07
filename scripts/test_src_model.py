@@ -400,6 +400,20 @@ class TestOpinionInterpolation(unittest.TestCase):
             out = src_model.interpolate_opinions(text, ["good"], snap_dir)
             self.assertEqual(out, text)
 
+    def test_repeated_marker_pair_for_the_same_opinion_splices_every_occurrence(self):
+        # Regression: interpolate_opinions() previously used re.sub(count=1),
+        # which left a second occurrence of the same opinion's marker holding
+        # stale seed prose (found in adversarial review, close-out).
+        with tempfile.TemporaryDirectory() as t:
+            tmp = Path(t)
+            snap_dir = self._snapshot(tmp, "good", "THE-STANDARD")
+            text = ("A <!-- opinion:good -->STALE-FIRST<!-- /opinion:good --> B "
+                    "<!-- opinion:good -->STALE-SECOND<!-- /opinion:good --> C")
+            out = src_model.interpolate_opinions(text, ["good"], snap_dir)
+            self.assertEqual(out.count("THE-STANDARD"), 2)
+            self.assertNotIn("STALE-FIRST", out)
+            self.assertNotIn("STALE-SECOND", out)
+
     def test_multiple_opinions_each_spliced_independently(self):
         with tempfile.TemporaryDirectory() as t:
             tmp = Path(t)

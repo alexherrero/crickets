@@ -138,7 +138,14 @@ def interpolate_opinions(text: str, opinions: list, snapshots_dir: Path | None =
             continue
         body = strip_frontmatter(snapshot_path.read_text(encoding="utf-8")).strip()
         replacement = f"<!-- opinion:{name} -->\n{body}\n<!-- /opinion:{name} -->"
-        text = pattern.sub(lambda _m, r=replacement: r, text, count=1)
+        # No count= limit: every marker pair for this name gets spliced, not
+        # just the first. A primitive with the same opinion's marker repeated
+        # (e.g. referenced in two sections) must not silently keep stale seed
+        # prose in its second occurrence (found in review, PLAN-opinion-
+        # consumer-grammar close-out — not triggered by any shipped primitive
+        # today, but the marker syntax is a one-way door for every future
+        # cross-plugin binding).
+        text = pattern.sub(lambda _m, r=replacement: r, text)
     return text
 
 
