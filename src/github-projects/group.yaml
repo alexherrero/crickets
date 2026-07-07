@@ -77,5 +77,13 @@ standalone: false
 # live vault-tracked ones (#26/#146/#150/#151/#152) were relinked + field-synced
 # by hand — 3 closed non-vault "plan orphans" (#24/#25/#27) were deliberately
 # left off Project #5, matching the earlier orphan-cleanup plan's intent.
-version: 0.2.5
+# 0.3.0 = AG Wave D — the Planner (TPM) persona's depth-maintainer (new
+# depth_maintain.py): scans board-items.json for a Feature/Sub-feature with
+# zero materialized Plan children while a real, active PLAN-<slug>.md exists,
+# and either materializes the missing Plan in-memory (id-equals-feature-id
+# convention, or an explicit fields.plan_slug override) or flags it for
+# operator judgment when neither signal resolves — never guesses via fuzzy
+# title matching. Composes on project_model.py/project_sync.py; never calls
+# `gh` itself, never modifies sync_fields/sync_nesting/resolve_field_ids.
+version: 0.3.0
 capabilities: [board-sync]
