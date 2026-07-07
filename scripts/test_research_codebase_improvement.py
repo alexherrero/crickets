@@ -101,5 +101,64 @@ class CodebaseImprovementTests(unittest.TestCase):
         self.assertEqual(rc, 0)
 
 
+class RescanNeverResetsOperatorReviewTests(unittest.TestCase):
+    """Regression test for an adversarial-review finding: a rescan (a
+    scheduled job re-running over the same insight, or simply a new file
+    joining an already-surfaced pattern) must never silently reset an
+    operator's already-recorded review decision back to pending-review --
+    that decision is the entire point of the watchlist review workflow."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name)
+        self.vault = self.root / "vault"
+        self.vault.mkdir()
+        self.repo = self.root / "repo"
+        self.repo.mkdir()
+        (self.repo / "a.py").write_text("legacy_json_parser\n", encoding="utf-8")
+        self.insight = codebase_improvement.ResearchInsight(
+            slug="drop-legacy-json-parser",
+            title="legacy_json_parser is superseded by stdlib json",
+            stale_pattern="legacy_json_parser",
+            recommendation="Replace legacy_json_parser with the stdlib json module.",
+        )
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_reviewed_entry_survives_a_rescan_with_a_new_match(self):
+        written = codebase_improvement.improve(self.vault, self.repo, self.insight, now=1_700_000_000.0)
+        entry = written[0]
+        entry.write_text(
+            entry.read_text(encoding="utf-8").replace("status: pending-review", "status: reviewed-rejected"),
+            encoding="utf-8",
+        )
+
+        # A second matching file appears -- the kind of thing a scheduled
+        # rescan would naturally pick up.
+        (self.repo / "b.py").write_text("legacy_json_parser\n", encoding="utf-8")
+        result = codebase_improvement.improve(self.vault, self.repo, self.insight, now=1_700_100_000.0)
+
+        self.assertEqual(result, [])  # no-op: already reviewed, never rewritten
+        self.assertIn("status: reviewed-rejected", entry.read_text(encoding="utf-8"))
+
+    def test_pending_entry_is_updated_on_rescan_with_created_preserved(self):
+        written = codebase_improvement.improve(self.vault, self.repo, self.insight, now=1_700_000_000.0)
+        entry = written[0]
+        first_text = entry.read_text(encoding="utf-8")
+        self.assertIn("status: pending-review", first_text)
+        self.assertNotIn("b.py", first_text)
+
+        (self.repo / "b.py").write_text("legacy_json_parser\n", encoding="utf-8")
+        result = codebase_improvement.improve(self.vault, self.repo, self.insight, now=1_700_100_000.0)
+
+        self.assertEqual(len(result), 1)
+        second_text = entry.read_text(encoding="utf-8")
+        self.assertIn("status: pending-review", second_text)
+        self.assertIn("b.py", second_text)  # matched-file list refreshed
+        self.assertIn("created: 2023-11-14T22:13:20+00:00", second_text)  # preserved from the first write
+        self.assertIn("updated: 2023-11-16T02:00:00+00:00", second_text)  # advanced
+
+
 if __name__ == "__main__":
     unittest.main()

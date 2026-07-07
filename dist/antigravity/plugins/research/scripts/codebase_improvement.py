@@ -88,16 +88,31 @@ def _slugify(text: str) -> str:
     return "".join(out).strip("-") or "finding"
 
 
-def _write_finding(vault: Path, insight: ResearchInsight, matches: list, *, now_iso: str) -> Path:
-    entry_dir = vault / WATCHLIST_REL / SOURCE_SLUG
-    entry_path = entry_dir / f"{_slugify(insight.slug)}.md"
+def _entry_path(vault: Path, insight: ResearchInsight) -> Path:
+    return vault / WATCHLIST_REL / SOURCE_SLUG / f"{_slugify(insight.slug)}.md"
+
+
+def _read_frontmatter_field(entry_path: Path, field: str) -> "Optional[str]":
+    if not entry_path.exists():
+        return None
+    prefix = f"{field}:"
+    for line in entry_path.read_text(encoding="utf-8").splitlines():
+        if line.startswith(prefix):
+            return line[len(prefix):].strip()
+    return None
+
+
+def _write_finding(
+    vault: Path, insight: ResearchInsight, matches: list, *, created_iso: str, updated_iso: str
+) -> Path:
+    entry_path = _entry_path(vault, insight)
     matched_list = "\n".join(f"- `{m}`" for m in matches)
     content = (
         "---\n"
         "kind: pattern\n"
         "status: pending-review\n"
-        f"created: {now_iso}\n"
-        f"updated: {now_iso}\n"
+        f"created: {created_iso}\n"
+        f"updated: {updated_iso}\n"
         f"source_slug: {SOURCE_SLUG}\n"
         f"insight_slug: {insight.slug}\n"
         "evaluator_classification: MEDIUM\n"
@@ -108,7 +123,7 @@ def _write_finding(vault: Path, insight: ResearchInsight, matches: list, *, now_
         "**Matched files (surfaced only -- not edited):**\n\n"
         f"{matched_list}\n"
     )
-    entry_dir.mkdir(parents=True, exist_ok=True)
+    entry_path.parent.mkdir(parents=True, exist_ok=True)
     # Same temp-then-rename convention as agentm's atomic_write -- avoids a
     # torn read if a concurrent watchlist_review scan is mid-walk.
     tmp = entry_path.with_suffix(entry_path.suffix + ".tmp")
@@ -123,14 +138,31 @@ def improve(
     """Detect `insight.stale_pattern` in `repo_path`; if any file matches,
     write exactly ONE watchlist finding naming them all. Returns the list
     of watchlist entries written (0 or 1 -- never more, never a partial
-    per-match fan-out). `repo_path` is never written to."""
+    per-match fan-out). `repo_path` is never written to.
+
+    Idempotent-safe on rescan: if a finding for this insight already exists
+    AND an operator has already reviewed it (`status` is anything other
+    than `pending-review`), this is a no-op -- a rescan (a scheduled job
+    re-running over the same insight, or simply a new file joining an
+    already-surfaced pattern) NEVER silently resets an operator's review
+    decision back to `pending-review`. Only a still-`pending-review` entry
+    (or no entry yet) gets (re)written, and `created` is preserved across
+    those still-pending rewrites -- only `updated` and the matched-file
+    list change."""
     matches = detect(repo_path, insight)
     if not matches:
         return []
+
+    entry_path = _entry_path(vault, insight)
+    existing_status = _read_frontmatter_field(entry_path, "status")
+    if existing_status is not None and existing_status != "pending-review":
+        return []
+
     now = now if now is not None else datetime.now(timezone.utc).timestamp()
     now_iso = datetime.fromtimestamp(now, tz=timezone.utc).replace(microsecond=0).isoformat()
+    created_iso = _read_frontmatter_field(entry_path, "created") or now_iso
     rel_matches = [str(m.relative_to(repo_path)) for m in matches]
-    return [_write_finding(vault, insight, rel_matches, now_iso=now_iso)]
+    return [_write_finding(vault, insight, rel_matches, created_iso=created_iso, updated_iso=now_iso)]
 
 
 def main(argv=None) -> int:
