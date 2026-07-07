@@ -315,6 +315,46 @@ class TestBundleIgnore(unittest.TestCase):
             self.assertFalse((plugin_dir / "templates" / ".harness").exists())
             self.assertTrue((plugin_dir / "templates" / "real.md").exists())
 
+    def test_planted_harness_dir_excluded_from_reference_too(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            group = self._fixture_group(root)
+            src_reference = root / "fixture" / "reference"
+            (src_reference / ".harness").mkdir(parents=True)
+            (src_reference / "real.md").write_text("x", encoding="utf-8")
+            plugin_dir = root / "dist" / "fixture"
+            src_model.copy_group_reference(group, plugin_dir)
+            self.assertFalse((plugin_dir / "reference" / ".harness").exists())
+            self.assertTrue((plugin_dir / "reference" / "real.md").exists())
+
+
+class TestReferenceShape(unittest.TestCase):
+    """PLAN-wave-c-design-and-conventions task 5: `reference/` is a group-level
+    asset dir (like `scripts/`/`templates/`), not a primitive kind -- a
+    reference/*.md file carries no name/description/kind/supported_hosts/
+    version frontmatter requirement."""
+
+    def test_reference_dir_makes_a_zero_primitive_group_support_every_host(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest = root / "fixture" / "group.yaml"
+            manifest.parent.mkdir(parents=True, exist_ok=True)
+            manifest.write_text("name: F\ndescription: d\nstandalone: true\n", encoding="utf-8")
+            (manifest.parent / "reference").mkdir()
+            (manifest.parent / "reference" / "fact.md").write_text("# Fact\n", encoding="utf-8")
+            group = src_model.Group(
+                slug="fixture", name="F", description="d", category="Coding",
+                requires=[], standalone=True, enhances=[], capabilities=[],
+                manifest=manifest,
+            )
+            self.assertTrue(group.has_group_assets())
+            self.assertTrue(group.supports("claude-code"))
+            self.assertTrue(group.supports("antigravity"))
+
+    def test_reference_is_a_known_kind_dir_not_flagged_by_lint(self) -> None:
+        self.assertIn("reference", src_model.KNOWN_KIND_DIRS)
+        self.assertNotIn("reference", src_model.PRIMITIVE_KINDS)
+
 
 if __name__ == "__main__":
     unittest.main()

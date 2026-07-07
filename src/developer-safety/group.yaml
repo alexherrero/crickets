@@ -47,4 +47,11 @@ capabilities: [recoverability]
 # submitted prompt, not the next tool call; no longer fires on Antigravity
 # at all (no UserPromptSubmit equivalent there).
 # 0.3.6 = AG Wave A rename 1: enhances: [developer-workflows] -> [development-lifecycle].
-version: 0.3.6
+# 0.4.0 = new coauthor-guard hook (PLAN-wave-c-design-and-conventions task 7):
+# a native git prepare-commit-msg hook, not a Claude-Code lifecycle hook --
+# deterministically strips any Co-Authored-By trailer regardless of which
+# agent's name is on it. Additive on top of the existing commit-no-coauthor
+# snippet + host includeCoAuthoredBy floor, not a replacement. No automated
+# installer wires it in yet (mirrors privacy's pre-push convention) -- see
+# hooks/coauthor-guard/hook.md for manual install steps on both hosts.
+version: 0.4.0

@@ -52,11 +52,15 @@ KIND_HOST_EXPRESSIBLE: dict[str, frozenset[str]] = {
     "snippet": frozenset({"antigravity"}),
 }
 
-KNOWN_KIND_DIRS = {"skills", "hooks", "agents", "commands", "snippets", "mcp", "output-styles", "rules", "scripts", "templates"}
-# `scripts/` and `templates/` are NOT primitive kinds — they're group-level asset
-# dirs copied verbatim into the emitted plugin (e.g. code-review's cross-review.sh;
-# wiki-maintenance's wiki-sync.yml + section-template library). Listed
-# here so lint doesn't flag it as an unexpected kind folder.
+KNOWN_KIND_DIRS = {"skills", "hooks", "agents", "commands", "snippets", "mcp", "output-styles", "rules", "scripts", "templates", "reference"}
+# `scripts/`, `templates/`, and `reference/` are NOT primitive kinds — they're
+# group-level asset dirs copied verbatim into the emitted plugin (e.g. code-review's
+# cross-review.sh; wiki-maintenance's wiki-sync.yml + section-template library;
+# conventions' reference/gate-inventory.md). Listed here so lint doesn't flag it as
+# an unexpected kind folder. `reference/` docs are deliberately NOT primitives (no
+# name/description/kind/supported_hosts/version frontmatter required) — they are
+# objective house facts a rule cites, not a lifecycle-bearing thing to install/
+# enable/update on its own (crickets-conventions.md's "cited, not gated").
 
 
 def read_frontmatter(path: Path):
@@ -146,15 +150,15 @@ class Group:
 
     def has_group_assets(self) -> bool:
         """True when the group carries a host-agnostic group-level asset payload —
-        a `scripts/` or `templates/` dir. Such a payload is emittable (and must
-        emit, so the dist plugin actually carries it) even when the group has zero
-        host primitives: e.g. `obsidian-vault`, whose only payload is the
+        a `scripts/`, `templates/`, or `reference/` dir. Such a payload is emittable
+        (and must emit, so the dist plugin actually carries it) even when the group
+        has zero host primitives: e.g. `obsidian-vault`, whose only payload is the
         agentm-discovered storage backend under `scripts/` (LC-2 — a backend is
         engine-consumed, not a host primitive)."""
         if self.manifest is None:
             return False
         gd = self.manifest.parent
-        return (gd / "scripts").is_dir() or (gd / "templates").is_dir()
+        return (gd / "scripts").is_dir() or (gd / "templates").is_dir() or (gd / "reference").is_dir()
 
     def supports(self, host: str) -> bool:
         """A group targets a host if any of its primitives do, or it carries a
@@ -206,6 +210,21 @@ def copy_group_templates(group: "Group", plugin_dir: Path) -> None:
     if src_templates.is_dir():
         shutil.copytree(
             src_templates, plugin_dir / "templates", dirs_exist_ok=True,
+            ignore=bundle_ignore())
+
+
+def copy_group_reference(group: "Group", plugin_dir: Path) -> None:
+    """Copy a group's verbatim `reference/` asset dir into the emitted plugin at
+    `<plugin_dir>/reference/`. Like `copy_group_scripts`/`copy_group_templates` —
+    a wholesale, host-agnostic asset bundle (e.g. conventions' `gate-inventory.md`).
+    No-op when the group has no manifest or no `reference/` dir. Shared by both
+    host emitters."""
+    if group.manifest is None:
+        return
+    src_reference = group.manifest.parent / "reference"
+    if src_reference.is_dir():
+        shutil.copytree(
+            src_reference, plugin_dir / "reference", dirs_exist_ok=True,
             ignore=bundle_ignore())
 
 

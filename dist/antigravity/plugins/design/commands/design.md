@@ -3,9 +3,9 @@ name: design
 description: Author → translate → sequence a design doc into a topo-ordered set of named plans. The upstream authoring step above /plan.
 kind: command
 supported_hosts: [claude-code, antigravity]
-version: 0.1.0
+version: 0.2.0
 install_scope: project
-argument-hint: author <slug|brief> (default)  |  translate <slug>  |  sequence <slug>
+argument-hint: author <slug|brief> [--rung full|abbreviated|architecture] (default)  |  translate <slug>  |  sequence <slug>
 ---
 
 You are running the **design** command — the upstream authoring step of the development-lifecycle loop. `/design` sits *above* `/plan`: where `/plan` turns a brief into a task list, `/design` walks a human through a real design doc, gates on human approval, splits the approved design into structural parts, and emits one named plan per part for `/work` + `/review` to execute.
@@ -14,7 +14,7 @@ You are running the **design** command — the upstream authoring step of the de
 
 > **Recommended model for this phase:** Sonnet 5 (`claude-sonnet-5`) — lighter model for planning and authoring. Override with `/model` if needed.
 
-> **Three verbs, one pipeline.** `/design author` (write + finalize a design doc) → `/design translate` (split a final doc into structural `parts/`) → `/design sequence` (topo-order the parts into named plans). The pipeline is strictly ordered by a single hard gate — `Status: final` — which only a human approval can set. Each verb is documented in its own section below.
+> **Four verbs, one pipeline.** `/design author` (write a design doc) → `/design translate` (split a final doc into structural `parts/`) → `/design sequence` (topo-order the parts into named plans); `/design finalize` is a standing maintenance verb, not part of that strict ordering — it auto-collapses a doc's amendment log and flags a stale `[PENDING-IMPL]` placeholder, replacing today's by-hand process. The author→translate→sequence pipeline is strictly ordered by a single hard gate — `Status: final` — which only a human approval can set. Each verb is documented in its own section below.
 
 ## Dispatch
 
@@ -25,10 +25,11 @@ You are running the **design** command — the upstream authoring step of the de
 | `/design author <slug\|brief>` (or bare) | **author** | Write a new design doc or resume/review an in-progress one. The **only** verb that transitions `Status`. |
 | `/design translate <slug>` | **translate** | Split a `Status: final` doc into structural `parts/<part-slug>.md`. Refuses on non-final. |
 | `/design sequence <slug>` | **sequence** | Topo-order `parts/` into named plans (first activated, rest queued). Refuses on non-final. |
+| `/design finalize <slug>` | **finalize** | Collapse same-day amendment-log entries; flag (never silently collapse over) a stale `[PENDING-IMPL]` placeholder. Any Status; not part of the author→translate→sequence ordering. |
 
 ## Shared conventions
 
-These hold across all three verbs.
+These hold across all four verbs.
 
 ### Status lifecycle (the hard gate)
 
@@ -77,17 +78,25 @@ These items are derived from `corrections.md` seeds via the upstream-guardrail m
 
 `author` is the **only** verb that transitions `Status` (`draft → review → final`); it never advances past `final`. It runs in one of three modes by the target doc's existing Status: **bootstrap** (no doc yet), **authoring** (`draft`), **review pass** (`review`). Save after every section so a partial draft survives an interrupted session.
 
-**Inputs.** `<slug>` (filename identifier — required for a new doc, inferred from the path on resume) and `--visibility {confidential|published}` (defaults to `confidential`). Visibility routes the output path per *Storage resolution* above: `confidential` → `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_doc.py" harness-root` then `<harness>/designs/<slug>.md`; `published` → `wiki/designs/<slug>.md`. To resume, locate the doc through the same two-path lookup (if both exist, ask which); never hardcode the confidential root.
+**Inputs.** `<slug>` (filename identifier — required for a new doc, inferred from the path on resume), `--visibility {confidential|published}` (defaults to `confidential`), and `--rung {full|abbreviated|architecture}` (defaults to `full` — new-doc only; ignored on resume, where the existing doc's own section set already fixed the rung). Visibility routes the output path per *Storage resolution* above: `confidential` → `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_doc.py" harness-root` then `<harness>/designs/<slug>.md`; `published` → `wiki/designs/<slug>.md`. To resume, locate the doc through the same two-path lookup (if both exist, ask which); never hardcode the confidential root.
+
+**Rungs (v0.2.0, PLAN-wave-c-design-and-conventions).** Three templates, one command:
+
+| `--rung` | Template | Shape | When |
+|---|---|---|---|
+| `full` (default) | `templates/design-doc.md` | 10 sections + Document History table | the default — a feature/capability design that warrants the full walk (Alternatives Considered, Migrations, Project management, Operations) |
+| `abbreviated` | `templates/abbreviated-design.md` | 7 sections (Objective/Overview/Design/Dependencies/Risks & open questions/References) + Amendment log | today's AG shape-spec — a single-system child design or capability smaller than the full rung warrants |
+| `architecture` | `templates/architecture-hld.md` | Objective/Composition/Architecture review/Dependencies/Risks & open questions/References + Amendment log, plus `children:`/`governs:` frontmatter | a parent-of-children HLD or a cross-system design — generalized from agentm's real `agentm-hld.md`/`agentm-foundations-hld.md` |
 
 ### Step 1 — Bootstrap (new doc only)
 
 If the target path doesn't exist:
 
 1. Confirm the title (default: derive from the slug → title case).
-2. Copy the template at `${CLAUDE_PLUGIN_ROOT}/templates/design-doc.md` to the target path.
-3. Prefill frontmatter: `title` ← confirmed title; `status: draft`; `visibility` ← caller's choice; `author` ← read from `.git/config`'s `[user] name = …` (if unreadable/absent, **prompt** the human — never leave `author` blank); `contributors: []`; `created`/`updated`/`last_major_revision` ← today (`YYYY-MM-DD`).
-4. Seed the Document History table with the initial row: `| <today> | Initial draft created via /design author. | draft |`.
-5. Confirm the path + Status: draft, then start the section walk.
+2. Copy the rung's template — `${CLAUDE_PLUGIN_ROOT}/templates/design-doc.md` (`full`), `abbreviated-design.md` (`abbreviated`), or `architecture-hld.md` (`architecture`) — to the target path.
+3. Prefill frontmatter: `title` ← confirmed title; `status: draft`; `visibility` ← caller's choice (the `full` template only — `abbreviated`/`architecture` route by the resolver the same way, but their frontmatter has no `visibility:` field of its own, matching the real AG living-design corpus); `author` ← read from `.git/config`'s `[user] name = …` (if unreadable/absent, **prompt** the human — never leave `author` blank, `full` rung only — `abbreviated`/`architecture` don't carry `author`/`contributors`, matching their real precedent); `created`/`updated`/`last_major_revision` ← today (`YYYY-MM-DD`, `full` rung) or `seeded` ← today (`abbreviated`/`architecture`).
+4. Seed the closing log with the initial entry — the Document History table row `| <today> | Initial draft created via /design author. | draft |` (`full`), or the Amendment log's first bullet `**<today>** — Initial draft created via /design author --rung <rung>.` (`abbreviated`/`architecture`).
+5. Confirm the path + Status: draft, then start the section walk — in the rung's own template order (Step 2 below spells out the `full` walk in detail; `abbreviated`/`architecture` walk their own template's sections top to bottom, the same way, just a shorter list).
 
 If the path already exists, skip bootstrap — the doc's existing Status picks the mode (authoring on `draft`, review pass on `review`).
 
@@ -328,3 +337,24 @@ Append one row and bump `updated` to today; Status stays `final`:
 ```
 
 After `sequence`, the design hand-off is complete — the rest is the normal `/work` → `/review` → `/release` loop on the generated named plans.
+
+## `/design finalize` — collapse the amendment log + flag stale placeholders
+
+A standing maintenance verb (v0.1.0, PLAN-wave-c-design-and-conventions task 3), not part of the author→translate→sequence pipeline — runnable on a doc at any `Status`, replacing today's by-hand amendment-log tidy-up + `[PENDING-IMPL]` re-audit.
+
+**Inputs.** `<slug>` (or full path — same two-path lookup as `translate`).
+
+### Step 1 — Stale-placeholder check (never silently collapse over one)
+
+Run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_finalize.py" <path> --repo-root <repo-root>`.
+
+- **Exit 0** → no stale placeholder; the tool's stdout is the doc with its amendment log collapsed. Present the diff, then ask **Write / Cancel**.
+- **Exit 2** → a `[PENDING-IMPL]` marker is stale (the doc's own `governs:` target already exists on disk, but the doc still claims it's unbuilt) — **halt**, surface stderr verbatim (it names the `governs:` glob that already resolved), and point the human at the marker to resolve by hand (either the primitive genuinely shipped — flip the marker to as-built prose — or `governs:` is stale itself and needs narrowing). Never auto-collapse past this; a stale placeholder is a real doc/reality mismatch, not a formatting nit.
+
+Design call (documented, not silently decided — no per-marker staleness convention exists to build against): staleness is doc-level (the whole doc's `governs:` target exists), not per-marker — mirrors both `scripts/health/designed_vs_built.py`'s own built/designed-not-built signal and the real "flip `[PENDING-IMPL]` markers now the engine shipped" commits already in this repo's history, which flip every marker in a doc together once its governed target ships.
+
+### Step 2 — Write
+
+On **Write**: overwrite `<path>` with the collapsed text (`--write`), matching the full design-doc template's own "consolidate before the doc is presented/committed" convention for Document History, generalized to the Amendment-log rung's bulleted shape. On **Cancel**: halt, write nothing.
+
+`finalize` never changes `Status` and never touches any section other than the amendment log.

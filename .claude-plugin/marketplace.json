@@ -35,7 +35,7 @@
       "description": "Day-to-day testing + release discipline in one plugin — tests-are-sacred, verification-first, the 3-layer pyramid, the pre-release checklist, changelog-shape, and paired-release coordination for cross-repo releases.",
       "name": "conventions",
       "source": "./dist/claude-code/plugins/conventions",
-      "version": "0.1.0"
+      "version": "0.4.0"
     },
     {
       "capabilities": [
@@ -49,7 +49,7 @@
       "description": "Design-doc and ADR authoring — the /design command (author → translate → sequence) and the ADR skill for capturing architectural decisions with re-audit triggers.",
       "name": "design",
       "source": "./dist/claude-code/plugins/design",
-      "version": "0.2.1"
+      "version": "0.4.0"
     },
     {
       "capabilities": [
@@ -63,7 +63,7 @@
       ],
       "name": "developer-safety",
       "source": "./dist/claude-code/plugins/developer-safety",
-      "version": "0.3.6"
+      "version": "0.4.0"
     },
     {
       "capabilities": [

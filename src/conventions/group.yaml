@@ -15,4 +15,28 @@ capabilities: [testing-conventions, releasing-conventions, conventions]
 #          no-change-detector rules from AGENTS.md) is descoped to a Wave-C
 #          follow-up per the plan's own locked design call — this task is the
 #          rename mechanic only.
-version: 0.1.0
+# 0.2.0 = PLAN-wave-c-design-and-conventions task 4: the homeless-domain
+#          migration lands. New skills/agentic-engineering/SKILL.md (the
+#          harness discipline, migrated verbatim from agentm's AGENTS.md +
+#          harness/principles.md + the operator's global ~/.claude/CLAUDE.md)
+#          and rules/ci-battery.md (the gate-battery standard, migrated from
+#          agentm AGENTS.md's "Running the checks" section, generalized off
+#          agentm's own project-specific gate list). New scripts/
+#          conventions_domain.py resolves a domain name to its on-disk
+#          rules/skills/reference shape (graceful on an unknown domain).
+#          no-change-detector is NOT included here -- it's code-quality's
+#          domain per crickets-conventions.md's own table, not this task's.
+# 0.3.0 = PLAN-wave-c-design-and-conventions task 5: the documentation domain
+#          (rules/documentation.md, citing check-wiki.py's single-mode-per-
+#          page + length-ceiling + naming-uniqueness rules) and the new
+#          reference/ shape (gate-inventory.md, features-json-schema.md --
+#          objective house facts, cited not gated). reference/ is now a
+#          recognized group-level asset dir (like scripts/templates/) in
+#          scripts/src_model.py + both emitters, so it actually ships in
+#          dist/, not just the source tree.
+# 0.4.0 = PLAN-wave-c-design-and-conventions task 6: the Phase-2 conformance
+#          gate (scripts/check_conventions_conformance.py), wired into
+#          check-all.sh + tests-linux.yml. Checks declaration, not content:
+#          a plugin marking <!-- consults-conventions-domain: X --> in a
+#          command/skill must declare conventions in requires:/enhances:.
+version: 0.4.0

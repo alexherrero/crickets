@@ -30,4 +30,22 @@ capabilities: [design-docs, design, architecture]
 #          development-lifecycle plugin's resolve_plan.py by file path
 #          (mirrors resolve_plan.py's own `_load_bridge()` for
 #          find_process_seam.py) instead of a plain `import`.
-version: 0.2.1
+# 0.3.0 = PLAN-wave-c-design-and-conventions tasks 1-2: two new rungs
+#          alongside the full 10-section template -- `abbreviated-design.md`
+#          (today's AG shape-spec, packaged as a runnable template) and
+#          `architecture-hld.md` (the multi-system/parent-HLD rung,
+#          generalized from agentm-hld.md/agentm-foundations-hld.md's real
+#          children:/governs: frontmatter convention). New scripts/
+#          architecture_rung.py (composition-analysis + a mechanical
+#          architecture-review of the children: composition claim) and
+#          scripts/design_template.py (section-structure checking for any
+#          rung against its template). commands/design.md gains --rung
+#          {full|abbreviated|architecture} (own frontmatter version 0.1.0
+#          -> 0.2.0).
+# 0.4.0 = PLAN-wave-c-design-and-conventions task 3: /design finalize, a new
+#          standing maintenance verb (scripts/design_finalize.py) --
+#          collapses same-day Amendment-log entries; flags (never silently
+#          collapses over) a stale [PENDING-IMPL] placeholder, doc-level
+#          per the design call in task 1/2's own commit (governs: target
+#          exists on disk while the doc still claims it's unbuilt).
+version: 0.4.0
