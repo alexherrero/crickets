@@ -21,7 +21,7 @@ approved: 2026-06-23
 
 ## Overview
 
-The renderer, model, drift detector, schema, and templates are delivered; the field-mirroring orchestration inside them is designed-not-yet-wired (see Design):
+The renderer, model, drift detector, schema, templates, DC-2 field-mirroring, and native sub-issue nesting are all delivered (see Design):
 
 | Primitive | Kind | What it does |
 |---|---|---|
@@ -31,9 +31,9 @@ The renderer, model, drift detector, schema, and templates are delivered; the fi
 | `project_schema.json` | rule | The board-shape contract — the parent chain + the DC-2 field set (Track · Type · Priority · Start · Target · Status). |
 | per-type templates | template | The locked kickoff / progress / closeout triads (task · plan · feature · sub-feature) + single-line forms (version · idea · backlog-item · promotion). |
 
-![One-way deterministic board-sync: the vault project (roadmap · plans · progress — the source of truth) feeds project_sync.py (deterministic, idempotent render) which writes the GitHub Project board (issues + native sub-issue nesting) as a Version→Feature→(Sub-feature)→Plan→Task tree ≥4 deep, each item a kept-current summary body + a comment per commit; check_project_sync.py is a drift gate that detects but never corrects, and the unbuilt Planner (TPM) persona drives the write path to hold depth + correct drift](diagrams/crickets-github-projects.svg)
+![One-way deterministic board-sync: the vault project (roadmap · plans · progress — the source of truth) feeds project_sync.py (deterministic, idempotent render) which writes the GitHub Project board (issues + native sub-issue nesting) as a Version→Feature→(Sub-feature)→Plan→Task tree ≥4 deep, each item a kept-current summary body + a comment per commit; check_project_sync.py is a drift gate that detects but never corrects, and the Planner (TPM) persona's depth-maintainer + drift-corrector drives the write path to hold depth + correct drift](diagrams/crickets-github-projects.svg)
 
-*One direction only — the vault is authored; `project_sync.py` renders it to nested issues (≥4 levels deep; each work item carries a kept-current summary body + a comment per commit); `check_project_sync.py` detects drift but never corrects. The **Planner (TPM)** persona (unbuilt) drives the write path to hold the depth floor + correct drift; until it ships, that is hand-maintained.*
+*One direction only — the vault is authored; `project_sync.py` renders it to nested issues (≥4 levels deep; each work item carries a kept-current summary body + a comment per commit); `check_project_sync.py` detects drift but never corrects. The **Planner (TPM)** persona's depth-maintainer + drift-corrector (AG Wave D) drives the write path to hold the depth floor + correct drift.*
 
 ### One-way, idempotent, deterministic
 
@@ -63,7 +63,7 @@ The two surfaces reconcile differently, both idempotently:
 - **The body summary** is **re-rendered from the source and byte-compared** to the live body each sync → **create / update (`gh issue edit --body`) / noop**. Whole-body replacement means any out-of-band edit on GitHub is overwritten on the next sync, and an unchanged state is a clean noop.
 - **The per-commit comments** are **append-only, posted once per commit SHA.** Idempotency is by **SHA-keyed dedupe**: before posting, the sync checks whether a comment for that commit already exists (the comment carries its SHA; the vault source records which SHAs are posted) → post only if absent. So re-running never double-posts a commit's comment.
 
-> **Designed delta from as-built.** The shipping plugin today folds per-commit progress into the issue **body** (one line per commit, no comment path — there is no `gh issue comment` call). This design moves the per-commit update to a **comment** (the granular timeline) and keeps the body as the **current summary** — a `[PENDING-IMPL]` change that adds the `gh issue comment` post + the SHA-keyed dedupe, while the body-reconcile path stays as-is.
+> **Shipped (0.2.0).** The per-commit update lands as a **`gh issue comment`** post (`post_comment()`, SHA-keyed dedupe via a hidden `<!-- board:sha:… -->` marker) alongside the whole-body reconcile — the body stays the kept-current summary; the comment trail is the granular per-commit timeline, exactly as designed here.
 
 ### The message voice + operational rules — the board-write spec
 
@@ -91,7 +91,7 @@ Status is a custom Project field — **Todo → In Progress → Done** — moved
 
 Container items (Version) carry no status thread — they roll up child status natively; pre-work cards (Backlog-item / Idea) are static, ordered by Priority, with no thread until promoted.
 
-**Built vs designed (the honest split).** The shipping path writes the **issue body + open/closed state** — that part is wired, idempotent, drift-gated. The **DC-2 Project fields** (Track · Type · Priority · Start · Target · **Status**) have deterministic `gh` argv builders but **no live callers yet** — they are operator-gated backfill, not the unit-tested wired path. So today the live status signal is **open-vs-closed**; the Status *field* transition is designed, awaiting the field-write wiring (the Planner-era automation, below). **Native sub-issue nesting** — the parent-chain links that produce the ≥4-deep tree, the Gantt roll-up, and the child-status roll-up — is **also designed-not-wired** (`[PENDING-IMPL]`): the hierarchy is modeled + validated in `project_model.py`, but no code emits the links, and `gh issue` has no sub-issue subcommand — the mechanism is a GraphQL `addSubIssue` (or `gh api`) call. *Re-audit:* wire the sub-issue links when the depth tree is built.
+**Built and wired (as of 0.2.0–0.2.5).** The shipping path writes the **issue body + open/closed state**, the **DC-2 Project fields** (Track · Type · Priority · Start · Target · **Status**, via `sync_fields()`), and **native sub-issue nesting** (via `sync_nesting()` / `sync_all_nesting()`, the GraphQL `addSubIssue` mutation — `gh issue` itself has no sub-issue subcommand) — all idempotent, all exercised against real boards (agentm #223/#224, crickets #142/#150–152), including a case-mismatch idempotent-skip bugfix (display-case field labels vs. `gh`'s lowercased value keys, `project_sync.py:519–521`) found and closed live. The Status *field* now moves at the same progress/closeout transitions described below; the hierarchy `project_model.py` models is the same tree `sync_nesting()` actually links.
 
 ### The drift gate detects; the Planner corrects
 
@@ -116,11 +116,10 @@ None — `github-projects` **mirrors, it does not judge.** It projects whatever 
 
 ## Risks & open questions
 
-- **The renderer + detector + model + templates are delivered; the field-mirroring layer is designed-not-wired.** The issue body + open/closed state sync today; the DC-2 Project fields (incl. **Status**) have argv builders with no live callers (operator-gated backfill). So the live status signal is open-vs-closed; the Status-field transition awaits wiring.
-- **The per-commit *comment* is a designed delta** — the plugin today appends per-commit lines to the issue **body** (no comment path; there is no `gh issue comment` call). This design moves the per-commit update to a **`gh issue comment`** with **SHA-keyed dedupe** (post once per commit) and keeps the body as a **current summary**. `[PENDING-IMPL]`.
 - **Depth decays without the Planner** — the depth-maintainer + drift-corrector (the **Planner (TPM)** persona, renamed from the V5-11 PM chief-of-staff) is unbuilt; until it ships the ≥4 floor is hand-maintained and drifts toward epic-level. The detector flags it; nothing auto-corrects.
+- **Manual net-new-Feature creation is an undocumented gap.** No automated entrypoint creates a brand-new Feature from scratch — `sync_fields`/`sync_nesting` operate on an item already in `board-items.json` with an existing issue. Today materializing a net-new Feature is a manual four-step `gh` sequence: `gh issue create` → `gh project item-add` → `gh project item-edit` (Type/Track/Status) → `gh api graphql` (`addSubIssue` nesting) — confirmed live staging this same plan (both boards' Wave-D features were materialized this way). A future Planner enhancement could absorb this into the depth-maintainer, but it is out of scope for the Planner's first cut (depth-maintenance today only fills in a missing *intermediate* level — Plan under an existing Feature, Task under an existing Plan — not a missing top-level Feature itself).
 - **The Operator `/status` dashboard is designed, not built** — it consumes board-sync but lives closer to the persona / queue-status surface.
-- **Re-audit triggers:** build the per-commit `gh issue comment` + SHA-keyed dedupe (body → current summary); wire the DC-2 field writes (incl. the Status transition); build the **Planner** depth-maintainer / drift-corrector; reconcile against the github-projects rethink; re-point the `requires` edge at the `development-lifecycle` rename; build the unified `/status` when the Operator surface lands.
+- **Re-audit triggers:** build the **Planner** depth-maintainer / drift-corrector (AG Wave D); decide + build the automated net-new-Feature-creation entrypoint if the operator wants one; reconcile against the github-projects rethink; build the unified `/status` when the Operator surface lands.
 
 ## References
 
@@ -131,6 +130,8 @@ None — `github-projects` **mirrors, it does not judge.** It projects whatever 
 - **Up / consumed by:** [crickets HLD](crickets-hld.md) · [composition](crickets-composition.md) · [Personas](https://github.com/alexherrero/agentm/wiki/agentm-personas) (Planner — drives this; Operator — reads it) · [development-lifecycle](crickets-development-lifecycle.md)
 
 ## Amendment log
+
+**2026-07-06 — reconciled to as-built (AG Wave D, task 1).** The DC-2 field-mirroring (`sync_fields()`) and native sub-issue nesting (`sync_nesting()`/`sync_all_nesting()`) sections above previously read as `[PENDING-IMPL]`/"no live callers yet" — stale since `group.yaml` 0.2.0 (both shipped, unit-tested and dry-run-tested) and 0.2.1/0.2.2/0.2.5 (three live bugfixes found exercising the write path against real boards: the Status-default-sync fix, the `item-list` pagination + case-fold fixes, and the CREATE-path item-add threading fix). The per-commit comment path (`post_comment()`, SHA-keyed dedupe) was likewise already shipped in 0.2.0, not still a "designed delta." All three sections rewritten to as-built framing; the "Built vs designed" honest-split language retired since there is no longer an undelivered split for these three mechanics. Also documented, as a newly-named (not newly-created) gap: no automated entrypoint materializes a net-new Feature from scratch (`gh issue create` → `item-add` → field-edit → `addSubIssue` nest remains a manual four-step sequence) — confirmed live during this same plan's staging research; named for a future Planner enhancement, not built here. The **Planner (TPM)** depth-maintainer + drift-corrector itself remains unbuilt as of this amendment (tasks 2–4 of the same plan build it) — re-audit this log again once those ship.
 
 **2026-06-28 — lock-down sweep (operator review).** Converted the board-sync mermaid to a house-style hand-SVG (`diagrams/crickets-github-projects.svg`); and, per operator review, **stripped the how-we-got-here narrative** from the message-voice / operational-rules section — it now documents the board-write spec directly (the dogfood that produced it stays recorded in this log, not the body). The folded ADR 0016/0025 records and the newest-first log are unchanged. Locked as a v5–v8 guidepost.
 
