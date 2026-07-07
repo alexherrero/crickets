@@ -21,15 +21,15 @@ approved: 2026-06-23
 
 ## Overview
 
-`maintenance` covers four concerns (one delivered, three greenfield), plus a tentative fifth — an optional, scheduled **content-refresh**:
+`maintenance` covers four concerns — all delivered as of Wave C (2026-07-07) — plus the optional scheduled **content-refresh** (also delivered) and the one still-greenfield primitive, the **model-drift-detector**:
 
 | Primitive | What it does |
 |---|---|
 | **`dependabot-fixer`** *(delivered)* | Repair a broken dependency update — a red Dependabot PR fixed under a bounded loop. |
-| **`deps-currency`** *(greenfield)* | Keep dependencies current — surface drifted-but-not-yet-failing deps *before* CI goes red. |
-| **`cve-security-patch`** *(greenfield)* | Patch a vulnerable dependency on a security advisory, before it fails CI. |
-| **`tech-debt-inventory`** *(greenfield)* | A standing, recallable, classified debt backlog — not an ad-hoc one-shot pass. |
-| **`content-refresh`** *(greenfield · optional · scheduled · tentative)* | Periodically refresh the harness's external-sourced content against a checklist — model pricing (`pricing.py`), the **model+effort routing chart** (re-pin on model releases), adapted-skill upstreams, other pinned snapshots. |
+| **`deps-currency`** *(delivered)* | Keep dependencies current — surface drifted-but-not-yet-failing deps *before* CI goes red. |
+| **`cve-security-patch`** *(delivered)* | Patch a vulnerable dependency on a security advisory, before it fails CI. |
+| **`tech-debt-inventory`** *(delivered)* | A standing, recallable, classified debt backlog — not an ad-hoc one-shot pass. |
+| **`content-refresh`** *(delivered · optional · scheduled)* | Periodically refresh the harness's external-sourced content against a checklist — model pricing (`pricing.py`), the **model+effort routing chart** (re-pin on model releases), adapted-skill upstreams, other pinned snapshots. |
 | **`model-drift-detector`** *(greenfield)* | Catch a model release before our pins go stale — a weekly CI job that diffs the live Claude + Gemini model lists against our pinned set and opens an issue to run `content-refresh`. |
 
 ![How maintenance's primitives relate: maintenance fans out to dependabot-fixer (delivered) plus deps-currency, cve-security-patch, tech-debt-inventory, content-refresh, and model-drift-detector (greenfield); dependabot-fixer calls the diagnostics diagnose engine, cve-security-patch is privacy's reactive sibling, tech-debt-inventory leans on agentm memory, content-refresh re-pins token-audit's pricing, and the model-drift-detector triggers content-refresh on a model release](diagrams/crickets-maintenance.svg)
@@ -46,34 +46,34 @@ approved: 2026-06-23
 - *Composes:* [diagnostics](crickets-diagnostics.md) — the **recast**: it calls the diagnose engine for the failure category instead of parsing CI logs inline; the repair loop stays here.
 - *Artifacts:* git commits on the Dependabot branch; a PR comment; an optional `.harness/progress.md` line.
 
-### `deps-currency` — keep dependencies current *(greenfield)*
+### `deps-currency` — keep dependencies current *(delivered)*
 
 - *Entry:* scheduled or on-demand — the *before-CI-goes-red* gap (drifted-but-not-failing deps), distinct from native Dependabot auto-merge (green PRs) and `dependabot-fixer` (red PRs).
 - *Exit:* an inventory of installed-vs-latest + a surfacing of what's drifted, as a **passive report / recall entry** — not a PR (it stays advisory, to avoid competing with native Dependabot and the blast-radius of auto-opened PRs); a PR-emitting mode is a later option.
 - *Automated:* read the repo's manifests, compare installed vs latest, surface the drift; optionally record a depends-on / version-constraint memory entry so currency state is recallable.
 - *Composes:* [diagnostics](crickets-diagnostics.md) (the currency check is an analysis the engine can host; maintenance owns curating the update) + optionally the agentm memory engine (a depends-on kind).
 
-**`[PENDING-IMPL]`** — build the inventory + the report/recall surfacing (documenter).
+**Delivered** (`src/maintenance/scripts/deps_currency.py` + `scripts/test_maintenance_deps_currency.py`, PLAN-wave-c-maintenance / [PR #157](https://github.com/alexherrero/crickets/pull/157)) — the installed-vs-latest inventory + the passive drift report/recall surfacing.
 
-### `cve-security-patch` — patch a vulnerable dependency *(greenfield)*
+### `cve-security-patch` — patch a vulnerable dependency *(delivered)*
 
 - *Entry:* a security advisory **handed to it** (advisory-as-input) for a dependency **not yet failing CI** — the gap `dependabot-fixer` (CI-red only) and `privacy` (static patterns) both miss.
 - *Exit:* the vulnerable dependency patched, under the same repair guarantees as `dependabot-fixer`.
 - *Automated:* take the advisory → identify the affected dependency + a safe version → patch → `verify.sh` → comment.
 - *Composes:* [privacy](crickets-privacy.md) — its **reactive sibling**: privacy owns proactive static-pattern secret/PII scanning, this acts on advisories. Two halves of supply-chain / secret hygiene, opposite triggers.
 
-**`[PENDING-IMPL]`** — build the advisory workflow as a skill that takes an **advisory as input** (documenter); a real GHSA/NVD polling integration is a later, service-shaped build.
+**Delivered** (`src/maintenance/scripts/cve_security_patch.py` + `scripts/test_maintenance_cve_security_patch.py`, PR #157) — the advisory-as-input patch workflow. A real GHSA/NVD polling integration remains a later, service-shaped build.
 
-### `tech-debt-inventory` — a standing, recallable debt backlog *(greenfield)*
+### `tech-debt-inventory` — a standing, recallable debt backlog *(delivered)*
 
 - *Entry:* on-demand capture, or fed by a [code-review](crickets-code-review.md) / `/simplify` pass that surfaces debt.
 - *Exit:* a classified debt entry in memory (taxonomy: refactoring · performance · security-debt · documentation · friction-metrics), recallable and prioritizable over time.
 - *Automated:* capture + classify debt into a `debt`/`friction` memory kind; optionally a CI gate enforcing inventory discipline (the `check-no-pii` analogue for debt).
 - *Composes:* the agentm memory engine (a new `debt` entry-kind — a convention over the existing append/search/recall, no schema change) + [code-review](crickets-code-review.md) (the episodic `/simplify` + adversarial passes populate and draw from the standing inventory).
 
-**`[PENDING-IMPL]`** — build the classification + surfacing (documenter); the `debt` kind is a **memory convention** (no schema change), and the taxonomy + the optional CI gate are maintenance's.
+**Delivered** (`src/maintenance/scripts/tech_debt_inventory.py` + `scripts/test_maintenance_tech_debt_inventory.py`, PR #157) — the classification + surfacing; the `debt` kind is a **memory convention** (no schema change), and the taxonomy + the optional CI gate are maintenance's.
 
-### `content-refresh` — refresh external-sourced content *(greenfield · optional · scheduled · tentative)*
+### `content-refresh` — refresh external-sourced content *(delivered · optional · scheduled)*
 
 - *Entry:* an **opt-in scheduled task** (the agentm runner, fired by the host scheduler), or on-demand. Optional per install — like `wiki-watch`, off unless turned on. For the **model-release case**, the `model-drift-detector` (below) is the trigger on CI cron, so that case needs nothing from the agentm runner.
 - *Exit:* the harness's pinned external content re-checked against a **refresh checklist** and surfaced as a report — safe mechanical re-pins applied under the repair guarantees, judgment-bound drift surfaced for operator review.
@@ -83,7 +83,7 @@ approved: 2026-06-23
 - *Composes:* [token-audit](crickets-token-audit.md) (re-pins `pricing.py` — the standing mitigation for its pricing-drift risk) + the [model+effort routing chart](https://github.com/alexherrero/agentm/wiki/agentm-model-effort-routing) (re-pins its model strings on a model release) + the **adapt-skills watchlist** (re-checks the upstreams behind adapted skills) + the **`model-drift-detector`** (the trigger for the model-release case, on CI cron) + the agentm **runner** (runs the non-model checklist items on schedule).
 - *Distinct from `deps-currency`:* currency tracks **package versions** drifting in the manifests; content-refresh tracks **pinned external-content snapshots** (pricing tables, adapted upstream text) going stale. Different sources, same keep-current spirit.
 
-**`[PENDING-IMPL]` · tentative** — flagged 2026-06-23 (AG token-audit review) as the home for the content-refresh idea; decide own-capability-vs-primitive + author at the post-docs-review pass. The checklist + the re-pin/flag split are the design seed.
+**Delivered** (`src/maintenance/scripts/content_refresh.py` + `scripts/test_maintenance_content_refresh.py`, PR #157) — shipped as a **primitive within maintenance**, resolving the tentative own-capability-vs-primitive question by building it here (a generic, consumer-agnostic re-pin engine; agentm's own checklist + delegator ride it via `scripts/model_effort_routing_refresh.py`). The checklist + the mechanical-re-pin/judgment-flag split are as-built.
 
 ### `model-drift-detector` — catch a model release before our pins go stale *(greenfield)*
 
@@ -145,16 +145,18 @@ The rename is **in place**: the plugin directory `github-ci` → `maintenance`, 
 - **The repair guarantees must hold across every primitive.** `deps-currency`, `cve-security-patch`, and any future repairer edit the repo, so they inherit `dependabot-fixer`'s bounded / never-merge / never-disable / never-pin-older / residual-risk-honest contract. A greenfield primitive that edits *without* them is the risk.
 - **Advisory by decision — the honest limitation.** `deps-currency` surfaces a passive report (not a PR), and `cve-security-patch` takes an advisory as input (no polling). So a drifted dep nobody reviews, or a vuln nobody feeds it, isn't acted on. A PR-emitting / polling mode is a deliberate later escalation, not a silent gap.
 - **The concern is host-neutral; the flagship is github-bound.** `dependabot-fixer` is github-specific (`gh`, `dependabot/*`, GHSA) — a permanent property of *that primitive* under a host-neutral concern (the `github-projects` → `board-sync`, `obsidian-vault` → `storage-backend` pattern). Non-github primitives (renovate, plain manifest scanning) are an open door, not planned. The plugin declares the umbrella `[maintenance]` capability, `dependabot-fixer` a primitive within it (the bare `[ci-repair]` noun is dropped).
-- **`content-refresh` is tentative + optional.** Flagged here (2026-06-23) as the likely home for the content-refresh idea — an opt-in scheduled task on the agentm scheduler; own-capability-vs-primitive is a post-docs-review call. It depends on the scheduler existing and on a clean split between mechanical re-pins (auto) and judgment-bound drift (surfaced, not auto-edited).
-- **Re-audit triggers:** rename-in-place first (gates green, zero behavior change); recast `dependabot-fixer` onto the diagnose engine when diagnostics ships; flip the `[PENDING-IMPL]` markers as each greenfield primitive lands; decide `content-refresh`'s home + author it at the post-docs-review pass; reconcile the composition map + HLD + chart (`github-ci` → `maintenance`) at approval.
+- **`content-refresh` shipped as a primitive within maintenance** (Wave C, PR #157). The tentative own-capability-vs-primitive question is resolved: it's a primitive here — an opt-in scheduled task on the agentm runner, with the mechanical-re-pin (auto) / judgment-bound-drift (surfaced, not auto-edited) split as-built.
+- **Re-audit triggers:** recast `dependabot-fixer` onto the diagnose engine when diagnostics' engine is called (the rename + all four greenfield primitives + `content-refresh` have shipped); flip `model-drift-detector`'s `[PENDING-IMPL]` when its weekly cron + detector script + wire-id↔prose-name map land — the one primitive still greenfield.
 
 ## References
 
-- **Delivered:** crickets `src/github-ci/skills/dependabot-fixer/SKILL.md` (→ `maintenance`) (the bounded fix loop) · agentm `scripts/detect_project.py` (the R-dependabot detection rule) · `.harness/known-migrations.md` (per-project recipes, consulted first)
+- **Delivered:** crickets `src/maintenance/skills/dependabot-fixer/SKILL.md` (the bounded fix loop) · `src/maintenance/scripts/{deps_currency,cve_security_patch,tech_debt_inventory,content_refresh}.py` (the four greenfield primitives, Wave C / PR #157) · agentm `scripts/detect_project.py` (the R-dependabot detection rule) · `.harness/known-migrations.md` (per-project recipes, consulted first)
 - **Composes:** [diagnostics](crickets-diagnostics.md) (the diagnose engine) · [privacy](crickets-privacy.md) (proactive static / this reactive advisory) · [code-review](crickets-code-review.md) (the episodic `/simplify` passes) · the agentm memory engine (the `debt` + depends-on kinds) · [token-audit](crickets-token-audit.md) + the adapt-skills watchlist + the agentm scheduler (`content-refresh`)
 - **Up:** [crickets HLD](crickets-hld.md) · [composition](crickets-composition.md) · [agentm Personas](https://github.com/alexherrero/agentm/wiki/agentm-personas) (Maintainer — the persona this is the executing arm of)
 
 ## Amendment log
+
+**2026-07-07 — the four greenfield primitives shipped; body flipped designed→as-built (G12 AG close-out sweep).** `deps-currency`, `cve-security-patch`, `tech-debt-inventory`, and `content-refresh` all landed in Wave C (`src/maintenance/scripts/{deps_currency,cve_security_patch,tech_debt_inventory,content_refresh}.py` + their `test_maintenance_*` suites, PLAN-wave-c-maintenance / [PR #157](https://github.com/alexherrero/crickets/pull/157)), but this design's body still marked each `[PENDING-IMPL]` — the plan's close-out shipped the code without reconciling the design, and the intervening 2026-07-07 opinion-grounding entry below touched only the `done`-binding wording. Flipped the Overview count line, the primitives table, the four section headers, the four `[PENDING-IMPL]` body notes, the References "Delivered" list, and the `content-refresh`-is-tentative Risks bullet to as-built. `content-refresh`'s tentative own-capability-vs-primitive question is resolved by the ship: it's a primitive within maintenance (a generic re-pin engine; agentm's checklist rides it). **Still greenfield:** `model-drift-detector` — no cron workflow or detector script exists on disk — so its `[PENDING-IMPL]` stays. *Re-audit trigger:* flip `model-drift-detector` when its weekly cron + detector script + wire-id↔prose-name map land.
 
 **2026-07-07 — corrected the `done` binding claim; no real prose site exists (PLAN-opinion-consumer-grammar task 4 grounding pass).** A grounding pass across `src/maintenance/` for any real prose stating the `done` standard found none — `dependabot-fixer/SKILL.md`'s `verify.sh`-exit-0 criterion is philosophically similar but not a citation of `done`'s actual prose (which names development-lifecycle's `check-all.sh`/`PLAN.md`/`progress.md` triad, a mismatch for a skill that runs standalone). Reworded "Opinions it consumes" above from "requests `done` ... hardwired today" (implying a real, undeclared binding waiting on request-by-name plumbing) to state plainly that no grounded binding exists yet. *Why not author the missing prose here:* out of this plan's scope (the consumer grammar, not net-new opinion-standard content) — deferred to whoever next substantively touches maintenance. *Re-audit trigger:* if `dependabot-fixer` (or a future maintenance primitive) is changed to cite `done`'s actual prose, reclassify this as a grounded binding and wire it via the now-proven markdown-prose consumer grammar ([composition](crickets-composition.md)).
 
