@@ -110,6 +110,24 @@ class TestClassify(unittest.TestCase):
         kinds = sorted(f.kind for f in findings)
         self.assertEqual(kinds, ["orphan", "update"])
 
+    def test_issued_plan_not_classified_orphan_without_active_plan(self):
+        # Same crickets #165 regression classify() must not repeat: an
+        # already-issued plan stays classified even when no --active-plan
+        # names it (mirrors test_check_project_sync's coverage of the shared
+        # project_model.materialize() fix).
+        g = pm.build_graph(pm.parse_items({"items": [
+            {"id": "v5", "type": "version", "track": "V5", "title": "V5 arc",
+             "about": "the unbundling", "issue": 7},
+            {"id": "f", "type": "feature", "parent": "v5", "track": "V5",
+             "title": "Board sync", "goal": "sync", "why_matters": "humans",
+             "issue": 8},
+            {"id": "p-done", "type": "plan", "parent": "f", "track": "V5",
+             "status": "Done", "title": "Shipped plan", "issue": 165,
+             "fields": {"goal": "ship it", "done_when": "green"}},
+        ]}))
+        board = _in_sync_board(g)
+        self.assertEqual(self._findings(g, board), [])
+
 
 class TestCorrect(unittest.TestCase):
     def _cfg_dir(self, items):

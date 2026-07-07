@@ -57,6 +57,23 @@ def _graph(issue_for_v5=7):
     ]}))
 
 
+def _graph_with_issued_plan(plan_issue=165):
+    """Same shape as `_graph()`, plus a `plan` item that already carries a
+    board issue but whose id is never passed via `--active-plan` — the
+    crickets #165 regression shape: a Done plan's own kickoff issue must not
+    read as an orphan just because no caller re-lists it as active."""
+    return pm.build_graph(pm.parse_items({"items": [
+        {"id": "v5", "type": "version", "track": "V5", "title": "V5 arc",
+         "about": "the unbundling", "issue": 7},
+        {"id": "f", "type": "feature", "parent": "v5", "track": "V5",
+         "title": "Board sync", "goal": "sync", "why_matters": "humans",
+         "issue": 8},
+        {"id": "p-done", "type": "plan", "parent": "f", "track": "V5",
+         "status": "Done", "title": "Shipped plan", "issue": plan_issue,
+         "fields": {"goal": "ship it", "done_when": "green"}},
+    ]}))
+
+
 def _rendered(item, graph):
     return ps.render_item(item, ps.project_repo_url(_CFG), _TEMPLATES,
                           graph=graph, public=True)
@@ -110,6 +127,24 @@ class TestComputeDrift(unittest.TestCase):
         self.assertEqual(len(drift), 1)
         self.assertIn("orphan", drift[0])
         self.assertIn("#999", drift[0])
+
+    def test_issued_plan_not_flagged_orphan_without_active_plan(self):
+        # Regression for crickets #165: no --active-plan is passed (active_plans
+        # defaults to empty, matching check-all.sh's bare invocation), but the
+        # plan already has a real, in-sync board issue — must not be "orphan".
+        g = _graph_with_issued_plan()
+        board = _in_sync_board(g)
+        self.assertEqual(self._drift(g, board), [])
+
+    def test_issued_plan_body_drift_reported_as_update_not_orphan(self):
+        g = _graph_with_issued_plan()
+        board = _in_sync_board(g)
+        board[165] = "stale body — the vault has since changed"
+        drift = self._drift(g, board)
+        self.assertEqual(len(drift), 1)
+        self.assertIn("update", drift[0])
+        self.assertIn("plan:p-done", drift[0])
+        self.assertIn("#165", drift[0])
 
     def test_multiple_drift_kinds_all_reported(self):
         g = _graph()

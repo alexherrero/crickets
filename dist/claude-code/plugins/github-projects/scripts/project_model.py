@@ -204,23 +204,42 @@ def materialize(graph: dict, active_plans=()) -> list:
     """Apply DC-1: return the items that should be persisted on the board.
 
     Every ALWAYS_MATERIALIZE item is included. A `plan` is included iff its id is
-    in `active_plans`; a `task` is included iff its parent plan is in
-    `active_plans`. Output preserves input (graph insertion) order for a
-    deterministic downstream render.
+    in `active_plans` **or it already carries a board issue**; a `task` is
+    included iff its parent plan is in `active_plans` **or the task itself
+    already carries a board issue**. Output preserves input (graph insertion)
+    order for a deterministic downstream render.
 
-    `active_plans`: iterable of plan ids whose task breakdown is materialized
-    (the caller derives this — e.g. plans with status in-progress, or an explicit
-    config list). Unknown ids are ignored (a not-yet-authored plan simply
-    materializes nothing).
+    The already-has-an-issue clause is not a DC-1 exception, just its natural
+    boundary: DC-1 bounds *repo-issue volume* (never pre-persist a task
+    breakdown), which is a decision `project_sync.py`'s single-item `post`
+    path already owns exclusively (it creates an issue only when
+    `item.issue is None`, independent of this function). No call site here
+    uses `materialize()`'s output to decide whether to *create* an issue — the
+    three current readers (`check_project_sync.compute_drift`,
+    `project_sync.sync_all_nesting`, `drift_correct.classify`) only ever *act*
+    on items that already have one. Dropping an already-materialized plan/task
+    from this list once its plan falls out of `active_plans` (e.g. the plan
+    finished and no caller re-lists it) previously made those readers treat
+    its real, live issue as unclaimed — a `plan` read as an `orphan` by the
+    board-sync gate, and a `task` silently skipped by nesting-sync. Bug found
+    live: PLAN-opinion-consumer-grammar's own kickoff issue (#165, `status:
+    Done`, no `--active-plan` passed) tripped `check_project_sync` as an
+    orphan despite being genuinely backed.
+
+    `active_plans`: iterable of plan ids whose *not-yet-materialized* task
+    breakdown should also be included (the caller derives this — e.g. plans
+    with status in-progress, or an explicit config list). Unknown ids are
+    ignored (a not-yet-authored plan simply materializes nothing beyond what
+    it already has on the board).
     """
     active = set(active_plans)
     out: list = []
     for it in graph.values():
         if it.type in ALWAYS_MATERIALIZE:
             out.append(it)
-        elif it.type == "plan" and it.id in active:
+        elif it.type == "plan" and (it.id in active or it.issue is not None):
             out.append(it)
-        elif it.type == "task" and it.parent in active:
+        elif it.type == "task" and (it.parent in active or it.issue is not None):
             out.append(it)
     return out
 

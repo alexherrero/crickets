@@ -104,5 +104,15 @@ standalone: false
 # exists yet that reads a persona's modes:/triggers: and routes into this —
 # that plumbing (persona_resolve.py/persona_compile.py) lives in agentm and
 # validates shape only; when it ships, it calls this same script.
-version: 0.3.2
+# 0.3.3 = project_model.materialize() bugfix (cricketsPluginsA#171, found live:
+# crickets #165 — a Done plan's own kickoff issue read as a board-sync
+# "orphan"): a `plan`/`task` that already carries a materialized `.issue` now
+# stays in materialize()'s output even when its id/parent isn't in the caller's
+# `active_plans` — the caller-supplied `--active-plan` list was only ever meant
+# to gate *not-yet-materialized* task breakdowns (DC-1's "bound repo-issue
+# volume"), never to keep re-listing an item the board already carries.
+# check_project_sync.compute_drift and drift_correct.classify (the two bulk
+# readers besides project_sync.sync_all_nesting) both inherit the fix for free
+# since they call the same shared materialize(). Closes cricketsPluginsA#171.
+version: 0.3.3
 capabilities: [board-sync]

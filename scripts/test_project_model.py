@@ -144,6 +144,24 @@ class TestDC1Materialization(unittest.TestCase):
         ids = [i.id for i in pm.materialize(self.graph, active_plans={"p-bs"})]
         self.assertEqual(ids, ["v5", "f-bs", "sf-render", "p-bs", "t1", "t2", "b1", "i1"])
 
+    def test_already_issued_plan_materializes_without_active_plans(self):
+        # A plan that already carries a board issue (e.g. Done, no longer
+        # anyone's --active-plan) must stay materialized so a diff/nesting
+        # reader never mistakes its real issue for an orphan. Regression for
+        # crickets #165 (a Done plan's own kickoff issue read as an orphan).
+        graph = pm.build_graph(pm.parse_items(_fixture()))
+        graph["p-future"].issue = 165
+        ids = {i.id for i in pm.materialize(graph, active_plans=set())}
+        self.assertIn("p-future", ids)
+        self.assertNotIn("t3", ids)  # its task has no issue and isn't active
+
+    def test_already_issued_task_materializes_without_active_plans(self):
+        graph = pm.build_graph(pm.parse_items(_fixture()))
+        graph["t3"].issue = 200
+        ids = {i.id for i in pm.materialize(graph, active_plans=set())}
+        self.assertIn("t3", ids)
+        self.assertNotIn("p-future", ids)  # the parent plan itself has no issue
+
 
 class TestValidation(unittest.TestCase):
     def _build(self, items):
