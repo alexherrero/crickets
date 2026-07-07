@@ -19,13 +19,28 @@ Also asserts the skill file's own frontmatter conforms to this repo's
 skill-kind contract (src_model.py's read_frontmatter + the fields every
 other SKILL.md in this repo carries) -- a build-pipeline-shaped assertion,
 not a judgment call.
+
+**Opinion wiring (retrofitted):** task 4 was originally built before
+PLAN-opinion-consumer-grammar's markdown-prose consumer grammar existed, so
+its opinion-wiring sub-clause was deferred. That plan landed concurrently
+(PR #167) with a real build-time interpolation mechanism (`opinions:` frontmatter
++ `<!-- opinion:name --> ... <!-- /opinion:name -->` markers, baked from a
+committed `scripts/opinion-snapshots/<name>.md` snapshot by generate.py) --
+this skill was retrofitted to use it for both `good` and `how-we-engineer`
+before this plan's own close-out, rather than merging with a now-stale
+deferral. The tests below assert the real wiring: the committed snapshots
+exist + match agentm's live opinions, the frontmatter declares both names,
+and generate.py's build actually bakes both marker pairs into dist/.
 """
 from __future__ import annotations
 
+import importlib.util
 import json
 import re
 import shutil
 import subprocess
+import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -34,6 +49,7 @@ _ROOT = _HERE.parent
 _SKILL = _ROOT / "src" / "privacy" / "skills" / "privacy-review" / "SKILL.md"
 _PACK = _ROOT / "src" / "privacy" / "scripts" / "privacy-taint-pack.yml"
 _FIXTURES = _HERE / "fixtures" / "privacy-semgrep"
+_SNAPSHOT_DIR = _ROOT / "scripts" / "opinion-snapshots"
 
 _SEMGREP = shutil.which("semgrep")
 
@@ -46,6 +62,14 @@ def _read_frontmatter(path: Path) -> dict:
     m = _FRONTMATTER_RE.match(text)
     assert m, f"{path} has no frontmatter block"
     return yaml.safe_load(m.group(1)) or {}
+
+
+def _load_src_model():
+    spec = importlib.util.spec_from_file_location("src_model_for_privacy_review_test", _ROOT / "scripts" / "src_model.py")
+    m = importlib.util.module_from_spec(spec)
+    sys.modules["src_model_for_privacy_review_test"] = m
+    spec.loader.exec_module(m)
+    return m
 
 
 class PrivacyReviewSkillContractTests(unittest.TestCase):
@@ -70,14 +94,45 @@ class PrivacyReviewSkillContractTests(unittest.TestCase):
         text = _SKILL.read_text(encoding="utf-8")
         self.assertIn("privacy-taint-pack.yml", text)
 
-    def test_body_documents_the_opinion_wiring_deferral_honestly(self):
-        # Per the plan's own caveat: a static markdown skill has no render
-        # step to inject a resolved opinion into today -- this must be
-        # documented as deferred, not silently omitted or falsely claimed
-        # as wired.
+    def test_frontmatter_declares_both_opinions(self):
+        fm = _read_frontmatter(_SKILL)
+        self.assertEqual(fm.get("opinions"), ["good", "how-we-engineer"])
+
+    def test_body_carries_both_opinion_marker_pairs(self):
         text = _SKILL.read_text(encoding="utf-8")
-        self.assertIn("Deferred", text)
-        self.assertIn("opinion_resolve", text)
+        for name in ("good", "how-we-engineer"):
+            self.assertIn(f"<!-- opinion:{name} -->", text)
+            self.assertIn(f"<!-- /opinion:{name} -->", text)
+
+    def test_committed_snapshots_exist_for_both_opinions(self):
+        self.assertTrue((_SNAPSHOT_DIR / "good.md").is_file())
+        self.assertTrue((_SNAPSHOT_DIR / "how-we-engineer.md").is_file())
+
+    def test_seed_prose_in_markers_matches_committed_snapshots(self):
+        src_model = _load_src_model()
+        text = _SKILL.read_text(encoding="utf-8")
+        for name in ("good", "how-we-engineer"):
+            snapshot_body = src_model.strip_frontmatter(
+                (_SNAPSHOT_DIR / f"{name}.md").read_text(encoding="utf-8")
+            ).strip()
+            self.assertIn(snapshot_body, text, f"seed prose for {name!r} doesn't match its committed snapshot")
+
+
+class PrivacyReviewSkillBuildTimeInterpolationTests(unittest.TestCase):
+    """Proves generate.py's real render step actually bakes both opinions
+    into a built dist/ -- the genuine code-level render step this skill
+    lacked when task 4 first shipped."""
+
+    def test_generate_build_interpolates_both_opinions_into_dist(self):
+        src_model = _load_src_model()
+        with tempfile.TemporaryDirectory() as tmp:
+            dist = Path(tmp) / "dist"
+            groups = src_model.load_groups(_ROOT / "src")
+            privacy = next(g for g in groups if g.slug == "privacy")
+            skill_prim = next(p for p in privacy.primitives if p.name == "privacy-review")
+            rendered = src_model.render_primitive_text(skill_prim, snapshots_dir=_SNAPSHOT_DIR)
+        self.assertIn("Good means it survives an adversarial pass", rendered)
+        self.assertIn("How we engineer means the phase discipline", rendered)
 
 
 @unittest.skipUnless(_SEMGREP, "semgrep binary not installed — end-to-end skill test skipped")

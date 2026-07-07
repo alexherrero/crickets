@@ -123,8 +123,20 @@ class ClaudeEmitter(HostEmitter):
     def _copy_component(self, prim: Primitive, dest_dir: Path) -> None:
         dest_dir.mkdir(parents=True, exist_ok=True)
         if prim.root.is_dir():
-            shutil.copytree(prim.root, dest_dir / prim.root.name, dirs_exist_ok=True,
+            copied_root = dest_dir / prim.root.name
+            shutil.copytree(prim.root, copied_root, dirs_exist_ok=True,
                             ignore=bundle_ignore())
+            # A directory-rooted primitive (skill) still needs its manifest
+            # re-rendered when it declares `opinions:` -- the plain copytree
+            # above only copies the source bytes verbatim (found during
+            # PLAN-wave-d-tokens-and-privacy task 4's privacy-review retrofit:
+            # this branch never called render_primitive_text at all, so no
+            # skill's `opinions:` markers were ever actually re-baked from the
+            # snapshot store — a real gap in the original opinion-consumer-
+            # grammar landing, which only proved the single-file case).
+            if prim.frontmatter.get("opinions"):
+                manifest_rel = prim.manifest.relative_to(prim.root)
+                write_utf8(copied_root / manifest_rel, render_primitive_text(prim))
         else:
             # render_primitive_text is a no-op (raw bytes) for a primitive with
             # no `opinions:` frontmatter key — every other single-file primitive

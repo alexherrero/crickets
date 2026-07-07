@@ -144,7 +144,7 @@
       "description": "Scan diffs and the working tree for personal information (emails, personal paths, API keys, phone numbers) before commit or push.",
       "name": "privacy",
       "source": "./dist/claude-code/plugins/privacy",
-      "version": "0.5.0"
+      "version": "0.6.0"
     },
     {
       "capabilities": [

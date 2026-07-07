@@ -128,8 +128,16 @@ class AntigravityEmitter(HostEmitter):
     def _copy_component(self, prim: Primitive, dest_dir: Path) -> None:
         dest_dir.mkdir(parents=True, exist_ok=True)
         if prim.root.is_dir():
-            shutil.copytree(prim.root, dest_dir / prim.root.name, dirs_exist_ok=True,
+            copied_root = dest_dir / prim.root.name
+            shutil.copytree(prim.root, copied_root, dirs_exist_ok=True,
                             ignore=bundle_ignore())
+            # A directory-rooted primitive (skill) still needs its manifest
+            # re-rendered when it declares `opinions:` -- see emit_claude.py's
+            # own comment on this same fix (PLAN-wave-d-tokens-and-privacy
+            # task 4's privacy-review retrofit found this gap in both emitters).
+            if prim.frontmatter.get("opinions"):
+                manifest_rel = prim.manifest.relative_to(prim.root)
+                write_utf8(copied_root / manifest_rel, render_primitive_text(prim))
         else:
             # render_primitive_text is a no-op (raw text) for a primitive with
             # no `opinions:` frontmatter key — every other single-file primitive

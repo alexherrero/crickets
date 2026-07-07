@@ -3,8 +3,9 @@ name: privacy-review
 description: "Structured privacy-engineering review of a diff/PR, adapted from OWASP ASVS V8 Data Protection, the OWASP Top 10 Privacy Risks, the NIST Privacy Framework, and ICO data-protection-by-design guidance. Runs a deterministic Semgrep pre-pass for the four mechanizable checks (PII-in-URL, PII-in-client-storage, plaintext-columns, third-party-sinks), then LLM-judges the non-mechanical practices (consent scoping, retention adequacy, erasure completeness, purpose limitation). Reports falsifiable PRIVACY-RISK <file>:<line> [ASVS-id] findings; never fixes."
 kind: skill
 supported_hosts: [claude-code, antigravity]
-version: 0.1.0
+version: 0.2.0
 install_scope: project
+opinions: [good, how-we-engineer]
 ---
 
 # privacy-review
@@ -52,7 +53,16 @@ Each Semgrep finding already carries the `PRIVACY-RISK <category> [ASVS-id]` sha
 
 ### Step 2 — Read the diff for the five LLM-judged practices
 
-For each of retention/deletion, erasure completeness, consent/purpose-limitation, data minimization, test-fixture production-data, and unscoped access: read the diff and ask the practice's anchor question directly. A change that touches none of these practices is out of scope for that row — do not invent a finding.
+For each of retention/deletion, erasure completeness, consent/purpose-limitation, data minimization, test-fixture production-data, and unscoped access: read the diff and ask the practice's anchor question directly. A change that touches none of these practices is out of scope for that row — do not invent a finding. Hold each one to the standard below:
+
+<!-- opinion:good -->
+Good means it survives an adversarial pass primed to assume bugs exist, not
+a friendly skim. The standard is a failing test, a specific file:line
+defect, or an explicit "no issues found" after genuinely looking — prose
+critique without one of those three is not a review.
+<!-- /opinion:good -->
+
+Applied to a privacy review: a practice "passing" means it survives being read as if it's already broken, not that it looks plausible on a skim.
 
 ### Step 3 — Report findings
 
@@ -62,11 +72,18 @@ If nothing is found across every practice checked: `NO PRIVACY ISSUES FOUND` —
 
 **This skill never fixes.** Report findings; the caller (or a follow-up task) remediates.
 
+This deterministic-first structure — mechanized checks before judgment, never invented findings, verification before declaring done — is the review discipline this skill runs on:
+
+<!-- opinion:how-we-engineer -->
+How we engineer means the phase discipline: plan before code, one task at a
+time gated on real verification, bugs get a Report → Analyze → Fix → Verify
+pass instead of a patch-and-hope, and sizing matches the actual scope
+instead of over- or under-building it.
+<!-- /opinion:how-we-engineer -->
+
 ## Opinions it consumes
 
-`privacy-review` is designed to consume `opinion_resolve("good")` (what good privacy practice looks like) and `opinion_resolve("how-we-engineer")` (the review discipline) — the same by-name Opinion-registry request pattern `diagnostics`' `writer.py` uses (`PLAN-wave-d-opinion-wiring` task 1).
-
-**Deferred, not wired, in this build.** `writer.py` can call `opinion_resolve()` because it has a genuine code-level render step (`_build_body()`, real Python assembling a written entry) to inject the resolved text into. `privacy-review` has no such render step — like its own shape-model `security-review`, it is a static markdown prompt file loaded verbatim; there is no code path that assembles this skill's system-prompt text at runtime. Injecting resolved opinion text into a markdown prompt file is exactly the grammar gap `PLAN-wave-d-opinion-wiring` found and deliberately left unbuilt (tracked as `task_a2bed2b9`, a follow-up design task for the markdown/skill-prompt consumer grammar). Wiring it here would mean inventing a one-off fix the sibling plan explicitly declined to improvise — so this binding stays a documented intent, not a working connection, until that grammar lands.
+`privacy-review` declares `opinions: [good, how-we-engineer]` and consumes both via the markdown-prose cross-plugin consumer grammar `PLAN-opinion-consumer-grammar` landed (build-time interpolation from a committed `scripts/opinion-snapshots/<name>.md` snapshot into this file's `<!-- opinion:name --> ... <!-- /opinion:name -->` marker pairs — see `design.md`'s `opinions: [good]` binding for the precedent this mirrors). This was originally scoped as a deferred intent in this task (the markdown-prose render-step grammar didn't exist yet when task 4 was first built) and retrofitted once `PLAN-opinion-consumer-grammar` landed concurrently with this plan's own close-out — the seed prose above is kept in sync with agentm's live `opinions/good.md` / `opinions/how-we-engineer.md` by `check-opinion-snapshot-parity.py`, and `generate.py` re-bakes it from the committed snapshot at every build.
 
 ## Common Rationalizations
 

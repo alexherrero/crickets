@@ -150,12 +150,21 @@ def interpolate_opinions(text: str, opinions: list, snapshots_dir: Path | None =
 
 
 def render_primitive_text(prim: "Primitive", snapshots_dir: Path | None = None) -> str:
-    """Return a single-file primitive's emitted text, with any declared
-    `opinions:` markers interpolated from the committed snapshot store — ready
-    for `write_utf8`. A primitive with no `opinions:` frontmatter key returns
-    its source text unchanged -- byte-identical (once `write_utf8`-encoded) to
-    the plain `copy2` this replaces, for every primitive that doesn't opt in."""
-    text = prim.root.read_text(encoding="utf-8")
+    """Return a primitive's manifest text, with any declared `opinions:`
+    markers interpolated from the committed snapshot store — ready for
+    `write_utf8`. A primitive with no `opinions:` frontmatter key returns its
+    source text unchanged -- byte-identical (once `write_utf8`-encoded) to
+    the plain `copy2` this replaces, for every primitive that doesn't opt in.
+
+    Reads `prim.manifest`, not `prim.root` -- for a single-file primitive
+    (command/agent/output-style/rule/snippet) the two are the same file, but
+    for a directory-rooted primitive (skill/hook) `root` is the directory and
+    `manifest` is the actual SKILL.md/hook.md inside it. Using `root` here
+    unconditionally would raise IsADirectoryError for every skill/hook that
+    declares `opinions:` (found during PLAN-wave-d-tokens-and-privacy task 4's
+    privacy-review retrofit -- the emitters' directory-copytree branch never
+    called this function at all, so no skill/hook had ever exercised it)."""
+    text = prim.manifest.read_text(encoding="utf-8")
     opinions = prim.frontmatter.get("opinions") or []
     if not opinions:
         return text

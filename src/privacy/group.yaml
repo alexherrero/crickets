@@ -42,5 +42,17 @@ standalone: true
 #          static markdown skill has no code-level render step to inject
 #          resolved opinion text into today (the same grammar gap
 #          PLAN-wave-d-opinion-wiring found and left for a follow-up task).
-version: 0.5.0
+# 0.6.0 = PLAN-wave-d-tokens-and-privacy task 4 retrofit: PLAN-opinion-
+#          consumer-grammar (#167) landed concurrently with this plan's own
+#          close-out and directly closed the deferral above — privacy-review
+#          now declares `opinions: [good, how-we-engineer]` and carries real
+#          <!-- opinion:name --> marker pairs, baked from committed
+#          scripts/opinion-snapshots/ snapshots at build time. Retrofitting
+#          this also surfaced and fixed a real gap in #167's own emitters
+#          (emit_claude.py / emit_antigravity.py): the directory-copytree
+#          branch for skill/hook primitives never called
+#          render_primitive_text at all, so no skill's opinions: markers
+#          were ever actually re-baked — proven via a deliberate
+#          snapshot-divergence probe before and after the fix.
+version: 0.6.0
 capabilities: [pii, privacy]

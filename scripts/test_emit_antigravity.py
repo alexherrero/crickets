@@ -257,6 +257,20 @@ class TestAntigravityEmitter(unittest.TestCase):
         self.assertIn("<!-- opinion:good -->", design_md)
         self.assertIn("<!-- /opinion:good -->", design_md)
 
+    def test_opinions_interpolated_into_skill_manifest(self):
+        # PLAN-wave-d-tokens-and-privacy task 4 retrofit: a directory-rooted
+        # primitive (skill) declaring opinions: must have its manifest
+        # re-rendered too, not just plain-copytree'd -- the directory branch
+        # of _copy_component never called render_primitive_text before this
+        # fix, so a skill's opinion markers were never actually baked.
+        manifest = (self.agdist / "plugins" / "privacy" / "skills" / "privacy-review" / "SKILL.md")
+        text = manifest.read_text(encoding="utf-8")
+        good_body = (_ROOT / "scripts" / "opinion-snapshots" / "good.md").read_text(encoding="utf-8")
+        good_body = good_body.split("---", 2)[2].strip()
+        self.assertIn(good_body, text)
+        self.assertIn("<!-- opinion:good -->", text)
+        self.assertIn("<!-- opinion:how-we-engineer -->", text)
+
     def test_snippet_discovered_to_rules(self):
         # a discovered `snippet` primitive lands in rules/ on Antigravity (AG ships
         # instruction files, unlike Claude which drops them).
