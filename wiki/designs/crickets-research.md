@@ -76,7 +76,7 @@ Both lean **by name** on agentm's **forward-experience substrate** — the sched
 
 ### Opinions it consumes
 
-research leans on **`how-we-engineer`** — it feeds the plan → design → architecture sizing ladder, bringing in what the work needs to know before it plans. *(Hardwired today; request-by-name is Phase-3/4 — the [Opinions design](https://github.com/alexherrero/agentm/wiki/agentm-opinions-and-gates).)*
+research leans on **`how-we-engineer`** — it feeds the plan → design → architecture sizing ladder, bringing in what the work needs to know before it plans. *No shipped prose site to bind yet — the design's own stated lean, not yet realized in a runtime prompt (`src/research/` carries no skill/command markdown, only `scripts/`; PLAN-wave-d-personas task 1 grounding pass, 2026-07-07). Request-by-name is Phase-3/4 — the [Opinions design](https://github.com/alexherrero/agentm/wiki/agentm-opinions-and-gates).*
 
 ## Dependencies
 
@@ -103,6 +103,8 @@ research leans on **`how-we-engineer`** — it feeds the plan → design → arc
 - **Siblings:** [crickets HLD](crickets-hld.md) · [composition](crickets-composition.md) · [agentm Personas](https://github.com/alexherrero/agentm/wiki/agentm-personas) (Researcher) · [agentm Experience](https://github.com/alexherrero/agentm/wiki/agentm-experience-and-dreaming)
 
 ## Amendment log
+
+**2026-07-07 — corrected the `how-we-engineer` binding claim; no real prose site exists (PLAN-wave-d-personas task 1 grounding pass).** `src/research/` carries exactly two files (`scripts/agentm_bridge.py`, `scripts/idea_search.py`) — zero skill/command markdown, so there is no static-prose site for the grammar to bind. Reworded "Opinions it consumes" above from "hardwired today" (implying a real, undeclared binding waiting on request-by-name plumbing) to state plainly that no grounded binding exists yet — the same shape `PLAN.archive.20260707-opinion-consumer-grammar.md` task 4 already found for `maintenance`/`wiki`. *Why not author the missing prose here:* out of this plan's scope (the consumer grammar, not net-new opinion-standard content) — deferred to whoever next substantively touches research. *Re-audit trigger:* if a future change adds real `how-we-engineer`-shaped prose to a shipped `src/research/` file, reclassify this as a grounded binding and wire it via the markdown-prose consumer grammar ([composition](crickets-composition.md)).
 
 **2026-06-28 — lock-down sweep (operator review).** Converted the two-modes mermaid to a house-style hand-SVG (`diagrams/crickets-research.svg`); and, per operator review, removed the public / operator-personal posture discussion from the body, Risks, re-audit, and this log (the deep-research forward-reference mechanism stays). Confirmed the two modes — on-demand (built) and scheduled forward-learning (designed, leaning by name on agentm's forward-experience substrate). Locked as a v5–v8 guidepost.
 

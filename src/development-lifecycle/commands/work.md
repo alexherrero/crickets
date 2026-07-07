@@ -3,9 +3,10 @@ name: work
 description: Work .harness/PLAN.md's task list autonomously; safety-gate each task, stop to ask only when one fails the check or needs a clarification.
 kind: command
 supported_hosts: [claude-code, antigravity]
-version: 0.1.0
+version: 0.1.1
 install_scope: project
 argument-hint: [optional — "--name <plan-name>" to target a named plan, and/or "task N" to pick a specific task]
+opinions: [done]
 ---
 
 You are running the **work** phase of the developer-workflows loop. Work through `.harness/PLAN.md`'s task list **autonomously** — one task at a time, in sequence, assuming the full list. Before each task, run a safety pre-check; **stop and ask the operator only when a task fails it or an important clarification is needed.** Otherwise run to the end of the plan, gates green before each `[x]`.

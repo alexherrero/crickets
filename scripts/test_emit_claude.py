@@ -284,7 +284,20 @@ class TestClaudeEmitter(unittest.TestCase):
         self.assertIn(snapshot_body, design_md)
         self.assertIn("<!-- opinion:good -->", design_md)
         self.assertIn("<!-- /opinion:good -->", design_md)
-        self.assertIn("opinions: [good]", design_md)
+        self.assertIn("good", design_md.split("opinions: [", 1)[1].split("]", 1)[0])
+
+    def test_opinions_how_we_engineer_interpolated_into_design_command(self):
+        # PLAN-wave-d-personas task 2: design/commands/design.md additionally
+        # declares how-we-engineer (alongside good) with a marker at the
+        # rung-picking (sizing-ladder) prose -- the second binding fanned out
+        # through the same cross-plugin grammar proven above.
+        design_md = (self.cdist / "plugins" / "design" / "commands" / "design.md").read_text(encoding="utf-8")
+        snapshot_body = (_ROOT / "scripts" / "opinion-snapshots" / "how-we-engineer.md").read_text(encoding="utf-8")
+        snapshot_body = snapshot_body.split("---", 2)[2].strip()
+        self.assertIn(snapshot_body, design_md)
+        self.assertIn("<!-- opinion:how-we-engineer -->", design_md)
+        self.assertIn("<!-- /opinion:how-we-engineer -->", design_md)
+        self.assertIn("how-we-engineer", design_md.split("opinions: [", 1)[1].split("]", 1)[0])
 
     def test_snippet_discovered_dropped(self):
         # a discovered `snippet` primitive is DROPPED on Claude (no instruction-file
