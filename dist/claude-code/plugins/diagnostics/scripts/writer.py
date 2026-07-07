@@ -34,6 +34,19 @@ fingerprint_index = _load_sibling("fingerprint_index", "fingerprint_index.py")
 _DEFAULT_HYPOTHESIS = "Unknown -- no hypothesis ranked yet."
 
 
+def _opinion_section(name: str) -> str:
+    """Render `## Opinion: <name>` from the resolved base+supplement, or ""
+    when the opinion is unresolvable (no-opinion/error) -- graceful-skip,
+    never blocks the incident write (PLAN-wave-d-opinion-wiring task 1)."""
+    result = agentm_bridge.opinion_resolve(name)
+    if result.get("reason") not in ("served", "base-only") or not result.get("base"):
+        return ""
+    parts = [result["base"].strip()]
+    if result.get("supplement"):
+        parts.append(result["supplement"].strip())
+    return f"## Opinion: {name}\n" + "\n\n".join(parts) + "\n\n"
+
+
 def _build_body(
     *,
     symptom: str,
@@ -51,7 +64,8 @@ def _build_body(
         f"## Fix / workaround\n{fix_or_workaround or 'None yet -- see hypotheses below.'}\n\n"
         f"## Outcome\n{outcome or 'Pending -- this is a fresh incident.'}\n\n"
         f"## Hypotheses\n{hyp_lines}\n"
-    )
+        f"\n{_opinion_section('how-we-engineer')}"
+    ).rstrip("\n") + "\n"
 
 
 def write_failure_incident(
