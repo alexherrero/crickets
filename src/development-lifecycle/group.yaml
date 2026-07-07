@@ -478,5 +478,11 @@ enhances:
 #          unresolvable (CI has no sibling agentm checkout) — the same-repo
 #          lookup never needed agentm before 0.34.6 and must not regress
 #          when agentm is simply absent from a machine.
-version: 0.34.7
+# 0.35.0 = workflow-step persona adoption (PLAN-wave-d-personas task 3):
+#          /plan, /work, /review, /bugfix each name the agentm persona they
+#          wear for their step (tech-lead / engineer / reviewer /
+#          troubleshooter) via the new resolve_workflow_persona.py bridge —
+#          explicit invocation still wins, graceful-skip when agentm is
+#          absent. Additive; no existing behavior changes.
+version: 0.35.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]
