@@ -13,5 +13,12 @@ standalone: false
 #          to agentm's top-level scripts/), folding the resolved text into a
 #          written incident's ## Opinion: how-we-engineer section
 #          (PLAN-wave-d-opinion-wiring task 1).
-version: 0.1.1
+# 0.1.2 = PLAN-wave-d-tokens-and-privacy task 6: write_failure_incident() now
+#          explicitly scrubs the assembled body via privacy's new
+#          scrub_text() surface before handing it to agentm_bridge -- a
+#          second, explicit, visible scrub at the crickets call site,
+#          alongside (not instead of) save_entry()'s own mandatory
+#          kind-gated scrub. Graceful-skip (falls back to the implicit-only
+#          scrub) when privacy's scrub_text.py isn't co-located.
+version: 0.1.2
 capabilities: [diagnostics]

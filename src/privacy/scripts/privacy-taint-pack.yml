@@ -1,0 +1,166 @@
+# privacy-taint-pack.yml — the four mechanizable privacy checks
+# (PLAN-wave-d-tokens-and-privacy task 5; crickets-privacy.md:56).
+#
+# Deterministic-first: these four pattern categories are structural (PII
+# reaching a URL / client storage / a plaintext DB column / a third-party
+# sink) and belong in Semgrep, not prompt-based LLM judgment. The
+# non-mechanical privacy practices -- consent scoping, retention adequacy,
+# erasure completeness, purpose limitation -- stay LLM-judged inside the
+# privacy-review skill; they are not forced into rules here because Semgrep
+# has no way to express "was consent obtained for this purpose."
+#
+# Scope discipline: exactly the four categories named in the design + the
+# plan. No fifth rule, no attempt to mechanize the non-mechanical practices.
+#
+# Languages: python + javascript (the two this repo's own source and its
+# typical consumer projects are written in). Each category is one rule PER
+# LANGUAGE rather than one multi-language rule -- a single rule spanning
+# python+javascript+typescript was found (during this task's own fixture
+# verification) to silently fail metavariable-pattern sub-matching in some
+# cases; per-language rules are both more idiomatic Semgrep style and side-
+# step that failure mode entirely. Each rule is pattern-based (not full
+# dataflow taint mode) -- deliberately narrow and low-noise for a first
+# pack; broadening to real taint-mode tracking is a real future enhancement,
+# not a silently dropped requirement of this task.
+
+rules:
+  # ── 1. PII-in-URL ──────────────────────────────────────────────────────
+  - id: privacy-pii-in-url-py
+    languages: [python]
+    severity: WARNING
+    message: >-
+      PRIVACY-RISK PII-in-URL [ASVS-8.3.4]: a PII-shaped identifier (email,
+      user-supplied personal field) appears to be interpolated directly into
+      a URL/query-string. URLs are logged by proxies, browsers, and CDNs —
+      PII belongs in the request body or an opaque token, not the URL.
+    metadata:
+      asvs: ASVS-8.3.4
+      category: pii-in-url
+    patterns:
+      - pattern-either:
+          - pattern: $STR + $EMAIL
+          - pattern: f"...{$EMAIL}..."
+      - metavariable-regex:
+          metavariable: $EMAIL
+          regex: (?i).*(email|ssn|phone|dob|address)$
+
+  - id: privacy-pii-in-url-js
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: >-
+      PRIVACY-RISK PII-in-URL [ASVS-8.3.4]: a PII-shaped identifier (email,
+      user-supplied personal field) appears to be interpolated directly into
+      a URL/query-string. URLs are logged by proxies, browsers, and CDNs —
+      PII belongs in the request body or an opaque token, not the URL.
+    metadata:
+      asvs: ASVS-8.3.4
+      category: pii-in-url
+    patterns:
+      - pattern-either:
+          - pattern: $STR + $EMAIL
+          - pattern: "`...${$EMAIL}...`"
+      - metavariable-regex:
+          metavariable: $EMAIL
+          regex: (?i).*(email|ssn|phone|dob|address)$
+
+  # ── 2. PII-in-client-storage ────────────────────────────────────────────
+  - id: privacy-pii-in-client-storage
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: >-
+      PRIVACY-RISK PII-in-client-storage [ASVS-8.2.3]: a PII-shaped value is
+      written to localStorage/sessionStorage, which is unencrypted,
+      persists indefinitely, and is readable by any script on the origin
+      (including a future XSS payload). Store an opaque session token
+      instead and keep PII server-side.
+    metadata:
+      asvs: ASVS-8.2.3
+      category: pii-in-client-storage
+    patterns:
+      - pattern-either:
+          - pattern: localStorage.setItem($KEY, $VAL)
+          - pattern: sessionStorage.setItem($KEY, $VAL)
+      - metavariable-regex:
+          metavariable: $KEY
+          regex: (?i).*(email|ssn|firstname|lastname|phone|address|dob|password)
+
+  # ── 3. Plaintext-columns ────────────────────────────────────────────────
+  - id: privacy-plaintext-personal-column
+    languages: [python]
+    severity: WARNING
+    message: >-
+      PRIVACY-RISK plaintext-columns [ASVS-8.2.1]: a personal-data column
+      (ssn/dob/national id) is written as a plaintext literal/variable with
+      no hash/encrypt call wrapping it. Sensitive personal identifiers
+      should never be stored in cleartext at rest.
+    metadata:
+      asvs: ASVS-8.2.1
+      category: plaintext-columns
+    patterns:
+      - pattern-either:
+          - pattern: $TABLE.insert(ssn=$VAL, ...)
+          - pattern: $TABLE.insert(national_id=$VAL, ...)
+          - pattern: $TABLE.insert(date_of_birth=$VAL, ...)
+      - pattern-not: $TABLE.insert(ssn=hash(...), ...)
+      - pattern-not: $TABLE.insert(ssn=encrypt(...), ...)
+      - pattern-not: $TABLE.insert(national_id=hash(...), ...)
+      - pattern-not: $TABLE.insert(national_id=encrypt(...), ...)
+      - pattern-not: $TABLE.insert(date_of_birth=hash(...), ...)
+      - pattern-not: $TABLE.insert(date_of_birth=encrypt(...), ...)
+
+  # ── 4. Third-party-sinks ────────────────────────────────────────────────
+  - id: privacy-pii-to-third-party-sink-py
+    languages: [python]
+    severity: WARNING
+    message: >-
+      PRIVACY-RISK third-party-sink [ASVS-8.3.6]: a PII-shaped value appears
+      to be forwarded to a third-party analytics/tracking SDK call
+      (analytics.track / posthog.capture / mixpanel / segment). Confirm this
+      field is within the documented purpose + consent scope for that
+      vendor before shipping — most analytics vendors are not a permitted
+      destination for raw personal identifiers.
+    metadata:
+      asvs: ASVS-8.3.6
+      category: third-party-sinks
+    patterns:
+      - pattern-either:
+          - pattern: analytics.track(..., $PROPS)
+          - pattern: posthog.capture(..., $PROPS)
+          - pattern: mixpanel.track(..., $PROPS)
+          - pattern: segment.track(..., $PROPS)
+      - metavariable-pattern:
+          metavariable: $PROPS
+          patterns:
+            - pattern-either:
+                - pattern: '{"email": $E, ...}'
+                - pattern: '{..., "email": $E}'
+                - pattern: '{"ssn": $E, ...}'
+                - pattern: dict(email=$E, ...)
+
+  - id: privacy-pii-to-third-party-sink-js
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: >-
+      PRIVACY-RISK third-party-sink [ASVS-8.3.6]: a PII-shaped value appears
+      to be forwarded to a third-party analytics/tracking SDK call
+      (analytics.track / posthog.capture / mixpanel / segment). Confirm this
+      field is within the documented purpose + consent scope for that
+      vendor before shipping — most analytics vendors are not a permitted
+      destination for raw personal identifiers.
+    metadata:
+      asvs: ASVS-8.3.6
+      category: third-party-sinks
+    patterns:
+      - pattern-either:
+          - pattern: analytics.track(..., $PROPS)
+          - pattern: posthog.capture(..., $PROPS)
+          - pattern: mixpanel.track(..., $PROPS)
+          - pattern: segment.track(..., $PROPS)
+      - metavariable-pattern:
+          metavariable: $PROPS
+          patterns:
+            - pattern-either:
+                - pattern: '{email: $E, ...}'
+                - pattern: '{..., email: $E}'
+                - pattern: '{"email": $E, ...}'
+                - pattern: '{..., "email": $E}'

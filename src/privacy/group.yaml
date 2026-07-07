@@ -27,5 +27,20 @@ standalone: true
 #          this wave dualizes. Skill/script slugs (pii-patterns, pii-scrubber,
 #          pii_scrubber.py) are left unchanged; that primitive-level rename is a
 #          separate naming-hygiene call the design doesn't force.
-version: 0.4.0
+# 0.5.0 = PLAN-wave-d-tokens-and-privacy tasks 4-6: the privacy-review skill
+#          (an ASVS/OWASP/NIST/ICO-adapted checklist, falsifiable
+#          PRIVACY-RISK <file>:<line> [ASVS-id] output, modeled on
+#          code-review's security-review) + a Semgrep taint pack covering
+#          the four mechanizable checks (PII-in-URL, PII-in-client-storage,
+#          plaintext-columns, third-party-sinks — consent/retention/erasure
+#          stay LLM-judged inside the skill) + scrub_text.py, a new
+#          arbitrary-text scrub surface bridging to agentm's
+#          privacy_scrub.scrub_pii rules (reused, not forked), now wired
+#          explicitly into diagnostics' writer.py incident-write path.
+#          privacy-review's opinion-wiring (good + how-we-engineer) is
+#          documented as a deferred intent, not a working connection: a
+#          static markdown skill has no code-level render step to inject
+#          resolved opinion text into today (the same grammar gap
+#          PLAN-wave-d-opinion-wiring found and left for a follow-up task).
+version: 0.5.0
 capabilities: [pii, privacy]

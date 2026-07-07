@@ -94,7 +94,9 @@ class TestClaudeEmitter(unittest.TestCase):
         # 9.4x Windows-vs-Mac subprocess-spawn slowdown; PLAN-ci-walltime-diet
         # task 1). Detection behavior unchanged.
         # 0.4.0 = AG Wave A rename 2: directory pii -> privacy.
-        self.assertEqual(self._plugin_json("privacy")["version"], "0.4.0")
+        # 0.5.0 = PLAN-wave-d-tokens-and-privacy tasks 4-6: privacy-review
+        # skill + Semgrep taint pack + scrub_text() surface.
+        self.assertEqual(self._plugin_json("privacy")["version"], "0.5.0")
 
     def test_dependencies_from_requires(self):
         # post-seed-retirement: maintenance (ex-github-ci) depends on

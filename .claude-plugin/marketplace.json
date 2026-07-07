@@ -99,7 +99,7 @@
       "description": "Deterministic-first failure diagnosis. /diagnose classifies a failure, recalls it via a fingerprint-first exact-match ladder (semantic fallback only on a miss), ranks hypotheses, and writes one scrubbed kind:failure-incident memory entry.",
       "name": "diagnostics",
       "source": "./dist/claude-code/plugins/diagnostics",
-      "version": "0.1.1"
+      "version": "0.1.2"
     },
     {
       "capabilities": [
@@ -144,7 +144,7 @@
       "description": "Scan diffs and the working tree for personal information (emails, personal paths, API keys, phone numbers) before commit or push.",
       "name": "privacy",
       "source": "./dist/claude-code/plugins/privacy",
-      "version": "0.4.0"
+      "version": "0.5.0"
     },
     {
       "capabilities": [
