@@ -112,6 +112,19 @@ jobs:
         # PLAN-r3-voice-mechanism task 4 — catches base-style-guide.md's banned
         # line falling behind the rule pack's floor-eligible terms.
         run: python3 scripts/check-voice-floor-parity.py --report
+      - name: Opinion snapshots stay honest against agentm (check-opinion-snapshot-parity, report-only)
+        # PLAN-opinion-consumer-grammar task 1 — keeps scripts/opinion-snapshots/<name>.md
+        # (the committed base generate.py bakes into dist/ for cross-plugin opinion
+        # consumers) honest against agentm's live opinions/<name>.md. In CI there's no
+        # agentm sibling checked out, so this gracefully skips (0) rather than
+        # comparing; it earns its keep on a machine with both repos cloned.
+        run: python3 scripts/check-opinion-snapshot-parity.py --report
+      - name: Self-provider opinion bindings stay anchored to agentm (check-opinion-self-provider-drift, report-only)
+        # PLAN-opinion-consumer-grammar task 3 — flags an agentm opinions/<name>.md
+        # stub falling out of sync with its self-provider caller's own shipped prose
+        # (e.g. code-review's adversarial-reviewer.md IS good's implements: artifact).
+        # Same CI-has-no-agentm-sibling graceful-skip as the snapshot-parity gate above.
+        run: python3 scripts/check-opinion-self-provider-drift.py --report
       - name: Developer-safety .sh/.ps1 hook twins stay paired (check-hook-parity)
         # Anti-recurrence guard: a hook's .sh and .ps1 twins must stay
         # behaviorally paired — neither may read a workspace-relative .harness/…

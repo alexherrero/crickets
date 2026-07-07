@@ -246,6 +246,17 @@ class TestAntigravityEmitter(unittest.TestCase):
             self.assertTrue((cmds / "plan.md").exists())
             self.assertFalse((cmds / "ccionly.md").exists())
 
+    def test_opinions_good_interpolated_into_design_command(self):
+        # PLAN-opinion-consumer-grammar task 2: the same committed snapshot the
+        # Claude emitter bakes in must land identically on Antigravity (real
+        # src/ tree, via setUp's real build).
+        design_md = (self.agdist / "plugins" / "design" / "commands" / "design.md").read_text(encoding="utf-8")
+        snapshot_body = (_ROOT / "scripts" / "opinion-snapshots" / "good.md").read_text(encoding="utf-8")
+        snapshot_body = snapshot_body.split("---", 2)[2].strip()
+        self.assertIn(snapshot_body, design_md)
+        self.assertIn("<!-- opinion:good -->", design_md)
+        self.assertIn("<!-- /opinion:good -->", design_md)
+
     def test_snippet_discovered_to_rules(self):
         # a discovered `snippet` primitive lands in rules/ on Antigravity (AG ships
         # instruction files, unlike Claude which drops them).
