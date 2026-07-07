@@ -489,5 +489,11 @@ enhances:
 #          (github-projects/scripts/planner_maintain.py) at the same
 #          graceful-skip board-sync gate they already call project_sync.py
 #          post from — no new gate, no new capability probe.
-version: 0.35.1
+# 0.35.2 = PLAN-wave-d-cross-wiring task 2: /bugfix's Analyze phase now seeds
+#          a starting hypothesis set from diagnostics' shared diagnose()
+#          engine (find_capability.py diagnostics graceful-skip probe)
+#          before the manual explorer dispatch / "ask why three times" pass
+#          runs. Additive only -- /diagnose ranks hypotheses, it does not
+#          conclude root cause, and the manual reasoning pass is unchanged.
+version: 0.35.2
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

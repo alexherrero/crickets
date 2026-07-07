@@ -3,6 +3,10 @@ description: Deterministic-first failure diagnosis. /diagnose classifies a failu
 category: Coding
 requires: [development-lifecycle]
 standalone: false
+enhances:
+  - group: maintenance
+    capability: ci-repair
+    effect: "dependabot-fixer's Diagnose step calls diagnose() instead of reasoning fresh every time, with a confidence-gate proxy over the outcome field standing in for /diagnose's absent confidence score"
 # 0.1.0 = initial build (wave-c-diagnostics): fingerprint normalizer, the
 #          three-layer recall ladder (classify -> Layer-1 exact match ->
 #          Layer-2 semantic fallback), the self-reinforcing fingerprint
@@ -20,5 +24,19 @@ standalone: false
 #          alongside (not instead of) save_entry()'s own mandatory
 #          kind-gated scrub. Graceful-skip (falls back to the implicit-only
 #          scrub) when privacy's scrub_text.py isn't co-located.
-version: 0.1.2
+# 0.1.3 = PLAN-wave-d-cross-wiring task 1: declares the enhances: edge onto
+#          maintenance's ci-repair capability -- dependabot-fixer's Diagnose
+#          step now calls this engine instead of reasoning inline. No change
+#          to diagnose.py itself; only the group.yaml dependency graph gains
+#          the edge the design doc already documented as composed by
+#          maintenance.
+# 0.1.4 = PLAN-wave-d-cross-wiring task 2: /bugfix's Analyze phase now seeds
+#          a starting hypothesis set from this engine (bugfix.md's own
+#          change). No group.yaml enhances: edge is added for this one --
+#          diagnostics already `requires: [development-lifecycle]`, and
+#          lint_src.py rejects enhances: onto a group already in requires:
+#          (that's a hard dependency, not an optional enhancement). The
+#          relationship is documented in bugfix.md and this comment instead.
+#          diagnose.py itself is untouched.
+version: 0.1.4
 capabilities: [diagnostics]

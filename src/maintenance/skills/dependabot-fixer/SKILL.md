@@ -3,7 +3,7 @@ name: dependabot-fixer
 description: Fix breakage on a Dependabot PR. Trigger when (a) the current branch matches `dependabot/*` and CI is red, (b) the user asks to "fix the dependabot PR" / "make this dependency update pass", or (c) the user invokes `/dependabot-fix [pr-number]`. Reads failing CI logs and upstream CHANGELOG, applies a bounded fix loop, pushes commits to the Dependabot branch, comments residual risks on the PR. Never merges. Aborts honestly when the fix needs human judgment.
 kind: skill
 supported_hosts: [claude-code, antigravity]
-version: 1.0.0
+version: 1.1.0
 install_scope: project
 ---
 
@@ -38,9 +38,25 @@ Try to fetch the upstream CHANGELOG for the bump range (GitHub releases of the p
 
 Read `.harness/known-migrations.md` (if it exists). If the package matches a recipe, that recipe is your first fix attempt.
 
-## Diagnose (kept in scratch — do not write to disk yet)
+## Diagnose (call the shared `/diagnose` engine — do not reason inline)
 
-Produce: failure category, confidence (high/medium/low), proposed fix in 1–2 sentences with the files to edit. **If confidence is low → abort, do not attempt.**
+This step no longer produces its own category+confidence judgment from scratch. It calls `diagnostics`' shared entrypoint, feeding it the CI-log text already captured above (`/tmp/dependabot-fix-logs.txt`) as the traceback.
+
+Check availability first (graceful-skip): `python3 "${CLAUDE_PLUGIN_ROOT}/../development-lifecycle/scripts/find_capability.py" diagnostics`.
+
+- **Exit 1** (diagnostics not installed) → fall back to the pre-recast behavior: produce failure category + confidence (high/medium/low) + proposed fix inline, abort on low confidence.
+- **Exit 0** → run:
+  ```bash
+  python3 "${CLAUDE_PLUGIN_ROOT}/../diagnostics/scripts/diagnose.py" --project <repo-slug> --tool ci /tmp/dependabot-fix-logs.txt
+  ```
+  One JSON object comes back on stdout: `{"outcome": "layer1_hit"|"written", "path", "fingerprint", "fp_algo", "namespace", [hypotheses]}`.
+
+**The confidence-gate proxy (`/diagnose` has no confidence score — this mapping is the deliberate stand-in for the old high/medium/low gate):**
+
+- `outcome == "written"` with **no** `"Similar to existing incident..."` hypothesis (a cold start / Layer-2 miss — nothing to go on) → **abort**, do not attempt. This is the new low-confidence case.
+- `outcome == "layer1_hit"`, or `outcome == "written"` with a `"Similar to existing incident..."` hypothesis (a Layer-2 candidate carrying a real prior fix) → **proceed**, using the recalled prior incident's fix as the proposed-fix seed for the bounded fix loop below.
+
+The bounded fix loop downstream is unchanged — repair stays this skill's own concern; only diagnosis moved to the shared engine.
 
 ## Bounded fix loop
 
@@ -51,7 +67,7 @@ for i in 1..budget:
   apply the proposed fix (Edit tool)
   bash .harness/verify.sh
   if exit 0: break
-  re-read failing output; produce next diagnosis (if confidence drops to low → abort)
+  re-read failing output; re-run the Diagnose step above on the new failure (if the proxy gate now says abort → abort)
 ```
 
 ## Hard rules — never violate
@@ -88,3 +104,5 @@ This skill exists for the **major-version Dependabot PR where CI failed** case. 
 ## Migration history
 
 Originally shipped in `agentm v0.8.x` as a harness-bundled skill. Migrated to `crickets v0.1.0` (paired with `agentm v2.0.0`) because the skill is host-cross-cutting and not phase-shaped — it earns its keep in any repo with Dependabot + CI, not just harness-installed projects. The `.harness/`-aware paths (`.harness/verify.sh`, `.harness/known-migrations.md`, `.harness/progress.md`) remain because they're soft references — the skill graceful-falls back to language defaults when those files are absent.
+
+**2026-07-07 (v1.1.0, PLAN-wave-d-cross-wiring task 1):** the Diagnose step no longer reasons inline (own category+confidence judgment). It now calls the shared `diagnostics` engine (`diagnose.py`), graceful-skipping back to the pre-recast inline behavior when `diagnostics` isn't installed. The old inline high/medium/low confidence gate is replaced by a proxy mapping over `/diagnose`'s own `outcome` field (no confidence score exists on the shared engine) — see the Diagnose section above for the exact mapping.
