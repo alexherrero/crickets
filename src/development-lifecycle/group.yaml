@@ -473,5 +473,10 @@ enhances:
 # 0.34.6 = escalation_tripwire.py's tokens/scripts discovery now goes through
 #          opinion_resolve('efficient')['implements'] instead of a hardcoded
 #          relative path (PLAN-wave-d-opinion-wiring task 2).
-version: 0.34.6
+# 0.34.7 = fix-forward: the opinion-registry lookup above now falls back to
+#          the same-repo tokens/scripts path when agentm's resolver is
+#          unresolvable (CI has no sibling agentm checkout) — the same-repo
+#          lookup never needed agentm before 0.34.6 and must not regress
+#          when agentm is simply absent from a machine.
+version: 0.34.7
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

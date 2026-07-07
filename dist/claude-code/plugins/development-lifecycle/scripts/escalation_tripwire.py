@@ -62,21 +62,33 @@ def _load_module_from_path(name: str, path: Path):
     return m
 
 
+_FALLBACK_TA_SCRIPTS = _HERE.parent.parent / "tokens" / "scripts"
+
+
 def _resolve_efficient_implements_dir() -> "Path | None":
     """`opinion_resolve('efficient')['implements']` ("crickets/tokens") ->
-    this repo's `src/tokens/scripts` dir, or None if the opinion resolver is
-    unresolvable / the opinion has no `implements` pointer."""
+    this repo's `src/tokens/scripts` dir.
+
+    Falls back to the same-repo conventional path when agentm's opinion
+    resolver itself is unresolvable (e.g. CI, which has no sibling agentm
+    checkout) -- `tokens/scripts` is a sibling directory in THIS repo, not
+    something agentm provides, so its own absence from a machine should
+    never regress a lookup that never depended on agentm before this
+    migration. The registry lookup is the discovery mechanism whenever it's
+    reachable; the same-repo path is the floor it degrades to, not a
+    silently-abandoned parallel mechanism -- both resolve to the same
+    directory whenever agentm IS present (a parity test enforces this)."""
     resolver_path = _find_opinion_resolver()
-    if resolver_path is None:
-        return None
-    resolver = _load_module_from_path("_escalation_tripwire_opinion_resolver", resolver_path)
-    result = resolver.opinion_resolve("efficient")
-    implements = result.get("implements")
-    if not implements or "/" not in implements:
-        return None
-    _, capability = implements.split("/", 1)
-    candidate = _HERE.parent.parent / capability / "scripts"
-    return candidate if candidate.is_dir() else None
+    if resolver_path is not None:
+        resolver = _load_module_from_path("_escalation_tripwire_opinion_resolver", resolver_path)
+        result = resolver.opinion_resolve("efficient")
+        implements = result.get("implements")
+        if implements and "/" in implements:
+            _, capability = implements.split("/", 1)
+            candidate = _HERE.parent.parent / capability / "scripts"
+            if candidate.is_dir():
+                return candidate
+    return _FALLBACK_TA_SCRIPTS if _FALLBACK_TA_SCRIPTS.is_dir() else None
 
 
 _TA_SCRIPTS = _resolve_efficient_implements_dir()
