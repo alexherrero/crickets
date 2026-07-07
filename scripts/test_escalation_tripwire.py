@@ -104,6 +104,45 @@ class TestFireTripwireWritesHandoffPack(unittest.TestCase):
             self.assertIn("ESCALATION", result.announcement)
 
 
+class TestRoutedThroughOpinionResolveNotDirectImport(unittest.TestCase):
+    """PLAN-wave-d-opinion-wiring task 2: escalation_tripwire.py discovers
+    tokens/scripts via opinion_resolve('efficient')['implements'], not a
+    hardcoded _HERE.parent.parent / "tokens" / "scripts" relative path."""
+
+    def test_source_no_longer_hardcodes_the_tokens_scripts_relative_path(self):
+        # The old discovery line assigned _TA_SCRIPTS directly from a fixed
+        # relative path; the new one resolves it from the opinion registry.
+        # Checked as a code pattern, not a bare substring, so this survives
+        # prose in the docstring that explains the migration by naming the
+        # old shape.
+        src = (_DW_SCRIPTS / "escalation_tripwire.py").read_text(encoding="utf-8")
+        self.assertNotIn('_TA_SCRIPTS = _HERE.parent.parent / "tokens" / "scripts"', src)
+        self.assertIn("_resolve_efficient_implements_dir", src)
+
+    def test_source_calls_opinion_resolve_for_efficient(self):
+        src = (_DW_SCRIPTS / "escalation_tripwire.py").read_text(encoding="utf-8")
+        self.assertIn("opinion_resolve", src)
+        self.assertIn("efficient", src)
+
+    def test_fixture_classification_unchanged_after_migration(self):
+        # The migration changes HOW tokens/scripts is discovered, never WHAT
+        # classify_work_type resolves for a given role -- same fixture role,
+        # same tier/model_id/effort as the pre-migration direct-import path.
+        counter = et.FailureCounter()
+        with tempfile.TemporaryDirectory() as d:
+            dest = Path(d) / "escalation"
+            result = None
+            for i in range(3):
+                result = et.check_and_maybe_fire(
+                    counter, "task-42", "Fix the widget", "unit tests",
+                    f"err {i}", dest, work_type="worker-build",
+                )
+            manifest = json.loads((dest / "prompts.json").read_text(encoding="utf-8"))
+            label = manifest["prompts"][0]["label"]
+            self.assertEqual(label["tier"], "T1-Execute")
+            self.assertEqual(label["model_id"], "opusplan")
+
+
 class TestNeverSelfSwitchesModel(unittest.TestCase):
     def test_fire_tripwire_signature_has_no_model_mutating_parameter(self):
         sig = inspect.signature(et.fire_tripwire)

@@ -9,6 +9,18 @@ tripwire NEVER attempts to change the session's own model; it hands off to
 a human or a fresh session instead — `FIRE_THRESHOLD` is a prior, not a
 measurement (P14 routing-autonomy verdict §5), tuned later from real firing
 data via token-audit's routing-conformance report, not mid-plan.
+
+Locates `tokens/scripts` via `opinion_resolve('efficient')['implements']`
+(PLAN-wave-d-opinion-wiring task 2) rather than a hardcoded relative path —
+`efficient.md`'s `implements: crickets/tokens` frontmatter names the
+capability that carries the standard today (agentm-opinion-registry.md's
+`implements:` contract), so the discovery step is now a real registry
+lookup instead of an ad hoc `_HERE.parent.parent / "tokens" / "scripts"`
+guess. The classification data itself is unchanged: `classify_work_type.py`
++ `routing_table.py` still hold the concrete tier/model/effort rows — the
+opinion doesn't duplicate them (`composes: []` — `efficient.md` says the
+routing lever isn't folded into the opinion's own body yet), it only points
+at the capability that owns them.
 """
 from __future__ import annotations
 
@@ -20,14 +32,61 @@ from pathlib import Path
 FIRE_THRESHOLD = 3
 
 _HERE = Path(__file__).resolve().parent
-_TA_SCRIPTS = _HERE.parent.parent / "tokens" / "scripts"
+_OPINION_SCRIPTS_REL = Path("scripts")
+
+
+def _opinion_candidate_dirs() -> list[Path]:
+    import os
+    candidates = []
+    env_dir = os.environ.get("AGENTM_SCRIPTS_DIR", "").strip()
+    if env_dir:
+        candidates.append(Path(os.path.expanduser(env_dir)))
+    candidates.append(_HERE / _OPINION_SCRIPTS_REL)  # co-located install
+    candidates.append(Path.home() / "Antigravity" / "agentm" / _OPINION_SCRIPTS_REL)  # conventional clone
+    return candidates
+
+
+def _find_opinion_resolver() -> "Path | None":
+    for candidate in _opinion_candidate_dirs():
+        p = candidate / "opinion_resolver.py"
+        if p.is_file():
+            return p
+    return None
+
+
+def _load_module_from_path(name: str, path: Path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    m = importlib.util.module_from_spec(spec)
+    sys.modules[name] = m
+    spec.loader.exec_module(m)
+    return m
+
+
+def _resolve_efficient_implements_dir() -> "Path | None":
+    """`opinion_resolve('efficient')['implements']` ("crickets/tokens") ->
+    this repo's `src/tokens/scripts` dir, or None if the opinion resolver is
+    unresolvable / the opinion has no `implements` pointer."""
+    resolver_path = _find_opinion_resolver()
+    if resolver_path is None:
+        return None
+    resolver = _load_module_from_path("_escalation_tripwire_opinion_resolver", resolver_path)
+    result = resolver.opinion_resolve("efficient")
+    implements = result.get("implements")
+    if not implements or "/" not in implements:
+        return None
+    _, capability = implements.split("/", 1)
+    candidate = _HERE.parent.parent / capability / "scripts"
+    return candidate if candidate.is_dir() else None
+
+
+_TA_SCRIPTS = _resolve_efficient_implements_dir()
 
 _HAS_HANDOFF_PACK = False
 HandoffEntry = None
 build_handoff_pack = None
 _classify_work_type = None
 
-if _TA_SCRIPTS.is_dir():
+if _TA_SCRIPTS is not None:
     sys.path.insert(0, str(_TA_SCRIPTS))
     try:
         from handoff_pack import HandoffEntry as _HandoffEntry, build_handoff_pack as _build_handoff_pack  # type: ignore
