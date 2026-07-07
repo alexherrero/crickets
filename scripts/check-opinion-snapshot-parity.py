@@ -27,32 +27,14 @@ Stdlib-only.
 from __future__ import annotations
 
 import argparse
-import os
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from src_model import find_agentm_opinions_dir  # noqa: E402
+
 _HERE = Path(__file__).resolve().parent
 _SNAPSHOT_DIR = _HERE / "opinion-snapshots"
-
-
-def find_agentm_opinions_dir() -> Path | None:
-    """Locate agentm's opinions/ dir via path-fallback, or None.
-
-    Mirrors find_capability.py's _find_capability_resolver candidate order:
-      1. $AGENTM_SCRIPTS_DIR/../opinions   (explicit override)
-      2. <this-script-dir>/../opinions     (co-located install)
-      3. ~/Antigravity/agentm/opinions     (conventional clone)
-    """
-    candidates: list[Path] = []
-    env_dir = os.environ.get("AGENTM_SCRIPTS_DIR", "").strip()
-    if env_dir:
-        candidates.append(Path(os.path.expanduser(env_dir)) / ".." / "opinions")
-    candidates.append(_HERE / ".." / "opinions")
-    candidates.append(Path.home() / "Antigravity" / "agentm" / "opinions")
-    for c in candidates:
-        if c.is_dir():
-            return c.resolve()
-    return None
 
 
 def snapshot_names(snapshot_dir: Path) -> list[str]:

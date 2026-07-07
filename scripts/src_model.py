@@ -6,6 +6,7 @@ so the two share one parser. Requires PyYAML (CI installs it).
 """
 from __future__ import annotations
 
+import os
 import re
 import shutil
 from dataclasses import dataclass, field
@@ -72,7 +73,7 @@ def read_frontmatter(path: Path):
     return yaml.safe_load(m.group(1)) or {}
 
 
-def _strip_frontmatter(text: str) -> str:
+def strip_frontmatter(text: str) -> str:
     """Return `text` with a leading YAML frontmatter block removed, or `text`
     unchanged if it has none. Mirrors `read_frontmatter`'s own delimiter match."""
     m = re.match(r"^---\n.*?\n---\n?", text, re.S)
@@ -90,6 +91,30 @@ def _strip_frontmatter(text: str) -> str:
 # too, but has no marker in its body — it stays hardwired prose, honesty-checked
 # separately, and this function is a no-op for it (no marker to replace).
 _OPINION_SNAPSHOTS_DIR = Path(__file__).resolve().parent / "opinion-snapshots"
+
+
+def find_agentm_opinions_dir() -> Path | None:
+    """Locate agentm's opinions/ dir via path-fallback, or None. Shared by
+    every opinion-honesty gate that needs a live agentm read (verification
+    only -- never generate.py's build path, which reads only the committed
+    snapshot store above).
+
+    Mirrors find_capability.py's _find_capability_resolver candidate order:
+      1. $AGENTM_SCRIPTS_DIR/../opinions   (explicit override)
+      2. <this-script-dir>/../opinions     (co-located install)
+      3. ~/Antigravity/agentm/opinions     (conventional clone)
+    """
+    here = Path(__file__).resolve().parent
+    candidates: list[Path] = []
+    env_dir = os.environ.get("AGENTM_SCRIPTS_DIR", "").strip()
+    if env_dir:
+        candidates.append(Path(os.path.expanduser(env_dir)) / ".." / "opinions")
+    candidates.append(here / ".." / "opinions")
+    candidates.append(Path.home() / "Antigravity" / "agentm" / "opinions")
+    for c in candidates:
+        if c.is_dir():
+            return c.resolve()
+    return None
 
 
 def _opinion_marker_re(name: str) -> re.Pattern:
@@ -111,7 +136,7 @@ def interpolate_opinions(text: str, opinions: list, snapshots_dir: Path | None =
         snapshot_path = snapshots_dir / f"{name}.md"
         if not snapshot_path.is_file():
             continue
-        body = _strip_frontmatter(snapshot_path.read_text(encoding="utf-8")).strip()
+        body = strip_frontmatter(snapshot_path.read_text(encoding="utf-8")).strip()
         replacement = f"<!-- opinion:{name} -->\n{body}\n<!-- /opinion:{name} -->"
         text = pattern.sub(lambda _m, r=replacement: r, text, count=1)
     return text
