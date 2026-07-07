@@ -94,7 +94,11 @@ class TestClaudeEmitter(unittest.TestCase):
         # 9.4x Windows-vs-Mac subprocess-spawn slowdown; PLAN-ci-walltime-diet
         # task 1). Detection behavior unchanged.
         # 0.4.0 = AG Wave A rename 2: directory pii -> privacy.
-        self.assertEqual(self._plugin_json("privacy")["version"], "0.4.0")
+        # 0.5.0 = PLAN-wave-d-tokens-and-privacy tasks 4-6: privacy-review
+        # skill + Semgrep taint pack + scrub_text() surface.
+        # 0.6.0 = task 4 retrofit: real opinions: [good, how-we-engineer]
+        # wiring once PLAN-opinion-consumer-grammar (#167) landed.
+        self.assertEqual(self._plugin_json("privacy")["version"], "0.6.0")
 
     def test_dependencies_from_requires(self):
         # post-seed-retirement: maintenance (ex-github-ci) depends on
@@ -104,6 +108,19 @@ class TestClaudeEmitter(unittest.TestCase):
         self.assertNotIn("dependencies", self._plugin_json("wiki"))
         self.assertNotIn("dependencies", self._plugin_json("privacy"))
         self.assertNotIn("dependencies", self._plugin_json("development-lifecycle"))
+
+    def test_skill_with_opinions_frontmatter_gets_markers_interpolated(self):
+        # PLAN-wave-d-tokens-and-privacy task 4 retrofit: a directory-rooted
+        # primitive (skill) that declares `opinions:` must have its manifest
+        # re-rendered from the committed snapshot store, not just plain-
+        # copytree'd -- _copy_component's directory branch never called
+        # render_primitive_text at all before this fix, so no skill's
+        # opinions: markers were ever actually baked from the snapshot.
+        manifest = self.cdist / "plugins" / "privacy" / "skills" / "privacy-review" / "SKILL.md"
+        self.assertTrue(manifest.is_file())
+        text = manifest.read_text(encoding="utf-8")
+        self.assertIn("Good means it survives an adversarial pass", text)
+        self.assertIn("How we engineer means the phase discipline", text)
 
     def test_components_copied(self):
         d = self.cdist / "plugins"

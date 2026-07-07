@@ -232,6 +232,39 @@ class FailureIncidentOpinionWiringUnitTests(unittest.TestCase):
         self.assertIn("## Opinion: how-we-engineer", body)
         writer.agentm_bridge._reset_cache_for_tests()
 
+    def test_write_failure_incident_calls_privacy_scrub_text_explicitly(self):
+        # PLAN-wave-d-tokens-and-privacy task 6: writer.py must call privacy's
+        # scrub_text() explicitly at the crickets call site -- not rely
+        # solely on save_entry()'s own implicit kind-gated scrub one layer
+        # down. Spy on the loaded bridge module to prove THIS call fires,
+        # independent of whether agentm's own internal gate also fires.
+        calls = []
+
+        class _FakeScrubTextModule:
+            @staticmethod
+            def scrub_text(text):
+                calls.append(text)
+                return text.replace("SENTINEL-SECRET", "[REDACTED-SENTINEL]")
+
+        tmp = tempfile.TemporaryDirectory()
+        try:
+            vault = Path(tmp.name) / "vault"
+            vault.mkdir()
+            if writer.agentm_bridge.load_save_module() is None:
+                self.skipTest("agentm sibling checkout unavailable")
+            with mock.patch.object(writer, "_privacy_scrub_text", _FakeScrubTextModule):
+                target = writer.write_failure_incident(
+                    vault, project="crickets", fingerprint="fp-explicit-scrub-test",
+                    namespace="test", symptom="leaked SENTINEL-SECRET in log",
+                    hypotheses=["test"],
+                )
+            self.assertTrue(calls, "scrub_text() was never called explicitly by writer.py")
+            content = target.read_text(encoding="utf-8")
+            self.assertIn("[REDACTED-SENTINEL]", content)
+            self.assertNotIn("SENTINEL-SECRET", content)
+        finally:
+            tmp.cleanup()
+
     def test_build_body_degrades_gracefully_when_resolver_absent(self):
         empty_home = self.tmp / "empty_home"
         empty_home.mkdir()

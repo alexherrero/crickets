@@ -10,6 +10,15 @@ it immediately. save_entry's fingerprint= param also populates the real
 entry_meta.fingerprint column once a drain cycle runs, for other future
 SQL-side consumers; diagnostics itself never reads that column back (see
 PLAN-wave-c-diagnostics.md's Locked design calls for the full reasoning).
+
+PLAN-wave-d-tokens-and-privacy task 6: the assembled body is ALSO explicitly
+scrubbed here, via privacy's own scrub_text() surface, before it's handed to
+agentm_bridge.write_failure_incident(). This is a second, explicit, visible
+scrub at the crickets call site -- not a replacement for save_entry()'s own
+mandatory kind-gated scrub one layer down, which still runs unconditionally.
+Scrubbing is idempotent (already-redacted text passes through unchanged), so
+the two scrubs never conflict; explicit here means this write path stays
+correct even if a future change ever altered save_entry()'s own kind-gating.
 """
 from __future__ import annotations
 
@@ -17,6 +26,7 @@ import importlib.util
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
+_PRIVACY_SCRIPTS = _HERE.parent.parent / "privacy" / "scripts"
 
 
 def _load_sibling(label: str, filename: str):
@@ -28,8 +38,28 @@ def _load_sibling(label: str, filename: str):
     return module
 
 
+def _load_privacy_scrub_text():
+    """Load privacy's scrub_text.py from this repo's own src/ tree (co-located
+    plugin install) -- diagnostics `requires: [development-lifecycle]` but not
+    `privacy`, so this is a soft, graceful-skip-on-absence load, same pattern
+    as agentm_bridge.py's own optional bridges. Falls back to identity (no
+    scrub) if privacy's scrub_text.py isn't reachable -- save_entry()'s own
+    mandatory kind-gated scrub is still the hard guarantee either way."""
+    candidates = [
+        _PRIVACY_SCRIPTS / "scrub_text.py",  # co-located src/ checkout
+    ]
+    for candidate in candidates:
+        if candidate.is_file():
+            spec = importlib.util.spec_from_file_location("_diagnostics_privacy_scrub_text", candidate)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module
+    return None
+
+
 agentm_bridge = _load_sibling("agentm_bridge", "agentm_bridge.py")
 fingerprint_index = _load_sibling("fingerprint_index", "fingerprint_index.py")
+_privacy_scrub_text = _load_privacy_scrub_text()
 
 _DEFAULT_HYPOTHESIS = "Unknown -- no hypothesis ranked yet."
 
@@ -89,6 +119,8 @@ def write_failure_incident(
         outcome=outcome,
         hypotheses=hypotheses,
     )
+    if _privacy_scrub_text is not None:
+        body = _privacy_scrub_text.scrub_text(body)
     slug = f"{namespace}-{fingerprint[:12]}"
     target = agentm_bridge.write_failure_incident(
         vault, slug=slug, body=body, project=project, fingerprint=fingerprint, tags=[namespace],

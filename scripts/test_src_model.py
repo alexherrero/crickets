@@ -98,7 +98,11 @@ class TestSrcModel(unittest.TestCase):
         self.assertEqual(by["privacy"].requires, [])
         self.assertTrue(by["privacy"].standalone)
         self.assertFalse(by["maintenance"].standalone)
-        self.assertEqual(len(by["privacy"].primitives), 2)  # 0.2.0: skill + pii-patterns rule
+        # 0.2.0: pii-scrubber skill + pii-patterns rule. 0.5.0
+        # (PLAN-wave-d-tokens-and-privacy task 4) adds the privacy-review
+        # skill as a third primitive (the Semgrep pack + scrub_text.py are
+        # bundled scripts/, not manifest-carrying primitives).
+        self.assertEqual(len(by["privacy"].primitives), 3)
         # development-lifecycle (AG Wave A rename 1, ex-developer-workflows):
         # standalone base; the six phase capabilities (setup..bugfix) plus
         # 'documentation' — added by wiki-maintenance's documenter-wiring part
