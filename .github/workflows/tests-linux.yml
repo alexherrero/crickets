@@ -57,6 +57,13 @@ jobs:
         # rename mechanism. Permissive of dual-declared old names; only fails on
         # a reference that resolves to nothing.
         run: python3 scripts/check-no-dangling-name.py
+      - name: No duplicate diagnosis logic (check-no-duplicate-diagnosis)
+        # PLAN-wave-d-cross-wiring task 3 — the "no two diagnosis engines"
+        # regression net. dependabot-fixer and /bugfix's Analyze phase must
+        # delegate to diagnostics' shared diagnose() engine; permissive of a
+        # documented graceful-skip fallback, only fails on the old bespoke
+        # inline category+confidence judgment running unconditionally.
+        run: python3 scripts/check-no-duplicate-diagnosis.py
       - name: Conventions Phase-2 conformance gate (check_conventions_conformance)
         # PLAN-wave-c-design-and-conventions task 6 — a plugin marking
         # <!-- consults-conventions-domain: X --> in a command/skill must

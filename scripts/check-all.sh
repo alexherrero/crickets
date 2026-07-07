@@ -4,7 +4,10 @@
 #
 #   bash scripts/check-all.sh
 #
-# Mirrors CI's deterministic gates: lint_src · capability-naming · unit tests ·
+# Mirrors CI's deterministic gates: lint_src · capability-naming ·
+# no-dangling-name · no-duplicate-diagnosis (the "no two diagnosis engines"
+# regression net — dependabot-fixer/bugfix.md must delegate to diagnose.py,
+# never re-grow their own inline category+confidence judgment) · unit tests ·
 # evidence-tracker self-test (61 embedded tests — the default-FAIL evidence
 # contract, named- and singleton-plan aware) · generate drift ·
 # dist-references (every emitted plugin's relative links + ${CLAUDE_PLUGIN_ROOT}
@@ -48,6 +51,7 @@ run() {
 run "lint_src"       python3 scripts/lint_src.py
 run "capability naming" python3 scripts/check-capability-naming.py
 run "no-dangling-name" python3 scripts/check-no-dangling-name.py
+run "no-duplicate-diagnosis" python3 scripts/check-no-duplicate-diagnosis.py
 run "conventions conformance" python3 scripts/check_conventions_conformance.py
 # AGENTM_INSTALL_PREFIX + MEMORY_VAULT_PATH: isolate resolve_plan.py's R2.5
 # task 12 vault-mismatch guard from this MACHINE's own ~/.claude/.agentm-config.json
