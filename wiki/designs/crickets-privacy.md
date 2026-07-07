@@ -4,7 +4,7 @@ status: launched
 kind: design
 scope: feature
 area: crickets/privacy
-governs: [src/pii/]
+governs: [src/privacy/]
 parent: crickets-hld.md
 seeded: 2026-06-20
 approved: 2026-06-23
@@ -29,7 +29,7 @@ privacy works in three layers — **proactive** (don't compose a secret), **dete
 | `check-no-pii.sh` | script | delivered | The **deterministic detector** — regex/gitleaks patterns over the diff (email · path · openai/github/gitlab/aws keys · phone). |
 | `pii-scrubber` | skill | delivered | Interactive remediation — run the detector, surface findings `file:line`, redact, loop until clean. |
 | `pre-push` hook | hook | delivered | Mandatory enforcer — blocks a push carrying a finding. |
-| `privacy-review` | skill | to adapt | Review the codebase's privacy **practices** (data minimization · PII-in-logs · retention · consent) — not string scanning. |
+| `privacy-review` | skill | delivered | Review the codebase's privacy **practices** (data minimization · PII-in-logs · retention · consent) — not string scanning. |
 
 ![The privacy capability: a deterministic leak floor (pii-patterns · check-no-pii.sh · pii-scrubber · pre-push — built) plus an LLM privacy-review (to adapt); the floor scrubs incident material for diagnostics, maintenance's cve-security-patch is its reactive sibling, and the review consumes the good opinion](diagrams/crickets-privacy.svg)
 
@@ -45,7 +45,7 @@ The leak scan is **rule-based and deterministic** — the same input yields the 
 
 `privacy` **declares** the `pre-push` hook, but [development-lifecycle](crickets-development-lifecycle.md)'s finalize step (`pr_helpers.py`, the "PII GUARD" ordering invariant) **uses** it — privacy owns the patterns + the detector; the hook is shared push-surface infrastructure.
 
-### `privacy-review` — review for privacy *practice* *(to adapt)*
+### `privacy-review` — review for privacy *practice* *(delivered)*
 
 A second angle. The string scanner stops a *leaked secret*; it can't catch a *structural* privacy mistake — a personal field flowing into a logger, a store with no deletion path, data collected beyond its consented purpose, PII sent to a third-party SDK — because the defect is in the **shape** of the code, not a literal value in the diff. `privacy-review` is an **LLM-assisted adversarial review** of a diff/PR for privacy-engineering practice, modeled on its sibling `security-auditor` in [code-review](crickets-code-review.md): it reports **falsifiable findings** — `PRIVACY-RISK <file>:<line> [ASVS-id / OWASP-P#]` — never prose, and never fixes.
 
@@ -55,7 +55,7 @@ A second angle. The string scanner stops a *leaked secret*; it can't catch a *st
 
 **Deterministic-first.** The mechanizable checks (PII-in-URL, PII-in-client-storage, plaintext columns, third-party sinks) shell out to grep / a small Semgrep taint pack; the LLM judges only the non-mechanical practices (purpose limitation, consent scoping, retention adequacy, erasure completeness) — so the deterministic floor holds and the model reasons only where it must.
 
-**`[PENDING-IMPL]`** — adapt the ASVS / OWASP / NIST / ICO checklist into the skill + the Semgrep taint pack (documenter); the deterministic `pii-scrubber` stays the floor.
+**Shipped 2026-07-07** (`PLAN-wave-d-tokens-and-privacy`, [crickets #166](https://github.com/alexherrero/crickets/pull/166)) — `src/privacy/skills/privacy-review/SKILL.md` (nine practices, four Semgrep-mechanized + five LLM-judged) plus `src/privacy/scripts/privacy-taint-pack.yml` (the four mechanizable pattern categories); the deterministic `pii-scrubber` stays the floor.
 
 ### Opinions it consumes
 
@@ -63,7 +63,7 @@ privacy **implements part of `done`** — a change that leaks a secret or PII is
 
 ### Where privacy is composed *(designed)*
 
-- **[diagnostics](crickets-diagnostics.md) needs an incident-body scrub surface.** privacy scrubs *git ranges* today; scanning an arbitrary text body (a failure-incident captured from logs) before the memory save-path is a new entry point. **`[PENDING-IMPL]`** — add a scrub-text surface to privacy (documenter), so diagnostics can scrub deterministically before write.
+- **[diagnostics](crickets-diagnostics.md)'s incident-body scrub surface — shipped 2026-07-07.** privacy scrubs *git ranges* and arbitrary text bodies now: `src/privacy/scripts/scrub_text.py` bridges to agentm's `privacy_scrub.scrub_pii()` (the same rules, reused not forked), and diagnostics' `writer.py` calls it explicitly at the crickets call site before every `kind: failure-incident` write.
 - **[maintenance](crickets-maintenance.md)'s `cve-security-patch` is privacy's reactive sibling** — privacy owns proactive static patterns; maintenance acts on advisories. Two halves of supply-chain / secret hygiene, opposite triggers.
 
 ## Dependencies
@@ -77,23 +77,25 @@ privacy **implements part of `done`** — a change that leaks a secret or PII is
 
 ## Migrations
 
-The capability is renamed `pii` → `privacy` (the bare concern-noun; `capabilities: [privacy]` is already declared, from the Phase-2 hygiene pass). The plugin directory + the primitive doc-titles (`pii-patterns`, `pii-scrubber`) follow at the v6.0 rename; the group declares both `pii` and `privacy` so existing references resolve (the [composition](crickets-composition.md) rename mechanism).
+The capability is renamed `pii` → `privacy` (the bare concern-noun; `capabilities: [privacy]` is already declared, from the Phase-2 hygiene pass). The plugin directory has already moved to `src/privacy/` (Wave A renames, 2026-07-06); `capabilities: [pii, privacy]` still dual-declares both names so existing references resolve. The primitive doc-titles (`pii-patterns`, `pii-scrubber`) follow at the v6.0 rename (the [composition](crickets-composition.md) rename mechanism).
 
 ## Risks & open questions
 
-- **`privacy-review` is a to-adapt skill** — the practice checklist is adapted from reputable prior art (investigation in flight); it is LLM-assisted *practice* review, distinct from the deterministic string scanner, which stays the trustworthy floor. `[PENDING-IMPL]`.
-- **The incident-body scrub surface is designed, not built** — diagnostics' deterministic-scrub composition needs privacy to expose a scan-arbitrary-text entry point beyond its git-range scan. `[PENDING-IMPL]`.
-- **The opinions are hardwired** — `done` (the gate) and `good` / `how-we-engineer` (the review) are embedded; requesting them by name is the Phase-3/4 registry work.
-- **Re-audit triggers:** adapt the privacy-review checklist + build the skill; build the incident-body scrub surface when diagnostics lands; wire `opinion_request` when the registry ships; flip `pii` → `privacy` naming at v6.0.
+- **`privacy-review` shipped 2026-07-07** — the practice checklist, adapted from OWASP ASVS V8 / Top-10 Privacy Risks / NIST Privacy Framework / ICO, is LLM-assisted *practice* review, distinct from the deterministic string scanner, which stays the trustworthy floor.
+- **The incident-body scrub surface shipped 2026-07-07** — `scrub_text()` gives diagnostics' deterministic-scrub composition a scan-arbitrary-text entry point beyond privacy's git-range scan.
+- **The `done` gate is still hardwired; `privacy-review`'s opinions are now real.** `privacy-review` declares `opinions: [good, how-we-engineer]` and renders both via the markdown-render-step grammar `PLAN-opinion-consumer-grammar` landed — requesting `done` by name is still Phase-3/4 registry work.
+- **Re-audit triggers:** flip `pii` → `privacy` naming at v6.0 (the plugin directory already moved; `capabilities:` dual-declares both — only the primitive doc-titles remain).
 
 ## References
 
-- crickets `src/pii/` (live; → `src/privacy/`) — `rules/pii-patterns.md` · `skills/pii-scrubber/SKILL.md` · `scripts/check-no-pii.sh` · `templates/hooks/pre-push`
-- **`privacy-review` prior art (to adapt):** OWASP ASVS V8 Data Protection (the testable-requirement anchor) · OWASP Top 10 Privacy Risks v2 · NIST Privacy Framework · ICO data-protection-by-design; output contract modeled on `code-review`'s `security-auditor`; mechanizable checks lean on a Semgrep taint pack. *(The `Privacy-Data-Protection-Skills` agent-skill repo is a format/coverage reference only — verify against the OWASP/NIST/ICO authorities.)*
+- crickets `src/privacy/` (live) — `rules/pii-patterns.md` · `skills/pii-scrubber/SKILL.md` · `skills/privacy-review/SKILL.md` · `scripts/check-no-pii.sh` · `scripts/scrub_text.py` · `scripts/privacy-taint-pack.yml` · `templates/hooks/pre-push`
+- **`privacy-review` prior art (adapted from):** OWASP ASVS V8 Data Protection (the testable-requirement anchor) · OWASP Top 10 Privacy Risks v2 · NIST Privacy Framework · ICO data-protection-by-design; output contract modeled on `code-review`'s `security-auditor`; mechanizable checks lean on a Semgrep taint pack. *(The `Privacy-Data-Protection-Skills` agent-skill repo was a format/coverage reference only — verified against the OWASP/NIST/ICO authorities.)*
 - **Composed by / paired with:** [diagnostics](crickets-diagnostics.md) (incident scrub) · [maintenance](crickets-maintenance.md) (the reactive `cve-security-patch` sibling)
 - **Up:** [crickets HLD](crickets-hld.md) · [composition](crickets-composition.md) · [agentm Opinions](https://github.com/alexherrero/agentm/wiki/agentm-opinions-and-gates) (`done` / `good` / `how-we-engineer`)
 
 ## Amendment log
+
+**2026-07-07 — `privacy-review` + Semgrep taint pack + `scrub_text()` surface shipped, opinion-wiring retrofitted (`PLAN-wave-d-tokens-and-privacy`, [crickets #166](https://github.com/alexherrero/crickets/pull/166)).** `src/privacy/skills/privacy-review/SKILL.md` ships nine practices (four Semgrep-mechanized, five LLM-judged) under the `PRIVACY-RISK <file>:<line> [ASVS-id]` contract; `src/privacy/scripts/privacy-taint-pack.yml` covers the four mechanizable categories (PII-in-URL, PII-in-client-storage, plaintext-columns, third-party-sinks); `src/privacy/scripts/scrub_text.py` bridges to agentm's `privacy_scrub.scrub_pii()` (same rules, not forked) and gives diagnostics' `writer.py` an explicit call site before every `kind: failure-incident` write, closing the incident-body scrub gap this doc had flagged. `privacy-review` also declares `opinions: [good, how-we-engineer]`, retrofitted in the same session once `PLAN-opinion-consumer-grammar` ([crickets #167](https://github.com/alexherrero/crickets/pull/167)) landed the markdown-render-step grammar this binding was deferring on — a real connection, not hardwired prose. Also corrected two facts this doc still carried from before the Wave A renames: `governs:` now points at `src/privacy/` (`src/pii/` no longer exists on disk) and the References section drops the stale "live; → `src/privacy/`" framing. **Re-audit triggers cleared:** adapt + build `privacy-review`; build the incident-body scrub surface; wire `opinion_request` for `privacy-review`. Still open: flip `pii` → `privacy` doc-titles at v6.0; wire `done` by name (Phase-3/4 registry work).
 
 **2026-06-28 — lock-down sweep (operator review).** Converted the layers mermaid to a house-style hand-SVG (`diagrams/crickets-privacy.svg`). Confirmed the deterministic leak floor (built) + the LLM privacy-review (to adapt), and that `cve-security-patch` is its reactive sibling. No content change. Locked as a v5–v8 guidepost.
 
