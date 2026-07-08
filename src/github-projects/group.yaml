@@ -114,5 +114,15 @@ standalone: false
 # check_project_sync.compute_drift and drift_correct.classify (the two bulk
 # readers besides project_sync.sync_all_nesting) both inherit the fix for free
 # since they call the same shared materialize(). Closes cricketsPluginsA#171.
-version: 0.3.3
+# 0.3.4 = PLAN-board-tracking-model task 2 (2026-07-08, Autonomy arc AA3):
+#          add_select_options.py -- a new, deliberately separate one-off
+#          migration tool that safely ADDS options to a GitHub Project
+#          single-select field (every existing option resubmitted with its
+#          id/color/description untouched, new options appended without an
+#          id) via updateProjectV2Field. Ships the tier repurposing of the
+#          board's Track field (T0-Mechanical...T4-Deep) -- the tracking-
+#          model decision the 2026-06-19 A1 verdict and the 2026-07-03
+#          field-taxonomy rethink both deferred. sync_fields() itself is
+#          unchanged -- it still never creates options.
+version: 0.3.4
 capabilities: [board-sync]
