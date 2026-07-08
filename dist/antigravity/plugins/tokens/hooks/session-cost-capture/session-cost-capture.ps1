@@ -3,11 +3,12 @@
 # Fires on Claude Code's Stop event. Parses the stdin JSON payload for
 # session_id + cwd, computes the transcript path at
 # ~/.claude/projects/<cwd-slug>/<session_id>.jsonl, and invokes
-# session_cost_writer.py to write one `kind: session-cost` record per model
-# via agentm's memory-write path. Capture-half only (PLAN-wave-d-tokens-and-
+# session_cost_writer.py to append one `session-cost` telemetry event per
+# model to the device-local event log (PLAN-observability-ledger task 1 —
+# retargeted off the vault). Capture-half only (PLAN-wave-d-tokens-and-
 # privacy task 1, absorbing the 2026-07-05 decision record verbatim).
 #
-# Graceful no-op contract: missing script/vault/transcript/python3 all exit 0.
+# Graceful no-op contract: missing script/transcript/python3 all exit 0.
 
 $ErrorActionPreference = 'Continue'  # never block session end on hook failure
 
@@ -53,9 +54,6 @@ $cwdSlug = '-' + ($cwd -replace '[\\/]', '-')
 $transcript = Join-Path $HOME ".claude/projects/$cwdSlug/$sessionId.jsonl"
 if (-not (Test-Path -LiteralPath $transcript -PathType Leaf)) { exit 0 }
 
-$project = Split-Path -Leaf $cwd
-if (-not $project) { $project = 'personal' }
-
-& python3 $writerPy $transcript --project $project 2>&1 | ForEach-Object { "[session-cost-capture] $_" } | Out-Host
+& python3 $writerPy $transcript --session-id $sessionId 2>&1 | ForEach-Object { "[session-cost-capture] $_" } | Out-Host
 
 exit 0

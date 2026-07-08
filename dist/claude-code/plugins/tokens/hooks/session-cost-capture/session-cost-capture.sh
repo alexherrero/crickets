@@ -6,13 +6,14 @@
 # Fires on Claude Code's Stop event. Parses the stdin JSON payload for
 # session_id + cwd, computes the transcript path at
 # ~/.claude/projects/<cwd-slug>/<session_id>.jsonl (same formula agentm's
-# memory-reflect-stop hook uses), and invokes session_cost_writer.py to write
-# one `kind: session-cost` record per model observed in that session via
-# agentm's memory-write path. Capture-half only — no trend analysis here
+# memory-reflect-stop hook uses), and invokes session_cost_writer.py to
+# append one `session-cost` telemetry event per model observed in that
+# session to the device-local event log (PLAN-observability-ledger task 1 —
+# retargeted off the vault). Capture-half only — no trend analysis here
 # (see dreaming_trend_stub.py, staged dark pending Wave-E).
 #
 # Graceful no-op contract (must never block session close): missing
-# script/vault/transcript/python3 all exit 0 silently (or with a stderr note).
+# script/transcript/python3 all exit 0 silently (or with a stderr note).
 #
 # See hook.md in this directory for full documentation.
 
@@ -79,10 +80,6 @@ if [[ ! -f "$TRANSCRIPT" ]]; then
     exit 0
 fi
 
-# Project slug: basename of cwd (mirrors diagnostics' own repo-basename
-# convention for the vault's projects/<slug>/... group path).
-PROJECT="$(basename "$CWD" 2>/dev/null || echo personal)"
-
-python3 "$WRITER_PY" "$TRANSCRIPT" --project "$PROJECT" 2>&1 | sed 's/^/[session-cost-capture] /' >&2 || true
+python3 "$WRITER_PY" "$TRANSCRIPT" --session-id "$SESSION_ID" 2>&1 | sed 's/^/[session-cost-capture] /' >&2 || true
 
 exit 0

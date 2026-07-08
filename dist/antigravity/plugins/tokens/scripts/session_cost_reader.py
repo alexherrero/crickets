@@ -1,62 +1,77 @@
 #!/usr/bin/env python3
-"""Read real `kind: session-cost` records back from the vault
-(PLAN-wave-d-tokens-and-privacy task 2) -- the read-side counterpart to
+"""Read real `session-cost` telemetry events back from the device-local
+event log (PLAN-observability-ledger task 3) -- the read-side counterpart to
 session_cost_writer.py's write path.
 
 fanout_cost_gate.estimate_per_agent_cost() accepts an `observed_records`
-param shaped `[{"model": ..., "cost_usd": ...}, ...]` but, before this
-module, nothing populated it from real data -- every call fell back to
-`pricing.cost_usd` over DEFAULT_AGENT_USAGE_PROFILE (a documented
-placeholder, never a measured average). `load_observed_records()` closes
-that gap: it globs the vault's session-cost entries session_cost_writer.py
-actually writes and parses their `model:` / `cost_usd:` lines back out.
+param shaped `[{"model": ..., "cost_usd": ...}, ...]`; before real data
+accumulates, every call falls back to `pricing.cost_usd` over
+DEFAULT_AGENT_USAGE_PROFILE (a documented placeholder, never a measured
+average). `load_observed_records()` closes that gap: it reads every
+`events-*.jsonl` file under the telemetry directory and filters to
+`event == "session-cost"` lines.
 
-Deliberately does NOT depend on agentm's SQL/vec-index internals (recall.py,
-vec_index.py) -- reading back entries this capability itself wrote is a
-plain filesystem glob + regex parse, not a semantic-recall query. Keeps the
-one-way capability boundary clean (tokens doesn't need agentm's indexing
-machinery just to read its own writes back).
+**Retargeted off the vault (PLAN-observability-ledger task 1 already moved
+the write side; this task moves the read side to match).** Used to glob
+`kind: session-cost` markdown under the vault and regex-parse `model:` /
+`cost_usd:` lines back out; now reads the same JSONL event log
+`session_cost_writer.py` appends to.
 """
 from __future__ import annotations
 
-import re
+import importlib.util
+import json
+import sys
 from pathlib import Path
 
-_MODEL_RE = re.compile(r"^- model: (.+)$", re.MULTILINE)
-_COST_RE = re.compile(r"^- cost_usd: ([0-9.eE+-]+)$", re.MULTILINE)
+_HERE = Path(__file__).resolve().parent
 
 
-def load_observed_records(vault_path: "str | Path | None", *, project: str = "personal") -> list[dict]:
-    """Return `[{"model": ..., "cost_usd": ...}, ...]` for every real
-    `session-cost` entry found under
-    `<vault>/projects/<project>/session-cost/session-cost/*.md` (the group/
-    kind path shape save_entry() produces for session_cost_writer.py's
-    writes -- see its own group=f"projects/{project}/session-cost" call).
+def _load_sibling(name: str):
+    spec = importlib.util.spec_from_file_location(name, _HERE / f"{name}.py")
+    m = importlib.util.module_from_spec(spec)
+    sys.modules.setdefault(name, m)
+    spec.loader.exec_module(m)
+    return m
 
-    Graceful-empty on any absent/unreadable path -- never raises. An empty
-    return means "no observed data yet", which callers (fanout_cost_gate.py)
-    already treat as "fall back to the pricing-profile estimate".
+
+event_log = _load_sibling("event_log")
+
+
+def load_observed_records(*, telemetry_root: "str | Path | None" = None) -> list[dict]:
+    """Return `[{"model": ..., "cost_usd": ...}, ...]` for every
+    `session-cost` event found across all `events-*.jsonl` files under the
+    telemetry directory (`telemetry_root`, or `event_log.telemetry_dir()` --
+    itself `$AGENTM_TELEMETRY_DIR`-overridable -- when omitted).
+
+    Graceful-empty on any absent/unreadable path, malformed line, or missing
+    field -- never raises. An empty return means "no observed data yet",
+    which callers (fanout_cost_gate.py) already treat as "fall back to the
+    pricing-profile estimate".
     """
-    if not vault_path:
-        return []
-    vault = Path(vault_path)
-    entry_dir = vault / "projects" / project / "session-cost" / "session-cost"
-    if not entry_dir.is_dir():
+    root = Path(telemetry_root) if telemetry_root is not None else event_log.telemetry_dir()
+    if not root.is_dir():
         return []
 
     records: list[dict] = []
-    for path in sorted(entry_dir.glob("*.md")):
+    for path in sorted(root.glob("events-*.jsonl")):
         try:
-            text = path.read_text(encoding="utf-8")
+            lines = path.read_text(encoding="utf-8").splitlines()
         except OSError:
             continue
-        model_match = _MODEL_RE.search(text)
-        cost_match = _COST_RE.search(text)
-        if not model_match or not cost_match:
-            continue
-        try:
-            cost = float(cost_match.group(1))
-        except ValueError:
-            continue
-        records.append({"model": model_match.group(1).strip(), "cost_usd": cost})
+        for raw in lines:
+            raw = raw.strip()
+            if not raw:
+                continue
+            try:
+                rec = json.loads(raw)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(rec, dict) or rec.get("event") != "session-cost":
+                continue
+            model = rec.get("model")
+            cost = rec.get("cost_usd")
+            if model is None or not isinstance(cost, (int, float)):
+                continue
+            records.append({"model": model, "cost_usd": float(cost)})
     return records

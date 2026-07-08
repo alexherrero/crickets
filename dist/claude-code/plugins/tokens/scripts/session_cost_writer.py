@@ -4,17 +4,23 @@
 verbatim into PLAN-wave-d-tokens-and-privacy task 1).
 
 At session Stop: run analyzer.py over the closing session's transcript, group
-its per-message records by model, and write one `kind: session-cost` memory
-entry per model via agentm's save_entry() path — a `{model, tokens_by_kind,
-cost_usd, timestamp}` record the fan-out cost gate (fanout_cost_gate.py) can
-later average over via its `observed_records` param.
+its per-message records by model, and append one `session-cost` telemetry
+event per model to the device-local event log (`event_log.py`) the fan-out
+cost gate (fanout_cost_gate.py) can later average over via its
+`observed_records` param.
+
+**Retargeted off the vault (PLAN-observability-ledger task 1,
+`wiki/designs/agentm-autonomy.md`).** The capture used to write one `kind:
+session-cost` memory entry per model via agentm's `save_entry()` path; that
+vault write is retired, not duplicated — this module now depends on nothing
+but its own sibling `event_log.py`.
 
 Capture-half only, per the decision record's scope: no dreaming-pass trend
 analysis lives here (see dreaming_trend_stub.py for that gate, staged dark).
 
 Graceful no-op contract (must never block a session close):
-  - no memory backend / agentm unresolvable -> return None, no write, no raise
-  - transcript unreadable / empty -> return None, no write, no raise
+  - transcript unreadable / empty -> return [], no write, no raise
+  - event-log append fails (unwritable path, etc.) -> skipped, no raise
   - any unexpected error -> caught, logged to stderr, return None
 
 This module is pure Python (importable + independently testable); the actual
@@ -26,7 +32,6 @@ from __future__ import annotations
 import importlib.util
 import sys
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
@@ -41,60 +46,7 @@ def _load_sibling(name: str):
 
 
 analyzer = _load_sibling("analyzer")
-
-# agentm's save_entry() lives in harness/skills/memory/scripts/save.py — same
-# path-fallback convention as diagnostics/scripts/agentm_bridge.py (env
-# override -> co-located install -> conventional sibling clone). Not imported
-# from agentm_bridge.py directly: that module lives in the diagnostics group,
-# and tokens must not depend on a sibling capability to resolve its own
-# agentm bridge (each capability's bridge is self-contained).
-_SAVE_SCRIPTS_REL = Path("harness") / "skills" / "memory" / "scripts"
-
-_save_module = None
-_save_loaded = False
-
-
-def _candidate_dirs() -> list[Path]:
-    import os
-    candidates = []
-    env_dir = os.environ.get("AGENTM_SCRIPTS_DIR", "").strip()
-    if env_dir:
-        candidates.append(Path(os.path.expanduser(env_dir)))
-    candidates.append(Path.home() / "Antigravity" / "agentm" / _SAVE_SCRIPTS_REL)
-    return candidates
-
-
-def _find_save_scripts_dir() -> "Path | None":
-    for candidate in _candidate_dirs():
-        if (candidate / "save.py").is_file():
-            return candidate
-    return None
-
-
-def load_save_module():
-    """Return agentm's save module, loaded once and cached. None if agentm is
-    unresolvable (graceful-skip, not an error)."""
-    global _save_module, _save_loaded
-    if _save_loaded:
-        return _save_module
-    _save_loaded = True
-    scripts_dir = _find_save_scripts_dir()
-    if scripts_dir is None:
-        _save_module = None
-        return None
-    spec = importlib.util.spec_from_file_location("agentm_save_bridge_tokens", scripts_dir / "save.py")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules["agentm_save_bridge_tokens"] = module
-    spec.loader.exec_module(module)
-    _save_module = module
-    return module
-
-
-def _reset_cache_for_tests() -> None:
-    """Test-only: clear the module-level cache between isolated test cases."""
-    global _save_module, _save_loaded
-    _save_module = None
-    _save_loaded = False
+event_log = _load_sibling("event_log")
 
 
 @dataclass(frozen=True)
@@ -129,41 +81,24 @@ def summarize_by_model(messages: list) -> list[ModelCostSummary]:
     ]
 
 
-def _record_body(summary: ModelCostSummary, *, timestamp: str) -> str:
-    """Render the session-cost entry body (plain, deterministic — no LLM)."""
-    tb = summary.tokens_by_kind
-    return (
-        f"## Session cost — {summary.model}\n\n"
-        f"- timestamp: {timestamp}\n"
-        f"- model: {summary.model}\n"
-        f"- cost_usd: {summary.cost_usd:.6f}\n"
-        f"- input_tokens: {tb['input']}\n"
-        f"- cache_write_tokens: {tb['cache_write']}\n"
-        f"- cache_read_tokens: {tb['cache_read']}\n"
-        f"- output_tokens: {tb['output']}\n"
-    )
-
-
 def capture_session_cost(
     transcript_path: "str | Path",
     *,
-    vault_path: "str | Path | None",
-    project: str = "personal",
-) -> list[Path]:
-    """Analyze `transcript_path` and write one `kind: session-cost` entry per
-    model observed. Returns the list of paths written (empty on any
-    graceful-skip condition). Never raises.
+    session_id: str = "",
+    parent_id: "str | None" = None,
+    root: "str | Path | None" = None,
+    telemetry_root: "str | Path | None" = None,
+) -> list[dict]:
+    """Analyze `transcript_path` and append one `session-cost` telemetry
+    event per model observed. Returns the list of event records successfully
+    appended (empty on any graceful-skip condition). Never raises.
+
+    `root` is the directory the active-plan attribution marker is read
+    relative to (defaults to `Path.cwd()` inside `event_log`) — pass it
+    explicitly in tests instead of chdir'ing. `telemetry_root` overrides the
+    event log's own directory the same way (defaults to `event_log.
+    telemetry_dir()`, itself `$AGENTM_TELEMETRY_DIR`-overridable).
     """
-    if not vault_path:
-        return []
-    vault = Path(vault_path)
-    if not vault.is_dir():
-        return []
-
-    save = load_save_module()
-    if save is None:
-        return []
-
     try:
         report = analyzer.analyze_session(transcript_path)
     except (OSError, ValueError):
@@ -171,53 +106,29 @@ def capture_session_cost(
     if not report.messages:
         return []
 
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    written: list[Path] = []
+    tags = event_log.resolve_attribution_tags(root=Path(root) if root is not None else None)
+    telemetry_root_path = Path(telemetry_root) if telemetry_root is not None else None
+
+    written: list[dict] = []
     for summary in summarize_by_model(report.messages):
-        slug = f"{project}-{summary.model}-{timestamp}".lower()
-        # kebab-case: model ids already use hyphens/digits; project is
-        # caller-controlled and expected kebab already (mirrors diagnostics'
-        # own namespace-slug convention).
-        try:
-            target = save.save_entry(
-                vault, "session-cost", slug,
-                _record_body(summary, timestamp=timestamp),
-                group=f"projects/{project}/session-cost",
-                tags=["session-cost"],
-            )
-        except (ValueError, FileExistsError, FileNotFoundError):
-            # Never block a session close over a write-path hiccup (a
-            # same-second duplicate slug, an invalid project slug, etc.).
-            continue
-        written.append(target)
+        record = event_log.build_event(
+            "session-cost",
+            session_id=session_id,
+            parent_id=parent_id,
+            model=summary.model,
+            tokens_by_kind=summary.tokens_by_kind,
+            cost_usd=summary.cost_usd,
+            tags=tags,
+        )
+        if event_log.append_event(record, telemetry_root=telemetry_root_path):
+            written.append(record)
     return written
-
-
-def _resolve_vault_path() -> "str | None":
-    """env MEMORY_VAULT_PATH -> engine .agentm-config.json vault_path -> None.
-    Mirrors conflict-merger-session-start.sh's own resolution chain."""
-    import json
-    import os
-
-    env_path = os.environ.get("MEMORY_VAULT_PATH", "").strip()
-    if env_path:
-        return env_path
-    cfg_path = Path(os.environ.get("AGENTM_INSTALL_PREFIX", str(Path.home() / ".claude"))) / ".agentm-config.json"
-    if cfg_path.is_file():
-        try:
-            data = json.loads(cfg_path.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            return None
-        v = data.get("vault_path")
-        if v:
-            return v
-    return None
 
 
 def main(argv: "list[str] | None" = None) -> int:
     """CLI entry point for the Stop hook shell wrapper.
 
-    Usage: session_cost_writer.py <transcript-path> [--project <slug>]
+    Usage: session_cost_writer.py <transcript-path> [--session-id <id>] [--parent-id <id>]
     Always exits 0 — a capture failure must never fail the hook / block
     session close. Diagnostic detail (if any) goes to stderr.
     """
@@ -225,17 +136,17 @@ def main(argv: "list[str] | None" = None) -> int:
 
     parser = argparse.ArgumentParser()
     parser.add_argument("transcript_path")
-    parser.add_argument("--project", default="personal")
+    parser.add_argument("--session-id", default="")
+    parser.add_argument("--parent-id", default=None)
     args = parser.parse_args(argv if argv is not None else sys.argv[1:])
 
     try:
-        vault_path = _resolve_vault_path()
         written = capture_session_cost(
-            args.transcript_path, vault_path=vault_path, project=args.project,
+            args.transcript_path, session_id=args.session_id, parent_id=args.parent_id,
         )
         if written:
             print(
-                f"session-cost-capture: wrote {len(written)} record(s)",
+                f"session-cost-capture: wrote {len(written)} event(s)",
                 file=sys.stderr,
             )
     except Exception as e:  # pragma: no cover — belt-and-suspenders; must never raise

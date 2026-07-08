@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
-"""PLAN-wave-d-tokens-and-privacy task 2: confirm the fan-out cost gate now
-has real data.
+"""PLAN-wave-d-tokens-and-privacy task 2 / PLAN-observability-ledger tasks
+1 + 3: confirm the fan-out cost gate now has real data.
 
-Before task 1 (session_cost_writer.py): fanout_cost_gate.estimate_per_agent_
-cost() always took the fallback path (pricing.cost_usd over a fixed usage
-profile) -- there was no writer, so observed_records was always empty in
-practice. After task 1: a real session close writes a `kind: session-cost`
-vault entry via session_cost_writer.capture_session_cost(), and
-session_cost_reader.load_observed_records() reads it back into the exact
-shape estimate_per_agent_cost() consumes -- so the SAME code, called with
-real data, now takes the observed-average path instead of the fallback.
+Before the writer existed: fanout_cost_gate.estimate_per_agent_cost() always
+took the fallback path (pricing.cost_usd over a fixed usage profile) --
+there was no writer, so observed_records was always empty in practice.
+After: a real session close appends a `session-cost` telemetry event via
+session_cost_writer.capture_session_cost(), and session_cost_reader.
+load_observed_records() reads that event log back into the exact shape
+estimate_per_agent_cost() consumes -- so the SAME code, called with real
+data, now takes the observed-average path instead of the fallback.
+
+**Retargeted (PLAN-observability-ledger tasks 1 and 3).** Both the write
+side (task 1) and the read side (task 3) now target the device-local event
+log instead of the vault -- this file routes through the real, repointed
+`session_cost_reader.py`, not a manual JSON parse.
 
 This test asserts the CODE PATH taken (which branch inside
 estimate_per_agent_cost fired), not merely that the gate ran without error --
@@ -20,6 +25,7 @@ stdlib only -- no pytest.
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 import tempfile
 import unittest
@@ -28,22 +34,6 @@ from pathlib import Path
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
 _SRC = _ROOT / "src" / "tokens" / "scripts"
-
-_AGENTM_PATH_MARKERS = ("/agentm/harness/", "/agentm/scripts/")
-_REAL_BRIDGE_SYS_PATH_MARKER = "/agentm/harness/skills/memory/scripts"
-
-
-def _purge_real_bridge_sys_path():
-    sys.path[:] = [p for p in sys.path if _REAL_BRIDGE_SYS_PATH_MARKER not in p]
-
-
-def _purge_agentm_modules(pre_existing_names):
-    for name, mod in list(sys.modules.items()):
-        if name in pre_existing_names:
-            continue
-        f = getattr(mod, "__file__", None)
-        if f and any(marker in f for marker in _AGENTM_PATH_MARKERS):
-            del sys.modules[name]
 
 
 def _load(name: str, path: Path):
@@ -56,13 +46,11 @@ def _load(name: str, path: Path):
 
 fcg = _load("fanout_cost_gate_realdata_test", _SRC / "fanout_cost_gate.py")
 pricing = sys.modules["pricing"]
-reader = _load("session_cost_reader_for_gate_test", _SRC / "session_cost_reader.py")
 writer = _load("session_cost_writer_for_gate_test", _SRC / "session_cost_writer.py")
-analyzer = sys.modules["analyzer"]
+reader = _load("session_cost_reader_for_gate_test", _SRC / "session_cost_reader.py")
 
 
 def _fixture_transcript(tmp: Path, model: str, cost_shape: dict) -> Path:
-    import json
     line = json.dumps({
         "type": "assistant", "timestamp": "2026-07-06T10:00:00Z",
         "message": {"model": model, "usage": cost_shape},
@@ -72,7 +60,7 @@ def _fixture_transcript(tmp: Path, model: str, cost_shape: dict) -> Path:
     return p
 
 
-class BeforeTask1FallbackPathTests(unittest.TestCase):
+class BeforeWriterFallbackPathTests(unittest.TestCase):
     """No observed data -> the fallback (pricing-profile) path fires."""
 
     def test_empty_observed_records_takes_fallback_path(self):
@@ -88,14 +76,14 @@ class BeforeTask1FallbackPathTests(unittest.TestCase):
         self.assertAlmostEqual(est, expected_fallback, places=6)
         self.assertNotAlmostEqual(est, 9.99, places=2)
 
-    def test_no_vault_yet_reader_returns_empty_and_gate_falls_back(self):
-        # session_cost_reader against a vault with no session-cost entries
-        # yet -- the "before task 1 accumulates any real session" state.
+    def test_no_events_yet_yields_empty_records_and_gate_falls_back(self):
+        # An event log directory with nothing in it yet -- the "before any
+        # real session" state.
         tmp = tempfile.TemporaryDirectory()
         try:
-            vault = Path(tmp.name) / "vault"
-            vault.mkdir()
-            records = reader.load_observed_records(vault, project="crickets")
+            telemetry_root = Path(tmp.name) / "telemetry"
+            telemetry_root.mkdir()
+            records = reader.load_observed_records(telemetry_root=telemetry_root)
             self.assertEqual(records, [])
             est = fcg.estimate_per_agent_cost("claude-sonnet-5", observed_records=records)
             expected_fallback = pricing.cost_usd(fcg.DEFAULT_AGENT_USAGE_PROFILE, "claude-sonnet-5")
@@ -104,32 +92,20 @@ class BeforeTask1FallbackPathTests(unittest.TestCase):
             tmp.cleanup()
 
 
-class AfterTask1RealAveragePathTests(unittest.TestCase):
-    """Real-bridge: a genuine session-cost write lands, gets read back, and
-    the gate's estimate now reflects it -- not the fallback profile."""
-
-    @classmethod
-    def setUpClass(cls):
-        cls._pre_existing_modules = set(sys.modules)
-        if writer.load_save_module() is None:
-            raise unittest.SkipTest("agentm sibling checkout unavailable -- real-data test skipped")
-
-    @classmethod
-    def tearDownClass(cls):
-        _purge_real_bridge_sys_path()
-        _purge_agentm_modules(cls._pre_existing_modules)
+class AfterWriterRealAveragePathTests(unittest.TestCase):
+    """A genuine session-cost event lands, gets read back, and the gate's
+    estimate now reflects it -- not the fallback profile."""
 
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
         self.tmp = Path(self._tmp.name)
-        self.vault = self.tmp / "vault"
-        self.vault.mkdir()
+        self.telemetry_root = self.tmp / "telemetry"
 
     def tearDown(self):
         self._tmp.cleanup()
 
-    def test_gate_estimate_reflects_real_captured_session_after_task_1(self):
-        # 1. A real session closes; task 1's writer captures its cost.
+    def test_gate_estimate_reflects_real_captured_session(self):
+        # 1. A real session closes; the writer captures its cost.
         transcript = _fixture_transcript(
             self.tmp, "claude-sonnet-5",
             {"input_tokens": 1_000_000, "cache_creation_input_tokens": 0,
@@ -137,11 +113,13 @@ class AfterTask1RealAveragePathTests(unittest.TestCase):
         )
         # Chosen so cost_usd is unambiguously distinct from the fallback
         # profile's estimate (1M input tokens @ $2/MTok = $2.00 flat).
-        written = writer.capture_session_cost(transcript, vault_path=self.vault, project="crickets")
+        written = writer.capture_session_cost(
+            transcript, telemetry_root=self.telemetry_root, root=self.tmp,
+        )
         self.assertEqual(len(written), 1)
 
-        # 2. task 2's reader loads that real record back.
-        records = reader.load_observed_records(self.vault, project="crickets")
+        # 2. Load that real record back.
+        records = reader.load_observed_records(telemetry_root=self.telemetry_root)
         self.assertEqual(len(records), 1)
         self.assertEqual(records[0]["model"], "claude-sonnet-5")
         self.assertAlmostEqual(records[0]["cost_usd"], 2.00, places=2)
@@ -159,8 +137,8 @@ class AfterTask1RealAveragePathTests(unittest.TestCase):
             {"input_tokens": 1_000_000, "cache_creation_input_tokens": 0,
              "cache_read_input_tokens": 0, "output_tokens": 0},
         )
-        writer.capture_session_cost(transcript, vault_path=self.vault, project="crickets")
-        records = reader.load_observed_records(self.vault, project="crickets")
+        writer.capture_session_cost(transcript, telemetry_root=self.telemetry_root, root=self.tmp)
+        records = reader.load_observed_records(telemetry_root=self.telemetry_root)
 
         result = fcg.fanout_cost_gate(3, "claude-opus-4-8", observed_records=records)
         # 3 agents x $5.00/agent (1M input tokens @ $5/MTok) = $15.00.
