@@ -3,11 +3,14 @@
 Stop-hook capture half (PLAN-wave-d-tokens-and-privacy task 1, absorbing the
 2026-07-05 decision record's PLAN-session-cost-capture scope verbatim).
 
-Hermetic unit tests cover summarize_by_model() + the graceful no-memory-
-backend no-op. A real-bridge test (skipped when no agentm sibling checkout is
-reachable) proves capture_session_cost() writes a real `kind: session-cost`
-entry via agentm's actual save_entry() path -- mirrors
-test_diagnostics_writer.py's integration-style precedent.
+**Retargeted (PLAN-observability-ledger task 1):** the capture no longer
+writes the vault via agentm's `save_entry()` bridge -- it appends telemetry
+events to the device-local event log (`event_log.py`). Fully hermetic now:
+no agentm sibling checkout dependency survives this module.
+
+Hermetic unit tests cover summarize_by_model() + the graceful no-op paths
+(missing/empty transcript, unwritable telemetry dir) + a red-test-first grep
+confirming the retired vault-write call site is actually gone.
 
 stdlib only -- no pytest.
 """
@@ -15,32 +18,14 @@ from __future__ import annotations
 
 import importlib.util
 import json
-import os
 import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest import mock
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
 _SRC = _ROOT / "src" / "tokens" / "scripts"
-
-_AGENTM_PATH_MARKERS = ("/agentm/harness/", "/agentm/scripts/")
-_REAL_BRIDGE_SYS_PATH_MARKER = "/agentm/harness/skills/memory/scripts"
-
-
-def _purge_real_bridge_sys_path():
-    sys.path[:] = [p for p in sys.path if _REAL_BRIDGE_SYS_PATH_MARKER not in p]
-
-
-def _purge_agentm_modules(pre_existing_names):
-    for name, mod in list(sys.modules.items()):
-        if name in pre_existing_names:
-            continue
-        f = getattr(mod, "__file__", None)
-        if f and any(marker in f for marker in _AGENTM_PATH_MARKERS):
-            del sys.modules[name]
 
 
 def _load(name: str, path: Path):
@@ -53,6 +38,7 @@ def _load(name: str, path: Path):
 
 writer = _load("session_cost_writer_under_test", _SRC / "session_cost_writer.py")
 analyzer = sys.modules["analyzer"]
+event_log = sys.modules["event_log"]
 
 
 def _fixture_transcript(tmp: Path) -> Path:
@@ -106,8 +92,20 @@ class SummarizeByModelTests(unittest.TestCase):
         self.assertEqual(writer.summarize_by_model([]), [])
 
 
+class VaultWriteRetiredTests(unittest.TestCase):
+    """Red-test-first: the old vault-write call site must actually be gone,
+    not just superseded by a new one sitting alongside it."""
+
+    def test_no_save_entry_call_site_remains(self):
+        source = (_SRC / "session_cost_writer.py").read_text(encoding="utf-8")
+        self.assertNotIn("save.save_entry(", source)
+        self.assertNotIn("load_save_module", source)
+        self.assertNotIn("vault_path", source)
+
+
 class CaptureSessionCostGracefulNoOpTests(unittest.TestCase):
-    """No-memory-backend fixture: the hook must never block session close."""
+    """The hook must never block session close, even on a bad transcript
+    path or an unwritable event log."""
 
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
@@ -116,90 +114,80 @@ class CaptureSessionCostGracefulNoOpTests(unittest.TestCase):
     def tearDown(self):
         self._tmp.cleanup()
 
-    def test_no_vault_path_is_a_clean_noop(self):
-        transcript = _fixture_transcript(self.tmp)
-        written = writer.capture_session_cost(transcript, vault_path=None, project="crickets")
-        self.assertEqual(written, [])
-
-    def test_nonexistent_vault_dir_is_a_clean_noop(self):
-        transcript = _fixture_transcript(self.tmp)
+    def test_missing_transcript_is_a_clean_noop(self):
         written = writer.capture_session_cost(
-            transcript, vault_path=self.tmp / "no-such-vault", project="crickets",
+            self.tmp / "no-such-transcript.jsonl",
+            telemetry_root=self.tmp / "telemetry",
         )
         self.assertEqual(written, [])
 
-    def test_agentm_unresolvable_is_a_clean_noop(self):
-        vault = self.tmp / "vault"
-        vault.mkdir()
-        transcript = _fixture_transcript(self.tmp)
-        empty_home = self.tmp / "empty_home"
-        empty_home.mkdir()
-        with mock.patch.dict(os.environ, {"AGENTM_SCRIPTS_DIR": ""}, clear=False):
-            with mock.patch.object(Path, "home", return_value=empty_home):
-                writer._reset_cache_for_tests()
-                written = writer.capture_session_cost(
-                    transcript, vault_path=vault, project="crickets",
-                )
-                writer._reset_cache_for_tests()
+    def test_empty_transcript_is_a_clean_noop(self):
+        empty = self.tmp / "empty.jsonl"
+        empty.write_text("", encoding="utf-8")
+        written = writer.capture_session_cost(empty, telemetry_root=self.tmp / "telemetry")
         self.assertEqual(written, [])
 
-    def test_missing_transcript_is_a_clean_noop(self):
-        vault = self.tmp / "vault"
-        vault.mkdir()
+    def test_unwritable_telemetry_root_is_a_clean_noop(self):
+        # A telemetry "root" that is actually a file, not a directory --
+        # mkdir(parents=True) on the child path raises NotADirectoryError
+        # (an OSError subclass), which append_event() must swallow.
+        transcript = _fixture_transcript(self.tmp)
+        blocker = self.tmp / "not-a-dir"
+        blocker.write_text("x", encoding="utf-8")
         written = writer.capture_session_cost(
-            self.tmp / "no-such-transcript.jsonl", vault_path=vault, project="crickets",
+            transcript, telemetry_root=blocker / "telemetry",
         )
         self.assertEqual(written, [])
 
     def test_main_never_raises_and_always_exits_zero(self):
-        # CLI entry point contract: even a garbage transcript path must not
-        # raise or exit non-zero -- the hook wrapper always continues.
-        rc = writer.main(["/no/such/path/session.jsonl", "--project", "crickets"])
+        rc = writer.main(["/no/such/path/session.jsonl", "--session-id", "s1"])
         self.assertEqual(rc, 0)
 
 
-class CaptureSessionCostRealBridgeTests(unittest.TestCase):
-    """Integration-style: proves a real `kind: session-cost` entry lands via
-    agentm's actual save_entry() path. Skipped without a sibling checkout."""
-
-    @classmethod
-    def setUpClass(cls):
-        cls._pre_existing_modules = set(sys.modules)
-        if writer.load_save_module() is None:
-            raise unittest.SkipTest("agentm sibling checkout unavailable -- real-bridge test skipped")
-
-    @classmethod
-    def tearDownClass(cls):
-        _purge_real_bridge_sys_path()
-        _purge_agentm_modules(cls._pre_existing_modules)
+class CaptureSessionCostRealWriteTests(unittest.TestCase):
+    """Proves a real session-cost event lands in the event log with the
+    expected shape."""
 
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
         self.tmp = Path(self._tmp.name)
-        self.vault = self.tmp / "vault"
-        self.vault.mkdir()
+        self.telemetry_root = self.tmp / "telemetry"
 
     def tearDown(self):
         self._tmp.cleanup()
 
-    def test_writes_one_session_cost_entry_per_model(self):
-        transcript = _fixture_transcript(self.tmp)
-        written = writer.capture_session_cost(transcript, vault_path=self.vault, project="crickets")
-        self.assertEqual(len(written), 2)
-        contents = [p.read_text(encoding="utf-8") for p in written]
-        self.assertTrue(any("model: claude-sonnet-5" in c for c in contents))
-        self.assertTrue(any("model: claude-opus-4-8" in c for c in contents))
-        for c in contents:
-            self.assertIn("kind: session-cost", c)
-            self.assertIn("group: projects/crickets/session-cost", c)
+    def _written_lines(self) -> list[dict]:
+        files = sorted(self.telemetry_root.glob("events-*.jsonl"))
+        self.assertEqual(len(files), 1)
+        return [json.loads(l) for l in files[0].read_text(encoding="utf-8").splitlines() if l.strip()]
 
-    def test_written_entry_carries_cost_usd_and_timestamp(self):
+    def test_writes_one_event_per_model(self):
         transcript = _fixture_transcript(self.tmp)
-        written = writer.capture_session_cost(transcript, vault_path=self.vault, project="crickets")
-        content = written[0].read_text(encoding="utf-8")
-        self.assertIn("cost_usd:", content)
-        self.assertIn("timestamp:", content)
-        self.assertIn("input_tokens:", content)
+        written = writer.capture_session_cost(
+            transcript, session_id="s-fire", telemetry_root=self.telemetry_root, root=self.tmp,
+        )
+        self.assertEqual(len(written), 2)
+        lines = self._written_lines()
+        self.assertEqual(len(lines), 2)
+        models = {l["model"] for l in lines}
+        self.assertEqual(models, {"claude-sonnet-5", "claude-opus-4-8"})
+
+    def test_event_shape_matches_schema(self):
+        transcript = _fixture_transcript(self.tmp)
+        writer.capture_session_cost(
+            transcript, session_id="s-fire", telemetry_root=self.telemetry_root, root=self.tmp,
+        )
+        record = self._written_lines()[0]
+        for key in ("ts", "schema_version", "device", "session_id", "parent_id",
+                    "event", "model", "tokens_by_kind", "cost_usd", "tags"):
+            self.assertIn(key, record)
+        self.assertEqual(record["event"], "session-cost")
+        self.assertEqual(record["schema_version"], event_log.SCHEMA_VERSION)
+        self.assertEqual(record["session_id"], "s-fire")
+        for tk in ("input", "cache_write", "cache_read", "output"):
+            self.assertIn(tk, record["tokens_by_kind"])
+        for tag in ("plan", "task", "arc", "grade"):
+            self.assertIn(tag, record["tags"])
 
 
 if __name__ == "__main__":
