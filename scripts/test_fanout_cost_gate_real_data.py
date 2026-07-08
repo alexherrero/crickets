@@ -1,21 +1,20 @@
 #!/usr/bin/env python3
-"""PLAN-wave-d-tokens-and-privacy task 2 / PLAN-observability-ledger task 1:
-confirm the fan-out cost gate now has real data.
+"""PLAN-wave-d-tokens-and-privacy task 2 / PLAN-observability-ledger tasks
+1 + 3: confirm the fan-out cost gate now has real data.
 
 Before the writer existed: fanout_cost_gate.estimate_per_agent_cost() always
 took the fallback path (pricing.cost_usd over a fixed usage profile) --
 there was no writer, so observed_records was always empty in practice.
 After: a real session close appends a `session-cost` telemetry event via
-session_cost_writer.capture_session_cost(), and reading that event log back
-into the exact shape estimate_per_agent_cost() consumes takes the
-observed-average path instead of the fallback.
+session_cost_writer.capture_session_cost(), and session_cost_reader.
+load_observed_records() reads that event log back into the exact shape
+estimate_per_agent_cost() consumes -- so the SAME code, called with real
+data, now takes the observed-average path instead of the fallback.
 
-**Retargeted (PLAN-observability-ledger task 1).** The write side now
-targets the device-local event log, not the vault -- this file reads the
-raw event log directly rather than through `session_cost_reader.py`, which
-is still vault-based pending task 3's repoint. Task 3 updates this file
-again to route through the repointed reader instead of the manual JSON
-parse below.
+**Retargeted (PLAN-observability-ledger tasks 1 and 3).** Both the write
+side (task 1) and the read side (task 3) now target the device-local event
+log instead of the vault -- this file routes through the real, repointed
+`session_cost_reader.py`, not a manual JSON parse.
 
 This test asserts the CODE PATH taken (which branch inside
 estimate_per_agent_cost fired), not merely that the gate ran without error --
@@ -48,6 +47,7 @@ def _load(name: str, path: Path):
 fcg = _load("fanout_cost_gate_realdata_test", _SRC / "fanout_cost_gate.py")
 pricing = sys.modules["pricing"]
 writer = _load("session_cost_writer_for_gate_test", _SRC / "session_cost_writer.py")
+reader = _load("session_cost_reader_for_gate_test", _SRC / "session_cost_reader.py")
 
 
 def _fixture_transcript(tmp: Path, model: str, cost_shape: dict) -> Path:
@@ -58,23 +58,6 @@ def _fixture_transcript(tmp: Path, model: str, cost_shape: dict) -> Path:
     p = tmp / "session.jsonl"
     p.write_text(line + "\n", encoding="utf-8")
     return p
-
-
-def _load_records_from_event_log(telemetry_root: Path) -> list[dict]:
-    """Interim stand-in for the repointed reader (task 3 lands this inside
-    session_cost_reader.py itself) -- reads the raw event log directly and
-    shapes it into `[{"model": ..., "cost_usd": ...}, ...]`."""
-    records = []
-    for path in sorted(Path(telemetry_root).glob("events-*.jsonl")):
-        for line in path.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            rec = json.loads(line)
-            if rec.get("event") != "session-cost":
-                continue
-            records.append({"model": rec["model"], "cost_usd": rec["cost_usd"]})
-    return records
 
 
 class BeforeWriterFallbackPathTests(unittest.TestCase):
@@ -100,7 +83,7 @@ class BeforeWriterFallbackPathTests(unittest.TestCase):
         try:
             telemetry_root = Path(tmp.name) / "telemetry"
             telemetry_root.mkdir()
-            records = _load_records_from_event_log(telemetry_root)
+            records = reader.load_observed_records(telemetry_root=telemetry_root)
             self.assertEqual(records, [])
             est = fcg.estimate_per_agent_cost("claude-sonnet-5", observed_records=records)
             expected_fallback = pricing.cost_usd(fcg.DEFAULT_AGENT_USAGE_PROFILE, "claude-sonnet-5")
@@ -136,7 +119,7 @@ class AfterWriterRealAveragePathTests(unittest.TestCase):
         self.assertEqual(len(written), 1)
 
         # 2. Load that real record back.
-        records = _load_records_from_event_log(self.telemetry_root)
+        records = reader.load_observed_records(telemetry_root=self.telemetry_root)
         self.assertEqual(len(records), 1)
         self.assertEqual(records[0]["model"], "claude-sonnet-5")
         self.assertAlmostEqual(records[0]["cost_usd"], 2.00, places=2)
@@ -155,7 +138,7 @@ class AfterWriterRealAveragePathTests(unittest.TestCase):
              "cache_read_input_tokens": 0, "output_tokens": 0},
         )
         writer.capture_session_cost(transcript, telemetry_root=self.telemetry_root, root=self.tmp)
-        records = _load_records_from_event_log(self.telemetry_root)
+        records = reader.load_observed_records(telemetry_root=self.telemetry_root)
 
         result = fcg.fanout_cost_gate(3, "claude-opus-4-8", observed_records=records)
         # 3 agents x $5.00/agent (1M input tokens @ $5/MTok) = $15.00.
