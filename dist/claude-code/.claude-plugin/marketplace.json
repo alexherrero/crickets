@@ -174,7 +174,7 @@
       "description": "Deterministic transcript-JSONL cost analyzer — per-message cost curve, 5h rolling window, floor breakdown, and cache-read vs cache-write vs fresh-input split. Prerequisite for Part C (status-line meter) and Part G (heat-based floor).",
       "name": "tokens",
       "source": "./plugins/tokens",
-      "version": "0.5.0"
+      "version": "0.5.1"
     },
     {
       "capabilities": [

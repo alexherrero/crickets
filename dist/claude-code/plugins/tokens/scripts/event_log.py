@@ -96,14 +96,14 @@ def append_event(record: dict, *, telemetry_root: "Path | None" = None) -> bool:
     return True
 
 
-def _read_active_plan_marker(root: "Path | None" = None) -> "str | None":
-    """The worktree-local `.harness/active-plan` bare slug, or None if
+def _read_marker(name: str, root: "Path | None" = None) -> "str | None":
+    """The worktree-local `.harness/<name>` bare value, or None if
     missing/blank. Mirrors `development-lifecycle`'s own
     `doctor_worktrees._read_marker()` inline — tokens must not depend on a
     sibling capability to resolve its own attribution (same one-way-bridge
     convention `session_cost_writer.py` already follows for `save.py`)."""
     base = Path(root) if root is not None else Path.cwd()
-    marker = base / ".harness" / "active-plan"
+    marker = base / ".harness" / name
     try:
         text = marker.read_text(encoding="utf-8").strip()
     except (OSError, ValueError):
@@ -111,18 +111,31 @@ def _read_active_plan_marker(root: "Path | None" = None) -> "str | None":
     return text or None
 
 
+def _read_active_plan_marker(root: "Path | None" = None) -> "str | None":
+    return _read_marker("active-plan", root=root)
+
+
+def _read_active_task_marker(root: "Path | None" = None) -> "str | None":
+    """The worktree-local `.harness/active-task` bare value, written by the
+    control-plane dispatch (`PLAN-observability-residue-trio` task 1)
+    alongside `active-plan`. `None` when the caller isn't a dispatched
+    session (e.g. an interactive Stop-hook capture with no task context)."""
+    return _read_marker("active-task", root=root)
+
+
 def resolve_attribution_tags(*, root: "Path | None" = None, grade: "str | None" = None) -> dict:
     """Best-effort `{plan, task, arc, grade}` tags for a telemetry event.
 
-    `plan` comes from the active-plan marker; `task`/`arc` aren't resolvable
-    from the marker alone (the Stop-hook capture path has no task/arc
-    dispatch context) and stay `None` until a future caller supplies them
-    directly. Never raises — a missing/blank marker just means an untagged
-    event, not a crash.
+    `plan` and `task` come from their respective worktree-local markers.
+    `arc` has no marker or dispatch-side source today — the dispatch
+    substrate's `WorkItem` carries no arc concept (`PLAN-observability-
+    residue-trio`'s own locked design call) — and stays `None` until a
+    future plan introduces one. Never raises — a missing/blank marker just
+    means an untagged event, not a crash.
     """
     return {
         "plan": _read_active_plan_marker(root=root),
-        "task": None,
+        "task": _read_active_task_marker(root=root),
         "arc": None,
         "grade": grade,
     }
