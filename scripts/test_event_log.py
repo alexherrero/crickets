@@ -143,6 +143,30 @@ class ResolveAttributionTagsTests(unittest.TestCase):
         tags = event_log.resolve_attribution_tags(root=self.tmp, grade="advisory")
         self.assertEqual(tags["grade"], "advisory")
 
+    def test_task_marker_present_yields_the_slug(self):
+        harness = self.tmp / ".harness"
+        harness.mkdir()
+        (harness / "active-task").write_text("3\n", encoding="utf-8")
+        tags = event_log.resolve_attribution_tags(root=self.tmp)
+        self.assertEqual(tags["task"], "3")
+
+    def test_plan_and_task_markers_resolve_independently(self):
+        harness = self.tmp / ".harness"
+        harness.mkdir()
+        (harness / "active-plan").write_text("observability-residue-trio\n", encoding="utf-8")
+        (harness / "active-task").write_text("1\n", encoding="utf-8")
+        tags = event_log.resolve_attribution_tags(root=self.tmp)
+        self.assertEqual(tags["plan"], "observability-residue-trio")
+        self.assertEqual(tags["task"], "1")
+        self.assertIsNone(tags["arc"])
+
+    def test_blank_task_marker_yields_task_none(self):
+        harness = self.tmp / ".harness"
+        harness.mkdir()
+        (harness / "active-task").write_text("   \n", encoding="utf-8")
+        tags = event_log.resolve_attribution_tags(root=self.tmp)
+        self.assertIsNone(tags["task"])
+
 
 class DeviceIdTests(unittest.TestCase):
     def test_device_id_is_a_nonempty_string(self):

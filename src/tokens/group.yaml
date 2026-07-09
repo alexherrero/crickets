@@ -98,5 +98,5 @@ standalone: true
 #          repoints from vault-markdown globbing to the event log so
 #          fanout_cost_gate.py's observed_records param carries real data
 #          again (task 3). No agentm dependency survives in this capability.
-version: 0.5.0
+version: 0.5.1
 capabilities: [status-line-meter, token-audit, tokens]
