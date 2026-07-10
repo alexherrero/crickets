@@ -124,5 +124,12 @@ standalone: false
 #          model decision the 2026-06-19 A1 verdict and the 2026-07-03
 #          field-taxonomy rethink both deferred. sync_fields() itself is
 #          unchanged -- it still never creates options.
-version: 0.3.4
+# 0.3.5: fix -- _progress_values() read p["plan_goal"] with direct dict
+#         indexing instead of .get(), so a feature/sub-feature progress entry
+#         missing plan_goal KeyError'd the aggregate render instead of
+#         letting fill()'s documented None-drops-the-clause optionality
+#         handle it gracefully. No live board-items.json entry was found
+#         actually missing the key at fix time, but nothing guaranteed one
+#         couldn't appear (no schema validation on nested progress entries).
+version: 0.3.5
 capabilities: [board-sync]
