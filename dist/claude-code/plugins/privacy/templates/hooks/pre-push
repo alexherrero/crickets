@@ -2,7 +2,7 @@
 # pre-push — crickets PII guardrail.
 #
 # No automated installer copies this in yet — an operator installs it once
-# manually: `cp src/pii/templates/hooks/pre-push .git/hooks/ && chmod +x
+# manually: `cp src/privacy/templates/hooks/pre-push .git/hooks/ && chmod +x
 # .git/hooks/pre-push` (or `git config core.hooksPath` to a dir containing it).
 # Runs `check-no-pii.sh` against the push range. Blocks the push on any finding.
 #

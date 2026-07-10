@@ -98,7 +98,9 @@ class TestClaudeEmitter(unittest.TestCase):
         # skill + Semgrep taint pack + scrub_text() surface.
         # 0.6.0 = task 4 retrofit: real opinions: [good, how-we-engineer]
         # wiring once PLAN-opinion-consumer-grammar (#167) landed.
-        self.assertEqual(self._plugin_json("privacy")["version"], "0.6.0")
+        # 0.6.1 = Consolidation CONS-2 task 6 — stale src/pii/ header-comment
+        # path in templates/hooks/pre-push fixed to src/privacy/. Doc-only.
+        self.assertEqual(self._plugin_json("privacy")["version"], "0.6.1")
 
     def test_dependencies_from_requires(self):
         # post-seed-retirement: maintenance (ex-github-ci) depends on
