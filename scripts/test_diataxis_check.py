@@ -150,6 +150,78 @@ class TestConventionDriftHeuristic(unittest.TestCase):
             self._page("# Doc\nplain text.\n"), ["a.b", "(note)"], strict=False), [])
 
 
+class TestStaleXrefHeuristic(unittest.TestCase):
+    """Consolidation arc CONS-2 task 7 — /bugfix for two stale-xref false
+    positives: asset links (SVG et al.) and structural-page links (Home)."""
+
+    def _page(self, body: str) -> Path:
+        d = Path(self._td.name)
+        p = d / "page.md"
+        p.write_text(body, encoding="utf-8")
+        return p
+
+    def setUp(self):
+        self._td = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self._td.cleanup()
+
+    def test_svg_target_not_flagged_stale(self):
+        p = self._page("# Doc\nSee the [architecture diagram](diagram.svg).\n")
+        self.assertEqual(chk._heuristic_stale_xref(p, {"Doc"}), [])
+
+    def test_other_non_markdown_asset_targets_not_flagged(self):
+        p = self._page(
+            "# Doc\n[a png](shot.png) [a pdf](spec.pdf) [a json](data.json)\n")
+        self.assertEqual(chk._heuristic_stale_xref(p, {"Doc"}), [])
+
+    def test_genuinely_stale_md_link_still_flagged(self):
+        # Regression guard: the SVG/asset fix must not blunt real detection.
+        p = self._page("# Doc\nSee [Gone](TotallyMadeUp.md) for details.\n")
+        findings = chk._heuristic_stale_xref(p, {"Doc"})
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0].rule, "diataxis/stale-xref")
+        self.assertIn("TotallyMadeUp", findings[0].msg)
+
+    def test_genuinely_stale_extensionless_link_still_flagged(self):
+        p = self._page("# Doc\nSee [Gone](TotallyMadeUp) for details.\n")
+        findings = chk._heuristic_stale_xref(p, {"Doc"})
+        self.assertEqual(len(findings), 1)
+
+
+class TestStaleXrefHomeLinkEndToEnd(unittest.TestCase):
+    """The Home-link case is fixed in run_check (all_stems is built there, not
+    inside the heuristic itself), so it needs an end-to-end fixture."""
+
+    def setUp(self):
+        self._td = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self._td.cleanup()
+
+    def _stale_findings(self, report) -> list:
+        return [f for f in report.findings if f.rule == "diataxis/stale-xref"]
+
+    def test_home_link_not_flagged_stale(self):
+        wiki = Path(self._td.name) / "wiki"
+        (wiki / "how-to").mkdir(parents=True)
+        (wiki / "Home.md").write_text("# Home\nWelcome.\n", encoding="utf-8")
+        (wiki / "how-to" / "Page.md").write_text(
+            "# Page\nBack to [Home](Home).\n", encoding="utf-8")
+        report = chk.run_check(wiki_root=wiki, strict=False, check_wiki_py=None)
+        flagged_targets = {f.msg for f in self._stale_findings(report)}
+        self.assertFalse(any("Home" in msg for msg in flagged_targets))
+
+    def test_genuinely_stale_link_still_flagged_end_to_end(self):
+        wiki = Path(self._td.name) / "wiki"
+        (wiki / "how-to").mkdir(parents=True)
+        (wiki / "Home.md").write_text("# Home\nWelcome.\n", encoding="utf-8")
+        (wiki / "how-to" / "Page.md").write_text(
+            "# Page\nSee [Gone](NoSuchPage) for details.\n", encoding="utf-8")
+        report = chk.run_check(wiki_root=wiki, strict=False, check_wiki_py=None)
+        self.assertEqual(len(self._stale_findings(report)), 1)
+
+
 class TestExitCode(unittest.TestCase):
     def _report(self, *severities) -> object:
         r = chk.CheckReport(wiki_root="x", check_wiki_status="ran",
