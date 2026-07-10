@@ -14,7 +14,7 @@
 #   python3 -m venv .venv && source .venv/bin/activate
 #   python3 -m pip install -r requirements.txt
 
-pyyaml>=6.0           # scripts/validate-manifests.py, scripts/manifest-info.py
+pyyaml>=6.0           # scripts/validate-manifests.py
 
 # Note: as of v2.0.0, sqlite-vec + sentence-transformers are NO LONGER
 # crickets dependencies. The memory skill moved to agentm in V4 #36;

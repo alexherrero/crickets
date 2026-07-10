@@ -131,5 +131,11 @@ standalone: false
 #         handle it gracefully. No live board-items.json entry was found
 #         actually missing the key at fix time, but nothing guaranteed one
 #         couldn't appear (no schema validation on nested progress entries).
-version: 0.3.5
+# 0.3.6 = PLAN-cons-2-crickets-slim task 1 (Consolidation arc CONS-2):
+#         removed add_select_options.py -- the one-off 0.3.4 migration tool
+#         had already done its job (both live boards' select-field options
+#         were added); no ongoing caller depends on it, and sync_fields()
+#         never needed it. Recoverable via git history if a future field
+#         needs the same one-off additive-options treatment again.
+version: 0.3.6
 capabilities: [board-sync]
