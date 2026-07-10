@@ -5,9 +5,45 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v3.25.1] — 2026-07-08 — Patch: task attribution wired through the observability ledger (`tokens 0.5.1`)
+## [v3.26.0] — 2026-07-09 — Minor: AG Waves C+D close out; the crickets half of the Autonomy arc lands
 
-**PATCH — `tokens 0.5.0 → 0.5.1`: `event_log.resolve_attribution_tags()` reads a `task` marker.** `PLAN-observability-ledger` task 2 shipped `plan` attribution but left `task`/`arc` hardcoded `None` — the schema carried the fields, nothing populated them, so the aggregator's `by_task` rollup (agentm) was structurally empty. `resolve_attribution_tags()` now reads a second worktree-local marker, `.harness/active-task` (mirroring `active-plan`'s own `_read_marker` helper), written by agentm's control-plane dispatch (`PLAN-observability-residue-trio`, paired agentm change) alongside the plan marker before a dispatched session spawns. `arc` stays `None` — the dispatch substrate (`WorkItem`) has no arc concept to read one from, and this plan doesn't invent one. Additive and backward-compatible: a caller writing no `active-task` marker gets the same `task: None` behavior as before.
+**MINOR.** Architecture-Governance Waves C and D close out across eight plugin groups — diagnostics (`/diagnose`), research (idea-search over the recall engine, forward-learning), design + conventions + developer-safety (the Wave C design cluster), maintenance (four new primitives), tokens/privacy/diagnostics (session-cost capture, privacy-review + Semgrep pack, scrub-text surface), development-lifecycle (workflow-step persona adoption, dependabot-fixer/`/bugfix` cross-wired onto `diagnose()`), and github-projects (doc reconciliation, the Planner (TPM) depth-maintainer/drift-corrector). Alongside Wave D, this release ships the crickets half of the Autonomy arc's observability ledger and the board tracking-model decision — pairs with [agentm v5.14.0](https://github.com/alexherrero/agentm/releases/tag/v5.14.0), which ships the agentm half (runner aggregator, dashboard, control plane).
+
+### Added
+
+- **Observability ledger — crickets half** (`ebf1b92`, #174) — the event log, attribution fields, and the reader repoint agentm's runner aggregator folds into its SQLite rollup.
+- **Task attribution wired through the ledger** (`9a45a5b`, #176; `tokens 0.5.0 → 0.5.1`) — `event_log.resolve_attribution_tags()` reads a second worktree-local marker, `.harness/active-task` (mirroring `active-plan`'s own `_read_marker` helper), written by agentm's control-plane dispatch alongside the plan marker before a dispatched session spawns. `task`/`arc` had shipped hardcoded `None` in the ledger's first cut; `arc` stays `None` since the dispatch substrate has no arc concept to read one from. Additive and backward-compatible.
+- **Board tracking model decided** (`ee63488`, #175) — repurposes the board's `Track` field for dispatch tier rather than adding a by-agent axis; pairs with agentm #254's `board_sync.py` wiring.
+- **AG Wave C — diagnostics: the `/diagnose` engine** (`fa866bf`, #153).
+- **AG Wave C — research: forward-learning** (`0b08ca1`, #173) — learn-forward + codebase-improvement.
+- **AG Wave C — research: idea-search over the recall engine** (`20d949a`, #156, reduced scope).
+- **AG Wave C — design-and-conventions cluster** (`8e31550`, #160) — design, conventions, developer-safety.
+- **AG Wave C — maintenance: four new primitives** (`f9e4252`, #157) + a cross-plugin bridge collision fix.
+- **ci(nightly): main-HEAD full-matrix backstop, crickets half** (`d6f2f6c`, #155) — pairs with agentm's own nightly backstop.
+- **AG Wave D — session-cost capture, privacy-review + Semgrep pack, scrub-text surface** (`2fb8ad6`, #166) — tokens/privacy/diagnostics.
+- **AG Wave D — dependabot-fixer + `/bugfix` Analyze cross-wired onto `diagnose()`** (`38c6feb`, #168) — diagnostics/maintenance/development-lifecycle.
+- **AG Wave D — github-projects doc reconciliation + Planner (TPM) depth-maintainer/drift-corrector** (`f3d6992`, #164).
+- **AG Wave D — workflow-step persona adoption** (`a1f1f5e`, #163).
+- **AG Wave D — opinion request-by-name wiring, narrowed to 2 real bindings** (`e8a8178`, #162).
+- **`opinion-consumer-grammar` proven on `design→good` and `code-review→good`** (`eabf8cc`, #167).
+
+### Changed
+
+- **AG Wave D personas: opinion-consumer conformance sweep, crickets side complete** (`44e1e1f`, #170).
+- **docs(privacy,tokens,diagnostics): Wave D design docs reconciled to shipped state** (`c1f7500`, #169).
+- **docs(designs): shipped components flipped to as-built + version-matching policy settled** (`4241db2`, G12 AG close-out sweep).
+- **docs(designs): session-cost capture flagged superseded by `agentm-autonomy`** (`ead099d`, AA2).
+- **docs(diagnostics): `[PENDING-IMPL]` markers flipped now the engine shipped** (`4708ddb`).
+- **docs(troubleshooting): plugin-agent tool-scoping host gap documented** (`457665b`, #158).
+
+### Internal
+
+- **fix(github-projects): `materialize()` no longer drops already-issued plans/tasks** (`299cde8`); **link new issues to the project board on create** (`ce8c2ff`, #159).
+- **fix(worktree_marker): carry the full `project.json` into spawned worktrees** (`2669e80`); **carry the isolation block into every worktree** (`272a8e2`).
+- **fix(diagnostics): stop the real-bridge tests' cleanup from stripping other test files' state** (`b2577b4`, part of #154).
+- **fix(finalize_unit): PII guard scopes to the diff, not the whole tree** (`a8bc5a7`).
+- **fix(pr_helpers): "nothing to commit" is not a finalize failure** (`0b78cda`).
+- **Plugin-group version bumps landed inline with their PRs this range:** `code-review` 0.2.6→0.2.7 · `conventions` 0.1.0→0.4.0 · `design` 0.2.1→0.6.0 · `developer-safety` 0.3.6→0.4.0 · `development-lifecycle` 0.34.1→0.36.0 · `diagnostics` 0.0.1→0.1.4 · `github-projects` 0.2.4→0.3.4 · `maintenance` 0.2.0→0.2.4 · `privacy` 0.4.0→0.6.0 · `research` 0.1.4→0.2.0 · `tokens` 0.3.0→0.5.1.
 
 ## [v3.25.0] — 2026-07-06 — Minor: worktree-native flow — host worktrees + PR-per-plan
 

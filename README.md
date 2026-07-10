@@ -59,7 +59,7 @@ The [wiki](https://github.com/alexherrero/crickets/wiki) covers everything there
 - [Reference](https://github.com/alexherrero/crickets/wiki/Reference) — plugin anatomy, the manifest schema, and the install modes.
 
 > [!NOTE]
-> **Latest release: [v3.24.0](https://github.com/alexherrero/crickets/releases/tag/v3.24.0).** Seven plugins rename or merge to their settled capability nouns (`developer-workflows` → `development-lifecycle`, `github-ci` → `maintenance`, `pii` → `privacy`, `wiki-maintenance` → `wiki`, `design-docs` → `design`, `testing-conventions` + `releasing-conventions` → `conventions`, `status-line-meter` folds into `token-audit` → `tokens`) — every old name keeps resolving, nothing breaks for an existing install.
+> **Latest release: [v3.26.0](https://github.com/alexherrero/crickets/releases/tag/v3.26.0).** AG Waves C and D close out across eight plugin groups, and the crickets half of the Autonomy arc's observability ledger and board tracking-model decision land — pairs with [agentm v5.14.0](https://github.com/alexherrero/agentm/releases/tag/v5.14.0).
 
 ---
 
