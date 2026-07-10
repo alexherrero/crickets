@@ -162,10 +162,11 @@ def _progress_values(t, p, repo_url, graph) -> dict:
                                       default=p.get("task_label", "task")),
             "progress": p["progress"],
         }
-    # feature / sub-feature
+    # feature / sub-feature — plan_goal is optional (fill() drops the whole
+    # clause when it's None); a progress entry missing it must not KeyError.
     return {
         "date": fmt_date(p["date"]),
-        "plan_goal": p["plan_goal"],
+        "plan_goal": p.get("plan_goal"),
         "version": p["version"],
     }
 

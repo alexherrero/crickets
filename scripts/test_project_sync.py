@@ -209,6 +209,15 @@ class TestGoldenRenders(unittest.TestCase):
             "**③ Outcome:** done  ·  **Shipped:** [v0.1.0](https://github.com/o/r/releases/tag/v0.1.0) · [v0.1.1](https://github.com/o/r/releases/tag/v0.1.1)",
         ]))
 
+    def test_feature_progress_missing_plan_goal_drops_clause_no_keyerror(self):
+        feat = pm.Item(id="f1b", type="feature", title="F", fields={
+            "kickoff": {"goal": "sync to board",
+                        "why_matters": "humans see status"},
+            "progress": [{"date": "2026-06-14", "version": "v0.1.0"}],
+        })
+        self.assertEqual(_render(feat),
+            "**① Goal:** sync to board  ·  **Why it matters:** humans see status\n\n")
+
     def test_feature_with_deferred_link(self):
         target = pm.Item(id="d1", type="feature", title="Spanish pass", issue=99)
         feat = pm.Item(id="f2", type="feature", title="F2", fields={
