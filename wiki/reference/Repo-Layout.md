@@ -32,6 +32,15 @@ crickets/
 - **`src/pii/templates/hooks/pre-push`** — the PII enforcer a clone copies into `.git/hooks/` ([CONTRIBUTING](https://github.com/alexherrero/crickets/blob/main/CONTRIBUTING.md)).
 - **`wiki/`** — this documentation, published to the GitHub wiki on every push ([Wiki design](crickets-wiki)).
 
+## Forward-owned library code (dark registry)
+
+No standing "dark-registry" convention existed anywhere in this repo before the Consolidation arc (CONS-2 task 9); this table is the first entry, started here because it's the existing reference page closest to "what lives where and who's responsible for it." A **dark registration** records a future owner for code that already ships and already works — it changes nothing today. The code stays exactly where it is, under its current plugin's ownership, until the registered owner actually exists; then a real migration (not this table) moves it.
+
+| Code | Current owner | Registered future owner | Note |
+|---|---|---|---|
+| `src/maintenance/scripts/agentm_bridge.py` (+ sibling library scripts under `src/maintenance/scripts/`) | `maintenance` plugin (crickets) | FRIDAY F1 | Cross-plugin agentm-reaching library code — see [Coordinator-Roles](Coordinator-Roles) for the pattern's shape. |
+| `src/research/scripts/agentm_bridge.py` (+ sibling library scripts under `src/research/scripts/`) | `research` plugin (crickets) | FRIDAY F1 | Same pattern; `research`'s design already names the personal-knowledge-management trajectory FRIDAY converges on ([crickets-research](crickets-research)). |
+
 ## Related
 
 - [Plugin anatomy](Plugin-Anatomy) — the structure inside `src/<group>/` and a generated plugin.
