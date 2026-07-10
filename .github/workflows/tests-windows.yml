@@ -102,3 +102,9 @@ jobs:
         env:
           AGENTM_SCRIPTS: ${{ github.workspace }}/_agentm/scripts
         run: cd scripts && python -m unittest test_obsidian_vault_conformance test_obsidian_vault_discovery test_obsidian_vault_doctor
+      - name: check-no-pii.sh / check-wiki.py detection contracts stay in sync with agentm (check-cross-repo-script-parity, report-only)
+        # CONS-2 task 4 — mirrors the Linux leg's identical step; the kernel
+        # sibling is already checked out above for the obsidian-vault suites.
+        env:
+          AGENTM_SCRIPTS: ${{ github.workspace }}/_agentm/scripts
+        run: python scripts/check-cross-repo-script-parity.py --report

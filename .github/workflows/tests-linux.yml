@@ -232,3 +232,14 @@ jobs:
         env:
           AGENTM_SCRIPTS: ${{ github.workspace }}/_agentm/scripts
         run: cd scripts && python3 -m unittest test_obsidian_vault_conformance test_obsidian_vault_discovery test_obsidian_vault_doctor
+      - name: check-no-pii.sh / check-wiki.py detection contracts stay in sync with agentm (check-cross-repo-script-parity, report-only)
+        # CONS-2 task 4 — with the kernel sibling already checked out above for the
+        # obsidian-vault suites, this is the one job where the check can actually
+        # run (not gracefully skip) in CI. Compares kind/rule-letter SETS, not
+        # bytes — crickets' check-wiki.py carries 3 intentionally crickets-only
+        # rules (component-overview section model) that agentm's wiki has no
+        # page-type for; see the script's own docstring for the full, documented
+        # exemption. Report-only until this new gate has proven itself over time.
+        env:
+          AGENTM_SCRIPTS: ${{ github.workspace }}/_agentm/scripts
+        run: python3 scripts/check-cross-repo-script-parity.py --report
