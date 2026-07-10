@@ -36,7 +36,7 @@ standalone: false
 capabilities: [ci-repair]
 ```
 
-### Example — `src/pii/group.yaml`
+### Example — `src/privacy/group.yaml`
 
 ```yaml
 name: PII Guardrail

@@ -74,7 +74,7 @@ class TestSchemaGroupYamlExamplesValidate(unittest.TestCase):
         # A guard against the extractor itself silently finding zero/wrong
         # examples (which would make the test above vacuously pass).
         examples = _extract_group_yaml_examples()
-        self.assertEqual(set(examples), {"github-ci", "pii", "developer-workflows", "code-review"})
+        self.assertEqual(set(examples), {"github-ci", "privacy", "developer-workflows", "code-review"})
 
 
 if __name__ == "__main__":
