@@ -33,5 +33,5 @@ standalone: false
 #          mapping (no confidence score exists on the shared engine) is
 #          locked in the plan and documented in SKILL.md itself. The bounded
 #          fix loop is unchanged -- only diagnosis moved.
-version: 0.2.4
+version: 0.2.5
 capabilities: [github-ci, ci-repair, maintenance]

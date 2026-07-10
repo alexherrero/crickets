@@ -99,7 +99,8 @@ def find_agentm_opinions_dir() -> Path | None:
     only -- never generate.py's build path, which reads only the committed
     snapshot store above).
 
-    Mirrors find_capability.py's _find_capability_resolver candidate order:
+    Mirrors development-lifecycle's agentm_bridge.py `_find_capability_resolver`
+    candidate order (formerly find_capability.py, merged in CONS-2 task 2):
       1. $AGENTM_SCRIPTS_DIR/../opinions   (explicit override)
       2. <this-script-dir>/../opinions     (co-located install)
       3. ~/Antigravity/agentm/opinions     (conventional clone)

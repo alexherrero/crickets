@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
-"""Tests for src/developer-workflows/scripts/find_governing_design.py.
+"""Tests for the `governing-design` verb of
+src/development-lifecycle/scripts/agentm_bridge.py (formerly the standalone
+find_governing_design.py, merged into the shared bridge — CONS-2 task 2).
 
-Discovery (find_resolver): $AGENTM_SCRIPTS_DIR, co-located sibling, conventional
-~/Antigravity/ clone, and graceful-skip (None) when absent.
+Discovery (find_governing_design_resolver): $AGENTM_SCRIPTS_DIR, co-located
+sibling, conventional ~/Antigravity/ clone, and graceful-skip (None) when absent.
 
-Delegation (run_resolve): propagates resolver stdout + exit code (governed /
-greenfield / usage); forwards --root / --include-proposed / --json; exits 1
-cleanly when the resolver is absent (no hang).
+Delegation (run_governing_design_resolve): propagates resolver stdout + exit
+code (governed / greenfield / usage); forwards --root / --include-proposed /
+--json; exits 1 cleanly when the resolver is absent (no hang).
 
 Every test is hermetic — injectable resolver paths + env overrides ensure no
-dependency on a real agentm install (CI runs with none). Mirrors
-test_find_process_seam.py.
+dependency on a real agentm install (CI runs with none). Mirrors the
+process-seam verb's own test shape.
 """
 from __future__ import annotations
 
@@ -27,7 +29,7 @@ from unittest import mock
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
-_SRC = _ROOT / "src" / "development-lifecycle" / "scripts" / "find_governing_design.py"
+_SRC = _ROOT / "src" / "development-lifecycle" / "scripts" / "agentm_bridge.py"
 
 
 def _load():
@@ -48,7 +50,7 @@ def _make_fake_resolver(path: Path, body: str = "") -> Path:
 
 
 class TestFindResolverDiscovery(unittest.TestCase):
-    """find_resolver() locates governs_resolver.py via fallback order; None when absent."""
+    """find_governing_design_resolver() locates governs_resolver.py via fallback order; None when absent."""
 
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="fgd-discovery-"))
@@ -59,7 +61,7 @@ class TestFindResolverDiscovery(unittest.TestCase):
     def test_found_via_env_agentm_scripts_dir(self):
         r = _make_fake_resolver(self.tmp / "env_scripts" / "governs_resolver.py")
         with mock.patch.dict(os.environ, {"AGENTM_SCRIPTS_DIR": str(r.parent)}):
-            result = fgd.find_resolver()
+            result = fgd.find_governing_design_resolver()
         self.assertEqual(result, r.resolve())
 
     def test_env_takes_priority_over_colocated(self):
@@ -67,7 +69,7 @@ class TestFindResolverDiscovery(unittest.TestCase):
         colocated = _make_fake_resolver(_SRC.parent / "governs_resolver.py")
         try:
             with mock.patch.dict(os.environ, {"AGENTM_SCRIPTS_DIR": str(env_r.parent)}):
-                result = fgd.find_resolver()
+                result = fgd.find_governing_design_resolver()
             self.assertEqual(result, env_r.resolve())
         finally:
             colocated.unlink(missing_ok=True)
@@ -78,7 +80,7 @@ class TestFindResolverDiscovery(unittest.TestCase):
             env_without = {k: v for k, v in os.environ.items()
                            if k != "AGENTM_SCRIPTS_DIR"}
             with mock.patch.dict(os.environ, env_without, clear=True):
-                result = fgd.find_resolver()
+                result = fgd.find_governing_design_resolver()
             self.assertIsNotNone(result)
             self.assertTrue(result.is_file())
         finally:
@@ -90,7 +92,7 @@ class TestFindResolverDiscovery(unittest.TestCase):
             home / "Antigravity" / "agentm" / "scripts" / "governs_resolver.py")
         with mock.patch.dict(os.environ, {"AGENTM_SCRIPTS_DIR": ""}, clear=False):
             with mock.patch.object(Path, "home", return_value=home):
-                result = fgd.find_resolver()
+                result = fgd.find_governing_design_resolver()
         self.assertEqual(result, r.resolve())
 
     def test_returns_none_when_all_absent(self):
@@ -98,12 +100,12 @@ class TestFindResolverDiscovery(unittest.TestCase):
         home.mkdir()
         with mock.patch.dict(os.environ, {"AGENTM_SCRIPTS_DIR": ""}, clear=False):
             with mock.patch.object(Path, "home", return_value=home):
-                result = fgd.find_resolver()
+                result = fgd.find_governing_design_resolver()
         self.assertIsNone(result)
 
 
 class TestRunResolve(unittest.TestCase):
-    """run_resolve() propagates resolver stdout + exit code; exits 1 when absent."""
+    """run_governing_design_resolve() propagates resolver stdout + exit code; exits 1 when absent."""
 
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="fgd-run-"))
@@ -120,27 +122,27 @@ class TestRunResolve(unittest.TestCase):
         # Echo a design path on stdout, exit 0 (governed).
         r = self._make_resolver(
             "import sys\nsys.stdout.write('wiki/designs/crickets-hld.md\\n')\nsys.exit(0)\n")
-        out, rc = fgd.run_resolve("src/x.py", root="/repo", resolver=r)
+        out, rc = fgd.run_governing_design_resolve("src/x.py", root="/repo", resolver=r)
         self.assertEqual(rc, 0)
         self.assertEqual(out, "wiki/designs/crickets-hld.md")
 
     def test_greenfield_exit_one_empty_stdout(self):
         r = self._make_resolver(
             "import sys\nsys.stderr.write('no design\\n')\nsys.exit(1)\n")
-        out, rc = fgd.run_resolve("src/x.py", root="/repo", resolver=r)
+        out, rc = fgd.run_governing_design_resolve("src/x.py", root="/repo", resolver=r)
         self.assertEqual(rc, 1)
         self.assertEqual(out, "")
 
     def test_usage_exit_two_propagated(self):
         r = self._make_resolver("import sys\nsys.exit(2)\n")
-        out, rc = fgd.run_resolve("", root="/repo", resolver=r)
+        out, rc = fgd.run_governing_design_resolve("", root="/repo", resolver=r)
         self.assertEqual(rc, 2)
 
     def test_root_and_flags_forwarded(self):
         # Echo argv so we can assert --root / --include-proposed / --json forwarded.
         r = self._make_resolver(
             "import sys\nsys.stdout.write(' '.join(sys.argv[1:]))\nsys.exit(0)\n")
-        out, rc = fgd.run_resolve(
+        out, rc = fgd.run_governing_design_resolve(
             "memory", root="/repo", include_proposed=True, as_json=True, resolver=r)
         self.assertEqual(rc, 0)
         self.assertIn("--root", out)
@@ -150,14 +152,14 @@ class TestRunResolve(unittest.TestCase):
         self.assertIn("memory", out)
 
     def test_resolver_absent_exits_one_no_hang(self):
-        with mock.patch.object(fgd, "find_resolver", return_value=None):
-            out, rc = fgd.run_resolve("src/x.py", root="/repo")
+        with mock.patch.object(fgd, "find_governing_design_resolver", return_value=None):
+            out, rc = fgd.run_governing_design_resolve("src/x.py", root="/repo")
         self.assertEqual(rc, 1)
         self.assertEqual(out, "")
 
     def test_resolver_error_graceful_skip(self):
         # A resolver path that doesn't exist → OSError on exec → graceful ("", 1).
-        out, rc = fgd.run_resolve(
+        out, rc = fgd.run_governing_design_resolve(
             "src/x.py", root="/repo", resolver=self.tmp / "does-not-exist.py")
         self.assertEqual(rc, 1)
         self.assertEqual(out, "")
@@ -173,17 +175,17 @@ class TestMainCLI(unittest.TestCase):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def test_no_target_exits_two(self):
-        rc = fgd.main(["find_governing_design.py"])
+        rc = fgd.main(["agentm_bridge.py", "governing-design"])
         self.assertEqual(rc, 2)
 
     def test_governed_target_proxied(self):
         r = self.tmp / "resolver.py"
         r.write_text("import sys\nsys.stdout.write('wiki/designs/x.md\\n')\nsys.exit(0)\n",
                      encoding="utf-8")
-        with mock.patch.object(fgd, "find_resolver", return_value=r):
+        with mock.patch.object(fgd, "find_governing_design_resolver", return_value=r):
             out = io.StringIO()
             with contextlib.redirect_stdout(out):
-                rc = fgd.main(["find_governing_design.py", "src/x.py"])
+                rc = fgd.main(["agentm_bridge.py", "governing-design", "src/x.py"])
         self.assertEqual(rc, 0)
         self.assertEqual(out.getvalue().strip(), "wiki/designs/x.md")
 
@@ -192,19 +194,19 @@ class TestMainCLI(unittest.TestCase):
         r = self.tmp / "resolver.py"
         r.write_text("import sys\nsys.stdout.write(' '.join(sys.argv[1:]))\nsys.exit(0)\n",
                      encoding="utf-8")
-        with mock.patch.object(fgd, "find_resolver", return_value=r):
+        with mock.patch.object(fgd, "find_governing_design_resolver", return_value=r):
             out = io.StringIO()
             with contextlib.redirect_stdout(out):
-                rc = fgd.main(["find_governing_design.py", "src/x.py"])
+                rc = fgd.main(["agentm_bridge.py", "governing-design", "src/x.py"])
         self.assertEqual(rc, 0)
         self.assertIn("--root", out.getvalue())
         self.assertIn(os.getcwd(), out.getvalue())
 
     def test_resolver_absent_exits_one_no_output(self):
-        with mock.patch.object(fgd, "find_resolver", return_value=None):
+        with mock.patch.object(fgd, "find_governing_design_resolver", return_value=None):
             out = io.StringIO()
             with contextlib.redirect_stdout(out):
-                rc = fgd.main(["find_governing_design.py", "src/x.py"])
+                rc = fgd.main(["agentm_bridge.py", "governing-design", "src/x.py"])
         self.assertEqual(rc, 1)
         self.assertEqual(out.getvalue(), "")
 

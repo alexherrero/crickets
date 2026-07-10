@@ -87,7 +87,7 @@
       ],
       "name": "development-lifecycle",
       "source": "./plugins/development-lifecycle",
-      "version": "0.36.0"
+      "version": "0.36.1"
     },
     {
       "capabilities": [
@@ -132,7 +132,7 @@
       "description": "CI workflows + dependency-update tooling — the dependabot-fixer skill that repairs breakage on Dependabot PRs.",
       "name": "maintenance",
       "source": "./plugins/maintenance",
-      "version": "0.2.4"
+      "version": "0.2.5"
     },
     {
       "capabilities": [

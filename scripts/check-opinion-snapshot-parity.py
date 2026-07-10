@@ -9,8 +9,9 @@ ships standalone; generate.py check's determinism gate can't depend on a
 sibling repo a CI run or a standalone install may not have). This gate is the
 honesty check on that snapshot: it runs only here, in check-all.sh, never in
 the build path itself, and gracefully skips (not false-passes) when the
-agentm sibling isn't present to diff against — mirroring
-find_capability.py's sibling-discovery-with-graceful-None shape.
+agentm sibling isn't present to diff against — mirroring the development-lifecycle
+plugin's agentm_bridge.py `capability` verb's sibling-discovery-with-graceful-None
+shape (formerly find_capability.py, merged in CONS-2 task 2).
 
 Exit 0: every snapshot matches its agentm source, or agentm is absent
         (graceful skip — printed distinctly from a real match)

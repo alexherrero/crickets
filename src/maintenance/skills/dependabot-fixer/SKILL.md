@@ -42,7 +42,7 @@ Read `.harness/known-migrations.md` (if it exists). If the package matches a rec
 
 This step no longer produces its own category+confidence judgment from scratch. It calls `diagnostics`' shared entrypoint, feeding it the CI-log text already captured above (`/tmp/dependabot-fix-logs.txt`) as the traceback.
 
-Check availability first (graceful-skip): `python3 "${CLAUDE_PLUGIN_ROOT}/../development-lifecycle/scripts/find_capability.py" diagnostics`.
+Check availability first (graceful-skip): `python3 "${CLAUDE_PLUGIN_ROOT}/../development-lifecycle/scripts/agentm_bridge.py" capability diagnostics`.
 
 - **Exit 1** (diagnostics not installed) → fall back to the pre-recast behavior: produce failure category + confidence (high/medium/low) + proposed fix inline, abort on low confidence.
 - **Exit 0** → run:

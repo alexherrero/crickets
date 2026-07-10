@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-"""Tests for src/development-lifecycle/scripts/resolve_workflow_persona.py
-(PLAN-wave-d-personas task 3).
+"""Tests for the `workflow-persona` verb of
+src/development-lifecycle/scripts/agentm_bridge.py (formerly the standalone
+resolve_workflow_persona.py, merged into the shared bridge — CONS-2 task 2;
+originally added under PLAN-wave-d-personas task 3).
 
-Discovery (find_resolver): $AGENTM_SCRIPTS_DIR, co-located sibling,
-conventional ~/Antigravity/ clone, and graceful-skip (None) when absent.
+Discovery (find_workflow_persona_resolver): $AGENTM_SCRIPTS_DIR, co-located
+sibling, conventional ~/Antigravity/ clone, and graceful-skip (None) when absent.
 
-Delegation (run_resolve): propagates resolver stdout + exit code (resolved /
-no-persona-for-step / usage); forwards --explicit; exits 1 cleanly when the
-resolver is absent (no hang).
+Delegation (run_workflow_persona_resolve): propagates resolver stdout + exit
+code (resolved / no-persona-for-step / usage); forwards --explicit; exits 1
+cleanly when the resolver is absent (no hang).
 
 One test per wired phase command (plan/work/review/bugfix) asserting the
 correct persona resolves when no explicit invocation is given, and that an
@@ -32,7 +34,7 @@ from unittest import mock
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
-_SRC = _ROOT / "src" / "development-lifecycle" / "scripts" / "resolve_workflow_persona.py"
+_SRC = _ROOT / "src" / "development-lifecycle" / "scripts" / "agentm_bridge.py"
 
 
 def _load():
@@ -71,7 +73,7 @@ def _make_fake_resolver(path: Path, body: str = "") -> Path:
 
 
 class TestFindResolverDiscovery(unittest.TestCase):
-    """find_resolver() locates workflow_persona_resolver.py via fallback order; None when absent."""
+    """find_workflow_persona_resolver() locates workflow_persona_resolver.py via fallback order; None when absent."""
 
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="rwp-discovery-"))
@@ -82,7 +84,7 @@ class TestFindResolverDiscovery(unittest.TestCase):
     def test_found_via_env_agentm_scripts_dir(self):
         r = _make_fake_resolver(self.tmp / "env_scripts" / "workflow_persona_resolver.py")
         with mock.patch.dict(os.environ, {"AGENTM_SCRIPTS_DIR": str(r.parent)}):
-            result = rwp.find_resolver()
+            result = rwp.find_workflow_persona_resolver()
         self.assertEqual(result, r.resolve())
 
     def test_env_takes_priority_over_colocated(self):
@@ -90,7 +92,7 @@ class TestFindResolverDiscovery(unittest.TestCase):
         colocated = _make_fake_resolver(_SRC.parent / "workflow_persona_resolver.py")
         try:
             with mock.patch.dict(os.environ, {"AGENTM_SCRIPTS_DIR": str(env_r.parent)}):
-                result = rwp.find_resolver()
+                result = rwp.find_workflow_persona_resolver()
             self.assertEqual(result, env_r.resolve())
         finally:
             colocated.unlink(missing_ok=True)
@@ -101,7 +103,7 @@ class TestFindResolverDiscovery(unittest.TestCase):
             env_without = {k: v for k, v in os.environ.items()
                            if k != "AGENTM_SCRIPTS_DIR"}
             with mock.patch.dict(os.environ, env_without, clear=True):
-                result = rwp.find_resolver()
+                result = rwp.find_workflow_persona_resolver()
             self.assertIsNotNone(result)
             self.assertTrue(result.is_file())
         finally:
@@ -113,7 +115,7 @@ class TestFindResolverDiscovery(unittest.TestCase):
             home / "Antigravity" / "agentm" / "scripts" / "workflow_persona_resolver.py")
         with mock.patch.dict(os.environ, {"AGENTM_SCRIPTS_DIR": ""}, clear=False):
             with mock.patch.object(Path, "home", return_value=home):
-                result = rwp.find_resolver()
+                result = rwp.find_workflow_persona_resolver()
         self.assertEqual(result, r.resolve())
 
     def test_returns_none_when_all_absent(self):
@@ -121,12 +123,12 @@ class TestFindResolverDiscovery(unittest.TestCase):
         home.mkdir()
         with mock.patch.dict(os.environ, {"AGENTM_SCRIPTS_DIR": ""}, clear=False):
             with mock.patch.object(Path, "home", return_value=home):
-                result = rwp.find_resolver()
+                result = rwp.find_workflow_persona_resolver()
         self.assertIsNone(result)
 
 
 class TestRunResolve(unittest.TestCase):
-    """run_resolve() propagates resolver stdout + exit code; exits 1 when absent."""
+    """run_workflow_persona_resolve() propagates resolver stdout + exit code; exits 1 when absent."""
 
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="rwp-run-"))
@@ -139,22 +141,22 @@ class TestRunResolve(unittest.TestCase):
     # --- one test per wired phase command: no explicit invocation ---
 
     def test_plan_phase_resolves_tech_lead(self):
-        out, rc = rwp.run_resolve("plan-phase", resolver=self.resolver)
+        out, rc = rwp.run_workflow_persona_resolve("plan-phase", resolver=self.resolver)
         self.assertEqual(rc, 0)
         self.assertEqual(out, "tech-lead")
 
     def test_work_phase_resolves_engineer(self):
-        out, rc = rwp.run_resolve("work-phase", resolver=self.resolver)
+        out, rc = rwp.run_workflow_persona_resolve("work-phase", resolver=self.resolver)
         self.assertEqual(rc, 0)
         self.assertEqual(out, "engineer")
 
     def test_review_phase_resolves_reviewer(self):
-        out, rc = rwp.run_resolve("review-phase", resolver=self.resolver)
+        out, rc = rwp.run_workflow_persona_resolve("review-phase", resolver=self.resolver)
         self.assertEqual(rc, 0)
         self.assertEqual(out, "reviewer")
 
     def test_bugfix_phase_resolves_troubleshooter(self):
-        out, rc = rwp.run_resolve("bugfix-phase", resolver=self.resolver)
+        out, rc = rwp.run_workflow_persona_resolve("bugfix-phase", resolver=self.resolver)
         self.assertEqual(rc, 0)
         self.assertEqual(out, "troubleshooter")
 
@@ -163,23 +165,23 @@ class TestRunResolve(unittest.TestCase):
     def test_explicit_invocation_overrides_each_wired_step(self):
         for step in ("plan-phase", "work-phase", "review-phase", "bugfix-phase"):
             with self.subTest(step=step):
-                out, rc = rwp.run_resolve(step, explicit="architect", resolver=self.resolver)
+                out, rc = rwp.run_workflow_persona_resolve(step, explicit="architect", resolver=self.resolver)
                 self.assertEqual(rc, 0)
                 self.assertEqual(out, "architect")
 
     def test_unknown_step_no_explicit_exits_one_empty_stdout(self):
-        out, rc = rwp.run_resolve("no-such-phase", resolver=self.resolver)
+        out, rc = rwp.run_workflow_persona_resolve("no-such-phase", resolver=self.resolver)
         self.assertEqual(rc, 1)
         self.assertEqual(out, "")
 
     def test_resolver_absent_exits_one_no_hang(self):
-        with mock.patch.object(rwp, "find_resolver", return_value=None):
-            out, rc = rwp.run_resolve("plan-phase")
+        with mock.patch.object(rwp, "find_workflow_persona_resolver", return_value=None):
+            out, rc = rwp.run_workflow_persona_resolve("plan-phase")
         self.assertEqual(rc, 1)
         self.assertEqual(out, "")
 
     def test_resolver_error_graceful_skip(self):
-        out, rc = rwp.run_resolve(
+        out, rc = rwp.run_workflow_persona_resolve(
             "plan-phase", resolver=self.tmp / "does-not-exist.py")
         self.assertEqual(rc, 1)
         self.assertEqual(out, "")
@@ -197,31 +199,31 @@ class TestMainCLI(unittest.TestCase):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def test_no_step_exits_two(self):
-        rc = rwp.main(["resolve_workflow_persona.py"])
+        rc = rwp.main(["agentm_bridge.py", "workflow-persona"])
         self.assertEqual(rc, 2)
 
     def test_wired_step_proxied(self):
-        with mock.patch.object(rwp, "find_resolver", return_value=self.resolver):
+        with mock.patch.object(rwp, "find_workflow_persona_resolver", return_value=self.resolver):
             out = io.StringIO()
             with contextlib.redirect_stdout(out):
-                rc = rwp.main(["resolve_workflow_persona.py", "review-phase"])
+                rc = rwp.main(["agentm_bridge.py", "workflow-persona", "review-phase"])
         self.assertEqual(rc, 0)
         self.assertEqual(out.getvalue().strip(), "reviewer")
 
     def test_explicit_flag_forwarded_and_wins(self):
-        with mock.patch.object(rwp, "find_resolver", return_value=self.resolver):
+        with mock.patch.object(rwp, "find_workflow_persona_resolver", return_value=self.resolver):
             out = io.StringIO()
             with contextlib.redirect_stdout(out):
-                rc = rwp.main(["resolve_workflow_persona.py", "work-phase",
+                rc = rwp.main(["agentm_bridge.py", "workflow-persona", "work-phase",
                                 "--explicit", "designer"])
         self.assertEqual(rc, 0)
         self.assertEqual(out.getvalue().strip(), "designer")
 
     def test_resolver_absent_exits_one_no_output(self):
-        with mock.patch.object(rwp, "find_resolver", return_value=None):
+        with mock.patch.object(rwp, "find_workflow_persona_resolver", return_value=None):
             out = io.StringIO()
             with contextlib.redirect_stdout(out):
-                rc = rwp.main(["resolve_workflow_persona.py", "plan-phase"])
+                rc = rwp.main(["agentm_bridge.py", "workflow-persona", "plan-phase"])
         self.assertEqual(rc, 1)
         self.assertEqual(out.getvalue(), "")
 
