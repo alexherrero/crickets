@@ -21,6 +21,29 @@ The stop-gate is **recoverability, not destructiveness or blast-radius.** A reco
 
 **When uncertain, treat as unrecoverable** — the conservative default. Forcing the operator to micromanage routine recoverable actions is the bigger cost; silently executing a genuinely unrecoverable one is the failure mode to avoid.
 
+## Push classification mechanism
+
+The push row of the doctrine table above splits into a git *fact* (would this push discard any commit the remote currently holds — is it a fast-forward?) and a *judgment call* no git command can answer (if it isn't a fast-forward, is the discarded history genuinely "shared," or just your own un-shared branch?). `scripts/recoverability_classifier.py` (bundled with this plugin) answers the fact mechanically instead of leaving it to prose guesswork; it never resolves the judgment call, and it doesn't try to.
+
+Before treating a `git push` as recoverable-vs-unrecoverable, run it:
+
+```bash
+python3 <path>/scripts/recoverability_classifier.py push [--repo <repo-root>] [--branch <name>] [--remote origin] [--remote-branch <name>]
+```
+
+Locate `<path>` the same way `pii-scrubber` locates its own bundled script: `${CLAUDE_PLUGIN_ROOT}/scripts/` first (resolves whenever this plugin is installed), then `$AGENT_TOOLKIT_PATH/scripts/` if set, then a sibling checkout convention (`../crickets/scripts/`, `~/Antigravity/crickets/scripts/`). `--branch`/`--remote`/`--remote-branch` default to the current branch / `origin` / the same name as `--branch` — the common case (`git push`, `git push origin main`) needs no flags.
+
+Read the exit code, not just the printed word:
+
+| Exit | Verdict | What it means for this doctrine |
+|---|---|---|
+| `0` | `recoverable` | Fast-forward (or a brand-new/unchanged remote tip) — nothing the remote holds gets discarded. **Announce + proceed**, per the table above. |
+| `2` | `needs-judgment` | Not a fast-forward. The script can't tell "your own un-shared branch" from "published shared history" from git state alone — that's exactly the judgment call this SKILL.md's own table names. Fall back to that judgment: is another contributor's work known to depend on this branch? If genuinely unsure, **treat as unrecoverable** (the doctrine's own conservative default) — stop and confirm. |
+| `3` | (usage/git error) | The script couldn't resolve a branch or SHA (detached HEAD, bad repo path, unreachable remote). Don't silently skip the check — fall back to the conservative default and stop and confirm. |
+| `1` | `unrecoverable` | Reserved for a future verdict kind; `classify_push` itself never emits it today (a push is either a fast-forward or a judgment call — never a case the script itself is certain is unrecoverable). Treat it as stop and confirm if it ever appears. |
+
+This mechanism covers pushes only. `recoverability_classifier.py` also implements `classify_ref_delete` (ref-delete reachability) and `classify_tag_overwrite` (tag-publication status) as library functions — proven correct by `scripts/test_recoverability_classifier.py` — but neither is wired to a CLI yet; the ref-delete and tag-overwrite rows of the doctrine table above stay prose-judgment-only until a future task wires them the same way.
+
 ## Pre-announcing, not permission-asking
 
 For actions that are recoverable-but-surprising (a push to a remote branch the operator hasn't explicitly mentioned, closing an issue, merging a PR): **state what is about to happen, then do it.** Do not frame it as a question. The distinction:
@@ -77,6 +100,7 @@ The skill is the **pre-action discipline**; the hooks are the **in-flight contro
 
 ## See also
 
+- [`recoverability_classifier.py`](../../scripts/recoverability_classifier.py) — the mechanical push-classification check the section above wires in.
 - [`kill-switch` hook](../../hooks/kill-switch/hook.md) — halt tool execution when an unrecoverable action approaches.
 - [`steer` hook](../../hooks/steer/hook.md) — redirect mid-run without session restart.
 - [`commit-on-stop` hook](../../hooks/commit-on-stop/hook.md) — preserve in-progress work on stop.

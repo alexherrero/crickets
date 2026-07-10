@@ -9,7 +9,9 @@ mocking of git itself.
 """
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
 import subprocess
 import sys
 import tempfile
@@ -156,6 +158,74 @@ class TestClassifyPush(_GitFixture):
         sha = _commit(self.repo, "a.txt", "1")
         verdict = rc.classify_push(self.repo, local_sha=sha, remote_sha=sha)
         self.assertEqual(verdict, rc.Verdict.RECOVERABLE)
+
+
+class TestPushCLI(_GitFixture):
+    """The `push` CLI (CONS-2 task 8) is the actual mechanism the
+    `recoverability` skill's push-classification guidance now invokes — these
+    exercise `rc.main()` end-to-end (real repo, real subprocess-level git
+    resolution of branch/remote SHAs), not just the library function it
+    wraps, since the resolution logic itself (current-branch lookup,
+    `ls-remote` parsing) has no coverage anywhere else."""
+
+    def _run(self, *argv: str) -> tuple[int, str]:
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            exit_code = rc.main(list(argv))
+        return exit_code, buf.getvalue().strip()
+
+    def test_brand_new_branch_push_is_recoverable_exit_0(self) -> None:
+        _commit(self.repo, "a.txt", "1")
+        exit_code, out = self._run("push", "--repo", str(self.repo))
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(out, "recoverable")
+
+    def test_fast_forward_push_is_recoverable_exit_0(self) -> None:
+        _commit(self.repo, "a.txt", "1")
+        _git(self.repo, "push", "-q", "origin", "HEAD:refs/heads/main")
+        _commit(self.repo, "b.txt", "2")
+        exit_code, out = self._run("push", "--repo", str(self.repo))
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(out, "recoverable")
+
+    def test_history_rewriting_push_needs_judgment_exit_2(self) -> None:
+        _commit(self.repo, "a.txt", "1")
+        _git(self.repo, "push", "-q", "origin", "HEAD:refs/heads/main")
+        (self.repo / "a.txt").write_text("1-amended", encoding="utf-8")
+        _git(self.repo, "add", "-A")
+        _git(self.repo, "commit", "-q", "--amend", "-m", "amend a.txt")
+        exit_code, out = self._run("push", "--repo", str(self.repo))
+        self.assertEqual(exit_code, 2)
+        self.assertEqual(out, "needs-judgment")
+
+    def test_detached_head_without_branch_flag_is_usage_error_exit_3(self) -> None:
+        _commit(self.repo, "a.txt", "1")
+        _git(self.repo, "checkout", "-q", "--detach")
+        exit_code, out = self._run("push", "--repo", str(self.repo))
+        self.assertEqual(exit_code, 3)
+        self.assertEqual(out, "")  # the error goes to stderr, not stdout
+
+    def test_unknown_branch_flag_is_usage_error_exit_3(self) -> None:
+        _commit(self.repo, "a.txt", "1")
+        exit_code, out = self._run("push", "--repo", str(self.repo), "--branch", "does-not-exist")
+        self.assertEqual(exit_code, 3)
+        self.assertEqual(out, "")
+
+    def test_explicit_branch_and_remote_branch_flags_are_honored(self) -> None:
+        # A fast-forward push from a differently-named local branch onto a
+        # differently-named remote branch — proves --branch/--remote-branch
+        # aren't just accepted but actually change which SHAs get compared.
+        _commit(self.repo, "a.txt", "1")
+        _git(self.repo, "branch", "feature")
+        _git(self.repo, "push", "-q", "origin", "feature:refs/heads/upstream-name")
+        _git(self.repo, "checkout", "-q", "feature")
+        _commit(self.repo, "b.txt", "2")
+        exit_code, out = self._run(
+            "push", "--repo", str(self.repo),
+            "--branch", "feature", "--remote-branch", "upstream-name",
+        )
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(out, "recoverable")
 
 
 if __name__ == "__main__":

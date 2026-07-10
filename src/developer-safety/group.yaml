@@ -54,4 +54,13 @@ capabilities: [recoverability]
 # snippet + host includeCoAuthoredBy floor, not a replacement. No automated
 # installer wires it in yet (mirrors privacy's pre-push convention) -- see
 # hooks/coauthor-guard/hook.md for manual install steps on both hosts.
-version: 0.4.0
+# 0.4.1 = recoverability_classifier.py gains a `push` CLI (main()) that
+# resolves local/remote SHAs from a repo + branch name and prints/exits on
+# the Verdict, and skills/recoverability/SKILL.md gains a "Push
+# classification mechanism" section instructing the skill to invoke it and
+# read the exit code, instead of judging push recoverability by prose alone
+# (CONS-2 task 8, the Consolidation arc's crickets-slim lane). Library
+# functions classify_ref_delete/classify_tag_overwrite are unchanged and
+# stay un-wired to a CLI; the SKILL.md doctrine table itself is unchanged,
+# this only gives its push row a mechanical backing.
+version: 0.4.1
