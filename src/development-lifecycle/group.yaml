@@ -505,5 +505,21 @@ enhances:
 #          confirmed by grep, not assumed -- bugfix.md, not plan.md/work.md,
 #          is how-we-engineer's site (the stub's "Report -> Analyze -> Fix
 #          -> Verify" phrase appears verbatim in exactly one command file).
-version: 0.36.1
+# 0.37.0 = Consolidation arc, CONS-8 (process codification): release.md gains
+#          constraint 9 + process step 9, the arc-exit coalescence checklist
+#          (ruling 8) -- a required close-out block that fires only when a
+#          release closes an arc, pointing at the new `conventions`
+#          coalescence-gate rule for the seven-item checklist itself. No new
+#          command, no new CI workflow -- a session discipline layered onto
+#          the existing pre-merge gate.
+# 0.37.1 = Consolidation arc, CONS-8, item 5: the "Close-out autonomy" bullet's
+#          archive-path example fixed from a flat `.harness/PLAN.archive.
+#          YYYYMMDD-<slug>.md` to `.harness/archive/PLAN.archive.YYYYMMDD-
+#          <slug>.md` (ruling 6) -- the archive step now writes into an
+#          `archive/` subdirectory, keeping the working directory's eyeline
+#          small and current. Applied identically to all three copies of the
+#          canonical recoverability-gate block (work.md, bugfix.md,
+#          release.md) to keep test_recoverability_gate_drift's byte-identity
+#          check green.
+version: 0.37.1
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

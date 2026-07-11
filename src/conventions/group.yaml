@@ -39,4 +39,40 @@ capabilities: [testing-conventions, releasing-conventions, conventions]
 #          check-all.sh + tests-linux.yml. Checks declaration, not content:
 #          a plugin marking <!-- consults-conventions-domain: X --> in a
 #          command/skill must declare conventions in requires:/enhances:.
-version: 0.4.0
+# 0.5.0 = Consolidation arc, CONS-8 (process codification), item 1: new
+#          rules/coalescence-gate.md -- the arc-exit close-out checklist
+#          (ruling 8) that development-lifecycle's release.md constraint 9
+#          points at. Documents the seven required items and the D4
+#          dark-registry + orphan-census reconciliation it depends on.
+# 0.6.0 = Consolidation arc, CONS-8, item 2: new rules/coordinator-dispatch.md
+#          -- the "any multi-session job is authored as one coordinator
+#          dispatch" default (rubric 10), naming the CONS-COORD shape
+#          (dispatch-only coordinator, verbatim briefs, completion log,
+#          escalate ledger, re-dispatch-once) and src/tokens/scripts/
+#          fanout_cost_gate.py as the fleet pre-flight this convention wires
+#          in -- documented + named as this script's first real caller, not
+#          yet wired as a live call site (noted explicitly as a follow-up,
+#          not blocking this rule's authoring). skills/agentic-engineering/
+#          SKILL.md's fan-out section gains a one-line pointer at the new
+#          rule for discoverability.
+# 0.7.0 = Consolidation arc, CONS-8, item 3: new rules/release-cadence.md --
+#          a finished plan that changes behavior cuts a release (no more
+#          bundling), plus the commit-subject vocabulary standard (stranger-
+#          readable, conventional prefix kept, roadmap id where one applies,
+#          internal codenames banned from subjects). ship-release SKILL.md
+#          gains checklist item 8 pointing at the new rule (v0.2.1 -> v0.2.2).
+# 0.8.0 = Consolidation arc, CONS-8, item 4: new rules/dark-registry.md --
+#          reconciles CONS-1's agentm JSONL (scripts/health/dark-checks.jsonl,
+#          a real health-scorecard input) against CONS-2's crickets markdown
+#          table (wiki/explanation/Repo-Layout.md). Decision: keep both
+#          repo-local formats -- the shared convention is the four-field
+#          registration + arc-exit reconciliation discipline, not one file
+#          format; crickets has no scorecard consumer to justify a JSONL
+#          file nobody reads. Repo-Layout.md's dark-registry section now
+#          points at this rule as the canonical convention definition.
+# 0.8.1 = Consolidation arc, CONS-8, item 5: skills/agentic-engineering/
+#          SKILL.md's "The .harness/PLAN.md shape" archive-path example
+#          fixed from a flat `PLAN.archive.YYYYMMDD-<slug>.md` to
+#          `archive/PLAN.archive.YYYYMMDD-<slug>.md` (ruling 6), matching
+#          the same fix in development-lifecycle's release.md.
+version: 0.8.1
