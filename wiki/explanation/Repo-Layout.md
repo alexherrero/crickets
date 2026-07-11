@@ -34,7 +34,9 @@ crickets/
 
 ## Forward-owned library code (dark registry)
 
-No standing "dark-registry" convention existed anywhere in this repo before the Consolidation arc (CONS-2 task 9); this table is the first entry, started here because it's the existing reference page closest to "what lives where and who's responsible for it." A **dark registration** records a future owner for code that already ships and already works — it changes nothing today. The code stays exactly where it is, under its current plugin's ownership, until the registered owner actually exists; then a real migration (not this table) moves it.
+This table is crickets' own instance of the **dark-registry** convention, now codified in the `conventions` capability's [`dark-registry`](https://github.com/alexherrero/crickets/blob/main/src/conventions/rules/dark-registry.md) rule (CONS-8, superseding this section's earlier "no standing convention existed yet" note from CONS-2). A **dark registration** records a future owner for code that already ships and already works — it changes nothing today. The code stays exactly where it is, under its current plugin's ownership, until the registered owner actually exists; then a real migration (not this table) moves it.
+
+crickets keeps this convention as a markdown table because there is no scorecard machinery here to consume a structured record — agentm's sibling registry (`scripts/health/dark-checks.jsonl`) is JSONL because its nightly health scorecard actually reads it. Same convention, two repo-local formats; see the `dark-registry` rule for the full reasoning and the arc-exit reconciliation both formats share.
 
 | Code | Current owner | Registered future owner | Note |
 |---|---|---|---|

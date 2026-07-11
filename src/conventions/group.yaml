@@ -61,4 +61,13 @@ capabilities: [testing-conventions, releasing-conventions, conventions]
 #          readable, conventional prefix kept, roadmap id where one applies,
 #          internal codenames banned from subjects). ship-release SKILL.md
 #          gains checklist item 8 pointing at the new rule (v0.2.1 -> v0.2.2).
-version: 0.7.0
+# 0.8.0 = Consolidation arc, CONS-8, item 4: new rules/dark-registry.md --
+#          reconciles CONS-1's agentm JSONL (scripts/health/dark-checks.jsonl,
+#          a real health-scorecard input) against CONS-2's crickets markdown
+#          table (wiki/explanation/Repo-Layout.md). Decision: keep both
+#          repo-local formats -- the shared convention is the four-field
+#          registration + arc-exit reconciliation discipline, not one file
+#          format; crickets has no scorecard consumer to justify a JSONL
+#          file nobody reads. Repo-Layout.md's dark-registry section now
+#          points at this rule as the canonical convention definition.
+version: 0.8.0
