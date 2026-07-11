@@ -37,6 +37,8 @@ Coding is coherence-critical. Parallel implementers produce mutually-inconsisten
 
 **Rule:** sub-agents gather context; they never write code. One implementer per `/work` session. **No parallel implementers** — this is a non-negotiable, not a preference.
 
+This is about fan-out *inside* a single session. Coordinating *across* several sessions on one multi-session job is a distinct convention — see [`coordinator-dispatch`](../../rules/coordinator-dispatch.md).
+
 ## Deterministic verification before LLM judgment
 
 LLM judges are sycophantic under pressure. Typecheckers and tests are neither sycophantic nor expensive.

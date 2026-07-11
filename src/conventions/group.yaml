@@ -44,4 +44,15 @@ capabilities: [testing-conventions, releasing-conventions, conventions]
 #          (ruling 8) that development-lifecycle's release.md constraint 9
 #          points at. Documents the seven required items and the D4
 #          dark-registry + orphan-census reconciliation it depends on.
-version: 0.5.0
+# 0.6.0 = Consolidation arc, CONS-8, item 2: new rules/coordinator-dispatch.md
+#          -- the "any multi-session job is authored as one coordinator
+#          dispatch" default (rubric 10), naming the CONS-COORD shape
+#          (dispatch-only coordinator, verbatim briefs, completion log,
+#          escalate ledger, re-dispatch-once) and src/tokens/scripts/
+#          fanout_cost_gate.py as the fleet pre-flight this convention wires
+#          in -- documented + named as this script's first real caller, not
+#          yet wired as a live call site (noted explicitly as a follow-up,
+#          not blocking this rule's authoring). skills/agentic-engineering/
+#          SKILL.md's fan-out section gains a one-line pointer at the new
+#          rule for discoverability.
+version: 0.6.0
