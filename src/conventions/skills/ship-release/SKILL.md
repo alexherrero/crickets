@@ -3,7 +3,7 @@ name: ship-release
 description: Release discipline and mechanics in one skill — pre-release checklist (CI green on every OS, version bump committed, CHANGELOG authored, dist/ committed, paired-release order locked for cross-repo releases), then the mechanical cut (conventional-commit semver auto-sizing, CHANGELOG prepend, tag, push, `gh release create`).
 kind: skill
 supported_hosts: [claude-code, antigravity]
-version: 0.2.1
+version: 0.2.2
 install_scope: project
 ---
 
@@ -26,6 +26,7 @@ Work through every item. If any is incomplete, fix it before proceeding — do n
 5. **`features.json` current.** Every feature this release ships must have `passes: true`. Features still under development must not appear in the release notes.
 6. **No orphan PRs.** No open PRs that should be part of this release are left unmerged. A release should represent a complete, coherent unit of work.
 7. **`check-all.sh` green.** Run the full gate battery (`bash scripts/check-all.sh`) on the release commit and confirm every gate passes before tagging.
+8. **Cadence and commit-subject vocabulary** (see the [`release-cadence`](../../rules/release-cadence.md) rule). A finished plan that changes behavior gets its own release — don't bundle it into a later one. Every commit subject in the range reads plainly to a stranger, keeps its conventional prefix, names a roadmap id where one applies, and carries no internal codename.
 
 ## Changelog shape
 
@@ -166,3 +167,5 @@ On abort, one line: what failed and what the user should do next.
 Two same-named skills existed side by side: the discipline checklist, authored directly in crickets `releasing-conventions` (v0.1.0), and the mechanical executor, originally shipped in `agentm v0.8.0` as a harness-bundled skill and migrated to crickets in toolkit v0.1.0 (paired with `agentm v2.0.0`) because the mechanics are broadly useful outside harness-installed projects. The migrated copy kept living in `agentm harness/skills/ship-release/` as well, so the two repos drifted into duplicate skills of the same name, with this file pointing at "the standalone skill" for mechanics it didn't itself contain. **Consolidated 2026-07-01 (v0.2.0):** the mechanical sections above are folded in; agentm's local copy is removed, and agentm now treats `ship-release` as a crickets-provided graceful-skip skill (its `R-changelog` detection rule still recommends installing it, exactly as `R-dependabot` recommends `dependabot-fixer`). The `/release` phase (crickets `developer-workflows`) suggests this skill as the post-merge follow-up, with a graceful-skip line if `crickets` isn't installed.
 
 **Refined 2026-07-01 (v0.2.1):** added the "Update the latest-release note" step (README + wiki `Home.md`). The merged mechanical workflow tagged the release without touching the documented, release-driven latest-release note, so every cut left it one version behind — a step the old manual habit carried but the skill never encoded. The Architecture "Recent changes" block is deliberately out of scope: it is a separate, as-needed architectural narrative, not a per-release element.
+
+**Refined 2026-07-11 (v0.2.2, Consolidation arc CONS-8):** added checklist item 8, pointing at the new `release-cadence` rule — the Consolidation-arc evidence found eleven distinct features once shipped under one release tagged "Minor," and internal codenames leaking into commit subjects. The rule states the standard; this skill's checklist is where a session actually checks it before tagging.

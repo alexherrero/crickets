@@ -55,4 +55,10 @@ capabilities: [testing-conventions, releasing-conventions, conventions]
 #          not blocking this rule's authoring). skills/agentic-engineering/
 #          SKILL.md's fan-out section gains a one-line pointer at the new
 #          rule for discoverability.
-version: 0.6.0
+# 0.7.0 = Consolidation arc, CONS-8, item 3: new rules/release-cadence.md --
+#          a finished plan that changes behavior cuts a release (no more
+#          bundling), plus the commit-subject vocabulary standard (stranger-
+#          readable, conventional prefix kept, roadmap id where one applies,
+#          internal codenames banned from subjects). ship-release SKILL.md
+#          gains checklist item 8 pointing at the new rule (v0.2.1 -> v0.2.2).
+version: 0.7.0
