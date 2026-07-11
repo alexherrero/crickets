@@ -23,7 +23,7 @@ A skill lives **inside a plugin group** — `src/<group>/skills/<name>/SKILL.md`
    <skill body — operational instructions for the agent: preconditions, workflow, hard rules, output contract>
    ```
 
-   The body *is* the skill; keep it operational. `src/pii/skills/pii-scrubber/SKILL.md` is a good model. The field contract lives in [Manifest schema](Manifest-Schema).
+   The body *is* the skill; keep it operational. `src/privacy/skills/pii-scrubber/SKILL.md` is a good model. The field contract lives in [Manifest schema](Manifest-Schema).
 
 2. **Lint the source:**
 

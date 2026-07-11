@@ -33,7 +33,7 @@ Full detail (three modes × both hosts): [Install crickets plugins](https://gith
 
 Three enforcement layers protect against personal information leaking into public commits:
 
-1. **Pre-push git hook** (`src/pii/templates/hooks/pre-push`) — mandatory enforcer. Runs the PII detector against every push; blocks non-zero. Copy it into this repo's `.git/hooks/pre-push` (`cp src/pii/templates/hooks/pre-push .git/hooks/ && chmod +x .git/hooks/pre-push`).
+1. **Pre-push git hook** (`src/privacy/templates/hooks/pre-push`) — mandatory enforcer. Runs the PII detector against every push; blocks non-zero. Copy it into this repo's `.git/hooks/pre-push` (`cp src/privacy/templates/hooks/pre-push .git/hooks/ && chmod +x .git/hooks/pre-push`).
 2. **`pii-scrubber` skill** (`skills/pii-scrubber/`) — agent-facing interactive layer. Scans the current diff before commit, presents findings, offers redactions. Loops until clean (or user explicitly logs an override).
 3. **CI gate** (lands in task 4 of v0.1.0 plan) — defense in depth. Same script + gitleaks run on every push to GitHub.
 

@@ -46,8 +46,8 @@ Each primitive links to the source that implements it.
 
 | Primitive | Kind | What it does |
 |---|---|---|
-| [`pii-patterns`](https://github.com/alexherrero/crickets/blob/main/src/pii/rules/pii-patterns.md) | rule | Proactive stand-ins — never write a real email, path, key, or phone number into committed content. |
-| [`pii-scrubber`](https://github.com/alexherrero/crickets/blob/main/src/pii/skills/pii-scrubber/SKILL.md) | skill | Scans the diff or working tree for PII, surfaces findings as `file:line`, and loops until clean. |
+| [`pii-patterns`](https://github.com/alexherrero/crickets/blob/main/src/privacy/rules/pii-patterns.md) | rule | Proactive stand-ins — never write a real email, path, key, or phone number into committed content. |
+| [`pii-scrubber`](https://github.com/alexherrero/crickets/blob/main/src/privacy/skills/pii-scrubber/SKILL.md) | skill | Scans the diff or working tree for PII, surfaces findings as `file:line`, and loops until clean. |
 
 ### Configuration
 
