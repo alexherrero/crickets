@@ -521,5 +521,17 @@ enhances:
 #          canonical recoverability-gate block (work.md, bugfix.md,
 #          release.md) to keep test_recoverability_gate_drift's byte-identity
 #          check green.
-version: 0.37.1
+# 0.38.0 = Consolidation arc, Wave 4 proving window, scenario (d): token-audit's
+#          fanout_cost_gate.py wired as a live pre-flight in fanout_announcement.py's
+#          announce_dispatch() -- the one chokepoint every dispatch group already
+#          passes through. At agent_count >= 4 the gate runs against its own
+#          DEFAULT_BUDGET_SHARE_USD; a block folds into the same pause_required
+#          flag the silent-inheritance guard already used (a new cost_gate_warning
+#          field carries the gate's own message), so a dispatch site checks one
+#          flag regardless of which mechanism fired. All 6 phase commands'
+#          "Mandatory fan-out announcement" passages updated to name the check.
+#          Discovery mirrors escalation_tripwire.py's own opinion_resolve('efficient')
+#          cascade; graceful-skip when token-audit is unresolvable, unchanged
+#          behavior otherwise.
+version: 0.38.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]
