@@ -73,7 +73,13 @@ if [[ -z "$CWD" ]]; then
 fi
 
 # Compute transcript path: ~/.claude/projects/<cwd-slug>/<session_id>.jsonl
-CWD_SLUG="-$(printf '%s' "$CWD" | tr '/' '-')"
+# NOTE: `tr '/' '-'` already turns the cwd's own leading "/" into the slug's
+# leading "-" -- a real ~/.claude/projects/ dir name has exactly one leading
+# dash. A previously prepended literal "-" here doubled it, so the hook
+# never matched a real transcript dir and silently no-op'd on every firing
+# (found + fixed upstream in a standalone agentm copy of this hook, CONS-9
+# 2026-07-11; verified against a real transcript dir before fixing).
+CWD_SLUG="$(printf '%s' "$CWD" | tr '/' '-')"
 TRANSCRIPT="$HOME/.claude/projects/${CWD_SLUG}/${SESSION_ID}.jsonl"
 
 if [[ ! -f "$TRANSCRIPT" ]]; then
