@@ -6,7 +6,7 @@ Nothing enforced that until now — this test does, by parsing the real files:
   1. Every gate script that check-all.sh runs appears as a step in
      tests-linux.yml (Linux runs the full battery).
   2. The known gate flags ride along (--strict on check-wiki, --all on
-     check-no-pii) in both places.
+     check-no-pii, --strict on check-slop since CONS-3) in both places.
   3. The Python toolchain gates (lint_src, the unit suite, generate-drift,
      check-wiki) run on ALL THREE OSes (extended 2026-06-09 — the Windows
      leg is what catches cp1252-class gotchas), and macOS + Windows keep
@@ -71,7 +71,13 @@ class TestBatteryMatchesLinuxWorkflow(unittest.TestCase):
 
     def test_gate_flags_match(self):
         battery = CHECK_ALL.read_text(encoding="utf-8")
-        for script, flag in (("check-wiki.py", "--strict"), ("check-no-pii.sh", "--all")):
+        for script, flag in (
+            ("check-wiki.py", "--strict"),
+            ("check-no-pii.sh", "--all"),
+            # CONS-3 (2026-07-10): check-slop flipped from --report to
+            # --strict — this lock stops a silent revert to report-only.
+            ("check-slop.py", "--strict"),
+        ):
             for name, text in (("check-all.sh", battery), ("tests-linux.yml", self.linux)):
                 pattern = re.compile(re.escape(script) + r"[^\n]*" + re.escape(flag))
                 self.assertRegex(

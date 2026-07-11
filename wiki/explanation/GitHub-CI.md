@@ -1,4 +1,4 @@
-<!-- mode: reference -->
+<!-- mode: explanation -->
 # GitHub CI
 
 ## Architecture
@@ -34,7 +34,7 @@ From there it works in a tight loop: apply a fix, push it up, watch the checks r
 
 GitHub CI is deliberately narrow, and it will not fit every setup. Reach for something else if:
 
-- Your dependency updates break in ways that need real design judgment — an API redesign, a behavior change with no clear migration — rather than mechanical patching; the bounded loop is built for the well-understood cases and aborts on the rest.
+- Your dependency updates break in ways that need real design judgment — an API redesign, a behavior change with no clear migration; the bounded loop only handles well-understood, mechanical cases and aborts on the rest.
 - You already run a CI-repair or auto-merge tool you trust, and don't want a second automated hand on your Dependabot branches.
 - The change is a one-off you'd rather fix by hand — spinning up the loop for a single trivial bump is more than a small change needs.
 

@@ -90,7 +90,10 @@ class TestClaudeEmitter(unittest.TestCase):
         # 0.6.1 = Consolidation arc CONS-2 task 7 — diataxis-author check.py
         # stale-xref /bugfix (SVG/asset targets + structural Home/_Sidebar/README
         # links no longer false-positive as stale).
-        self.assertEqual(self._plugin_json("wiki")["version"], "0.6.1")
+        # 0.6.2 = Consolidation arc CONS-3 task 3 — voice-a4-load-bearing hint
+        # extended with an explicit term-of-art carve-out, locked by a new
+        # check-slop test.
+        self.assertEqual(self._plugin_json("wiki")["version"], "0.6.2")
         # 0.3.0 = check-no-pii.sh + templates/hooks/pre-push moved into src/pii/
         # so they actually ship inside the plugin payload (R2.4 task 7).
         # 0.3.1 = check-no-pii.sh scan collapsed to one grep per file (fixes a

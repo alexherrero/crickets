@@ -196,7 +196,7 @@
       "severity": "suggestion",
       "kind": "word",
       "pattern": "load-bearing",
-      "hint": "the agent's tell-word — name what depends on it, or use \"central\"/\"the part that matters\"",
+      "hint": "the agent's tell-word — name what depends on it, or use \"central\"/\"the part that matters\"; term-of-art carve-out applies for a genuine structural dependency (e.g. \"a load-bearing dependency\") — flag for a human call, don't auto-strip",
       "weight": 1,
       "source-url": "llm-tell-vocabulary.md",
       "floor_eligible": true

@@ -2,17 +2,17 @@
 # How to record a design decision
 
 > [!NOTE]
-> **Goal:** Record a load-bearing design call in the amendment log of the relevant living design so the "why X, not Y" rationale is discoverable in one place.
+> **Goal:** Record a consequential design call in the amendment log of the relevant living design so the "why X, not Y" rationale is discoverable in one place.
 > **Prereqs:** A living design already exists under [`wiki/designs/`](Designs) that governs the area you're changing. If the area has no design yet, [author one first](Author-A-Design).
 
 > [!IMPORTANT]
-> **The ADR model is retired in crickets** (AG Phase 4, 2026-06-24). Load-bearing calls go into the **amendment log** of the relevant living design under [`wiki/designs/`](Designs), not standalone ADR files. See [Design Docs](Design-Docs) for the `design-docs` plugin that ships the format tooling.
+> **The ADR model is retired in crickets** (AG Phase 4, 2026-06-24). Consequential calls go into the **amendment log** of the relevant living design under [`wiki/designs/`](Designs), not standalone ADR files. See [Design Docs](Design-Docs) for the `design-docs` plugin that ships the format tooling.
 
 ## When to record a decision
 
 Record a decision whenever any of these are true:
 
-- **Structural choice** — the call affects boundaries, load-bearing assumptions, or the composition model.
+- **Structural choice** — the call affects boundaries, assumptions other code depends on, or the composition model.
 - **Non-obvious behavior** — the code does something that would surprise a future reader; the decision log is the explanation.
 - **Why-not-the-alternative** — the obvious alternative will be suggested in review; write the rationale now so the discussion doesn't recur.
 
@@ -44,5 +44,6 @@ Do NOT record mechanical changes (renaming, formatting, dependency bumps) or dec
 - [Author a design](Author-A-Design) — use this when the decision is part of a larger design that doesn't exist yet.
 - [Designs](Designs) — the living design index.
 - [Design Docs](Design-Docs) — the `design-docs` plugin and its decision-format tooling.
+- [CI gates](CI-Gates) — the `check-wiki` gate that enforces every living design's structure, amendment log included.
 
 [How-To](How-To) · [Home](Home)

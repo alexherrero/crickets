@@ -8,7 +8,6 @@ Look up how crickets is built — what a plugin is, the kinds you can author, wh
 | Page | What it covers |
 |---|---|
 | [Plugin anatomy](Plugin-Anatomy) | What a crickets plugin *is* and how it's put together — the anchor; start here. |
-| [Repo layout](Repo-Layout) | What lives where in the repo. |
 | [Customization Types](Customization-Types) | The kinds of thing a plugin can ship: skills, agents, commands, hooks, snippets. |
 | [Per-Host Paths](Per-Host-Paths) | Where each kind ends up once a plugin is built, on each host. |
 | [Manifest Schema](Manifest-Schema) | The frontmatter and `group.yaml` a plugin declares. |

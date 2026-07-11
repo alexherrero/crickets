@@ -214,6 +214,23 @@ class TestRatifiedCarveOuts(unittest.TestCase):
             ids = {fnd.rule_id for fnd in findings}
             self.assertIn("voice-a4-first-class", ids)
 
+    def test_term_of_art_load_bearing_produces_no_error_or_warning(self):
+        """CONS-3 task 3 — the carve-out extension: 'load-bearing' was already
+        suggestion-tier (never blocking), but its hint didn't say so explicitly
+        the way first-class/robust do. Locks the behavior + the documented
+        carve-out together, mirroring the first-class test above exactly."""
+        with tempfile.TemporaryDirectory() as tmp:
+            f = Path(tmp) / "page.md"
+            f.write_text(
+                "PyYAML is a real, permanent, load-bearing dependency "
+                "(manifest parsing needs a YAML parser).\n"
+            )
+            findings = slop.scan_file(f, self.rules)
+            blocking = [f for f in findings if f.severity in ("error", "warning")]
+            self.assertEqual(blocking, [], f"expected no error/warning finding, got: {blocking}")
+            ids = {fnd.rule_id for fnd in findings}
+            self.assertIn("voice-a4-load-bearing", ids)
+
 
 @unittest.skipUnless(_VAULT_PROSE_AUDIT.is_file(), "vault not reachable in this environment")
 class TestCorpusCalibration(unittest.TestCase):

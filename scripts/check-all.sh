@@ -12,9 +12,12 @@
 # contract, named- and singleton-plan aware) · generate drift ·
 # dist-references (every emitted plugin's relative links + ${CLAUDE_PLUGIN_ROOT}
 # paths resolve inside the emitted tree; grandfathers known pre-existing gaps) ·
-# version bump · check-wiki --strict · check-syntax · hook-parity · check-no-pii ·
-# opinion-snapshot-parity + opinion-self-provider-drift + cross-repo-script-parity
-# (all three report-only; graceful-skip when no agentm sibling to diff against) · board sync
+# version bump · check-wiki --strict · check-slop --strict (CONS-3, flipped
+# from report-only 2026-07-10 — blocks on warning-tier+; suggestion-tier
+# never fails, by the gate's own design) · check-syntax · hook-parity ·
+# check-no-pii · opinion-snapshot-parity + opinion-self-provider-drift +
+# cross-repo-script-parity (all three report-only; graceful-skip when no
+# agentm sibling to diff against) · board sync
 # (graceful-skips when no .harness/project.json or no gh) · tag-reachability
 # (all tags must point to main-reachable commits; graceful-skip when no main
 # branch exists).
@@ -65,7 +68,7 @@ run "generate drift" python3 scripts/generate.py check
 run "dist-references" python3 scripts/check-dist-references.py
 run "version bump"   python3 scripts/check-version-bump.py
 run "check-wiki"     python3 src/wiki/scripts/check-wiki.py --strict
-run "check-slop"     python3 scripts/check-slop.py --report wiki
+run "check-slop"     python3 scripts/check-slop.py --strict wiki
 run "voice-floor-parity" python3 scripts/check-voice-floor-parity.py --report
 run "opinion-snapshot-parity" python3 scripts/check-opinion-snapshot-parity.py --report
 run "opinion-self-provider-drift" python3 scripts/check-opinion-self-provider-drift.py --report
