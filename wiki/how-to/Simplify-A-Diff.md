@@ -1,7 +1,7 @@
 # How to simplify code with /simplify
 
 > [!NOTE]
-> **Goal:** Run a targeted simplification pass over a diff, file, or directory — reduce accidental complexity without removing load-bearing structure.
+> **Goal:** Run a targeted simplification pass over a diff, file, or directory — reduce accidental complexity without removing structure the rest of the code depends on.
 > **Prereqs:** the `code-review` plugin installed ([Install crickets plugins](Install-Into-Project)); `git`.
 
 `/simplify` is distinct from `/code-review`. `/code-review` hunts for bugs. `/simplify` hunts for accidental complexity — code that is harder to read, longer, or more indirected than the behavior requires. It applies Chesterton's Fence (understand why code exists before removing it) and the Rule of 500 (long functions and files are signals, not violations) to produce a rationalization table before it changes anything.
@@ -49,7 +49,7 @@ Run `/simplify` **after a feature lands**, not before — you need the tests gre
 | Symptom | Cause | Fix |
 |---|---|---|
 | Candidate marked `investigate` — you think it's safe to remove | Chesterton check is uncertain | Grep for callers (`grep -rn 'function_name' src/`); if genuinely dead, remove and confirm |
-| Rule of 500 flags a long file that's intentionally long | Long ≠ wrong; the rule is a signal | Override: mark the finding as `load-bearing` in the reconciliation; the command skips it |
+| Rule of 500 flags a long file that's intentionally long | Long ≠ wrong; the rule is a signal | Override: mark the finding as `intentional` in the reconciliation; the command skips it |
 | Simplification breaks a test | Behavioral change slipped through | Revert the specific change; report via a `/code-review` pass to confirm the invariant |
 
 ## See also
