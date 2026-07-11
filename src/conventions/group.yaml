@@ -75,4 +75,10 @@ capabilities: [testing-conventions, releasing-conventions, conventions]
 #          fixed from a flat `PLAN.archive.YYYYMMDD-<slug>.md` to
 #          `archive/PLAN.archive.YYYYMMDD-<slug>.md` (ruling 6), matching
 #          the same fix in development-lifecycle's release.md.
-version: 0.8.1
+# 0.8.2 = Consolidation arc, Wave 4 proving window, scenario (d): rules/
+#          coordinator-dispatch.md's "Status as of this rule's authoring"
+#          paragraph for fanout_cost_gate.py updated from "documented, not
+#          yet wired" to "wired and live" -- the gate now has a real caller
+#          (development-lifecycle's fanout_announcement.py), reconciling the
+#          dark item this rule named as a follow-up at its own authoring.
+version: 0.8.2
