@@ -21,6 +21,7 @@ bash scripts/check-all.sh
 | `generate drift` | `generate.py check` — committed `dist/` matches a fresh generation, byte-for-byte |
 | `version bump` | each plugin whose `src/<slug>/**` changed must bump its `group.yaml` `version:` (compares against `origin/main`; graceful-skips when that ref is unresolvable) |
 | `check-wiki` | the wiki linter, `--strict` (Diátaxis modes, links, sidebars, basename collisions) |
+| `check-slop` | the deterministic anti-slop voice gate, `--strict` (blocking on error- or warning-tier findings since 2026-07-10, CONS-3 — the verdict's ruling 2; suggestion-tier findings, e.g. term-of-art words with a documented carve-out, never fail by the gate's own design) against the versioned rule pack (`src/wiki/skills/diataxis-author/style/voice-rules.json`) |
 | `check-syntax` | `bash -n` every `.sh` (CI also AST-parses every `.ps1`) |
 | `check-hook-parity` | Asserts every `developer-safety` hook keeps its `.sh`/`.ps1` twins behaviorally paired — neither twin may reference a workspace-relative `.harness/…` path without first resolving the workspace from the host's hook-input contract (`workspacePaths` + a `cd`/`Set-Location`). |
 | `check-no-pii` | the PII regex scanner over the whole tree (crickets is public) |
