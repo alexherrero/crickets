@@ -59,6 +59,18 @@ class _GitFixture(unittest.TestCase):
         self.repo.mkdir()
         _git(self.remote, "init", "-q", "--bare")
         _git(self.repo, "init", "-q")
+        # Pin the initial branch name explicitly rather than relying on the
+        # environment's `init.defaultBranch` (still "master" unless a global
+        # gitconfig overrides it — this repo's own dev machines commonly do,
+        # CI runners commonly don't). TestPushCLI's fixtures push to a
+        # hardcoded `refs/heads/main` and then resolve "the current branch"
+        # to default the remote-branch name; if the local branch isn't
+        # actually named "main", that resolution silently targets the wrong
+        # remote ref, `ls-remote` finds nothing, and `classify_push` gets a
+        # `remote_sha=None` it reads as "brand-new push" — RECOVERABLE — even
+        # when the real answer is NEEDS_JUDGMENT. Symbolic-ref before the
+        # first commit sets this deterministically on every git version/config.
+        _git(self.repo, "symbolic-ref", "HEAD", "refs/heads/main")
         _git(self.repo, "config", "user.email", "t@t")
         _git(self.repo, "config", "user.name", "t")
         _git(self.repo, "remote", "add", "origin", str(self.remote))
