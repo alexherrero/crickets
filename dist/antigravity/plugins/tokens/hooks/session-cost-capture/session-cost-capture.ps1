@@ -50,7 +50,10 @@ $sessionId = $parts[0]
 $cwd = if ($parts.Length -gt 1) { $parts[1] } else { '' }
 if (-not $cwd) { $cwd = (Get-Location).Path }
 
-$cwdSlug = '-' + ($cwd -replace '[\\/]', '-')
+# NOTE: -replace already turns the cwd's leading "/" into the slug's leading
+# "-" -- a real ~/.claude/projects/ dir name has exactly one leading dash. A
+# previously prepended literal '-' here doubled it (see the .sh twin's NOTE).
+$cwdSlug = ($cwd -replace '[\\/]', '-')
 $transcript = Join-Path $HOME ".claude/projects/$cwdSlug/$sessionId.jsonl"
 if (-not (Test-Path -LiteralPath $transcript -PathType Leaf)) { exit 0 }
 

@@ -98,5 +98,18 @@ standalone: true
 #          repoints from vault-markdown globbing to the event log so
 #          fanout_cost_gate.py's observed_records param carries real data
 #          again (task 3). No agentm dependency survives in this capability.
-version: 0.5.1
+# 0.5.2 = bug fix: the session-cost-capture Stop hook's transcript-path slug
+#          formula (.sh AND .ps1 twins) prepended a literal "-" on top of
+#          what tr '/' '-' (PowerShell: -replace) already produces from a
+#          cwd's leading "/", doubling the leading dash so it never matched
+#          a real ~/.claude/projects/<slug>/ directory name -- the hook has
+#          silently no-op'd on every real Stop firing everywhere it's been
+#          installed. Found + first fixed in a standalone agentm copy
+#          (CONS-9, 2026-07-11); this is the upstream fix in the canonical
+#          source. The existing test suite's `_transcript_path` helper
+#          carried the identical bug (agreeing with the hook instead of
+#          reality), so it's fixed too, plus two new regression tests that
+#          pin the slug formula against a real, independently-known
+#          transcript directory name rather than the helper's own formula.
+version: 0.5.2
 capabilities: [status-line-meter, token-audit, tokens]
