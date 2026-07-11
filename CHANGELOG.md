@@ -5,6 +5,34 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.27.0] — 2026-07-10 — Minor: Consolidation arc closes on crickets — slimming, gate hardening, and prose restoration
+
+**MINOR.** This release closes out the crickets side of the Consolidation arc. CONS-2 slims the repo: seven dead one-off/superseded scripts are retired, four duplicate `find_*.py` discovery bridges (capability / governing-design / process-seam / workflow-persona) merge into one `agentm_bridge.py` behind a four-verb dispatcher, a new `check-cross-repo-script-parity.py` gate compares crickets' and agentm's independently-maintained PII/wiki rule sets for drift, and `recoverability_classifier.py` — shipped fully implemented but callable only from its own unit test — finally gets a real `push` CLI wired behind the recoverability skill's push guidance. CONS-3 restores prose discipline: `check-slop.py` flips from report-only to blocking (`--strict`) at warning-tier across crickets' two call sites, ten genuine slop findings get hand-fixed across seven pages (not blanket-stripped), and eleven reference pages that were actually prose-shaped explanation get re-homed to `wiki/explanation/`. Also ships a small KeyError fix in the github-projects aggregate render and a docs sweep repointing the last stale `src/pii/` references to `src/privacy/`. This is the crickets half of a coordinated pair with agentm's own Consolidation-arc release, cutting around the same time — the cross-link lands here once both sides are confirmed live.
+
+### Added
+
+- **Cross-repo script parity gate** (`6c71854`, #182) — `check-cross-repo-script-parity.py` compares the PII-kind and check-wiki rule-letter sets between crickets' canonical copies (`check-no-pii.sh`, `check-wiki.py`) and agentm's independently-maintained scripts, flagging real drift while tolerating the one documented divergence (crickets' 3 component-overview rules, agentm's `--jsonl-out` flag). Wired report-only into `check-all.sh` and the `obsidian-vault-conformance` CI job.
+- **`recoverability_classifier.py` wired behind the push classification** (`6c71854`, #182; `developer-safety 0.4.0 → 0.4.1`) — a new `push` CLI resolves local/remote SHAs and exits on the Verdict; the recoverability skill now invokes it for the mechanically-checkable half of a push's recoverability (fast-forward vs. history-rewrite) instead of judging by prose alone.
+- **`check-slop.py` flips from report-only to blocking** (`6f0c7a9`, #183) — crickets' two call sites (`check-all.sh`, `tests-linux.yml`) move from `--report` to `--strict`; error/warning-tier findings now block, suggestion-tier never does, per the gate's existing exit-code design. Documented in `CI-Gates.md` and locked against silent regression by `test_ci_consistency.py`.
+
+### Changed
+
+- **Four `find_*.py` bridges merge into `agentm_bridge.py`** (`6c71854`, #182; `development-lifecycle 0.36.0 → 0.36.1`) — `find_capability.py`, `find_governing_design.py`, `find_process_seam.py`, and `resolve_workflow_persona.py` each re-implemented the same discovery cascade under their own filename; merged into one module behind a four-verb dispatcher, preserving every discovery order, exit code, and graceful-skip behavior verbatim. Every caller (six phase commands, the dependabot-fixer skill, the session-start hook, `check-no-dangling-name.py`) repointed.
+- **11 misfiled reference pages re-homed to `wiki/explanation/`** (`6f0c7a9`, #183) — Design-Docs, Developer-Safety, GitHub-CI, Obsidian-Vault-Backend, PII, Releasing-Conventions, Repo-Layout, Status-Line-Meter, Testing-Conventions, Token-Audit, Wiki-Maintenance were prose-shaped, not lookup-shaped; sidebars and the two how-to pages that only linked one of them for their reference-mode outbound link are updated.
+- **Load-bearing hint gains an explicit term-of-art carve-out** (`6f0c7a9`, #183; `wiki 0.6.1 → 0.6.2`) — documents the already-suggestion-tier exemption explicitly, matching the first-class/robust carve-outs.
+- **Stale `src/pii/` references repointed to `src/privacy/`** (`d284112`, #181) — the last docs left over from the `pii` → `privacy` plugin rename.
+
+### Fixed
+
+- **`github-projects`: `plan_goal` missing on a progress entry no longer KeyErrors the aggregate render** (`69fefa1`, #180; `github-projects 0.3.4 → 0.3.5`) — `_progress_values()` now reads `p.get("plan_goal")` instead of direct dict indexing, letting `fill()`'s documented None-drops-the-clause optionality handle the gap.
+- **Wiki stale-xref false positives on SVG/asset links and Home/structural links** (`6c71854`, #182) — `diataxis-author`'s stale-xref heuristic now skips non-`.md` link targets and accepts Home/`_Sidebar`/README as valid link targets again.
+
+### Internal
+
+- **Seven dead one-off/superseded scripts retired** (`6c71854`, #182) — `manifest-info.py`, `merge-settings-fragment.py`, the `correction_*` dogfood trio, `migrate-adr.py`, and `add_select_options.py`, plus every companion test, with no live caller remaining for any of them.
+- **Ten genuine check-slop findings hand-fixed across seven pages** (`6f0c7a9`, #183) — reviewed individually rather than blanket-stripped; findings inside historical amendment-log quotes or literal architectural usage (folded-ADR titles) were deliberately left untouched. `check-slop --strict`: 331 → 321 findings, still 0 errors / 0 warnings.
+- **Plugin-group version bumps landed inline with their PRs this range:** `developer-safety` 0.4.0→0.4.1 · `development-lifecycle` 0.36.0→0.36.1 · `github-projects` 0.3.4→0.3.6 · `maintenance` 0.2.4→0.2.5 · `privacy` 0.6.0→0.6.1 · `wiki` 0.6.0→0.6.2.
+
 ## [v3.26.0] — 2026-07-09 — Minor: AG Waves C+D close out; the crickets half of the Autonomy arc lands
 
 **MINOR.** Architecture-Governance Waves C and D close out across eight plugin groups — diagnostics (`/diagnose`), research (idea-search over the recall engine, forward-learning), design + conventions + developer-safety (the Wave C design cluster), maintenance (four new primitives), tokens/privacy/diagnostics (session-cost capture, privacy-review + Semgrep pack, scrub-text surface), development-lifecycle (workflow-step persona adoption, dependabot-fixer/`/bugfix` cross-wired onto `diagnose()`), and github-projects (doc reconciliation, the Planner (TPM) depth-maintainer/drift-corrector). Alongside Wave D, this release ships the crickets half of the Autonomy arc's observability ledger and the board tracking-model decision — pairs with [agentm v5.14.0](https://github.com/alexherrero/agentm/releases/tag/v5.14.0), which ships the agentm half (runner aggregator, dashboard, control plane).
