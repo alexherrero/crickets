@@ -5,5 +5,5 @@
   },
   "description": "Day-to-day testing + release discipline in one plugin — tests-are-sacred, verification-first, the 3-layer pyramid, the pre-release checklist, changelog-shape, and paired-release coordination for cross-repo releases.",
   "name": "conventions",
-  "version": "0.8.0"
+  "version": "0.8.1"
 }

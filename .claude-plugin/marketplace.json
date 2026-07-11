@@ -35,7 +35,7 @@
       "description": "Day-to-day testing + release discipline in one plugin — tests-are-sacred, verification-first, the 3-layer pyramid, the pre-release checklist, changelog-shape, and paired-release coordination for cross-repo releases.",
       "name": "conventions",
       "source": "./dist/claude-code/plugins/conventions",
-      "version": "0.8.0"
+      "version": "0.8.1"
     },
     {
       "capabilities": [
@@ -87,7 +87,7 @@
       ],
       "name": "development-lifecycle",
       "source": "./dist/claude-code/plugins/development-lifecycle",
-      "version": "0.37.0"
+      "version": "0.37.1"
     },
     {
       "capabilities": [

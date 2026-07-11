@@ -70,4 +70,9 @@ capabilities: [testing-conventions, releasing-conventions, conventions]
 #          format; crickets has no scorecard consumer to justify a JSONL
 #          file nobody reads. Repo-Layout.md's dark-registry section now
 #          points at this rule as the canonical convention definition.
-version: 0.8.0
+# 0.8.1 = Consolidation arc, CONS-8, item 5: skills/agentic-engineering/
+#          SKILL.md's "The .harness/PLAN.md shape" archive-path example
+#          fixed from a flat `PLAN.archive.YYYYMMDD-<slug>.md` to
+#          `archive/PLAN.archive.YYYYMMDD-<slug>.md` (ruling 6), matching
+#          the same fix in development-lifecycle's release.md.
+version: 0.8.1

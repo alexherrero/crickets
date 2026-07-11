@@ -75,7 +75,7 @@ Find the simplest solution possible, and only increase complexity when needed. W
 
 - **Locked design calls section** at the bottom of every plan — capture the resolutions to open design questions so they don't drift mid-plan.
 - **Task `Status: [x]` annotations** include a paragraph-long narrative of what shipped, not just the checkmark. The next session's context is whatever this captures.
-- **When a plan completes** (last task `[x]`): flip plan-level `Status: done`, append an end-of-plan summary to `progress.md`, move the corresponding roadmap item to Completed with a full narrative, and archive the active `PLAN.md` to `PLAN.archive.YYYYMMDD-<slug>.md` as the final close-out step — not when the next plan starts.
+- **When a plan completes** (last task `[x]`): flip plan-level `Status: done`, append an end-of-plan summary to `progress.md`, move the corresponding roadmap item to Completed with a full narrative, and archive the active `PLAN.md` to `archive/PLAN.archive.YYYYMMDD-<slug>.md` as the final close-out step — not when the next plan starts. **The archive step writes into an `archive/` subdirectory, not a flat path directly under `.harness/`** (Consolidation arc ruling 6) — a working directory's eyeline stays a small, current set of active files; done work moves one level deeper rather than accumulating flat alongside it.
 
 ## The wake-on-CI pattern
 
