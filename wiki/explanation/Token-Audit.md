@@ -1,4 +1,4 @@
-<!-- mode: reference -->
+<!-- mode: explanation -->
 # Token Audit
 
 ## Architecture

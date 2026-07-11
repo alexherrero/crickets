@@ -12,3 +12,16 @@
 - [One-way vault-to-board synthesis](One-Way-Vault-To-Board-Synthesis)
 - [Developer-Workflows token efficiency](Developer-Workflows-Token-Efficiency)
 - [v3 retrospective](v3-retrospective)
+
+**Per-plugin**
+- [Design Docs](Design-Docs)
+- [Developer Safety](Developer-Safety)
+- [GitHub CI](GitHub-CI)
+- [Obsidian vault backend](Obsidian-Vault-Backend)
+- [PII Guardrail](PII)
+- [Releasing Conventions](Releasing-Conventions)
+- [Repo layout](Repo-Layout)
+- [Status Line Meter](Status-Line-Meter)
+- [Testing Conventions](Testing-Conventions)
+- [Token Audit](Token-Audit)
+- [Wiki Maintenance](Wiki-Maintenance)

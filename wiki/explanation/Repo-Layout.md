@@ -1,4 +1,4 @@
-<!-- mode: reference -->
+<!-- mode: explanation -->
 # Repo layout
 
 What lives where in the crickets repo.

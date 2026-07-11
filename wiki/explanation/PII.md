@@ -1,4 +1,4 @@
-<!-- mode: reference -->
+<!-- mode: explanation -->
 # PII Guardrail
 
 ## Architecture

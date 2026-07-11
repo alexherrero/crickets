@@ -1,4 +1,4 @@
-<!-- mode: reference -->
+<!-- mode: explanation -->
 # GitHub CI
 
 ## Architecture

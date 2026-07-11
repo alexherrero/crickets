@@ -44,5 +44,6 @@ Do NOT record mechanical changes (renaming, formatting, dependency bumps) or dec
 - [Author a design](Author-A-Design) — use this when the decision is part of a larger design that doesn't exist yet.
 - [Designs](Designs) — the living design index.
 - [Design Docs](Design-Docs) — the `design-docs` plugin and its decision-format tooling.
+- [CI gates](CI-Gates) — the `check-wiki` gate that enforces every living design's structure, amendment log included.
 
 [How-To](How-To) · [Home](Home)

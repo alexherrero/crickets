@@ -1,4 +1,4 @@
-<!-- mode: reference -->
+<!-- mode: explanation -->
 # Developer Safety
 
 ## Architecture

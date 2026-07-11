@@ -5,24 +5,13 @@
 
 **Per-plugin**
 - [Developer Workflows](Developer-Workflows)
-- [Developer Safety](Developer-Safety)
 - [Code Review](Code-Review)
-- [Wiki Maintenance](Wiki-Maintenance)
-- [GitHub CI](GitHub-CI)
 - [GitHub Projects](GitHub-Projects)
-- [PII Guardrail](PII)
-- [Token Audit](Token-Audit)
-- [Status Line Meter](Status-Line-Meter)
-- [Design Docs](Design-Docs)
-- [Testing Conventions](Testing-Conventions)
-- [Releasing Conventions](Releasing-Conventions)
-- [Obsidian vault backend](Obsidian-Vault-Backend)
 
 **General**
 - [Plugin anatomy](Plugin-Anatomy)
 - [Customization Types](Customization-Types)
 - [Manifest Schema](Manifest-Schema)
-- [Repo layout](Repo-Layout)
 - [Per-Host Paths](Per-Host-Paths)
 - [Hooks](Hooks)
 - [Evaluator](Evaluator)

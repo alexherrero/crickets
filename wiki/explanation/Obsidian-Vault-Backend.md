@@ -1,4 +1,4 @@
-<!-- mode: reference -->
+<!-- mode: explanation -->
 # Obsidian vault backend
 
 ## Architecture

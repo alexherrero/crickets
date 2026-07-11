@@ -1,4 +1,4 @@
-<!-- mode: reference -->
+<!-- mode: explanation -->
 # Wiki Maintenance
 
 ## Architecture

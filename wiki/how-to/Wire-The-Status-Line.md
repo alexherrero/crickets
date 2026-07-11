@@ -37,3 +37,4 @@ If nothing appears: check `python3 <path-to>/status_line_meter.py <<< '{}'` runs
 
 - [Status Line Meter](Status-Line-Meter) — what each badge means and how it degrades.
 - [Token-Audit](Token-Audit) — the pricing source the cost badges reuse.
+- [Compatibility](Compatibility) — which hosts support the status-line surface this wiring step targets.
