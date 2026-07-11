@@ -69,7 +69,7 @@ class TestCheckNoDanglingName(unittest.TestCase):
         cmd_dir.mkdir(parents=True, exist_ok=True)
         self._group("consumer", capabilities=("consumer-cap",))
         (cmd_dir / "x.md").write_text(
-            'python3 "${CLAUDE_PLUGIN_ROOT}/scripts/find_capability.py" old-name\n',
+            'python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" capability old-name\n',
             encoding="utf-8",
         )
         findings = cndn.check(self.src, self.root)
@@ -80,7 +80,7 @@ class TestCheckNoDanglingName(unittest.TestCase):
         cmd_dir.mkdir(parents=True, exist_ok=True)
         self._group("consumer", capabilities=("consumer-cap",))
         (cmd_dir / "x.md").write_text(
-            'python3 "${CLAUDE_PLUGIN_ROOT}/scripts/find_capability.py" totally-invented-name\n',
+            'python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" capability totally-invented-name\n',
             encoding="utf-8",
         )
         findings = cndn.check(self.src, self.root)

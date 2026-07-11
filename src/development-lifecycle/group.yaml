@@ -505,5 +505,5 @@ enhances:
 #          confirmed by grep, not assumed -- bugfix.md, not plan.md/work.md,
 #          is how-we-engineer's site (the stub's "Report -> Analyze -> Fix
 #          -> Verify" phrase appears verbatim in exactly one command file).
-version: 0.36.0
+version: 0.36.1
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

@@ -11,7 +11,9 @@ Two checks:
      part of the permanent repo-wide regression net the wave's rename
      mechanism needs — a name that resolves to nothing is exactly the
      failure mode a botched rename produces.)
-  2. Every `find_capability.py <name>`-style capability-name invocation in
+  2. Every `agentm_bridge.py capability <name>`-style capability-name
+     invocation (development-lifecycle's merged bridge — CONS-2 task 2; the
+     verb formerly lived in its own find_capability.py) in
      `src/**/commands/*.md` / `src/**/skills/**/*.md` / `wiki/**/*.md`
      (excluding designs' own Amendment-log sections) names a capability
      declared by at least one group's `capabilities:` list.
@@ -42,7 +44,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "src"
 WIKI = ROOT / "wiki"
 
-_FIND_CAPABILITY_RE = re.compile(r"find_capability\.py[\"']\s+([a-zA-Z][a-zA-Z0-9-]*)")
+_FIND_CAPABILITY_RE = re.compile(r"agentm_bridge\.py[\"']\s+capability\s+([a-zA-Z][a-zA-Z0-9-]*)")
 
 
 def _load_groups(src: Path) -> dict[str, dict]:
@@ -99,7 +101,7 @@ def _group_slug_edges(gy: Path, data: dict) -> list[tuple[str, str, int]]:
 
 
 def _find_capability_invocations(src: Path, wiki: Path) -> list[tuple[Path, int, str]]:
-    """[(file, line_no, name)] for every find_capability.py <name> invocation."""
+    """[(file, line_no, name)] for every agentm_bridge.py capability <name> invocation."""
     hits: list[tuple[Path, int, str]] = []
     patterns = list(src.glob("*/commands/*.md")) + list(src.glob("*/skills/**/*.md"))
     if wiki.is_dir():

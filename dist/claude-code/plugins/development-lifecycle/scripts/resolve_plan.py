@@ -40,11 +40,11 @@ from pathlib import Path
 
 # Load the seam bridge from the same scripts/ directory (crickets-internal; not
 # a cross-repo import — DC-2 prohibits importing agentm's process_seam.py
-# directly, not find_process_seam.py which lives here in crickets).
+# directly, not agentm_bridge.py which lives here in crickets).
 def _load_bridge():
     here = Path(__file__).resolve().parent
     spec = importlib.util.spec_from_file_location(
-        "find_process_seam", here / "find_process_seam.py"
+        "agentm_bridge", here / "agentm_bridge.py"
     )
     if not spec or not spec.loader:
         return None

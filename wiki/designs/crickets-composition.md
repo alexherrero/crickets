@@ -4,7 +4,7 @@ status: launched
 kind: design
 scope: feature
 area: crickets/composition
-governs: [src/development-lifecycle/scripts/find_capability.py, scripts/suggest_enhancers.py, src/*/group.yaml]
+governs: [src/development-lifecycle/scripts/agentm_bridge.py, scripts/suggest_enhancers.py, src/*/group.yaml]
 parent: crickets-hld.md
 seeded: 2026-06-20
 approved: 2026-06-22
@@ -38,7 +38,7 @@ A capability names two kinds of relationship to another, by capability name:
 - **`requires:`** — a hard dependency: it will not run without the target (e.g. `github-projects` requires `developer-workflows`).
 - **`enhances:`** — a soft dependency: it works alone, and does more when the target is present (e.g. `code-review` enhances `developer-workflows`'s `/review`).
 
-At load time agentm's resolver (`capability_resolver.py`) matches names to installed capabilities, and the crickets bridge (`find_capability.py`) reaches it. These links arise where a primitive is shared across capabilities, or one capability builds on another's surface.
+At load time agentm's resolver (`capability_resolver.py`) matches names to installed capabilities, and the crickets bridge (`agentm_bridge.py`'s `capability` verb) reaches it. These links arise where a primitive is shared across capabilities, or one capability builds on another's surface.
 
 **How `enhances:` resolves.** The relationship is asymmetric and order-free: the enhancer names the target, the target knows nothing of its enhancers, and the resolver matches at load regardless of install order — installing the enhancer before or after the enhancee gives the same result. A soft match that finds nothing resolves to a **quiet absence**, so any subset of crickets installs and runs. The declared edges also drive discovery surfaces: `suggest_enhancers.py` (governed here) lets `bootstrap` suggest installing an enhancer ("you have `development-lifecycle`; install `code-review` for the full experience"), and the marketplace render carries the same "works better with …" links.
 
@@ -62,7 +62,7 @@ The opinion surfaces (done / good / efficient / how-we-engineer) and the request
 
 ### The toolbox composes onto agentm — the one-way arrow
 
-**crickets depends on agentm; agentm never depends on crickets.** That arrow is the central rule of the whole split. A tool draws on the substrate by *asking*: the authoritative resolver lives in agentm (`capability_resolver.py`); crickets reaches it through a thin bridge (`find_capability.py`) that discovers it by path-fallback and skips gracefully when agentm is absent. The graceful skip runs both ways — remove the tools and agentm still remembers; remove agentm and the tools still run, just without memory-backed continuity. A bare agentm is whole on its own.
+**crickets depends on agentm; agentm never depends on crickets.** That arrow is the central rule of the whole split. A tool draws on the substrate by *asking*: the authoritative resolver lives in agentm (`capability_resolver.py`); crickets reaches it through a thin bridge (`agentm_bridge.py`'s `capability` verb) that discovers it by path-fallback and skips gracefully when agentm is absent. The graceful skip runs both ways — remove the tools and agentm still remembers; remove agentm and the tools still run, just without memory-backed continuity. A bare agentm is whole on its own.
 
 Three decisions drew the arrow: the repo split made them siblings sharing only a byte-identical `lib/install/`; the V5 unbundling deleted the phase loop from agentm and re-homed it in crickets, removing even the hard-require; and the routing-plane de-vaulting kept agentm's substrate speaking in backend-agnostic terms, so a tool can ask without assuming vault paths (V5-6, in the `memory-storage-seam` living design). *(The first two decisions now live in the [agentm HLD](https://github.com/alexherrero/agentm/wiki/agentm-hld) amendment log. Transitional wrinkle: until the orchestration-split slim lands, agentm still carries baked-in copies of some dev-loop scripts from before the unbundling — a cleanup-status detail.)*
 
@@ -76,7 +76,7 @@ A v6.0 capability rename — `developer-workflows` → `development-lifecycle`, 
 
 ## Dependencies
 
-- **agentm's resolver, via the bridge** — composition's by-name lookups resolve through agentm's `capability_resolver.py`, reached by crickets' `find_capability.py` (path-fallback + graceful-skip). The one-way arrow: crickets depends on agentm, never the reverse.
+- **agentm's resolver, via the bridge** — composition's by-name lookups resolve through agentm's `capability_resolver.py`, reached by crickets' `agentm_bridge.py` (`capability` verb; path-fallback + graceful-skip). The one-way arrow: crickets depends on agentm, never the reverse.
 - **The generator's lints** — `lint_src.py` enforces the four honesty lints over every plugin's `requires:` / `enhances:` / `capabilities:`; the [crickets build-system design](crickets-build-system.md) owns the generator.
 - **Version matching** — `capability_version_match.py` (agentm) exists, but crickets doesn't yet wire it in. **`[PENDING-IMPL]` (wiring only)** — the `Enhance` dataclass has no version field, so no relationship can name a version range on its target today; the enforcement policy is settled (at-load · out-of-range = not-present), the wiring is parked (Risks).
 - **Sibling designs** — [agentm Opinions](https://github.com/alexherrero/agentm/wiki/agentm-opinions-and-gates) (the opinion surfaces + the request-by-name path), [agentm Personas](https://github.com/alexherrero/agentm/wiki/agentm-personas) (the persona tier that wields tool packages), [crickets build-system](crickets-build-system.md) (where the lints + `capabilities:` are generated).
@@ -92,13 +92,15 @@ A v6.0 capability rename — `developer-workflows` → `development-lifecycle`, 
 
 ## References
 
-- **Resolver + bridge:** agentm `scripts/capability_resolver.py` (`build_registry` · `capability_available` · `capability_resolve` + CLI) · crickets `src/developer-workflows/scripts/find_capability.py` (path-fallback discovery, graceful-skip)
+- **Resolver + bridge:** agentm `scripts/capability_resolver.py` (`build_registry` · `capability_available` · `capability_resolve` + CLI) · crickets `src/development-lifecycle/scripts/agentm_bridge.py` (`capability` verb; path-fallback discovery, graceful-skip)
 - **Version match:** agentm `scripts/capability_version_match.py` (single-range semver check; graceful-degrade to a non-match on malformed input)
 - **Lints:** the generator's `lint_src.py` (target-exists · no-self-enhance · enhances ∩ requires = ∅ · target is declared)
 - **Living designs (the ADR model is retired in agentm + crickets):** this design is now the single home for the `enhances:` soft-composition rationale (it subsumed the earlier `developer-plugin-suite.md`, incl. the persona-vs-role deferral — see the Amendment log, where ADRs 0017 + 0027 are preserved) · agentm `memory-storage-seam` (V5-6 routing-plane de-vaulting). Still-standing decisions — agentm crickets-split, V5 unbundling, persona tier — now live in the agentm [HLD](https://github.com/alexherrero/agentm/wiki/agentm-hld) / [Foundations HLD](https://github.com/alexherrero/agentm/wiki/agentm-foundations-hld) amendment logs.
 - **Siblings:** [agentm Opinions](https://github.com/alexherrero/agentm/wiki/agentm-opinions-and-gates) · [agentm Personas](https://github.com/alexherrero/agentm/wiki/agentm-personas) · [crickets build-system](crickets-build-system.md) · `wiki/reference/Coordinator-Roles.md` (the transitional role agent-defs)
 
 ## Amendment log
+
+**2026-07-10 — `governs:` path re-pointed again: `find_capability.py` -> `agentm_bridge.py` (Consolidation arc, CONS-2 task 2).** development-lifecycle's four independent `find_*.py`-style bridge scripts (`find_capability.py`, `find_governing_design.py`, `find_process_seam.py`, `resolve_workflow_persona.py`) — each re-implementing the same env-var/co-located/conventional-clone path-fallback cascade and subprocess-proxy contract under its own filename — merged into one `agentm_bridge.py` with a four-verb dispatcher (`capability` / `governing-design` / `process-seam` / `workflow-persona`); every command-file call site and this design's own bridge references updated to match. No behavior change to any verb's discovery order, exit codes, or graceful-skip contract — only the file (and the CLI shape that selects which verb) changed. *Why not keep the four files separate:* they were near-identical copy-paste of the same cascade with no behavior divergence to justify four files; a bridge script drift-check (a separate follow-up task) is far cheaper to write and maintain against one file than four. *Re-audit trigger:* if a fifth agentm-facing lookup is added to development-lifecycle, extend this same dispatcher rather than starting a new standalone bridge file.
 
 **2026-07-07 — version-matching policy settled; wiring parked (G12 AG close-out, operator-ratified).** The design left the version-matching enforcement policy to "the per-capability sub-designs to settle"; the G12 roadmap session settled it, operator-ratified. **Policy:** a range resolves **at load** (with the resolver, where all by-name composition resolves — not at call, which would fragment the model and re-check every invocation); an **out-of-range target is treated as "not present" for that edge**, reusing the existing presence semantics rather than a new warn/error axis — an `enhances:` mismatch degrades to quiet absence (like a missing soft target), a `requires:` mismatch fails loud at resolution (like a missing hard dep); a malformed range degrades to a non-match (already the matcher's behavior). **Wiring parked:** the `version:` field on `Enhance` + the call sites + a range-parses lint are a backlog item, not built now — no crickets edge needs a version pin today (zero current demand, mirroring the "park until a consumer exists" call). Updated the Risks bullet from "unsettled" to "settled; wiring parked" and the two body `[PENDING-IMPL]` notes to name the split (policy settled, wiring only pending). *Why not build the wiring now:* pure optionality with no consumer — adding schema + call sites speculatively risks locking a shape no edge has exercised. *Re-audit trigger:* build the wiring when a real `enhances:`/`requires:` edge first needs to pin a target version range; revisit at-load-vs-at-call if a host ever ships live per-invocation capability versions.
 

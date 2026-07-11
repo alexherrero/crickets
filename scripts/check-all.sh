@@ -13,8 +13,8 @@
 # dist-references (every emitted plugin's relative links + ${CLAUDE_PLUGIN_ROOT}
 # paths resolve inside the emitted tree; grandfathers known pre-existing gaps) ·
 # version bump · check-wiki --strict · check-syntax · hook-parity · check-no-pii ·
-# opinion-snapshot-parity + opinion-self-provider-drift (both report-only;
-# graceful-skip when no agentm sibling to diff against) · board sync
+# opinion-snapshot-parity + opinion-self-provider-drift + cross-repo-script-parity
+# (all three report-only; graceful-skip when no agentm sibling to diff against) · board sync
 # (graceful-skips when no .harness/project.json or no gh) · tag-reachability
 # (all tags must point to main-reachable commits; graceful-skip when no main
 # branch exists).
@@ -69,6 +69,7 @@ run "check-slop"     python3 scripts/check-slop.py --report wiki
 run "voice-floor-parity" python3 scripts/check-voice-floor-parity.py --report
 run "opinion-snapshot-parity" python3 scripts/check-opinion-snapshot-parity.py --report
 run "opinion-self-provider-drift" python3 scripts/check-opinion-self-provider-drift.py --report
+run "cross-repo-script-parity" python3 scripts/check-cross-repo-script-parity.py --report
 run "check-syntax"   bash scripts/check-syntax.sh
 run "hook-parity"    python3 scripts/check-hook-parity.py
 run "check-no-pii"   bash scripts/check-no-pii.sh --all

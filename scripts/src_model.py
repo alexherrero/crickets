@@ -99,7 +99,8 @@ def find_agentm_opinions_dir() -> Path | None:
     only -- never generate.py's build path, which reads only the committed
     snapshot store above).
 
-    Mirrors find_capability.py's _find_capability_resolver candidate order:
+    Mirrors development-lifecycle's agentm_bridge.py `_find_capability_resolver`
+    candidate order (formerly find_capability.py, merged in CONS-2 task 2):
       1. $AGENTM_SCRIPTS_DIR/../opinions   (explicit override)
       2. <this-script-dir>/../opinions     (co-located install)
       3. ~/Antigravity/agentm/opinions     (conventional clone)
@@ -115,6 +116,33 @@ def find_agentm_opinions_dir() -> Path | None:
         if c.is_dir():
             return c.resolve()
     return None
+
+
+def find_agentm_scripts_dir() -> Path | None:
+    """Locate agentm's scripts/ dir via path-fallback, or None.
+
+    Used by cross-repo checks that need agentm's top-level scripts/ (not
+    opinions/) -- e.g. check-cross-repo-script-parity.py. Deliberately reads
+    $AGENTM_SCRIPTS (not $AGENTM_SCRIPTS_DIR above) -- that's the env var name
+    the obsidian-vault conformance suite (scripts/test_obsidian_vault_*.py)
+    and its CI job already established for "point directly at agentm's
+    scripts/ dir", so a new cross-repo check reuses the existing convention
+    instead of adding a third variant name.
+
+    Order:
+      1. $AGENTM_SCRIPTS               (explicit override; CI sets this to
+                                         the sibling kernel checkout's scripts/)
+      2. ~/Antigravity/agentm/scripts   (conventional clone -- location-
+                                         independent, so it resolves the same
+                                         whether run from the repo root or a
+                                         worktree under .claude/worktrees/)
+    """
+    env_dir = os.environ.get("AGENTM_SCRIPTS", "").strip()
+    if env_dir:
+        p = Path(os.path.expanduser(env_dir))
+        return p if p.is_dir() else None
+    conventional = Path.home() / "Antigravity" / "agentm" / "scripts"
+    return conventional if conventional.is_dir() else None
 
 
 def _opinion_marker_re(name: str) -> re.Pattern:

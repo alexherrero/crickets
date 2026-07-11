@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Tests for src/developer-workflows/scripts/find_process_seam.py.
+"""Tests for the `process-seam` verb of
+src/development-lifecycle/scripts/agentm_bridge.py (formerly the standalone
+find_process_seam.py, merged into the shared bridge — CONS-2 task 2).
 
 Discovery (find_seam): $AGENTM_SCRIPTS_DIR, co-located sibling, conventional
 ~/Antigravity/ clone, and graceful-skip when absent.
@@ -23,7 +25,7 @@ from unittest import mock
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
-_SRC = _ROOT / "src" / "development-lifecycle" / "scripts" / "find_process_seam.py"
+_SRC = _ROOT / "src" / "development-lifecycle" / "scripts" / "agentm_bridge.py"
 
 
 def _load():
@@ -191,11 +193,11 @@ class TestMainCLI(unittest.TestCase):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def test_bad_usage_exits_two(self):
-        rc = fps.main(["find_process_seam.py"])
+        rc = fps.main(["agentm_bridge.py", "process-seam"])
         self.assertEqual(rc, 2)
 
     def test_bad_verb_exits_two(self):
-        rc = fps.main(["find_process_seam.py", "bad-verb", "plan"])
+        rc = fps.main(["agentm_bridge.py", "process-seam", "bad-verb", "plan"])
         self.assertEqual(rc, 2)
 
     def test_state_path_plan_proxied(self):
@@ -206,7 +208,7 @@ class TestMainCLI(unittest.TestCase):
             import io, contextlib
             out = io.StringIO()
             with contextlib.redirect_stdout(out):
-                rc = fps.main(["find_process_seam.py", "state-path", "plan"])
+                rc = fps.main(["agentm_bridge.py", "process-seam", "state-path", "plan"])
         self.assertEqual(rc, 0)
         self.assertEqual(out.getvalue().strip(), "/v/PLAN.md")
 
@@ -215,7 +217,7 @@ class TestMainCLI(unittest.TestCase):
             import io, contextlib
             out = io.StringIO()
             with contextlib.redirect_stdout(out):
-                rc = fps.main(["find_process_seam.py", "state-path", "plan"])
+                rc = fps.main(["agentm_bridge.py", "process-seam", "state-path", "plan"])
         self.assertEqual(rc, 1)
         self.assertEqual(out.getvalue(), "")
 

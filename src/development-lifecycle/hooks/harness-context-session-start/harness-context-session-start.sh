@@ -48,7 +48,7 @@ fi
 # ── Surface launched design paths (Hook 6 — paths only, bounded, ≤4) ────────────
 # Inject the *paths* of governing designs (status: launched) the way PLAN.md is
 # injected above — never their body (that would regress the per-call floor). /plan
-# + /review resolve the specific governing design via find_governing_design.py.
+# + /review resolve the specific governing design via agentm_bridge.py governing-design.
 DESIGNS_DIR="$EVENT_CWD/wiki/designs"
 if [[ -d "$DESIGNS_DIR" ]]; then
     DESIGNS="$(grep -lE '^status:[[:space:]]*launched' "$DESIGNS_DIR"/*.md 2>/dev/null | head -4)"

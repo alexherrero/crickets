@@ -87,7 +87,10 @@ class TestClaudeEmitter(unittest.TestCase):
         # 0.5.1 = task 2 calibration — Tier-B thresholds + 2 severity downgrades.
         # 0.5.2 = task 4 — floor promotion + floor_eligible field.
         # 0.5.3 = task 5 — role-noun carve-out codified in base-style-guide.md.
-        self.assertEqual(self._plugin_json("wiki")["version"], "0.6.0")
+        # 0.6.1 = Consolidation arc CONS-2 task 7 — diataxis-author check.py
+        # stale-xref /bugfix (SVG/asset targets + structural Home/_Sidebar/README
+        # links no longer false-positive as stale).
+        self.assertEqual(self._plugin_json("wiki")["version"], "0.6.1")
         # 0.3.0 = check-no-pii.sh + templates/hooks/pre-push moved into src/pii/
         # so they actually ship inside the plugin payload (R2.4 task 7).
         # 0.3.1 = check-no-pii.sh scan collapsed to one grep per file (fixes a
@@ -98,7 +101,9 @@ class TestClaudeEmitter(unittest.TestCase):
         # skill + Semgrep taint pack + scrub_text() surface.
         # 0.6.0 = task 4 retrofit: real opinions: [good, how-we-engineer]
         # wiring once PLAN-opinion-consumer-grammar (#167) landed.
-        self.assertEqual(self._plugin_json("privacy")["version"], "0.6.0")
+        # 0.6.1 = Consolidation CONS-2 task 6 — stale src/pii/ header-comment
+        # path in templates/hooks/pre-push fixed to src/privacy/. Doc-only.
+        self.assertEqual(self._plugin_json("privacy")["version"], "0.6.1")
 
     def test_dependencies_from_requires(self):
         # post-seed-retirement: maintenance (ex-github-ci) depends on

@@ -63,7 +63,7 @@
       ],
       "name": "developer-safety",
       "source": "./dist/claude-code/plugins/developer-safety",
-      "version": "0.4.0"
+      "version": "0.4.1"
     },
     {
       "capabilities": [
@@ -87,7 +87,7 @@
       ],
       "name": "development-lifecycle",
       "source": "./dist/claude-code/plugins/development-lifecycle",
-      "version": "0.36.0"
+      "version": "0.36.1"
     },
     {
       "capabilities": [
@@ -118,7 +118,7 @@
       "description": "One-way, deterministic board-sync — synthesizes a vault project's roadmap/plan/progress state onto a GitHub Project board via six locked per-type templates, a single idempotent project_sync.py write path, and a vault==board drift gate. The vault stays the agent's source of truth; the board is the generated human source.",
       "name": "github-projects",
       "source": "./dist/claude-code/plugins/github-projects",
-      "version": "0.3.5"
+      "version": "0.3.6"
     },
     {
       "capabilities": [
@@ -132,7 +132,7 @@
       "description": "CI workflows + dependency-update tooling — the dependabot-fixer skill that repairs breakage on Dependabot PRs.",
       "name": "maintenance",
       "source": "./dist/claude-code/plugins/maintenance",
-      "version": "0.2.4"
+      "version": "0.2.5"
     },
     {
       "capabilities": [
@@ -151,7 +151,7 @@
       "description": "Scan diffs and the working tree for personal information (emails, personal paths, API keys, phone numbers) before commit or push.",
       "name": "privacy",
       "source": "./dist/claude-code/plugins/privacy",
-      "version": "0.6.0"
+      "version": "0.6.1"
     },
     {
       "capabilities": [
@@ -191,7 +191,7 @@
       ],
       "name": "wiki",
       "source": "./dist/claude-code/plugins/wiki",
-      "version": "0.6.0"
+      "version": "0.6.1"
     }
   ]
 }

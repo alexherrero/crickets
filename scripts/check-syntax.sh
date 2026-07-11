@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 # check-syntax.sh — bash -n every .sh file in the repo.
+# Parity twin: agentm's scripts/check-syntax.sh runs the same bash-n contract
+# over its own repo, scoped differently (install.sh + scripts/templates/adapters
+# vs. this repo's whole-tree walk + the pre-push hook template) — deliberately
+# separate implementations, not a shared/de-duped script (Consolidation CONS-2 task 5).
 
 set -euo pipefail
 

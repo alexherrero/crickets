@@ -79,7 +79,7 @@ standalone: true
 #          capabilities dualize [wiki-maintenance, wiki]. check-all.sh's
 #          check-wiki call site re-pointed to src/wiki/scripts/check-wiki.py
 #          (the linter moves with the directory).
-version: 0.6.0
+version: 0.6.1
 capabilities: [wiki-maintenance, wiki]
 enhances:
   - group: development-lifecycle

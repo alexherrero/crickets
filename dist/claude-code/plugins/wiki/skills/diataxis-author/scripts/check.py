@@ -204,6 +204,14 @@ def _heuristic_stale_xref(p: Path, all_pages: set[str]) -> list[Finding]:
         base = target.split("#")[0]  # drop anchor
         if not base or base.startswith("."):
             continue
+        # Non-markdown targets (images, SVG diagrams, PDFs, etc.) are asset
+        # references, not wiki-page cross-references — the page corpus this
+        # heuristic checks against (`all_pages`) only tracks .md content
+        # pages, so treating every extension as a page slug flags every
+        # embedded asset as a false stale-xref.
+        suffix = Path(base).suffix.lower()
+        if suffix and suffix != ".md":
+            continue
         # Strip .md if present + drop any directory prefix.
         stem = Path(base).stem
         if stem and stem not in all_pages:
@@ -377,6 +385,14 @@ def run_check(
         wiki_root=wiki_root, vault_path=vault_path, project_slug=project_slug)
     pages = _walk_wiki_pages(wiki_root)
     all_stems = {p.stem for p in pages}
+    # Structural pages (Home.md, _Sidebar.md, README.md) are deliberately
+    # excluded from _walk_wiki_pages — they're navigation scaffolding, not
+    # content to classify — but they're still valid link targets in the
+    # wiki's flat page namespace. Add them back so in-wiki links to them
+    # (e.g. the GitHub-wiki-style `[Home](Home)`) aren't flagged as stale.
+    for structural in ("Home", "_Sidebar", "README"):
+        if any(wiki_root.rglob(f"{structural}.md")):
+            all_stems.add(structural)
     for p in pages:
         f1 = _heuristic_mode_mixed(p)
         if f1:

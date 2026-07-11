@@ -54,5 +54,10 @@ standalone: true
 #          render_primitive_text at all, so no skill's opinions: markers
 #          were ever actually re-baked — proven via a deliberate
 #          snapshot-divergence probe before and after the fix.
-version: 0.6.0
+# 0.6.1 = Consolidation CONS-2 task 6: fixed a stale header-comment path in
+#          templates/hooks/pre-push (`cp src/pii/templates/hooks/pre-push …`
+#          -> `cp src/privacy/templates/hooks/pre-push …`) left over from the
+#          pii -> privacy rename (AG Wave A rename 2). Doc-only; the hook's
+#          runtime behavior is unchanged.
+version: 0.6.1
 capabilities: [pii, privacy]

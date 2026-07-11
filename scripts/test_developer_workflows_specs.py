@@ -33,7 +33,7 @@ _CMDS = _ROOT / "src" / "development-lifecycle" / "commands"
 # guard against (it survived only because the probe is graceful-skip).
 _RESOLVE_PY = 'python3 "${CLAUDE_PLUGIN_ROOT}/scripts/resolve_plan.py"'
 _RESOLVE_BASH = 'bash "${CLAUDE_PLUGIN_ROOT}/scripts/resolve_plan.py"'
-_PROBE_BASH = 'bash "${CLAUDE_PLUGIN_ROOT}/scripts/find_capability.py"'
+_PROBE_BASH = 'bash "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py"'
 _QUEUE_PY = 'python3 "${CLAUDE_PLUGIN_ROOT}/scripts/queue_status.py"'
 _QUEUE_BASH = 'bash "${CLAUDE_PLUGIN_ROOT}/scripts/queue_status.py"'
 
@@ -116,7 +116,7 @@ class TestWorkSpec(_NamedPlanWriterContract, unittest.TestCase):
         # no new probe, no new call site. This locks that the exit-1 skip
         # semantics stay unchanged when github-projects/gh is unavailable.
         self.assertIn(
-            'python3 "${CLAUDE_PLUGIN_ROOT}/scripts/find_capability.py" board-sync',
+            'python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" capability board-sync',
             self.text)
         self.assertIn("On **exit 1** (unavailable, or no `CLAUDE_PLUGIN_ROOT`) "
                       "skip silently", self.text)

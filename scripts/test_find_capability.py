@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Tests for src/developer-workflows/scripts/find_capability.py.
+"""Tests for the `capability` verb of
+src/development-lifecycle/scripts/agentm_bridge.py (formerly the standalone
+find_capability.py, merged into the shared bridge — CONS-2 task 2).
 
 `_find_capability_resolver` discovery: $AGENTM_SCRIPTS_DIR override, co-located
-sibling, conventional ~/Antigravity/agentm clone (the R0.5 fix — mirrors
-find_process_seam.py's third tier), and None when all tiers are absent.
+sibling, conventional ~/Antigravity/agentm clone (the R0.5 fix — mirrors the
+process-seam verb's third tier), and None when all tiers are absent.
 
 Every test is hermetic — injectable env var overrides and a mocked Path.home()
 ensure no dependency on a real agentm install (CI runs with none).
@@ -21,7 +23,7 @@ from unittest import mock
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
-_SRC = _ROOT / "src" / "development-lifecycle" / "scripts" / "find_capability.py"
+_SRC = _ROOT / "src" / "development-lifecycle" / "scripts" / "agentm_bridge.py"
 
 
 def _load():

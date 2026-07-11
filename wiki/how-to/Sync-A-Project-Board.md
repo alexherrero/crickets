@@ -57,7 +57,7 @@ It checks four drift kinds: `create`, `missing`, `update`, and `orphan`. `tests-
 
 - **The gate reports drift after a sync**: the board diverged from the vault. Re-run the `post` path — it is idempotent (create-or-update by stable id), so re-running converges. An `orphan` finding means a board issue is backed by no vault item — add it to `board-items.json` (or remove the stray issue).
 - **A link in the rendered board looks hand-typed / wrong**: links are built from `github.url`, never hand-typed — a wrong link points at a bad `github.url` (or a wrong `owner`/`number` it derives from) in `project.json`.
-- **A phase command didn't emit a board update**: emission is gated on the `board-sync` capability being available — `/plan`, `/work`, `/release` check `find_capability.py board-sync` and graceful-skip when it returns non-zero. Confirm the `github-projects` plugin is installed, agentm is present (the capability resolver), and `project.json` + `gh` are present.
+- **A phase command didn't emit a board update**: emission is gated on the `board-sync` capability being available — `/plan`, `/work`, `/release` check `agentm_bridge.py capability board-sync` and graceful-skip when it returns non-zero. Confirm the `github-projects` plugin is installed, agentm is present (the capability resolver), and `project.json` + `gh` are present.
 
 ## See also
 
