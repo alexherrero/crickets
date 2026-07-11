@@ -63,4 +63,16 @@ capabilities: [recoverability]
 # functions classify_ref_delete/classify_tag_overwrite are unchanged and
 # stay un-wired to a CLI; the SKILL.md doctrine table itself is unchanged,
 # this only gives its push row a mechanical backing.
-version: 0.4.1
+# 0.5.0 = new commit-msg-gate hook (Consolidation ruling 4, shipped CONS-8):
+# a native git commit-msg hook (not prepare-commit-msg -- this one can reject
+# the commit outright) that rejects a commit SUBJECT LINE containing an
+# internal codename pattern (AA/C/FIN/R/G families, "Wave A".."Wave E",
+# PLAN-<slug> references) or this repo's own slop-pack vocabulary at
+# warning-tier or above -- reusing scripts/check-slop.py's canonical rule
+# pack (src/wiki/skills/diataxis-author/style/voice-rules.json via
+# rule_pack.py) rather than a second word list. Conventional-commit prefixes
+# and a parenthesized roadmap id (e.g. "(V6-15)") are unaffected; the commit
+# body is never scanned. Same install posture as coauthor-guard -- no
+# automated installer yet, see hooks/commit-msg-gate/hook.md for manual
+# install steps on both hosts.
+version: 0.5.0
