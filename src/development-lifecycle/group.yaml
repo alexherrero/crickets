@@ -505,5 +505,12 @@ enhances:
 #          confirmed by grep, not assumed -- bugfix.md, not plan.md/work.md,
 #          is how-we-engineer's site (the stub's "Report -> Analyze -> Fix
 #          -> Verify" phrase appears verbatim in exactly one command file).
-version: 0.36.1
+# 0.37.0 = Consolidation arc, CONS-8 (process codification): release.md gains
+#          constraint 9 + process step 9, the arc-exit coalescence checklist
+#          (ruling 8) -- a required close-out block that fires only when a
+#          release closes an arc, pointing at the new `conventions`
+#          coalescence-gate rule for the seven-item checklist itself. No new
+#          command, no new CI workflow -- a session discipline layered onto
+#          the existing pre-merge gate.
+version: 0.37.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

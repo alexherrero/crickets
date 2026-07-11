@@ -39,4 +39,9 @@ capabilities: [testing-conventions, releasing-conventions, conventions]
 #          check-all.sh + tests-linux.yml. Checks declaration, not content:
 #          a plugin marking <!-- consults-conventions-domain: X --> in a
 #          command/skill must declare conventions in requires:/enhances:.
-version: 0.4.0
+# 0.5.0 = Consolidation arc, CONS-8 (process codification), item 1: new
+#          rules/coalescence-gate.md -- the arc-exit close-out checklist
+#          (ruling 8) that development-lifecycle's release.md constraint 9
+#          points at. Documents the seven required items and the D4
+#          dark-registry + orphan-census reconciliation it depends on.
+version: 0.5.0

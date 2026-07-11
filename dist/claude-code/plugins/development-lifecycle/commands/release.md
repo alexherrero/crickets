@@ -3,7 +3,7 @@ name: release
 description: Pre-merge gate — verify plan done, gates green, CI passing, then run to completion under the recoverability gate (recoverable push/tag/release proceed announced; only unrecoverable actions stop).
 kind: command
 supported_hosts: [claude-code, antigravity]
-version: 0.1.0
+version: 0.1.1
 install_scope: project
 ---
 
@@ -37,6 +37,7 @@ Invoking this phase **is** the authorization to run it to completion. The stop-g
 6. **If CI is red, stop.** Do not release past failing checks.
 7. **Sync the release to the GitHub Project board** (optional, graceful-skip) — when `github-projects` is installed (capability probe) + `.harness/project.json` present + `gh` authed, emit the **Plan + Feature closeout** for what shipped: update each completed Plan's and its parent Feature's closeout fields in `board-items.json`, then render+write via the github-projects plugin's `project_sync.py post --config <project.json> --id <id>` (full re-render — closeout is template-driven, not a `--type` flag stage). Optionally capture a *recurring* next-release theme (not a single deferral) as a board-backed `Backlog-item`/`Idea` in `board-items.json` (**never** raw `gh project item-create` — an unbacked board issue is an orphan the `vault==board` gate flags as drift). At the same gate, also run the Planner (TPM) maintenance cycle — `python3 "${CLAUDE_PLUGIN_ROOT}/../github-projects/scripts/planner_maintain.py" --config <project.json>` — to materialize any collapsed depth gap and correct `update` drift the closeout itself didn't already fix; never auto-closes an orphan. Deterministic + idempotent → announce + proceed (preview with `--dry-run`). Silent-skip (zero behavior change) if the plugin, `project.json`, or `gh` is absent.
 8. **Sole tag writer.** This command is the only path in the loop that creates and pushes tags — `/work` and `/bugfix` never create tags. Two concurrent plans cannot race on tag creation because tagging happens only here, after CI-green and the tag-reachability check. **Re-audit trigger:** if cadence grows past 4–5 simultaneous plan landers (a merge-queue bottleneck becomes observable), escalate to `release-please`/`changesets` to parallelize release-note generation while keeping tag serialization.
+9. **When this release closes an arc, run the coalescence checklist before tagging** (`conventions`'s [`coalescence-gate`](https://github.com/alexherrero/crickets/blob/main/src/conventions/rules/coalescence-gate.md) rule). This is a required close-out block, not a new command or CI workflow — a session discipline over surfaces CI can't reach (boards, the vault, release bodies, the wiki), homed here because `/release` is the phase that already gates a merge. Seven items: narrative rows appended to the completed-features timeline; the release body names the roadmap ids it ships; boards reconciled + a plain-English pass; the prose gate green; every close-out's archive step has actually run (eyeline clean); the dark registry reconciled (every entry's owning plan flips or the entry is deleted); an orphan check confirming no new zero-caller script entered the tree this arc without a dark-registry entry. **Skip this constraint entirely when the release does not close an arc** — a routine mid-arc release keeps constraints 1–8 unchanged and does not run the checklist.
 
 ## Process
 
@@ -49,6 +50,7 @@ Invoking this phase **is** the authorization to run it to completion. The stop-g
 6. **Prepare release artifacts** — changelog entry + version bump per the project's convention. If a release skill is installed (e.g. crickets `ship-release`), use it; otherwise run the steps manually. Push / tag / release execute under the recoverability gate (announce + proceed; wake-on-CI before the tag).
 7. **Execute + record.** Run the release through to completion (push → wake-on-CI green → tag-reachability check → tag → `gh release` / `gh pr merge`), pre-announcing each recoverable-destructive step. Before creating the tag, **verify the target commit is reachable from `main`** — run `python3 scripts/check_tag_reachability.py` (or equivalent); a non-zero exit means the commit is a branch-tip, not a main commit, and the tag must not be created (the force-push-on-shared-tag trap). Then produce the summary as a **record** of what the run did — the commands executed and their results — not a stop-and-wait barrier. Stop only for a genuinely unrecoverable action or an unresolved decision (constraint 5 + the recoverability gate).
 8. **Sync the board** (constraint 7, graceful-skip). After the release lands, check availability: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" capability board-sync`; on **exit 0** with `.harness/project.json` + `gh` present, emit the Plan + Feature closeout via the github-projects plugin's `project_sync.py post`, then run the Planner maintenance cycle (`planner_maintain.py`) at the same gate (deterministic + idempotent → announce + proceed). On **exit 1** (unavailable, or no `CLAUDE_PLUGIN_ROOT`) / no `project.json` / no `gh`, skip silently — zero behavior change.
+9. **Arc-closing coalescence checklist** (constraint 9). If this release closes an arc, work the seven-item checklist before Step 7's push — do it here, between the board-sync prep and execution, so a missing item (an un-reconciled board, a stale narrative page, a still-dark registry entry with a shipped owner) is caught before the tag exists, not after. Record each item's status alongside the release summary. If this release does not close an arc, skip this step entirely.
 
 ## Failure modes to avoid
 
@@ -57,5 +59,6 @@ Invoking this phase **is** the authorization to run it to completion. The stop-g
 - Setting `passes: true` speculatively.
 - Stopping to ask before a *recoverable* push / tag / merge (the recoverability gate says announce + proceed) — or, conversely, proceeding on a genuinely *unrecoverable* action without pre-announcing and confirming.
 - Releasing past a red CI.
+- Closing an arc without running the coalescence checklist (constraint 9) — the exact "pack-mode skips coalescence" failure this constraint exists to make impossible to do silently.
 
 After `progress.md` is written and the release is complete, run `/clear` rather than `/compact`. State is on disk; a compaction summary re-bills on every later turn.
