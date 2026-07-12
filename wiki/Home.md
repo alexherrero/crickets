@@ -13,9 +13,9 @@
 
 <p align="center"><sub>Works with Claude Code + Antigravity — <a href="https://github.com/alexherrero/crickets/wiki/Compatibility">see compatibility</a></sub></p>
 
-**Crickets** is the toolkit that gives your agent its hands — a set of small, composable plugins (capabilities, skills, hooks, and sub-agents) for the things an agent actually does: review a change, run a phased dev loop, build and maintain a wiki, sync a project board, watch token spend, and more. Each is a focused plugin you install into Claude Code or Antigravity. Add what you need, leave what you don't.
+If [AgentM](https://github.com/alexherrero/agentm) is the brain, **crickets** is the toolbox of hands: thirteen small, composable plugins (capabilities, skills, hooks, and sub-agents) for the things an agent actually does — review a change, run a phased dev loop, build and maintain a wiki, sync a project board, watch token spend, and more. Each is a focused plugin you install into Claude Code or Antigravity. Add what you need, leave what you don't. Nothing else is required — crickets runs standalone.
 
-Crickets is designed as the capability half of [AgentM](https://github.com/alexherrero/agentm): AgentM brings the memory, judgment, and personas; crickets brings what they act through. The two are built to be used together, but can be used apart.
+AgentM remembers; crickets acts. No crickets plugin hard-links to AgentM — each one reaches for it through a small discovery bridge and skips gracefully when AgentM isn't installed, so crickets works alone and works smarter the moment AgentM is there too.
 
 ## 🚀 Get started
 
