@@ -26,7 +26,18 @@ description: Standalone adversarial code review of any diff or PR — the advers
 # check-opinion-self-provider-drift.py that flags the agentm opinions/good.md
 # stub falling out of sync with this file's own prose, never the reverse
 # (own frontmatter version 0.1.0 -> 0.1.1).
-version: 0.2.7
+# 0.3.0 = cross-review.sh's two fallback paths (gemini missing / gemini's
+# reply violates the output contract twice) each print a
+# "CROSS-REVIEW-DEGRADED: ..." line on stdout before exiting, so a broken or
+# absent gemini CLI can no longer silently turn a "cross-model" review into a
+# same-model one -- previously only a stderr diagnostic + the exit code
+# recorded the fallback, easy to lose in a transcript. adversarial-reviewer-
+# cross.md's Step 4 now relays that line verbatim instead of paraphrasing it
+# away (own frontmatter version 0.1.0 -> 0.2.0). New
+# scripts/test_cross_review_degradation.py exercises all three paths against
+# a mocked gemini binary on PATH -- well-formed passthrough, malformed-reply-
+# then-one-retry-then-reject, and missing-binary -- no live LLM calls.
+version: 0.3.0
 category: Coding
 requires: []
 standalone: true

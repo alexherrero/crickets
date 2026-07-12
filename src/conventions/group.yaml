@@ -81,4 +81,16 @@ capabilities: [testing-conventions, releasing-conventions, conventions]
 #          yet wired" to "wired and live" -- the gate now has a real caller
 #          (development-lifecycle's fanout_announcement.py), reconciling the
 #          dark item this rule named as a follow-up at its own authoring.
-version: 0.8.2
+# 0.9.0 = new scripts/coalescence_checks.py mechanizes a narrow slice of
+#          three of the coalescence-gate rule's seven close-out items
+#          (narrative row / shipping-item board state / archive hygiene) as
+#          a cheap file-read or `gh` API assertion apiece -- ship-release's
+#          mechanical workflow gains precondition 6, which aborts the cut
+#          with a specific message on a failure. Closes the gap where a
+#          release could complete without ever having run the checklist it
+#          claims to follow. coalescence-gate.md documents the machine-
+#          checked slice per item without overclaiming the parts that still
+#          need a human read (the whole arc's narrative rows, the whole
+#          board's plain-English pass). ship-release SKILL.md 0.2.2 -> 0.3.0;
+#          coalescence-gate.md 0.1.0 -> 0.2.0.
+version: 0.9.0

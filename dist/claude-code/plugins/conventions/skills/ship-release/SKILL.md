@@ -3,7 +3,7 @@ name: ship-release
 description: Release discipline and mechanics in one skill — pre-release checklist (CI green on every OS, version bump committed, CHANGELOG authored, dist/ committed, paired-release order locked for cross-repo releases), then the mechanical cut (conventional-commit semver auto-sizing, CHANGELOG prepend, tag, push, `gh release create`).
 kind: skill
 supported_hosts: [claude-code, antigravity]
-version: 0.2.2
+version: 0.3.0
 install_scope: project
 ---
 
@@ -67,6 +67,7 @@ Once the pre-release checklist above is satisfied, cut the release.
 3. Working tree clean: `git status --porcelain` empty.
 4. Local is pushed: `git fetch && [ -z "$(git log origin/HEAD..HEAD --oneline)" ]`.
 5. At least one commit since the last tag. If `git describe --tags HEAD` equals the last tag exactly, abort with "nothing to ship".
+6. **Coalescence close-out assertions pass (deterministic).** Run `python3 <conventions-plugin-root>/scripts/coalescence_checks.py --tag vX.Y.Z --repo-root .` (on Claude Code, `<conventions-plugin-root>` is `${CLAUDE_PLUGIN_ROOT}`; on a host that doesn't set it, locate the installed `conventions` plugin's own `scripts/` dir). Pass `--item-id <board item id>` when this release's shipping item is tracked in `.harness/project.json`'s board — omit it to skip that sub-check gracefully rather than guess at an id. This mechanizes three of the seven [`coalescence-gate`](../../rules/coalescence-gate.md) items so a release can no longer complete without ever actually having satisfied them: (1) the tag has a matching row in this project's Completed-Features.md-equivalent narrative page (or, for a project with no local copy of its own, in a configured sibling's), (5) no `PLAN.archive.*` file sits flat in `.harness/` outside `.harness/archive/`, and (3) — when an item id is given — that item's board row is closed. A **FAIL** aborts the cut with the script's own specific message; a **SKIP** (the convention isn't wired up in this project, or no item id resolves) does not block. The remaining four `coalescence-gate` items (release-body roadmap ids, a plain-English board pass, dark-registry reconciliation, an orphan census) stay session discipline — they need human judgment this script can't cheaply substitute for.
 
 ### Input handling
 
@@ -169,3 +170,5 @@ Two same-named skills existed side by side: the discipline checklist, authored d
 **Refined 2026-07-01 (v0.2.1):** added the "Update the latest-release note" step (README + wiki `Home.md`). The merged mechanical workflow tagged the release without touching the documented, release-driven latest-release note, so every cut left it one version behind — a step the old manual habit carried but the skill never encoded. The Architecture "Recent changes" block is deliberately out of scope: it is a separate, as-needed architectural narrative, not a per-release element.
 
 **Refined 2026-07-11 (v0.2.2, Consolidation arc CONS-8):** added checklist item 8, pointing at the new `release-cadence` rule — the Consolidation-arc evidence found eleven distinct features once shipped under one release tagged "Minor," and internal codenames leaking into commit subjects. The rule states the standard; this skill's checklist is where a session actually checks it before tagging.
+
+**Refined 2026-07-11 (v0.3.0):** added mechanical-workflow precondition 6, wiring `scripts/coalescence_checks.py` (new) into the cut itself. Until now `coalescence-gate`'s seven-item checklist was pure session discipline — nothing verified a release had actually satisfied any of it, so a cut could complete without ever having run the checklist it claims to follow. The new script mechanizes three of the seven items (narrative row, archive hygiene, board-item closed) as a cheap file-read or `gh` API assertion apiece; the other four items still need human judgment and stay prose.
