@@ -1,7 +1,7 @@
 <!-- mode: index -->
 # Why it works
 
-These pages explain *why* crickets works the way it does — the principles behind adversarial review, deterministic gates, and phase-gating, and more. For technical specifications, see [Reference](Reference).
+crickets is the toolbox of hands that pairs with [AgentM](https://github.com/alexherrero/agentm)'s memory: AgentM remembers, crickets acts. These pages explain *why* crickets works the way it does — the principles behind adversarial review, deterministic gates, and phase-gating, and more. For technical specifications, see [Reference](Reference).
 
 ## What's here
 
