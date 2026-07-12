@@ -22,6 +22,16 @@
 #   2. A line starting with `DEFECT: path:line`
 #   3. A block starting with `NO ISSUES FOUND`
 # Prose-only responses are rejected.
+#
+# Degradation is never silent: both fallback paths (exit 1 and exit 2) print
+# a "CROSS-REVIEW-DEGRADED: ..." line on stdout before exiting, in addition to
+# the diagnostic already on stderr. A missing/broken gemini CLI used to leave
+# only a stderr line + the exit code as evidence -- easy to miss in a
+# transcript, and invisible to anything that only captures stdout. The marker
+# text is a stable, grep-able contract of its own (see
+# scripts/test_cross_review_degradation.py): callers should relay it verbatim
+# rather than paraphrase it away (adversarial-reviewer-cross.md's Step 4
+# does exactly that).
 
 set -uo pipefail
 
@@ -84,6 +94,7 @@ call_gemini() {
 
 main() {
   command -v gemini >/dev/null 2>&1 || {
+    echo "CROSS-REVIEW-DEGRADED: gemini CLI unavailable, using same-model reviewer"
     echo "cross-review: gemini CLI not found — caller should fall back" >&2
     exit 1
   }
@@ -122,6 +133,7 @@ main() {
     exit 0
   fi
 
+  echo "CROSS-REVIEW-DEGRADED: gemini response violated the output contract twice, using same-model reviewer"
   echo "cross-review: contract violated after retry. Raw output follows on stderr." >&2
   printf '%s\n' "$output" >&2
   exit 2
