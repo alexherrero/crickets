@@ -373,12 +373,14 @@ def apply_scaffold(root: Path, plan: list[ScaffoldItem], sections: list[str],
     return written
 
 
-# --- CI provisioning: drop the workflow + vendor the gate ----------------------
+# --- CI provisioning: drop the workflow + vendor the gate + transform ----------
 # The single lint-then-publish wiki workflow template (wiki-sync.yml: a lint-wiki
 # job runs the gate, an update-wiki job publishes only `needs: lint-wiki`), plus
-# the vendored check-wiki gate the lint job invokes (GH Actions has no
+# the vendored check-wiki gate the lint job invokes and the vendored
+# wiki_publish_transform.py the publish step invokes (GH Actions has no
 # ${CLAUDE_PLUGIN_ROOT}). The workflow is gap-fill (the user owns it after install
-# — never overwrite); the gate is (re)vendored when missing or on --resync-gate.
+# — never overwrite); the gate + transform are (re)vendored when missing or on
+# --resync-gate.
 
 TEMPLATE_WORKFLOWS = ["wiki-sync.yml"]
 
@@ -386,22 +388,24 @@ TEMPLATE_WORKFLOWS = ["wiki-sync.yml"]
 def plan_ci(target_root: Path, plugin_root: Path = PLUGIN_ROOT,
             resync_gate: bool = False) -> dict:
     """What CI provisioning WOULD do (no writes): which workflows are missing
-    (would be dropped) vs present (skipped), and whether the gate would be
-    vendored. For --preview."""
+    (would be dropped) vs present (skipped), and whether the gate / transform
+    would be vendored. For --preview."""
     wf_dir = target_root / ".github" / "workflows"
     missing = [name for name in TEMPLATE_WORKFLOWS if not (wf_dir / name).exists()]
     skipped = [name for name in TEMPLATE_WORKFLOWS if (wf_dir / name).exists()]
     gate_dest = target_root / _vendor.VENDOR_REL
     gate = resync_gate or not gate_dest.exists()
-    return {"workflows": missing, "skipped": skipped, "gate": gate}
+    transform_dest = target_root / _vendor.TRANSFORM_VENDOR_REL
+    transform = resync_gate or not transform_dest.exists()
+    return {"workflows": missing, "skipped": skipped, "gate": gate, "transform": transform}
 
 
 def provision_ci(target_root: Path, plugin_root: Path = PLUGIN_ROOT,
                  resync_gate: bool = False) -> dict:
     """Drop the lint-then-publish wiki workflow template into
     <target>/.github/workflows/ (gap-fill — never overwrites a user-owned workflow)
-    and vendor the check-wiki gate into <target>/.github/scripts/. Returns
-    {workflows, skipped, gate}."""
+    and vendor the check-wiki gate + wiki_publish_transform.py into
+    <target>/.github/scripts/. Returns {workflows, skipped, gate, transform}."""
     workflows_src = plugin_root / "templates" / "workflows"
     wf_dir = target_root / ".github" / "workflows"
     written, skipped = [], []
@@ -416,7 +420,10 @@ def provision_ci(target_root: Path, plugin_root: Path = PLUGIN_ROOT,
     gate_dest = target_root / _vendor.VENDOR_REL
     gate = _vendor.vendor_gate(target_root, plugin_root) \
         if (resync_gate or not gate_dest.exists()) else None
-    return {"workflows": written, "skipped": skipped, "gate": gate}
+    transform_dest = target_root / _vendor.TRANSFORM_VENDOR_REL
+    transform = _vendor.vendor_transform(target_root, plugin_root) \
+        if (resync_gate or not transform_dest.exists()) else None
+    return {"workflows": written, "skipped": skipped, "gate": gate, "transform": transform}
 
 
 # --- non-public cost warning ---------------------------------------------------
@@ -493,7 +500,8 @@ def main(argv=None) -> int:
     ap.add_argument("--no-ci", action="store_true",
                     help="scaffold the wiki only; skip CI provisioning (workflows + gate)")
     ap.add_argument("--resync-gate", action="store_true",
-                    help="re-vendor the check-wiki gate into .github/scripts/ and exit (post-upgrade)")
+                    help="re-vendor the check-wiki gate + wiki_publish_transform.py into "
+                         ".github/scripts/ and exit (post-upgrade)")
     ap.add_argument("--visibility", default=None,
                     choices=["public", "private", "internal", "unknown"],
                     help="override repo-visibility detection (default: auto-detect via gh)")
@@ -502,8 +510,10 @@ def main(argv=None) -> int:
     target_root = args.root.resolve().parent  # the repo root (wiki's parent)
 
     if args.resync_gate:
-        dest = _vendor.vendor_gate(target_root, PLUGIN_ROOT)
-        print(f"wiki-init: re-vendored gate -> {dest}")
+        gate_dest = _vendor.vendor_gate(target_root, PLUGIN_ROOT)
+        transform_dest = _vendor.vendor_transform(target_root, PLUGIN_ROOT)
+        print(f"wiki-init: re-vendored gate -> {gate_dest}")
+        print(f"wiki-init: re-vendored transform -> {transform_dest}")
         return 0
 
     sections = parse_sections(args.sections)
@@ -528,13 +538,14 @@ def main(argv=None) -> int:
     existing = {str(p.relative_to(args.root)) for p in args.root.rglob("*") if p.is_file()} \
         if args.root.is_dir() else set()
     plan = compute_scaffold_plan(existing, sections, components)
-    ci = plan_ci(target_root) if not args.no_ci else {"workflows": [], "skipped": [], "gate": False}
+    ci = plan_ci(target_root) if not args.no_ci else \
+        {"workflows": [], "skipped": [], "gate": False, "transform": False}
 
     # Cost warning fires only when this run would ADD a billing surface — i.e.
     # at least one workflow would be dropped — on a non-public target.
     warn = cost_warning(visibility) if (not args.no_ci and ci["workflows"]) else None
 
-    if not plan and not ci["workflows"] and not ci["gate"]:
+    if not plan and not ci["workflows"] and not ci["gate"] and not ci["transform"]:
         print(f"wiki-init: ✓ {args.root} already scaffolded + CI provisioned — nothing to do.")
         return 0
 
@@ -543,12 +554,14 @@ def main(argv=None) -> int:
               f"(sections: {', '.join(sections)}):")
         for it in plan:
             print(f"  + {args.root}/{it.relpath}  ({it.kind})")
-    if not args.no_ci and (ci["workflows"] or ci["gate"]):
+    if not args.no_ci and (ci["workflows"] or ci["gate"] or ci["transform"]):
         print(f"wiki-init: CI provisioning under {target_root}/.github/:")
         for name in ci["workflows"]:
             print(f"  + .github/workflows/{name}")
         if ci["gate"]:
             print("  + .github/scripts/check-wiki.py  (vendored gate)")
+        if ci["transform"]:
+            print("  + .github/scripts/wiki_publish_transform.py  (vendored transform)")
         for name in ci["skipped"]:
             print(f"  = .github/workflows/{name}  (exists — kept)")
 
@@ -574,6 +587,8 @@ def main(argv=None) -> int:
             print(f"  wrote {p}")
         if result["gate"]:
             print(f"  vendored {result['gate']}")
+        if result["transform"]:
+            print(f"  vendored {result['transform']}")
     print("wiki-init: done.")
     return 0
 
