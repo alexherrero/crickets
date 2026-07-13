@@ -5,6 +5,27 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.28.0] — 2026-07-12 — Minor: the Consolidation arc's follow-ups batch lands on crickets
+
+**MINOR.** This is the crickets half of the follow-up work that ran after the Consolidation arc's exit gate — five PRs (#186–#190) spanning a real bug fix, a cost-gate wiring, a visitor-facing wording pass, mechanized close-out checks with cross-review's silent-fallback risk closed, and a docs-drift correction. Pairs with [agentm v8.0.0](https://github.com/alexherrero/agentm/releases/tag/v8.0.0), which declares the V8/Autonomy era complete ahead of its deeper proving report by explicit operator decision, and carries the agentm-side half of this same window.
+
+### Added
+
+- **Coalescence close-out checks mechanized** (`78b7ee8`, #189; `conventions 0.8.2 → 0.9.0`) — `src/conventions/scripts/coalescence_checks.py` turns three of the seven-item coalescence-gate checklist into cheap, deterministic assertions wired into `ship-release`'s preconditions: the release's tag has a matching narrative row (falling back to agentm's Completed-Features.md when this repo has no local copy of its own), no `PLAN.archive.*` file sits flat in `.harness/`, and a named board item is actually closed. A FAIL aborts the cut with a specific message; a SKIP (the convention not wired up) never blocks.
+- **Cross-review degradation is now visible, not silent** (`78b7ee8`, #189; `code-review 0.2.7 → 0.3.0`) — confirmed the Gemini CLI is genuinely absent on the reference machine and that `cross-review.sh`'s fallback path was real but silent. Both fallback paths (missing binary, twice-malformed reply) now print a `CROSS-REVIEW-DEGRADED: ...` marker on stdout, and `adversarial-reviewer-cross.md` relays it verbatim instead of paraphrasing it away.
+- **Fan-out cost gate wired into the dispatch-announcement path** (`4f3e3ff`, #187; `development-lifecycle`) — the CONS-9 proving window's own scenario, wiring `fanout_cost_gate.py`'s existing budget check into a real dispatch flow rather than leaving it callable-but-unconsumed.
+
+### Changed
+
+- **Visitor-facing "what is crickets" wording** (`3c6a16b`, #188) — README/wiki Home lead and the explanation landing page now open with the "AgentM is the brain, crickets is the toolbox of hands" framing in place of more abstract prior copy; the GitHub About line updated to match.
+- **`wiki/architecture/plugins/Plugins.md` roster reconciled against the real `src/*/group.yaml` manifests** (`e3cade9`, #190) — the page had drifted (missing `diagnostics` and `research`, still listing two now-merged conventions plugins as separate), caught while writing the wording pass above and fixed as its own follow-up.
+
+### Fixed
+
+- **`session-cost-capture.sh`'s transcript-slug no longer double-dashes** (`095f8e8`, #186; `tokens`) — the canonical hook script's slug formula produced a leading double-dash (`tr` alone already emits the leading dash from an absolute path's `/`), silently no-op'ing every firing of an installed hook; caught while dogfooding the hook in agentm during the same window, fixed here at its canonical source.
+
+Pairs with [agentm v8.0.0](https://github.com/alexherrero/agentm/releases/tag/v8.0.0).
+
 ## [v3.27.0] — 2026-07-10 — Minor: Consolidation arc closes on crickets — slimming, gate hardening, and prose restoration
 
 **MINOR.** This release closes out the crickets side of the Consolidation arc. CONS-2 slims the repo: seven dead one-off/superseded scripts are retired, four duplicate `find_*.py` discovery bridges (capability / governing-design / process-seam / workflow-persona) merge into one `agentm_bridge.py` behind a four-verb dispatcher, a new `check-cross-repo-script-parity.py` gate compares crickets' and agentm's independently-maintained PII/wiki rule sets for drift, and `recoverability_classifier.py` — shipped fully implemented but callable only from its own unit test — finally gets a real `push` CLI wired behind the recoverability skill's push guidance. CONS-3 restores prose discipline: `check-slop.py` flips from report-only to blocking (`--strict`) at warning-tier across crickets' two call sites, ten genuine slop findings get hand-fixed across seven pages (not blanket-stripped), and eleven reference pages that were actually prose-shaped explanation get re-homed to `wiki/explanation/`. Also ships a small KeyError fix in the github-projects aggregate render and a docs sweep repointing the last stale `src/pii/` references to `src/privacy/`. This is the crickets half of a coordinated pair with agentm's own Consolidation-arc release, cutting around the same time — the cross-link lands here once both sides are confirmed live.
