@@ -93,7 +93,12 @@ class TestClaudeEmitter(unittest.TestCase):
         # 0.6.2 = Consolidation arc CONS-3 task 3 — voice-a4-load-bearing hint
         # extended with an explicit term-of-art carve-out, locked by a new
         # check-slop test.
-        self.assertEqual(self._plugin_json("wiki")["version"], "0.6.2")
+        # 0.7.0 = L6 wiki-publish-render fix (F10/F11) — new
+        # scripts/wiki_publish_transform.py strips YAML frontmatter and
+        # rewrites relative asset links to raw-asset URLs at publish time;
+        # wired into wiki-sync.yml between rsync and commit, plus a post-push
+        # render smoke check; vendor_gate.py vendors it alongside check-wiki.py.
+        self.assertEqual(self._plugin_json("wiki")["version"], "0.7.0")
         # 0.3.0 = check-no-pii.sh + templates/hooks/pre-push moved into src/pii/
         # so they actually ship inside the plugin payload (R2.4 task 7).
         # 0.3.1 = check-no-pii.sh scan collapsed to one grep per file (fixes a
