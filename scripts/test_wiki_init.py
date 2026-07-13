@@ -500,6 +500,7 @@ class TestScaffoldPassesCheckWiki(unittest.TestCase):
 
 class TestProvisionCI(unittest.TestCase):
     GATE = SCRIPTS / "check-wiki.py"
+    TRANSFORM = SCRIPTS / "wiki_publish_transform.py"
 
     def test_drops_workflow_and_vendors_gate(self):
         with tempfile.TemporaryDirectory() as td:
@@ -509,6 +510,8 @@ class TestProvisionCI(unittest.TestCase):
             self.assertTrue((wf / "wiki-sync.yml").is_file())           # one lint-gates-publish workflow
             gate = target / ".github" / "scripts" / "check-wiki.py"
             self.assertEqual(gate.read_bytes(), self.GATE.read_bytes())  # vendored = plugin gate
+            transform = target / ".github" / "scripts" / "wiki_publish_transform.py"
+            self.assertEqual(transform.read_bytes(), self.TRANSFORM.read_bytes())  # vendored = plugin transform
 
     def test_workflow_gap_fill_never_overwrites(self):
         with tempfile.TemporaryDirectory() as td:
@@ -527,9 +530,13 @@ class TestProvisionCI(unittest.TestCase):
             wi.provision_ci(target)
             gate = target / ".github" / "scripts" / "check-wiki.py"
             gate.write_text("STALE", encoding="utf-8")
-            r = wi.provision_ci(target)                                  # gate present -> skip
+            transform = target / ".github" / "scripts" / "wiki_publish_transform.py"
+            transform.write_text("STALE", encoding="utf-8")
+            r = wi.provision_ci(target)                                  # both present -> skip
             self.assertIsNone(r["gate"])
+            self.assertIsNone(r["transform"])
             self.assertEqual(gate.read_text(encoding="utf-8"), "STALE")  # untouched
+            self.assertEqual(transform.read_text(encoding="utf-8"), "STALE")  # untouched
 
     def test_resync_gate_revendors_even_when_present(self):
         with tempfile.TemporaryDirectory() as td:
@@ -537,8 +544,11 @@ class TestProvisionCI(unittest.TestCase):
             wi.provision_ci(target)
             gate = target / ".github" / "scripts" / "check-wiki.py"
             gate.write_text("STALE", encoding="utf-8")
+            transform = target / ".github" / "scripts" / "wiki_publish_transform.py"
+            transform.write_text("STALE", encoding="utf-8")
             wi.provision_ci(target, resync_gate=True)
             self.assertEqual(gate.read_bytes(), self.GATE.read_bytes())
+            self.assertEqual(transform.read_bytes(), self.TRANSFORM.read_bytes())
 
     def test_plan_ci_reports_then_converges(self):
         with tempfile.TemporaryDirectory() as td:
@@ -546,10 +556,12 @@ class TestProvisionCI(unittest.TestCase):
             p = wi.plan_ci(target)
             self.assertEqual(p["workflows"], ["wiki-sync.yml"])
             self.assertTrue(p["gate"])
+            self.assertTrue(p["transform"])
             wi.provision_ci(target)
             p2 = wi.plan_ci(target)
             self.assertEqual(p2["workflows"], [])     # all present
             self.assertFalse(p2["gate"])              # gate present
+            self.assertFalse(p2["transform"])         # transform present
 
 
 class TestCostWarning(unittest.TestCase):

@@ -79,7 +79,14 @@ standalone: true
 #          capabilities dualize [wiki-maintenance, wiki]. check-all.sh's
 #          check-wiki call site re-pointed to src/wiki/scripts/check-wiki.py
 #          (the linter moves with the directory).
-version: 0.6.2
+# 0.7.0 = L6 wiki-publish-render fix (F10/F11): new
+#          scripts/wiki_publish_transform.py strips YAML frontmatter and
+#          rewrites relative asset links to raw-asset URLs at publish time
+#          (GitHub Wiki renders neither correctly); wired into wiki-sync.yml
+#          between rsync and commit, plus a post-push render smoke check.
+#          vendor_gate.py now also vendors the transform (vendor_transform())
+#          alongside check-wiki.py for consuming repos.
+version: 0.7.0
 capabilities: [wiki-maintenance, wiki]
 enhances:
   - group: development-lifecycle
