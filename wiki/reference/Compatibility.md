@@ -13,7 +13,7 @@ Every customization declares `supported_hosts:` in its manifest, and the generat
 
 ## Operating systems
 
-Linux, macOS, and Windows (PowerShell 7+) are tested on **every push and PR** — the per-OS workflows, the aggregate badge, and the gate battery are in [CI gates](CI-Gates).
+Linux, macOS, and Windows (PowerShell 7+) are tested on every pull request (a plain push to `main` only runs a light syntax check) — the per-OS workflows, the aggregate badge, and the gate battery are in [CI gates](CI-Gates).
 
 ## Per-plugin host support
 
@@ -21,19 +21,19 @@ Claude Code supports every plugin fully; the **Support** column reflects Antigra
 
 | Plugin | Support | Antigravity gaps |
 |---|---|---|
-| `developer-workflows` | ⚠️ Partial | the `harness-context` SessionStart hook is Claude-only |
+| `development-lifecycle` | ⚠️ Partial | the `harness-context` SessionStart hook is Claude-only |
 | `developer-safety` | ⚠️ Partial | `kill-switch` fires observe-only; `steer` doesn't fire at all; `commit-on-stop` is fully effective (below) |
 | `code-review` | ⚠️ Partial | the `evidence-tracker` hook is Claude-only |
-| `github-ci` | ✅ Supported | — |
-| `pii` | ✅ Supported | — |
-| `wiki-maintenance` | ⚠️ Partial | the slash commands + the `wiki-author` skill are Claude-only ([why](Antigravity-Limitations)) |
-| `design-docs` | ✅ Supported | — |
+| `maintenance` | ✅ Supported | — |
+| `privacy` | ✅ Supported | — |
+| `wiki` | ⚠️ Partial | the slash commands + the `wiki-author` skill are Claude-only ([why](Antigravity-Limitations)) |
+| `design` | ✅ Supported | — |
 | `github-projects` | ✅ Supported | — |
 | `obsidian-vault` | ⚠️ Partial | the `conflict-merger-session-start` hook is Claude-only (SessionStart) |
-| `releasing-conventions` | ✅ Supported | — |
-| `testing-conventions` | ✅ Supported | — |
-| `status-line-meter` | ❌ Claude Code only | built for the Claude Code status line; Antigravity has no status-line surface to target |
-| `token-audit` | ❌ Claude Code only | its only primitive, the `/token-audit` command, is Claude-only |
+| `conventions` | ✅ Supported | — |
+| `tokens` | ⚠️ Partial | `status-line-meter` is Claude Code only (no status-line surface on Antigravity); `token-audit`'s `/token-audit` command is Claude-only |
+| `diagnostics` | ✅ Supported | — |
+| `research` | ✅ Supported | — |
 
 ## Hook effectiveness
 
@@ -45,7 +45,7 @@ A hook can be *emitted* on a host without being *effective* there. Antigravity r
 | `kill-switch` | `developer-safety` | ✅ effective | ⚠️ advisory only | vetoes via exit code; Antigravity ignores exit codes |
 | `steer` | `developer-safety` | ✅ effective | ❌ does not fire | fires on `UserPromptSubmit`; the generator skips registering that event for Antigravity, so the hook never runs there at all |
 | `evidence-tracker` | `code-review` | ✅ effective | ❌ Claude-only | needs the veto contract Antigravity lacks (`[claude-code]`) |
-| `harness-context` | `developer-workflows` | ✅ effective | ❌ Claude-only | SessionStart — Antigravity has no SessionStart surface |
+| `harness-context` | `development-lifecycle` | ✅ effective | ❌ Claude-only | SessionStart — Antigravity has no SessionStart surface |
 
 **Rule of thumb:** side-effect-only hooks port to both hosts; any hook whose value depends on a veto (exit code) or an inject (stdout) is Claude-only-effective. The full catalog is in [Hooks](Hooks).
 
@@ -67,7 +67,7 @@ Each is tracked, with its re-address trigger, in the canonical [Antigravity limi
 
 ## Out-of-scope hosts
 
-- **Gemini CLI** — dropped in v3.0. Google replaced it with the Antigravity CLI (`agy`), which **is** supported; consumer Gemini CLI sunsets 2026-06-18. ([agentm Foundations HLD — crickets split](https://github.com/alexherrero/agentm/wiki/agentm-foundations-hld).)
+- **Gemini CLI** — dropped in v0.9.0 (2026-05-17, "Gemini-CLI host removal"). Google replaced it with the Antigravity CLI (`agy`), which **is** supported; consumer Gemini CLI sunsets 2026-06-18. ([agentm Foundations HLD — crickets split](https://github.com/alexherrero/agentm/wiki/agentm-foundations-hld).)
 - **Codex** — never had an adapter.
 
 ## See also
