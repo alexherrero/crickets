@@ -2,7 +2,7 @@
 # Coordinator roles
 
 > [!NOTE]
-> **Status: implemented.** The coordinator roster shipped as loose `agents/` role-definitions in `developer-workflows` 0.8.0 (V5-10 sibling #4 — `role-agent-defs`). All four roles live under `src/developer-workflows/agents/`.
+> **Status: implemented.** The coordinator roster shipped as loose `agents/` role-definitions in `developer-workflows` 0.8.0 (V5-10 sibling #4 — `role-agent-defs`) — that plugin has since renamed to `development-lifecycle` (AG Wave A; `developer-workflows` still resolves as a declared-both-names capability alias). All four roles live under `src/development-lifecycle/agents/`.
 
 The **coordinator roster** is four loose role-definitions that compose onto the `developer-workflows` phase loop. They are **thin skins over capabilities that already exist** — no new engine, and no net-new sub-agent. Each role names a persona in the operator-as-coordinator flow (research → author a plan → execute it in a worktree → integrate it → read the queue) and binds to the commands and agents that already drive that step. Each entry below states what the role wraps, whether it's read-only or active, its tool allowlist, and any forward-reference to a surface not built yet.
 
@@ -20,7 +20,7 @@ The **coordinator roster** is four loose role-definitions that compose onto the 
 
 ## The compose-onto-`developer-workflows` contract
 
-These are **roles** — thin layers that compose onto surfaces `developer-workflows` already ships. Each is a loose `agents/` role-definition (a sub-agent definition under `src/developer-workflows/agents/`, beside the existing `explorer.md` / `evaluator.md`) that names a persona and points at the phase commands and agents that already do the work. A role adds no new mechanism — it wraps shipped surfaces:
+These are **roles** — thin layers that compose onto surfaces `development-lifecycle` (formerly `developer-workflows`) already ships. Each is a loose `agents/` role-definition (a sub-agent definition under `src/development-lifecycle/agents/`, beside the existing `explorer.md` / `evaluator.md`) that names a persona and points at the phase commands and agents that already do the work. A role adds no new mechanism — it wraps shipped surfaces:
 
 - `researcher` dispatches the shipped `explorer` (codebase fan-out) and runs its own `WebFetch` for light web lookups, and forward-references the operator's global research agent for deep / multi-source work — composing with it when present, never vendoring or porting it. It fronts those capabilities without adding a fan-out engine of its own.
 - `tech-lead` is the authoring persona for the `/design → /plan` step — both shipped; `/design` is the upstream authoring step, `/plan` the floor it sequences down to (see below).
@@ -52,7 +52,7 @@ The brief-to-plan authoring persona (full tool access): it turns a brief into an
 This lets `tech-lead` queue several plans and activate them one at a time, feeding the worker pool without singleton collisions. After it stages and activates a named plan, running `/work` against it is what hands the plan to a worktree — `/work`'s own auto-spawn step creates the worktree via the host's native primitive when authorized (an explicit operator instruction, or the durable `isolation.mode: worktree-per-plan` config opt-in — never autonomous, [Developer safety design](crickets-developer-safety)); `tech-lead` produces plans, it does not spawn worktrees itself.
 
 > [!NOTE]
-> **`/design` is the shipped upstream step.** The richer author → translate → sequence authoring path (`/design`, `src/developer-workflows/commands/design.md`) shipped at crickets v3.11.0 (2026-06-14). `tech-lead` authors via `/design` when a brief needs the fuller translate-and-sequence treatment, and drops straight to `/plan` (its original floor) for briefs that don't. `/design`'s output is a topo-ordered set of named plans that `/plan` still feeds one at a time.
+> **`/design` is the shipped upstream step.** The richer author → translate → sequence authoring path (`/design`, `src/design/commands/design.md`) shipped at crickets v3.11.0 (2026-06-14). `tech-lead` authors via `/design` when a brief needs the fuller translate-and-sequence treatment, and drops straight to `/plan` (its original floor) for briefs that don't. `/design`'s output is a topo-ordered set of named plans that `/plan` still feeds one at a time.
 
 ### `worker` (role, active)
 
@@ -83,5 +83,5 @@ Its allowlist is `Read`, `Glob`, `Grep`, and `Bash`, and the Bash is read-only b
 
 - [Named plans](Named-Plans) — the command surface the roles wrap: `/work`, `/plan`, `/queue-status-lite`, and the auto-spawn / auto-close-out worktree flow inside `/work`.
 - [Run a coordinator-directed worker team](Run-A-Coordinator-Directed-Worker-Team) — the playbook that ties the roster together end to end.
-- [Evaluator](Evaluator) — a companion read-only agent in `developer-workflows/agents/`; the same tight-allowlist pattern the read-only roles follow.
+- [Evaluator](Evaluator) — a companion read-only agent in `development-lifecycle/agents/`; the same tight-allowlist pattern the read-only roles follow.
 - [Run a named plan](Run-A-Named-Plan) · [See every active plan](See-Every-Active-Plan) — the worker-lifecycle recipes the `worker` and `project-manager` roles drive.

@@ -9,7 +9,7 @@ The evaluator is dispatched *for* you — you rarely invoke it by hand:
 
 | Caller | How it uses the evaluator |
 |---|---|
-| **`/review` phase** (`developer-workflows`) | dispatches it alongside `adversarial-reviewer` — the reviewer finds bugs, the evaluator grades against the `PLAN.md` Verification clause; their outputs combine |
+| **`/review` phase** (`development-lifecycle`) | not currently wired — `src/development-lifecycle/commands/review.md` dispatches `adversarial-reviewer` (+ cross-model `adversarial-reviewer-cross`) only; the evaluator agent def ships in the same plugin but has no dispatch call site in `review.md` today |
 | **a skill / command / workflow** | wires a rubric-driven gate (e.g. grade an artifact before proceeding) |
 | **you, directly** | dispatch it with a rubric to grade any artifact on disk |
 
@@ -102,5 +102,5 @@ On NEEDS_WORK the FAIL lines name the failing items; route to `/work` (small fix
 ## Related
 
 - [Development lifecycle design — evaluator](crickets-development-lifecycle) — why the tight allowlist, the caller-supplied rubric, and coexisting with `adversarial-reviewer`.
-- [evaluator agent spec](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/agents/evaluator.md) — the canonical body (input/output contracts, full failure modes).
+- [evaluator agent spec](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/agents/evaluator.md) — the canonical body (input/output contracts, full failure modes).
 - [Customization types](Customization-Types) — what `kind: agent` is.
