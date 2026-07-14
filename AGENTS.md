@@ -8,7 +8,7 @@ This repo is a sibling to [`agentm`](https://github.com/alexherrero/agentm). The
 
 | Subdir | What it holds |
 |---|---|
-| `src/<group>/` | Authored source for every customization — 13 plugin groups (`code-review`, `design-docs`, `developer-safety`, `developer-workflows`, `github-ci`, `github-projects`, `obsidian-vault`, `pii`, `releasing-conventions`, `status-line-meter`, `testing-conventions`, `token-audit`, `wiki-maintenance`); each groups its own skills/commands/agents/hooks/etc. |
+| `src/<group>/` | Authored source for every customization — 13 plugin groups (`code-review`, `conventions`, `design`, `developer-safety`, `development-lifecycle`, `diagnostics`, `github-projects`, `maintenance`, `obsidian-vault`, `privacy`, `research`, `tokens`, `wiki`); each groups its own skills/commands/agents/hooks/etc. |
 | `dist/` | Generated native plugins per host (`claude-code/`, `antigravity/`), committed — `scripts/generate.py build` regenerates it from `src/`, and a CI gate proves it matches. |
 | `scripts/` | `generate.py` (the src→dist generator), validators, CI helpers, the PII detector |
 | `templates/hooks/` | Hook templates installed into target projects (e.g. `pre-push`) |
