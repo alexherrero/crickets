@@ -43,6 +43,7 @@ _RULE_COVERAGE_MANIFEST = {
     "n": "test_check_wiki_sections.py (RuleNHeadingVariantTest)",
     "o": "test_check_wiki_sections.py",
     "p": "test_check_wiki_shape.py",
+    "q": "test_check_wiki_rules.py (RuleQTopnoteLengthTest)",
 }
 
 
@@ -332,6 +333,41 @@ class RuleKWordCountTest(unittest.TestCase):
         text = "word " * 5000
         issues = []
         cw.rule_k_word_count(p, "index", text, issues)
+        self.assertEqual(issues, [])
+
+
+class RuleQTopnoteLengthTest(unittest.TestCase):
+    def test_over_cap_fires_soft(self):
+        p = _WIKI_ROOT / "explanation" / "Foo.md"
+        lines = ["# Foo", "", "> [!NOTE]",
+                 "> " + ("word " * 70).strip(), ""]
+        issues = []
+        cw.rule_q_topnote_length(p, "explanation", lines, issues)
+        self.assertEqual(len(issues), 1)
+        self.assertEqual(issues[0].rule, "q")
+        self.assertEqual(issues[0].severity, "soft")
+
+    def test_under_cap_passes(self):
+        p = _WIKI_ROOT / "explanation" / "Foo.md"
+        lines = ["# Foo", "", "> [!NOTE]",
+                 "> **Status: launched.** A short framing sentence.", ""]
+        issues = []
+        cw.rule_q_topnote_length(p, "explanation", lines, issues)
+        self.assertEqual(issues, [])
+
+    def test_non_explanation_mode_exempt(self):
+        p = _WIKI_ROOT / "how-to" / "Foo.md"
+        lines = ["# Foo", "", "> [!NOTE]",
+                 "> " + ("word " * 70).strip(), ""]
+        issues = []
+        cw.rule_q_topnote_length(p, "how-to", lines, issues)
+        self.assertEqual(issues, [])
+
+    def test_no_note_block_passes(self):
+        p = _WIKI_ROOT / "explanation" / "Foo.md"
+        lines = ["# Foo", "", "No note block here.", ""]
+        issues = []
+        cw.rule_q_topnote_length(p, "explanation", lines, issues)
         self.assertEqual(issues, [])
 
 

@@ -63,6 +63,9 @@ Rules (hard = blocking under --strict; soft = always warn-only):
       (a fact-dump; fenced diagrams / code don't count) or a reference is mostly
       prose / over a prose-word ceiling. The combined plugin-reference hybrid
       (## Architecture + ## Reference) is exempt.                       [soft]
+  (q) Top-note length — an explanation page's `> [!NOTE]` block is capped at
+      60 words. The mandated shape is Status + date + 1-2 plain sentences, not
+      a running changelog of accumulated status updates.                [soft]
 
 Usage:
   python3 scripts/check-wiki.py               # warn, exit 0
@@ -727,6 +730,36 @@ def rule_p_shape(p: Path, mode: str | None, lines: list[str], text: str,
              "narrative to an explanation page or split", soft=True)
 
 
+# Ported from agentm's rule q (PR #305) after confirming crickets' own
+# designs/ carries the same bug live (crickets-composition.md's top-note ran
+# 64 words). The mandated top-note shape is Status + date + 1-2 plain
+# sentences -- a short framing summary, not a running changelog. Soft (WARN),
+# matching every other length check in this file, so a legitimately dense
+# one-time status stamp is a signal to review, not a hard block.
+#
+# Scoped to explanation (designs/) only, matching agentm's scope -- tutorial/
+# how-to note blocks carry rule b's required Goal/Time/Prereqs fields, a
+# structurally different and legitimately-longer shape this cap would
+# false-positive on.
+TOPNOTE_WORD_CAP = 60
+
+
+def rule_q_topnote_length(p: Path, mode: str | None, lines: list[str], issues: list[Issue]) -> None:
+    if is_structural(p) or mode != "explanation":
+        return
+    blk = find_note_block(lines)
+    if blk is None:
+        return
+    start, body = blk
+    count = word_count(body)
+    if count > TOPNOTE_WORD_CAP:
+        emit(issues, p, start, "q",
+             f"top-note is {count} words (soft ceiling {TOPNOTE_WORD_CAP}) — "
+             "the mandated shape is Status + date + 1-2 plain sentences; move "
+             "accumulated status narration to the page's own amendment log",
+             soft=True)
+
+
 # ── driver ─────────────────────────────────────────────────────────────────
 
 def collect_issues(wiki_root: Path) -> list[Issue]:
@@ -757,6 +790,7 @@ def collect_issues(wiki_root: Path) -> list[Issue]:
             rule_e_reference_shape(p, mode, lines, heads, issues)
             rule_k_word_count(p, mode, text, issues)
             rule_p_shape(p, mode, lines, text, heads, issues)
+            rule_q_topnote_length(p, mode, lines, issues)
             if _is_component_overview(p, wiki_root):
                 rule_m_section_order(p, heads, co_model, issues)
                 rule_n_heading_variant(p, heads, co_model, issues)

@@ -86,7 +86,12 @@ standalone: true
 #          between rsync and commit, plus a post-push render smoke check.
 #          vendor_gate.py now also vendors the transform (vendor_transform())
 #          alongside check-wiki.py for consuming repos.
-version: 0.7.0
+# 0.7.1 = check-wiki gains rule (q) — top-note length, a soft 60-word ceiling
+#          on an explanation page's `> [!NOTE]` block. Ported from agentm's
+#          rule q (PR #305) to close an undocumented cross-repo-script-parity
+#          divergence; confirmed live against crickets' own designs/
+#          (crickets-composition.md's top-note ran 64 words).
+version: 0.7.1
 capabilities: [wiki-maintenance, wiki]
 enhances:
   - group: development-lifecycle
