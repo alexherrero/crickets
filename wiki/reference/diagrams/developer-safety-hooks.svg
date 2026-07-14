@@ -38,7 +38,7 @@
 
   <!-- workflow box A -->
   <rect x="20" y="148" width="168" height="64" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.5"/>
-  <text x="104" y="170" text-anchor="middle" font-size="12.5" font-weight="600" fill="#34516e">developer-workflows</text>
+  <text x="104" y="170" text-anchor="middle" font-size="10" font-weight="600" fill="#34516e">development-lifecycle</text>
   <text x="104" y="186" text-anchor="middle" font-size="10.5" fill="#34516e">the running loop</text>
   <text x="104" y="201" text-anchor="middle" font-size="9.5" fill="#5B7C9E">/plan · /work · /review · /release</text>
 

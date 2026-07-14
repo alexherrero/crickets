@@ -10,9 +10,9 @@
   <text x="171" y="188" text-anchor="middle" font-size="14.5" font-weight="700" fill="#1e3a5f">github-projects</text>
   <text x="171" y="208" text-anchor="middle" font-size="10.5" font-style="italic" fill="#3A6EA5">one-way vault → board sync</text>
 
-  <!-- developer-workflows (right, the neighbour it both requires and enhances) -->
+  <!-- development-lifecycle (right, the neighbour it both requires and enhances) -->
   <rect x="536" y="150" width="238" height="92" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.5"/>
-  <text x="655" y="188" text-anchor="middle" font-size="14" font-weight="700" fill="#34516e">developer-workflows</text>
+  <text x="655" y="188" text-anchor="middle" font-size="12.5" font-weight="700" fill="#34516e">development-lifecycle</text>
   <text x="655" y="208" text-anchor="middle" font-size="10.5" font-style="italic" fill="#5B7C9E">the phase loop</text>
 
   <!-- requires (hard, solid slate) -->

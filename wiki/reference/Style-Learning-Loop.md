@@ -20,7 +20,7 @@ You rarely touch the loop directly — the wiki-authoring workflows run it for y
 
 | Workflow | How it uses the loop |
 |---|---|
-| **`developer-workflows` phase commands** — `/plan` · `/work` · `/release` · `/bugfix` | dispatch the `documenter` at phase boundaries to author/update wiki pages, composed against the current overlay; operator edits feed the capture |
+| **`development-lifecycle` phase commands** — `/plan` · `/work` · `/release` · `/bugfix` | dispatch the `documenter` at phase boundaries to author/update wiki pages, composed against the current overlay; operator edits feed the capture |
 | **wiki-watcher** ([Wiki Watch Config](Wiki-Watch-Config)) | runs the `documenter` on a loop to keep a wiki in sync — the same compose-then-capture path |
 | **`wiki-author` / `diataxis-author` skill** | the engine — composes drafts via `style_resolver` and captures edits into lessons |
 

@@ -13,7 +13,7 @@ The repair loop — how a red dependency-update PR is diagnosed, patched, and re
 
 How it composes — the base it requires and the substrate it rests on:
 
-![github-ci in the centre with a solid slate arrow up to developer-workflows, the phase-loop base it requires, and a dashed purple arrow down onto the AgentM substrate it composes onto one-way](diagrams/github-ci-composition.svg)
+![github-ci in the centre with a solid slate arrow up to development-lifecycle, the phase-loop base it requires, and a dashed purple arrow down onto the AgentM substrate it composes onto one-way](diagrams/github-ci-composition.svg)
 
 ### How it works
 
@@ -27,7 +27,7 @@ From there it works in a tight loop: apply a fix, push it up, watch the checks r
 |---|---|---|
 | Enhances (soft) | — | None. |
 | Enhanced by (soft) | — | None. |
-| Requires (hard) | [Developer-Workflows](Developer-Workflows) | A hard dependency (`standalone: false`) — GitHub CI installs on top of the base phase loop rather than standing alone. |
+| Requires (hard) | [Development Lifecycle](Development-Lifecycle) | A hard dependency (`standalone: false`) — GitHub CI installs on top of the base phase loop rather than standing alone. |
 | Required by (hard) | — | None. |
 
 ### Why not
@@ -58,7 +58,7 @@ One optional environment variable tunes the fix loop; otherwise the plugin works
 
 ## See also
 
-- [Developer Workflows](Developer-Workflows) — the base plugin GitHub CI requires.
+- [Development Lifecycle](Development-Lifecycle) — the base plugin GitHub CI requires.
 - [Manifest schema](Manifest-Schema) — `requires:` vs `enhances:` and the `standalone` invariant.
 - [Plugin anatomy](Plugin-Anatomy) — what a crickets plugin is and how it's structured.
 - [Install crickets plugins](Install-Into-Project) — the install modes.

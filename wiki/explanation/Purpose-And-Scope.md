@@ -25,7 +25,7 @@ A place to keep agent customizations that:
 
 ## What it's NOT for
 
-- **Workflow state substrate.** `agentm` owns the durable phase state (`.harness/PLAN.md` / `progress.md`, the vault write protocol, named-plan resolution) that `/plan` · `/work` · `/review` · `/release` · `/bugfix` run on. Since the V5 unbundling, each phase's canonical spec ships in crickets's `developer-workflows` plugin — `agentm` no longer vendors them, having retired the byte-duplicated copies.
+- **Workflow state substrate.** `agentm` owns the durable phase state (`.harness/PLAN.md` / `progress.md`, the vault write protocol, named-plan resolution) that `/plan` · `/work` · `/review` · `/release` · `/bugfix` run on. Since the V5 unbundling, each phase's canonical spec ships in crickets's `development-lifecycle` plugin — `agentm` no longer vendors them, having retired the byte-duplicated copies.
 - **Project-specific config.** A particular project's `.claude/` / `.harness/` files belong in that project's repo. crickets ships *portable* customizations, not one codebase's lint config.
 - **Binary artifacts.** Text only — markdown, YAML, JSON, shell. A customization that needs binaries ships a pointer, not the bytes.
 
@@ -34,7 +34,7 @@ A place to keep agent customizations that:
 Sibling repos, cloned side by side (`~/Antigravity/agentm/`, `~/Antigravity/crickets/`):
 
 ```
-  crickets — developer-workflows plugin ships the canonical phase specs
+  crickets — development-lifecycle plugin ships the canonical phase specs
     /setup · /plan · /work · /review · /release · /bugfix
         │  phase specs read/write agentm's durable state (graceful-skip — neither requires the other)
         ▼
@@ -49,7 +49,7 @@ They're **decoupled** — independent release cycles, and no shared install code
 
 ## Non-goals
 
-- **Duplicating the state substrate.** `agentm` owns the durable phase state; a crickets plugin that touches a phase (`developer-workflows` shipping the spec itself, or `code-review` engaging at `/review`) reads/writes that substrate via the resolver bridge rather than reimplementing it, and graceful-skips when the capability is absent.
+- **Duplicating the state substrate.** `agentm` owns the durable phase state; a crickets plugin that touches a phase (`development-lifecycle` shipping the spec itself, or `code-review` engaging at `/review`) reads/writes that substrate via the resolver bridge rather than reimplementing it, and graceful-skips when the capability is absent.
 - **Cross-host parity enforcement.** Each primitive declares its own `supported_hosts`; there's no "every primitive must support both hosts" rule. A Claude-only hook is fine.
 - **A catalog supermarket.** The catalog stays small, opinionated, and deliberate — each primitive earns its keep through use, not by being a catalog entry.
 

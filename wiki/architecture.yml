@@ -15,7 +15,7 @@ architecture:
   components:
     - slug: plugins
       title: Plugins
-      summary: The shipped plugins (developer-workflows · developer-safety · code-review · github-ci · wiki-maintenance · pii) and what each contains.
+      summary: The shipped plugins (development-lifecycle · developer-safety · code-review · github-ci · wiki-maintenance · pii) and what each contains.
       overview: Plugins
     - slug: customization-model
       title: Customization model

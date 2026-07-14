@@ -3,7 +3,7 @@
 
 ## Architecture
 
-Wiki Maintenance keeps a repo's docs alive instead of letting them rot. It sets up a wiki from scratch, holds every page to a clear Diátaxis shape and your own writing voice, and watches the code so the docs move with it rather than falling behind. The idea is that a wiki fails when it's hand-tended and inconsistent, so this plugin makes the structure enforce itself, teaches the agent your voice from your own edits, and runs the upkeep safely enough to leave on. It stands alone — you can use it in any repo on its own — and it slots naturally into Developer Workflows when that plugin is installed, updating pages as part of the normal loop.
+Wiki Maintenance keeps a repo's docs alive instead of letting them rot. It sets up a wiki from scratch, holds every page to a clear Diátaxis shape and your own writing voice, and watches the code so the docs move with it rather than falling behind. The idea is that a wiki fails when it's hand-tended and inconsistent, so this plugin makes the structure enforce itself, teaches the agent your voice from your own edits, and runs the upkeep safely enough to leave on. It stands alone — you can use it in any repo on its own — and it slots naturally into Development Lifecycle when that plugin is installed, updating pages as part of the normal loop.
 
 ### Diagram
 
@@ -11,21 +11,21 @@ How the authoring flow runs — from a request or a code change through page-cho
 
 ![The wiki-maintenance authoring flow: an operator request or a watcher run feeds a page-and-mode choice, which hands off to the documenter to author, repair, or migrate a page into an updated page shipped as a pull request; your own edits feed a voice-learning loop that shapes the next write](diagrams/wiki-maintenance-authoring.svg)
 
-How it composes — standalone, resting on the AgentM substrate, softly enhancing Developer Workflows when both are installed:
+How it composes — standalone, resting on the AgentM substrate, softly enhancing Development Lifecycle when both are installed:
 
-![How wiki-maintenance composes: it stands alone and rests on the AgentM substrate of memory, opinions, and personas, with a dashed-green soft-enhances arrow out to developer-workflows, which it documents at phase boundaries only when both are installed](diagrams/wiki-maintenance-composition.svg)
+![How wiki-maintenance composes: it stands alone and rests on the AgentM substrate of memory, opinions, and personas, with a dashed-green soft-enhances arrow out to development-lifecycle, which it documents at phase boundaries only when both are installed](diagrams/wiki-maintenance-composition.svg)
 
 ### How it works
 
 You start by scaffolding the wiki — the plugin lays down the folders, sidebars, and section landing pages, and it never overwrites anything that already exists, so it's safe to run on a wiki you've already begun. After that, a plain request like "update the wiki with what we just shipped" is enough: the plugin works out which page should change, then hands the actual writing to a documenter that only ever touches the wiki, keeps your hand edits intact, and never edits code. Behind that write sits the real discipline — picking the right kind of page, filling it to the template, fixing pages that have drifted, and, when you're moving an older wiki over, reshaping it into the standard layout. It also learns your voice: when you edit a page, it can pick up a lasting lesson from your change, and it checks with you before treating that lesson as a general rule.
 
-For ongoing upkeep, a watcher can run on its own. Each run looks at what's changed in the code, decides whether it's worth documenting, and, when it is, sends the documenter to write the update — opening a pull request by default so a human still merges it. It's built to be run on a schedule without ever doubling up or dropping a change. And when Developer Workflows is installed, the same documenter is called at the end of each phase, so the docs get refreshed as a normal part of the loop rather than as a separate chore.
+For ongoing upkeep, a watcher can run on its own. Each run looks at what's changed in the code, decides whether it's worth documenting, and, when it is, sends the documenter to write the update — opening a pull request by default so a human still merges it. It's built to be run on a schedule without ever doubling up or dropping a change. And when Development Lifecycle is installed, the same documenter is called at the end of each phase, so the docs get refreshed as a normal part of the loop rather than as a separate chore.
 
 ### Composition
 
 | Direction | Plugin | How |
 |---|---|---|
-| Enhances (soft) | [Developer-Workflows](Developer-Workflows) | Dispatches the `documenter` to author or repair pages at phase boundaries — only when both are installed (`enhances: documentation`). |
+| Enhances (soft) | [Development Lifecycle](Development-Lifecycle) | Dispatches the `documenter` to author or repair pages at phase boundaries — only when both are installed (`enhances: documentation`). |
 | Enhanced by (soft) | — | None. |
 | Requires (hard) | — | None. Wiki Maintenance is fully standalone (`requires: []`). |
 | Required by (hard) | — | None. |
@@ -70,7 +70,7 @@ Per-repo voice and structure overrides live in `wiki/.diataxis-conventions.md`; 
 - [Provision a repo's wiki](Provision-A-Repo-Wiki) · [Run the wiki-watcher](Run-The-Wiki-Watcher) — the how-tos.
 - [Style-Learning Loop](Style-Learning-Loop) · [Wiki Watch Config](Wiki-Watch-Config) — the voice layer and the watcher config.
 - [Wiki design](crickets-wiki) — why provisioning joins authoring, and the gate-distribution split.
-- [Developer-Workflows](Developer-Workflows) — the base plugin this enhances at phase boundaries.
+- [Development Lifecycle](Development-Lifecycle) — the base plugin this enhances at phase boundaries.
 - [Antigravity Limitations](Antigravity-Limitations) — which surfaces are Claude-first.
 
 [Reference](Reference) · [Architecture](Architecture) · [Home](Home)

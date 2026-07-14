@@ -13,7 +13,7 @@
   <!-- base it requires (right) -->
   <text x="560" y="102" font-size="10.5" font-weight="700" fill="#5B7C9E">REQUIRES (hard)</text>
   <rect x="540" y="114" width="200" height="60" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/>
-  <text x="640" y="140" text-anchor="middle" font-size="12" font-weight="600" fill="#34516e">developer-workflows</text>
+  <text x="640" y="140" text-anchor="middle" font-size="10.5" font-weight="600" fill="#34516e">development-lifecycle</text>
   <text x="640" y="158" text-anchor="middle" font-size="9.5" font-style="italic" fill="#5B7C9E">the /release phase it gates</text>
 
   <!-- requires arrow: plugin -> base -->
@@ -27,5 +27,5 @@
   <path d="M380,238 L380,338" stroke="#7E57C2" stroke-width="1.5" stroke-dasharray="5 4" fill="none" marker-end="url(#sub)"/>
   <text x="392" y="294" font-size="9.5" font-style="italic" fill="#8a8a92">composes onto, one-way</text>
 
-  <text x="380" y="424" text-anchor="middle" font-size="10" font-style="italic" fill="#8a8a92">Solid = requires (hard): the plugin needs developer-workflows and does not install without it.</text>
+  <text x="380" y="424" text-anchor="middle" font-size="10" font-style="italic" fill="#8a8a92">Solid = requires (hard): the plugin needs development-lifecycle and does not install without it.</text>
 </svg>

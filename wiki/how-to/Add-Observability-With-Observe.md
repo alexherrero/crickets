@@ -1,13 +1,13 @@
 # How to instrument code with /observe
 
 > [!IMPORTANT]
-> **Status: implemented** — shipped in `src/developer-workflows/commands/observe.md` (v0.1.0).
+> **Status: implemented** — shipped in `src/development-lifecycle/commands/observe.md` (v0.1.0).
 
 > [!NOTE]
 > **Goal:** Wire structured telemetry (logging, RED metrics, distributed tracing, symptom-based alerts) into a feature or service as you build it, using the `/observe` command to enforce the "instrument as you build" discipline before any code ships to production.
-> **Prereqs:** the `developer-workflows` plugin installed at a version that ships `/observe` ([Install crickets plugins](Install-Into-Project)); a working tree with code that runs in production (test-only changes are out of scope for `/observe`).
+> **Prereqs:** the `development-lifecycle` plugin installed at a version that ships `/observe` ([Install crickets plugins](Install-Into-Project)); a working tree with code that runs in production (test-only changes are out of scope for `/observe`).
 
-Reach for `/observe` when the code you're shipping will run in production — it walks the diff through four disciplines in order: structured logging (log events, not strings), RED metrics (request rate, error rate, duration), OpenTelemetry tracing, and symptom-based alerting (alert on symptoms, not causes). The full checklist for each discipline lives in [`observe.md`](../src/developer-workflows/commands/observe.md); the steps below stand on their own.
+Reach for `/observe` when the code you're shipping will run in production — it walks the diff through four disciplines in order: structured logging (log events, not strings), RED metrics (request rate, error rate, duration), OpenTelemetry tracing, and symptom-based alerting (alert on symptoms, not causes). The full checklist for each discipline lives in [`observe.md`](../src/development-lifecycle/commands/observe.md); the steps below stand on their own.
 
 ## Steps
 
@@ -50,6 +50,6 @@ The command surfaces common rationalizations as red flags:
 
 ## See also
 
-- [Developer Workflows plugin](Developer-Workflows) — the plugin that ships `/observe`.
+- [Development Lifecycle plugin](Development-Lifecycle) — the plugin that ships `/observe`.
 - [How to run a pre-launch readiness gate with /launch](Add-Launch-Readiness-Gate) — the companion gate that confirms observability is wired before first production rollout.
 - [Manifest schema](Manifest-Schema) — command primitive frontmatter reference

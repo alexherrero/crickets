@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > **Goal:** Take a problem from ambiguous brief to a sequenced set of named plans using the `/design` command's three sub-verbs — `author` (walk the 10-section design-doc template to `Status: final`), `translate` (split the final doc into structural parts), and `sequence` (emit one named plan per part, first activated and the rest staged).
-> **Prereqs:** the `developer-workflows` plugin installed ([Install crickets plugins](Install-Into-Project)) at a version that ships `/design` (0.5.0 or later); a clean working tree; a problem worth a design (ambiguous, multi-stakeholder, or with cross-cutting Quality-Attributes / Operations concerns). For an already-settled design, skip `/design` and go straight to [`/plan`](Run-A-Named-Plan).
+> **Prereqs:** the `development-lifecycle` plugin installed ([Install crickets plugins](Install-Into-Project)) at a version that ships `/design` (0.5.0 or later); a clean working tree; a problem worth a design (ambiguous, multi-stakeholder, or with cross-cutting Quality-Attributes / Operations concerns). For an already-settled design, skip `/design` and go straight to [`/plan`](Run-A-Named-Plan).
 
 `/design` is the **upstream authoring step** of the phase loop — it starts *earlier* than `/plan`. Use it when the problem is not yet tasks-shaped; use `/plan` once the design is settled. The three sub-verbs run in order: `author` → `translate` → `sequence`. The gate between them is a single hard `Status: final` check (run by the tested helper `design_doc.py`), so you cannot skip ahead — only the human approval inside `author` sets `final`.
 

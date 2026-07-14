@@ -3,7 +3,7 @@
 
 > [!NOTE]
 > **Goal:** Run individual plan tasks inside their own git worktrees so each task's changes are fully isolated — rollback and CI granularity at the task level, not the plan level.
-> **Prereqs:** `developer-workflows` plugin installed ([Install crickets plugins](Install-Into-Project)); `isolation.mode: worktree-per-task` set in `.harness/project.json`; tasks to isolate marked `**Isolated:** true` in `PLAN.md`.
+> **Prereqs:** `development-lifecycle` plugin installed ([Install crickets plugins](Install-Into-Project)); `isolation.mode: worktree-per-task` set in `.harness/project.json`; tasks to isolate marked `**Isolated:** true` in `PLAN.md`.
 
 ## When to use this
 
@@ -16,7 +16,7 @@ Cost: every isolated task multiplies CI minutes. Mark only tasks that are genuin
 
 ## Prerequisites
 
-- `developer-workflows` plugin installed.
+- `development-lifecycle` plugin installed.
 - A `.harness/project.json` in your repo (created by `/setup`).
 - The `isolation.mode` field set to `worktree-per-task` in that file.
 
@@ -75,4 +75,4 @@ For non-isolated tasks, step 2.5 exits 1 and `/work` proceeds directly — no wo
 - [Run a named plan](Run-A-Named-Plan) — plan-level worktree isolation: `/work`'s own auto-spawn, gated on `isolation.mode: worktree-per-plan`.
 - [Run a coordinator-directed worker team](Run-A-Coordinator-Directed-Worker-Team) — multi-worker parallel execution.
 - [Named plans](Named-Plans) — how plan slugs and `.harness/active-plan` bind workers to plans.
-- [Developer Workflows](../architecture/plugins/Developer-Workflows) — full primitive reference.
+- [Development Lifecycle](../reference/Development-Lifecycle) — full primitive reference.

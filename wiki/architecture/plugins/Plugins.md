@@ -5,7 +5,7 @@ These are the plugins crickets ships. Each is a native host plugin generated fro
 
 ## What's here
 
-- **[Development Lifecycle](Developer-Workflows)** (`development-lifecycle`) — the phase-gated dev loop (`/setup` … `/bugfix`) that the other plugins build on, plus the `explorer` and `evaluator` agents it ships with. It also carries token-efficiency primitives: the `terse` output-style, the `edit-over-write` rule, the `compact-nudge-resume` hook, and phase-aware model defaults on the typed agents.
+- **[Development Lifecycle](Development-Lifecycle)** (`development-lifecycle`) — the phase-gated dev loop (`/setup` … `/bugfix`) that the other plugins build on, plus the `explorer` and `evaluator` agents it ships with. It also carries token-efficiency primitives: the `terse` output-style, the `edit-over-write` rule, the `compact-nudge-resume` hook, and phase-aware model defaults on the typed agents.
 - **[Developer Safety](Developer-Safety)** (`developer-safety`) — the controls that keep an autonomous session safe: a kill switch to stop it, `steer` to redirect it mid-run, and `commit-on-stop` so nothing is lost when it halts, plus the commit conventions.
 - **[Code Review](Code-Review)** (`code-review`) — adversarial review of any diff or PR, on its own or sharpening `/review`. Its reviewer agents assume there's a bug and go looking; an evidence tracker holds them to specifics.
 - **[Maintenance](GitHub-CI)** (`maintenance`) — CI and dependency-update tooling built around the `dependabot-fixer` skill, which needs `development-lifecycle` installed alongside it.

@@ -299,6 +299,6 @@ The bare paths are byte-identical to the singleton literals, locked by an execut
 - [Run a named plan](Run-A-Named-Plan) — the task recipe for driving `/work --name <slug>` and friends, including the auto-spawn + auto-close-out flow.
 - [Development lifecycle design — worktree-native flow](crickets-development-lifecycle) — the decision behind host-native worktree creation and the PR-gated close-out replacing the old merge-then-gate-then-hard-reset model.
 - [See every active plan](See-Every-Active-Plan) — the read-side recipe: `/queue-status-lite` for a one-glance view of the queue.
-- [Developer Workflows](Developer-Workflows) — the phase-loop plugin these commands belong to.
+- [Development Lifecycle](Development-Lifecycle) — the phase-loop plugin these commands belong to.
 - [Why phase-gating](Why-Phase-Gating) — why the loop is gated and state lives on disk.
 - [Compatibility](Compatibility) — host support for the phase commands.

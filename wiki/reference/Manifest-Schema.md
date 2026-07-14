@@ -38,7 +38,7 @@ name: Code Review
 requires: []
 standalone: true
 enhances:
-  - group: developer-workflows
+  - group: development-lifecycle
     capability: review
     effect: "/review dispatches the adversarial reviewers"
 ```

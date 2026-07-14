@@ -54,7 +54,7 @@ The meta-loop is the strongest dogfood available: if the projection is wrong, it
 
 | Call | Resolution |
 |---|---|
-| Dependency | `requires: developer-workflows`; the vault path comes from `project.json` config, **not** a hard agentm dependency (supersedes a pre-V5-split `requires: agentm` note) |
+| Dependency | `requires: development-lifecycle`; the vault path comes from `project.json` config, **not** a hard agentm dependency (supersedes a pre-V5-split `requires: agentm` note) |
 | Taxonomy | flat Type taxonomy (Version · Feature · Sub-feature · Plan · Task · Backlog-item · Idea) |
 | Materialization (DC-1) | board persists feature-and-up + Sub-feature; Plan + Task stay vault-only until the plan is active |
 | Synthesis (DC-4) | one write path; deterministic, one-way, idempotent vault → board |

@@ -1,14 +1,14 @@
 # How to run a named plan
 
 > [!NOTE]
-> **Goal:** Drive a `developer-workflows` phase (`/work`, `/plan`, `/review`) against a **named** plan pair — `PLAN-<slug>.md` + `progress-<slug>.md` — so several concurrent plans can share one harness state dir, instead of being limited to the singleton `PLAN.md` / `progress.md`.
-> **Prereqs:** the `developer-workflows` plugin installed ([Install crickets plugins](Install-Into-Project)); a chosen, slug-safe plan name. Optional: a hosting memory layer (agentm) — when present, resolution is delegated to it; when absent, plans degrade to plain `.harness/PLAN-<slug>.md` + `.harness/progress-<slug>.md` (see [Named plans](Named-Plans)).
+> **Goal:** Drive a `development-lifecycle` phase (`/work`, `/plan`, `/review`) against a **named** plan pair — `PLAN-<slug>.md` + `progress-<slug>.md` — so several concurrent plans can share one harness state dir, instead of being limited to the singleton `PLAN.md` / `progress.md`.
+> **Prereqs:** the `development-lifecycle` plugin installed ([Install crickets plugins](Install-Into-Project)); a chosen, slug-safe plan name. Optional: a hosting memory layer (agentm) — when present, resolution is delegated to it; when absent, plans degrade to plain `.harness/PLAN-<slug>.md` + `.harness/progress-<slug>.md` (see [Named plans](Named-Plans)).
 
 Use a named plan when you want more than one plan in flight at once — the wedge behind the coordinator-directed agent team. Bare `/work` / `/plan` / `/review` keep operating on the singleton, unchanged; adding `--name <slug>` is purely additive. For the full mapping of invocation → files, see [Named plans](Named-Plans).
 
 ## Prerequisites
 
-- The `developer-workflows` plugin installed on your host ([Install crickets plugins](Install-Into-Project)).
+- The `development-lifecycle` plugin installed on your host ([Install crickets plugins](Install-Into-Project)).
 - A slug-safe plan name (no path traversal; the resolver rejects unsafe names).
 - _Optional:_ agentm installed as the hosting memory layer, for vault-backed state + the precedence chain. Without it, named plans live flat in `.harness/`.
 
@@ -54,6 +54,6 @@ Use this flow when you want to author one or more named plans **ahead of time** 
 
 - [Named plans](Named-Plans) — the lookup: invocation → files, the parse rule, the resolver + standalone-fallback paths.
 - Once a named plan is activated, running `/work` against it is enough to hand it to its own worktree — with `isolation.mode: worktree-per-plan` set in `.harness/project.json` (or an explicit operator instruction), `/work` auto-spawns the worktree via the host's own worktree primitive, binds it to the plan, and closes it out with an auto-merging pull request when the plan's final task lands. There's no separate spawn or integrate command to run. See [Named plans § Spawning a worker worktree](Named-Plans#spawning-a-worker-worktree) for the mechanism.
-- [Developer Workflows](Developer-Workflows) — the phase-loop plugin these commands belong to.
-- [Install crickets plugins](Install-Into-Project) — get `developer-workflows` onto your host.
+- [Development Lifecycle](Development-Lifecycle) — the phase-loop plugin these commands belong to.
+- [Install crickets plugins](Install-Into-Project) — get `development-lifecycle` onto your host.
 - [Why phase-gating](Why-Phase-Gating) — why the loop is gated and state lives on disk.
