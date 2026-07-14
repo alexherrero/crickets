@@ -7,17 +7,17 @@ Code Review gives your agent a skeptical second pair of eyes on any change. Rath
 
 ### Diagram
 
-![How code-review plugs into developer-workflows — at /review it dispatches the adversarial reviewers, and the evidence-tracker hook guards /work's checkbox flips](diagrams/code-review-composition.svg)
+![How code-review plugs into development-lifecycle — at /review it dispatches the adversarial reviewers, and the evidence-tracker hook guards /work's checkbox flips](diagrams/code-review-composition.svg)
 
 ### How it works
 
-Point it at a diff or a PR and it runs an adversarial review. A reviewer reads the change assuming it contains a bug, and — when Gemini is available — a second reviewer does the same from a different model, so the two do not share one model's blind spots. Each returns something you can act on: a failing test, a `DEFECT: file:line`, or `NO ISSUES FOUND` — never loose prose. When `developer-workflows` is also installed, those reviewers run automatically at the `/review` phase, and an `evidence-tracker` hook stops a task from being ticked off until the agent has actually read the spec and test files.
+Point it at a diff or a PR and it runs an adversarial review. A reviewer reads the change assuming it contains a bug, and — when Gemini is available — a second reviewer does the same from a different model, so the two do not share one model's blind spots. Each returns something you can act on: a failing test, a `DEFECT: file:line`, or `NO ISSUES FOUND` — never loose prose. When `development-lifecycle` is also installed, those reviewers run automatically at the `/review` phase, and an `evidence-tracker` hook stops a task from being ticked off until the agent has actually read the spec and test files.
 
 ### Composition
 
 | Direction | Plugin | How |
 |---|---|---|
-| Enhances (soft) | [Developer-Workflows](Developer-Workflows) | Runs the adversarial reviewers at `/review` and guards `/work`'s checkbox flips — only when both are installed. |
+| Enhances (soft) | [Development Lifecycle](Development-Lifecycle) | Runs the adversarial reviewers at `/review` and guards `/work`'s checkbox flips — only when both are installed. |
 | Enhanced by (soft) | — | None. |
 | Requires (hard) | — | None. Code Review is fully standalone. |
 | Required by (hard) | — | None. |

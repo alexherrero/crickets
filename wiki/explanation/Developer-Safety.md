@@ -9,7 +9,7 @@ Developer Safety keeps you in control of an agent that works on its own. The lon
 
 How the hooks wrap the running workflow — every tool call passes the operator's live controls, guided by the recoverability doctrine, with a snapshot catching anything unsaved:
 
-![Developer Safety wrapping the workflow: the developer-workflows phase loop (/plan, /work, /review, /release) sends every tool call through the kill-switch hook — fed by the operator's STOP trigger file — before it runs, while steer surfaces the operator's STEER.md note as additional context on their next submitted prompt; the recoverability doctrine guides each call, and commit-on-stop snapshots a dirty working tree to refs/auto-save at each turn's end](diagrams/developer-safety-hooks.svg)
+![Developer Safety wrapping the workflow: the development-lifecycle phase loop (/plan, /work, /review, /release) sends every tool call through the kill-switch hook — fed by the operator's STOP trigger file — before it runs, while steer surfaces the operator's STEER.md note as additional context on their next submitted prompt; the recoverability doctrine guides each call, and commit-on-stop snapshots a dirty working tree to refs/auto-save at each turn's end](diagrams/developer-safety-hooks.svg)
 
 ### How it works
 
@@ -21,7 +21,7 @@ Under the hooks sits the **recoverability** doctrine — the judgment the agent 
 
 | Direction | Plugin | How |
 |---|---|---|
-| Enhances (soft) | [Developer-Workflows](Developer-Workflows) | The three hooks engage across the phase loop, and the `recoverability` doctrine backs `/work`'s recoverability gate — only when both are installed. |
+| Enhances (soft) | [Development Lifecycle](Development-Lifecycle) | The three hooks engage across the phase loop, and the `recoverability` doctrine backs `/work`'s recoverability gate — only when both are installed. |
 | Enhanced by (soft) | — | None. |
 | Requires (hard) | — | None. Developer Safety is fully standalone. |
 | Required by (hard) | — | None. |

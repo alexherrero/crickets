@@ -39,7 +39,7 @@ Paths are relative to the plugin root, `dist/<host>/plugins/<group>/`.
 | `output-style` | `output-styles/<name>.md` | `output-styles/<name>.md` |
 | `rule` | `rules/<name>.md` | `rules/<name>.md` |
 
-These two ship as of v3.13–3.14 (`developer-workflows` ships `terse` and `edit-over-write`). The `kind` enum also allows `mcp-server`, `status-line`, `workflow`, and `settings-fragment`, but no primitive uses them today. The full enum lives in [Manifest Schema](Manifest-Schema).
+These two ship as of v3.13–3.14 (`development-lifecycle` ships `terse` and `edit-over-write`). The `kind` enum also allows `mcp-server`, `status-line`, `workflow`, and `settings-fragment`, but no primitive uses them today. The full enum lives in [Manifest Schema](Manifest-Schema).
 
 ## Related
 

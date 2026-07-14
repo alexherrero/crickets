@@ -2,13 +2,13 @@
 
 > [!NOTE]
 > **Goal:** Take a change from a rough brief to a shipped feature by running it through the phase loop — `/plan` → `/work` → `/review` → `/release` — one gated step at a time, with the plan and its progress kept on disk so the change can span several sessions.
-> **Prereqs:** the `developer-workflows` plugin installed ([Install crickets plugins](Install-Into-Project)). Optional: agentm as the memory layer, for vault-backed state.
+> **Prereqs:** the `development-lifecycle` plugin installed ([Install crickets plugins](Install-Into-Project)). Optional: agentm as the memory layer, for vault-backed state.
 
-This is the core loop the `developer-workflows` plugin gives you. Each phase does one job and then stops, and the plan, its progress, and the project's state live in files rather than in the conversation — which is what lets you pick a change back up in a later session. Run the phases in order; for a bug, take the shorter `/bugfix` track instead.
+This is the core loop the `development-lifecycle` plugin gives you. Each phase does one job and then stops, and the plan, its progress, and the project's state live in files rather than in the conversation — which is what lets you pick a change back up in a later session. Run the phases in order; for a bug, take the shorter `/bugfix` track instead.
 
 ## Prerequisites
 
-- The `developer-workflows` plugin installed on your host ([Install crickets plugins](Install-Into-Project)).
+- The `development-lifecycle` plugin installed on your host ([Install crickets plugins](Install-Into-Project)).
 - A change to make — a feature, a refactor, or a bug report.
 
 ## Steps
@@ -35,8 +35,8 @@ For a defect, use `/bugfix <report>` instead of `/plan` + `/work`. It runs a sho
 
 ## Related
 
-- [Developer Workflows](Developer-Workflows) — the plugin these phase commands belong to, and how it composes with the rest.
+- [Development Lifecycle](Development-Lifecycle) — the plugin these phase commands belong to, and how it composes with the rest.
 - [Run a named plan](Run-A-Named-Plan) — run the loop against a named plan when several are in flight at once.
 - [Author a design](Author-A-Design) — the design step upstream of `/plan`.
 - [Why phase-gating](Why-Phase-Gating) — why the loop is gated and its state lives on disk.
-- [Install crickets plugins](Install-Into-Project) — get `developer-workflows` onto your host.
+- [Install crickets plugins](Install-Into-Project) — get `development-lifecycle` onto your host.

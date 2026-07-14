@@ -45,12 +45,12 @@ A representative set of shipped plugins (the full roster is in the [Designs](Des
 
 | Plugin | Standalone? | Relation to the base |
 |---|---|---|
-| `developer-workflows` | ✅ (base) | declares the capabilities others target (`setup` … `documentation`) |
-| `developer-safety` | ✅ | enhances `developer-workflows` |
-| `code-review` | ✅ | enhances `developer-workflows`' `review` |
-| `wiki-maintenance` | ✅ | enhances `developer-workflows`' `documentation` |
+| `development-lifecycle` | ✅ (base) | declares the capabilities others target (`setup` … `documentation`) |
+| `developer-safety` | ✅ | enhances `development-lifecycle` |
+| `code-review` | ✅ | enhances `development-lifecycle`' `review` |
+| `wiki-maintenance` | ✅ | enhances `development-lifecycle`' `documentation` |
 | `pii` | ✅ | independent |
-| `github-ci` | ❌ requires `developer-workflows` | hard dependency |
+| `github-ci` | ❌ requires `development-lifecycle` | hard dependency |
 
 ## From source to installed
 

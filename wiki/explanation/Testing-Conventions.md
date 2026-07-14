@@ -3,13 +3,13 @@
 
 ## Architecture
 
-Testing Conventions gives your agent a steady stance on how to test — one it carries the whole time it writes code, not a pass you bolt on at the end. It holds the line on the habits that keep a suite trustworthy: write the failing test before the code, never weaken or delete a test to get a build green, and keep fast unit tests, integration tests, and end-to-end tests at their own distinct scopes. When the agent reaches for a shortcut like a skip marker, it makes sure there's a real, documented reason rather than a quiet "we'll get to it later." So by the time a change reaches review, the tests already reflect what the code actually does. It builds on Developer Workflows, extending that phase loop with test discipline rather than standing on its own.
+Testing Conventions gives your agent a steady stance on how to test — one it carries the whole time it writes code, not a pass you bolt on at the end. It holds the line on the habits that keep a suite trustworthy: write the failing test before the code, never weaken or delete a test to get a build green, and keep fast unit tests, integration tests, and end-to-end tests at their own distinct scopes. When the agent reaches for a shortcut like a skip marker, it makes sure there's a real, documented reason rather than a quiet "we'll get to it later." So by the time a change reaches review, the tests already reflect what the code actually does. It builds on Development Lifecycle, extending that phase loop with test discipline rather than standing on its own.
 
 ### Diagram
 
-How it composes — the plugin's two primitives, the developer-workflows base it requires, and the AgentM substrate it rests on:
+How it composes — the plugin's two primitives, the development-lifecycle base it requires, and the AgentM substrate it rests on:
 
-![How testing-conventions composes: the testing-conventions skill and the no-skip-tests rule sit inside the plugin, which requires (solid slate, hard) the developer-workflows phase loop — both must be enabled to load — and composes one-way onto the AgentM substrate of memory, opinions, and personas](diagrams/testing-conventions-composition.svg)
+![How testing-conventions composes: the testing-conventions skill and the no-skip-tests rule sit inside the plugin, which requires (solid slate, hard) the development-lifecycle phase loop — both must be enabled to load — and composes one-way onto the AgentM substrate of memory, opinions, and personas](diagrams/testing-conventions-composition.svg)
 
 ### How it works
 
@@ -23,7 +23,7 @@ Together they cover both the reflex and the practice — the split-second you re
 |---|---|---|
 | Enhances (soft) | — | None. |
 | Enhanced by (soft) | — | None. |
-| Requires (hard) | [Developer-Workflows](Developer-Workflows) | Testing Conventions builds on the developer-workflows base — both plugins must be enabled for the skill and rule to load. |
+| Requires (hard) | [Development Lifecycle](Development-Lifecycle) | Testing Conventions builds on the development-lifecycle base — both plugins must be enabled for the skill and rule to load. |
 | Required by (hard) | — | None. |
 
 ### Why not

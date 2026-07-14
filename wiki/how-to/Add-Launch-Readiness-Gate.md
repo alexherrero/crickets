@@ -1,11 +1,11 @@
 # How to run a pre-launch readiness gate with /launch
 
 > [!IMPORTANT]
-> **Status: implemented** — `/launch` shipped in `src/developer-workflows/commands/launch.md`.
+> **Status: implemented** — `/launch` shipped in `src/development-lifecycle/commands/launch.md`.
 
 > [!NOTE]
 > **Goal:** Gate a first production rollout with a structured readiness checklist — observability wired, rollback tested, feature flag off-switch confirmed, staged rollout plan written — using the `/launch` command before any production users see the feature.
-> **Prereqs:** the `developer-workflows` plugin installed ([Install crickets plugins](Install-Into-Project)); a feature ready for first production exposure; observability instrumented (see [/observe](Add-Observability-With-Observe)).
+> **Prereqs:** the `development-lifecycle` plugin installed ([Install crickets plugins](Install-Into-Project)); a feature ready for first production exposure; observability instrumented (see [/observe](Add-Observability-With-Observe)).
 
 `/launch` is the **first-production-rollout gate**; it is distinct from `/release` (which is the pre-merge code gate). `/launch` enforces:
 
@@ -22,7 +22,7 @@
    /launch <feature, diff, or PR>
    ```
 
-   The argument is required. `/launch` is for **first production exposure** — not routine patches or internal tooling changes. See `src/developer-workflows/commands/launch.md` (`When to Use`) for the full boundary.
+   The argument is required. `/launch` is for **first production exposure** — not routine patches or internal tooling changes. See `src/development-lifecycle/commands/launch.md` (`When to Use`) for the full boundary.
 
 2. Identify the launch scope: what is shipping, which users it reaches, the initial traffic percentage, the feature flag name (if any), and the deployment mechanism.
 
@@ -55,7 +55,7 @@
 
 ## Verify
 
-Work through the verification checklist from `src/developer-workflows/commands/launch.md`:
+Work through the verification checklist from `src/development-lifecycle/commands/launch.md`:
 
 - [ ] Pre-launch checklist complete: observability wired, rollback tested, flag off-switch confirmed, staged rollout plan written.
 - [ ] Rollback procedure documented and tested (not assumed); time-to-recovery measured.
@@ -67,7 +67,7 @@ Work through the verification checklist from `src/developer-workflows/commands/l
 
 ## Troubleshooting
 
-Common rationalizations that signal something is wrong (from `src/developer-workflows/commands/launch.md` "Common Rationalizations"):
+Common rationalizations that signal something is wrong (from `src/development-lifecycle/commands/launch.md` "Common Rationalizations"):
 
 | Excuse | What it signals |
 |---|---|
@@ -78,7 +78,7 @@ Common rationalizations that signal something is wrong (from `src/developer-work
 
 ## See also
 
-- [Developer Workflows plugin](Developer-Workflows) — the plugin that ships `/launch`.
+- [Development Lifecycle plugin](Development-Lifecycle) — the plugin that ships `/launch`.
 - [How to instrument code with /observe](Add-Observability-With-Observe) — observability must be wired before `/launch` passes.
 - [How to author CI/CD pipelines with /ci-cd](Author-A-CICD-Pipeline) — the pipeline authoring companion.
 - [Manifest schema](Manifest-Schema) — command primitive frontmatter reference

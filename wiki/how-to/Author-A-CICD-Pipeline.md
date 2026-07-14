@@ -1,11 +1,11 @@
 # How to author or modify a CI/CD pipeline with /ci-cd
 
 > [!IMPORTANT]
-> **Status: implemented** — `/ci-cd` shipped in `src/developer-workflows/commands/ci-cd.md`.
+> **Status: implemented** — `/ci-cd` shipped in `src/development-lifecycle/commands/ci-cd.md`.
 
 > [!NOTE]
 > **Goal:** Author or modify a CI/CD pipeline that moves quality gates as early as possible (Shift Left), makes the pipeline fast enough that smaller-diff deploys become the natural cadence (Faster is Safer), and eliminates any "ship anyway" bypass path.
-> **Prereqs:** the `developer-workflows` plugin installed ([Install crickets plugins](Install-Into-Project)); a CI/CD config file to create or modify (e.g., `.github/workflows/`, `.gitlab-ci.yml`).
+> **Prereqs:** the `development-lifecycle` plugin installed ([Install crickets plugins](Install-Into-Project)); a CI/CD config file to create or modify (e.g., `.github/workflows/`, `.gitlab-ci.yml`).
 
 `/ci-cd` enforces four principles:
 
@@ -22,7 +22,7 @@
    /ci-cd <pipeline file or CI config>
    ```
 
-   The argument is required. `/ci-cd` is for changes **to pipeline structure** — what gates exist, what they check, what order they run. Do not use it for app code changes that happen to touch a test file or build script. See `src/developer-workflows/commands/ci-cd.md` (`When to Use`) for the boundary.
+   The argument is required. `/ci-cd` is for changes **to pipeline structure** — what gates exist, what they check, what order they run. Do not use it for app code changes that happen to touch a test file or build script. See `src/development-lifecycle/commands/ci-cd.md` (`When to Use`) for the boundary.
 
 2. Read the full pipeline config before changing any part of it. Understand: what gates currently exist, what order they run, what each gate does, and what currently blocks the deploy.
 
@@ -44,7 +44,7 @@
 
 ## Verify
 
-Work through the verification checklist from `src/developer-workflows/commands/ci-cd.md`:
+Work through the verification checklist from `src/development-lifecycle/commands/ci-cd.md`:
 
 - [ ] Gates run in order: lint → typecheck → test → build → deploy.
 - [ ] Every gate blocks the next stage on failure — no `continue-on-error` on quality gates.
@@ -56,7 +56,7 @@ Work through the verification checklist from `src/developer-workflows/commands/c
 
 ## Troubleshooting
 
-Common rationalizations that signal a pipeline design problem (from `src/developer-workflows/commands/ci-cd.md` "Common Rationalizations"):
+Common rationalizations that signal a pipeline design problem (from `src/development-lifecycle/commands/ci-cd.md` "Common Rationalizations"):
 
 | Excuse | What it signals |
 |---|---|
@@ -67,6 +67,6 @@ Common rationalizations that signal a pipeline design problem (from `src/develop
 
 ## See also
 
-- [Developer Workflows plugin](Developer-Workflows) — the plugin that ships `/ci-cd`.
+- [Development Lifecycle plugin](Development-Lifecycle) — the plugin that ships `/ci-cd`.
 - [CI gates](CI-Gates) — the reference for the crickets project's own gate battery.
 - [How to run a pre-launch readiness gate with /launch](Add-Launch-Readiness-Gate) — the pre-production companion gate.

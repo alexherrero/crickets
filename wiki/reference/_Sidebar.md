@@ -4,7 +4,7 @@
 ### 📖 [Reference](Reference)
 
 **Per-plugin**
-- [Developer Workflows](Developer-Workflows)
+- [Development Lifecycle](Development-Lifecycle)
 - [Code Review](Code-Review)
 - [GitHub Projects](GitHub-Projects)
 

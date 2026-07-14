@@ -16,8 +16,8 @@ A crickets plugin is a **group folder** under `src/<group>/`; the folder name is
    description: One line — what the plugin does.
    category: Coding
    standalone: true        # true ⟺ requires: []
-   # requires: [developer-workflows]   # a hard dependency (then standalone: false)
-   # enhances: [developer-workflows]   # soft — augments the target when both are installed
+   # requires: [development-lifecycle]   # a hard dependency (then standalone: false)
+   # enhances: [development-lifecycle]   # soft — augments the target when both are installed
    ```
 
    The field contract, including the `standalone ⟺ requires: []` invariant, lives in [Manifest schema](Manifest-Schema).

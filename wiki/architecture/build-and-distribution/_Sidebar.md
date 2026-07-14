@@ -4,7 +4,7 @@
 ### 📖 [Reference](Reference)
 ### 🏛️ [Architecture](Architecture)
 - [Plugins](Plugins)
-  - [Developer Workflows](Developer-Workflows)
+  - [Development Lifecycle](Development-Lifecycle)
   - [Developer Safety](Developer-Safety)
   - [Code Review](Code-Review)
   - [GitHub CI](GitHub-CI)

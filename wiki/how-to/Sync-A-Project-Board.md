@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > **Goal:** Render the current vault project state for a configured project and push it one-way to its GitHub Project board — idempotently, with a dry-run preview first.
-> **Prereqs:** the `github-projects` plugin installed (`requires: developer-workflows`); a `project.json` (in the project's vault `_harness/`) wiring the vault project to its Project — at minimum `vault_project` + `github.{owner,number}`; the `gh` CLI authenticated.
+> **Prereqs:** the `github-projects` plugin installed (`requires: development-lifecycle`); a `project.json` (in the project's vault `_harness/`) wiring the vault project to its Project — at minimum `vault_project` + `github.{owner,number}`; the `gh` CLI authenticated.
 
 ## Steps
 
@@ -63,5 +63,5 @@ It checks four drift kinds: `create`, `missing`, `update`, and `orphan`. `tests-
 
 - [GitHub Projects plugin](GitHub-Projects) — the reference for the config schema, Type taxonomy, templates, field schema, and the write path.
 - [One-way vault-to-board synthesis](One-Way-Vault-To-Board-Synthesis) — why this is one-way and deterministic.
-- [Developer Workflows](Developer-Workflows) — the base plugin whose phase commands emit board updates.
+- [Development Lifecycle](Development-Lifecycle) — the base plugin whose phase commands emit board updates.
 - [CI gates](CI-Gates) — the gate battery the drift gate joins.
