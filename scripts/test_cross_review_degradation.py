@@ -1,21 +1,22 @@
 #!/usr/bin/env python3
 """End-to-end tests for cross-review.sh's fallback visibility (crickets
-Consolidation follow-ups batch).
+Consolidation follow-ups batch; retargeted from `gemini` to `agy` in V8
+proving Lane G, 2026-07-13).
 
 test_cross_review_validate.py already proves the output-contract validator
 in isolation (sourced, never reaching main()). This file drives the real
-main() end to end against a MOCKED `gemini` binary placed on PATH — no live
-LLM calls, no network, no dependency on the actual Gemini CLI being
-installed (it is not, on this machine or in CI).
+main() end to end against a MOCKED `agy` binary placed on PATH — no live
+LLM calls, no network, no dependency on the actual Antigravity CLI being
+installed.
 
 Covers the three scenarios the fallback-visibility gap named:
   (a) a well-formed mocked reply passes through cleanly (exit 0).
   (b) a malformed/garbage reply triggers exactly one retry, then a clean
       rejection (exit 2) -- never a crash or a hang.
-  (c) a missing `gemini` binary triggers the fallback (exit 1) AND prints
+  (c) a missing `agy` binary triggers the fallback (exit 1) AND prints
       the visible "CROSS-REVIEW-DEGRADED: ..." marker on stdout, so a broken
-      or absent Gemini CLI can never silently downgrade a "cross-model"
-      review into a same-model one without a trace.
+      or absent agy CLI can never silently downgrade a "cross-model" review
+      into a same-model one without a trace.
 
 stdlib only.
 """
@@ -52,12 +53,14 @@ def _find_bash() -> str:
 _BASH = _find_bash()
 
 
-def _write_fake_gemini(bin_dir: Path, body: str) -> Path:
-    """Write an executable fake `gemini` script into `bin_dir` that runs
-    `body` — consumes stdin, then does whatever `body` says on stdout.
-    Ignores its own argv (`-p`/`-m`/`-o` etc.) same as a real CLI would just
-    use them; the fake never needs to care what they are."""
-    path = bin_dir / "gemini"
+def _write_fake_agy(bin_dir: Path, body: str) -> Path:
+    """Write an executable fake `agy` script into `bin_dir` that runs `body`
+    on stdout. Ignores its own argv (`-p`/`--model`/`--print-timeout` etc.)
+    same as a real CLI would just use them; the fake never needs to care
+    what they are. Doesn't touch stdin -- the real cross-review.sh closes
+    agy's stdin (`< /dev/null`) rather than piping the review material, so
+    there is nothing to consume here (unlike the old `gemini` fake)."""
+    path = bin_dir / "agy"
     path.write_text(f"#!/usr/bin/env bash\n{body}\n", encoding="utf-8")
     path.chmod(path.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
     return path
@@ -69,8 +72,8 @@ def _run_cross_review(material: str, *, path_prefix: "Path | None" = None,
     if path_prefix is not None:
         env["PATH"] = f"{path_prefix}{os.pathsep}{env.get('PATH', '')}"
     else:
-        # Deliberately narrow PATH so a real `gemini`, if one ever appeared
-        # on this machine, can't leak into the "missing binary" scenario.
+        # Deliberately narrow PATH so a real `agy`, if one ever appeared on
+        # this machine, can't leak into the "missing binary" scenario.
         env["PATH"] = os.pathsep.join(p for p in ("/usr/bin", "/bin") if Path(p).is_dir())
     if env_extra:
         env.update(env_extra)
@@ -84,8 +87,7 @@ class WellFormedReplyTests(unittest.TestCase):
     def test_well_formed_reply_passes_through_cleanly(self):
         with tempfile.TemporaryDirectory() as tmp:
             bin_dir = Path(tmp)
-            _write_fake_gemini(bin_dir, (
-                'cat >/dev/null\n'
+            _write_fake_agy(bin_dir, (
                 'echo "NO ISSUES FOUND"\n'
                 'echo "Reviewed: src/foo.py"\n'
                 'echo "Categories checked: spec adherence, edge cases, API design, '
@@ -101,9 +103,8 @@ class MalformedReplyRetryTests(unittest.TestCase):
     def test_malformed_reply_retries_exactly_once_then_rejects_cleanly(self):
         with tempfile.TemporaryDirectory() as tmp:
             bin_dir = Path(tmp)
-            counter = Path(tmp) / "gemini_calls.count"
-            _write_fake_gemini(bin_dir, (
-                'cat >/dev/null\n'
+            counter = Path(tmp) / "agy_calls.count"
+            _write_fake_agy(bin_dir, (
                 'n=0\n'
                 f'[[ -f "{counter}" ]] && n=$(cat "{counter}")\n'
                 'n=$((n + 1))\n'
@@ -114,7 +115,7 @@ class MalformedReplyRetryTests(unittest.TestCase):
             # Never a crash/hang — a clean, deterministic rejection.
             self.assertEqual(result.returncode, 2, f"stderr={result.stderr!r}")
             self.assertIn(
-                "CROSS-REVIEW-DEGRADED: gemini response violated the output "
+                "CROSS-REVIEW-DEGRADED: agy response violated the output "
                 "contract twice, using same-model reviewer",
                 result.stdout,
             )
@@ -128,7 +129,7 @@ class MissingBinaryTests(unittest.TestCase):
         result = _run_cross_review("=== DIFF ===\nsome diff\n")
         self.assertEqual(result.returncode, 1, f"stderr={result.stderr!r}")
         self.assertIn(
-            "CROSS-REVIEW-DEGRADED: gemini CLI unavailable, using same-model reviewer",
+            "CROSS-REVIEW-DEGRADED: agy CLI unavailable, using same-model reviewer",
             result.stdout,
         )
 

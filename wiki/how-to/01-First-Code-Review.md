@@ -4,7 +4,7 @@
 > [!NOTE]
 > **Goal:** Install the `code-review` plugin and run an adversarial review that catches a bug you planted — seeing, end to end, what a crickets plugin does in your editor.
 > **Time:** ~10 minutes.
-> **Prereqs:** Claude Code (`claude`) on your PATH; `git`. Optional: `gemini` on your PATH for the cross-model reviewer — the tutorial works without it.
+> **Prereqs:** Claude Code (`claude`) on your PATH; `git`. Optional: `agy` on your PATH for the cross-model reviewer — the tutorial works without it.
 
 You'll install one plugin, plant an obvious bug in a throwaway repo, and let `/code-review` find it. By the end you'll know how a crickets command lands in your host and what "adversarial review" actually returns.
 
@@ -56,7 +56,7 @@ In the session, run the command with no arguments — that reviews your working-
 /code-review
 ```
 
-It resolves the diff, then dispatches the adversarial reviewer (and the cross-model reviewer first, if `gemini` is present).
+It resolves the diff, then dispatches the adversarial reviewer (and the cross-model reviewer first, if `agy` is present).
 
 ## Step 4 — Read the finding
 
@@ -87,7 +87,7 @@ rm -rf "$SCRATCH"
 - **`code-review` is standalone** — `/code-review` reviews any diff or PR with no `/work` cycle. No argument means the working-tree diff; pass a range (`main...HEAD`), a branch, or a PR (`#123`) to review something else.
 - **The review is adversarial** — the reviewer is primed to assume bugs exist, so it returns a *failing test*, a *`DEFECT: file:line`*, or *`NO ISSUES FOUND`* — never vague "looks good" prose ([why that matters](Why-Adversarial-Review)).
 - **It reports, never fixes** — standalone, the fix is yours; inside a `/work` loop it becomes a follow-up task.
-- **A cross-model reviewer** runs first when `gemini` is present, to escape the same-model echo chamber; without it, the in-process reviewer runs alone.
+- **A cross-model reviewer** runs first when `agy` is present, to escape the same-model echo chamber; without it, the in-process reviewer runs alone.
 
 ## Next
 

@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > **Goal:** Adversarially review any diff or PR with the `/code-review` command — no `/work` cycle, no commit required.
-> **Prereqs:** the `code-review` plugin installed ([Install crickets plugins](Install-Into-Project)); `git`. Optional: `gh` (for PR review) and `gemini` (for the cross-model pass).
+> **Prereqs:** the `code-review` plugin installed ([Install crickets plugins](Install-Into-Project)); `git`. Optional: `gh` (for PR review) and `agy` (for the cross-model pass).
 
 `/code-review` is the standalone command from the `code-review` plugin. It dispatches the adversarial reviewers against a diff and **reports** — it never fixes. Run it on an open PR, a branch, a commit range, or your uncommitted working tree.
 
@@ -21,7 +21,7 @@
 
 2. It dispatches up to two reviewers against the diff (plus the spec / `.harness/PLAN.md` task when obvious, plus the relevant `AGENTS.md` slice):
 
-   - **`adversarial-reviewer-cross`** — the cross-model reviewer. Runs first when `gemini` is on PATH; it escapes the same-model echo chamber.
+   - **`adversarial-reviewer-cross`** — the cross-model reviewer. Runs first when `agy` is on PATH; it escapes the same-model echo chamber.
    - **`adversarial-reviewer`** — the in-process reviewer (same model). It corroborates, or becomes the sole reviewer when the cross-model pass falls back.
 
 3. Read the contract output. Each reviewer returns **exactly one** of:
@@ -36,11 +36,11 @@
 
 ## Cross-review privacy note
 
-The cross-model pass sends your diff to the **Gemini CLI → Google**. Treat it as opt-in:
+The cross-model pass sends your diff to **Gemini, via the Antigravity CLI (`agy`) → Google**. Treat it as opt-in:
 
-- It's **operator-opt-in per invocation** — the cross-model reviewer runs only when you invoke `/code-review` and `gemini` is present.
-- The model is **editable** — point the cross-review reviewer at `claude` instead of Gemini to keep the diff inside your model boundary.
-- It **graceful-skips** when `gemini` is absent or unauthed: `cross-review.sh` exits non-zero and the command falls back to the in-process `adversarial-reviewer` (same model, no external send).
+- It's **operator-opt-in per invocation** — the cross-model reviewer runs only when you invoke `/code-review` and `agy` is present.
+- The model is **editable** — point the cross-review reviewer at `claude` instead of `agy` to keep the diff inside your model boundary.
+- It **graceful-skips** when `agy` is absent or unauthed: `cross-review.sh` exits non-zero and the command falls back to the in-process `adversarial-reviewer` (same model, no external send).
 - The in-process `adversarial-reviewer` always stays on the current model — it never sends the diff anywhere.
 
 ## See also
