@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > **Goal:** Catch a wrong decision before it stands — before you write the code, commit the architecture, or invoke an irreversible action.
-> **Prereqs:** the `code-review` plugin installed ([Install crickets plugins](Install-Into-Project)). Optional: `gemini` CLI authed (for cross-model escalation).
+> **Prereqs:** the `code-review` plugin installed ([Install crickets plugins](Install-Into-Project)). Optional: `agy` CLI authed (for cross-model escalation).
 
 `/doubt` is distinct from `/code-review`. `/code-review` reviews a diff **after** code is written. `/doubt` fires **in flight**, while course-correction is still cheap.
 
@@ -47,7 +47,7 @@ Use `/doubt` when one or more of the following apply:
    The adversarial prompt is locked: *"find issues, assume overconfidence, do NOT validate."*
 
    - **Exit 0** — cross-model reviewer returned findings.
-   - **Exit 1/2** — Gemini unavailable; falls back to the in-process `adversarial-reviewer` agent with the same material and the same prompt.
+   - **Exit 1/2** — agy unavailable; falls back to the in-process `adversarial-reviewer` agent with the same material and the same prompt.
 
    In an **interactive session**, after the single-model pass completes, the command always offers: *"Single-model review complete — want a cross-model second opinion?"* The user decides.
 
@@ -90,7 +90,7 @@ After each cycle confirm:
 |---|---|---|
 | Command exits immediately | Can't name the decision (CLAIM fails) | Finish clarifying the decision first, then re-invoke |
 | "Doubt theater detected" escalation | 2+ cycles, findings returned, zero classified `valid+actionable` | You're validating, not doubting. Stop and make an operator call |
-| Cross-model pass silently skipped | `gemini` absent or unauthed | Expected — falls back to in-process reviewer. Auth `gemini` to enable cross-model pass |
+| Cross-model pass silently skipped | `agy` absent or unauthed | Expected — falls back to in-process reviewer. Auth `agy` to enable cross-model pass |
 | Reviewer disagrees but you think you're right | Disagreement is information, not verdict | Classify the finding with a citation; if `contract-misread`, proceed |
 
 ## See also

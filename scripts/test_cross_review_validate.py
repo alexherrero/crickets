@@ -2,13 +2,14 @@
 """Contract test for cross-review.sh's validate() function (R2.2 task 5).
 
 cross-review.sh dispatches an adversarial review to a different model
-(Gemini) and requires the response to be exactly one of three shapes: a
-failing test in a fenced code block, a `DEFECT: path:line` line, or
-`NO ISSUES FOUND`. Prose-only responses must be rejected — otherwise a
-sub-agent could satisfy the contract with hand-waving instead of a concrete
-finding. This test sources the script (its bottom source-guard keeps that
-from also running the gemini call, so no `gemini` binary or network access
-is required) and exercises the real `validate()` against sample outputs.
+(Gemini, via the `agy` CLI) and requires the response to be exactly one of
+three shapes: a failing test in a fenced code block, a `DEFECT: path:line`
+line, or `NO ISSUES FOUND`. Prose-only responses must be rejected —
+otherwise a sub-agent could satisfy the contract with hand-waving instead of
+a concrete finding. This test sources the script (its bottom source-guard
+keeps that from also running the agy call, so no `agy` binary or network
+access is required) and exercises the real `validate()` against sample
+outputs.
 """
 from __future__ import annotations
 
@@ -53,8 +54,8 @@ def _validate(sample: str) -> bool:
 
 
 class TestCrossReviewValidateContract(unittest.TestCase):
-    def test_source_guard_skips_gemini_flow(self):
-        # Sourcing must not fall into main() — no `gemini` binary or stdin
+    def test_source_guard_skips_agy_flow(self):
+        # Sourcing must not fall into main() — no `agy` binary or stdin
         # required just to reach validate().
         r = subprocess.run(
             [_BASH, "-c", f'source "{_SCRIPT.as_posix()}"; echo SOURCED'],

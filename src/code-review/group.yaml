@@ -37,7 +37,17 @@ description: Standalone adversarial code review of any diff or PR — the advers
 # scripts/test_cross_review_degradation.py exercises all three paths against
 # a mocked gemini binary on PATH -- well-formed passthrough, malformed-reply-
 # then-one-retry-then-reject, and missing-binary -- no live LLM calls.
-version: 0.3.0
+# 0.3.1 = cross-review.sh's transport retargets from the standalone `gemini`
+# CLI to `agy` (the Antigravity CLI, still serving Gemini) -- Google
+# discontinued Gemini CLI for individuals (V8 proving Lane G, 2026-07-13).
+# Same architecture: output contract, single retry, exit-code semantics, and
+# the CROSS-REVIEW-DEGRADED marker (now keyed on `command -v agy`) all carry
+# over verbatim. One real adaptation: `agy -p` does not append piped stdin
+# to the prompt the way `gemini -p` did (confirmed live), so the review
+# material is concatenated into the -p argument instead, with agy's own
+# stdin explicitly closed. Verified against a real cross-model review on a
+# planted-bug diff (own frontmatter version 0.2.0 -> 0.3.0).
+version: 0.3.1
 category: Coding
 requires: []
 standalone: true

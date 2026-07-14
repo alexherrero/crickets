@@ -1,21 +1,36 @@
 #!/usr/bin/env bash
-# cross-review.sh — adversarial review via a different model (Gemini).
+# cross-review.sh — adversarial review via a different model (Gemini, over
+# the Antigravity CLI).
 #
 # The in-process adversarial-reviewer runs on the same model that wrote the
-# code; same-model review is an echo chamber. This script shells out to the
-# Gemini CLI for a cross-model second opinion.
+# code; same-model review is an echo chamber. This script shells out to
+# `agy` (Antigravity's CLI) for a cross-model second opinion.
+#
+# V8 proving Lane G, 2026-07-13: retargeted from the standalone `gemini` CLI
+# to `agy` -- Google discontinued Gemini CLI for individuals ("migrate to
+# the Antigravity suite of products"), and `agy` is the replacement that
+# still serves Gemini models. One real behavioral difference drove the
+# adaptation below: `gemini -p` appended piped stdin to the prompt; `agy -p`
+# does NOT (confirmed live -- piped stdin is silently ignored, verified with
+# a probe that echoed a stdin-only token and got back "no extra input"). So
+# the review material is now concatenated directly into the `-p` argument
+# string instead of piped -- `agy`'s own stdin is closed (`< /dev/null`)
+# rather than left connected, since a connected-but-unread pipe was observed
+# to intermittently hang the CLI until `--print-timeout` fired.
 #
 # Usage:
 #   cat review-material.txt | .harness/scripts/cross-review.sh
 #
 # The stdin "review material" is already-assembled text built by the caller
 # (the adversarial-reviewer-cross sub-agent). It should include delimited
-# sections: the diff, the PLAN task, and optionally AGENTS.md.
+# sections: the diff, the PLAN task, and optionally AGENTS.md. This is
+# cross-review.sh's OWN stdin contract with its caller -- unchanged; only the
+# internal agy invocation stopped using stdin.
 #
 # Exit codes:
 #   0 — review produced, output on stdout matches the contract
-#   1 — gemini not installed / not authed — caller should fall back
-#   2 — gemini ran but violated the output contract twice — caller decides
+#   1 — agy not installed / not authed — caller should fall back
+#   2 — agy ran but violated the output contract twice — caller decides
 #
 # The contract (what stdout must match): exactly one of
 #   1. A failing test inside a fenced code block
@@ -25,7 +40,7 @@
 #
 # Degradation is never silent: both fallback paths (exit 1 and exit 2) print
 # a "CROSS-REVIEW-DEGRADED: ..." line on stdout before exiting, in addition to
-# the diagnostic already on stderr. A missing/broken gemini CLI used to leave
+# the diagnostic already on stderr. A missing/broken agy CLI used to leave
 # only a stderr line + the exit code as evidence -- easy to miss in a
 # transcript, and invisible to anything that only captures stdout. The marker
 # text is a stable, grep-able contract of its own (see
@@ -35,7 +50,12 @@
 
 set -uo pipefail
 
-MODEL="gemini-3.1-pro-preview"
+# Closest available match to the retired `gemini-3.1-pro-preview` pin, from
+# the exact display strings `agy models` serves on this machine (confirmed
+# live 2026-07-13: Gemini 3.5 Flash Low/Medium/High, Gemini 3.1 Pro Low/High,
+# Claude Sonnet 4.6 (Thinking), Claude Opus 4.6 (Thinking), GPT-OSS 120B
+# Medium) -- `--model` takes this string verbatim, not a short id.
+MODEL="Gemini 3.1 Pro (High)"
 
 # Use `read -r -d ''` for the heredoc assignment — `$(cat <<'EOF'...)` gets
 # confused by backticks inside fenced code blocks in the prompt body.
@@ -85,17 +105,21 @@ validate() {
   return 1
 }
 
-call_gemini() {
+call_agy() {
   local prompt="$1"
-  # Pass the framing via -p (short), and the bulk of the material via stdin.
-  # `gemini -p` appends stdin to the prompt, per `gemini --help`.
-  printf '%s\n' "$material" | gemini -p "$prompt" -m "$MODEL" -o text 2>/dev/null
+  # Concatenate the framing + the review material into ONE prompt string
+  # passed via -p -- agy does not append piped stdin to the prompt (unlike
+  # gemini -p), confirmed live; see the header comment. agy's own stdin is
+  # explicitly closed (a connected-but-unread pipe was observed to
+  # intermittently hang until --print-timeout fired).
+  local full_prompt="${prompt}"$'\n\n=== REVIEW MATERIAL ==='$'\n'"${material}"
+  agy -p "$full_prompt" --model "$MODEL" --print-timeout 180s < /dev/null 2>/dev/null
 }
 
 main() {
-  command -v gemini >/dev/null 2>&1 || {
-    echo "CROSS-REVIEW-DEGRADED: gemini CLI unavailable, using same-model reviewer"
-    echo "cross-review: gemini CLI not found — caller should fall back" >&2
+  command -v agy >/dev/null 2>&1 || {
+    echo "CROSS-REVIEW-DEGRADED: agy CLI unavailable, using same-model reviewer"
+    echo "cross-review: agy CLI not found — caller should fall back" >&2
     exit 1
   }
 
@@ -105,10 +129,10 @@ main() {
     exit 2
   fi
 
-  output=$(call_gemini "$framing")
+  output=$(call_agy "$framing")
   rc=$?
   if [[ $rc -ne 0 || -z "$output" ]]; then
-    echo "cross-review: gemini call failed (exit $rc)" >&2
+    echo "cross-review: agy call failed (exit $rc)" >&2
     exit 1
   fi
 
@@ -121,10 +145,10 @@ main() {
   retry_nudge="Your previous response did not match the required output format. Respond again using EXACTLY ONE of the three forms (failing test, DEFECT:, or NO ISSUES FOUND). No prose preamble. No prose outside the form."
   retry_framing="${framing}"$'\n\n'"${retry_nudge}"
 
-  output=$(call_gemini "$retry_framing")
+  output=$(call_agy "$retry_framing")
   rc=$?
   if [[ $rc -ne 0 || -z "$output" ]]; then
-    echo "cross-review: gemini retry failed (exit $rc)" >&2
+    echo "cross-review: agy retry failed (exit $rc)" >&2
     exit 1
   fi
 
@@ -133,14 +157,14 @@ main() {
     exit 0
   fi
 
-  echo "CROSS-REVIEW-DEGRADED: gemini response violated the output contract twice, using same-model reviewer"
+  echo "CROSS-REVIEW-DEGRADED: agy response violated the output contract twice, using same-model reviewer"
   echo "cross-review: contract violated after retry. Raw output follows on stderr." >&2
   printf '%s\n' "$output" >&2
   exit 2
 }
 
 # Sourcing this file (e.g. from a test harness that wants to call validate()
-# directly) must not run the gemini flow — only direct execution does.
+# directly) must not run the agy flow — only direct execution does.
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   main "$@"
 fi
