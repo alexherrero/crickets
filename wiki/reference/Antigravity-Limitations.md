@@ -9,7 +9,7 @@ Antigravity (`agy`) is missing a few host surfaces that crickets primitives depe
 | # | Gap | Affected surface | Mitigation | Re-assess when | Status |
 |---|---|---|---|---|---|
 | 1 | **Scheduling / triggers** — no installable trigger path for a shipped plugin | wiki-watcher scheduling | Claude-first scheduling (`/loop` / cron); the watcher *engine* is cross-host | `agy` ships a file-based or plugin-installable scheduled-task surface | 🟡 mitigated |
-| 2 | **Hooks** — no file-based hook surface (Python decorators only) | the five crickets hooks | run Claude-effective; observe-only on Antigravity ([Hooks](Hooks)) | `agy` ships a file-based / plugin-installable hook surface | 🟡 mitigated |
+| 2 | **Hooks** — no file-based hook surface (Python decorators only) | the six crickets hooks | run Claude-effective; observe-only on Antigravity ([Hooks](Hooks)) | `agy` ships a file-based / plugin-installable hook surface | 🟡 mitigated |
 | 3 | **Multi-agent orchestration** — no plugin-author spawn-policy surface | orchestration policy | the sub-agent-as-skill pattern (ship agents the parent can spawn) | `agy` exposes a plugin-author orchestration surface | 🟡 mitigated |
 | 4 | **Scheduled-task durability** — an in-flight scheduled task does not survive an app restart/sleep; it silently transitions to `CANCELED` instead of firing late or catching up | wiki-watcher scheduling · the agentm runner | rely on OS cron/launchd, not Antigravity's native Scheduled Tasks, for anything that must survive the app being closed | `agy` ships a persistence/catch-up guarantee for its scheduled-task primitive | 🟡 mitigated |
 
@@ -27,7 +27,7 @@ Antigravity (`agy`) is missing a few host surfaces that crickets primitives depe
 
 **The gap.** Antigravity hooks are **Python decorators** registered at agent creation via `LocalAgentConfig(hooks=[...])`. The host's nine hook events (`on_session_start`, `on_session_end`, `pre_turn`, `post_turn`, `pre_tool_call_decide`, `post_tool_call`, `on_tool_error`, `on_compaction`, `on_interaction`) cover most of what Claude Code's file-based hooks do — but they require Python SDK integration to register. There's no `.agents/hooks/` directory or `hooks.json` a plugin can ship.
 
-**Why it matters.** crickets ships five file-based hooks ([Hooks](Hooks)). Antigravity runs plugin hooks **observe / side-effect-only**, so a veto (exit code) or inject (stdout) hook is inert there, and `evidence-tracker` + `harness-context` — which need the Claude-only contract — are Claude-only.
+**Why it matters.** crickets ships six file-based hooks ([Hooks](Hooks)). Antigravity runs plugin hooks **observe / side-effect-only**, so a veto (exit code) or inject (stdout) hook is inert there, and `evidence-tracker` + `harness-context` — which need the Claude-only contract — are Claude-only.
 
 **Mitigation.** Ship the hooks Claude-effective; on Antigravity they run observe-only. A future Python sidecar (`crickets-hooks-py`?) could translate the file-based hook scripts to SDK decorator registration at agent-author boot.
 
