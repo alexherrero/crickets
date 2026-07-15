@@ -78,9 +78,9 @@ Format:
 - <Observable sign that the skill is being violated.>
 ```
 
-Example bullet (from `/work`):
+Example bullet (from `/work`'s `## Failure modes to avoid`, the section this pattern generalizes from):
 
-- Agent marks `[x]` before gates are green.
+- **Skipping failed gates** ("I'll fix it next session"). Green before `[x]`.
 
 Red Flags serve a different purpose than Rationalizations: they help reviewers and operators catch violations after the fact, not prevent them in-context.
 
