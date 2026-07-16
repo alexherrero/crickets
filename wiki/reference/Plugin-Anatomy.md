@@ -1,10 +1,10 @@
 # Plugin anatomy
 
-A crickets plugin is a **functional group of primitives** — skills, agents, commands, hooks — authored once under `src/<group>/` and generated into a native host plugin at `dist/<host>/plugins/<group>/`, which the host's plugin manager installs. The group folder *is* the plugin, and its name is the plugin slug. crickets doesn't redefine the host plugin format — it generates into it; this page is the crickets-side anatomy: what's in a plugin and how plugins relate. For why it's built this way see [the v3 design](crickets-build-system); for host coverage see [Compatibility](Compatibility).
+A crickets plugin is a **functional group of primitives**. These primitives include skills, agents, commands, and hooks. You author them once under `src/<group>/`. A build script generates them into a native host plugin at `dist/<host>/plugins/<group>/`. The host's plugin manager installs this folder. The group folder *is* the plugin. Its name is the plugin slug. crickets doesn't redefine the host plugin format. It generates files into that format. This page outlines the crickets-side anatomy. It shows what you find in a plugin and how plugins relate. Read [the v3 design](crickets-build-system) to learn why you build it this way. Read [Compatibility](Compatibility) for host coverage.
 
 ## ⚡ Quick Reference
 
-A generated plugin — `dist/<host>/plugins/<group>/`:
+This is a generated plugin at `dist/<host>/plugins/<group>/`:
 
 ```
 .claude-plugin/plugin.json   # the plugin manifest   (Antigravity: plugin.json at the plugin root)
@@ -17,11 +17,11 @@ rules/<name>.md              # Antigravity only — emitted from snippets (Claud
 scripts/<name>               # group-level helper scripts, copied verbatim (both hosts)
 ```
 
-[Customization types](Customization-Types) covers what each kind is; [Per-host paths](Per-Host-Paths) the exact path per host.
+Read [Customization types](Customization-Types) to learn what each kind is. Read [Per-host paths](Per-Host-Paths) to find the exact path per host.
 
 ## The group manifest
 
-Each `src/<group>/group.yaml` describes the plugin — what per-primitive frontmatter does for a single primitive:
+Each `src/<group>/group.yaml` describes the plugin. This file acts like per-primitive frontmatter for a single primitive.
 
 | Field | Meaning |
 |---|---|
@@ -31,17 +31,17 @@ Each `src/<group>/group.yaml` describes the plugin — what per-primitive frontm
 | `enhances` | groups this plugin augments *when both are installed* (soft) |
 | `capabilities` | named capabilities that other plugins' `enhances` can target |
 
-See [Manifest schema](Manifest-Schema) for the full contract + validation rules.
+Read [Manifest schema](Manifest-Schema) for the full contract and validation rules.
 
 ## How plugins compose
 
-Three relationships, in increasing coupling:
+Plugins use three relationships. They scale in coupling.
 
-- **standalone** — works on its own, depends on nothing (`requires: []`).
-- **`requires`** — a hard dependency. On Claude Code the manifest's native `dependencies` auto-installs the base; on Antigravity the plugin ships thin and the docs say "install the base first."
-- **`enhances`** — soft: the plugin works alone and *augments* a target when both are installed, engaged by a capability probe rather than a hard link.
+- **standalone** — It works on its own. It depends on nothing (`requires: []`).
+- **`requires`** — It acts as a hard dependency. On Claude Code, the manifest's native `dependencies` auto-installs the base. On Antigravity, the plugin ships thin. You must install the base first.
+- **`enhances`** — It acts as a soft dependency. The plugin works alone. It augments a target when you install both. It engages via a capability probe instead of a hard link.
 
-A representative set of shipped plugins (the full roster is in the [Designs](Designs) section):
+Here is a representative set of shipped plugins. You can find the full roster in the [Designs](Designs) section.
 
 | Plugin | Standalone? | Relation to the base |
 |---|---|---|
@@ -54,7 +54,7 @@ A representative set of shipped plugins (the full roster is in the [Designs](Des
 
 ## From source to installed
 
-`src/<group>/` → `python3 scripts/generate.py build` → committed `dist/<host>/plugins/<group>/` → the host installs the whole plugin. The generated `dist/` is committed, so the marketplace serves static files and a CI gate proves it stays in sync with `src/`. Edit and dogfood via [Modify a plugin](Modify-A-Plugin); install via [Install crickets plugins](Install-Into-Project).
+The pipeline moves from `src/<group>/` through `python3 scripts/generate.py build` to the committed `dist/<host>/plugins/<group>/`. The host then installs the whole plugin. The generated `dist/` directory is committed. This lets the marketplace serve static files. A CI gate proves it stays in sync with `src/`. You can edit and dogfood your changes via [Modify a plugin](Modify-A-Plugin). You can install plugins via [Install crickets plugins](Install-Into-Project).
 
 ## Related
 

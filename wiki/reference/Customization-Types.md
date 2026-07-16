@@ -1,6 +1,6 @@
 # Customization types
 
-crickets recognizes seven primitive kinds, declared in each primitive's `kind` field. You author a primitive under its kind's subdir inside a plugin group — `src/<group>/<subdir>/<name>` — and the generator emits it into that group's plugin for each host in its `supported_hosts`. For where each lands see [Per-host paths](Per-Host-Paths), and for the frontmatter contract see [Manifest Schema](Manifest-Schema).
+crickets recognizes seven primitive kinds. You declare the kind in each primitive's `kind` field. You author a primitive under its kind's subdir inside a plugin group. You use the path `src/<group>/<subdir>/<name>`. The generator emits it into that group's plugin. It emits for each host in its `supported_hosts`. See [Per-host paths](Per-Host-Paths) for where each lands. See [Manifest Schema](Manifest-Schema) for the frontmatter contract.
 
 ## ⚡ Quick Reference
 
@@ -14,10 +14,10 @@ crickets recognizes seven primitive kinds, declared in each primitive's `kind` f
 | `output-style` | `output-styles/<name>.md` | named output-style — agent reads it when referenced by name (e.g. `terse`); adjusts verbosity or format | both |
 | `rule` | `rules/<name>.md` | standing behavioral rule — merged into the agent's context as a persistent instruction (e.g. `edit-over-write`) | both |
 
-These seven ship today. The `kind` enum also reserves `mcp-server`, `status-line`, `workflow`, and `settings-fragment` — no primitive uses them yet, so the generator emits none. The full enum lives in [Manifest Schema](Manifest-Schema).
+These seven ship today. The `kind` enum also reserves `mcp-server`, `status-line`, `workflow`, and `settings-fragment`. No primitive uses them yet. The generator emits none. The full enum lives in [Manifest Schema](Manifest-Schema).
 
 > [!NOTE]
-> **Group-level `scripts/` is not a `kind`.** A `src/<group>/scripts/` dir holds verbatim helper scripts (e.g. `code-review/scripts/cross-review.sh`, `development-lifecycle/scripts/agentm_bridge.py`) — no frontmatter, no `kind`, not discovered as a primitive. The generator copies the whole dir wholesale (excluding `__pycache__`) into the plugin at `<plugin>/scripts/`, both hosts. A primitive references a bundled script through the host's plugin path — `${CLAUDE_PLUGIN_ROOT}/scripts/<name>` on Claude Code, or a **relative** `scripts/<name>` on Antigravity, which runs primitives from inside the plugin dir and sets no plugin-root variable. See [`src/SCHEMA.md`](https://github.com/alexherrero/crickets/blob/main/src/SCHEMA.md) § Group-level assets.
+> **Group-level `scripts/` is not a `kind`.** A `src/<group>/scripts/` dir holds verbatim helper scripts (e.g. `code-review/scripts/cross-review.sh`, `development-lifecycle/scripts/agentm_bridge.py`). These scripts lack frontmatter. They lack a `kind`. The system does not discover them as primitives. The generator copies the whole dir wholesale into the plugin at `<plugin>/scripts/`. It excludes `__pycache__`. This happens for both hosts. A primitive references a bundled script through the host's plugin path. You use `${CLAUDE_PLUGIN_ROOT}/scripts/<name>` on Claude Code. You use a **relative** `scripts/<name>` on Antigravity. Antigravity runs primitives from inside the plugin dir. It sets no plugin-root variable. See [`src/SCHEMA.md`](https://github.com/alexherrero/crickets/blob/main/src/SCHEMA.md) § Group-level assets.
 
 ## Choosing skill vs command vs agent
 
@@ -27,16 +27,16 @@ These seven ship today. The `kind` enum also reserves `mcp-server`, `status-line
 | a user-typed `/something` command | `command` |
 | a specialized agent for a specific task (e.g. [`evaluator`](Evaluator), `explorer`) | `agent` |
 
-One concept can ship as several primitives — e.g. an [`evaluator`](Evaluator) agent plus a skill that auto-invokes it.
+You can ship one concept as several primitives. For example, you can ship an [`evaluator`](Evaluator) agent plus a skill that auto-invokes it.
 
 ## Grouping primitives into a plugin
 
-Primitives that belong together live in one group (`src/<group>/`), which emits as one installable plugin. The group's `group.yaml` declares whether it's `standalone` or `requires` another group, and what it `enhances` — see [Manifest Schema](Manifest-Schema) for that contract. Independent customizations go in separate groups.
+Primitives that belong together live in one group. You place them in `src/<group>/`. The generator emits this group as one installable plugin. The group's `group.yaml` declares its dependencies. It declares whether the group is `standalone` or `requires` another group. It declares what the group `enhances`. See [Manifest Schema](Manifest-Schema) for that contract. You place independent customizations in separate groups.
 
 ## Related
 
-- [Plugin anatomy](Plugin-Anatomy) — what a plugin is + its overall structure.
-- [Per-host paths](Per-Host-Paths) — where each kind lands in the plugin, per host.
-- [Manifest Schema](Manifest-Schema) — the frontmatter + `group.yaml` contract.
-- [Hooks](Hooks) — the hook catalog + how hooks run.
-- [Add a skill](Add-A-Skill) — a worked authoring recipe.
+- [Plugin anatomy](Plugin-Anatomy) explains what a plugin is. It describes the overall structure.
+- [Per-host paths](Per-Host-Paths) details where each kind lands in the plugin. It shows this per host.
+- [Manifest Schema](Manifest-Schema) defines the frontmatter contract. It defines the `group.yaml` contract.
+- [Hooks](Hooks) provides the hook catalog. It explains how hooks run.
+- [Add a skill](Add-A-Skill) gives a worked authoring recipe.

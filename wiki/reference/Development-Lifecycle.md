@@ -3,25 +3,25 @@
 
 ## Architecture
 
-Development Lifecycle is a set of opinionated workflows covering every phase of development — from ideation and design to implementation, and even deprecation. As the agent works, it saves its state to disk through AgentM's memory, so you can split a change across several agents, or give different sessions different kinds of work: research and design in one, implementation or cleanup in another. The agent always knows where it left off, and many of its steps are enhanced by the other crickets plugins when they are installed.
+Development Lifecycle is a set of opinionated workflows. It covers every phase of development. These phases range from ideation and design to implementation and deprecation. The agent saves its state to disk through AgentM's memory as it works. This lets you split a change across several agents. You can give different sessions different kinds of work. You might do research and design in one session. You can do implementation or cleanup in another. The agent always knows where it left off. Other crickets plugins enhance many of its steps when they are installed.
 
 ### Diagram
 
-The workflow — the phase-gated loop, its authoring feed, the `/bugfix` track, and ship discipline:
+This diagram shows the workflow. It outlines the phase-gated loop. It includes the authoring feed. It displays the `/bugfix` track. It covers ship discipline.
 
 ![The development-lifecycle loop: /setup (once) then /plan -> /work -> /review -> /release, with authoring (/design, /spec, /interview-me) feeding /plan, the /bugfix defect track replacing plan+work, and ship discipline (/launch, /deprecate, /ci-cd, /observe) around /release](diagrams/development-lifecycle-loop.svg)
 
-How it composes — what enhances the loop, what requires it, and the AgentM substrate it rests on:
+This diagram shows how the lifecycle composes. It details what enhances the loop. It lists what requires the loop. It illustrates the AgentM substrate it rests on.
 
 ![How development-lifecycle composes: code-review, developer-safety, and wiki-maintenance enhance it (soft); design-docs, github-ci, github-projects, releasing-conventions, and testing-conventions require it (hard); it composes one-way onto the AgentM substrate of memory, opinions, and personas](diagrams/development-lifecycle-composition.svg)
 
 ### How it works
 
-Development Lifecycle moves a change from a rough **idea** to a shipped feature, one gated step at a time, and its commands map onto that flow.
+Development Lifecycle moves a change from a rough **idea** to a shipped feature. It progresses one gated step at a time. Its commands map directly onto that flow.
 
-You start with an **idea** — a brief, a feature request, a bug. When it is still fuzzy, `/interview-me` draws out what you actually want. **Research** then fills in what the agent hasn't seen: a read-only sweep of the codebase, and the web when it helps. With the shape clearer, you move to **architecture and design** — `/spec` writes a short PRD, and `/design` takes a design doc to a human-approved final and splits it into parts. Those parts become **plans**: `/plan` turns a brief into a task list with pass/fail criteria, and a larger design fans out into several ordered, named plans. Then the **work** — `/work` runs a plan's tasks one at a time, stopping only when a safety check fails or it needs a decision; for bigger efforts, `/work` itself spawns the plan its own isolated worktree via the host's native worktree primitive and closes it out with an auto-merging pull request, when `isolation.mode: worktree-per-plan` is configured or you ask for one explicitly — there's no separate spawn or integrate command to run. Every change is **reviewed** adversarially at `/review` and shipped through the `/release` gate, with `/bugfix` as the shorter Report → Analyze → Fix → Verify track for defects.
+You start with an **idea**. This can be a brief, a feature request, or a bug. You run `/interview-me` when the idea is still fuzzy. This command draws out what you actually want. **Research** then fills in what the agent hasn't seen. It performs a read-only sweep of the codebase. It searches the web when that helps. You move to **architecture and design** once the shape becomes clearer. The `/spec` command writes a short PRD. The `/design` command takes a design doc to a human-approved final state. It then splits that design into parts. Those parts become **plans**. The `/plan` command turns a brief into a task list with pass/fail criteria. A larger design fans out into several ordered, named plans. You then start the **work**. The `/work` command runs a plan's tasks one at a time. It stops only when a safety check fails or it needs a decision. For bigger efforts, `/work` spawns its own isolated worktree for the plan. It uses the host's native worktree primitive for this. It closes the worktree out with an auto-merging pull request. This happens when you configure `isolation.mode: worktree-per-plan`. It also happens when you ask for one explicitly. You do not need to run a separate spawn or integrate command. Every change is **reviewed** adversarially at `/review`. Every change is shipped through the `/release` gate. The `/bugfix` command provides a shorter track for defects. This track follows a Report → Analyze → Fix → Verify flow.
 
-The whole loop runs on disk, not in the conversation: the plan, its progress, and the project's state live in files, which is what lets one plan span many sessions.
+The whole loop runs on disk instead of in the conversation. The plan lives in files. Its progress lives in files. The project's state lives in files. This on-disk storage lets one plan span many sessions.
 
 ### Composition
 
@@ -34,17 +34,17 @@ The whole loop runs on disk, not in the conversation: the plan, its progress, an
 
 ### Why not
 
-Development Lifecycle is opinionated about how a change should move from brief to merge. Reach for something else if:
+Development Lifecycle is opinionated about how a change should move from brief to merge. You should reach for something else if any of these apply:
 
-- You already run a lifecycle you like — your own scripts, a CI-driven flow, or a different agent harness — and don't want a second set of phase commands layered on top.
-- You prefer a freeform, single-pass style. The discrete `plan → work → review → release` gates are deliberate, and on a small or throwaway change they can feel heavier than the change warrants.
-- You want the loop but not the on-disk state contract. This plugin writes `.harness/PLAN.md` and `progress.md` and treats them as the source of truth between sessions; if that convention doesn't fit your project, the phases won't either.
+- You already run a lifecycle you like. This could be your own scripts. It could be a CI-driven flow. It could be a different agent harness. You do not want a second set of phase commands layered on top.
+- You prefer a freeform, single-pass style. The discrete `plan → work → review → release` gates are deliberate. They can feel heavier than the change warrants on a small or throwaway change.
+- You want the loop but not the on-disk state contract. This plugin writes `.harness/PLAN.md` and `progress.md`. It treats them as the source of truth between sessions. The phases will not fit your project if that convention does not fit.
 
 ## Reference
 
 ### Commands & skills
 
-Each primitive links to the source that implements it. The phase and ship commands, plus the six agents, are host-symmetric; the two hooks are Claude-only ([Antigravity limitations](Antigravity-Limitations)).
+Each primitive links to the source that implements it. The phase and ship commands are host-symmetric. The six agents are host-symmetric. The two hooks are Claude-only ([Antigravity limitations](Antigravity-Limitations)).
 
 | Primitive | Kind | What it does |
 |---|---|---|
@@ -74,15 +74,15 @@ Each primitive links to the source that implements it. The phase and ship comman
 
 ### Configuration
 
-No configuration — the plugin works out of the box. The phase commands read and write the harness's on-disk state (the plan, progress, and feature files, plus optional project settings), but that is project state the loop maintains, not plugin settings you set up front. Where those files live is set by the project's **state mode**, not by this plugin: they sit either repo-local under `.harness/` or inside your synced memory vault, whichever the harness is configured for.
+There is no configuration. The plugin works out of the box. The phase commands read and write the harness's on-disk state. This state includes the plan, progress, and feature files. It includes optional project settings. This is project state the loop maintains. It is not a set of plugin settings you configure up front. The project's **state mode** dictates where those files live. This plugin does not dictate their location. They sit repo-local under `.harness/`. They can alternatively sit inside your synced memory vault. This depends on how you configure the harness.
 
 ## See also
 
-- [Named plans](Named-Plans) · [See every active plan](See-Every-Active-Plan) — the multi-plan surface.
-- [Run a named plan](Run-A-Named-Plan) · [Run isolated tasks](Run-Isolated-Tasks) — the worktree lifecycle, including `/work`'s own auto-spawn + auto-close-out.
-- [Evaluator](Evaluator) — the `/review` grader's dispatch contract.
-- [Code Review](Code-Review) · [Developer Safety](Developer-Safety) — the siblings that enhance the loop.
-- [Why phase-gating](Why-Phase-Gating) · [Why adversarial review](Why-Adversarial-Review) — why the loop is shaped this way.
-- [Development lifecycle design](crickets-development-lifecycle) · [Composition design](crickets-composition) — the deeper design.
+- [Named plans](Named-Plans) · [See every active plan](See-Every-Active-Plan) — These documents cover the multi-plan surface.
+- [Run a named plan](Run-A-Named-Plan) · [Run isolated tasks](Run-Isolated-Tasks) — These documents detail the worktree lifecycle. They include `/work`'s own auto-spawn and auto-close-out.
+- [Evaluator](Evaluator) — This document explains the `/review` grader's dispatch contract.
+- [Code Review](Code-Review) · [Developer Safety](Developer-Safety) — These are the sibling plugins that enhance the loop.
+- [Why phase-gating](Why-Phase-Gating) · [Why adversarial review](Why-Adversarial-Review) — These documents explain why the loop is shaped this way.
+- [Development lifecycle design](crickets-development-lifecycle) · [Composition design](crickets-composition) — These documents detail the deeper design.
 
 [Reference](Reference) · [Architecture](Architecture) · [Home](Home)
