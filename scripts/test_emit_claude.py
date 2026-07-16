@@ -100,7 +100,13 @@ class TestClaudeEmitter(unittest.TestCase):
         # render smoke check; vendor_gate.py vendors it alongside check-wiki.py.
         # 0.7.1 = check-wiki gains rule (q) — top-note length, ported from
         # agentm's rule q (PR #305) to close a cross-repo-script-parity gap.
-        self.assertEqual(self._plugin_json("wiki")["version"], "0.7.2")
+        # 0.7.2 = wiki_publish_transform.py stops rewriting bare extension-less
+        # page links as broken asset URLs; new test_wiki_publish_transform.py.
+        # 0.8.0 = the design plugin's prose-pass skill wired into authoring —
+        # documenter.md runs it (via scripts/prose_pass.py) on every drafted
+        # page before preview (announced Claude-only fallback); diataxis-author
+        # + wiki-author document the step by cross-reference.
+        self.assertEqual(self._plugin_json("wiki")["version"], "0.8.0")
         # 0.3.0 = check-no-pii.sh + templates/hooks/pre-push moved into src/pii/
         # so they actually ship inside the plugin payload (R2.4 task 7).
         # 0.3.1 = check-no-pii.sh scan collapsed to one grep per file (fixes a

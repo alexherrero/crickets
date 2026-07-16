@@ -74,4 +74,14 @@ capabilities: [design-docs, design, architecture]
 #          against agentm's capture design; the prose sibling of
 #          code-review's cross-review.sh, headless sibling of the deferred
 #          #5b interactive handoff.
-version: 0.7.0
+# 0.8.0 = the prose pass becomes the DEFAULT for authoring, not just a
+#          standalone tool (operator escalation of the same-day session
+#          rule): commands/design.md wires prose_pass.py + the prose-pass
+#          skill's Step 2 checklist into author Step 5 (ready-for-review)
+#          and review-pass entry -- the fact-guard list generated first, the
+#          default design-doc-prose overlay, PROSE-PASS-DEGRADED relayed
+#          verbatim with an announced Claude-only fallback that never blocks
+#          (own frontmatter version 0.2.2 -> 0.3.0). Same wiring lands in the
+#          wiki plugin's documenter agent (sibling-plugin resolution, not a
+#          hard requires:) -- see wiki group.yaml's own bump.
+version: 0.8.0
