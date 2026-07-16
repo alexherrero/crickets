@@ -39,4 +39,4 @@ The [wiki](https://github.com/alexherrero/crickets/wiki) covers everything there
 ---
 
 > [!NOTE]
-> **Latest release: [v3.29.0](https://github.com/alexherrero/crickets/releases/tag/v3.29.0).** Cross-review keeps working after Google retired the Gemini CLI — the transport retargets to `agy` with the same output contract and retry behavior. Alongside it: the reference docs read plainer, the remaining truth-audit gaps close, and a publish-time bug that broke wiki page links gets fixed.
+> **Latest release: [v3.30.0](https://github.com/alexherrero/crickets/releases/tag/v3.30.0).** A cross-model prose pass now checks design docs and wiki pages the way cross-review already checks code — Gemini simplifies, Claude verifies — and it runs by default, not just on request.

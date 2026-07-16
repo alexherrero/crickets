@@ -5,6 +5,22 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.30.0] — 2026-07-16 — Minor: the prose pass — Gemini simplifies, Claude verifies, now on by default
+
+**MINOR.** Design docs and wiki pages get a cross-model readability pass the same way code already does: a different model reads the prose an author can no longer see clearly, and the author verifies before it ships. `scripts/prose_pass.py` sends a document to Gemini (via `agy`) with a mandatory fact-guard list (the truths a simplifier could plausibly invert) and the operator's voice pack inlined verbatim, then mechanically checks that the frontmatter, headings, table structure, and Document History came back byte-identical — retrying once, and degrading loudly (never silently) if `agy` is unavailable or the structural contract breaks twice. The `prose-pass` skill covers the human half: verify every fact-guard held, spot-check claims against the code, restore hand-written lines verbatim, then deploy. That pattern is now the **default**, not a tool you remember to reach for: `/design author` runs it automatically at Step 5 and on review-pass entry, and the wiki `documenter` agent runs it on every drafted page before its preview.
+
+### Added
+
+- **The cross-model prose pass, `prose-pass`** (`abf6871`, #202; `design 0.6.0 → 0.7.0`) — `scripts/prose_pass.py` (the prose sibling of `code-review`'s `cross-review.sh`: prompt-first `agy` invocation, stdin closed, exit 0/1/2 contract, `PROSE-PASS-DEGRADED` markers) + `skills/prose-pass/SKILL.md` (the verification checklist). Proven by hand against agentm's capture design, where an un-guarded first pass inverted document truths — hence the mandatory fact-guard list.
+
+### Changed
+
+- **The prose pass becomes the default for authoring, not a standalone tool** (`bf522bd` + `aeed89c`, #203; `design 0.7.0 → 0.8.0`, `wiki 0.7.2 → 0.8.0`) — `/design author` now runs it automatically before the operator reads a doc end to end (Step 5 and review-pass entry), folding the run into that day's consolidated Document History row. The wiki `documenter` agent runs the same pass on every drafted page before preview-before-write, resolving the `docs-prose-style` genre overlay explicitly since the script defaults to `design-doc-prose`. Both callers relay the `PROSE-PASS-DEGRADED` marker verbatim and fall back to a Claude-only conformance pass rather than blocking authoring when `agy` is unavailable.
+
+### Internal
+
+- **Reconciled two independent builds of the same primitive.** A sibling task built its own copy of the prose-pass contract in parallel with #202 landing; once #202 merged, the duplicate was dropped and every caller rewired against the real, tested `prose_pass.py` + `prose-pass` skill — confirmed with a live end-to-end probe against the actual `agy` call, not just mocks.
+
 ## [v3.29.0] — 2026-07-16 — Minor: cross-review keeps working after Google retired the Gemini CLI
 
 **MINOR.** Google discontinued the standalone Gemini CLI for individuals mid-window ("migrate to the Antigravity suite of products"); `cross-review.sh`'s transport retargets to `agy` (the Antigravity CLI, still serving Gemini models) with the same output contract, retry, and degradation-marker behavior carried over verbatim. Alongside it: every `wiki/reference/` page not already rewritten this arc got a cross-model plain-English pass (pairs with [agentm v8.1.0](https://github.com/alexherrero/agentm/releases/tag/v8.1.0)), the remaining reference-page truth-audit gaps got closed, and a real publish-time bug — a bare wiki-page link getting rewritten into a broken asset URL — got caught and fixed twice (once for a genuinely different failure shape than the one #191 already handled).
