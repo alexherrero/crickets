@@ -10,6 +10,7 @@
 - [Review a change — code review](Use-Code-Review)
 - [In-flight decision review — /doubt](Use-Doubt-Review)
 - [Author a design](Author-A-Design)
+- [Run a cross-model prose pass](Run-A-Prose-Pass)
 - [Run a named plan](Run-A-Named-Plan)
 - [Run isolated tasks](Run-Isolated-Tasks)
 - [Configure main branch protection](Configure-Main-Branch-Protection)

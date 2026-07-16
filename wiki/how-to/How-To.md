@@ -43,6 +43,7 @@ Task-focused recipes for the crickets plugins. For field-level detail like plugi
 | How-to | What it does |
 |---|---|
 | [Author a design](Author-A-Design) | Write a design doc at the right size. |
+| [Run a cross-model prose pass](Run-A-Prose-Pass) | Gemini simplifies a finished doc; Claude verifies. |
 | [Run a named plan](Run-A-Named-Plan) | Work a specific plan when several are active. |
 | [See every active plan](See-Every-Active-Plan) | A read-only glance over every active plan. |
 | [Record an architectural decision](Record-An-Architectural-Decision) | Capture a decision in the governing design's log. |
