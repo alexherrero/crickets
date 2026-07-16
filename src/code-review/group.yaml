@@ -47,7 +47,17 @@ description: Standalone adversarial code review of any diff or PR — the advers
 # material is concatenated into the -p argument instead, with agy's own
 # stdin explicitly closed. Verified against a real cross-model review on a
 # planted-bug diff (own frontmatter version 0.2.0 -> 0.3.0).
-version: 0.3.1
+# 0.3.2 = testing-strategy's Prove-It Pattern gains an explicit sub-rule for
+# bug-fix regression tests: a test that only ever passes was never proven to
+# test anything -- revert the fix (or check out the pre-fix commit) and
+# confirm the regression test actually fails, using the real failure's own
+# reproduction shape, not a simplified stand-in. Prompted by a real, confirmed
+# case (agentm PR #316, corrected in #317): a shipped regression test used a
+# simplified repro that passed against both the real fix and a wrong one,
+# because it was never capable of exercising the condition the wrong fix
+# failed to handle. New checklist item; new Common Rationalizations row (own
+# frontmatter version 0.1.0 -> 0.1.1).
+version: 0.3.2
 category: Coding
 requires: []
 standalone: true
