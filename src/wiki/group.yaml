@@ -91,7 +91,16 @@ standalone: true
 #          rule q (PR #305) to close an undocumented cross-repo-script-parity
 #          divergence; confirmed live against crickets' own designs/
 #          (crickets-composition.md's top-note ran 64 words).
-version: 0.7.1
+# 0.7.2 = wiki_publish_transform.py's asset-link rewriter stops treating a
+#          bare, extension-less page link (GitHub Wiki's other page-link
+#          convention alongside the `.md`-suffixed form) as a relative
+#          asset path — it was rewriting a real page link into a broken
+#          raw.githubusercontent.com URL. Same bug shape confirmed live in
+#          agentm's independent sibling copy of this script (2026-07-16),
+#          not parity-checked against this one. New
+#          test_wiki_publish_transform.py — no test coverage for this
+#          script existed before.
+version: 0.7.2
 capabilities: [wiki-maintenance, wiki]
 enhances:
   - group: development-lifecycle

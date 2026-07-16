@@ -191,7 +191,7 @@
       ],
       "name": "wiki",
       "source": "./dist/claude-code/plugins/wiki",
-      "version": "0.7.1"
+      "version": "0.7.2"
     }
   ]
 }
