@@ -60,4 +60,18 @@ capabilities: [design-docs, design, architecture]
 #          build-time-interpolated marker at the rung-picking (sizing-ladder)
 #          prose -- the second binding fanned out through the now-proven
 #          cross-plugin grammar (own frontmatter version 0.2.1 -> 0.2.2).
-version: 0.6.0
+# 0.7.0 = cross-model prose pass ("Gemini simplifies, Claude verifies") --
+#          scripts/prose_pass.py (headless step 1: four-block prompt with a
+#          mandatory caller-supplied FACT-GUARD list + the operator's voice
+#          pack inlined verbatim from the vault, sent to agy mirroring
+#          cross-review.sh's prompt-first invocation + exit 0/1/2 contract
+#          with PROSE-PASS-DEGRADED markers, structural byte-identity
+#          validated deterministically with one retry) and
+#          skills/prose-pass/SKILL.md (step 2: the Claude verification
+#          checklist -- fact-guards held, claims spot-checked against code,
+#          operator lines restored verbatim -- then deploy + one consolidated
+#          Document History row per day). Pattern proven by hand 2026-07-16
+#          against agentm's capture design; the prose sibling of
+#          code-review's cross-review.sh, headless sibling of the deferred
+#          #5b interactive handoff.
+version: 0.7.0
