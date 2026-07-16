@@ -100,7 +100,19 @@ standalone: true
 #          not parity-checked against this one. New
 #          test_wiki_publish_transform.py — no test coverage for this
 #          script existed before.
-version: 0.7.2
+# 0.8.0 = two-step cross-model prose pass wired into authoring (operator
+#          escalation, 2026-07-16): documenter.md runs the design plugin's
+#          prose_cross_pass.py on every drafted page before preview-before-write
+#          (fact-guard list generated first, docs-prose-style pack inlined
+#          verbatim, frontmatter/headings/tables byte-identical, operator lines
+#          restored on verify; announced Claude-only conformance fallback via
+#          the PROSE-CROSS-PASS-DEGRADED marker relay — never blocks, never
+#          silent; no-network contract gains the named agy exception; own
+#          frontmatter 0.1.0 -> 0.2.0). diataxis-author + wiki-author SKILL.md
+#          document the step and cross-reference the documenter rather than
+#          duplicate the machinery (each 0.1.0 -> 0.1.1). Sibling-plugin
+#          resolution, NOT a hard requires: — wiki stays standalone.
+version: 0.8.0
 capabilities: [wiki-maintenance, wiki]
 enhances:
   - group: development-lifecycle

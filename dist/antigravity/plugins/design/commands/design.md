@@ -1,9 +1,9 @@
 ---
 name: design
-description: Author → translate → sequence a design doc into a topo-ordered set of named plans. The upstream authoring step above /plan.
+description: Author → translate → sequence a design doc into a topo-ordered set of named plans. The upstream authoring step above /plan. Author runs the two-step cross-model prose pass (Gemini simplifies, Claude fact-checks and applies) before the operator reads the doc, with an announced Claude-only fallback.
 kind: command
 supported_hosts: [claude-code, antigravity]
-version: 0.2.2
+version: 0.3.0
 install_scope: project
 argument-hint: author <slug|brief> [--rung full|abbreviated|architecture] (default)  |  translate <slug>  |  sequence <slug>
 opinions: [good, how-we-engineer]
@@ -65,6 +65,19 @@ The host-specific external-review handoff (the Antigravity/Gemini transfer-conte
 ### No PII
 
 This is a public repo. Never write the vault path or any PII token into a committed file; the helpers resolve confidential paths at runtime so nothing host-specific is baked in.
+
+### The prose cross-pass (author Step 5 + review-pass entry)
+
+The **two-step cross-model prose pass** — *Gemini simplifies with the operator's voice pack inlined verbatim; Claude fact-checks and applies* — runs over the full document at the two points where the operator is about to read it end to end: **Step 5** (author signals ready) and **review-pass entry** (Step 6). The primitive is this plugin's `scripts/prose_cross_pass.py`. The flow:
+
+1. **Generate the fact-guard list first (the Claude half, before Gemini):** the technical claims in the doc that must not drift — component names, gate semantics, exit codes, the decisions the doc records — grounded against the code/design the doc describes.
+2. **Resolve the voice pack:** `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/prose_cross_pass.py" resolve-pack design-doc-prose` (the design-doc genre overlay on the committed base style floor; vault path resolved at runtime, never cached). Inline the result **verbatim** — summarized rules do not hold against base-model voice pull; the before/after examples are what hold.
+3. **Run the pass:** pipe `=== VOICE PACK ===` / `=== FACT GUARDS ===` / `=== DRAFT ===` material to `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/prose_cross_pass.py" run`. Frontmatter, headings, and every table — **the Document History table included** — stay byte-identical (mechanically validated, one retry).
+4. **Verify and apply (the Claude half):** fact-check the returned prose against the guard list — a drifted claim keeps the original sentence; operator-authored lines (the operator's own wording from the section walk) are restored **verbatim**. Then **record the pass in that day's consolidated Document History row** (fold "cross-model prose pass (Gemini via agy) applied" into the day's entry — never a separate row per pass).
+
+**Fallback (graceful AND announced — never silent, never blocking):** on exit 1 (agy missing/unauthenticated) or exit 2 (output contract violated twice), the primitive prints a `PROSE-CROSS-PASS-DEGRADED: ...` marker on stdout. Then: (a) **announce** — relay the marker verbatim to the operator and state plainly that the cross-model pass is unavailable and why; (b) **fall back** — run the Claude-only conformance path instead (compose the style floor ⊕ `design-doc-prose` overlay yourself and scan against the banned-vocabulary rule pack, `wiki` plugin's `diataxis-author/style/voice-rules.json`, when installed); (c) **continue** the flow — the fallback never blocks authoring. Mirrors cross-review.sh's callers falling back to the in-process reviewer.
+
+Host note: this wiring is Claude-Code-first. On Antigravity the host model is already Gemini, so the cross-model roles invert — a forward reference recorded in the governing design, not built here.
 
 ### Behavioral contract (development-lifecycle commands)
 
@@ -141,7 +154,7 @@ Push for at least one alternative. Only accept `N/A: only one viable approach (<
 
 After all sections are filled, present a summary (sections filled, sub-attrs described vs. N/A, length), then ask the human to pick one:
 
-- **"Ready for review (Status → review)"** — transition `draft → review`; append `| <date> | Author signaled ready for review. | review |` to Document History; tell the human the next `/design author <slug>` runs the review pass.
+- **"Ready for review (Status → review)"** — first run the **prose cross-pass** over the full document (see *The prose cross-pass* under Shared conventions — the operator is about to read it; the pass runs before they do, and its fallback is announced, never silent). Then transition `draft → review`; append `| <date> | Author signaled ready for review. | review |` to Document History (the pass folds into that day's consolidated row); tell the human the next `/design author <slug>` runs the review pass.
 - **"Keep drafting"** — stay `draft`; return to the section walk.
 - **"Stop and resume later"** — save state; resume on the next `/design author <slug>`.
 
@@ -149,7 +162,7 @@ After all sections are filled, present a summary (sections filled, sub-attrs des
 
 ### Step 6 — Review pass (invoked on a `Status: review` doc)
 
-Announce review-pass mode, then walk each section (Context → … → Operations) and each Quality-Attributes sub-attr, prompting **Approve / Revise / Skip**, holding each section to the standard below:
+Announce review-pass mode. **On entry, run the prose cross-pass over the full document** (see *The prose cross-pass* under Shared conventions) so the operator reviews the simplified, fact-checked text — record it in that day's consolidated Document History row; on degradation, announce the fallback and continue. Then walk each section (Context → … → Operations) and each Quality-Attributes sub-attr, prompting **Approve / Revise / Skip**, holding each section to the standard below:
 
 <!-- opinion:good -->
 Good means it survives an adversarial pass primed to assume bugs exist, not

@@ -3,7 +3,7 @@ name: wiki-author
 description: "Update or create a Diátaxis wiki page for the current repo (or another registered repo). Triggers when the operator says 'update the wiki', 'document this in the wiki', 'add this to the wiki', 'create a wiki page for X', or 'update <repo>'s wiki'. Resolves target repo via cwd (default) or explicit repo name (cross-repo via repo_registry from V4 #30 plan 1). Dispatches the documenter sub-agent for the structural edit with preview-before-write. Defers to diataxis-author skill for mode selection when needed. Honors per-repo .diataxis-conventions.md override. Does NOT auto-generate content — agent gathers context from the conversation; the skill handles dispatch + write contract."
 kind: skill
 supported_hosts: [claude-code]
-version: 0.1.0
+version: 0.1.1
 install_scope: user
 ---
 
@@ -68,7 +68,7 @@ After resolution, this skill ALWAYS:
 3. **Determines Diátaxis mode** for the write target:
    - **Update existing page**: preserves the page's existing mode (don't cross-mode mix; that fails `check-wiki.py --strict`).
    - **Create new page**: derives mode from the phrase ("how-to for X" → how-to dir; "reference for X" → reference dir); if ambiguous, asks the operator interactively. Defers to the `diataxis-author` skill if available for richer mode selection.
-4. **Drafts the structural edit + emits a unified diff preview** to the operator before writing — **and surfaces the step-2 context bundle alongside the diff** so the operator sees *here's what's locked + what we've decided before* next to the proposed change. Per-write gate (every cross-repo edit gates on approval).
+4. **Drafts the structural edit + emits a unified diff preview** to the operator before writing — **and surfaces the step-2 context bundle alongside the diff** so the operator sees *here's what's locked + what we've decided before* next to the proposed change. Per-write gate (every cross-repo edit gates on approval). Before the preview is emitted, the draft runs the two-step cross-model prose pass — Gemini simplifies with the `docs-prose-style` voice pack inlined verbatim, Claude fact-checks and applies, with an **announced** graceful fallback to the Claude-only conformance path. The machinery rides the documenter ([agents/documenter.md § Prose cross-pass](../../agents/documenter.md)) — this skill documents the step, it does not duplicate the pass. The previewed diff is the post-pass, fact-checked text.
 5. **On operator approval**: dispatches the `documenter` sub-agent with the resolved target + draft content. Documenter performs the actual file write under its hard-boundary scope (per [documenter spec](../../agents/documenter.md#cross-repo-write-contract-v4-30-plan-2--2026-05-27)).
 6. **Cross-references**: the [crickets-conventions design](https://github.com/alexherrero/crickets/wiki/crickets-conventions) documentation domain (preview-before-write + .diataxis-conventions override + repo_registry resolution); documenter sub-agent spec (write-scope hard boundary + V4 #35 pre-flight); diataxis-author skill (mode selection + per-repo conventions, when applicable).
 
