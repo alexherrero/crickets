@@ -1,11 +1,11 @@
 <!-- mode: reference -->
 # Evaluator
 
-The evaluator is a **read-only grader**. It reads an artifact, applies the rubric you supply, and returns **PASS** or **NEEDS_WORK** with per-item reasoning. It runs in a fresh context that never saw the work, so it grades against the contract, not the author's intent. Its allowlist is `Read`, `Glob`, and `Grep` only — it cannot run Bash, write files, or reach the network.
+The evaluator is a **read-only grader**. It reads an artifact. It applies the rubric you supply. It returns **PASS** or **NEEDS_WORK** with per-item reasoning. It runs in a fresh context. It never saw the work before. It grades against the contract. It ignores the author's intent. Its allowlist includes `Read`, `Glob`, and `Grep` only. It cannot run Bash. It cannot write files. It cannot reach the network.
 
 ## How the infrastructure uses it
 
-The evaluator is dispatched *for* you — you rarely invoke it by hand:
+The infrastructure often dispatches the evaluator for you. You rarely invoke it by hand.
 
 | Caller | How it uses the evaluator |
 |---|---|
@@ -13,7 +13,7 @@ The evaluator is dispatched *for* you — you rarely invoke it by hand:
 | **a skill / command / workflow** | wires a rubric-driven gate (e.g. grade an artifact before proceeding) |
 | **you, directly** | dispatch it with a rubric to grade any artifact on disk |
 
-It is **not** a defect finder (use `adversarial-reviewer`), a prose reviewer (it refuses prose-only critiques), or a test runner (no Bash — run tests first, supply the output file as an artifact).
+It is not a defect finder. Use `adversarial-reviewer` for finding defects. It is not a prose reviewer. It refuses prose-only critiques. It is not a test runner. It has no Bash access. You must run tests first. You must supply the output file as an artifact.
 
 ## When it fits
 
@@ -26,11 +26,11 @@ It is **not** a defect finder (use `adversarial-reviewer`), a prose reviewer (it
 | A need to *run* tests | ❌ — run them first, supply the output file |
 | A need to *fix* what fails | ❌ — read-only; route NEEDS_WORK back to `/work` |
 
-Think of it as the did-this-match-the-contract check: if you can write the contract as a numbered list, the evaluator can grade it.
+Think of it as the did-this-match-the-contract check. You write the contract as a numbered list. The evaluator grades it.
 
 ## Dispatch contract
 
-A dispatch prompt has two mandatory labeled sections:
+A dispatch prompt requires two mandatory labeled sections.
 
 ```
 ARTIFACT:
@@ -42,13 +42,13 @@ RUBRIC:
 2. ...
 ```
 
-A missing `ARTIFACT:` or `RUBRIC:` label halts with `Input contract violation`. Extra sections (e.g. `CONTEXT:`) are allowed, but only the rubric is graded.
+A missing `ARTIFACT:` or `RUBRIC:` label halts the prompt. It returns `Input contract violation`. You can include extra sections like `CONTEXT:`. The evaluator only grades the rubric.
 
 **Rubric rules:**
 
-- **Verifiable** — a fresh reader can check it from the artifact alone, without your context.
-- **Falsifiable** — has a clear failure mode (not "the code is good").
-- **Independent** — items don't reference each other.
+- **Verifiable** — a fresh reader can check it from the artifact alone. It needs no extra context.
+- **Falsifiable** — it has a clear failure mode. It avoids vague claims like "the code is good".
+- **Independent** — items do not reference each other.
 - **Numbered** — the output mirrors the numbering 1:1.
 
 **Worked example** — a `/review` code-change rubric:
@@ -66,7 +66,7 @@ RUBRIC:
 4. No print() / breakpoint() / debug-log remains in src/parser.py.
 ```
 
-The same `ARTIFACT`/`RUBRIC` shape grades a docs-drift check, release readiness, or anything you can write as a numbered contract.
+You use this same `ARTIFACT`/`RUBRIC` shape to grade a docs-drift check. You use it for release readiness. You use it for anything you can write as a numbered contract.
 
 ## Output contract
 
@@ -80,11 +80,11 @@ Rubric:
 Verdict: <PASS or NEEDS_WORK> — <one-sentence framing>
 ```
 
-- **PASS** iff every rubric item is PASS; otherwise **NEEDS_WORK**.
-- Each line cites the artifact (file + section / line / quote); reasoning is one sentence.
-- The final **Verdict** line restates the header — what callers grep for.
+- It returns **PASS** iff every rubric item is PASS. It returns **NEEDS_WORK** otherwise.
+- Each line cites the artifact (file + section / line / quote). The reasoning is exactly one sentence.
+- The final **Verdict** line restates the header. Callers grep for this line.
 
-On NEEDS_WORK the FAIL lines name the failing items; route to `/work` (small fix), `/plan` (a spec gap), or re-dispatch with a corrected rubric (if the rubric was the problem).
+On **NEEDS_WORK**, the FAIL lines name the failing items. You route them to `/work` for a small fix. You route them to `/plan` for a spec gap. You re-dispatch with a corrected rubric if the rubric caused the failure.
 
 ## Failure modes
 
@@ -97,7 +97,7 @@ On NEEDS_WORK the FAIL lines name the failing items; route to `/work` (small fix
 
 ## Why the allowlist is tight
 
-`Read · Glob · Grep` only — no Bash, Write, Edit, or network. The evaluator can't run tests (the caller supplies the output file), can't modify the artifact (reading is the whole job), and can't fetch external state. The "fresh context that never saw the build" framing only holds if it can't re-execute.
+The allowlist is `Read · Glob · Grep` only. It has no Bash, Write, Edit, or network access. The evaluator cannot run tests. The caller supplies the output file. It cannot modify the artifact. Reading is its entire job. It cannot fetch external state. It remains a fresh context that never saw the build. This framing only holds if it cannot re-execute.
 
 ## Related
 

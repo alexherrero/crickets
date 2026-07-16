@@ -1,10 +1,10 @@
 # Manifest schema
 
-Every crickets primitive and plugin carries a YAML manifest, in two layers: per-primitive **frontmatter** (atop each `SKILL.md` / `hook.md` / agent `.md` / …) describes the primitive, and a per-group **`group.yaml`** describes the plugin. Both are validated by `scripts/lint_src.py` (run in CI + `check-all.sh`); the source of truth is [`src/SCHEMA.md`](https://github.com/alexherrero/crickets/blob/main/src/SCHEMA.md).
+You configure crickets primitives and plugins with YAML manifests. You use two layers. The per-primitive **frontmatter** describes the primitive. You place this atop each `SKILL.md` / `hook.md` / agent `.md` / …. The per-group **`group.yaml`** describes the plugin. The `scripts/lint_src.py` script validates both layers. You run this script in CI + `check-all.sh`. You can find the source of truth at [`src/SCHEMA.md`](https://github.com/alexherrero/crickets/blob/main/src/SCHEMA.md).
 
 ## ⚡ Quick Reference
 
-Primitive frontmatter — the fields atop a primitive's manifest file:
+You use these fields in the primitive frontmatter atop a manifest file:
 
 | Field | Required | Type | Allowed values / shape |
 |---|---|---|---|
@@ -15,11 +15,11 @@ Primitive frontmatter — the fields atop a primitive's manifest file:
 | `version` | no | string | semver `MAJOR.MINOR.PATCH` (optional `-prerelease`) |
 | `install_scope` | no | enum | `user` · `project` · `either` (default `either`) |
 
-The primitive's **group is the folder it lives in** — there is no `group:` field. `install_scope` is advisory: the host's plugin-install command (`claude plugin install … --scope user|project`) sets actual placement.
+The primitive's **group is the folder it lives in**. You do not use a `group:` field. The `install_scope` field is advisory. You set the actual placement with the host's plugin-install command (`claude plugin install … --scope user|project`).
 
 ## The group manifest (`group.yaml`)
 
-One `group.yaml` sits in each `src/<group>/` and describes the plugin. The group **slug** is the folder name, never a field.
+You place one `group.yaml` in each `src/<group>/`. This file describes the plugin. The group **slug** is the folder name. You never write it as a field.
 
 | Field | Required | Type | Meaning |
 |---|---|---|---|
@@ -30,7 +30,7 @@ One `group.yaml` sits in each `src/<group>/` and describes the plugin. The group
 | `capabilities` | no | list | named capabilities other plugins' `enhances` can target |
 | `enhances` | no | list | groups this plugin **softly** augments when both are installed — a slug, or `{group, capability?, effect}` |
 
-**Invariant (lint-enforced):** `standalone: true` ⟺ `requires: []`. A plugin that requires another is *integrated*; one that requires nothing is standalone. `enhances` is orthogonal — soft, so a `standalone` plugin may still `enhance` a target.
+**Invariant (lint-enforced):** `standalone: true` ⟺ `requires: []`. You create an *integrated* plugin when it requires another. You create a standalone plugin when it requires nothing. The `enhances` field is orthogonal. It acts as a soft augmentation. A `standalone` plugin may still `enhance` a target.
 
 ```yaml
 # src/code-review/group.yaml
@@ -43,11 +43,11 @@ enhances:
     effect: "/review dispatches the adversarial reviewers"
 ```
 
-See [Plugin anatomy](Plugin-Anatomy) for how these compose into a plugin.
+You can read [Plugin anatomy](Plugin-Anatomy) to learn how you compose these into a plugin.
 
 ## Primitive frontmatter (example: skill)
 
-A skill at `skills/<name>/SKILL.md`; other kinds use `<kind>/<name>.<ext>` (see [Per-host paths](Per-Host-Paths)).
+You place a skill at `skills/<name>/SKILL.md`. You use `<kind>/<name>.<ext>` for other kinds. You can read [Per-host paths](Per-Host-Paths) for details.
 
 ```yaml
 ---
@@ -64,7 +64,7 @@ install_scope: project
 
 ## Which kinds the generator discovers
 
-The generator finds a primitive by walking a group's `<kind>/` subdir for a manifest file:
+The generator finds a primitive by walking a group's `<kind>/` subdir. It looks for a manifest file:
 
 | Kind | Discovered at |
 |---|---|
@@ -76,14 +76,14 @@ The generator finds a primitive by walking a group's `<kind>/` subdir for a mani
 | `output-style` | `output-styles/<name>.md` |
 | `rule` | `rules/<name>.md` |
 
-The other enum values (`mcp-server`, `status-line`, `workflow`, `settings-fragment`) are valid `kind`s but have no discovery path or instance yet. A group's `scripts/` dir is a **group asset**, not a kind — copied verbatim to `<plugin>/scripts/` and referenced as `${CLAUDE_PLUGIN_ROOT}/scripts/<name>` on Claude Code, or the relative `scripts/<name>` on Antigravity (which runs from inside the plugin dir).
+The other enum values (`mcp-server`, `status-line`, `workflow`, `settings-fragment`) are valid `kind`s. They have no discovery path or instance yet. A group's `scripts/` dir is a **group asset**. It is not a kind. The generator copies it verbatim to `<plugin>/scripts/`. You reference it as `${CLAUDE_PLUGIN_ROOT}/scripts/<name>` on Claude Code. You reference it as the relative `scripts/<name>` on Antigravity. Antigravity runs from inside the plugin dir.
 
 ## Validation
 
-`scripts/lint_src.py` asserts:
+The `scripts/lint_src.py` script asserts these rules:
 
-- **`group.yaml`** — `name` / `description` / `standalone` present; `standalone` a bool; `requires` a list of existing group slugs; the invariant `standalone ⟺ requires:[]`; `capabilities` a list; each `enhances` target exists, isn't the group itself, isn't also in `requires`, and any named `capability` is declared on the target.
-- **Primitive frontmatter** — `name` / `description` / `kind` / `supported_hosts` present; `supported_hosts` a non-empty subset of `[claude-code, antigravity]`.
+- **`group.yaml`** — You must provide `name` / `description` / `standalone`. The `standalone` field must be a bool. The `requires` field must be a list of existing group slugs. You must maintain the invariant `standalone ⟺ requires:[]`. The `capabilities` field must be a list. Each `enhances` target must exist. The target cannot be the group itself. The target cannot be in `requires`. You must declare any named `capability` on the target.
+- **Primitive frontmatter** — You must provide `name` / `description` / `kind` / `supported_hosts`. The `supported_hosts` field must be a non-empty subset of `[claude-code, antigravity]`.
 
 ```bash
 python3 scripts/lint_src.py
@@ -91,8 +91,8 @@ python3 scripts/lint_src.py
 
 ## Related
 
-- [Plugin anatomy](Plugin-Anatomy) — what a plugin is + its overall structure.
-- [Customization types](Customization-Types) — what each `kind` means.
-- [Per-host paths](Per-Host-Paths) — where each kind lands, per host.
-- [Modify a plugin](Modify-A-Plugin) — edit `src/`, regenerate, dogfood.
-- [`src/SCHEMA.md`](https://github.com/alexherrero/crickets/blob/main/src/SCHEMA.md) — the source schema this mirrors.
+- [Plugin anatomy](Plugin-Anatomy) — You learn what a plugin is + its overall structure.
+- [Customization types](Customization-Types) — You learn what each `kind` means.
+- [Per-host paths](Per-Host-Paths) — You learn where each kind lands, per host.
+- [Modify a plugin](Modify-A-Plugin) — You learn how to edit `src/`, regenerate, and dogfood.
+- [`src/SCHEMA.md`](https://github.com/alexherrero/crickets/blob/main/src/SCHEMA.md) — You can read the source schema this mirrors.

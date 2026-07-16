@@ -1,8 +1,8 @@
 # Named plans
 
-The `developer-workflows` phase commands `/work`, `/plan`, and `/review` accept an optional `--name <slug>` flag. With a name they operate on a named plan pair — `PLAN-<slug>.md` + `progress-<slug>.md` — instead of the singleton `PLAN.md` / `progress.md`. That is how one shared harness state dir holds several concurrent plans. Bare invocations resolve to the singleton.
+The `developer-workflows` phase commands `/work`, `/plan`, and `/review` accept an optional `--name <slug>` flag. When you provide a name, these commands operate on a named plan pair — `PLAN-<slug>.md` and `progress-<slug>.md`. They skip the singleton `PLAN.md` and `progress.md` files. This lets you hold several concurrent plans in one shared harness state directory. Bare invocations still resolve to the singleton.
 
-Look up here what a name maps to, how the name is resolved, the standalone-fallback paths, and the read-only `/queue-status-lite` command. The task recipes are in [Run a named plan](Run-A-Named-Plan) and [See every active plan](See-Every-Active-Plan); the *why* is in [Why phase-gating](Why-Phase-Gating).
+This page explains what a name maps to, how we resolve that name, and the standalone fallback paths. It also covers the read-only `/queue-status-lite` command. You can find the task recipes in [Run a named plan](Run-A-Named-Plan) and [See every active plan](See-Every-Active-Plan). If you want the context behind this approach, read [Why phase-gating](Why-Phase-Gating).
 
 ## ⚡ Quick Reference
 
@@ -25,7 +25,7 @@ Look up here what a name maps to, how the name is resolved, the standalone-fallb
 | `/design sequence` | `PLAN-<doc-slug>-<part-slug>.md` (active) + `queued-plans/PLAN-<doc-slug>-<part-slug>.md` (staged) | — | one named plan per part via `stage_plan.py`; never touches the singleton `PLAN.md` |
 
 > [!NOTE]
-> Paths above are shown by basename. The actual directory is whatever the resolver returns — `.harness/` in standalone mode, or a hosting memory layer's state dir when one is present (see [Resolution](#resolution)).
+> The table shows paths by basename. The actual directory is whatever the resolver returns. You will see `.harness/` in standalone mode, or a hosting memory layer's state directory when one is present. See [Resolution](#resolution) for more details.
 
 ## Commands that accept a name
 
@@ -35,11 +35,11 @@ Look up here what a name maps to, how the name is resolved, the standalone-fallb
 | `/plan` | optional `--name <slug>` (anywhere in args) | authors `PLAN-<slug>.md`, appends the scoped `progress-<slug>.md` line |
 | `/review` | optional `--name <slug>` (anywhere in args) | resolves + reads the named pair for adversarial critique |
 
-`/setup`, `/release`, and `/bugfix` do not take a plan name — they are singleton-only.
+The `/setup`, `/release`, and `/bugfix` commands do not accept a plan name. They operate only on the singleton.
 
 ## The `/design` command
 
-`/design` is the upstream authoring step of the phase loop — it starts earlier than `/plan`. Use it when the problem is ambiguous, multi-stakeholder, or has cross-cutting Quality-Attributes / Operations concerns; use `/plan` for an already-settled design. The task recipe is in [Author a design](Author-A-Design); the reasoning is in the [Development lifecycle design](crickets-development-lifecycle).
+The `/design` command handles the upstream authoring step of the phase loop. It starts earlier than `/plan`. You should use it when the problem is ambiguous, involves multiple stakeholders, or touches cross-cutting Quality Attributes and Operations concerns. If you already have a settled design, use `/plan` instead. We provide the task recipe in [Author a design](Author-A-Design). We explain the reasoning behind this split in the [Development lifecycle design](crickets-development-lifecycle).
 
 | Surface | Location |
 |---|---|
@@ -92,7 +92,7 @@ Look up here what a name maps to, how the name is resolved, the standalone-fallb
 
 ## Two-tier named-plan staging
 
-Alongside writing the active named plan directly (`--name`), `/plan` can stage a plan into an inactive tier and activate it later when a worker picks it up. Staged plans are inert — invisible to `/work` and `/queue-status-lite` until activated.
+The `/plan` command can write an active named plan directly using the `--name` flag. It can also stage a plan into an inactive tier. You then activate the plan later when a worker is ready to pick it up. Staged plans remain inert. They stay invisible to both `/work` and `/queue-status-lite` until you activate them.
 
 ### The four `/plan` modes
 
@@ -115,7 +115,7 @@ Alongside writing the active named plan directly (`--name`), `/plan` can stage a
 
 ### `--activate` guard
 
-`/plan --activate <slug>` is a **guarded copy** — it hard-stops (non-zero exit, no silent fallback) when promotion would be unsafe:
+The `/plan --activate <slug>` command performs a guarded copy. It stops immediately with a non-zero exit code if promotion is unsafe. It never falls back silently.
 
 | Condition | Behavior |
 |---|---|
@@ -125,7 +125,7 @@ Alongside writing the active named plan directly (`--name`), `/plan` can stage a
 
 ### Implementation
 
-`scripts/stage_plan.py` (stdlib-only, pure-core + injectable resolver, mirroring `resolve_plan.py`) owns both verbs. It composes onto `resolve_plan.resolve` rather than re-deriving the `_harness/` location or the vault redirect: it takes the resolved active `PLAN-<slug>.md` and composes `queued-plans/` onto its parent.
+The `scripts/stage_plan.py` script owns both verbs. It relies on the standard library, acts as pure-core, and takes an injectable resolver to mirror `resolve_plan.py`. It calls `resolve_plan.resolve` instead of re-deriving the `_harness/` location or the vault redirect. It then takes the resolved active `PLAN-<slug>.md` and appends `queued-plans/` to its parent directory.
 
 | Component | Location | Role |
 |---|---|---|
@@ -135,13 +135,13 @@ Alongside writing the active named plan directly (`--name`), `/plan` can stage a
 | `_QUEUED_DIR = "queued-plans"` | [`stage_plan.py:72`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/scripts/stage_plan.py#L72) | The flat staging-dir name (crickets flat-vault convention). |
 | CLI verbs `path` / `activate` | [`stage_plan.py:176`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/scripts/stage_plan.py#L176) (`_build_parser`) | Invoked as `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/stage_plan.py" path <slug>` and `... activate <slug>`. Exit codes align with `resolve_plan.py`: `0` ok, `1` graceful-skip propagated from the resolver, `2` loud refusal. |
 
-The `--stage` / `--activate` modes are wired in [`commands/plan.md`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/commands/plan.md). Staged plans stay invisible to `/queue-status-lite` because `queue_status._list_plan_files` globs `PLAN-*.md` non-recursively, so the `queued-plans/` subdir is skipped.
+We wire the `--stage` and `--activate` modes in [`commands/plan.md`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/commands/plan.md). Staged plans stay invisible to `/queue-status-lite`. The `queue_status._list_plan_files` function globs `PLAN-*.md` non-recursively. This skips the `queued-plans/` subdirectory entirely.
 
-Executable tests in `scripts/test_stage_plan.py` lock this behavior.
+You can find executable tests locking this behavior in `scripts/test_stage_plan.py`.
 
 ## Reading the queue — `/queue-status-lite`
 
-`/queue-status-lite` is the read complement to the `--name` writers above — it lists every active plan in the harness dir, showing each plan's name, its `Status:` line, and the most-recent entry of the matching `progress*.md`. It takes no `--name` flag because it enumerates the whole queue, not one pair. It is read-only by contract: it claims nothing, leases nothing, and gates nothing, so the human stays the arbiter of who works which plan. The task recipe is in [See every active plan](See-Every-Active-Plan).
+The `/queue-status-lite` command serves as the read complement to the `--name` writers. It lists every active plan in the harness directory. It shows each plan's name, its `Status:` line, and the most recent entry from the matching `progress*.md` file. It does not accept a `--name` flag. It enumerates the entire queue instead of examining one pair. We define it as read-only by contract. It claims nothing, leases nothing, and gates nothing. This leaves you as the final arbiter of who works on which plan. You can find the task recipe in [See every active plan](See-Every-Active-Plan).
 
 | Property | Value |
 |---|---|
@@ -154,7 +154,7 @@ Executable tests in `scripts/test_stage_plan.py` lock this behavior.
 
 ### Read bridge
 
-`/queue-status-lite` calls a bridge script that mirrors the resolver bridge's **two backends, one contract** shape (see [Resolution](#resolution) above):
+The `/queue-status-lite` command calls a bridge script. This script mirrors the resolver bridge's approach of two backends under one contract. See [Resolution](#resolution) for more details on that structure.
 
 | Property | Value |
 |---|---|
@@ -164,11 +164,11 @@ Executable tests in `scripts/test_stage_plan.py` lock this behavior.
 | Delegate target | agentm's shipped `queue_status_lite.py` reader when an agentm clone is locatable |
 | Standalone fallback | a minimal local `.harness/` dashboard mirroring the reader's format |
 
-When an agentm clone is installed the bridge delegates to agentm's `queue_status_lite.py` and re-emits its stdout verbatim (that reader owns the naming contract, GDrive-conflict skipping, and vault redirection). With no clone the bridge renders the minimal local dashboard itself — a graceful-skip, never an error. The agentm-clone lookup and the PLAN→progress naming helpers come from the resolver bridge (`resolve_plan.py`).
+If you have an agentm clone installed, the bridge delegates to agentm's `queue_status_lite.py` reader. It re-emits the standard output from that reader verbatim. That reader owns the naming contract, the GDrive-conflict skipping logic, and the vault redirection. If you do not have a clone installed, the bridge renders a minimal local dashboard itself. This functions as a graceful skip, not an error. The resolver bridge (`resolve_plan.py`) provides the agentm-clone lookup and the PLAN-to-progress naming helpers.
 
 ## Spawning a worker worktree
 
-`/work`'s auto-spawn step gives a named plan its own isolated checkout using the host's own worktree primitive — Claude Code's `EnterWorktree` tool, or Antigravity's New-Worktree-Mode / `invoke_subagent`. It is authority-gated, not autonomous by default: it fires only when `.harness/project.json` sets `isolation.mode: worktree-per-plan` (a durable operator config opt-in) or the operator explicitly asks for a worktree. There is no separate spawn command to run — the isolation check happens inside `/work` itself, at step 1.5. The task recipe is in [Run a named plan](Run-A-Named-Plan).
+The auto-spawn step in the `/work` command gives a named plan its own isolated checkout. It uses the host's native worktree primitive to do this. For Claude Code, it uses the `EnterWorktree` tool. For Antigravity, it uses New-Worktree-Mode and `invoke_subagent`. We gate this step behind your authority. It does not run autonomously by default. It triggers only when `.harness/project.json` contains `isolation.mode: worktree-per-plan` or when you explicitly ask for a worktree. You do not need to run a separate spawn command. The `/work` command checks for isolation settings internally at step 1.5. You can read the task recipe in [Run a named plan](Run-A-Named-Plan).
 
 | Property | Value |
 |---|---|
@@ -181,11 +181,11 @@ When an agentm clone is installed the bridge delegates to agentm's `queue_status
 | Guard | an in-worktree single-owner check (`is_inside_worktree()`) prevents nested spawns |
 
 > [!NOTE]
-> **Operator authority, two forms.** Worker worktrees require operator authority — either an explicit operator instruction to spawn one, or a durable `isolation.mode: worktree-per-plan` config opt-in in `.harness/project.json`. Silent authority-free auto-spawn stays forbidden. Both forms are decided in the [Developer safety design](crickets-developer-safety).
+> **Operator authority, two forms.** Worker worktrees require your authority. You provide this through an explicit instruction to spawn one, or through a durable `isolation.mode: worktree-per-plan` configuration in `.harness/project.json`. We forbid silent, authority-free auto-spawning. The [Developer safety design](crickets-developer-safety) document explains both forms.
 
 ## Closing out a plan
 
-On the plan's **final** task, `/work` calls `finalize_unit.py` with the real branch `EnterWorktree` returned. This is the entire replacement for the old manual local-merge-then-gate-then-hard-reset flow — a PR gated by a required status check structurally cannot merge red, so there's no separate post-merge rollback step to run.
+When you reach the plan's **final** task, `/work` calls `finalize_unit.py`. It passes the actual branch that `EnterWorktree` returned. This replaces the old flow where you manually ran a local merge, a gate, and a hard reset. A PR protected by a required status check cannot merge if the checks fail. This removes the need for a separate post-merge rollback step.
 
 | Property | Value |
 |---|---|
@@ -198,7 +198,7 @@ On the plan's **final** task, `/work` calls `finalize_unit.py` with the real bra
 
 ### Orphan + stalled-PR shepherd
 
-A periodic sidecar, `worktree_shepherd.py`, runs via `agentm-runner` (a scheduler, not a bespoke cron) and does two things the read-only `doctor_worktrees.py` probe never did on its own: it reclaims worktrees/branches that are orphaned (branch has no worktree, or the worktree's directory is gone), old enough (a few days), and provably safe (every commit already on the branch's remote copy, or the branch never diverged at all — anything not provably safe is left alone); and for an open PR GitHub reports as `BEHIND` its base branch (a sibling plan's PR merged first), it runs `gh pr update-branch` to rebase it, recording any resulting merge conflict rather than swallowing it.
+The `worktree_shepherd.py` sidecar runs periodically via `agentm-runner`. This scheduler replaces custom cron jobs. The shepherd performs two tasks that the read-only `doctor_worktrees.py` probe ignores. First, it reclaims orphaned worktrees and branches. It targets branches with no worktree, or worktrees with missing directories. It only removes resources that are a few days old and provably safe. A safe branch has all its commits on the remote copy, or it never diverged in the first place. It leaves everything else alone. Second, it handles open PRs that GitHub marks as `BEHIND` their base branch. This happens when a sibling plan merges first. The shepherd runs `gh pr update-branch` to rebase the PR. It records any merge conflict it encounters. It never swallows conflicts silently.
 
 | Property | Value |
 |---|---|
@@ -210,7 +210,7 @@ A periodic sidecar, `worktree_shepherd.py`, runs via `agentm-runner` (a schedule
 
 ### Worktree doctor probe
 
-A read-only `doctor_worktrees.py` (operator-run) lists every `worktree-<slug>` worktree and classifies each with its plan mapping. It mutates nothing — the operator (or the shepherd, when provably safe) prunes on demand. The probe correlates worktree branches (`git for-each-ref refs/heads/worktree-`) with `git worktree list --porcelain`, so it reports both lingering branches with no worktree and worktrees whose directory is gone — not only the worktrees on disk.
+You run the read-only `doctor_worktrees.py` script to list every `worktree-<slug>` worktree. The script classifies each worktree based on its plan mapping. It mutates nothing. You prune the worktrees on demand. The shepherd also prunes them when it determines they are safe to remove. The probe queries `git for-each-ref refs/heads/worktree-` and correlates the result with `git worktree list --porcelain`. This allows it to report lingering branches missing a worktree and worktrees missing a directory. It looks beyond the worktrees currently on disk.
 
 | Property | Value |
 |---|---|
@@ -222,7 +222,7 @@ A read-only `doctor_worktrees.py` (operator-run) lists every `worktree-<slug>` w
 | Mutates | nothing — every git call is a query (`list`, `for-each-ref`, `merge-base --is-ancestor`); the operator or the shepherd prunes on demand once they read the report |
 | Exit | **always `0`** — a report, not a gate |
 
-The four states, in precedence order:
+We define four states in precedence order:
 
 | Status | Means | When |
 |---|---|---|
@@ -239,11 +239,11 @@ The four states, in precedence order:
 | `_format()` | [`doctor_worktrees.py:219`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/scripts/doctor_worktrees.py#L219) | Renders the report: a header tally (counts per status) plus, per worktree, its branch · status · plan slug, the worktree path (or `(no worktree)`), and a `→` detail line. Pure — formats a list into a string. |
 | `main()` | [`doctor_worktrees.py:247`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/scripts/doctor_worktrees.py#L247) | The CLI: parses `--project-root`, prints `_format(diagnose(root))`, and **returns `0` always** — a read-only diagnostic, never a gate. |
 
-Executable tests in `scripts/test_doctor_worktrees.py` lock this behavior.
+You can find executable tests in `scripts/test_doctor_worktrees.py` that lock this behavior.
 
 ## `/work` argument parse rule
 
-The `--name <slug>` flag selects the plan; it can appear anywhere in the arguments and **cannot collide** with the `task N` selector, a brief, a branch, or a commit range. Positional slots keep their meaning — for `/work` that's the `task N` selector. The two are independent:
+The `--name <slug>` flag selects the plan. You can place it anywhere in the arguments. It cannot collide with the `task N` selector, a brief, a branch, or a commit range. Positional slots retain their meaning. For the `/work` command, that positional slot is the `task N` selector. The flag and the selector remain completely independent.
 
 | Argument | Parsed as |
 |---|---|
@@ -253,11 +253,11 @@ The `--name <slug>` flag selects the plan; it can appear anywhere in the argumen
 | `--name <slug> task N` | named plan `<slug>`, task N |
 
 > [!NOTE]
-> Slugs are slug-safe — the resolver rejects path traversal and unsafe names (non-zero exit, no path printed). A plan whose slug is a reserved positional word (e.g. `task`) is still reachable unambiguously via `--name task`, because the flag never competes with positional slots.
+> Slugs are slug-safe. The resolver rejects path traversal and unsafe names. It returns a non-zero exit code and prints no path on failure. If your plan uses a reserved positional word for its slug (like `task`), you can still reach it cleanly using `--name task`. The flag never competes with positional slots.
 
 ## Resolution
 
-Named-plan resolution is **not** reimplemented in `developer-workflows`. The commands call a thin bridge script that delegates to the hosting memory layer (agentm) when present, and falls back to plain files otherwise.
+We do not reimplement named-plan resolution in `developer-workflows`. The commands call a thin bridge script instead. This script delegates to the hosting memory layer (agentm) if you have one installed. It falls back to plain files otherwise.
 
 | Concern | Owner |
 |---|---|
@@ -267,7 +267,7 @@ Named-plan resolution is **not** reimplemented in `developer-workflows`. The com
 | Standalone fallback to plain `.harness/` | the `developer-workflows` bridge |
 
 > [!IMPORTANT]
-> The commands **read** the `.harness/active-plan` marker (via the resolver) but write none. The explicit `--name <slug>` flag is the binding mechanism. A present-but-unresolvable marker surfaces a **loud error + non-zero exit** through the whole bridge — it never silently falls back to whatever `PLAN.md` happens to be there (the worker→plan mis-binding foot-gun).
+> The commands **read** the `.harness/active-plan` marker via the resolver. They never write to it. The explicit `--name <slug>` flag provides the binding mechanism. If the resolver finds a present but unresolvable marker, it surfaces a **loud error and a non-zero exit code** up through the whole bridge. It never falls back silently to an existing `PLAN.md`. This prevents the common worker-to-plan mis-binding error.
 
 ### Resolver bridge
 
@@ -279,11 +279,11 @@ Named-plan resolution is **not** reimplemented in `developer-workflows`. The com
 | On dangling marker / unsafe slug | non-zero exit + stderr message (never a singleton fallback) |
 | Delegate target | agentm `process_seam.py state-path` (via `agentm_bridge.py`'s `process-seam` verb) when the seam is discoverable; else the standalone fallback |
 
-The `--name <slug>` flag is a command-level convention: `/work`, `/plan`, and `/review` parse it out of their arguments and pass the extracted slug positionally to this bridge, whose own CLI takes the name as a positional argument, not a flag. The bridge discovers agentm's process seam via `agentm_bridge.py`'s `process-seam` verb (path-fallback: `$AGENTM_SCRIPTS_DIR` → co-located → `~/Antigravity/agentm/scripts/`), issues two `process_seam.py state-path` calls (plan and progress), and reassembles the tab-separated output.
+The `--name <slug>` flag acts as a command-level convention. The `/work`, `/plan`, and `/review` commands parse the flag out of their arguments. They pass the extracted slug positionally to the bridge script. The bridge CLI accepts the name as a positional argument rather than a flag. The bridge locates agentm's process seam using the `process-seam` verb in `agentm_bridge.py`. It checks `$AGENTM_SCRIPTS_DIR`, then a co-located path, and finally `~/Antigravity/agentm/scripts/`. It issues two calls to `process_seam.py state-path` for the plan and progress paths. Finally, it reassembles the results into tab-separated output.
 
 ## Standalone fallback (no agentm installed)
 
-When no hosting memory layer is locatable, the bridge degrades to plain `.harness/` files — flat, no vault redirect, no marker, no CAS:
+If the bridge cannot locate a hosting memory layer, it degrades to plain `.harness/` files. It writes flat files with no vault redirection, no marker, and no CAS.
 
 | Resolver input (positional) | Resolves to |
 |---|---|
@@ -291,7 +291,7 @@ When no hosting memory layer is locatable, the bridge degrades to plain `.harnes
 | `<slug>` | `.harness/PLAN-<slug>.md` + `.harness/progress-<slug>.md` |
 | unsafe slug | rejected locally — non-zero exit, no path printed |
 
-The bare paths are byte-identical to the singleton literals, locked by an executable test.
+The bare paths match the singleton literals exactly. An executable test locks this behavior in place.
 
 ## Related
 

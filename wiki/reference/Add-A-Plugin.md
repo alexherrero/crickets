@@ -2,14 +2,14 @@
 # How to add a plugin
 
 > [!NOTE]
-> **Goal:** Add a new plugin (a functional group) to crickets — the `group.yaml` plus its primitives, regenerated and dogfooded.
-> **Prereqs:** crickets cloned; Python 3 + PyYAML; `claude` and/or `agy`.
+> **Goal:** You will add a new plugin to crickets. A plugin is a functional group. You will create the `group.yaml` and its primitives. You will regenerate them. You will dogfood them.
+> **Prereqs:** You need crickets cloned. You need Python 3 and PyYAML. You need `claude` and/or `agy`.
 
-A crickets plugin is a **group folder** under `src/<group>/`; the folder name is the plugin slug. See [Plugin anatomy](Plugin-Anatomy) for the shape it generates into.
+A crickets plugin is a **group folder** under `src/<group>/`. The folder name is the plugin slug. See [Plugin anatomy](Plugin-Anatomy) for the shape it generates into.
 
 ## Steps
 
-1. **Create the group** at `src/<group>/` (`<group>` is the kebab-case slug) with a `group.yaml`:
+1. **Create the group** at `src/<group>/`. The `<group>` is the kebab-case slug. Create a `group.yaml`:
 
    ```yaml
    name: My Plugin
@@ -20,9 +20,9 @@ A crickets plugin is a **group folder** under `src/<group>/`; the folder name is
    # enhances: [development-lifecycle]   # soft — augments the target when both are installed
    ```
 
-   The field contract, including the `standalone ⟺ requires: []` invariant, lives in [Manifest schema](Manifest-Schema).
+   The field contract lives in [Manifest schema](Manifest-Schema). This includes the `standalone ⟺ requires: []` invariant.
 
-2. **Add its primitives** under their kind subdirs — `skills/<name>/SKILL.md`, `agents/<name>.md`, `commands/<name>.md`, `hooks/<name>/`. Each carries its own frontmatter ([add a skill](Add-A-Skill) walks one through). A group-wide helper script goes in `src/<group>/scripts/`.
+2. **Add its primitives** under their kind subdirs. Use `skills/<name>/SKILL.md`, `agents/<name>.md`, `commands/<name>.md`, and `hooks/<name>/`. Each primitive carries its own frontmatter. Read [add a skill](Add-A-Skill) for a walk-through. Put your group-wide helper script in `src/<group>/scripts/`.
 
 3. **Lint + regenerate:**
 
@@ -31,15 +31,15 @@ A crickets plugin is a **group folder** under `src/<group>/`; the folder name is
    python3 scripts/generate.py build
    ```
 
-   The generator emits `dist/<host>/plugins/<group>/` for both hosts and updates the marketplace pointer.
+   The generator emits `dist/<host>/plugins/<group>/` for both hosts. It updates the marketplace pointer.
 
-4. **Dogfood** — install the generated plugin on a host (`claude --plugin-dir dist/claude-code/plugins/<group>` / `agy plugin install "$PWD/dist/antigravity/plugins/<group>"`) and exercise it. See [Modify a plugin](Modify-A-Plugin).
+4. **Dogfood** — install the generated plugin on a host. Run `claude --plugin-dir dist/claude-code/plugins/<group>` or `agy plugin install "$PWD/dist/antigravity/plugins/<group>"`. Exercise it. See [Modify a plugin](Modify-A-Plugin).
 
-5. **Commit the source *and* `dist/`** together. The pre-push PII hook scans first.
+5. **Commit the source *and* `dist/`** together. The pre-push PII hook scans your commit first.
 
 ## Related
 
-- [Plugin anatomy](Plugin-Anatomy) — what a plugin is and how it's structured.
-- [Add a skill](Add-A-Skill) — author the primitives that go in the group.
-- [Manifest schema](Manifest-Schema) — `group.yaml` + primitive frontmatter.
-- [Modify a plugin](Modify-A-Plugin) — the edit → generate → dogfood loop.
+- [Plugin anatomy](Plugin-Anatomy) — Learn what a plugin is. Learn how it is structured.
+- [Add a skill](Add-A-Skill) — Author the primitives for your group.
+- [Manifest schema](Manifest-Schema) — Read about the `group.yaml` and primitive frontmatter.
+- [Modify a plugin](Modify-A-Plugin) — Follow the edit, generate, and dogfood loop.

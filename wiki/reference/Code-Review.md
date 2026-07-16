@@ -3,7 +3,7 @@
 
 ## Architecture
 
-Code Review gives your agent a skeptical second pair of eyes on any change. Rather than confirm that the code looks fine, it assumes there is a bug and tries to prove one — so it catches the real problems a rubber-stamp review waves through.
+Code Review gives your agent a skeptical second pair of eyes on any change. It does not confirm your code looks fine. It assumes there is a bug. It tries to prove the bug exists. It catches real problems that a rubber-stamp review misses.
 
 ### Diagram
 
@@ -11,7 +11,9 @@ Code Review gives your agent a skeptical second pair of eyes on any change. Rath
 
 ### How it works
 
-Point it at a diff or a PR and it runs an adversarial review. A reviewer reads the change assuming it contains a bug, and — when Gemini is available — a second reviewer does the same from a different model, so the two do not share one model's blind spots. Each returns something you can act on: a failing test, a `DEFECT: file:line`, or `NO ISSUES FOUND` — never loose prose. When `development-lifecycle` is also installed, those reviewers run automatically at the `/review` phase, and an `evidence-tracker` hook stops a task from being ticked off until the agent has actually read the spec and test files.
+You point it at a diff or a PR. It runs an adversarial review. A reviewer reads the change. It assumes the change contains a bug. When Gemini is available, a second reviewer does the same from a different model. The two reviewers do not share one model's blind spots. Each reviewer returns an actionable result. It returns a failing test, a `DEFECT: file:line`, or `NO ISSUES FOUND`. It never returns loose prose.
+
+When you install `development-lifecycle`, these reviewers run automatically at the `/review` phase. An `evidence-tracker` hook stops a task from being ticked off. The agent must read the spec and test files first.
 
 ### Composition
 
@@ -24,11 +26,11 @@ Point it at a diff or a PR and it runs an adversarial review. A reviewer reads t
 
 ### Why not
 
-Code Review is opinionated, and it will not fit every workflow. Reach for something else if:
+Code Review is opinionated. It does not fit every workflow. Choose something else if:
 
-- You already trust another review pass — a human reviewer, a linter suite, or a different AI reviewer — and don't want a second opinion on every change.
-- You want a reviewer that talks through its reasoning; this one deliberately answers only with a failing test, a `DEFECT: file:line`, or `NO ISSUES FOUND`.
-- You would rather the reviewer start from "this is probably fine." The assume-a-bug framing is intentionally adversarial, and on small or throwaway changes it can feel like overkill.
+- You trust another review pass. This pass could be a human reviewer, a linter suite, or a different AI reviewer. You do not want a second opinion on every change.
+- You want a reviewer that explains its reasoning. This reviewer deliberately answers only with a failing test, a `DEFECT: file:line`, or `NO ISSUES FOUND`.
+- You want the reviewer to assume the code is fine. The assume-a-bug framing is adversarial. It feels like overkill on small or throwaway changes.
 
 ## Reference
 
@@ -51,7 +53,7 @@ Each primitive links to the source that implements it.
 
 ### Configuration
 
-No configuration — the plugin works out of the box.
+You do not need to configure anything. The plugin works out of the box.
 
 ## See also
 
