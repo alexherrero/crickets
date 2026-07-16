@@ -237,10 +237,22 @@ def assemble_prompt(header: str, fact_guards: list[str], voice_pack: str, docume
     )
 
 
-def build_agy_argv(prompt: str, model: str, timeout: str, agy_bin: str = "agy") -> list[str]:
+def build_agy_argv(prompt: str, model: str, timeout: str,
+                    agy_cmd: list[str] | None = None) -> list[str]:
     """Prompt FIRST (via -p), flags after — flags placed before the prompt
-    silently drop it and the agent free-runs on leftover context."""
-    return [agy_bin, "-p", prompt, "--model", model, "--print-timeout", timeout]
+    silently drop it and the agent free-runs on leftover context.
+
+    `agy_cmd` is the command prefix (normally `["agy"]`, the resolved binary
+    path) — a list, not a single token, so a test can substitute a direct
+    `[sys.executable, "fake_agy.py"]` invocation. That matters on Windows:
+    routing through a `.cmd` shim means CreateProcess hands the command line
+    to cmd.exe for batch-style re-parsing, and cmd.exe's grammar has no way
+    to represent a literal newline inside a single command — any multi-line
+    prompt gets truncated mid-argument. A direct PE executable (a real
+    `agy.exe`, or `python.exe` in tests) is CreateProcess'd straight, with
+    Win32's `CommandLineToArgvW` quoting, which preserves embedded newlines
+    in a quoted argument correctly."""
+    return [*(agy_cmd or ["agy"]), "-p", prompt, "--model", model, "--print-timeout", timeout]
 
 
 def resolve_vault_path(cli_value: str | None) -> Path | None:
@@ -267,6 +279,29 @@ def resolve_vault_path(cli_value: str | None) -> Path | None:
     return p if p.is_dir() else None
 
 
+_TEST_AGY_CMD_ENV = "PROSE_PASS_TEST_AGY_CMD"
+
+
+def resolve_agy_cmd() -> list[str] | None:
+    """The command prefix used to invoke agy, or None if unresolvable.
+
+    Normally `[shutil.which("agy")]`. `$PROSE_PASS_TEST_AGY_CMD` is a
+    test-only escape hatch (a JSON-encoded argv-prefix list) that lets the
+    test suite point directly at a `[sys.executable, "fake_agy.py"]`
+    invocation — bypassing PATH resolution and any OS-specific shim entirely,
+    which matters on Windows (see build_agy_argv's docstring).
+    """
+    override = os.environ.get(_TEST_AGY_CMD_ENV, "").strip()
+    if override:
+        try:
+            cmd = json.loads(override)
+        except json.JSONDecodeError:
+            return None
+        return cmd if isinstance(cmd, list) and cmd else None
+    agy_bin = shutil.which("agy")
+    return [agy_bin] if agy_bin else None
+
+
 def resolve_overlay(vault: Path, overlay_arg: str) -> Path:
     """Absolute path → as-is; else vault-relative; else a bare filename under
     the wiki-style overlay directory."""
@@ -285,14 +320,14 @@ def _degraded(reason: str, diag: str) -> None:
     print(f"prose-pass: {diag}", file=sys.stderr)
 
 
-def _call_agy(agy_bin: str, prompt: str, model: str, timeout: str) -> tuple[int, str]:
+def _call_agy(agy_cmd: list[str], prompt: str, model: str, timeout: str) -> tuple[int, str]:
     # Hard wall-clock backstop: agy's own --print-timeout plus a grace period,
     # so a wedged CLI can never hang the caller indefinitely.
     m = re.match(r"^(\d+)", timeout)
     wall = (int(m.group(1)) if m else 480) + 120
     try:
         r = subprocess.run(
-            build_agy_argv(prompt, model, timeout, agy_bin),
+            build_agy_argv(prompt, model, timeout, agy_cmd),
             stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=wall,
         )
     except subprocess.TimeoutExpired:
@@ -335,8 +370,8 @@ def main(argv=None) -> int:
               "invert before running.", file=sys.stderr)
         return 2
 
-    agy_bin = shutil.which("agy")
-    if agy_bin is None:
+    agy_cmd = resolve_agy_cmd()
+    if agy_cmd is None:
         _degraded("agy CLI unavailable", "agy CLI not found — caller should fall back")
         return 1
 
@@ -360,7 +395,7 @@ def main(argv=None) -> int:
     original = doc_path.read_text(encoding="utf-8")
     prompt = assemble_prompt(TASK_HEADER, guards, voice_pack, original)
 
-    rc, out = _call_agy(agy_bin, prompt, args.model, args.timeout)
+    rc, out = _call_agy(agy_cmd, prompt, args.model, args.timeout)
     if rc != 0 or not out.strip():
         _degraded("agy call failed", f"agy exited {rc} with "
                   f"{'empty' if not out.strip() else 'nonzero'} result")
@@ -373,7 +408,7 @@ def main(argv=None) -> int:
                  + "; ".join(violations)
                  + ". Revise again. The frontmatter, headings, table structures, "
                    "and Document History must be byte-identical to the input.")
-        rc, out = _call_agy(agy_bin,
+        rc, out = _call_agy(agy_cmd,
                             assemble_prompt(TASK_HEADER + nudge, guards, voice_pack, original),
                             args.model, args.timeout)
         if rc != 0 or not out.strip():

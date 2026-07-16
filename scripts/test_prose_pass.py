@@ -9,10 +9,17 @@ Two layers, mirroring the cross-review.sh test pair:
     Document History), the four-block prompt assembly, and the prompt-first
     agy argv ordering (flags placed before the prompt silently drop it — the
     hard-won invocation lesson this script inherits from cross-review.sh).
-  - End-to-end tests drive main() against a MOCKED `agy` on PATH — a tiny
-    cross-platform shim (bash on POSIX, .cmd on Windows) delegating to a
-    Python impl — plus a throwaway vault holding fake voice-pack files. No
-    live LLM calls, no network, no dependency on the Antigravity CLI.
+  - End-to-end tests drive main() against a fake agy wired in via
+    `$PROSE_PASS_TEST_AGY_CMD` (a JSON argv-prefix list resolved by
+    prose_pass.resolve_agy_cmd()) pointing directly at
+    `[sys.executable, fake_agy_impl.py]` — plus a throwaway vault holding
+    fake voice-pack files. No live LLM calls, no network, no dependency on
+    the Antigravity CLI, and — deliberately — no OS shim script (a `.cmd`
+    wrapper on Windows routes the invocation through cmd.exe's batch
+    parser, which has no way to represent a literal newline inside a
+    single command; a multi-line prompt gets truncated mid-argument before
+    Python ever sees it. Invoking python.exe directly bypasses cmd.exe
+    entirely, on every OS).
 
 Covers the degradation contract: a missing `agy` exits 1 WITH the visible
 "PROSE-PASS-DEGRADED: ..." stdout marker (an absent CLI must never silently
@@ -27,7 +34,6 @@ from __future__ import annotations
 
 import json
 import os
-import stat
 import subprocess
 import sys
 import tempfile
@@ -217,21 +223,16 @@ class VaultResolutionTests(unittest.TestCase):
         )
 
 
-# ── e2e: mocked agy on PATH ──────────────────────────────────────────────────
-def _write_fake_agy(bin_dir: Path, impl: str) -> None:
-    """Install a fake `agy` into bin_dir: a Python impl plus a thin
-    platform shim (bash on POSIX, .cmd on Windows) so shutil.which() and
-    subprocess resolution both find it."""
-    (bin_dir / "agy_impl.py").write_text(impl, encoding="utf-8")
-    if os.name == "nt":
-        (bin_dir / "agy.cmd").write_text(
-            f'@"{sys.executable}" "%~dp0agy_impl.py" %*\r\n', encoding="utf-8")
-    else:
-        shim = bin_dir / "agy"
-        shim.write_text(
-            f'#!/usr/bin/env bash\nexec "{sys.executable}" '
-            f'"$(dirname "$0")/agy_impl.py" "$@"\n', encoding="utf-8")
-        shim.chmod(shim.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+# ── e2e: fake agy wired in via $PROSE_PASS_TEST_AGY_CMD ──────────────────────
+def _write_fake_agy(bin_dir: Path, impl: str) -> Path:
+    """Write a fake agy implementation as a plain Python script and return
+    its path. No OS shim (bash/.cmd) — the test wires it in directly via
+    prose_pass.resolve_agy_cmd()'s $PROSE_PASS_TEST_AGY_CMD override, so
+    subprocess talks to python.exe/python3 straight, with no cmd.exe batch
+    parsing in between (see the module docstring for why that matters)."""
+    path = bin_dir / "agy_impl.py"
+    path.write_text(impl, encoding="utf-8")
+    return path
 
 
 _ECHO_DOC_IMPL = """\
@@ -266,20 +267,21 @@ def _make_vault(root: Path) -> Path:
     return vault
 
 
-def _run_pass(tmp: Path, *extra_args: str, with_agy: bool = True,
+def _run_pass(tmp: Path, *extra_args: str, fake_impl: Path | None = None,
               env_extra: dict | None = None) -> subprocess.CompletedProcess:
     doc = tmp / "doc.md"
     if not doc.exists():
         doc.write_text(SAMPLE_DOC, encoding="utf-8")
     env = dict(os.environ)
-    bin_dir = tmp / "bin"
-    if with_agy:
-        env["PATH"] = f"{bin_dir}{os.pathsep}{env.get('PATH', '')}"
+    env.pop("PROSE_PASS_TEST_AGY_CMD", None)
+    if fake_impl is not None:
+        # Point resolve_agy_cmd() straight at [python, fake_impl.py] — no
+        # PATH lookup, no OS shim, so cmd.exe never gets a look at the
+        # (possibly multi-line) argv on Windows.
+        env["PROSE_PASS_TEST_AGY_CMD"] = json.dumps([sys.executable, str(fake_impl)])
     else:
-        # Narrow PATH so a real agy, if installed, can't leak in — but keep
-        # enough of the system for python itself.
-        keep = [p for p in ("/usr/bin", "/bin") if Path(p).is_dir()]
-        env["PATH"] = os.pathsep.join(keep) if keep else str(tmp)
+        # Prove the "agy unavailable" path without depending on PATH state.
+        env["PATH"] = ""
     env["MEMORY_VAULT_PATH"] = str(tmp / "vault")
     env.update(env_extra or {})
     return subprocess.run(
@@ -293,7 +295,7 @@ class EndToEndTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             tmp = Path(t)
             _make_vault(tmp)
-            r = _run_pass(tmp, "--fact-guard-text", "a truth", with_agy=False)
+            r = _run_pass(tmp, "--fact-guard-text", "a truth")
             self.assertEqual(r.returncode, 1, f"stderr={r.stderr!r}")
             self.assertIn("PROSE-PASS-DEGRADED: agy CLI unavailable", r.stdout)
 
@@ -301,19 +303,17 @@ class EndToEndTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             tmp = Path(t)
             _make_vault(tmp)
-            (tmp / "bin").mkdir()
-            _write_fake_agy(tmp / "bin", _ECHO_DOC_IMPL)
-            r = _run_pass(tmp)
+            impl = _write_fake_agy(tmp, _ECHO_DOC_IMPL)
+            r = _run_pass(tmp, fake_impl=impl)
             self.assertEqual(r.returncode, 2, f"stderr={r.stderr!r}")
             self.assertIn("FACT-GUARD", r.stderr)
 
     def test_unresolvable_vault_degrades_visibly(self):
         with tempfile.TemporaryDirectory() as t:
             tmp = Path(t)
-            (tmp / "bin").mkdir()
-            _write_fake_agy(tmp / "bin", _ECHO_DOC_IMPL)
+            impl = _write_fake_agy(tmp, _ECHO_DOC_IMPL)
             # No vault dir; point the config prefix somewhere empty too.
-            r = _run_pass(tmp, "--fact-guard-text", "a truth",
+            r = _run_pass(tmp, "--fact-guard-text", "a truth", fake_impl=impl,
                           env_extra={"MEMORY_VAULT_PATH": "",
                                      "AGENTM_INSTALL_PREFIX": str(tmp / "empty")})
             self.assertEqual(r.returncode, 1, f"stderr={r.stderr!r}")
@@ -323,16 +323,15 @@ class EndToEndTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             tmp = Path(t)
             _make_vault(tmp)
-            (tmp / "bin").mkdir()
-            _write_fake_agy(tmp / "bin", _ECHO_DOC_IMPL)
+            impl = _write_fake_agy(tmp, _ECHO_DOC_IMPL)
             r = _run_pass(tmp, "--fact-guard-text",
-                          "decay only lowers rank — nothing is deleted")
+                          "decay only lowers rank — nothing is deleted", fake_impl=impl)
             self.assertEqual(r.returncode, 0, f"stderr={r.stderr!r}")
             self.assertEqual(r.stdout, SAMPLE_DOC)
             self.assertNotIn("PROSE-PASS-DEGRADED", r.stdout)
-            argv = json.loads((tmp / "bin" / "args.json").read_text(encoding="utf-8"))
+            argv = json.loads((tmp / "args.json").read_text(encoding="utf-8"))
             # Prompt first, flags after — and the prompt carries the guard
-            # and the voice pack verbatim.
+            # and the voice pack verbatim, newlines and all.
             self.assertEqual(argv[0], "-p")
             prompt = argv[1]
             self.assertIn("decay only lowers rank — nothing is deleted", prompt)
@@ -345,23 +344,21 @@ class EndToEndTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             tmp = Path(t)
             _make_vault(tmp)
-            (tmp / "bin").mkdir()
-            _write_fake_agy(tmp / "bin", _GARBAGE_IMPL)
-            r = _run_pass(tmp, "--fact-guard-text", "a truth")
+            impl = _write_fake_agy(tmp, _GARBAGE_IMPL)
+            r = _run_pass(tmp, "--fact-guard-text", "a truth", fake_impl=impl)
             self.assertEqual(r.returncode, 2, f"stderr={r.stderr!r}")
             self.assertIn("PROSE-PASS-DEGRADED: agy revision violated the "
                           "structural contract twice", r.stdout)
-            calls = (tmp / "bin" / "calls.count").read_text(encoding="utf-8").strip()
+            calls = (tmp / "calls.count").read_text(encoding="utf-8").strip()
             self.assertEqual(calls, "2")  # initial call + exactly one retry
 
     def test_output_flag_writes_file_instead_of_stdout(self):
         with tempfile.TemporaryDirectory() as t:
             tmp = Path(t)
             _make_vault(tmp)
-            (tmp / "bin").mkdir()
-            _write_fake_agy(tmp / "bin", _ECHO_DOC_IMPL)
+            impl = _write_fake_agy(tmp, _ECHO_DOC_IMPL)
             out = tmp / "revised.md"
-            r = _run_pass(tmp, "--fact-guard-text", "a truth", "-o", str(out))
+            r = _run_pass(tmp, "--fact-guard-text", "a truth", "-o", str(out), fake_impl=impl)
             self.assertEqual(r.returncode, 0, f"stderr={r.stderr!r}")
             self.assertEqual(out.read_text(encoding="utf-8"), SAMPLE_DOC)
             self.assertNotIn("# Sample design", r.stdout)
