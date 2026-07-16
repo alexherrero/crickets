@@ -102,10 +102,10 @@ class TestClaudeEmitter(unittest.TestCase):
         # agentm's rule q (PR #305) to close a cross-repo-script-parity gap.
         # 0.7.2 = wiki_publish_transform.py stops rewriting bare extension-less
         # page links as broken asset URLs; new test_wiki_publish_transform.py.
-        # 0.8.0 = two-step cross-model prose pass wired into authoring —
-        # documenter.md runs the design plugin's prose_cross_pass.py on every
-        # drafted page before preview (announced Claude-only fallback);
-        # diataxis-author + wiki-author document the step by cross-reference.
+        # 0.8.0 = the design plugin's prose-pass skill wired into authoring —
+        # documenter.md runs it (via scripts/prose_pass.py) on every drafted
+        # page before preview (announced Claude-only fallback); diataxis-author
+        # + wiki-author document the step by cross-reference.
         self.assertEqual(self._plugin_json("wiki")["version"], "0.8.0")
         # 0.3.0 = check-no-pii.sh + templates/hooks/pre-push moved into src/pii/
         # so they actually ship inside the plugin payload (R2.4 task 7).
