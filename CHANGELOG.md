@@ -5,6 +5,33 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.29.0] — 2026-07-16 — Minor: cross-review keeps working after Google retired the Gemini CLI
+
+**MINOR.** Google discontinued the standalone Gemini CLI for individuals mid-window ("migrate to the Antigravity suite of products"); `cross-review.sh`'s transport retargets to `agy` (the Antigravity CLI, still serving Gemini models) with the same output contract, retry, and degradation-marker behavior carried over verbatim. Alongside it: every `wiki/reference/` page not already rewritten this arc got a cross-model plain-English pass (pairs with [agentm v8.1.0](https://github.com/alexherrero/agentm/releases/tag/v8.1.0)), the remaining reference-page truth-audit gaps got closed, and a real publish-time bug — a bare wiki-page link getting rewritten into a broken asset URL — got caught and fixed twice (once for a genuinely different failure shape than the one #191 already handled).
+
+### Added
+
+- **`testing-strategy`'s Prove-It Pattern gains an explicit bug-fix regression-test sub-rule** (`afcb569`, #200; `code-review 0.3.1 → 0.3.2`) — prompted directly by a real case in the sibling repo (agentm PR #316, corrected in #317): a regression test that only ever passes was never proven to test anything. Revert the fix and confirm the test actually fails, using the real failure's own reproduction shape, not a simplified stand-in.
+
+### Changed
+
+- **`cross-review.sh` retargets from `gemini` to `agy`** (`be1696b`, #197; `code-review 0.3.0 → 0.3.1`) — architecture unchanged (output contract, single retry, exit-code semantics, the `CROSS-REVIEW-DEGRADED` marker now keyed on `command -v agy`), all carried over verbatim. One real adaptation, confirmed via live probes: `agy -p` doesn't append piped stdin to the prompt the way `gemini -p` did, so review material is now concatenated directly into the `-p` argument instead.
+- **Every `wiki/reference/` page not already rewritten this arc gets a cross-model plain-English pass** (`402f665`, #199; pairs with agentm #315) — scale-up of an operator-approved pilot: each page ran through a real cross-model call (`agy`, Gemini 3.1 Pro) for a style-only rewrite, mechanically truth-guarded against the pre-rewrite text. A handful of pages the rewrite couldn't cleanly reproduce without drift were left on their original text rather than shipped wrong.
+
+### Fixed
+
+- **Publish-time transform stops mis-rewriting bare wiki-page links as broken asset URLs** (`88286a7`, #201; `wiki 0.7.1 → 0.7.2`) — the asset-link rewriter only exempted `.md`-suffixed links from its "relative non-.md href = asset" rule, but GitHub Wiki's other page-link convention — a bare, extension-less link like `[Capability resolver](Capability-Resolver)` — is pervasive throughout this wiki too and was getting rewritten into a fabricated `raw.githubusercontent.com` URL. Same bug shape caught independently in agentm's sibling copy of this script while cutting its own v8.1.0. Replaces the `.md`-suffix exemption with an explicit real-asset-extension allowlist; new `test_wiki_publish_transform.py` (7 tests — no coverage existed before this fix).
+- **`wiki_publish_transform.py` strips frontmatter and fixes asset links at publish time** (`2deb87c` + `1bca836`, #191 + #192; `wiki 0.6.2 → 0.6.3`) — GitHub Wiki doesn't render YAML frontmatter and doesn't resolve tree-relative asset links against its flat page URLs; both were broken on the published wiki even though they render fine in a git checkout. Wired into `wiki-sync.yml` between rsync and commit, plus a post-publish smoke check.
+- **The remaining reference-page truth-audit gaps closed** (`28fce0d`, #198; `76ba304` + `990bab5`, #193 + #195) — every `wiki/reference/` page's checkable claims verified mechanically against live source; real drift found and fixed (a quoted example that didn't exist in the source file, an undercounted hooks table, a reversed rename direction) plus the `developer-workflows` → `development-lifecycle` naming reconciliation.
+- **`check-wiki.py` gains agentm's top-note-length rule (rule q)** (`ab32927`, #196; `wiki 0.7.0 → 0.7.1`) — `check-cross-repo-script-parity.py` flagged the port as missing; crickets' own `designs/` carried the same live violation once checked (`crickets-composition.md`'s top-note ran 64 words).
+- **`AGENTS.md`'s plugin-group roster reconciled with the current `src/` names** (`bc048ee`, #194).
+
+### Internal
+
+- Plugin-group version bumps landed inline with their PRs this range: `code-review` 0.3.0 → 0.3.2 · `wiki` 0.6.2 → 0.7.2.
+
+Pairs with [agentm v8.1.0](https://github.com/alexherrero/agentm/releases/tag/v8.1.0).
+
 ## [v3.28.0] — 2026-07-12 — Minor: the Consolidation arc's follow-ups batch lands on crickets
 
 **MINOR.** This is the crickets half of the follow-up work that ran after the Consolidation arc's exit gate — five PRs (#186–#190) spanning a real bug fix, a cost-gate wiring, a visitor-facing wording pass, mechanized close-out checks with cross-review's silent-fallback risk closed, and a docs-drift correction. Pairs with [agentm v8.0.0](https://github.com/alexherrero/agentm/releases/tag/v8.0.0), which declares the V8/Autonomy era complete ahead of its deeper proving report by explicit operator decision, and carries the agentm-side half of this same window.

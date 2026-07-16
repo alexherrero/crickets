@@ -39,4 +39,4 @@ The [wiki](https://github.com/alexherrero/crickets/wiki) covers everything there
 ---
 
 > [!NOTE]
-> **Latest release: [v3.27.0](https://github.com/alexherrero/crickets/releases/tag/v3.27.0).** The Consolidation arc closes on crickets — the repo slims (dead scripts retired, four discovery bridges merged into one), `check-slop.py` starts blocking instead of just reporting, and eleven misfiled pages move to where they belong. Coordinated with agentm's own Consolidation-arc release; cross-link lands once both sides are confirmed.
+> **Latest release: [v3.29.0](https://github.com/alexherrero/crickets/releases/tag/v3.29.0).** Cross-review keeps working after Google retired the Gemini CLI — the transport retargets to `agy` with the same output contract and retry behavior. Alongside it: the reference docs read plainer, the remaining truth-audit gaps close, and a publish-time bug that broke wiki page links gets fixed.
