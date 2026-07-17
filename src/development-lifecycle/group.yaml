@@ -533,5 +533,24 @@ enhances:
 #          Discovery mirrors escalation_tripwire.py's own opinion_resolve('efficient')
 #          cascade; graceful-skip when token-audit is unresolvable, unchanged
 #          behavior otherwise.
-version: 0.38.0
+# 0.39.0 = Open a project by name (PLAN-open-a-project-by-name, F1-REAUDIT
+# goal 5 + goal 6, FRIDAY-CRICKETS lane) — a fifth agentm_bridge.py verb,
+# `repo-registry list` (bridges to agentm's repo_registry.py, honoring the
+# design's own 2026-07-10 amendment-log re-audit trigger rather than starting
+# a new bridge file); `resolve_project.py`, the LOCATE + CONFIRM engine over
+# three independently graceful-skipping sources (repo-registry, the vault
+# `projects/` tree via a file-path-loaded harness_memory.py, and agentm recall
+# via a file-path-loaded recall.py mirroring research's agentm_bridge.py
+# pattern), merged/deduped by slug and classified none/one/many;
+# `orient_render.py`, the ORIENT renderer composing queue_status.py's existing
+# plan-status parsing (imported, not re-derived) with a new per-task ✅/⬜
+# checklist, a multi-line progress tail, the queued-plans/ tier, and a
+# read-only board-items.json glance; the `/open` + `/orient` commands
+# (byte-identical process bodies, locked by a drift test — command markdown
+# has no include mechanism); and the goal-6 pointer task, an opt-in `--note`
+# flag that idempotently overwrites `<_harness>/orientation-note.md` for
+# phone-surface pickup. Read-only by contract, the same posture as
+# `/queue-status-lite`; absorbs wake-from-state (#11) as its successor per
+# the living-design amendment landed alongside this release.
+version: 0.39.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]
