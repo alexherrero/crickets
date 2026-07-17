@@ -59,7 +59,7 @@ The [wiki](https://github.com/alexherrero/crickets/wiki) covers everything there
 - [Reference](https://github.com/alexherrero/crickets/wiki/Reference) — plugin anatomy, the manifest schema, and the install modes.
 
 > [!NOTE]
-> **Latest release: [v3.31.0](https://github.com/alexherrero/crickets/releases/tag/v3.31.0).** The prose pass now catches two more failure modes from real use: a simplifier stapling its own guard rules into the document as new text, and a stream that quietly cuts off mid-document — both get caught and recovered from automatically instead of shipping a corrupted draft.
+> **Latest release: [v3.32.0](https://github.com/alexherrero/crickets/releases/tag/v3.32.0).** New `/open` (alias `/orient`) command: tell it a project's name and it finds it, confirms the match, and gives you a short summary of where things stand — read-only, never resumes work on its own.
 
 ---
 

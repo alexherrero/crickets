@@ -5,6 +5,19 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.32.0] — 2026-07-17 — Minor: open a project by name
+
+**MINOR.** `/open` (alias `/orient`): tell it a project's name and it locates the right one, confirms the match with you, and gives you a short summary of where things stand — what it is, which plan tasks are done, what happened recently, what's queued, and its board status. Read-only, the same posture as `/queue-status-lite` — it never resumes work or touches a plan on its own. It resolves the project across three sources (your registered repos, the vault's project tree, and agentm's recall search), each failing gracefully on its own if it isn't available, so you always get whatever it can find rather than nothing at all. An optional `--note` flag saves that same summary into the project's own state folder, so a phone-based capture surface can read it later away from your machine. Ships as the crickets half of the FRIDAY arc's "Open a project by name" feature (agentm pairs it with the memory-engine side).
+
+### Added
+
+- **`/open` and `/orient`** (`01a8d2a`, #209; `development-lifecycle 0.38.0 → 0.39.0`) — one implementation, two names, both read-only. LOCATE resolves a project by name across registered repos, the vault's project tree, and agentm recall; CONFIRM shows one match, a short list to pick from, or says it found nothing; ORIENT renders the summary by reusing the existing plan-status reader rather than re-deriving it. The optional `--note` flag writes that same summary into the project's own state folder, overwriting cleanly each time rather than piling up.
+
+### Internal
+
+- **A fifth lookup joins the existing bridge to agentm** (`01a8d2a`, #209) — rather than write a new helper script, `/open`'s registered-repos lookup extends the same bridge the other four agentm lookups already share, per that bridge's own standing rule for exactly this situation.
+- **Living design updated** (`01a8d2a`, #209) — `/open` is recorded as the eventual replacement for a previously-planned "notify me when something changes" feature: asking for an update now gets you the same answer a notification would have, without needing to build the separate machinery first.
+
 ## [v3.31.0] — 2026-07-17 — Minor: prose-pass hardens against guard-leakage and stream truncation
 
 **MINOR.** Two failure modes from a real run (F1 session, 2026-07-17, agentm's capture design again) get hardened against: Gemini stapling FACT-GUARD lines into the document as new content (~10 redundant insertions in one pass, including the same guard verbatim in three places), and `agy`'s print-mode misreading a literal `<thought>`/`<thinking>`/`<answer>` token in the document body as its own reasoning-tag opener — truncating the output stream at that exact byte, reproducibly, across retries. `prose_pass.py`'s task prompt now tells the model the FACT-GUARD list is verification-only context, never content to insert; a new mechanical check joins the existing structural-contract retry-then-degrade flow. A new escape/restore pair keeps the literal tokens out of the outbound prompt (restored losslessly on the way back); a truncation heuristic catches whatever slips through anyway and redirects to a new section-by-section fallback instead of blindly retrying the same failing full-document call — since a call that truncates fails at the same byte every time. The `prose-pass` skill's Step 2 checklist and exit-code table document both behaviors.
