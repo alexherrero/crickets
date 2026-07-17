@@ -23,6 +23,26 @@ that run are load-bearing here:
      pull toward generic product-doc voice defeats summarized rule lists; the
      before/after examples in the operator's overlay are what hold.
 
+A second live run (F1 session, 2026-07-17, agentm's capture design again)
+surfaced two more failure modes, now hardened against:
+
+  3. Fact-guard leakage. Gemini stapled FACT-GUARD lines into the document
+     as new content — ~10 redundant insertions in one pass, including the
+     same guard verbatim in three places and a meta-sentence explaining a
+     re-audit trigger. The FACT-GUARD block is verification context, not
+     draftable prose; guard_leakage() flags any output sentence with no
+     counterpart in the input that closely paraphrases a guard line, and it
+     joins the same retry-then-degrade path as the structural checks.
+  4. Stream truncation on tag-like tokens. agy's print-mode reads a literal
+     `<thought>`/`<thinking>`/`<answer>` token in the document body as its
+     own reasoning-tag opener and truncates output at that exact byte,
+     reproducibly, across retries — so blindly retrying the same
+     full-document call never recovers. escape_risky_tags() keeps the
+     literal token out of what's sent (restored losslessly on the way back);
+     looks_truncated() catches the cases that slip through anyway and
+     redirects to a section-by-section fallback instead of repeating the
+     same failing call.
+
 Invocation mechanics mirror cross-review.sh exactly (V8 proving Lane G,
 2026-07-13): the positional prompt comes FIRST, flags after it — flags placed
 before the prompt silently drop it and the agent free-runs on leftover
@@ -60,8 +80,11 @@ Exit codes (cross-review.sh parity):
 The structural contract (validated deterministically against the input):
 YAML frontmatter, section headings, table structures (column layout + row
 counts), and the Document History section stay byte-identical; only body
-prose and table-cell text may change. Violations trigger exactly one retry
-with the violations named, then a degraded exit.
+prose and table-cell text may change. FACT-GUARD leakage (lesson 3 above) is
+checked the same way. Violations trigger exactly one retry with the
+violations named, then a degraded exit. Suspected stream truncation (lesson
+4 above) does NOT retry the same call — it redirects to a section-by-section
+fallback, since a truncating call fails at the same byte every time.
 
 Degradation is never silent: both fallback paths print a
 "PROSE-PASS-DEGRADED: ..." line on stdout before exiting — a stable,
@@ -74,6 +97,7 @@ Stdlib-only.
 from __future__ import annotations
 
 import argparse
+import difflib
 import json
 import os
 import re
@@ -102,6 +126,10 @@ Rules:
 - Every line in the FACT-GUARD block is a truth this document states. Your
   revision must preserve each one exactly as stated — do not weaken, invert,
   or "clarify" them.
+- The FACT-GUARD list is verification context only — never insert its
+  sentences into the document. If a guarded truth is already stated
+  somewhere in the document, leave that existing sentence alone; do not add
+  another one that restates it.
 - Write in the voice defined by the VOICE PACK block. It is the document
   author's own style guide, quoted verbatim; its before/after examples are
   normative.
@@ -110,6 +138,30 @@ Rules:
 
 
 # ── pure helpers (unit-tested without agy) ──────────────────────────────────
+_RISKY_TAG_RE = re.compile(r"<(/?(?:thought|thinking|answer))>", re.IGNORECASE)
+_ESCAPED_TAG_RE = re.compile(r"⦃PP:(.*?)⦄")
+
+
+def escape_risky_tags(text: str) -> str:
+    """Replace literal `<thought>`/`<thinking>`/`<answer>` tags (open or
+    close, any case) with an opaque placeholder before they go into an agy
+    prompt — one that drops the `<` `>` characters entirely, not merely one
+    that wraps them, since a wrapped-but-still-present `<thought>` substring
+    would still be there to trip the client (lesson 4 in the module
+    docstring: agy's print-mode stream reads a literal one of these tokens
+    in the document body as its own reasoning-tag opener and truncates
+    output at that exact byte). The placeholder keeps the tag byte-for-byte
+    recoverable via restore_risky_tags().
+    """
+    return _RISKY_TAG_RE.sub(lambda m: f"⦃PP:{m.group(1)}⦄", text)
+
+
+def restore_risky_tags(text: str) -> str:
+    """Invert escape_risky_tags() — turn each placeholder back into its
+    original `<...>` tag text."""
+    return _ESCAPED_TAG_RE.sub(lambda m: f"<{m.group(1)}>", text)
+
+
 def frontmatter_block(text: str) -> str | None:
     """The leading `---` YAML frontmatter block, delimiters included, or None."""
     lines = text.splitlines(keepends=True)
@@ -226,6 +278,54 @@ def validate_output(original: str, revised: str) -> list[str]:
     return violations
 
 
+_SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+|\n+")
+
+
+def _sentences(text: str) -> list[str]:
+    """Rough sentence/line split for leakage comparison. Not a real NLP
+    sentence splitter — good enough to catch a FACT-GUARD line stapled in as
+    its own sentence, table cell, or line."""
+    parts = []
+    for chunk in _SENTENCE_SPLIT_RE.split(text):
+        s = chunk.strip().strip("|").strip()
+        if s:
+            parts.append(s)
+    return parts
+
+
+def guard_leakage(original: str, revised: str, fact_guards: list[str],
+                   threshold: float = 0.82) -> list[str]:
+    """FACT-GUARD lines stapled into the document as new content instead of
+    staying verification-only context (lesson 3 in the module docstring: ~10
+    such insertions in one real pass, including the same guard verbatim in
+    three places and a meta-sentence explaining a re-audit trigger).
+
+    Flags any sentence in `revised` that has no counterpart in `original`
+    and closely paraphrases a guard line. A legitimate simplification of an
+    existing sentence that happens to converge on similar wording can also
+    trip this — that is an acceptable false-positive rate for a check that
+    only trigger one retry (or an exit-2 for human review), never a silent
+    auto-revert.
+    """
+    orig_sentences = set(_sentences(original))
+    violations: list[str] = []
+    flagged_guards: set[str] = set()
+    for sentence in _sentences(revised):
+        if sentence in orig_sentences:
+            continue
+        for guard in fact_guards:
+            g = guard.strip()
+            if not g or g in flagged_guards:
+                continue
+            if difflib.SequenceMatcher(None, sentence.lower(), g.lower()).ratio() >= threshold:
+                violations.append(
+                    f"FACT-GUARD line leaked into the document as new content: "
+                    f"{g!r} (found as {sentence!r})")
+                flagged_guards.add(g)
+                break
+    return violations
+
+
 def assemble_prompt(header: str, fact_guards: list[str], voice_pack: str, document: str) -> str:
     """The four-block prompt, delimited so agy can't blur the boundaries."""
     guards = "\n".join(f"- {g}" for g in fact_guards)
@@ -335,6 +435,89 @@ def _call_agy(agy_cmd: list[str], prompt: str, model: str, timeout: str) -> tupl
     return r.returncode, r.stdout
 
 
+_CLEAN_ENDERS = set(".!?\"')]}`|")
+
+
+def looks_truncated(original: str, revised: str, ratio_floor: float = 0.5) -> bool:
+    """True when `revised` reads like a stream cut off mid-generation
+    (lesson 4 in the module docstring), not merely a short-but-complete
+    reply.
+
+    Both signals have to hold: `revised` is substantially shorter than
+    `original` (a cut-off stream loses most of the document) AND it ends
+    somewhere a finished reply never would. Shortness alone isn't enough — a
+    model that ignores the "improve existing text" rule and returns a short,
+    complete, off-contract summary is a different failure (the existing
+    structural-contract retry already catches it) and still ends on a clean
+    sentence; only a real cutoff ends dirty.
+    """
+    stripped = revised.strip()
+    if not stripped:
+        return True
+    short = len(stripped) < len(original.strip()) * ratio_floor
+    dirty_end = stripped[-1] not in _CLEAN_ENDERS
+    return short and dirty_end
+
+
+def split_sections(text: str) -> list[str]:
+    """Split `text` into chunks at level-1/level-2 ATX headings (outside
+    code fences). Frontmatter plus any preamble before the first such
+    heading is its own leading chunk.
+
+    Used only by the truncation fallback below: re-running the pass one
+    section at a time survives a cutoff wherever it landed in the full
+    document, instead of resending the same call that just failed at the
+    same byte.
+    """
+    offsets = []
+    pos = 0
+    for ln in text.splitlines(keepends=True):
+        offsets.append(pos)
+        pos += len(ln)
+    nonfenced = dict(_nonfenced_lines(text))
+    starts = {0}
+    for i, ln in nonfenced.items():
+        if re.match(r"^#{1,2} ", ln):
+            starts.add(offsets[i])
+    ordered = sorted(starts)
+    return [text[s:e] for s, e in zip(ordered, [*ordered[1:], len(text)]) if e > s]
+
+
+def _run_sectioned_pass(agy_cmd: list[str], header: str, guards: list[str], voice_pack: str,
+                         original: str, model: str, timeout: str) -> tuple[str, list[str]]:
+    """Truncation fallback: simplify the document one heading-section at a
+    time instead of in one shot.
+
+    Each section's own revision must pass the same structural + guard-leakage
+    checks and must not itself still look truncated; a section that fails is
+    kept as its original text rather than risking a corrupted merge — so this
+    function can never produce a result worse than the untouched input.
+    Returns (revised_full_text, notes) — notes name which sections (if any)
+    were kept unrevised and why.
+    """
+    revised_parts: list[str] = []
+    notes: list[str] = []
+    for i, section in enumerate(split_sections(original)):
+        prompt = assemble_prompt(header, guards, voice_pack, escape_risky_tags(section))
+        rc, out = _call_agy(agy_cmd, prompt, model, timeout)
+        if rc != 0 or not out.strip():
+            revised_parts.append(section)
+            notes.append(f"section {i}: agy call failed (exit {rc}) — kept original")
+            continue
+        candidate = restore_risky_tags(unwrap_outer_fence(out))
+        violations = validate_output(section, candidate) + guard_leakage(section, candidate, guards)
+        if violations:
+            revised_parts.append(section)
+            notes.append(f"section {i}: {'; '.join(violations)} — kept original")
+            continue
+        if looks_truncated(section, candidate):
+            revised_parts.append(section)
+            notes.append(f"section {i}: still looks truncated — kept original")
+            continue
+        revised_parts.append(candidate)
+    return "".join(revised_parts), notes
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(
         description="Cross-model prose pass, step 1: Gemini simplifies.")
@@ -393,7 +576,7 @@ def main(argv=None) -> int:
                   + "\n\n" + overlay_path.read_text(encoding="utf-8").strip())
 
     original = doc_path.read_text(encoding="utf-8")
-    prompt = assemble_prompt(TASK_HEADER, guards, voice_pack, original)
+    prompt = assemble_prompt(TASK_HEADER, guards, voice_pack, escape_risky_tags(original))
 
     rc, out = _call_agy(agy_cmd, prompt, args.model, args.timeout)
     if rc != 0 or not out.strip():
@@ -401,26 +584,47 @@ def main(argv=None) -> int:
                   f"{'empty' if not out.strip() else 'nonzero'} result")
         return 1
 
-    revised = unwrap_outer_fence(out)
-    violations = validate_output(original, revised)
-    if violations:
-        nudge = ("\n\nYour previous revision violated the structural contract: "
-                 + "; ".join(violations)
-                 + ". Revise again. The frontmatter, headings, table structures, "
-                   "and Document History must be byte-identical to the input.")
-        rc, out = _call_agy(agy_cmd,
-                            assemble_prompt(TASK_HEADER + nudge, guards, voice_pack, original),
-                            args.model, args.timeout)
-        if rc != 0 or not out.strip():
-            _degraded("agy retry failed", f"agy retry exited {rc}")
-            return 1
-        revised = unwrap_outer_fence(out)
+    revised = restore_risky_tags(unwrap_outer_fence(out))
+
+    if looks_truncated(original, revised):
+        # A truncating call fails at the same byte every time (lesson 4) —
+        # retrying the identical full-document call would just repeat it.
+        # Redirect to a section-by-section pass instead.
+        revised, notes = _run_sectioned_pass(
+            agy_cmd, TASK_HEADER, guards, voice_pack, original, args.model, args.timeout)
+        msg = "prose-pass: stream truncation suspected — fell back to a section-by-section pass"
+        if notes:
+            msg += "; " + "; ".join(notes)
+        print(msg, file=sys.stderr)
         violations = validate_output(original, revised)
         if violations:
-            _degraded("agy revision violated the structural contract twice",
-                      "violations after retry: " + "; ".join(violations))
+            _degraded("sectioned fallback still violated the structural contract",
+                      "violations: " + "; ".join(violations))
             print(revised, file=sys.stderr)
             return 2
+    else:
+        violations = validate_output(original, revised) + guard_leakage(original, revised, guards)
+        if violations:
+            nudge = ("\n\nYour previous revision violated the structural contract: "
+                     + "; ".join(violations)
+                     + ". Revise again. The frontmatter, headings, table structures, "
+                       "and Document History must be byte-identical to the input. The "
+                       "FACT-GUARD list is verification context only — do not insert "
+                       "its lines into the document.")
+            rc, out = _call_agy(agy_cmd,
+                                assemble_prompt(TASK_HEADER + nudge, guards, voice_pack,
+                                                escape_risky_tags(original)),
+                                args.model, args.timeout)
+            if rc != 0 or not out.strip():
+                _degraded("agy retry failed", f"agy retry exited {rc}")
+                return 1
+            revised = restore_risky_tags(unwrap_outer_fence(out))
+            violations = validate_output(original, revised) + guard_leakage(original, revised, guards)
+            if violations:
+                _degraded("agy revision violated the structural contract twice",
+                          "violations after retry: " + "; ".join(violations))
+                print(revised, file=sys.stderr)
+                return 2
 
     if not revised.endswith("\n"):
         revised += "\n"
