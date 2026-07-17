@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Merged thin bridge: agentm capability / governing-design / process-seam /
-workflow-persona lookups for the development-lifecycle plugin, in one file
-(Consolidation arc, CONS-2 task 2).
+workflow-persona / repo-registry lookups for the development-lifecycle plugin,
+in one file (Consolidation arc, CONS-2 task 2; repo-registry added by
+PLAN-open-a-project-by-name task 1).
 
 Previously four separate scripts — find_capability.py, find_governing_design.py,
 find_process_seam.py, resolve_workflow_persona.py — each independently
@@ -14,6 +15,7 @@ keeps every one of those four behaviors verbatim, under one dispatcher:
     agentm_bridge.py governing-design <file-or-area> [--root DIR] [--include-proposed] [--json]
     agentm_bridge.py process-seam state-path {plan|progress} [--plan SLUG] [--cwd ROOT]
     agentm_bridge.py workflow-persona <step> [--explicit NAME]
+    agentm_bridge.py repo-registry list
 
 DC-2: siblings not layers. Every verb's discovery is best-effort via
 path-fallback; when agentm is absent (the target script undiscoverable) each
@@ -25,13 +27,19 @@ itself (no/unknown verb) or within a verb's own argument parsing:
     governing-design:  exit 0 governed        / 1 greenfield or agentm absent  / 2 usage
     process-seam:      exit 0 resolved        / 1 absent or unresolvable       / 2 usage
     workflow-persona:  exit 0 persona resolved / 1 no persona or agentm absent / 2 usage
+    repo-registry:      exit 0 repos listed    / 1 unresolvable or backend absent / 2 usage
 
 Call-sites: src/development-lifecycle/commands/*.md invoke the capability,
 governing-design, and workflow-persona verbs via `python3 .../agentm_bridge.py
 <verb> ...`. resolve_plan.py loads this file's process-seam functions
 in-process (a crickets-internal load, not a cross-repo import — DC-2 prohibits
 importing agentm's process_seam.py directly, not this bridge, which lives here
-in crickets).
+in crickets). resolve_project.py (open-a-project-by-name) shells to the
+repo-registry verb the same way.
+
+Re-audit trigger honored here (development-lifecycle design, 2026-07-10
+amendment): a fifth agentm-facing lookup extends this dispatcher rather than
+starting a new standalone bridge file — repo-registry is that fifth verb.
 """
 from __future__ import annotations
 
@@ -359,6 +367,75 @@ def _main_workflow_persona(rest: "list[str]") -> int:
     return code
 
 
+# ── repo-registry (new, PLAN-open-a-project-by-name task 1) ────────────────────
+# Thin bridge: discovers agentm's repo_registry.py and proxies its `list`
+# subcommand. Targets agentm's scripts/repo_registry.py contract (vault-backed
+# `_meta/repos.json`, registered agent-aware repos: slug/root_path/wiki_path).
+# repo_registry.py's own `list` verb already emits its documented graceful-skip
+# envelope (`{"skipped": true, "reason": ...}`, exit 1) when its storage backend
+# is unavailable, so this verb proxies stdout + exit code verbatim rather than
+# re-wrapping that contract — the same shape as governing-design/process-seam.
+
+_REPO_REGISTRY_NAME = "repo_registry.py"
+
+
+def find_repo_registry() -> "Path | None":
+    """Locate agentm's repo_registry.py via path-fallback, or None.
+
+    Candidates, first hit wins:
+      1. $AGENTM_SCRIPTS_DIR/repo_registry.py         (explicit override)
+      2. <this-script-dir>/repo_registry.py           (co-located install)
+      3. ~/Antigravity/agentm/scripts/repo_registry.py (conventional clone)
+    """
+    return _first_candidate(_REPO_REGISTRY_NAME)
+
+
+def run_repo_registry_list(*, registry: "Path | None" = None) -> "tuple[str, int]":
+    """Call repo_registry.py's `list` subcommand; return (stdout_stripped, exit_code).
+
+    Returns ("", 1) when repo_registry.py is undiscoverable — graceful-skip,
+    never hangs. When found, repo_registry.py's own exit code/stdout (0 +
+    `{"repos": [...]}`, or 1 + a skip envelope on an unavailable backend) pass
+    through verbatim. Injectable registry path for tests.
+    """
+    if registry is None:
+        registry = find_repo_registry()
+    if registry is None or not Path(registry).is_file():
+        return ("", 1)  # absent → graceful-skip (no repos known)
+    cmd = [sys.executable, str(registry), "list"]
+    try:
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        return (res.stdout.strip(), res.returncode)
+    except (OSError, subprocess.SubprocessError):
+        return ("", 1)  # graceful-skip on registry error
+
+
+def _build_repo_registry_parser() -> argparse.ArgumentParser:
+    ap = argparse.ArgumentParser(
+        prog="agentm_bridge.py repo-registry",
+        description="List agent-aware registered repos (bridge to agentm's repo_registry.py).",
+        add_help=True,
+    )
+    ap.add_argument("subcommand", nargs="?", choices=["list"], help="only 'list' is supported")
+    return ap
+
+
+def _main_repo_registry(rest: "list[str]") -> int:
+    ap = _build_repo_registry_parser()
+    try:
+        args = ap.parse_args(rest)
+    except SystemExit:
+        return 2
+    if not args.subcommand:
+        print("usage: agentm_bridge.py repo-registry list", file=sys.stderr)
+        return 2
+
+    out, code = run_repo_registry_list()
+    if out:
+        print(out)
+    return code
+
+
 # ── dispatcher ───────────────────────────────────────────────────────────────────
 
 _VERBS = {
@@ -366,15 +443,17 @@ _VERBS = {
     "governing-design": _main_governing_design,
     "process-seam": _main_process_seam,
     "workflow-persona": _main_workflow_persona,
+    "repo-registry": _main_repo_registry,
 }
 
 _USAGE = (
     "usage: agentm_bridge.py {capability|governing-design|process-seam|"
-    "workflow-persona} ...\n"
+    "workflow-persona|repo-registry} ...\n"
     "  capability <capability-name> [<version-range>]\n"
     "  governing-design <file-or-area> [--root DIR] [--include-proposed] [--json]\n"
     "  process-seam state-path {plan|progress} [--plan SLUG] [--cwd ROOT]\n"
     "  workflow-persona <step> [--explicit NAME]\n"
+    "  repo-registry list\n"
 )
 
 
