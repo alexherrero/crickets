@@ -176,6 +176,89 @@ class ValidateOutputTests(unittest.TestCase):
         )
 
 
+# ── unit: risky-tag escape/restore ───────────────────────────────────────────
+class EscapeRiskyTagsTests(unittest.TestCase):
+    def test_round_trips_every_risky_tag_open_close_any_case(self):
+        text = "See <thought>note</thought> then <Thinking> and </ANSWER>."
+        escaped = prose_pass.escape_risky_tags(text)
+        self.assertEqual(prose_pass.restore_risky_tags(escaped), text)
+
+    def test_escaped_text_no_longer_contains_the_literal_tag(self):
+        # The placeholder must drop the `<`/`>` entirely, not just wrap them —
+        # a wrapped-but-still-present "<thought>" substring would still trip
+        # agy's reasoning-tag reader (the bug this escape exists to prevent).
+        escaped = prose_pass.escape_risky_tags("before <thought>x</thought> after")
+        self.assertNotIn("<thought>", escaped)
+        self.assertNotIn("</thought>", escaped)
+
+    def test_ordinary_tags_untouched(self):
+        text = "No risky tags here, just <em>emphasis</em> and <br/>."
+        self.assertEqual(prose_pass.escape_risky_tags(text), text)
+
+
+# ── unit: FACT-GUARD leakage ─────────────────────────────────────────────────
+class GuardLeakageTests(unittest.TestCase):
+    GUARD = "single-operator system — no teams or users"
+
+    def test_stapled_guard_sentence_flagged(self):
+        revised = SAMPLE_DOC.replace(
+            "## Decisions",
+            "This is a single-operator system — no teams or users.\n\n## Decisions",
+        )
+        violations = prose_pass.guard_leakage(SAMPLE_DOC, revised, [self.GUARD])
+        self.assertTrue(any("leaked into the document" in v for v in violations))
+
+    def test_guard_already_present_verbatim_not_flagged(self):
+        # A guard whose exact sentence was already in the original, and which
+        # the revision leaves untouched while simplifying something else
+        # entirely, is not new content — nothing leaked.
+        original = SAMPLE_DOC.replace(
+            "## Decisions", f"{self.GUARD}.\n\n## Decisions")
+        revised = original.replace(
+            "keep the vault as the canonical store of record", "the vault is the store")
+        self.assertEqual(prose_pass.guard_leakage(original, revised, [self.GUARD]), [])
+
+    def test_faithful_simplification_not_flagged(self):
+        self.assertEqual(
+            prose_pass.guard_leakage(SAMPLE_DOC, SAMPLE_REVISED, [self.GUARD]), [])
+
+    def test_unrelated_new_sentence_not_flagged(self):
+        revised = SAMPLE_DOC.replace(
+            "## Decisions", "A short unrelated aside.\n\n## Decisions")
+        self.assertEqual(prose_pass.guard_leakage(SAMPLE_DOC, revised, [self.GUARD]), [])
+
+
+# ── unit: truncation heuristic + section splitting ───────────────────────────
+class LooksTruncatedTests(unittest.TestCase):
+    def test_short_and_dirty_ending_is_truncated(self):
+        cutoff = SAMPLE_DOC[:80]  # mid-word, well under half the length
+        self.assertTrue(prose_pass.looks_truncated(SAMPLE_DOC, cutoff))
+
+    def test_short_but_clean_ending_is_not_truncated(self):
+        # A short, complete, off-contract reply (still a real problem — the
+        # structural-contract check catches it) is not a truncation.
+        garbage = "Here is a summary of the changes I would suggest making."
+        self.assertFalse(prose_pass.looks_truncated(SAMPLE_DOC, garbage))
+
+    def test_faithful_full_length_revision_not_truncated(self):
+        self.assertFalse(prose_pass.looks_truncated(SAMPLE_DOC, SAMPLE_REVISED))
+
+    def test_empty_output_is_truncated(self):
+        self.assertTrue(prose_pass.looks_truncated(SAMPLE_DOC, "   \n"))
+
+
+class SplitSectionsTests(unittest.TestCase):
+    def test_sections_reassemble_to_the_original_byte_for_byte(self):
+        self.assertEqual("".join(prose_pass.split_sections(SAMPLE_DOC)), SAMPLE_DOC)
+
+    def test_splits_on_level_one_and_two_headings(self):
+        sections = prose_pass.split_sections(SAMPLE_DOC)
+        starts = [s.lstrip().splitlines()[0] if s.lstrip() else "" for s in sections]
+        self.assertIn("# Sample design", starts)
+        self.assertIn("## Decisions", starts)
+        self.assertIn("## Document History", starts)
+
+
 # ── unit: prompt assembly + argv ordering ────────────────────────────────────
 class PromptAssemblyTests(unittest.TestCase):
     def test_four_blocks_in_order_and_verbatim(self):
@@ -251,6 +334,49 @@ counter = Path(__file__).resolve().parent / "calls.count"
 n = int(counter.read_text()) + 1 if counter.exists() else 1
 counter.write_text(str(n))
 print("Here is a summary of the changes I would suggest making.")
+"""
+
+_LEAK_GUARD_IMPL = """\
+import sys
+from pathlib import Path
+counter = Path(__file__).resolve().parent / "calls.count"
+n = int(counter.read_text()) + 1 if counter.exists() else 1
+counter.write_text(str(n))
+prompt = sys.argv[sys.argv.index("-p") + 1]
+doc = prompt.split("=== DOCUMENT ===\\n", 1)[1]
+sys.stdout.write(doc.replace(
+    "## Decisions",
+    "This is a single-operator system — no teams or users.\\n\\n## Decisions",
+))
+"""
+
+# Chokes on a literal "<thought>" reaching it — simulating agy's own
+# reasoning-tag reader truncating the stream at that byte. Only sees it if
+# prose_pass fails to escape the tag before sending.
+_CHOKE_ON_LITERAL_TAG_IMPL = """\
+import sys
+prompt = sys.argv[sys.argv.index("-p") + 1]
+doc = prompt.split("=== DOCUMENT ===\\n", 1)[1]
+if "<thought>" in doc:
+    sys.stdout.write(doc.split("<thought>", 1)[0])
+else:
+    sys.stdout.write(doc)
+"""
+
+# Truncates (short, dirty ending) on a full-document call but behaves
+# normally on the smaller per-section calls the truncation fallback makes —
+# simulating a cutoff that only manifests on the full document.
+_SIZE_SENSITIVE_TRUNCATE_IMPL = """\
+import sys
+prompt = sys.argv[sys.argv.index("-p") + 1]
+doc = prompt.split("=== DOCUMENT ===\\n", 1)[1]
+if len(doc) > 150:
+    sys.stdout.write(doc[:40])
+else:
+    sys.stdout.write(doc.replace(
+        "This design utilizes a mechanism whereby entries are subjected to decay.",
+        "Entries decay.",
+    ))
 """
 
 
@@ -362,6 +488,50 @@ class EndToEndTests(unittest.TestCase):
             self.assertEqual(r.returncode, 0, f"stderr={r.stderr!r}")
             self.assertEqual(out.read_text(encoding="utf-8"), SAMPLE_DOC)
             self.assertNotIn("# Sample design", r.stdout)
+
+    def test_guard_leakage_retries_once_then_exit_2(self):
+        with tempfile.TemporaryDirectory() as t:
+            tmp = Path(t)
+            _make_vault(tmp)
+            impl = _write_fake_agy(tmp, _LEAK_GUARD_IMPL)
+            r = _run_pass(tmp, "--fact-guard-text",
+                          "single-operator system — no teams or users", fake_impl=impl)
+            self.assertEqual(r.returncode, 2, f"stderr={r.stderr!r}")
+            self.assertIn("PROSE-PASS-DEGRADED: agy revision violated the "
+                          "structural contract twice", r.stdout)
+            self.assertIn("leaked into the document", r.stderr)
+            calls = (tmp / "calls.count").read_text(encoding="utf-8").strip()
+            self.assertEqual(calls, "2")  # initial call + exactly one retry
+
+    def test_literal_risky_tag_survives_round_trip_without_choking(self):
+        with tempfile.TemporaryDirectory() as t:
+            tmp = Path(t)
+            _make_vault(tmp)
+            doc_with_tag = SAMPLE_DOC.replace(
+                "This design utilizes a mechanism whereby entries are subjected to decay.",
+                "Entries are tagged with a literal <thought> marker before decay.",
+            )
+            (tmp / "doc.md").write_text(doc_with_tag, encoding="utf-8")
+            impl = _write_fake_agy(tmp, _CHOKE_ON_LITERAL_TAG_IMPL)
+            r = _run_pass(tmp, "--fact-guard-text", "a truth", fake_impl=impl)
+            self.assertEqual(r.returncode, 0, f"stderr={r.stderr!r}")
+            self.assertEqual(r.stdout, doc_with_tag)
+            self.assertNotIn("PROSE-PASS-DEGRADED", r.stdout)
+
+    def test_truncation_falls_back_to_sectioned_pass(self):
+        with tempfile.TemporaryDirectory() as t:
+            tmp = Path(t)
+            _make_vault(tmp)
+            impl = _write_fake_agy(tmp, _SIZE_SENSITIVE_TRUNCATE_IMPL)
+            r = _run_pass(tmp, "--fact-guard-text", "a truth", fake_impl=impl)
+            self.assertEqual(r.returncode, 0, f"stderr={r.stderr!r}")
+            expected = SAMPLE_DOC.replace(
+                "This design utilizes a mechanism whereby entries are subjected to decay.",
+                "Entries decay.",
+            )
+            self.assertEqual(r.stdout, expected)
+            self.assertNotIn("PROSE-PASS-DEGRADED", r.stdout)
+            self.assertIn("stream truncation suspected", r.stderr)
 
 
 if __name__ == "__main__":

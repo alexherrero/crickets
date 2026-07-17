@@ -3,7 +3,7 @@ name: prose-pass
 description: Two-step cross-model prose pass for design docs and other authored prose — Gemini simplifies via the headless prose_pass.py script, then Claude verifies every fact-guard held and applies. The prose sibling of code-review's cross-review.sh.
 kind: skill
 supported_hosts: [claude-code, antigravity]
-version: 0.1.0
+version: 0.2.0
 ---
 
 You are applying the `prose-pass` skill: a two-step cross-model readability pass over a finished document. **Gemini simplifies, Claude verifies.** A simplification pass run by the model that wrote the prose is an echo chamber — it cannot see the sentences only the author can parse. A different model's read finds them; your job is to keep its edit honest.
@@ -45,13 +45,15 @@ The script assembles a four-block prompt — task header, your fact-guard list, 
 
 On exit 1 or 2 the script prints a `PROSE-PASS-DEGRADED: ...` marker on stdout. Relay it verbatim — never paraphrase a degraded pass into a clean-sounding one.
 
-The script already enforces structure mechanically: frontmatter, headings, table layout, and the Document History section must come back byte-identical, with one retry. What it cannot check is meaning — that is Step 2, and Step 2 is not optional.
+The script already enforces structure mechanically: frontmatter, headings, table layout, the Document History section, and FACT-GUARD leakage (a guard line stapled into the document as new content, not just held as a truth) must come back clean, with one retry. What it cannot check is meaning — that is Step 2, and Step 2 is not optional.
+
+If a call looks like a stream cutoff (`agy`'s print-mode misreading a literal `<thought>`/`<thinking>`/`<answer>` token in the document as its own reasoning-tag opener — a real failure mode, not hypothetical), the script does not just retry the identical call; it redirects to a section-by-section pass and reports on stderr which sections, if any, it had to leave unrevised. A stderr line naming that fallback is informational, not an error — check the diff same as any other run.
 
 ## Step 2 — Claude verifies and applies
 
 Diff the revised document against the original, then work this checklist. Every item, every time:
 
-1. **Fact-guards held.** Re-read each guard line against the revised text. A guard that now reads "roughly equivalent" has drifted — restore the original sentence.
+1. **Fact-guards held — and not leaked as new content.** Re-read each guard line against the revised text. A guard that now reads "roughly equivalent" has drifted — restore the original sentence. Separately, check that no guard line got stapled into the document as its own new sentence: a real pass produced ~10 such insertions in one run, including the same guard verbatim in three places and a meta-sentence explaining what a re-audit trigger is. The FACT-GUARD list is verification context, not draftable prose — the script's own mechanical check catches most of this and retries, but a paraphrased insertion can still slip through.
 2. **Spot-check technical claims against the code they describe.** Follow the revised text's claims into the implementation. The proving run caught Gemini asserting staging writes go through `save_entry` when the design's whole point is that they bypass it — plus a security overclaim. Plausible is not true.
 3. **Operator-authored lines restored verbatim.** Hand-written sections must never be reworded, however awkward the simplifier found them. If you cannot tell whether a line is operator-authored, treat it as if it is.
 4. **Banned-vocabulary scan.** Check the revision against the voice kernel's strip-on-sight list and the overlay's banned vocabulary.

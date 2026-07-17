@@ -84,4 +84,21 @@ capabilities: [design-docs, design, architecture]
 #          (own frontmatter version 0.2.2 -> 0.3.0). Same wiring lands in the
 #          wiki plugin's documenter agent (sibling-plugin resolution, not a
 #          hard requires:) -- see wiki group.yaml's own bump.
-version: 0.8.0
+# 0.9.0 = prose_pass.py hardens against two failure modes a real run
+#          surfaced (F1 session, 2026-07-17, agentm's capture design again):
+#          (1) FACT-GUARD leakage -- Gemini stapling guard lines into the
+#          document as new content (~10 insertions in one pass); TASK_HEADER
+#          now tells it the list is verification-only, and a new
+#          guard_leakage() check joins the structural-contract retry.
+#          (2) stream truncation on tag-like tokens -- agy's print-mode
+#          misreads a literal `<thought>`/`<thinking>`/`<answer>` in the
+#          document as its own reasoning-tag opener and cuts the stream at
+#          that byte, reproducibly, so a blind retry never recovers;
+#          escape_risky_tags()/restore_risky_tags() keep the literal token
+#          out of what's sent, and looks_truncated() redirects whatever
+#          slips through to a new section-by-section fallback
+#          (split_sections() + _run_sectioned_pass()) instead of repeating
+#          the same failing call. skills/prose-pass/SKILL.md's Step 2
+#          checklist and exit-code table document both (own frontmatter
+#          version 0.1.0 -> 0.2.0).
+version: 0.9.0
