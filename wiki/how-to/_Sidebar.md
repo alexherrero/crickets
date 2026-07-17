@@ -15,6 +15,7 @@
 - [Run isolated tasks](Run-Isolated-Tasks)
 - [Configure main branch protection](Configure-Main-Branch-Protection)
 - [See every active plan](See-Every-Active-Plan)
+- [Open a project by name](Open-A-Project-By-Name)
 - [Run a coordinator-directed worker team](Run-A-Coordinator-Directed-Worker-Team)
 - [Install the vault backend](Install-The-Vault-Backend)
 - [Sync a project board](Sync-A-Project-Board)
