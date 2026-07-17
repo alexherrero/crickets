@@ -10,6 +10,7 @@ agentm install or a real vault.
 from __future__ import annotations
 
 import importlib.util
+import json
 import shutil
 import sys
 import tempfile
@@ -155,7 +156,7 @@ class TestRenderBoardState(unittest.TestCase):
             encoding="utf-8",
         )
         (self.tmp / "project.json").write_text(
-            f'{{"items_source": "{items_path}"}}', encoding="utf-8",
+            json.dumps({"items_source": str(items_path)}), encoding="utf-8",
         )
         # Plant a decoy at the harness-local fallback path to prove it's not used.
         (self.tmp / "board-items.json").write_text('{"items": []}', encoding="utf-8")
