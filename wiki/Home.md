@@ -39,4 +39,4 @@ The [wiki](https://github.com/alexherrero/crickets/wiki) covers everything there
 ---
 
 > [!NOTE]
-> **Latest release: [v3.30.0](https://github.com/alexherrero/crickets/releases/tag/v3.30.0).** A cross-model prose pass now checks design docs and wiki pages the way cross-review already checks code — Gemini simplifies, Claude verifies — and it runs by default, not just on request.
+> **Latest release: [v3.31.0](https://github.com/alexherrero/crickets/releases/tag/v3.31.0).** The prose pass now catches two more failure modes from real use: a simplifier stapling its own guard rules into the document as new text, and a stream that quietly cuts off mid-document — both get caught and recovered from automatically instead of shipping a corrupted draft.

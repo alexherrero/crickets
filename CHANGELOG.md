@@ -5,6 +5,19 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.31.0] — 2026-07-17 — Minor: prose-pass hardens against guard-leakage and stream truncation
+
+**MINOR.** Two failure modes from a real run (F1 session, 2026-07-17, agentm's capture design again) get hardened against: Gemini stapling FACT-GUARD lines into the document as new content (~10 redundant insertions in one pass, including the same guard verbatim in three places), and `agy`'s print-mode misreading a literal `<thought>`/`<thinking>`/`<answer>` token in the document body as its own reasoning-tag opener — truncating the output stream at that exact byte, reproducibly, across retries. `prose_pass.py`'s task prompt now tells the model the FACT-GUARD list is verification-only context, never content to insert; a new mechanical check joins the existing structural-contract retry-then-degrade flow. A new escape/restore pair keeps the literal tokens out of the outbound prompt (restored losslessly on the way back); a truncation heuristic catches whatever slips through anyway and redirects to a new section-by-section fallback instead of blindly retrying the same failing full-document call — since a call that truncates fails at the same byte every time. The `prose-pass` skill's Step 2 checklist and exit-code table document both behaviors.
+
+### Added
+
+- **FACT-GUARD leakage detection** (`4a87a60`, #205; `design 0.8.0 → 0.9.0`) — `guard_leakage()` flags any sentence in the revised document that has no counterpart in the original and closely paraphrases a FACT-GUARD line, joining the existing one-retry-then-degrade flow. The prompt template also states outright that the FACT-GUARD list is verification-only.
+- **Risky-tag escaping and a section-by-section truncation fallback** (`4a87a60`, #205) — `escape_risky_tags()`/`restore_risky_tags()` keep `<thought>`/`<thinking>`/`<answer>` tokens out of what's sent to `agy`; `looks_truncated()` distinguishes a real stream cutoff (short AND ending dirty) from a short-but-complete off-contract reply (already caught by the structural-contract check) and redirects to `split_sections()` + `_run_sectioned_pass()` rather than repeating a call that fails at the same byte every time.
+
+### Internal
+
+- **`wiki/how-to/Run-A-Prose-Pass.md` notes the automatic path** (`66ce54f`, #204) — PR #203 wired the prose pass into `/design author` and the wiki `documenter` agent as the default, but the how-to page still framed it as something invoked by hand; adds a pointer to `Author-A-Design` and reframes the manual steps as for prose outside those two flows.
+
 ## [v3.30.0] — 2026-07-16 — Minor: the prose pass — Gemini simplifies, Claude verifies, now on by default
 
 **MINOR.** Design docs and wiki pages get a cross-model readability pass the same way code already does: a different model reads the prose an author can no longer see clearly, and the author verifies before it ships. `scripts/prose_pass.py` sends a document to Gemini (via `agy`) with a mandatory fact-guard list (the truths a simplifier could plausibly invert) and the operator's voice pack inlined verbatim, then mechanically checks that the frontmatter, headings, table structure, and Document History came back byte-identical — retrying once, and degrading loudly (never silently) if `agy` is unavailable or the structural contract breaks twice. The `prose-pass` skill covers the human half: verify every fact-guard held, spot-check claims against the code, restore hand-written lines verbatim, then deploy. That pattern is now the **default**, not a tool you remember to reach for: `/design author` runs it automatically at Step 5 and on review-pass entry, and the wiki `documenter` agent runs it on every drafted page before its preview.
