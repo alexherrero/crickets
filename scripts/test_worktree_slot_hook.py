@@ -12,12 +12,22 @@ SessionStart and prints a loud warning into session context rather than
 degrading silently.
 
 Each test drives the real hook script (not a reimplementation) against a real
-temp git repo, so the git-state comparison (`rev-parse --show-toplevel` vs the
-slot's own real path) is exercised for real, not mocked.
+temp git repo, exercising the actual `.git`-existence check, not a mock.
+
+The `.sh` twin is POSIX-only (mirrors `test_developer_hooks_workspace.py`'s
+own `@unittest.skipUnless(os.name == "posix", ...)` precedent) — the
+production Windows host runs the `.ps1` twin, and `bash <script>` via
+git-bash on a Windows CI runner is not a reliable stand-in for that (observed
+live: uniform, silent exit-1 failures across every `.sh`-invoking test here,
+including ones that never touch the new worktree-slot logic at all — an
+environment quirk unrelated to the hook's own behavior). The `.ps1` twin
+gets real dual-host coverage instead, gated on `pwsh` being on PATH (ships on
+all three CI runners) rather than on OS name.
 """
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import tempfile
@@ -77,6 +87,7 @@ class WorktreeSlotHookTestCase(unittest.TestCase):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
 
+@unittest.skipUnless(os.name == "posix", "bash hooks are posix; Windows uses .ps1")
 class TestShFakeSlotGuard(WorktreeSlotHookTestCase):
     def test_bare_directory_under_worktrees_triggers_warning(self):
         self.slot.mkdir(parents=True, exist_ok=True)  # never `git worktree add`-ed
