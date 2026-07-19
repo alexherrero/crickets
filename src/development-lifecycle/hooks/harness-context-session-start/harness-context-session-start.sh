@@ -37,27 +37,33 @@ fi
 # walks up to the PARENT repo's `.git` and the session unknowingly shares
 # HEAD/index/working-tree with every other session on that parent checkout.
 # Detect it here, on every boot, rather than relying on a session to remember
-# to check: if EVENT_CWD sits under a `.claude/worktrees/` slot but git's own
-# toplevel for it resolves to somewhere else, this is a fake slot.
+# to check. The signal is simply whether the slot has its OWN `.git` (a file
+# for a real worktree, a directory for a real main checkout) — `git worktree
+# add` always creates one. This deliberately avoids comparing two
+# independently-resolved absolute paths (e.g. `git rev-parse --show-toplevel`
+# vs a shell `pwd`/`Resolve-Path`): those disagree on symlinked temp dirs
+# (macOS `/var` -> `/private/var`) and 8.3 short names (Windows
+# `RUNNER~1` vs its long form) in ways that produced false positives on a
+# genuinely real worktree — a plain existence check sidesteps all of that.
 case "$EVENT_CWD" in
     */.claude/worktrees/*)
-        if command -v git >/dev/null 2>&1; then
-            WT_TOPLEVEL="$(git -C "$EVENT_CWD" rev-parse --show-toplevel 2>/dev/null || true)"
-            WT_REAL_CWD="$(cd "$EVENT_CWD" 2>/dev/null && pwd -P || true)"
-            if [[ -n "$WT_TOPLEVEL" && -n "$WT_REAL_CWD" && "$WT_TOPLEVEL" != "$WT_REAL_CWD" ]]; then
-                cat <<EOF
-[worktree-integrity] WARNING: this session's slot is NOT a real git worktree.
-  slot:        $EVENT_CWD
-  resolves to: $WT_TOPLEVEL (the PARENT checkout, not this slot)
-  Every git command here operates on that PARENT checkout's shared HEAD,
-  index, and working tree — commits, branch switches, and stashes here
-  affect (and can be clobbered by) every other session using it. Do not
-  treat this session as isolated. Confirm with \`git -C "$WT_TOPLEVEL"
-  worktree list --porcelain\` and stop to ask the operator before any
-  branch switch or destructive git operation.
-EOF
-                echo "[worktree-integrity] FAKE SLOT at $EVENT_CWD (resolves to $WT_TOPLEVEL)" >&2
+        if [[ ! -e "$EVENT_CWD/.git" ]]; then
+            WT_TOPLEVEL=""
+            if command -v git >/dev/null 2>&1; then
+                WT_TOPLEVEL="$(git -C "$EVENT_CWD" rev-parse --show-toplevel 2>/dev/null || true)"
             fi
+            cat <<EOF
+[worktree-integrity] WARNING: this session's slot is NOT a real git worktree.
+  slot: $EVENT_CWD
+  It has no .git of its own, so every git command here silently walks up to
+  the PARENT checkout${WT_TOPLEVEL:+ ($WT_TOPLEVEL)} and operates on its
+  shared HEAD, index, and working tree — commits, branch switches, and
+  stashes here affect (and can be clobbered by) every other session using
+  it. Do not treat this session as isolated. Confirm with \`git worktree
+  list --porcelain\` from the parent repo and stop to ask the operator
+  before any branch switch or destructive git operation.
+EOF
+            echo "[worktree-integrity] FAKE SLOT at $EVENT_CWD (no .git of its own)" >&2
         fi
         ;;
 esac
