@@ -23,9 +23,11 @@ Exit codes:
         otherwise has no project.json at all), with `vault_project` refreshed
         on top iff that override diverges from the origin basename (LC-2,
         unchanged).
-    2 — loud: empty slug, worktree path does not exist / is not a directory, or
-        the marker write itself failed. Never a partial write: the pre-flight
-        check runs before any write.
+    2 — loud: empty slug, worktree path does not exist / is not a directory,
+        the path exists but is NOT a registered git worktree of `root` (the
+        fake-slot guard — see `_is_registered_worktree` below), or the marker
+        write itself failed. Never a partial write: the pre-flight check runs
+        before any write.
     3 — pre-flight reconcile no-op (LC-6): the resolved plan's declared
         `expected_artifacts` already exist under `--project-root` — the lane is
         already shipped. Nothing written. The caller holds a worktree bound to
@@ -79,6 +81,54 @@ def _origin_basename(root: str | os.PathLike) -> str | None:
     if last.endswith(".git"):
         last = last[: -len(".git")]
     return last or None
+
+
+def _registered_worktree_paths(root: str | os.PathLike) -> set[str] | None:
+    """Every path `git worktree list --porcelain` reports for `root`'s repo,
+    resolved so a symlinked/relative path still matches. None iff the registry
+    itself couldn't be read (git missing, a >30s hang, or a non-zero exit) —
+    callers must treat that as "can't verify", never as "not registered".
+    """
+    try:
+        r = _git(["worktree", "list", "--porcelain"], root)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if r.returncode != 0:
+        return None
+    paths: set[str] = set()
+    for line in r.stdout.splitlines():
+        if line.startswith("worktree "):
+            p = line[len("worktree "):].strip()
+            try:
+                paths.add(str(Path(p).resolve()))
+            except OSError:
+                paths.add(p)
+    return paths
+
+
+def _is_registered_worktree(worktree_path: str | os.PathLike,
+                            root: str | os.PathLike) -> bool | None:
+    """True iff `worktree_path` is a real, git-registered worktree of `root`.
+
+    The fake-slot guard: a host worktree primitive can leave a plain directory
+    behind a slot path instead of an actual `git worktree add`-created checkout
+    (observed live — a directory that never appears in `git worktree list`, so
+    every git command run inside it silently walks up to `root`'s own `.git`
+    and operates on the SHARED checkout). Binding a plan marker into a fake
+    slot would make `/work` believe it has isolation it doesn't have. Returns
+    None (not False) when the registry itself is unreadable — an unverifiable
+    slot is refused by the caller exactly like a confirmed-fake one, never
+    silently trusted (mirrors `worktree_shepherd.is_safe_to_reclaim`'s "never
+    guess safe on an unreadable repo").
+    """
+    registered = _registered_worktree_paths(root)
+    if registered is None:
+        return None
+    try:
+        resolved = str(Path(worktree_path).resolve())
+    except OSError:
+        resolved = str(worktree_path)
+    return resolved in registered
 
 
 def _read_vault_project(root: str | os.PathLike) -> str | None:
@@ -157,6 +207,22 @@ def write_marker(worktree_path: str | os.PathLike, slug: str,
     wt = Path(worktree_path)
     if not wt.is_dir():
         return (2, "", f"[worktree_marker] worktree path does not exist: {wt}\n")
+
+    # Fake-slot guard: refuse to bind a plan into a directory that isn't
+    # actually a git-registered worktree of `root`. Trusting the host
+    # primitive's return value without checking it back against `git worktree
+    # list` is exactly how a session ends up silently sharing the parent
+    # checkout instead of an isolated one (see _is_registered_worktree).
+    registered = _is_registered_worktree(wt, root)
+    if registered is not True:
+        reason = ("git worktree list --porcelain does not list it" if registered is False
+                  else "its worktree registry could not be read")
+        return (2, "",
+                f"[worktree_marker] refusing to bind: {wt} exists on disk but {reason} — "
+                f"it is not confirmed to be a real, isolated git worktree of {root}. Binding "
+                f"a plan here would silently operate on the parent checkout instead. Verify "
+                f"with `git -C {root} worktree list --porcelain` and re-create the slot via "
+                f"the host's worktree primitive before retrying.\n")
 
     # LC-6 defense-in-depth: refuse before any write if the plan already shipped.
     shipped, present = preflight_reconcile.already_shipped(plan_path, root)

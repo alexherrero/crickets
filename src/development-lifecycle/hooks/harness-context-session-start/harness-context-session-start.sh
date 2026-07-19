@@ -29,6 +29,45 @@ fi
 [[ -z "$EVENT_CWD" ]] && EVENT_CWD="$(pwd)"
 [[ -d "$EVENT_CWD" ]] || exit 0
 
+# ── Worktree-slot integrity check (fake-slot guard) ─────────────────────────
+# `.claude/worktrees/<name>` is supposed to be a real, `git worktree add`-
+# created checkout. A host worktree primitive can leave a plain directory
+# behind a slot path instead (observed live: a directory that never appears
+# in `git worktree list`) — every git command run inside it then silently
+# walks up to the PARENT repo's `.git` and the session unknowingly shares
+# HEAD/index/working-tree with every other session on that parent checkout.
+# Detect it here, on every boot, rather than relying on a session to remember
+# to check. The signal is simply whether the slot has its OWN `.git` (a file
+# for a real worktree, a directory for a real main checkout) — `git worktree
+# add` always creates one. This deliberately avoids comparing two
+# independently-resolved absolute paths (e.g. `git rev-parse --show-toplevel`
+# vs a shell `pwd`/`Resolve-Path`): those disagree on symlinked temp dirs
+# (macOS `/var` -> `/private/var`) and 8.3 short names (Windows
+# `RUNNER~1` vs its long form) in ways that produced false positives on a
+# genuinely real worktree — a plain existence check sidesteps all of that.
+case "$EVENT_CWD" in
+    */.claude/worktrees/*)
+        if [[ ! -e "$EVENT_CWD/.git" ]]; then
+            WT_TOPLEVEL=""
+            if command -v git >/dev/null 2>&1; then
+                WT_TOPLEVEL="$(git -C "$EVENT_CWD" rev-parse --show-toplevel 2>/dev/null || true)"
+            fi
+            cat <<EOF
+[worktree-integrity] WARNING: this session's slot is NOT a real git worktree.
+  slot: $EVENT_CWD
+  It has no .git of its own, so every git command here silently walks up to
+  the PARENT checkout${WT_TOPLEVEL:+ ($WT_TOPLEVEL)} and operates on its
+  shared HEAD, index, and working tree — commits, branch switches, and
+  stashes here affect (and can be clobbered by) every other session using
+  it. Do not treat this session as isolated. Confirm with \`git worktree
+  list --porcelain\` from the parent repo and stop to ask the operator
+  before any branch switch or destructive git operation.
+EOF
+            echo "[worktree-integrity] FAKE SLOT at $EVENT_CWD (no .git of its own)" >&2
+        fi
+        ;;
+esac
+
 PLAN="$EVENT_CWD/.harness/PLAN.md"
 PROGRESS="$EVENT_CWD/.harness/progress.md"
 

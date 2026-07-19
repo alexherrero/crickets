@@ -56,18 +56,32 @@ def _init_repo(repo: Path, *, origin: str | None = None) -> None:
         _git(repo, "remote", "add", "origin", origin)
 
 
+def _add_worktree(repo: Path, worktree: Path) -> None:
+    """A REAL `git worktree add` — mirrors what the host primitive is supposed
+    to produce, so tests exercise the fake-slot guard's happy path (added by
+    the worktree-slot integrity fix) against genuine git state rather than a
+    bare `mkdir`."""
+    _git(repo, "worktree", "add", "-b", "wt-test", str(worktree))
+
+
 class WorktreeMarkerTestCase(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="wm-"))
         self.repo = self.tmp / "repo"
         self.worktree = self.tmp / "worktree"
-        self.worktree.mkdir(parents=True, exist_ok=True)
         self.plan = self.tmp / "PLAN-foo.md"
         self.plan.write_text("# Plan: foo\n", encoding="utf-8")
 
     def tearDown(self):
         import shutil
         shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _make_worktree(self) -> Path:
+        """Register `self.worktree` as a real git worktree of `self.repo` —
+        call after `_init_repo(self.repo, ...)` in any test that binds a
+        marker into it, so the fake-slot guard's happy path is satisfied."""
+        _add_worktree(self.repo, self.worktree)
+        return self.worktree
 
     def _declare(self, *arts: str):
         inline = ", ".join(arts)
@@ -78,12 +92,14 @@ class WorktreeMarkerTestCase(unittest.TestCase):
 class TestHappyPath(WorktreeMarkerTestCase):
     def test_writes_bare_slug_marker(self):
         _init_repo(self.repo)
+        self._make_worktree()
         rc, out, err = wm.write_marker(self.worktree, "foo", self.plan, self.repo)
         self.assertEqual(rc, 0, err)
         self.assertEqual((self.worktree / ".harness" / "active-plan").read_text(), "foo\n")
 
     def test_marker_round_trips_through_normalize(self):
         _init_repo(self.repo)
+        self._make_worktree()
         rc, _out, err = wm.write_marker(self.worktree, "PLAN-foo.md", self.plan, self.repo)
         self.assertEqual(rc, 0, err)
         self.assertEqual((self.worktree / ".harness" / "active-plan").read_text(), "foo\n")
@@ -101,6 +117,83 @@ class TestHappyPath(WorktreeMarkerTestCase):
         self.assertIn("does not exist", err)
 
 
+class TestFakeSlotGuard(WorktreeMarkerTestCase):
+    """The fake-slot guard: refuse to bind a plan into a directory that is not
+    a real, git-registered worktree of `root` — the defense against a host
+    worktree primitive leaving a bare directory behind a slot path instead of
+    an actual `git worktree add`-created checkout (the live worktree-slot
+    integrity bug: a session assigned such a slot silently shares the parent
+    checkout's HEAD/index/working-tree with every other session on it)."""
+
+    def test_plain_directory_refused_even_though_it_is_a_dir(self):
+        _init_repo(self.repo)
+        self.worktree.mkdir(parents=True, exist_ok=True)  # never `git worktree add`-ed
+        rc, out, err = wm.write_marker(self.worktree, "foo", self.plan, self.repo)
+        self.assertEqual(rc, 2)
+        self.assertEqual(out, "")
+        self.assertIn("not confirmed to be a real, isolated git worktree", err)
+        self.assertIn("does not list it", err)
+        self.assertFalse((self.worktree / ".harness").exists(), "must refuse before any write")
+
+    def test_real_worktree_is_accepted(self):
+        _init_repo(self.repo)
+        self._make_worktree()
+        rc, _out, err = wm.write_marker(self.worktree, "foo", self.plan, self.repo)
+        self.assertEqual(rc, 0, err)
+
+    def test_unreadable_registry_refused_not_silently_trusted(self):
+        # `root` doesn't exist at all — `git worktree list` can't run against
+        # it, so the registry is unreadable. Must refuse (None collapses to
+        # "not registered"), never fall through and trust the directory.
+        self.repo.mkdir(parents=True, exist_ok=True)  # a dir, but never `git init`
+        self.worktree.mkdir(parents=True, exist_ok=True)
+        rc, out, err = wm.write_marker(self.worktree, "foo", self.plan, self.repo)
+        self.assertEqual(rc, 2)
+        self.assertEqual(out, "")
+        self.assertIn("could not be read", err)
+
+    def test_a_different_repos_worktree_is_not_accepted(self):
+        # A directory that IS a real git worktree — but of a DIFFERENT repo,
+        # not `root`. Registered-elsewhere must not satisfy this repo's check.
+        _init_repo(self.repo)
+        other_repo = self.tmp / "other-repo"
+        _init_repo(other_repo)
+        _add_worktree(other_repo, self.worktree)
+        rc, out, err = wm.write_marker(self.worktree, "foo", self.plan, self.repo)
+        self.assertEqual(rc, 2)
+        self.assertIn("does not list it", err)
+
+
+class TestRegisteredWorktreeHelpers(WorktreeMarkerTestCase):
+    """Direct coverage of `_registered_worktree_paths` / `_is_registered_worktree`."""
+
+    def test_registered_paths_includes_the_main_checkout_and_worktrees(self):
+        _init_repo(self.repo)
+        self._make_worktree()
+        paths = wm._registered_worktree_paths(self.repo)
+        self.assertIn(str(self.repo.resolve()), paths)
+        self.assertIn(str(self.worktree.resolve()), paths)
+
+    def test_registered_paths_none_on_unreadable_repo(self):
+        self.repo.mkdir(parents=True, exist_ok=True)  # never `git init`
+        self.assertIsNone(wm._registered_worktree_paths(self.repo))
+
+    def test_is_registered_worktree_true_for_real_worktree(self):
+        _init_repo(self.repo)
+        self._make_worktree()
+        self.assertTrue(wm._is_registered_worktree(self.worktree, self.repo))
+
+    def test_is_registered_worktree_false_for_bare_directory(self):
+        _init_repo(self.repo)
+        self.worktree.mkdir(parents=True, exist_ok=True)
+        self.assertFalse(wm._is_registered_worktree(self.worktree, self.repo))
+
+    def test_is_registered_worktree_none_when_registry_unreadable(self):
+        self.repo.mkdir(parents=True, exist_ok=True)
+        self.worktree.mkdir(parents=True, exist_ok=True)
+        self.assertIsNone(wm._is_registered_worktree(self.worktree, self.repo))
+
+
 class TestVaultProjectFallback(WorktreeMarkerTestCase):
     """LC-2: the `vault_project` copy fires only on a divergent override."""
 
@@ -112,6 +205,7 @@ class TestVaultProjectFallback(WorktreeMarkerTestCase):
 
     def test_copies_when_override_diverges_from_origin(self):
         _init_repo(self.repo, origin="https://github.com/org/myrepo.git")
+        self._make_worktree()
         self._write_project_json("different")
         rc, _out, err = wm.write_marker(self.worktree, "foo", self.plan, self.repo)
         self.assertEqual(rc, 0, err)
@@ -124,6 +218,7 @@ class TestVaultProjectFallback(WorktreeMarkerTestCase):
         # exists — the divergence check only decides whether vault_project
         # gets refreshed on top, not whether the file is written at all.
         _init_repo(self.repo, origin="example.com:org/myrepo.git")
+        self._make_worktree()
         self._write_project_json("myrepo")
         rc, _out, err = wm.write_marker(self.worktree, "foo", self.plan, self.repo)
         self.assertEqual(rc, 0, err)
@@ -133,6 +228,7 @@ class TestVaultProjectFallback(WorktreeMarkerTestCase):
 
     def test_no_copy_when_project_json_absent(self):
         _init_repo(self.repo, origin="https://github.com/org/myrepo.git")
+        self._make_worktree()
         rc, _out, err = wm.write_marker(self.worktree, "foo", self.plan, self.repo)
         self.assertEqual(rc, 0, err)
         self.assertFalse((self.worktree / ".harness" / "project.json").exists())
@@ -140,6 +236,7 @@ class TestVaultProjectFallback(WorktreeMarkerTestCase):
 
     def test_origin_lookup_timeout_does_not_crash(self):
         _init_repo(self.repo, origin="https://github.com/org/myrepo.git")
+        self._make_worktree()
         self._write_project_json("different")
         orig_git = wm._git
 
@@ -156,6 +253,7 @@ class TestVaultProjectFallback(WorktreeMarkerTestCase):
 
     def test_copies_when_override_present_but_no_origin(self):
         _init_repo(self.repo, origin=None)
+        self._make_worktree()
         self._write_project_json("solo")
         rc, _out, err = wm.write_marker(self.worktree, "foo", self.plan, self.repo)
         self.assertEqual(rc, 0, err)
@@ -174,6 +272,7 @@ class TestVaultProjectFallback(WorktreeMarkerTestCase):
 
     def test_non_object_project_json_skips_copy_no_crash(self):
         _init_repo(self.repo, origin="https://github.com/org/myrepo.git")
+        self._make_worktree()
         h = self.repo / ".harness"
         h.mkdir(parents=True, exist_ok=True)
         (h / "project.json").write_text("[1, 2, 3]", encoding="utf-8")
@@ -201,6 +300,7 @@ class TestIsolationBlockCarryover(WorktreeMarkerTestCase):
 
     def test_isolation_block_carried_over_verbatim(self):
         _init_repo(self.repo)
+        self._make_worktree()
         self._write_isolation_cfg("worktree-per-plan", "pull-request")
         rc, _out, err = wm.write_marker(self.worktree, "foo", self.plan, self.repo)
         self.assertEqual(rc, 0, err)
@@ -212,6 +312,7 @@ class TestIsolationBlockCarryover(WorktreeMarkerTestCase):
         # The old LC-2-only logic wrote NOTHING here (vault_project absent
         # entirely) — the isolation block must still land regardless.
         _init_repo(self.repo, origin="https://github.com/org/myrepo.git")
+        self._make_worktree()
         self._write_isolation_cfg("worktree-per-plan", "pull-request")
         rc, _out, err = wm.write_marker(self.worktree, "foo", self.plan, self.repo)
         self.assertEqual(rc, 0, err)
@@ -221,6 +322,7 @@ class TestIsolationBlockCarryover(WorktreeMarkerTestCase):
 
     def test_both_isolation_and_divergent_vault_project_carried_together(self):
         _init_repo(self.repo, origin="https://github.com/org/myrepo.git")
+        self._make_worktree()
         h = self.repo / ".harness"
         h.mkdir(parents=True, exist_ok=True)
         (h / "project.json").write_text(json.dumps({
@@ -235,12 +337,16 @@ class TestIsolationBlockCarryover(WorktreeMarkerTestCase):
 
     def test_no_project_json_written_when_original_has_neither(self):
         _init_repo(self.repo)
+        self._make_worktree()
         rc, _out, err = wm.write_marker(self.worktree, "foo", self.plan, self.repo)
         self.assertEqual(rc, 0, err)
         self.assertFalse((self.worktree / ".harness" / "project.json").exists())
 
     def test_no_project_json_at_all_leaves_worktree_without_one(self):
-        self.repo.mkdir(parents=True, exist_ok=True)
+        # A real (if minimal) repo — the fake-slot guard requires `root` to be
+        # a readable git repo before it can verify anything against it.
+        _init_repo(self.repo)
+        self._make_worktree()
         rc, _out, err = wm.write_marker(self.worktree, "foo", self.plan, self.repo)
         self.assertEqual(rc, 0, err)
         self.assertFalse((self.worktree / ".harness" / "project.json").exists())
@@ -253,6 +359,7 @@ class TestIsolationBlockCarryover(WorktreeMarkerTestCase):
         # dropped `github` / `fields` / `items_source` and broke board-sync
         # for every plan worked under the worktree-per-plan flow.
         _init_repo(self.repo)
+        self._make_worktree()
         h = self.repo / ".harness"
         h.mkdir(parents=True, exist_ok=True)
         (h / "project.json").write_text(json.dumps({
@@ -305,6 +412,7 @@ class TestPreflightReconcile(WorktreeMarkerTestCase):
 
     def test_already_shipped_plan_refused_before_any_write(self):
         _init_repo(self.repo)
+        self._make_worktree()
         self._declare("shipped.txt")
         (self.repo / "shipped.txt").write_text("done\n", encoding="utf-8")
         rc, out, err = wm.write_marker(self.worktree, "foo", self.plan, self.repo)
@@ -315,6 +423,7 @@ class TestPreflightReconcile(WorktreeMarkerTestCase):
 
     def test_pending_plan_with_missing_artifact_writes_normally(self):
         _init_repo(self.repo)
+        self._make_worktree()
         self._declare("not-yet.txt")
         rc, _out, err = wm.write_marker(self.worktree, "foo", self.plan, self.repo)
         self.assertEqual(rc, 0, err)
@@ -322,6 +431,7 @@ class TestPreflightReconcile(WorktreeMarkerTestCase):
 
     def test_plan_without_expected_artifacts_writes_normally(self):
         _init_repo(self.repo)
+        self._make_worktree()
         self.plan.write_text("# Plan: foo\n", encoding="utf-8")
         rc, _out, err = wm.write_marker(self.worktree, "foo", self.plan, self.repo)
         self.assertEqual(rc, 0, err)
@@ -331,6 +441,7 @@ class TestPreflightReconcile(WorktreeMarkerTestCase):
 class TestMainCLI(WorktreeMarkerTestCase):
     def test_write_subcommand(self):
         _init_repo(self.repo)
+        self._make_worktree()
         rc = wm.main(["worktree_marker.py", "write", str(self.worktree), "foo",
                       str(self.plan), "--project-root", str(self.repo)])
         self.assertEqual(rc, 0)
