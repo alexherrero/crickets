@@ -552,5 +552,22 @@ enhances:
 # phone-surface pickup. Read-only by contract, the same posture as
 # `/queue-status-lite`; absorbs wake-from-state (#11) as its successor per
 # the living-design amendment landed alongside this release.
-version: 0.39.0
+# 0.40.0 = Worktree-slot integrity fix — a live incident found two agentm
+# sessions operating for up to 12 days on the shared main checkout because
+# their assigned `.claude/worktrees/<name>` slot was a bare directory the
+# host's worktree primitive left behind instead of an actual `git worktree
+# add`-created checkout. Root cause lives in the host primitive itself, not
+# this repo's automation (never calls `git worktree add` — check-no-auto-
+# worktree.sh proves it structurally), so this closes the gap with three
+# defense-in-depth layers instead: worktree_marker.py now refuses to bind a
+# plan marker into a slot not confirmed present in `git worktree list
+# --porcelain`, rather than trusting the host's return value unchecked;
+# harness-context-session-start.sh/.ps1 warns loudly on every SessionStart
+# when a slot's git toplevel resolves to the parent repo instead of itself;
+# doctor_worktrees.py gains scan_slots(), a convention-agnostic pass over
+# every .claude/worktrees/* directory on disk (the existing diagnose() only
+# sees worktree-<slug>-branch worktrees from /work's own auto-spawn
+# convention, so it structurally can't see a slot the host's own
+# session-per-worktree feature created).
+version: 0.40.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]
