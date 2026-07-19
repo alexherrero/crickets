@@ -201,6 +201,67 @@ class TestReadOnly(unittest.TestCase):
                      f"refs/heads/worktree-{slug}", check=False).returncode, 0)
 
 
+class TestScanSlots(unittest.TestCase):
+    """`scan_slots()`: the convention-agnostic pass over every
+    `.claude/worktrees/<name>` directory on disk, independent of
+    `diagnose()`'s `worktree-<slug>`-branch anchor (worktree-slot integrity fix)."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="dw-slots-"))
+        self.repo = self.tmp / "repo"
+        _init_repo(self.repo)
+        self.slots_dir = self.repo / ".claude" / "worktrees"
+        self.slots_dir.mkdir(parents=True, exist_ok=True)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_no_slots_dir_returns_empty(self):
+        shutil.rmtree(self.slots_dir)
+        self.assertEqual(dw.scan_slots(self.repo), [])
+
+    def test_empty_slots_dir_returns_empty(self):
+        self.assertEqual(dw.scan_slots(self.repo), [])
+
+    def test_real_worktree_slot_classified_real(self):
+        slot = self.slots_dir / "some-slot"
+        _git(self.repo, "worktree", "add", "-b", "claude/some-slot", str(slot))
+        reports = dw.scan_slots(self.repo)
+        self.assertEqual(len(reports), 1)
+        self.assertEqual(reports[0].name, "some-slot")
+        self.assertEqual(reports[0].status, dw.REAL)
+
+    def test_bare_directory_slot_classified_fake(self):
+        slot = self.slots_dir / "fake-slot"
+        slot.mkdir()
+        (slot / ".harness").mkdir()  # a plausible bookkeeping leftover
+        reports = dw.scan_slots(self.repo)
+        self.assertEqual(len(reports), 1)
+        self.assertEqual(reports[0].name, "fake-slot")
+        self.assertEqual(reports[0].status, dw.FAKE)
+        self.assertIn("NOT registered", reports[0].detail)
+
+    def test_mixed_real_and_fake_slots_both_reported(self):
+        real = self.slots_dir / "real-one"
+        _git(self.repo, "worktree", "add", "-b", "claude/real-one", str(real))
+        (self.slots_dir / "fake-one").mkdir()
+        reports = {r.name: r for r in dw.scan_slots(self.repo)}
+        self.assertEqual(set(reports), {"real-one", "fake-one"})
+        self.assertEqual(reports["real-one"].status, dw.REAL)
+        self.assertEqual(reports["fake-one"].status, dw.FAKE)
+
+    def test_a_file_in_slots_dir_is_ignored_not_misclassified(self):
+        (self.slots_dir / "stray-file.txt").write_text("x", encoding="utf-8")
+        self.assertEqual(dw.scan_slots(self.repo), [])
+
+    def test_scan_does_not_mutate_repo(self):
+        (self.slots_dir / "fake-one").mkdir()
+        before = _git(self.repo, "worktree", "list", "--porcelain").stdout
+        dw.scan_slots(self.repo)
+        after = _git(self.repo, "worktree", "list", "--porcelain").stdout
+        self.assertEqual(before, after)
+
+
 class TestFormatAndMain(unittest.TestCase):
     """Formatting + the CLI: a report, never a gate (exit 0 always)."""
 
@@ -233,6 +294,22 @@ class TestFormatAndMain(unittest.TestCase):
         self.assertIn(dw.ACTIVE, out)
         self.assertIn(dw.DANGLING, out)
         self.assertIn("plan: act", out)
+
+    def test_main_reports_fake_slots_alongside_worktree_diagnosis(self):
+        _add_worktree(self.repo, self.tmp, "act")
+        slots_dir = self.repo / ".claude" / "worktrees"
+        slots_dir.mkdir(parents=True, exist_ok=True)
+        (slots_dir / "fake-slot").mkdir()
+        rc, out, err = self._run_main("--project-root", str(self.repo))
+        self.assertEqual(rc, 0)
+        self.assertIn("worktree-act", out)  # diagnose() section still present
+        self.assertIn("1 .claude/worktrees/ slot(s) on disk: 0 real, 1 FAKE", out)
+        self.assertIn("fake-slot", out)
+
+    def test_main_silent_on_slots_when_none_exist(self):
+        rc, out, err = self._run_main("--project-root", str(self.repo))
+        self.assertEqual(rc, 0)
+        self.assertNotIn(".claude/worktrees/ slot", out)
 
     def test_format_tally_counts_every_status(self):
         reports = [

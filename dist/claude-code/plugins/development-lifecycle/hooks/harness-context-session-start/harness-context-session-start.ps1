@@ -13,6 +13,38 @@ try {
     if (-not $cwd) { $cwd = (Get-Location).Path }
     if (-not (Test-Path -LiteralPath $cwd -PathType Container)) { exit 0 }
 
+    # Worktree-slot integrity check (fake-slot guard) — mirrors the .sh twin.
+    # `.claude/worktrees/<name>` is supposed to be a real, `git worktree add`-
+    # created checkout; a host primitive can leave a bare directory behind a
+    # slot path instead, in which case every git command silently walks up to
+    # the PARENT repo's `.git` and the session unknowingly shares its
+    # HEAD/index/working-tree with every other session on that checkout.
+    if ($cwd -match [regex]::Escape([IO.Path]::DirectorySeparatorChar + '.claude' + [IO.Path]::DirectorySeparatorChar + 'worktrees' + [IO.Path]::DirectorySeparatorChar) -or $cwd -match '/\.claude/worktrees/') {
+        $gitCmd = Get-Command git -ErrorAction SilentlyContinue
+        if ($gitCmd) {
+            $wtToplevel = (git -C $cwd rev-parse --show-toplevel 2>$null)
+            $wtRealCwd = (Resolve-Path -LiteralPath $cwd -ErrorAction SilentlyContinue).Path
+            # Compare with separators normalized: git always emits forward
+            # slashes, Resolve-Path emits the OS-native separator (backslash
+            # on Windows) — a bare string compare would false-positive on
+            # every real Windows worktree on separator style alone.
+            $wtToplevelNorm = if ($wtToplevel) { $wtToplevel -replace '\\', '/' } else { $wtToplevel }
+            $wtRealCwdNorm = if ($wtRealCwd) { $wtRealCwd -replace '\\', '/' } else { $wtRealCwd }
+            if ($wtToplevelNorm -and $wtRealCwdNorm -and ($wtToplevelNorm -ne $wtRealCwdNorm)) {
+                Write-Output "[worktree-integrity] WARNING: this session's slot is NOT a real git worktree."
+                Write-Output "  slot:        $cwd"
+                Write-Output "  resolves to: $wtToplevel (the PARENT checkout, not this slot)"
+                Write-Output "  Every git command here operates on that PARENT checkout's shared HEAD,"
+                Write-Output "  index, and working tree -- commits, branch switches, and stashes here"
+                Write-Output "  affect (and can be clobbered by) every other session using it. Do not"
+                Write-Output "  treat this session as isolated. Confirm with ``git -C `"$wtToplevel`""
+                Write-Output "  worktree list --porcelain`` and stop to ask the operator before any"
+                Write-Output "  branch switch or destructive git operation."
+                [Console]::Error.WriteLine("[worktree-integrity] FAKE SLOT at $cwd (resolves to $wtToplevel)")
+            }
+        }
+    }
+
     $plan = Join-Path $cwd '.harness/PLAN.md'
     $progress = Join-Path $cwd '.harness/progress.md'
 

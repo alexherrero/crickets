@@ -10,8 +10,18 @@ shepherd sidecar (`worktree_shepherd.py`, which reclaims + rebases); this module
 only **lists and classifies** — it never removes a worktree, deletes a branch, or
 touches the integration branch.
 
+`scan_slots()` is a second, convention-agnostic pass (worktree-slot integrity
+fix): `diagnose()` above only sees worktrees on a `worktree-<slug>` branch, so
+it can't see a slot the HOST's own session-per-worktree feature spawned (not
+`/work`'s auto-spawn) that never got that branch shape at all — the observed
+fake-slot bug, where a bare directory sits at `.claude/worktrees/<name>` and
+was never actually `git worktree add`-ed. `scan_slots()` walks every slot
+directory directly and flags any not present in `git worktree list`.
+
     doctor_worktrees.py [--project-root <path>]
-    # stdout: one line per worktree-<slug> worktree, with its status + plan mapping
+    # stdout: one line per worktree-<slug> worktree, with its status + plan
+    # mapping, followed by a fake-slot summary over every .claude/worktrees/*
+    # directory on disk
 
 Each `worktree-<slug>` worktree (or lingering branch) is classified into exactly
 one of four states, in precedence order:
@@ -214,6 +224,83 @@ def diagnose(root: str | os.PathLike, *, integration_ref: str = "HEAD") -> list[
     return reports
 
 
+# ── fake-slot scan (repo-wide, convention-agnostic) ────────────────────────────
+
+FAKE = "fake-slot"
+REAL = "real-worktree"
+
+
+class SlotReport(NamedTuple):
+    """One `.claude/worktrees/<name>` directory found on disk, checked against
+    the registry regardless of branch naming convention. `diagnose()` above is
+    anchored on `worktree-<slug>` branches (the crickets `/work` auto-spawn
+    convention) and can't see a slot that never got a branch of that shape at
+    all — the fake-slot bug observed live: a host worktree primitive (Claude
+    Code's own session-per-worktree feature, not `/work`) leaves a bare
+    directory behind `.claude/worktrees/<name>` instead of an actual
+    `git worktree add`-created checkout, with no `worktree-<slug>` branch to
+    anchor on. This scan walks every slot directory directly instead, so it
+    catches both conventions."""
+    name: str
+    path: str
+    status: str          # REAL or FAKE
+    detail: str
+
+
+def scan_slots(root: str | os.PathLike) -> list[SlotReport]:
+    """Every `.claude/worktrees/<name>` directory on disk, flagged FAKE when it
+    is not a real, git-registered worktree of `root`. Read-only; mutates
+    nothing. Returns [] when `<root>/.claude/worktrees/` doesn't exist."""
+    root = Path(root)
+    slots_dir = root / ".claude" / "worktrees"
+    if not slots_dir.is_dir():
+        return []
+
+    registered: set[str] = set()
+    for w in _worktrees(root):
+        p = w["path"]
+        try:
+            registered.add(str(Path(p).resolve()))
+        except OSError:
+            registered.add(p)
+
+    reports: list[SlotReport] = []
+    for entry in sorted(slots_dir.iterdir()):
+        if not entry.is_dir():
+            continue
+        try:
+            resolved = str(entry.resolve())
+        except OSError:
+            resolved = str(entry)
+        if resolved in registered:
+            reports.append(SlotReport(entry.name, str(entry), REAL,
+                                      "real, git-registered worktree"))
+        else:
+            reports.append(SlotReport(
+                entry.name, str(entry), FAKE,
+                "NOT registered in `git worktree list` — every git command run "
+                "here silently operates on the parent checkout's shared "
+                "HEAD/index/working-tree instead of an isolated one. Do not bind "
+                "a plan or trust isolation here; confirm with `git worktree list "
+                "--porcelain` before using it, and check for a live session "
+                "(open file handles / recent .harness/session-id-*.start "
+                "markers) before removing it."))
+    return reports
+
+
+def _format_slots(reports: list[SlotReport]) -> str:
+    if not reports:
+        return ""
+    fake = [r for r in reports if r.status == FAKE]
+    lines = [f"[doctor_worktrees] {len(reports)} .claude/worktrees/ slot(s) on disk: "
+             f"{len(reports) - len(fake)} real, {len(fake)} FAKE"]
+    for r in fake:
+        lines.append(f"  {r.name}  {r.status}")
+        lines.append(f"    {r.path}")
+        lines.append(f"    → {r.detail}")
+    return "\n".join(lines) + "\n"
+
+
 # ── CLI (formats + prints; exit 0 always — a report, not a gate) ──────────────
 
 def _format(reports: list[WorkerWorktree]) -> str:
@@ -248,6 +335,7 @@ def main(argv: list[str]) -> int:
     ns = _build_parser().parse_args(argv[1:])
     root = ns.project_root if ns.project_root is not None else os.getcwd()
     sys.stdout.write(_format(diagnose(root)))
+    sys.stdout.write(_format_slots(scan_slots(root)))
     return 0  # read-only diagnostic — never a gate
 
 

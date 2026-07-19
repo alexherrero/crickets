@@ -29,6 +29,39 @@ fi
 [[ -z "$EVENT_CWD" ]] && EVENT_CWD="$(pwd)"
 [[ -d "$EVENT_CWD" ]] || exit 0
 
+# ── Worktree-slot integrity check (fake-slot guard) ─────────────────────────
+# `.claude/worktrees/<name>` is supposed to be a real, `git worktree add`-
+# created checkout. A host worktree primitive can leave a plain directory
+# behind a slot path instead (observed live: a directory that never appears
+# in `git worktree list`) — every git command run inside it then silently
+# walks up to the PARENT repo's `.git` and the session unknowingly shares
+# HEAD/index/working-tree with every other session on that parent checkout.
+# Detect it here, on every boot, rather than relying on a session to remember
+# to check: if EVENT_CWD sits under a `.claude/worktrees/` slot but git's own
+# toplevel for it resolves to somewhere else, this is a fake slot.
+case "$EVENT_CWD" in
+    */.claude/worktrees/*)
+        if command -v git >/dev/null 2>&1; then
+            WT_TOPLEVEL="$(git -C "$EVENT_CWD" rev-parse --show-toplevel 2>/dev/null || true)"
+            WT_REAL_CWD="$(cd "$EVENT_CWD" 2>/dev/null && pwd -P || true)"
+            if [[ -n "$WT_TOPLEVEL" && -n "$WT_REAL_CWD" && "$WT_TOPLEVEL" != "$WT_REAL_CWD" ]]; then
+                cat <<EOF
+[worktree-integrity] WARNING: this session's slot is NOT a real git worktree.
+  slot:        $EVENT_CWD
+  resolves to: $WT_TOPLEVEL (the PARENT checkout, not this slot)
+  Every git command here operates on that PARENT checkout's shared HEAD,
+  index, and working tree — commits, branch switches, and stashes here
+  affect (and can be clobbered by) every other session using it. Do not
+  treat this session as isolated. Confirm with \`git -C "$WT_TOPLEVEL"
+  worktree list --porcelain\` and stop to ask the operator before any
+  branch switch or destructive git operation.
+EOF
+                echo "[worktree-integrity] FAKE SLOT at $EVENT_CWD (resolves to $WT_TOPLEVEL)" >&2
+            fi
+        fi
+        ;;
+esac
+
 PLAN="$EVENT_CWD/.harness/PLAN.md"
 PROGRESS="$EVENT_CWD/.harness/progress.md"
 
