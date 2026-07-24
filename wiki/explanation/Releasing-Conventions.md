@@ -46,7 +46,7 @@ Each primitive links to the source that implements it.
 
 | Primitive | Kind | What it does |
 |---|---|---|
-| [`ship-release`](https://github.com/alexherrero/crickets/blob/main/src/releasing-conventions/skills/ship-release/SKILL.md) | skill | Pre-release checklist, changelog shape, paired-release order, and version-bump policy — then the cut itself: commit classification, semver auto-sizing, CHANGELOG prepend, tag, push, and `gh release create`. |
+| [`ship-release`](https://github.com/alexherrero/crickets/blob/main/src/releasing-conventions/skills/ship-release/SKILL.md) | skill | Pre-release checklist, changelog shape, paired-release order, and version-bump policy — then the cut itself: commit classification, semver auto-sizing, CHANGELOG prepend, tag, push, and `gh release create`. Checklist item 9 mirrors `/release`'s close-out ask: when the plan sets `touches_architecture: true`, confirm whether the governing design needs its body and amendment log reconciled in the same landing. |
 | [`version-bump-required`](https://github.com/alexherrero/crickets/blob/main/src/releasing-conventions/rules/version-bump-required.md) | rule | Flags a diff that touches a user-visible primitive without bumping the group's `group.yaml` version. |
 
 ### Configuration

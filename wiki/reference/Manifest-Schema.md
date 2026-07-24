@@ -29,6 +29,7 @@ You place one `group.yaml` in each `src/<group>/`. This file describes the plugi
 | `requires` | no | list | groups this plugin **hard**-depends on (each an existing `src/<slug>/`) |
 | `capabilities` | no | list | named capabilities other plugins' `enhances` can target |
 | `enhances` | no | list | groups this plugin **softly** augments when both are installed — a slug, or `{group, capability?, effect}` |
+| `renamed_from` | no | list | **Pending** — prior slugs this group was known as, oldest-first, excluding the current name (e.g. `[wiki-maintenance]`). Claude-Code-only: the generator emits the chain as consecutive-pair entries in a top-level `renames` map in `dist/claude-code/.claude-plugin/marketplace.json` (Claude Code v2.1.193+), so an install that predates the rename resolves natively instead of `plugin-not-found`; no Antigravity equivalent (named skip — no marketplace-schema field exists there). Reserved by the in-flight plan "Release and generator polish" (`PLAN-release-and-generator-polish.md`, tasks 2-3). |
 
 **Invariant (lint-enforced):** `standalone: true` ⟺ `requires: []`. You create an *integrated* plugin when it requires another. You create a standalone plugin when it requires nothing. The `enhances` field is orthogonal. It acts as a soft augmentation. A `standalone` plugin may still `enhance` a target.
 

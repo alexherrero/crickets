@@ -569,5 +569,15 @@ enhances:
 # sees worktree-<slug>-branch worktrees from /work's own auto-spawn
 # convention, so it structurally can't see a slot the host's own
 # session-per-worktree feature created).
-version: 0.40.0
+# 0.41.0 = Loose Ends arc, "Release and generator polish": release.md gains
+# constraint 10 + Process step 4c + a matching failure-mode bullet (Hook 7,
+# additive) — when the resolved plan's touches_architecture: true, the
+# close-out prompts confirming whether the governing living design's body +
+# amendment log need reconciling in this same landing, distinct from Hook
+# 5's constraint 4b (which only checks divergence from already-locked
+# calls, and only when parent_design_doc is already set). Closes the gap
+# named in the standing FOLLOWUPS item filed at Plan #18: a release could
+# change architecture and cite no design at all, and nothing upstream of
+# this caught it. release.md 0.1.1 -> 0.1.2.
+version: 0.41.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

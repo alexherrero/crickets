@@ -3,7 +3,7 @@ name: ship-release
 description: Release discipline and mechanics in one skill — pre-release checklist (CI green on every OS, version bump committed, CHANGELOG authored, dist/ committed, paired-release order locked for cross-repo releases), then the mechanical cut (conventional-commit semver auto-sizing, CHANGELOG prepend, tag, push, `gh release create`).
 kind: skill
 supported_hosts: [claude-code, antigravity]
-version: 0.3.0
+version: 0.3.1
 install_scope: project
 ---
 
@@ -27,6 +27,7 @@ Work through every item. If any is incomplete, fix it before proceeding — do n
 6. **No orphan PRs.** No open PRs that should be part of this release are left unmerged. A release should represent a complete, coherent unit of work.
 7. **`check-all.sh` green.** Run the full gate battery (`bash scripts/check-all.sh`) on the release commit and confirm every gate passes before tagging.
 8. **Cadence and commit-subject vocabulary** (see the [`release-cadence`](../../rules/release-cadence.md) rule). A finished plan that changes behavior gets its own release — don't bundle it into a later one. Every commit subject in the range reads plainly to a stranger, keeps its conventional prefix, names a roadmap id where one applies, and carries no internal codename.
+9. **Architecture-changed design check.** If the plan behind this release set `touches_architecture: true`, confirm whether the governing living design (the plan's `parent_design_doc:`, or the nearest one resolved via `agentm_bridge.py governing-design`) needs its body reconciled and a new amendment-log entry, landing in the same commit/PR as the release — not a follow-up. Mirrors `development-lifecycle`'s `/release` constraint 10 (Hook 7); a judgment prompt, not a mechanical gate. No-op when `touches_architecture` is `false` or absent (a bare `/bugfix` or hand-written plan carries no such flag).
 
 ## Changelog shape
 
@@ -172,3 +173,5 @@ Two same-named skills existed side by side: the discipline checklist, authored d
 **Refined 2026-07-11 (v0.2.2, Consolidation arc CONS-8):** added checklist item 8, pointing at the new `release-cadence` rule — the Consolidation-arc evidence found eleven distinct features once shipped under one release tagged "Minor," and internal codenames leaking into commit subjects. The rule states the standard; this skill's checklist is where a session actually checks it before tagging.
 
 **Refined 2026-07-11 (v0.3.0):** added mechanical-workflow precondition 6, wiring `scripts/coalescence_checks.py` (new) into the cut itself. Until now `coalescence-gate`'s seven-item checklist was pure session discipline — nothing verified a release had actually satisfied any of it, so a cut could complete without ever having run the checklist it claims to follow. The new script mechanizes three of the seven items (narrative row, archive hygiene, board-item closed) as a cheap file-read or `gh` API assertion apiece; the other four items still need human judgment and stay prose.
+
+**Refined 2026-07-23 (v0.3.1, Loose Ends arc "Release and generator polish"):** added checklist item 9, mirroring the new `development-lifecycle` `/release` constraint 10 (Hook 7) — when the plan behind this release set `touches_architecture: true`, confirm whether the governing living design needs its body + amendment log reconciled in the same landing. Closes the standing FOLLOWUPS item ("Amend `/release` phase spec + `ship-release` skill for HLD-update step," filed at Plan #18, still open as of 2026-07-14): a release could change architecture and ship without its design ever being checked, and nothing in this checklist or `coalescence-gate`'s seven items caught that gap — `coalescence-gate` fires only when a release closes an arc, and none of its seven items ask "did the design need updating." A session-discipline prompt, not a mechanical gate, matching how constraint 4b's own design-reconciliation check works.
