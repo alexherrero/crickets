@@ -106,7 +106,10 @@ class TestClaudeEmitter(unittest.TestCase):
         # documenter.md runs it (via scripts/prose_pass.py) on every drafted
         # page before preview (announced Claude-only fallback); diataxis-author
         # + wiki-author document the step by cross-reference.
-        self.assertEqual(self._plugin_json("wiki")["version"], "0.8.0")
+        # 0.9.0 = Loose Ends arc, "Release and generator polish" task 2 —
+        # declares renamed_from: [wiki-maintenance], the single-hop proof of
+        # the generator's new Claude Code marketplace renames map.
+        self.assertEqual(self._plugin_json("wiki")["version"], "0.9.0")
         # 0.3.0 = check-no-pii.sh + templates/hooks/pre-push moved into src/pii/
         # so they actually ship inside the plugin payload (R2.4 task 7).
         # 0.3.1 = check-no-pii.sh scan collapsed to one grep per file (fixes a
@@ -177,6 +180,38 @@ class TestClaudeEmitter(unittest.TestCase):
         for p in mk["plugins"]:
             self.assertEqual(p["source"], f"./plugins/{p['name']}")
             self.assertTrue((self.cdist / "plugins" / p["name"]).is_dir())
+
+    def test_renames_map_includes_real_wiki_rename(self):
+        # Loose Ends arc, "Release and generator polish" task 2 — the single-hop
+        # proof against real src/ data: src/wiki/group.yaml declares
+        # renamed_from: [wiki-maintenance], the actual FOLLOWUPS-motivating
+        # incident (an install on the pre-rename name hit plugin-not-found,
+        # 2026-06-10). Built through the real setUp() build, not a synthetic
+        # fixture.
+        mk = json.loads((self.cdist / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
+        self.assertEqual(mk["renames"].get("wiki-maintenance"), "wiki")
+
+    def test_renames_map_absent_key_when_no_group_declares_it(self):
+        # A catalog with zero renamed_from declarations must not carry an
+        # empty "renames": {} key at all — omitted entirely, matching how
+        # pre-v2.1.193 Claude Code hosts (which ignore the field) and every
+        # other conditional marketplace-entry field (dependencies/capabilities/
+        # enhances) already behave.
+        src_model = sys.modules["src_model"]
+        with tempfile.TemporaryDirectory() as t:
+            src = Path(t) / "src"
+            (src / "plain").mkdir(parents=True)
+            (src / "plain" / "group.yaml").write_text(
+                "name: Plain\ndescription: d\nstandalone: true\nrequires: []\n",
+                encoding="utf-8")
+            groups = src_model.load_groups(src)
+            dist = Path(t) / "dist"
+            emitter = emit_claude.ClaudeEmitter()
+            entries = [emitter.emit_group(g, dist) for g in groups]
+            renames = src_model.build_renames_map(groups)
+            emitter.write_marketplace(entries, dist, renames)
+            mk = json.loads((dist / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
+            self.assertNotIn("renames", mk)
 
     def test_hooks_emitted_on_correct_events(self):
         # the control hooks live in developer-safety post-seed-retirement

@@ -191,7 +191,10 @@
       ],
       "name": "wiki",
       "source": "./dist/claude-code/plugins/wiki",
-      "version": "0.8.0"
+      "version": "0.9.0"
     }
-  ]
+  ],
+  "renames": {
+    "wiki-maintenance": "wiki"
+  }
 }

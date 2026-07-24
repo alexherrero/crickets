@@ -73,9 +73,12 @@ class TestBuildClean(unittest.TestCase):
                 (d / "marker").write_text("x", encoding="utf-8")
                 return {"name": group.slug, "source": f"./plugins/{group.slug}"}
 
-            def write_marketplace(self, entries, dist_root):
+            def write_marketplace(self, entries, dist_root, renames=None):
+                payload = {"plugins": entries}
+                if renames:
+                    payload["renames"] = renames
                 (dist_root / "marketplace.json").write_text(
-                    generate.dump_json({"plugins": entries}), encoding="utf-8")
+                    generate.dump_json(payload), encoding="utf-8")
 
         generate.register(Fake())
         with tempfile.TemporaryDirectory() as t:

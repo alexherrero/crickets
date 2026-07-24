@@ -109,6 +109,18 @@ class TestAntigravityEmitter(unittest.TestCase):
         self.assertNotIn("requires", by["privacy"])
         self.assertNotIn("requires", by["development-lifecycle"])
 
+    def test_no_renames_key_named_skip(self):
+        # Loose Ends arc, "Release and generator polish" task 2 — Antigravity's
+        # marketplace.json carries no `renames` key even though src/wiki/
+        # group.yaml declares renamed_from: [wiki-maintenance] (proven present
+        # on the Claude side by test_emit_claude.py's
+        # test_renames_map_includes_real_wiki_rename against the same real
+        # src/ build). A named skip, not a silent one: no Antigravity
+        # marketplace-schema field exists to hang this off (checked live
+        # against antigravity.google/docs/cli/plugins).
+        mk = json.loads((self.agdist / ".agents" / "plugins" / "marketplace.json").read_text(encoding="utf-8"))
+        self.assertNotIn("renames", mk)
+
     def test_ag_hooks_named_with_relative_paths(self):
         # the control hooks live in developer-safety post-seed-retirement.
         # `steer` fires on UserPromptSubmit (R2.2 task 5 migration off the

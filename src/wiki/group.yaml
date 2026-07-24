@@ -115,8 +115,22 @@ standalone: true
 #          documenter rather than duplicate the machinery (each 0.1.0 ->
 #          0.1.1). Sibling-plugin resolution, NOT a hard requires: — wiki
 #          stays standalone.
-version: 0.8.0
+# 0.9.0 = Loose Ends arc, "Release and generator polish" task 2: declares
+#          renamed_from: [wiki-maintenance] -- the first real proof of the
+#          generator's new Claude Code marketplace rename-tombstone
+#          (renames map, crickets #41 v3.x residual). This is the actual
+#          FOLLOWUPS-motivating incident (an operator machine hit the
+#          wiki -> wiki-maintenance rename as a bare `plugin-not-found`,
+#          2026-06-10) -- an install still on the old wiki-maintenance name
+#          now resolves natively via Claude Code's own renames map instead
+#          of the reconcile_plugins.py fallback. Complements, not
+#          duplicates, the capabilities: dual-declaration below --
+#          capabilities: is composition-layer soft-aliasing (crickets-
+#          composition.md), renamed_from: is the host-marketplace plugin-
+#          name rename; the two mechanisms solve different problems.
+version: 0.9.0
 capabilities: [wiki-maintenance, wiki]
+renamed_from: [wiki-maintenance]
 enhances:
   - group: development-lifecycle
     capability: documentation

@@ -176,8 +176,8 @@ class ClaudeEmitter(HostEmitter):
         cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
         mcp_servers.update(cfg.get("mcpServers", cfg))
 
-    def _marketplace(self, entries: list[dict]) -> dict:
-        return {
+    def _marketplace(self, entries: list[dict], renames: dict[str, str] | None = None) -> dict:
+        manifest = {
             "name": "crickets",
             "owner": {"name": "alexherrero"},
             "metadata": {
@@ -186,16 +186,28 @@ class ClaudeEmitter(HostEmitter):
             },
             "plugins": sorted(entries, key=lambda e: e["name"]),
         }
+        # Top-level `renames` (Claude Code v2.1.193+): old plugin name -> current
+        # name, so an install that predates a group rename resolves natively
+        # (a one-line migration notice + auto-rewritten enabledPlugins/
+        # pluginConfigs) instead of a bare `plugin-not-found`. Omitted entirely
+        # when empty — an absent key is what every pre-v2.1.193 host already
+        # tolerates, and it keeps the manifest unchanged for a catalog with no
+        # renamed groups.
+        if renames:
+            manifest["renames"] = dict(sorted(renames.items()))
+        return manifest
 
-    def write_marketplace(self, entries: list[dict], dist_root: Path) -> None:
+    def write_marketplace(self, entries: list[dict], dist_root: Path,
+                           renames: dict[str, str] | None = None) -> None:
         cp = dist_root / ".claude-plugin"
         cp.mkdir(parents=True, exist_ok=True)
-        write_utf8(cp / "marketplace.json", dump_json(self._marketplace(entries)))
+        write_utf8(cp / "marketplace.json", dump_json(self._marketplace(entries, renames)))
 
-    def write_root_marketplace(self, entries: list[dict], repo_root: Path) -> None:
+    def write_root_marketplace(self, entries: list[dict], repo_root: Path,
+                                renames: dict[str, str] | None = None) -> None:
         # Same manifest, but each plugin source points at its committed dist/
         # location relative to the repo root (Claude source is a path string).
         rooted = [{**e, "source": f"./dist/{self.host}/plugins/{e['name']}"} for e in entries]
         dest = repo_root / self.root_marketplace_rel
         dest.parent.mkdir(parents=True, exist_ok=True)
-        write_utf8(dest, dump_json(self._marketplace(rooted)))
+        write_utf8(dest, dump_json(self._marketplace(rooted, renames)))
