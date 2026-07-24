@@ -239,6 +239,35 @@ def parse_enhance(entry) -> "Enhance":
     return Enhance(group="", capability=None, effect="")  # malformed → lint flags
 
 
+def build_renames_map(groups: "list[Group]") -> dict[str, str]:
+    """Build the Claude Code marketplace `renames` map (old name -> new name)
+    from every group's `renamed_from:` chain.
+
+    Each group's `renamed_from` list (oldest-first, excluding its own current
+    slug) plus its current slug forms a chain; consecutive pairs become one
+    `renames` entry apiece — `zip(chain, chain[1:])` — so a name renamed twice
+    resolves through both hops rather than collapsing to a single
+    old-name -> final-name jump. This matches Claude Code's own chain-
+    resolution contract (code.claude.com/docs/en/plugin-marketplaces.md,
+    "Rename or remove a plugin," v2.1.193+: "if you later rename
+    `code-formatter` to `formatter-pro`, add a second entry rather than
+    editing the first"). A group with no `renamed_from` contributes nothing.
+
+    Deterministic: `groups` is already sorted (load_groups iterates `src/` in
+    sorted path order); a group with an empty `renamed_from` is a no-op, so
+    iteration order only matters for two groups that happened to declare a
+    colliding old name — a source-authoring error `lint_src.py` should catch,
+    not something this function resolves silently."""
+    renames: dict[str, str] = {}
+    for group in groups:
+        if not group.renamed_from:
+            continue
+        chain = list(group.renamed_from) + [group.slug]
+        for old, new in zip(chain, chain[1:]):
+            renames[old] = new
+    return renames
+
+
 def enhances_to_json(enhances: "list[Enhance]") -> list[dict]:
     """Serialize `enhances` to JSON-friendly dicts for emitted metadata
     (`capability`/`effect` omitted when empty)."""
@@ -274,6 +303,12 @@ class Group:
     # (the emit tests) or whose group.yaml omits the key. Appended LAST so the
     # positional ctor `Group(..., primitives)` stays valid.
     version: str = "0.1.0"
+    # prior marketplace slug(s) this group was known as, oldest-first, excluding
+    # the current slug (e.g. `[wiki-maintenance]`) — feeds the Claude Code
+    # marketplace `renames` map (build_renames_map below) so an install that
+    # predates a group rename resolves natively instead of `plugin-not-found`.
+    # No Antigravity equivalent (named skip — see emit_antigravity.py).
+    renamed_from: list[str] = field(default_factory=list)
 
     def has_group_assets(self) -> bool:
         """True when the group carries a host-agnostic group-level asset payload —
@@ -369,6 +404,7 @@ def load_groups(src: Path) -> list[Group]:
         requires = list(meta.get("requires") or [])
         enhances = [parse_enhance(e) for e in (meta.get("enhances") or [])]
         capabilities = [str(c) for c in (meta.get("capabilities") or [])]
+        renamed_from = [str(s) for s in (meta.get("renamed_from") or [])]
         group = Group(
             slug=gd.name,
             name=meta.get("name", gd.name),
@@ -380,6 +416,7 @@ def load_groups(src: Path) -> list[Group]:
             capabilities=capabilities,
             version=str(meta.get("version", "0.1.0")),
             manifest=gy if gy.exists() else None,
+            renamed_from=renamed_from,
         )
         for kind, (glb, name_of) in PRIMITIVE_KINDS.items():
             for mp in sorted(gd.glob(glb)):

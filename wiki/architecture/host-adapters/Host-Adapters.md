@@ -15,7 +15,7 @@ The generator mirrors the source layout into `dist/<host>/plugins/<group>/`, and
 | **`hook`** | `hooks/hooks.json` + `hooks/<name>/` | root `hooks.json` + `hooks/<name>/`; runs observe-only |
 | **`snippet`** | dropped — no instruction-file surface | `rules/<name>.md` |
 
-The two hosts agree on most paths and split in a few places: the plugin manifest (`.claude-plugin/plugin.json` vs a root `plugin.json`), the hook manifest location, and the marketplace pointer. Two splits change what you can rely on — Claude Code drops `snippet`s (it has no instruction-file surface), and Antigravity runs hooks observe-only (it ignores exit codes and never reads stdout), so a hook that vetoes or injects is Claude-only-effective.
+The two hosts agree on most paths and split in a few places: the plugin manifest (`.claude-plugin/plugin.json` vs a root `plugin.json`), the hook manifest location, and the marketplace pointer. Two splits change what you can rely on — Claude Code drops `snippet`s (it has no instruction-file surface), and Antigravity runs hooks observe-only (it ignores exit codes and never reads stdout), so a hook that vetoes or injects is Claude-only-effective. The marketplace pointer differs in content as well as location: Claude Code's carries a top-level `renames` map (fed by each group's `renamed_from:` — [Manifest Schema](Manifest-Schema)) so a stale install resolves a renamed plugin natively instead of hitting `plugin-not-found`; Antigravity's has no equivalent field, a named skip covered by the host-agnostic `reconcile_plugins.py` fallback rather than left silent.
 
 ## How it fits
 

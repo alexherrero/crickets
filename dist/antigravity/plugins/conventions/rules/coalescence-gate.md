@@ -3,7 +3,7 @@ name: coalescence-gate
 description: Every arc ends with a required close-out checklist that fires when a release closes an arc — narrative rows, roadmap ids in the release body, boards reconciled, the prose gate green, archive moves done, the dark registry reconciled, and an orphan check. Mostly a session discipline `/release` enforces; a narrow slice of three items (narrative row, shipping-item board state, archive hygiene) is machine-checked by ship-release's own coalescence_checks.py on every release.
 kind: rule
 supported_hosts: [claude-code, antigravity]
-version: 0.2.0
+version: 0.2.1
 ---
 
 ## Rule: coalescence-gate
@@ -52,3 +52,4 @@ If all seven are true, the release closes the arc. If any is false, that item is
 - [`coordinator-dispatch`](coordinator-dispatch.md) — the multi-session-job convention that authored this arc in the first place; the arc's own close-out is the first execution of this checklist against itself.
 - [`agentic-engineering`](../skills/agentic-engineering/SKILL.md) — the `.harness/PLAN.md` shape + archive-path convention item 5 checks.
 - `development-lifecycle`'s `/release` command (`release.md`, constraint 9) — where this checklist is invoked from.
+- `development-lifecycle`'s `/release` command (`release.md`, constraint 10, Hook 7) — the sibling, unconditional check for whether a release's *governing design* needs its body updated. Deliberately not an eighth item here: this checklist only fires when a release closes an arc, while constraint 10 fires on every `touches_architecture: true` release, arc-closing or not.

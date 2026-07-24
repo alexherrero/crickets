@@ -32,7 +32,7 @@ except ImportError:
     print("generate: PyYAML not installed (pip install pyyaml)", file=sys.stderr)
     sys.exit(2)
 
-from src_model import Group, load_groups  # noqa: E402
+from src_model import Group, build_renames_map, load_groups  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "src"
@@ -72,15 +72,22 @@ class HostEmitter:
         entry (or None to skip the group for this host)."""
         raise NotImplementedError
 
-    def write_marketplace(self, entries: list[dict], dist_root: Path) -> None:
-        """Write the host marketplace manifest from the collected entries."""
+    def write_marketplace(self, entries: list[dict], dist_root: Path,
+                           renames: dict[str, str] | None = None) -> None:
+        """Write the host marketplace manifest from the collected entries.
+        `renames` is the old-name -> new-name map built from every emitted
+        group's `renamed_from:` (see `src_model.build_renames_map`) — a host
+        with no marketplace-level rename/deprecation field is free to ignore
+        it (named skip; see `emit_antigravity.py`)."""
         raise NotImplementedError
 
-    def write_root_marketplace(self, entries: list[dict], repo_root: Path) -> None:
+    def write_root_marketplace(self, entries: list[dict], repo_root: Path,
+                                renames: dict[str, str] | None = None) -> None:
         """Write the repo-ROOT marketplace pointer (sources rewritten to the
         committed `dist/<host>/` locations) so `<host> plugin marketplace add
         <owner/repo>` resolves one-word from GitHub. Only called when
-        `root_marketplace_rel` is set; default no-op."""
+        `root_marketplace_rel` is set; default no-op. `renames` — see
+        `write_marketplace`."""
         return
 
 
@@ -106,17 +113,23 @@ def _emit(src: Path, dist: Path, root: Path) -> bool:
         host_root = dist / host
         host_root.mkdir(parents=True, exist_ok=True)
         entries: list[dict] = []
+        emitted_groups: list[Group] = []
         for group in groups:
             if not group.supports(host):
                 continue
             entry = emitter.emit_group(group, host_root)
             if entry is not None:
                 entries.append(entry)
-        emitter.write_marketplace(entries, host_root)
+                emitted_groups.append(group)
+        # Scoped to groups actually emitted for THIS host — a rename map entry
+        # must never point at (or from) a plugin name that doesn't exist in
+        # this host's own marketplace.
+        renames = build_renames_map(emitted_groups)
+        emitter.write_marketplace(entries, host_root, renames)
         # Repo-root pointer (one-word GitHub install) — outside dist/, but
         # generator-emitted + check-covered so it can't drift.
         if emitter.root_marketplace_rel:
-            emitter.write_root_marketplace(entries, root)
+            emitter.write_root_marketplace(entries, root, renames)
     # host-agnostic default-set manifest (the recommended install list) — read
     # by the one-line installer; data-driven so it can't drift from the catalog.
     write_utf8(dist / "default-set.json",

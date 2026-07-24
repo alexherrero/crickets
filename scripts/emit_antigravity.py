@@ -187,12 +187,24 @@ class AntigravityEmitter(HostEmitter):
             "plugins": sorted(entries, key=lambda e: e["name"]),
         }
 
-    def write_marketplace(self, entries: list[dict], dist_root: Path) -> None:
+    def write_marketplace(self, entries: list[dict], dist_root: Path,
+                           renames: dict[str, str] | None = None) -> None:
+        # `renames` accepted (interface parity with the base HostEmitter) but
+        # deliberately NOT emitted — Antigravity's marketplace.json has no
+        # documented rename/deprecation field (checked live against
+        # antigravity.google/docs/cli/plugins, which covers only plugin.json's
+        # shape, nothing marketplace-level). A named skip, not a silent one:
+        # an install that predates a group rename still shows a bare
+        # not-found here, mitigated by the existing host-agnostic fallback
+        # (scripts/reconcile_plugins.py). Re-audit when Antigravity documents
+        # an equivalent field.
         mp = dist_root / ".agents" / "plugins"
         mp.mkdir(parents=True, exist_ok=True)
         write_utf8(mp / "marketplace.json", dump_json(self._marketplace(entries)))
 
-    def write_root_marketplace(self, entries: list[dict], repo_root: Path) -> None:
+    def write_root_marketplace(self, entries: list[dict], repo_root: Path,
+                                renames: dict[str, str] | None = None) -> None:
+        # `renames` unused — see write_marketplace's comment above.
         # Same manifest, but each plugin source points at its committed dist/
         # location relative to the repo root (AG source is a {source,path} object).
         rooted = [

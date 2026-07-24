@@ -267,6 +267,72 @@ class TestSrcModel(unittest.TestCase):
         self.assertEqual(wm_cmds, {"recent-wiki-changes", "wiki-watch", "wiki-init"})
 
 
+@unittest.skipUnless(HAVE_YAML, "PyYAML required")
+class TestBuildRenamesMap(unittest.TestCase):
+    """scripts/src_model.py's `build_renames_map` — the Claude Code marketplace
+    `renames` map assembled from every group's `renamed_from:` chain (Loose
+    Ends arc, "Release and generator polish" task 2)."""
+
+    def _group(self, slug: str, renamed_from=()) -> "src_model.Group":
+        return src_model.Group(
+            slug=slug, name=slug, description="d", category="Coding",
+            requires=[], standalone=True, renamed_from=list(renamed_from))
+
+    def test_no_renamed_from_contributes_nothing(self):
+        groups = [self._group("a"), self._group("b")]
+        self.assertEqual(src_model.build_renames_map(groups), {})
+
+    def test_single_hop(self):
+        groups = [self._group("wiki", renamed_from=["wiki-maintenance"])]
+        self.assertEqual(src_model.build_renames_map(groups),
+                         {"wiki-maintenance": "wiki"})
+
+    def test_two_hop_chain_not_collapsed(self):
+        # Claude Code's own contract: a name renamed twice gets TWO chained
+        # entries, not one entry collapsed straight to the final name — so a
+        # user on the middle name (token-audit) still resolves.
+        groups = [self._group("tokens", renamed_from=["status-line-meter", "token-audit"])]
+        self.assertEqual(src_model.build_renames_map(groups), {
+            "status-line-meter": "token-audit",
+            "token-audit": "tokens",
+        })
+
+    def test_multiple_groups_independent(self):
+        groups = [
+            self._group("wiki", renamed_from=["wiki-maintenance"]),
+            self._group("tokens", renamed_from=["status-line-meter", "token-audit"]),
+            self._group("privacy"),  # no renamed_from — contributes nothing
+        ]
+        self.assertEqual(src_model.build_renames_map(groups), {
+            "wiki-maintenance": "wiki",
+            "status-line-meter": "token-audit",
+            "token-audit": "tokens",
+        })
+
+    def test_load_groups_parses_renamed_from(self):
+        # end-to-end through the real group.yaml parser, not just the Group
+        # dataclass constructed by hand above.
+        with tempfile.TemporaryDirectory() as t:
+            src = Path(t) / "src"
+            (src / "wiki").mkdir(parents=True)
+            (src / "wiki" / "group.yaml").write_text(
+                "name: Wiki\ndescription: d\nstandalone: true\nrequires: []\n"
+                "renamed_from: [wiki-maintenance]\n",
+                encoding="utf-8")
+            group = src_model.load_groups(src)[0]
+            self.assertEqual(group.renamed_from, ["wiki-maintenance"])
+
+    def test_load_groups_defaults_renamed_from_to_empty(self):
+        with tempfile.TemporaryDirectory() as t:
+            src = Path(t) / "src"
+            (src / "plain").mkdir(parents=True)
+            (src / "plain" / "group.yaml").write_text(
+                "name: Plain\ndescription: d\nstandalone: true\nrequires: []\n",
+                encoding="utf-8")
+            group = src_model.load_groups(src)[0]
+            self.assertEqual(group.renamed_from, [])
+
+
 class TestBundleIgnore(unittest.TestCase):
     """R2.1 / cricketsBuild#3: a stray `.harness/` under a group's `scripts/`
     (or `templates/`) asset root must never leak into the emitted dist/."""
