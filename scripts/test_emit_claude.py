@@ -191,6 +191,17 @@ class TestClaudeEmitter(unittest.TestCase):
         mk = json.loads((self.cdist / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
         self.assertEqual(mk["renames"].get("wiki-maintenance"), "wiki")
 
+    def test_renames_map_includes_real_tokens_two_hop_chain(self):
+        # Loose Ends arc, "Release and generator polish" task 3 — the two-hop
+        # chain proof against real src/ data: src/tokens/group.yaml declares
+        # renamed_from: [status-line-meter, token-audit] (the real two-wave
+        # lineage). Must resolve as TWO chained entries, not one collapsed
+        # straight to "tokens" — a user still on the middle name (token-audit)
+        # has to resolve too. Built through the real setUp() build.
+        mk = json.loads((self.cdist / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
+        self.assertEqual(mk["renames"].get("status-line-meter"), "token-audit")
+        self.assertEqual(mk["renames"].get("token-audit"), "tokens")
+
     def test_renames_map_absent_key_when_no_group_declares_it(self):
         # A catalog with zero renamed_from declarations must not carry an
         # empty "renames": {} key at all — omitted entirely, matching how

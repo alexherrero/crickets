@@ -111,5 +111,17 @@ standalone: true
 #          reality), so it's fixed too, plus two new regression tests that
 #          pin the slug formula against a real, independently-known
 #          transcript directory name rather than the helper's own formula.
-version: 0.5.2
+# 0.6.0 = Loose Ends arc, "Release and generator polish" task 3: declares
+#          renamed_from: [status-line-meter, token-audit] -- the two-hop
+#          chain proof of the generator's Claude Code marketplace renames
+#          map (task 2), exercising the case a single-hop example (wiki's
+#          renamed_from: [wiki-maintenance]) can't: the generator must emit
+#          TWO chained entries (status-line-meter -> token-audit,
+#          token-audit -> tokens), not one collapsed straight to the final
+#          name, so an install still on the middle name (token-audit) also
+#          resolves. Complements, not duplicates, the capabilities:
+#          dual-declaration above (composition-layer soft-aliasing) --
+#          renamed_from: is the host-marketplace plugin-name rename.
+version: 0.6.0
 capabilities: [status-line-meter, token-audit, tokens]
+renamed_from: [status-line-meter, token-audit]
