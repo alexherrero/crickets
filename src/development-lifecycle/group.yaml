@@ -579,5 +579,10 @@ enhances:
 # named in the standing FOLLOWUPS item filed at Plan #18: a release could
 # change architecture and cite no design at all, and nothing upstream of
 # this caught it. release.md 0.1.1 -> 0.1.2.
-version: 0.41.0
+# 0.42.0: agentm_bridge.py gains a sixth verb, phase-dispatch, wiring a
+# caller for agentm's previously-orphaned V5-5 orchestration bridge --
+# work.md fires post-work after each task's commit (step 9.6), release.md
+# fires post-release after the release lands (step 8.5). Both graceful-skip
+# identically to every other verb.
+version: 0.42.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

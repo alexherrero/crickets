@@ -51,6 +51,7 @@ Invoking this phase **is** the authorization to run it to completion. The stop-g
 10. **Sync the task to the GitHub Project board** (optional, graceful-skip). When `github-projects` is installed (capability probe) + `.harness/project.json` present + `gh` authed, emit a **Task progress** update for the just-completed task via the github-projects plugin's `project_sync.py post --type task-progress`; capture any out-of-task-scope findings (adjacent bug, refactor, stale doc elsewhere — not follow-ups to the current task) into `board-items.json` as board-backed `Backlog-item`s (**never** raw `gh project item-create` — an unbacked board issue is an orphan the `vault==board` gate flags as drift). Deterministic + idempotent → announce + proceed. Silent-skip (zero behavior change) if the plugin, `project.json`, or `gh` is absent. Then stop.
 11. **Design-divergence is a NOTE, never a halt (Hook 4, design-doc §6).** If the implementation appears to diverge from the plan's `parent_design_doc:` governing design, record it as a `NOTE:` line in `progress.md` — a surfaced observation, **not** a safety-stop trigger and **not** a gate. Conformance is an un-mechanizable judgment; its adjudication is `/review`'s fresh-context design-conformance dimension (Hook 1), never the worker's self-interested call (routing it into the autonomy gate would over- or under-stop).
 11. **Do not create tags.** Tag creation is reserved for `/release` — the sole tag writer that tags `main` HEAD after CI-green. Creating a tag during `/work` would point to a branch tip, not a main commit, violating the tag-reachability guarantee and the concurrent-release serialization model.
+12. **Fire agentm's post-work reflection after each commit** (step 9.6, graceful-skip). Always exit 0 by contract — nothing to react to, but the call itself must not be skipped; it's the only session-completion reflect on a host with no Stop hook.
 
 ## Process
 
@@ -173,6 +174,10 @@ One task, one commit, referencing the task. Follow project trailer conventions (
 ### 9.5. Reset evidence-tracker state (graceful-skip)
 
 If `code-review`'s evidence-tracker is installed (`${CLAUDE_PLUGIN_ROOT}/../code-review/hooks/evidence-tracker/evidence_tracker.py` exists — check by path, no dedicated capability is declared for this), reset its per-session read state now that this task boundary is closed: `python3 "${CLAUDE_PLUGIN_ROOT}/../code-review/hooks/evidence-tracker/evidence_tracker.py" --mode reset`. This clears the read-before-flip state so the **next** task's evidence requirement is never silently satisfied by reads recorded for the task that just finished (cricketsPluginsA#3's reset gap). Silent no-op if the file doesn't exist (code-review not installed) or `CLAUDE_PLUGIN_ROOT` is unset.
+
+### 9.6. Fire post-work reflection (graceful-skip)
+
+`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" phase-dispatch post-work --project-root <root>`. Fires agentm's V5-5 orchestration bridge to reflect the just-finished session — dedup-guarded and cooldown-gated entirely on agentm's own side (a `.harness/session-id-*.start`/`.reflected` marker keeps this from double-reflecting against the Stop hook), so it's safe to call after every task's commit, not just once at plan-end. Always exit 0 (agentm's `phase_dispatch()` is non-blocking by contract) — nothing to branch on. On a host with no Stop hook (Antigravity), this is the only session-completion reflect; on Claude Code it's a safety-net that no-ops once the Stop hook has already reflected.
 
 ### 10. Sync the task to the GitHub Project board (graceful-skip)
 

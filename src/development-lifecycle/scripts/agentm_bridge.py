@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Merged thin bridge: agentm capability / governing-design / process-seam /
-workflow-persona / repo-registry lookups for the development-lifecycle plugin,
-in one file (Consolidation arc, CONS-2 task 2; repo-registry added by
-PLAN-open-a-project-by-name task 1).
+workflow-persona / repo-registry / phase-dispatch lookups for the
+development-lifecycle plugin, in one file (Consolidation arc, CONS-2 task 2;
+repo-registry added by PLAN-open-a-project-by-name task 1; phase-dispatch
+added by the Loose Ends follow-on's orphaned-bridge-caller plan).
 
 Previously four separate scripts — find_capability.py, find_governing_design.py,
 find_process_seam.py, resolve_workflow_persona.py — each independently
@@ -16,6 +17,7 @@ keeps every one of those four behaviors verbatim, under one dispatcher:
     agentm_bridge.py process-seam state-path {plan|progress} [--plan SLUG] [--cwd ROOT]
     agentm_bridge.py workflow-persona <step> [--explicit NAME]
     agentm_bridge.py repo-registry list
+    agentm_bridge.py phase-dispatch {post-work|post-release} [--project-root DIR]
 
 DC-2: siblings not layers. Every verb's discovery is best-effort via
 path-fallback; when agentm is absent (the target script undiscoverable) each
@@ -28,6 +30,9 @@ itself (no/unknown verb) or within a verb's own argument parsing:
     process-seam:      exit 0 resolved        / 1 absent or unresolvable       / 2 usage
     workflow-persona:  exit 0 persona resolved / 1 no persona or agentm absent / 2 usage
     repo-registry:      exit 0 repos listed    / 1 unresolvable or backend absent / 2 usage
+    phase-dispatch:     exit 0 always (fired, skipped, or agentm absent — the
+                         underlying phase_dispatch() is itself non-blocking
+                         by contract) / 2 usage
 
 Call-sites: src/development-lifecycle/commands/*.md invoke the capability,
 governing-design, and workflow-persona verbs via `python3 .../agentm_bridge.py
@@ -35,11 +40,14 @@ governing-design, and workflow-persona verbs via `python3 .../agentm_bridge.py
 in-process (a crickets-internal load, not a cross-repo import — DC-2 prohibits
 importing agentm's process_seam.py directly, not this bridge, which lives here
 in crickets). resolve_project.py (open-a-project-by-name) shells to the
-repo-registry verb the same way.
+repo-registry verb the same way. work.md fires `phase-dispatch post-work`
+after each task's commit; release.md fires `phase-dispatch post-release`
+after the release lands.
 
 Re-audit trigger honored here (development-lifecycle design, 2026-07-10
 amendment): a fifth agentm-facing lookup extends this dispatcher rather than
-starting a new standalone bridge file — repo-registry is that fifth verb.
+starting a new standalone bridge file — repo-registry was that fifth verb,
+phase-dispatch is the sixth.
 """
 from __future__ import annotations
 
@@ -436,6 +444,89 @@ def _main_repo_registry(rest: "list[str]") -> int:
     return code
 
 
+# ── phase-dispatch (new, Loose Ends follow-on — the orphaned bridge caller) ────
+# Thin bridge: discovers agentm's harness_memory.py and proxies its
+# `phase-dispatch` CLI verb (the V5-5 orchestration bridge, `[LC-3]`). This is
+# the caller wiki/explanation/Auto-Orchestration.md said didn't exist: /work
+# fires `post-work` after each task's commit, /release fires `post-release`
+# once the release lands — both dedup-guarded and cooldown-gated entirely on
+# agentm's own side (`orchestration_phase.py`), so this bridge verb has
+# nothing to gate beyond discovery. `phase_dispatch()` itself is documented as
+# "always returns 0 — a phase is never wedged by orchestration errors", so
+# this verb mirrors that non-blocking contract rather than inventing a
+# 0/1-available/unavailable distinction the underlying function doesn't have.
+
+_HARNESS_MEMORY_NAME = "harness_memory.py"
+
+
+def find_harness_memory() -> "Path | None":
+    """Locate agentm's harness_memory.py via path-fallback, or None.
+
+    Candidates, first hit wins:
+      1. $AGENTM_SCRIPTS_DIR/harness_memory.py         (explicit override)
+      2. <this-script-dir>/harness_memory.py           (co-located install)
+      3. ~/Antigravity/agentm/scripts/harness_memory.py (conventional clone)
+    """
+    return _first_candidate(_HARNESS_MEMORY_NAME)
+
+
+def run_phase_dispatch(
+    phase: str, *, project_root: "str | None" = None,
+    harness_memory: "Path | None" = None,
+) -> "tuple[str, int]":
+    """Call harness_memory.py's `phase-dispatch` verb; return (stdout_stripped, exit_code).
+
+    Returns ("", 0) when harness_memory.py is undiscoverable, or on any
+    subprocess error — graceful-skip, matching `phase_dispatch()`'s own
+    non-blocking contract (always 0) rather than the 1-unavailable shape the
+    other verbs use, since the underlying function already folds "agentm
+    absent" into a clean no-op. Injectable harness_memory path for tests.
+    """
+    if harness_memory is None:
+        harness_memory = find_harness_memory()
+    if harness_memory is None or not Path(harness_memory).is_file():
+        return ("", 0)
+    cmd = [sys.executable, str(harness_memory), "phase-dispatch", phase]
+    if project_root:
+        cmd += ["--project-root", project_root]
+    try:
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=200)
+        return (res.stdout.strip(), res.returncode)
+    except (OSError, subprocess.SubprocessError):
+        return ("", 0)  # graceful-skip on dispatch error — never blocks the phase
+
+
+def _build_phase_dispatch_parser() -> argparse.ArgumentParser:
+    ap = argparse.ArgumentParser(
+        prog="agentm_bridge.py phase-dispatch",
+        description="Fire a named phase-boundary chain through agentm's kernel "
+                    "(bridge to harness_memory.py's phase_dispatch).",
+        add_help=True,
+    )
+    ap.add_argument("phase", nargs="?", choices=["post-work", "post-release"],
+                    help="which phase boundary just fired")
+    ap.add_argument("--project-root", default=None,
+                    help="repo root to dispatch against (default: cwd)")
+    return ap
+
+
+def _main_phase_dispatch(rest: "list[str]") -> int:
+    ap = _build_phase_dispatch_parser()
+    try:
+        args = ap.parse_args(rest)
+    except SystemExit:
+        return 2
+    if not args.phase:
+        print("usage: agentm_bridge.py phase-dispatch {post-work|post-release} "
+              "[--project-root DIR]", file=sys.stderr)
+        return 2
+
+    out, code = run_phase_dispatch(args.phase, project_root=args.project_root)
+    if out:
+        print(out)
+    return code
+
+
 # ── dispatcher ───────────────────────────────────────────────────────────────────
 
 _VERBS = {
@@ -444,16 +535,18 @@ _VERBS = {
     "process-seam": _main_process_seam,
     "workflow-persona": _main_workflow_persona,
     "repo-registry": _main_repo_registry,
+    "phase-dispatch": _main_phase_dispatch,
 }
 
 _USAGE = (
     "usage: agentm_bridge.py {capability|governing-design|process-seam|"
-    "workflow-persona|repo-registry} ...\n"
+    "workflow-persona|repo-registry|phase-dispatch} ...\n"
     "  capability <capability-name> [<version-range>]\n"
     "  governing-design <file-or-area> [--root DIR] [--include-proposed] [--json]\n"
     "  process-seam state-path {plan|progress} [--plan SLUG] [--cwd ROOT]\n"
     "  workflow-persona <step> [--explicit NAME]\n"
     "  repo-registry list\n"
+    "  phase-dispatch {post-work|post-release} [--project-root DIR]\n"
 )
 
 
