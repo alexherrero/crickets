@@ -5,6 +5,14 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.34.0] — 2026-07-25 — Minor: wire a caller for agentm's orphaned phase_dispatch bridge
+
+**MINOR.** Loose Ends follow-on, cross-repo with agentm. agentm's V5-5 orchestration bridge (`harness_memory.phase_dispatch`) was built, tested, and documented — and called by nothing, since the plugin that used to call it (`developer-workflows`) was retired and `development-lifecycle` never grew the wiring. On Claude Code the Stop hook reflects every session regardless, so the gap went unnoticed there; on Antigravity, which has no Stop hook, this was a real behavior gap, not redundancy-with-a-fallback.
+
+### Added
+
+- **`agentm_bridge.py`'s sixth verb, `phase-dispatch`** ([#214](https://github.com/alexherrero/crickets/pull/214); `development-lifecycle 0.41.0 → 0.42.0`) — proxies `harness_memory.py`'s `phase-dispatch` CLI verb, honoring the design's own re-audit trigger (extend the merged dispatcher, don't start a new bridge file) for the second time. `work.md` fires `phase-dispatch post-work` after each task's commit (step 9.6); `release.md` fires `phase-dispatch post-release` after the release lands (step 8.5). Both always exit 0, matching `phase_dispatch()`'s own non-blocking contract — dedup and cooldown stay entirely agentm-side.
+
 ## [v3.33.0] — 2026-07-24 — Minor: release and generator polish
 
 **MINOR.** Crickets errand lane of the agentm-vault "Loose Ends" cleanup arc (Bucket 3) — a small, self-contained batch. `/release` and `ship-release` gain a close-out check that prompts confirming whether a release's governing living design needs updating, keyed off the plan's own `touches_architecture:` flag rather than a new heuristic — distinct from the existing `parent_design_doc` drift check, which only catches a design that was cited and then drifted, not one that was never cited at all. The generator gains a Claude Code marketplace rename tombstone: a `renamed_from:` `group.yaml` field feeds a top-level `renames` map in the built `marketplace.json` (Claude Code v2.1.193+), so an install on a plugin's old name resolves natively instead of a bare `plugin-not-found`. Proven with two real cases, not synthetic fixtures — `wiki` (single-hop) and `tokens` (two-hop chain) — closing crickets #41's long-standing v3.x residual. Bundled in the same tag: a prior, separately-merged fix (#210) hardening worktree-slot integrity against a silent fake-slot bug, whose own version bump had been deferred to this release.

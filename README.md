@@ -59,7 +59,7 @@ The [wiki](https://github.com/alexherrero/crickets/wiki) covers everything there
 - [Reference](https://github.com/alexherrero/crickets/wiki/Reference) — plugin anatomy, the manifest schema, and the install modes.
 
 > [!NOTE]
-> **Latest release: [v3.33.0](https://github.com/alexherrero/crickets/releases/tag/v3.33.0).** `/release` now prompts you to update a design doc when a release changes architecture, and a renamed plugin resolves cleanly on Claude Code instead of `plugin-not-found`.
+> **Latest release: [v3.34.0](https://github.com/alexherrero/crickets/releases/tag/v3.34.0).** `/work` and `/release` now fire agentm's orchestration bridge at each phase boundary, so post-work reflection and post-release skill-refresh actually run.
 
 ---
 
