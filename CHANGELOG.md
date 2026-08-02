@@ -5,6 +5,21 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **`body_owner: "github"` — an item can be tracked without being rewritten** (`github-projects 0.3.6 → 0.4.0`). Board sync assumes the vault owns every body it tracks, which is what makes `update` drift safe to correct. Some issues break that assumption: a human writes a full issue — scope, out-of-scope, rationale, cross-impacts — and every template here renders a **one-line digest**, so re-rendering it is a deletion. An item carrying the flag declares the live body authoritative: `plan_item_action` resolves it to `noop` once materialized, before the body comparison, so no `gh issue edit` is ever emitted against it. `CREATE` is unaffected — an item with no issue has no human body to protect yet.
+
+  Found reconciling agentm board #2, where five real, open, hand-written issues sat on the board but not in the vault source and were reported as orphans on every run. Adding them is the obvious fix and is a trap: `orphan` is inert and never auto-corrected, but a vault-backed item reclassifies to `update`, which `drift_correct.py` **does** execute. Quieting the drift report is what arms the destruction. The edit was made, caught in a dry-run, and reverted before anything was overwritten.
+
+- **`compute_body_owned()`, reported separately from drift** — the guard means these items produce no drift line at all, and an item absent from every report is indistinguishable from one nobody tracks. They get their own labelled section, printed on every path including the clean "in sync" one. Deliberately not folded into `compute_drift()`: a body-owned item is correctly configured rather than drifting, so it would fail the board-sync gate forever. Body-owned lines stay out of the drift-report marker digest, since a steady state should not re-post an otherwise identical report.
+
+### Internal
+
+- `body_owner` had to be added in four places at once — `_STRUCTURAL`, the `Item` dataclass, `parse_items`, and `to_dict`. `load_items()` folds any *unrecognized* top-level key into `.fields` as a superset read, so a flag missing from `_STRUCTURAL` sinks into `fields`, reads back as `None`, and silently re-arms the exact overwrite it exists to prevent. An unrecognized value raises rather than defaulting to vault-owned, for the same reason: a typo must not resolve to the dangerous side.
+- 19 new tests, mutation-checked rather than trusted — dropping the key from `to_dict`, dropping it from `_STRUCTURAL`, disabling the value validation, and removing the guard itself each turn the new tests red. The `drift_correct` test ships with a control proving the same fixture *without* the flag does produce an `update` finding; without it the test would pass against a fixture that simply never drifted.
+
 ## [v3.34.1] — 2026-08-01 — Patch: record the second listener on the phase-close events
 
 **PATCH.** Documentation only — no shipped plugin content changed, so no plugin version moves.
