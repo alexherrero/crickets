@@ -39,4 +39,4 @@ The [wiki](https://github.com/alexherrero/crickets/wiki) covers everything there
 ---
 
 > [!NOTE]
-> **Latest release: [v3.34.1](https://github.com/alexherrero/crickets/releases/tag/v3.34.1).** The lifecycle design now records that a second listener joined those phase-close events — `post-work` and `post-release` stage a crystallization candidate as well as reflecting the session.
+> **Latest release: [v3.35.0](https://github.com/alexherrero/crickets/releases/tag/v3.35.0).** An issue whose body a human wrote can now be tracked on the board without the board flattening it — `body_owner: "github"` makes the live body authoritative, so sync reports it and never rewrites it.
