@@ -444,7 +444,12 @@ def post_comment(item, update_type, cfg, *, date, commit=None, summary=None,
 
 _DATE_CANONICALS = frozenset({"Start", "Target"})
 _SELECT_CANONICALS = frozenset({"Track", "Type", "Priority", "Status"})
-_STATUS_ON_STAGE = {"progress": "In Progress", "closeout": "Done"}
+_STATUS_ON_STAGE = {"progress": "In Progress", "closeout": "Done",
+                    "park": "Parked"}
+# Stages that close the issue. 'closeout' closes it as completed; 'park' closes
+# it as NOT_PLANNED — deliberately deferred work leaves the open-issue count
+# honest while staying queryable and visibly distinct from what actually shipped.
+_CLOSING_STAGES = frozenset({"closeout", "park"})
 
 
 def field_label(cfg, canonical):
@@ -503,11 +508,18 @@ def sync_fields(item, cfg, stage=None, *, runner=None, dry_run=True, out=None):
     flag-driven stage; only a task's progress/closeout is flag-postable) still
     moves Status by editing `status:` in board-items.json and re-running
     `post`. `stage` ('progress' | 'closeout' | None) overrides that vault value
-    for the two task lifecycle transitions a flag-driven post can't otherwise
+    for the task lifecycle transitions a flag-driven post can't otherwise
     carry: 'progress' -> 'In Progress' (idempotent-skip covers "already in
     progress" — this is what makes the Todo -> In Progress flip happen exactly
     once, on the first progress post), 'closeout' -> 'Done' plus closing the
-    issue.
+    issue, and 'park' -> 'Parked' plus closing the issue as NOT_PLANNED.
+
+    'park' is the deliberate-deferral transition (`post --park`). It applies to
+    any item type, not just a task: a Version, Feature or Backlog-item that has
+    been adjudicated out of the current arc parks the same way. Unlike
+    'closeout' it folds no template content and posts no comment — parking
+    records a decision about the work, not progress on it — so it rides a flag
+    rather than a `--type <itype>-<stage>` update.
 
     Never creates a field option (adding an option is a UI action, never an
     API mutation) — a field or option `gh project field-list` doesn't already
@@ -564,9 +576,11 @@ def sync_fields(item, cfg, stage=None, *, runner=None, dry_run=True, out=None):
             runner(cmd.argv)
         rendered.append(line)
 
-    if stage == "closeout":
+    if stage in _CLOSING_STAGES:
         close_argv = ["gh", "issue", "close", str(item.issue),
                       "--repo", cfg["github"]["repo"]]
+        if stage == "park":
+            close_argv += ["--reason", "not planned"]
         line = GhCommand(close_argv).render()
         if dry_run:
             print(line, file=out)
@@ -883,6 +897,9 @@ def _build_parser():
                       dest="active_plans", help="plan id to materialize (repeatable)")
     post.add_argument("--private", action="store_true",
                       help="render the private view (keep silent-source attribution)")
+    post.add_argument("--park", action="store_true",
+                      help="park this item: Status -> Parked, close the issue "
+                           "as not-planned (mutually exclusive with --type)")
     post.add_argument("--dry-run", action="store_true",
                       help="print the exact gh argv without executing")
 
@@ -948,6 +965,12 @@ def _post_main(args, cfg, runner, here, pm):
 
     date = args.date or datetime.date.today().isoformat()
     stage = None
+    if getattr(args, "park", False):
+        if args.update_type:
+            raise RenderError(
+                "--park and --type are mutually exclusive — a park records a "
+                "deferral decision, not a lifecycle update")
+        stage = "park"
     if args.update_type:
         apply_update(item, args.update_type, date=date,
                      commit=args.commit, summary=args.summary)

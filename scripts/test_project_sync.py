@@ -798,7 +798,8 @@ class TestSyncFields(unittest.TestCase):
         {"id": "F_STATUS", "name": "Status",
          "options": [{"id": "O_TODO", "name": "Todo"},
                      {"id": "O_PROG", "name": "In Progress"},
-                     {"id": "O_DONE", "name": "Done"}]},
+                     {"id": "O_DONE", "name": "Done"},
+                     {"id": "O_PARKED", "name": "Parked"}]},
     ]})
 
     def _runner(self, item_status, calls=None):
@@ -840,6 +841,84 @@ class TestSyncFields(unittest.TestCase):
                              "PROJECT_ID", "ITEM_ID", "F_STATUS", "O_DONE")])
         close_calls = [c for c in calls if c[:3] == ["gh", "issue", "close"]]
         self.assertEqual(close_calls, [["gh", "issue", "close", "9", "--repo", "o/r"]])
+
+    def test_park_flips_status_and_closes_issue_as_not_planned(self):
+        # A park is a deferral decision: Status -> Parked and the issue closes
+        # as NOT_PLANNED, so the open-issue count stays honest while the item
+        # stays queryable and visibly distinct from work that actually shipped.
+        runner, calls = self._runner(item_status="Todo")
+        ps.sync_fields(self._task(), _CFG, "park", runner=runner, dry_run=False)
+        item_edit_calls = [c for c in calls if c[:3] == ["gh", "project", "item-edit"]]
+        self.assertEqual(item_edit_calls,
+                         [ps.project_item_edit_select_argv(
+                             "PROJECT_ID", "ITEM_ID", "F_STATUS", "O_PARKED")])
+        close_calls = [c for c in calls if c[:3] == ["gh", "issue", "close"]]
+        self.assertEqual(close_calls,
+                         [["gh", "issue", "close", "9", "--repo", "o/r",
+                           "--reason", "not planned"]])
+
+    def test_park_silently_skips_the_status_write_when_the_board_lacks_the_option(self):
+        # The reason the board option must be added BEFORE any park is applied:
+        # sync_fields never creates an option, so against a board that has no
+        # 'Parked' the Status write vanishes with no error and no exit code. The
+        # issue still closes — so a park run against an unprepared board leaves
+        # a closed issue sitting at its old Status, which reads as landed.
+        no_parked = json.dumps({"fields": [
+            {"id": "F_TRACK", "name": "Track",
+             "options": [{"id": "O_V5", "name": "V5"}]},
+            {"id": "F_STATUS", "name": "Status",
+             "options": [{"id": "O_TODO", "name": "Todo"},
+                         {"id": "O_PROG", "name": "In Progress"},
+                         {"id": "O_DONE", "name": "Done"}]},
+        ]})
+        calls = []
+
+        def runner(argv):
+            calls.append(argv)
+            if argv[:3] == ["gh", "project", "view"]:
+                return json.dumps({"id": "PROJECT_ID"})
+            if argv[:3] == ["gh", "project", "item-list"]:
+                return json.dumps({"items": [
+                    {"id": "ITEM_ID", "content": {"number": 9},
+                     "Track": "V5", "Status": "Todo"}]})
+            if argv[:3] == ["gh", "project", "field-list"]:
+                return no_parked
+            return ""
+
+        ps.sync_fields(self._task(), _CFG, "park", runner=runner, dry_run=False)
+        item_edit_calls = [c for c in calls if c[:3] == ["gh", "project", "item-edit"]]
+        self.assertEqual(item_edit_calls, [])
+        # ...and the close still fires, which is exactly what makes the silent
+        # skip dangerous rather than merely inert.
+        close_calls = [c for c in calls if c[:3] == ["gh", "issue", "close"]]
+        self.assertEqual(len(close_calls), 1)
+
+    def test_closeout_does_not_pass_a_not_planned_reason(self):
+        # Guards the two closing stages against collapsing into one: a closeout
+        # is completed work and must never be closed as not-planned.
+        runner, calls = self._runner(item_status="In Progress")
+        ps.sync_fields(self._task(), _CFG, "closeout", runner=runner, dry_run=False)
+        close_calls = [c for c in calls if c[:3] == ["gh", "issue", "close"]]
+        self.assertNotIn("--reason", close_calls[0])
+
+    def test_park_skips_status_write_when_board_already_parked(self):
+        # Idempotent-skip applies to park like any other field write — a
+        # re-park emits no item-edit, but still re-issues the (idempotent) close.
+        runner, calls = self._runner(item_status="Parked")
+        ps.sync_fields(self._task(), _CFG, "park", runner=runner, dry_run=False)
+        item_edit_calls = [c for c in calls if c[:3] == ["gh", "project", "item-edit"]]
+        self.assertEqual(item_edit_calls, [])
+
+    def test_park_on_a_non_task_item_parks_the_same_way(self):
+        # Parking is not a task-only transition: a Version or Backlog-item
+        # adjudicated out of the arc parks identically.
+        item = pm.Item(id="v6", type="version", title="V6", issue=9, track="V5")
+        runner, calls = self._runner(item_status="Todo")
+        ps.sync_fields(item, _CFG, "park", runner=runner, dry_run=False)
+        close_calls = [c for c in calls if c[:3] == ["gh", "issue", "close"]]
+        self.assertEqual(close_calls,
+                         [["gh", "issue", "close", "9", "--repo", "o/r",
+                           "--reason", "not planned"]])
 
     def test_matching_field_is_idempotent_skip(self):
         # Track already "V5" on the board AND item.track == "V5" -> no
