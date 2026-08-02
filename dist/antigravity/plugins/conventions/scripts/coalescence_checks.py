@@ -258,7 +258,88 @@ def check_board_item_closed(item_id: "str | None", board_items_path: "Path | Non
 
 # ── CLI ──────────────────────────────────────────────────────────────────────
 
-_ALL_CHECKS = ("narrative-row", "archive-hygiene", "board-item-closed")
+_GH_REF_RE = re.compile(r"\bGH\s+#(\d+)\b", re.IGNORECASE)
+
+
+def extract_gh_refs(body: str) -> list:
+    """Every `GH #N` roadmap-id reference in a release body, de-duplicated and
+    in first-appearance order.
+
+    Deliberately narrow. A bare `#123` in a release body is almost always a PR
+    link, and a merged PR is closed by a different mechanism than the issue it
+    ships — matching those would produce false failures on every release. The
+    `GH #N` form is the convention this repo already uses to name the roadmap id
+    a release closes (v9.0.2's body opens "Plan A of 2 (GH #70)"), so it is the
+    form worth holding to account.
+    """
+    seen, refs = set(), []
+    for m in _GH_REF_RE.finditer(body or ""):
+        n = int(m.group(1))
+        if n not in seen:
+            seen.add(n)
+            refs.append(n)
+    return refs
+
+
+def check_release_body_refs_closed(body: "str | None", *, gh_repo: "str | None" = None,
+                                   gh_issue_state_fn=None) -> CheckResult:
+    """(3, mechanized) Every `GH #N` the release body names must be a closed issue.
+
+    Coalescence item 3 ("boards reconciled") was prose a human was trusted to
+    honor, and `check_board_item_closed` above only covers the *single* shipping
+    item — and silently skips when no `--item-id` is passed. So a release could
+    announce that it closes GH #70, ship, and leave #70 open indefinitely. That
+    is not hypothetical: v9.0.2 and v9.0.3 each named their roadmap id verbatim
+    while both issues stayed open for weeks afterwards.
+
+    The data was already sitting in the release body. This reads it and holds
+    the release to what it claims. An issue whose state can't be read is skipped
+    rather than failed — an unreachable `gh` must not block a release, and a
+    `GH #N` that resolves to a PR reads as unavailable here by design.
+    """
+    if body is None:
+        return CheckResult(
+            "release-body-refs-closed", "skip",
+            "no release body given — skipping (pass --release-body to enable)",
+        )
+    refs = extract_gh_refs(body)
+    if not refs:
+        return CheckResult(
+            "release-body-refs-closed", "pass",
+            "the release body names no GH #N roadmap ids — nothing to reconcile",
+        )
+    if gh_issue_state_fn is None and not gh_repo:
+        return CheckResult(
+            "release-body-refs-closed", "skip",
+            f"release body names {len(refs)} roadmap id(s) but no --gh-repo was "
+            f"given — skipping the live state check",
+        )
+    state_fn = gh_issue_state_fn or _default_gh_issue_state
+    still_open, unreadable = [], []
+    for n in refs:
+        state = state_fn(gh_repo or "", n)
+        if state is None:
+            unreadable.append(n)
+        elif state != "CLOSED":
+            still_open.append(n)
+    if still_open:
+        named = ", ".join(f"#{n}" for n in still_open)
+        return CheckResult(
+            "release-body-refs-closed", "fail",
+            f"the release body says it ships {named}, but {'that issue is' if len(still_open) == 1 else 'those issues are'} "
+            f"still open — coalescence-gate item 3 requires the boards to be "
+            f"reconciled before the release is cut. Close what this release "
+            f"actually closed, or stop naming it in the body, and re-run.",
+        )
+    detail = f"all {len(refs)} roadmap id(s) named in the release body are closed"
+    if unreadable:
+        detail += (f" ({len(unreadable)} unreadable and skipped: "
+                   f"{', '.join(f'#{n}' for n in unreadable)})")
+    return CheckResult("release-body-refs-closed", "pass", detail)
+
+
+_ALL_CHECKS = ("narrative-row", "archive-hygiene", "board-item-closed",
+               "release-body-refs-closed")
 
 
 def _resolve_project_json(repo_root: Path) -> "dict | None":
@@ -301,8 +382,11 @@ def _parse_args(argv):
     p.add_argument("--item-id", default=None, help="the board item id this release ships")
     p.add_argument("--board-items-path", default=None, type=Path)
     p.add_argument("--gh-repo", default=None, help="owner/repo for the live issue-state check")
+    p.add_argument("--release-body", type=Path, default=None,
+                    help="path to the drafted release body; every 'GH #N' it "
+                         "names must be a closed issue")
     p.add_argument("--only", action="append", choices=list(_ALL_CHECKS),
-                    help="run only the named check (repeatable); default: all three")
+                    help="run only the named check (repeatable); default: all")
     return p.parse_args(argv)
 
 
@@ -326,6 +410,14 @@ def main(argv=None) -> int:
         results.append(check_archive_hygiene(harness_dir))
     if "board-item-closed" in checks:
         results.append(check_board_item_closed(args.item_id, board_items_path, gh_repo=gh_repo))
+    if "release-body-refs-closed" in checks:
+        body = None
+        if args.release_body is not None:
+            try:
+                body = args.release_body.read_text(encoding="utf-8")
+            except OSError:
+                body = None
+        results.append(check_release_body_refs_closed(body, gh_repo=gh_repo))
 
     fail = False
     for r in results:
