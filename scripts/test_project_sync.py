@@ -949,6 +949,31 @@ class TestSyncFields(unittest.TestCase):
             ps.sync_fields(self._task(), _CFG, None, runner=runner, dry_run=False), [])
         self.assertEqual([c for c in calls if c[:3] == ["gh", "issue", "close"]], [])
 
+    def test_park_closes_before_writing_status(self):
+        # GitHub Projects runs an auto-close workflow in both directions: closing
+        # an issue forces its board Status to Done. A Parked written first is
+        # overwritten moments later by the close, so the park reports success
+        # while the board reads Done — found live on six real items. Closing
+        # first leaves the workflow nothing to react to.
+        runner, calls = self._runner(item_status="Todo")
+        ps.sync_fields(self._task(), _CFG, "park", runner=runner, dry_run=False)
+        ordered = [c[:3] for c in calls
+                   if c[:3] in (["gh", "issue", "close"], ["gh", "project", "item-edit"])]
+        self.assertEqual(ordered[0], ["gh", "issue", "close"],
+                         "park must close before the Status write, or the "
+                         "auto-close workflow overwrites Parked with Done")
+        self.assertIn(["gh", "project", "item-edit"], ordered)
+
+    def test_closeout_still_closes_after_the_status_write(self):
+        # The inverted order is park-only: a closeout wants Done, which is what
+        # the workflow would set anyway, so its original ordering is untouched.
+        runner, calls = self._runner(item_status="In Progress")
+        ps.sync_fields(self._task(), _CFG, "closeout", runner=runner, dry_run=False)
+        ordered = [c[:3] for c in calls
+                   if c[:3] in (["gh", "issue", "close"], ["gh", "project", "item-edit"])]
+        self.assertEqual(ordered[0], ["gh", "project", "item-edit"])
+        self.assertEqual(ordered[-1], ["gh", "issue", "close"])
+
     def test_closeout_does_not_pass_a_not_planned_reason(self):
         # Guards the two closing stages against collapsing into one: a closeout
         # is completed work and must never be closed as not-planned.

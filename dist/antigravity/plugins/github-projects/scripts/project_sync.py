@@ -551,6 +551,18 @@ def sync_fields(item, cfg, stage=None, *, runner=None, dry_run=True, out=None):
             return _close_issue_cmds(item, cfg, stage, runner=runner,
                                      dry_run=dry_run, out=out)
         return []
+    rendered_pre = []
+    if stage == "park":
+        # Close BEFORE writing fields, unlike every other stage. GitHub Projects
+        # runs a built-in auto-close workflow in the other direction too: closing
+        # an issue forces its board Status to Done. A `Parked` written first is
+        # therefore overwritten moments later by the close, and the park looks
+        # like it worked while the board reads Done. Found live — six items
+        # parked correctly in the vault, closed as NOT_PLANNED, and every one
+        # of them showing Done on the board. Closing first leaves the workflow
+        # nothing to react to, and the Status write then sticks.
+        rendered_pre = _close_issue_cmds(item, cfg, stage, runner=runner,
+                                         dry_run=dry_run, out=out)
     field_ids = resolve_field_ids(cfg, runner=runner)
     # `gh project item-list --format json` keys its per-field values by a
     # lowercased/normalized name (e.g. "track", "status"), not the field's
@@ -591,10 +603,12 @@ def sync_fields(item, cfg, stage=None, *, runner=None, dry_run=True, out=None):
             runner(cmd.argv)
         rendered.append(line)
 
-    if stage in _CLOSING_STAGES:
+    if stage in _CLOSING_STAGES and stage != "park":
+        # 'park' already closed above, before the field writes — see the comment
+        # there for why the order is inverted for that stage alone.
         rendered.extend(_close_issue_cmds(item, cfg, stage, runner=runner,
                                           dry_run=dry_run, out=out))
-    return rendered
+    return rendered_pre + rendered
 
 
 def _close_issue_cmds(item, cfg, stage, *, runner, dry_run, out) -> list:
