@@ -531,10 +531,25 @@ def sync_fields(item, cfg, stage=None, *, runner=None, dry_run=True, out=None):
     if item.issue is None:
         return []
     project_id = resolve_project_node_id(cfg, runner=runner)
-    if project_id is None:
-        return []
-    item_id, current = resolve_board_item(cfg, item.issue, runner=runner)
+    item_id, current = (None, {})
+    if project_id is not None:
+        item_id, current = resolve_board_item(cfg, item.issue, runner=runner)
     if item_id is None:
+        # The board is unreadable (gh throttled/unauthenticated) or this issue
+        # isn't a project item. Skipping the *field* writes is correct — there
+        # is nothing to write them to. Skipping the issue **close** is not: the
+        # close is the point of a closing stage, it needs only the repo and the
+        # issue number, and it does not depend on the board at all. Returning
+        # early here used to drop it silently at exit 0 — a park would report
+        # its body `noop`, look successful, and leave the issue open. Found
+        # live, twice, under a GraphQL rate limit.
+        if stage in _CLOSING_STAGES:
+            print(f"sync_fields: board item for issue #{item.issue} could not be "
+                  f"resolved — Status not written; performing the {stage} close "
+                  f"anyway (re-run to sync Status once the board is readable)",
+                  file=sys.stderr)
+            return _close_issue_cmds(item, cfg, stage, runner=runner,
+                                     dry_run=dry_run, out=out)
         return []
     field_ids = resolve_field_ids(cfg, runner=runner)
     # `gh project item-list --format json` keys its per-field values by a
@@ -577,17 +592,25 @@ def sync_fields(item, cfg, stage=None, *, runner=None, dry_run=True, out=None):
         rendered.append(line)
 
     if stage in _CLOSING_STAGES:
-        close_argv = ["gh", "issue", "close", str(item.issue),
-                      "--repo", cfg["github"]["repo"]]
-        if stage == "park":
-            close_argv += ["--reason", "not planned"]
-        line = GhCommand(close_argv).render()
-        if dry_run:
-            print(line, file=out)
-        else:
-            runner(close_argv)
-        rendered.append(line)
+        rendered.extend(_close_issue_cmds(item, cfg, stage, runner=runner,
+                                          dry_run=dry_run, out=out))
     return rendered
+
+
+def _close_issue_cmds(item, cfg, stage, *, runner, dry_run, out) -> list:
+    """Close `item`'s issue for a closing stage. Depends only on the repo and
+    the issue number — deliberately not on the board being readable, so a
+    throttled or unreachable Projects API cannot silently swallow the close."""
+    close_argv = ["gh", "issue", "close", str(item.issue),
+                  "--repo", cfg["github"]["repo"]]
+    if stage == "park":
+        close_argv += ["--reason", "not planned"]
+    line = GhCommand(close_argv).render()
+    if dry_run:
+        print(line, file=out)
+    else:
+        runner(close_argv)
+    return [line]
 
 
 _ISSUE_NODE_QUERY = (

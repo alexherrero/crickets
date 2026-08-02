@@ -893,6 +893,62 @@ class TestSyncFields(unittest.TestCase):
         close_calls = [c for c in calls if c[:3] == ["gh", "issue", "close"]]
         self.assertEqual(len(close_calls), 1)
 
+    def test_close_still_fires_when_the_board_item_cannot_be_resolved(self):
+        # Found live under a GraphQL rate limit: resolve_board_item returns
+        # None, sync_fields returned early, and the park silently did nothing
+        # while printing its body `noop` and exiting 0. The close needs only the
+        # repo and issue number, so it must not depend on the board being
+        # readable. Field writes are still correctly skipped — there is nothing
+        # to write them to.
+        calls = []
+
+        def runner(argv):
+            calls.append(argv)
+            if argv[:3] == ["gh", "project", "view"]:
+                return json.dumps({"id": "PROJECT_ID"})
+            if argv[:3] == ["gh", "project", "item-list"]:
+                return json.dumps({"items": []})  # issue not found on the board
+            if argv[:3] == ["gh", "project", "field-list"]:
+                return self._FIELD_LIST
+            return ""
+
+        ps.sync_fields(self._task(), _CFG, "park", runner=runner, dry_run=False)
+        self.assertEqual([c for c in calls if c[:3] == ["gh", "project", "item-edit"]], [])
+        self.assertEqual([c for c in calls if c[:3] == ["gh", "issue", "close"]],
+                         [["gh", "issue", "close", "9", "--repo", "o/r",
+                           "--reason", "not planned"]])
+
+    def test_unresolvable_board_still_closes_for_a_closeout_too(self):
+        calls = []
+
+        def runner(argv):
+            calls.append(argv)
+            if argv[:3] == ["gh", "project", "view"]:
+                return json.dumps({"id": "PROJECT_ID"})
+            if argv[:3] == ["gh", "project", "item-list"]:
+                return json.dumps({"items": []})
+            return ""
+
+        ps.sync_fields(self._task(), _CFG, "closeout", runner=runner, dry_run=False)
+        self.assertEqual([c for c in calls if c[:3] == ["gh", "issue", "close"]],
+                         [["gh", "issue", "close", "9", "--repo", "o/r"]])
+
+    def test_unresolvable_board_with_no_closing_stage_writes_nothing(self):
+        # The pre-existing behavior stays intact for a routine field sync.
+        calls = []
+
+        def runner(argv):
+            calls.append(argv)
+            if argv[:3] == ["gh", "project", "view"]:
+                return json.dumps({"id": "PROJECT_ID"})
+            if argv[:3] == ["gh", "project", "item-list"]:
+                return json.dumps({"items": []})
+            return ""
+
+        self.assertEqual(
+            ps.sync_fields(self._task(), _CFG, None, runner=runner, dry_run=False), [])
+        self.assertEqual([c for c in calls if c[:3] == ["gh", "issue", "close"]], [])
+
     def test_closeout_does_not_pass_a_not_planned_reason(self):
         # Guards the two closing stages against collapsing into one: a closeout
         # is completed work and must never be closed as not-planned.
