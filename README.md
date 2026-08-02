@@ -59,7 +59,7 @@ The [wiki](https://github.com/alexherrero/crickets/wiki) covers everything there
 - [Reference](https://github.com/alexherrero/crickets/wiki/Reference) — plugin anatomy, the manifest schema, and the install modes.
 
 > [!NOTE]
-> **Latest release: [v3.34.0](https://github.com/alexherrero/crickets/releases/tag/v3.34.0).** `/work` and `/release` now fire agentm's orchestration bridge at each phase boundary, so post-work reflection and post-release skill-refresh actually run.
+> **Latest release: [v3.34.1](https://github.com/alexherrero/crickets/releases/tag/v3.34.1).** The lifecycle design now records that a second listener joined those phase-close events — `post-work` and `post-release` stage a crystallization candidate as well as reflecting the session.
 
 ---
 

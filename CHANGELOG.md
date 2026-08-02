@@ -5,6 +5,16 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.34.1] — 2026-08-01 — Patch: record the second listener on the phase-close events
+
+**PATCH.** Documentation only — no shipped plugin content changed, so no plugin version moves.
+
+[v3.34.0](https://github.com/alexherrero/crickets/releases/tag/v3.34.0) gave agentm's orphaned `phase_dispatch` bridge a caller, and the design entry describing it said those events did one thing: reflect the session and refresh skills. agentm has since hung a second consumer on the same two events — crystallization's phase-close trigger, [agentm PR #384](https://github.com/alexherrero/agentm/pull/384) — so `post-work` and `post-release` now also stage a bare candidate for later distillation. A reader of this design should not have to cross into agentm's own to learn that.
+
+### Changed
+
+- **[`crickets-development-lifecycle.md`](wiki/designs/crickets-development-lifecycle.md) gains a 2026-07-26 amendment-log entry** — recorded as an amendment rather than a rewrite of the original entry, because the original's reasoning still holds exactly as written: a second consumer joining the same events changes neither the events nor their contract, only what agentm does once they land. `work.md` and `release.md` are untouched — their text already just says "fires the bridge", which stays true regardless. Re-audit trigger noted in place: a third agentm-side consumer, or a narrower investigative-session event superseding crystallization's own trigger design.
+
 ## [v3.34.0] — 2026-07-25 — Minor: wire a caller for agentm's orphaned phase_dispatch bridge
 
 **MINOR.** Loose Ends follow-on, cross-repo with agentm. agentm's V5-5 orchestration bridge (`harness_memory.phase_dispatch`) was built, tested, and documented — and called by nothing, since the plugin that used to call it (`developer-workflows`) was retired and `development-lifecycle` never grew the wiring. On Claude Code the Stop hook reflects every session regardless, so the gap went unnoticed there; on Antigravity, which has no Stop hook, this was a real behavior gap, not redundancy-with-a-fallback.
