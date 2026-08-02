@@ -507,7 +507,7 @@ def sync_fields(item, cfg, stage=None, *, runner=None, dry_run=True, out=None):
     every other DC-2 field — so a Feature/Version/Plan closeout (which has no
     flag-driven stage; only a task's progress/closeout is flag-postable) still
     moves Status by editing `status:` in board-items.json and re-running
-    `post`. `stage` ('progress' | 'closeout' | None) overrides that vault value
+    `post`. `stage` ('progress' | 'closeout' | 'park' | None) overrides that vault value
     for the task lifecycle transitions a flag-driven post can't otherwise
     carry: 'progress' -> 'In Progress' (idempotent-skip covers "already in
     progress" — this is what makes the Todo -> In Progress flip happen exactly
