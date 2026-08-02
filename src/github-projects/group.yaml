@@ -150,5 +150,17 @@ standalone: false
 #         unrecognized value raises rather than defaulting, for the same
 #         reason. Additive and backward-compatible: an item without the key
 #         is vault-owned, today's behavior byte-for-byte.
+#         Tasks 2-3: plan_item_action resolves a materialized body-owned item
+#         to NOOP before the body comparison, and current_body=None does not
+#         defeat it -- a deliberate inversion of the surrounding rule, since
+#         not knowing the live body is the strongest reason not to overwrite
+#         it. CREATE is untouched. check_project_sync gains compute_body_owned
+#         as a SEPARATE list from compute_drift: a body-owned item is
+#         correctly configured, not drifting, so folding it into the drift
+#         list would fail the board-sync gate forever -- but the guard makes
+#         it emit no drift line at all, and silence reads exactly like an
+#         untracked item, so report_drift names it in its own section on
+#         every path including the clean one. Body-owned lines stay out of
+#         the marker digest so a steady state never re-posts a report.
 version: 0.4.0
 capabilities: [board-sync]

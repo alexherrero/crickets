@@ -99,6 +99,30 @@ def compute_drift(graph, cfg, templates_dir, board_bodies, *,
     return drift
 
 
+def compute_body_owned(graph, *, pm, active_plans=None) -> list:
+    """Return informational lines for materialized items whose body GitHub owns.
+
+    Deliberately **not** part of ``compute_drift``'s return. A body-owned item is
+    correctly configured, not drifting, so folding it into the drift list would
+    make ``check_project_sync`` fail forever on a healthy board. But it must not
+    vanish either: ``plan_item_action``'s guard resolves these to ``noop``, which
+    means they produce no drift line at all, and an item that is silently absent
+    from every report is indistinguishable from one nobody is tracking. Naming
+    them in their own section is what keeps the report honest — the same reason
+    ``orphan`` is surfaced rather than filtered.
+
+    Pure: no network, no clock, deterministic order.
+    """
+    lines = []
+    for item in pm.materialize(graph, active_plans=active_plans or set()):
+        if getattr(item, "body_owner", None) != pm.BODY_OWNER_GITHUB:
+            continue
+        where = f"issue #{item.issue}" if item.issue is not None else "not yet materialized"
+        lines.append(f"body-owned  {item.type}:{item.id} — {where}; "
+                     f"the live body is authoritative and is never rewritten")
+    return lines
+
+
 # ── live board snapshot (read-only; the only side-effecting seam) ─────────────
 def _run_gh(argv) -> str:
     proc = subprocess.run(argv, capture_output=True, text=True)
