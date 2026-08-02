@@ -5,7 +5,9 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [v3.35.0] — 2026-08-01 — Minor: an issue can be tracked without being rewritten
+
+**MINOR.** Board sync assumed the vault owns every issue body it tracks — the assumption that makes `update` drift safe to auto-correct. Five real, open issues on agentm's board broke it: a human had written each one in full, while every board template renders a single-line digest. Reconciling them the obvious way turned out to arm their destruction.
 
 ### Added
 
