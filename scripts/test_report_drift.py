@@ -43,6 +43,8 @@ _CFG = {
                "url": "https://github.com/users/o/projects/5"},
 }
 
+_TEMPLATES = _SRC.parent / "templates"
+
 _DRIFT = ["update  feature:f — issue #8 body differs from the rendered source",
          "orphan  issue #99 — on the board, not in the vault source"]
 
@@ -66,6 +68,72 @@ class TestDriftReportMarker(unittest.TestCase):
         self.assertIn(_DRIFT[0], body)
         self.assertIn(_DRIFT[1], body)
         self.assertIn(rd.drift_report_marker(_DRIFT), body)
+
+
+_BODY_OWNED = ["body-owned  backlog-item:b1 — issue #324; "
+               "the live body is authoritative and is never rewritten"]
+
+
+class TestBodyOwnedSection(unittest.TestCase):
+    def test_render_includes_a_labelled_body_owned_section(self):
+        body = rd.render_drift_report(_DRIFT, _BODY_OWNED)
+        self.assertIn(_BODY_OWNED[0], body)
+        self.assertIn("Body owned by GitHub", body)
+
+    def test_body_owned_does_not_enter_the_marker_digest(self):
+        # A body-owned item is a steady state. If it moved the digest, adding one
+        # would re-post an otherwise identical drift report.
+        self.assertEqual(rd.drift_report_marker(_DRIFT),
+                         rd.drift_report_marker(_DRIFT))
+        with_section = rd.render_drift_report(_DRIFT, _BODY_OWNED)
+        without = rd.render_drift_report(_DRIFT)
+        self.assertIn(rd.drift_report_marker(_DRIFT), with_section)
+        self.assertIn(rd.drift_report_marker(_DRIFT), without)
+
+    def test_render_without_body_owned_is_unchanged(self):
+        self.assertEqual(rd.render_drift_report(_DRIFT),
+                         rd.render_drift_report(_DRIFT, None))
+        self.assertNotIn("Body owned by GitHub", rd.render_drift_report(_DRIFT))
+
+    def test_body_owned_is_printed_even_when_drift_is_clean(self):
+        # The whole point of the section: the guard resolves these to noop, so
+        # they emit no drift line. Silence would read as "nobody tracks this".
+        out = io.StringIO()
+        rc = rd.run(_graph_with_version(), _CFG, [], body_owned=_BODY_OWNED,
+                    ps=ps, runner=lambda argv: "", dry_run=True, out=out)
+        self.assertEqual(rc, 0)
+        text = out.getvalue()
+        self.assertIn("in sync", text)
+        self.assertIn("b1", text)
+
+
+class TestComputeBodyOwned(unittest.TestCase):
+    def _graph(self, **extra):
+        return pm.build_graph(pm.parse_items({"items": [
+            {"id": "v5", "type": "version", "title": "V5", "issue": 7,
+             "about": "arc"},
+            dict({"id": "b1", "type": "backlog-item", "title": "B", "issue": 324,
+                  "what": "w", "why_matters": "y"}, **extra),
+        ]}))
+
+    def test_body_owned_item_is_reported(self):
+        lines = cps.compute_body_owned(self._graph(body_owner="github"), pm=pm)
+        self.assertEqual(len(lines), 1)
+        self.assertIn("backlog-item:b1", lines[0])
+        self.assertIn("#324", lines[0])
+
+    def test_vault_owned_item_is_not_reported(self):
+        self.assertEqual(cps.compute_body_owned(self._graph(), pm=pm), [])
+
+    def test_body_owned_is_absent_from_the_drift_list(self):
+        # It is correctly configured, not drifting — folding it into compute_drift
+        # would fail the board-sync gate forever on a healthy board.
+        g = self._graph(body_owner="github")
+        board = {7: ps.render_item(g["v5"], ps.project_repo_url(_CFG),
+                                   _TEMPLATES, graph=g),
+                 324: "a long hand-written body nothing should touch"}
+        drift = cps.compute_drift(g, _CFG, _TEMPLATES, board, pm=pm, ps=ps)
+        self.assertEqual(drift, [])
 
 
 class TestRun(unittest.TestCase):

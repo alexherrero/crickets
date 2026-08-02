@@ -129,6 +129,47 @@ class TestClassify(unittest.TestCase):
         self.assertEqual(self._findings(g, board), [])
 
 
+class TestBodyOwnedNeverCorrected(unittest.TestCase):
+    """The regression this whole feature exists to prevent: a hand-written issue
+    body being replaced by a one-line template render."""
+
+    def _graph(self, owner=None):
+        raw = {"id": "b1", "type": "backlog-item", "track": "V5", "title": "B",
+               "issue": 324, "what": "w", "why_matters": "y"}
+        if owner:
+            raw["body_owner"] = owner
+        return pm.build_graph(pm.parse_items({"items": [
+            {"id": "v5", "type": "version", "track": "V5", "title": "V5 arc",
+             "about": "the unbundling", "issue": 7},
+            raw,
+        ]}))
+
+    def test_body_owned_yields_no_finding_despite_a_differing_body(self):
+        g = self._graph(owner="github")
+        board = {7: _rendered(g["v5"], g),
+                 324: "## Scope\n\nA long hand-written body.\n\n## Why now\n\nBecause."}
+        self.assertEqual(dc.classify(g, _CFG, _TEMPLATES, board, pm=pm, ps=ps), [])
+
+    def test_same_item_without_the_flag_would_be_corrected(self):
+        # The control. Without body_owner this is an `update` finding that emits a
+        # gh issue edit — i.e. the flag is what makes the difference, not the fixture.
+        g = self._graph()
+        board = {7: _rendered(g["v5"], g),
+                 324: "## Scope\n\nA long hand-written body.\n\n## Why now\n\nBecause."}
+        findings = dc.classify(g, _CFG, _TEMPLATES, board, pm=pm, ps=ps)
+        self.assertEqual([f.kind for f in findings], ["update"])
+
+    def test_no_gh_issue_edit_reaches_the_command_layer(self):
+        g = self._graph(owner="github")
+        board = {7: _rendered(g["v5"], g), 324: "hand-written"}
+        out = io.StringIO()
+        findings = dc.classify(g, _CFG, _TEMPLATES, board, pm=pm, ps=ps)
+        dc.correct(findings, _CFG, None, ps=ps, runner=lambda a: "",
+                   dry_run=True, out=out)
+        self.assertNotIn("gh issue edit", out.getvalue())
+        self.assertNotIn("324", out.getvalue())
+
+
 class TestCorrect(unittest.TestCase):
     def _cfg_dir(self, items):
         t = tempfile.TemporaryDirectory()

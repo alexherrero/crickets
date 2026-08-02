@@ -45,6 +45,12 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+# Mirrors project_model.BODY_OWNER_GITHUB. Declared locally rather than imported
+# because project_model is loaded dynamically at call time (see
+# _load_project_model), and plan_item_action is a pure function that must not
+# reach for a module loader. test_project_sync.py pins the two to each other.
+BODY_OWNER_GITHUB = "github"
+
 _PLACEHOLDER = re.compile(r"\{\{(\w+)\}\}")
 _CLAUSE_SEP = "  ·  "          # double-space-middot: the between-clause divider
 _STAGE_JOIN = "\n\n"           # blank line between lifecycle stages in the body
@@ -696,9 +702,24 @@ def plan_item_action(item, body, current_body=None) -> Action:
     duplicate); differ → UPDATE. ``current_body=None`` on an existing issue forces
     an UPDATE (the caller couldn't read the live state, so it must not assume
     no-op).
+
+    **Body ownership.** An item carrying ``body_owner: "github"`` declares that
+    the live issue body is authoritative — a human wrote it, and every template
+    here renders a one-line digest, so an UPDATE would flatten it. Such an item
+    resolves to NOOP once materialized, before the body comparison, and
+    ``current_body=None`` does NOT defeat it. That is a deliberate inversion of
+    the rule above: not being able to read the live body is the strongest reason
+    not to overwrite it, where for a vault-owned item it is a reason not to
+    assume no-op. CREATE is untouched — an item with no issue has no human body
+    to protect yet, so the vault authors the first one and the flag guards it
+    from then on. The guard lives here, in the one pure function every driver
+    (project_sync, drift_correct, report_drift) routes through, rather than in
+    each of them separately.
     """
     if item.issue is None:
         return Action("create", item.id, item.title, body, None)
+    if getattr(item, "body_owner", None) == BODY_OWNER_GITHUB:
+        return Action("noop", item.id, item.title, body, item.issue)
     if current_body is not None and current_body.strip() == body.strip():
         return Action("noop", item.id, item.title, body, item.issue)
     return Action("update", item.id, item.title, body, item.issue)

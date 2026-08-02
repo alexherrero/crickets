@@ -271,6 +271,41 @@ class TestDump(unittest.TestCase):
             self.assertEqual(raw["_comment"], "machine projection")
             self.assertEqual(raw["_reconciled_at"], "2026-06-19")
 
+    def test_body_owner_round_trips_as_a_top_level_key(self):
+        # The whole point of the flag is that plan_item_action can read it off the
+        # Item. load_items() folds any *unrecognized* top-level key into .fields as
+        # a superset read, so a body_owner missing from _STRUCTURAL / to_dict would
+        # sink into fields, read back as None, and silently re-arm the issue-body
+        # overwrite. Pin it as top-level and absent from fields, on both legs.
+        with tempfile.TemporaryDirectory() as t:
+            p = Path(t) / "board-items.json"
+            data = _fixture()
+            for raw in data["items"]:
+                if raw["id"] == "b1":
+                    raw["body_owner"] = "github"
+            p.write_text(json.dumps(data), encoding="utf-8")
+
+            graph = pm.load(p)
+            self.assertEqual(graph["b1"].body_owner, "github")
+            self.assertNotIn("body_owner", graph["b1"].fields)
+            self.assertIsNone(graph["f-bs"].body_owner)
+
+            pm.dump(graph, p)
+            raw_out = json.loads(p.read_text(encoding="utf-8"))
+            b1 = next(i for i in raw_out["items"] if i["id"] == "b1")
+            self.assertEqual(b1.get("body_owner"), "github")
+            self.assertNotIn("body_owner", b1.get("fields", {}))
+            self.assertEqual(pm.load(p)["b1"].body_owner, "github")
+
+    def test_unknown_body_owner_raises(self):
+        # A typo must not read as vault-owned — that is the dangerous default.
+        data = _fixture()
+        for raw in data["items"]:
+            if raw["id"] == "b1":
+                raw["body_owner"] = "gihub"
+        with self.assertRaises(pm.ModelError):
+            pm.parse_items(data)
+
     def test_dump_omits_none_structural_fields(self):
         with tempfile.TemporaryDirectory() as t:
             p = Path(t) / "board-items.json"

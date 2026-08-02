@@ -466,6 +466,53 @@ class TestPlanItemAction(unittest.TestCase):
         self.assertEqual(ps.plan_item_action(item, "body").kind, "update")
 
 
+class TestBodyOwnerGuard(unittest.TestCase):
+    """`body_owner: github` — the live issue body is authoritative, never rewritten."""
+
+    def test_body_owned_with_differing_body_is_noop(self):
+        # The dangerous case: vault render and live body disagree, which for a
+        # vault-owned item is exactly when UPDATE fires. Here it must not.
+        item = pm.Item(id="b1", type="backlog-item", title="B", issue=324,
+                       body_owner="github")
+        self.assertEqual(
+            ps.plan_item_action(item, "one-line digest",
+                                current_body="a long hand-written body").kind,
+            "noop")
+
+    def test_body_owned_with_unknown_live_state_is_noop(self):
+        # Deliberate inversion of test_existing_issue_unknown_state_forces_update:
+        # not knowing the live body is the strongest reason NOT to overwrite it.
+        item = pm.Item(id="b1", type="backlog-item", title="B", issue=324,
+                       body_owner="github")
+        self.assertEqual(ps.plan_item_action(item, "digest").kind, "noop")
+
+    def test_body_owned_without_issue_still_creates(self):
+        # Nothing human-written exists yet, so the vault authors the first body;
+        # the flag guards it from then on.
+        item = pm.Item(id="b1", type="backlog-item", title="B", body_owner="github")
+        self.assertEqual(ps.plan_item_action(item, "digest").kind, "create")
+
+    def test_vault_owned_is_unchanged(self):
+        # The guard must not leak into the default path.
+        item = pm.Item(id="v", type="version", title="V", issue=7)
+        self.assertEqual(
+            ps.plan_item_action(item, "new", current_body="old").kind, "update")
+        self.assertEqual(ps.plan_item_action(item, "body").kind, "update")
+
+    def test_body_owned_noop_yields_no_gh_commands(self):
+        # The guard is only worth anything if it reaches the command layer.
+        item = pm.Item(id="b1", type="backlog-item", title="B", issue=324,
+                       body_owner="github")
+        action = ps.plan_item_action(item, "digest", current_body="hand-written")
+        cfg = {"github": {"owner": "o", "number": 1, "repo": "o/r"}}
+        self.assertEqual(ps.build_commands(action, cfg), [])
+
+    def test_constant_matches_the_model(self):
+        # project_sync declares BODY_OWNER_GITHUB locally (project_model is loaded
+        # dynamically). Pin them so the two cannot drift into disagreeing.
+        self.assertEqual(ps.BODY_OWNER_GITHUB, pm.BODY_OWNER_GITHUB)
+
+
 class TestBuildCommands(unittest.TestCase):
     def test_noop_yields_no_commands(self):
         a = ps.Action("noop", "v", "V", "body", 7)

@@ -49,12 +49,32 @@ def drift_report_marker(drift: list) -> str:
     return f"<!-- board:driftreport:{digest} -->"
 
 
-def render_drift_report(drift: list) -> str:
+def render_drift_report(drift: list, body_owned: list | None = None) -> str:
+    """Render the comment body. ``body_owned`` lines are appended as their own
+    labelled section — they are context, not drift, so they never enter the
+    marker digest: a body-owned item is a steady state, and letting it change
+    the digest would re-post an otherwise-identical report."""
     lines = ["**Drift report** (report-only — no auto-correction):", ""]
     lines.extend(f"- {line}" for line in drift)
+    if body_owned:
+        lines.append("")
+        lines.append("Body owned by GitHub — reported, never corrected:")
+        lines.append("")
+        lines.extend(f"- {line}" for line in body_owned)
     lines.append("")
     lines.append(drift_report_marker(drift))
     return "\n".join(lines)
+
+
+def _print_body_owned(body_owned, out) -> None:
+    """Body-owned items are named on every path, including the clean one. A
+    correctly-configured item that never appears anywhere reads exactly like an
+    item nobody is tracking."""
+    if not body_owned:
+        return
+    print("report_drift: body owned by GitHub — reported, never corrected:", file=out)
+    for line in body_owned:
+        print(f"  {line}", file=out)
 
 
 def _find_version_issue(graph):
@@ -64,7 +84,8 @@ def _find_version_issue(graph):
     return None
 
 
-def run(graph, cfg, drift, *, ps=None, runner=None, dry_run=True, out=None) -> int:
+def run(graph, cfg, drift, *, body_owned=None, ps=None, runner=None,
+        dry_run=True, out=None) -> int:
     """Post `drift`'s findings as a single summary comment on the Version
     issue, or log the report when no Version issue resolves. Never mutates a
     board item — no item-edit, no issue-edit, no item-add; the only write
@@ -77,6 +98,7 @@ def run(graph, cfg, drift, *, ps=None, runner=None, dry_run=True, out=None) -> i
     runner = runner or ps._run_gh
     if not drift:
         print("report_drift: PASS — vault and board in sync", file=out)
+        _print_body_owned(body_owned, out)
         return 0
 
     version_issue = _find_version_issue(graph)
@@ -85,6 +107,7 @@ def run(graph, cfg, drift, *, ps=None, runner=None, dry_run=True, out=None) -> i
              "logging instead:", file=out)
         for line in drift:
             print(f"  {line}", file=out)
+        _print_body_owned(body_owned, out)
         return 1
 
     marker = drift_report_marker(drift)
@@ -93,7 +116,7 @@ def run(graph, cfg, drift, *, ps=None, runner=None, dry_run=True, out=None) -> i
              f"(issue #{version_issue})", file=out)
         return 1
 
-    body = render_drift_report(drift)
+    body = render_drift_report(drift, body_owned)
     argv = ps.issue_comment_argv(cfg["github"]["repo"], version_issue, body)
     if dry_run:
         print(ps.GhCommand(argv).render(), file=out)
@@ -141,7 +164,10 @@ def main(argv=None, *, runner=None, fetch=None) -> int:
                               active_plans=set(args.active_plans),
                               public=not args.private,
                               closed_issue_numbers=closed)
-    return run(graph, cfg, drift, ps=ps, runner=runner, dry_run=args.dry_run)
+    body_owned = cps.compute_body_owned(graph, pm=pm,
+                                        active_plans=set(args.active_plans))
+    return run(graph, cfg, drift, body_owned=body_owned, ps=ps, runner=runner,
+               dry_run=args.dry_run)
 
 
 if __name__ == "__main__":
