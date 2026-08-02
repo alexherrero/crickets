@@ -58,8 +58,13 @@ DEFERRED_MATERIALIZE = frozenset({"plan", "task"})
 # sentence and lands in `fields` (the template `{{placeholders}}`).
 _STRUCTURAL = frozenset({
     "id", "type", "title", "parent", "track", "priority",
-    "start", "target", "status", "issue", "silent_source", "fields",
+    "start", "target", "status", "issue", "silent_source", "body_owner", "fields",
 })
+
+# The only recognized `body_owner`. Anything else is a typo that would otherwise
+# read as "vault-owned" and quietly re-arm the issue-body overwrite this field
+# exists to prevent, so it raises instead of falling back.
+BODY_OWNER_GITHUB = "github"
 
 
 class ModelError(ValueError):
@@ -80,6 +85,7 @@ class Item:
     status: str | None = None
     issue: int | None = None            # materialized GitHub issue number (idempotent resolve)
     silent_source: str | None = None    # named in the vault, stripped from the public mirror
+    body_owner: str | None = None       # "github" → the live issue body is authoritative; never rewrite it
     fields: dict = field(default_factory=dict)   # model-supplied human sentences
     children: list = field(default_factory=list)  # resolved by build_graph (ordered)
 
@@ -113,6 +119,11 @@ def parse_items(data: dict) -> list:
         itype = raw["type"]
         if itype not in TYPES:
             raise ModelError(f"unknown type {itype!r} for item {iid!r} (allowed: {sorted(TYPES)})")
+        owner = raw.get("body_owner")
+        if owner is not None and owner != BODY_OWNER_GITHUB:
+            raise ModelError(
+                f"unknown body_owner {owner!r} for item {iid!r} "
+                f"(allowed: {BODY_OWNER_GITHUB!r}, or omit the key for vault-owned)")
         # Any non-structural key is a human-sentence placeholder; merge with an
         # explicit `fields` block if present.
         extra = {k: v for k, v in raw.items() if k not in _STRUCTURAL}
@@ -130,6 +141,7 @@ def parse_items(data: dict) -> list:
             status=raw.get("status"),
             issue=raw.get("issue"),
             silent_source=raw.get("silent_source"),
+            body_owner=owner,
             fields=fields,
         ))
     return items
@@ -268,7 +280,7 @@ def item_to_dict(item: Item) -> dict:
     'fields' round-trips cleanly)."""
     d: dict = {"id": item.id, "type": item.type, "title": item.title}
     for key in ("parent", "track", "priority", "start", "target", "status",
-                "issue", "silent_source"):
+                "issue", "silent_source", "body_owner"):
         value = getattr(item, key)
         if value is not None:
             d[key] = value

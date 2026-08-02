@@ -137,5 +137,18 @@ standalone: false
 #         were added); no ongoing caller depends on it, and sync_fields()
 #         never needed it. Recoverable via git history if a future field
 #         needs the same one-off additive-options treatment again.
-version: 0.3.6
+# 0.4.0 = PLAN-board-body-ownership task 1: `body_owner` joins the Item model
+#         as a structural key. "github" means the live issue body is
+#         authoritative and must never be rewritten from a template render,
+#         so an issue whose body a human wrote can be tracked in the vault
+#         without the vault flattening it. The key had to be added in four
+#         places at once -- _STRUCTURAL, the dataclass, parse_items, and
+#         to_dict -- because load_items() folds any *unrecognized* top-level
+#         key into .fields as a superset read: a body_owner missing from
+#         _STRUCTURAL sinks into fields, reads back as None, and silently
+#         re-arms the exact overwrite the field exists to prevent. An
+#         unrecognized value raises rather than defaulting, for the same
+#         reason. Additive and backward-compatible: an item without the key
+#         is vault-owned, today's behavior byte-for-byte.
+version: 0.4.0
 capabilities: [board-sync]
