@@ -33,6 +33,10 @@ Antigravity (`agy`) lacks a few host surfaces. Your crickets primitives depend o
 
 The `obsidian-vault` plugin's `conflict-merger-session-start` hook provides a concrete instance. It fires its GDrive/DriveFS conflict-file nudge at session boot on Claude Code only. Antigravity lacks a `SessionStart` event. The automatic nudge never fires there. You do **not lose** detection. You only lose the automatic nudge. You provide the plugin's `vault-doctor` skill (`supported_hosts: [claude-code, antigravity]`) as a substitute. You also provide the read-only `doctor_vault.py` `conflicts` check. You run this substitute on demand. See [Obsidian vault backend → Host coverage](Obsidian-Vault-Backend#host-coverage).
 
+The `developer-safety` plugin's `steer` hook is a second concrete instance, and a sharper one. It binds to Claude Code's `UserPromptSubmit`, and Antigravity has no equivalent event at all — `generate.py` reports `hook 'steer' event 'UserPromptSubmit' has no Antigravity equivalent — skipped` on every build. This is not the observe-only degradation the rest of this section describes. The hook is not emitted to the Antigravity payload in any form, because there is no event to bind it to. The other five hooks port with their `settings-fragment-*.json` surfaces; `steer` alone has nowhere to land.
+
+Recorded here 2026-08-02 when the porting work that would have chased it (crickets #18) was cancelled. The ADR→living-design half of that issue had already shipped, and the hook half is substantially done; this residual is what remained, and it is host-blocked rather than unfinished. **Re-assess when** `agy` ships a pre-prompt event.
+
 **Re-assess when** `agy` ships a file-based or plugin-installable hook surface.
 
 ## 3 — Multi-agent orchestration
