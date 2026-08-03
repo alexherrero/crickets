@@ -71,18 +71,18 @@ class TestBootstrapSmoke(unittest.TestCase):
     def _log_lines(self) -> list[str]:
         return self.log.read_text(encoding="utf-8").splitlines() if self.log.is_file() else []
 
-    def _env(self) -> dict:
+    def _env(self, repo: Path = _REPO) -> dict:
         env = dict(os.environ)
         env["HOME"] = str(self.home)
-        env["CRICKETS_REPO"] = str(_REPO)  # skip the network clone — use this checkout
+        env["CRICKETS_REPO"] = str(repo)  # skip the network clone — use this checkout
         # Stub dir first, then a minimal real PATH for python3/git/bash the
         # script itself needs — deliberately NOT the real claude/agy location.
         env["PATH"] = f"{self.bin}:/usr/bin:/bin"
         return env
 
-    def _run(self) -> subprocess.CompletedProcess:
+    def _run(self, repo: Path = _REPO) -> subprocess.CompletedProcess:
         return subprocess.run(
-            ["bash", str(_BOOTSTRAP)], env=self._env(), cwd=str(self.home),
+            ["bash", str(_BOOTSTRAP)], env=self._env(repo), cwd=str(self.home),
             capture_output=True, text=True, timeout=60,
         )
 
@@ -97,7 +97,7 @@ class TestBootstrapSmoke(unittest.TestCase):
         _write_stub(self.bin / "agy", self.log)
         result = self._run()
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("recommended plugins:", result.stdout)
+        self.assertIn("recommended plugins (install order):", result.stdout)
         for p in self.plugins:
             self.assertIn(p, result.stdout)
         self.assertIn("done. Installed crickets plugins for the detected host(s).", result.stdout)
@@ -111,6 +111,71 @@ class TestBootstrapSmoke(unittest.TestCase):
             self.assertTrue(any(f"{p}@crickets --scope user" in ln for ln in claude_installs), lines)
             self.assertTrue(any(f"antigravity/plugins/{p}" in ln for ln in agy_installs), lines)
         self.assertTrue(any(ln.startswith("claude plugin marketplace add") for ln in lines), lines)
+
+    def test_agy_installs_development_lifecycle_before_everything_requiring_it(self) -> None:
+        """`agy` resolves no cross-plugin deps, so bootstrap must order the loop.
+        Real-catalog check; the adversarial-name case is the next test."""
+        _write_stub(self.bin / "agy", self.log)
+        self.assertEqual(self._run().returncode, 0)
+        installed = [ln.rsplit("/", 1)[-1] for ln in self._log_lines()
+                     if ln.startswith("agy plugin install ")]
+        market = json.loads(
+            (_REPO / "dist" / "claude-code" / ".claude-plugin" / "marketplace.json")
+            .read_text(encoding="utf-8"))
+        dependents = [e["name"] for e in market["plugins"]
+                      if "development-lifecycle" in (e.get("dependencies") or [])]
+        self.assertTrue(dependents, "no plugin requires development-lifecycle — fixture is stale")
+        base = installed.index("development-lifecycle")
+        for name in dependents:
+            self.assertGreater(installed.index(name), base,
+                               f"{name} requires development-lifecycle but installs first: {installed}")
+
+    def test_agy_order_holds_when_the_dependent_sorts_first_alphabetically(self) -> None:
+        """The case today's catalog cannot exercise: `development-lifecycle`
+        already sorts ahead of all six dependents, so alphabetical order passes
+        the test above by accident. Here the dependent (`aardvark`) sorts FIRST
+        and requires a capability whose provider (`zulu`) sorts LAST — and the
+        capability name matches neither directory, as a renamed plugin's would.
+        """
+        repo = self.root / "fixture-repo"
+        (repo / ".git").mkdir(parents=True)          # present ⇒ bootstrap skips the clone
+        (repo / "scripts").mkdir()
+        (repo / "scripts" / "resolve_install_order.py").write_bytes(
+            (_REPO / "scripts" / "resolve_install_order.py").read_bytes())
+        dist = repo / "dist"
+        (dist / "claude-code" / ".claude-plugin").mkdir(parents=True)
+        (dist / "default-set.json").write_text(
+            json.dumps({"plugins": ["aardvark", "zulu"]}), encoding="utf-8")
+        (dist / "claude-code" / ".claude-plugin" / "marketplace.json").write_text(
+            json.dumps({"name": "crickets", "plugins": [
+                {"name": "aardvark", "dependencies": ["zebra-power"]},
+                {"name": "zulu", "capabilities": ["zebra-power"]},
+            ]}), encoding="utf-8")
+
+        _write_stub(self.bin / "agy", self.log)
+        result = self._run(repo)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        installed = [ln.rsplit("/", 1)[-1] for ln in self._log_lines()
+                     if ln.startswith("agy plugin install ")]
+        self.assertEqual(installed, ["zulu", "aardvark"], result.stdout)
+
+    def test_missing_order_script_warns_instead_of_ordering_silently(self) -> None:
+        """The fallback is catalog order — but it says so, rather than looking
+        like a resolved order."""
+        repo = self.root / "no-order-script"
+        (repo / ".git").mkdir(parents=True)
+        dist = repo / "dist"
+        dist.mkdir()
+        (dist / "default-set.json").write_text(
+            json.dumps({"plugins": ["aardvark", "zulu"]}), encoding="utf-8")
+
+        _write_stub(self.bin / "agy", self.log)
+        result = self._run(repo)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("installing in catalog order", result.stderr)
+        installed = [ln.rsplit("/", 1)[-1] for ln in self._log_lines()
+                     if ln.startswith("agy plugin install ")]
+        self.assertEqual(installed, ["aardvark", "zulu"])
 
     def test_claude_only_installs_nothing_via_agy(self) -> None:
         _write_stub(self.bin / "claude", self.log)

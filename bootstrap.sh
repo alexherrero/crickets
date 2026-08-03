@@ -25,7 +25,25 @@ if [ ! -f "$SET_FILE" ]; then
     exit 1
 fi
 DEFAULT_SET="$(python3 -c "import json; print(' '.join(json.load(open('$SET_FILE'))['plugins']))")"
-echo "==> recommended plugins: $DEFAULT_SET"
+
+# Install order is dependency-first, not alphabetical. `agy` resolves no
+# cross-plugin dependencies (1.0.2), so ordering is the installer's job; the
+# committed Claude marketplace render carries every plugin's `requires:` as
+# `dependencies` (host-agnostic metadata, same source as the enhancer tips
+# below), and resolve_install_order.py topologically sorts the set over those
+# edges. A cycle is fatal there — no silent fallback to catalog order.
+ORDER="$CRICKETS_REPO/scripts/resolve_install_order.py"
+MKT="$DIST/claude-code/.claude-plugin/marketplace.json"
+if [ -f "$ORDER" ] && [ -f "$MKT" ]; then
+    if ! DEFAULT_SET="$(python3 "$ORDER" "$MKT" $DEFAULT_SET | tr '\n' ' ')"; then
+        echo "bootstrap: cannot resolve a plugin install order (see above)" >&2
+        exit 1
+    fi
+else
+    echo "    WARN: $ORDER or $MKT missing — installing in catalog order," \
+         "which may install a plugin before something it requires" >&2
+fi
+echo "==> recommended plugins (install order): $DEFAULT_SET"
 
 installed_any=0
 
@@ -44,9 +62,10 @@ fi
 # ── Antigravity ─────────────────────────────────────────────────────────────
 # agy has NO marketplace-registration command — the `name@crickets` syntax is
 # Claude-only (it errors "unknown marketplace: crickets" on agy). So install
-# each plugin by its dist path. default-set.json is alphabetical, which already
-# places `developer-workflows` ahead of its `requires:` dependents (github-ci,
-# wiki). See wiki/how-to/Install-Into-Project.md § Mode 2.
+# each plugin by its dist path, in the dependency-first order resolved above —
+# `development-lifecycle` lands before the six plugins that require it
+# (conventions, design, diagnostics, github-projects, maintenance, research).
+# See wiki/how-to/Install-Into-Project.md § Option 2.
 if command -v agy >/dev/null 2>&1; then
     echo "==> Antigravity: installing (by path — agy has no marketplace)"
     for p in $DEFAULT_SET; do
@@ -68,7 +87,6 @@ fi
 # metadata is host-agnostic, so the committed Claude marketplace render is the
 # source whichever host(s) were installed.
 SUGGEST="$CRICKETS_REPO/scripts/suggest_enhancers.py"
-MKT="$DIST/claude-code/.claude-plugin/marketplace.json"
 if [ -f "$SUGGEST" ] && [ -f "$MKT" ]; then
     python3 "$SUGGEST" "$MKT" $DEFAULT_SET 2>/dev/null || true
 fi
