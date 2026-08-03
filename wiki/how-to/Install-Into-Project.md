@@ -4,7 +4,7 @@
 > **Goal:** Install the crickets plugins into Claude Code and/or Antigravity as native host plugins.
 > **Prereqs:** `claude` (Claude Code) and/or `agy` (Antigravity) on your PATH; `git`. No clone needed for the one-liner or the Claude marketplace.
 
-crickets ships as **native host plugins** generated from one source; the old `install.sh` dispatcher is gone ([Build system design](crickets-build-system)). There are six:
+crickets ships as **native host plugins** generated from one source; the old `install.sh` dispatcher is gone ([Build system design](crickets-build-system)). The default set is thirteen ([the full roster](Plugins)); these six are the ones the examples below use:
 
 | Plugin | Standalone? | What it adds |
 |---|---|---|
@@ -13,7 +13,7 @@ crickets ships as **native host plugins** generated from one source; the old `in
 | `code-review` | enhances `development-lifecycle`'s `review` | the adversarial-reviewer + cross-model adversarial-reviewer-cross agents, the `evidence-tracker` hook, and the standalone `/code-review` command. |
 | `maintenance` | requires `development-lifecycle` | CI workflows + dependabot-fixer. |
 | `privacy` | standalone | the PII guardrail — scrubber skill + pre-push detector. |
-| `wiki` | requires `development-lifecycle` | Diátaxis wiki authoring + maintenance. |
+| `wiki` | enhances `development-lifecycle`'s `documentation` | Diátaxis wiki authoring + maintenance. |
 
 There are three ways to install — the one-liner, per-plugin by name or path, or a single plugin with no marketplace — and every route lands the same plugins, so pick whichever fits how much setup you want.
 
@@ -41,13 +41,19 @@ claude plugin install code-review@crickets
 # repeat for any of: developer-safety, maintenance, privacy, wiki
 ```
 
-Antigravity (`agy` 1.0.2 or later) — by path from a clone; install `development-lifecycle` first (two plugins require it):
+Antigravity (`agy` 1.0.2 or later) — by path from a clone. `agy` resolves no cross-plugin dependencies, so **install `development-lifecycle` first**: six plugins require it (`conventions`, `design`, `diagnostics`, `github-projects`, `maintenance`, `research`), and installing one of them alone leaves its `requires:` unsatisfied.
 
 ```bash
 git clone https://github.com/alexherrero/crickets.git ~/Antigravity/crickets
 for p in development-lifecycle developer-safety code-review maintenance privacy wiki; do
   agy plugin install ~/Antigravity/crickets/dist/antigravity/plugins/$p
 done
+```
+
+To let the order be worked out for you, ask the resolver the one-liner uses — it topologically sorts any set of plugins over their declared `requires:` and fails loudly on a cycle:
+
+```bash
+python3 ~/Antigravity/crickets/scripts/resolve_install_order.py ~/Antigravity/crickets/dist/claude-code/.claude-plugin/marketplace.json development-lifecycle maintenance wiki
 ```
 
 **Option 3 — one plugin, no marketplace.** Good for trying a single plugin. On Claude Code, load it for one session:
