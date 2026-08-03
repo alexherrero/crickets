@@ -39,4 +39,4 @@ The [wiki](https://github.com/alexherrero/crickets/wiki) covers everything there
 ---
 
 > [!NOTE]
-> **Latest release: [v3.35.0](https://github.com/alexherrero/crickets/releases/tag/v3.35.0).** An issue whose body a human wrote can now be tracked on the board without the board flattening it — `body_owner: "github"` makes the live body authoritative, so sync reports it and never rewrites it.
+> **Latest release: [v3.36.0](https://github.com/alexherrero/crickets/releases/tag/v3.36.0).** The board can say "parked" now, and something finally checks what it says — a new gate fails when a row's status disagrees with its issue being open or closed, in either direction.
