@@ -4,7 +4,7 @@ status: launched
 kind: design
 scope: feature
 area: crickets/wiki
-governs: [src/wiki-maintenance/]
+governs: [src/wiki/]
 parent: crickets-hld.md
 seeded: 2026-06-20
 approved: 2026-06-23
