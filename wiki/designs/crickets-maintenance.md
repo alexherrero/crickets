@@ -4,7 +4,7 @@ status: launched
 kind: design
 scope: feature
 area: crickets/maintenance
-governs: [src/github-ci/]
+governs: [src/maintenance/]
 parent: crickets-hld.md
 seeded: 2026-06-23
 approved: 2026-06-23
