@@ -147,6 +147,15 @@ jobs:
         # stays green — it earns its keep in a board-synced checkout. Linux-only:
         # it's a deterministic Python gate, no per-OS portability surface.
         run: python3 src/github-projects/scripts/check_project_sync.py
+      - name: github-projects status==issue-state invariant gate (graceful-skip)
+        # A different axis from the body-diff gate above, which is why both run:
+        # `status` appears in no issue-body template, so a row left Todo whose
+        # issue closed months ago is zero drift there, by construction. That gap
+        # is how two boards accumulated ~35 stale open issues under green checks.
+        # Same CI posture as its sibling — .harness/project.json lives in the
+        # gitignored vault, so this graceful-skips here and earns its keep in a
+        # board-synced checkout. Linux-only: deterministic Python, no per-OS surface.
+        run: python3 src/github-projects/scripts/check_status_invariant.py
       - name: Tag-reachability gate (all tags must be on main)
         # Concurrent-release coordination backstop: tags must point to commits
         # reachable from main, not worker/plan-branch tips. Graceful-skip when

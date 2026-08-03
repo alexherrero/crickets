@@ -77,6 +77,10 @@ run "check-syntax"   bash scripts/check-syntax.sh
 run "hook-parity"    python3 scripts/check-hook-parity.py
 run "check-no-pii"   bash scripts/check-no-pii.sh --all
 run "board sync"     python3 src/github-projects/scripts/check_project_sync.py
+# Different axis from "board sync" above: that one diffs rendered issue BODIES,
+# and `status` is in no template — so a Todo row whose issue closed months ago
+# is zero drift there, by construction. This asserts status vs issue state.
+run "status invariant" python3 src/github-projects/scripts/check_status_invariant.py
 run "tag-reachability" python3 scripts/check_tag_reachability.py
 
 echo

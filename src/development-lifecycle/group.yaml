@@ -584,5 +584,5 @@ enhances:
 # work.md fires post-work after each task's commit (step 9.6), release.md
 # fires post-release after the release lands (step 8.5). Both graceful-skip
 # identically to every other verb.
-version: 0.42.0
+version: 0.43.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

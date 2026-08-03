@@ -35,7 +35,7 @@
       "description": "Day-to-day testing + release discipline in one plugin — tests-are-sacred, verification-first, the 3-layer pyramid, the pre-release checklist, changelog-shape, and paired-release coordination for cross-repo releases.",
       "name": "conventions",
       "source": "./plugins/conventions",
-      "version": "0.10.0"
+      "version": "0.11.0"
     },
     {
       "capabilities": [
@@ -87,7 +87,7 @@
       ],
       "name": "development-lifecycle",
       "source": "./plugins/development-lifecycle",
-      "version": "0.42.0"
+      "version": "0.43.0"
     },
     {
       "capabilities": [
@@ -118,7 +118,7 @@
       "description": "One-way, deterministic board-sync — synthesizes a vault project's roadmap/plan/progress state onto a GitHub Project board via six locked per-type templates, a single idempotent project_sync.py write path, and a vault==board drift gate. The vault stays the agent's source of truth; the board is the generated human source.",
       "name": "github-projects",
       "source": "./plugins/github-projects",
-      "version": "0.4.0"
+      "version": "0.5.0"
     },
     {
       "capabilities": [

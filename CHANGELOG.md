@@ -5,6 +5,32 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.36.0] — 2026-08-02 — Minor: the board can say "parked", and something finally checks it
+
+**MINOR.** Two GitHub Project boards showed roughly 35 open issues while the roadmap declared every arc complete — under fully green checks. The drift gate diffs rendered issue *bodies*, and status appears in no body template, so a row left Todo whose issue closed months ago was zero drift by construction. Nothing was checking that axis at all.
+
+### Added
+
+- **A `Parked` status, and a `post --park` transition that reaches it** (`github-projects 0.4.0 → 0.5.0`). The board had three options — Todo, In Progress, Done — and no way to say "deliberately deferred". Work adjudicated out of an arc therefore stayed Todo forever, which is most of why the boards read as busy. Parking sets Status to `Parked` and closes the issue as **not planned**, so the open-issue count stays honest while the item stays queryable and visibly distinct from work that actually shipped. It applies to any item type: a Version or Backlog-item set down for the arc parks exactly like a task.
+
+  Parking rides its own flag rather than a `--type <itype>-park` update, because it records a *decision about* the work rather than progress *on* it — it folds no template content and posts no comment, so `apply_update`'s seam was the wrong one. The option itself was added to both live boards by the additive procedure the design already specified (every existing option resubmitted with its id, the new one without): zero item churn across all 371 items, every pre-existing option id unchanged.
+
+- **`check_status_invariant.py` — a gate on the axis the body gate cannot see.** A non-Done row whose issue is closed means the vault lags reality; a Done or Parked row whose issue is still open means the close never landed. Both directions fail the gate. Built as a separate reader over the same primitives rather than as an extension of `compute_drift`, because the drift oracle is never modified from below and three other modules route through its behavior.
+
+  Verified against the pre-sweep vault — the exact state where the existing gate reported PASS — where it flags precisely the 19 known-stale rows and nothing else. It cannot run in CI and does not pretend to: `.harness/` is gitignored, so its config is absent there and it skips at exit 0. Exit 2 is reserved for a failed read, so a rate-limited run is never mistaken for a clean one.
+
+- **A release must close every `GH #N` it names** (`conventions 0.10.0 → 0.11.0`). Coalescence item 3 ("boards reconciled") was prose a human was trusted to honor, and the one mechanical check nearby covers only the single shipping row and silently skips when none is passed. Fed the real v9.0.2 and v9.0.3 release bodies with the issue states as they actually were, this check fails both — those releases each named their roadmap id verbatim while the issue stayed open for weeks. Matching is deliberately narrow: a bare `#123` is almost always a PR link, and a merged PR closes by a different mechanism than the issue it ships.
+
+### Changed
+
+- **The release close-out now reaches work a release *fulfilled*, not only work it created** (`development-lifecycle 0.42.0 → 0.43.0`). The step existed and ran correctly; its scope was the gap. It covered the shipping Plan and its parent Feature, so a release that satisfied a pre-existing backlog row — by opening a fresh Plan, shipping it, and flipping that Plan Done — left the older row at Todo indefinitely. Fulfilled rows now record a `promotion` to whatever actually shipped them, so the linkage survives instead of the row quietly vanishing, and era containers close once their scope has landed. Both need an explicit close: a status-flipped non-task post writes the Status field and never closes the issue. A container with live child scope names where that scope moved before closing, or the close orphans it.
+
+### Internal
+
+- **A parent-closes-when-all-children-close rule was evaluated and rejected.** "All children closed" is vacuously true of a childless container, so the rule reduces to *close every container with no children* — which would have closed a genuinely open row while still leaving V6 open, since V6 has a live child. It would have fixed none of the four containers it was proposed for. The real defect was never missing roll-up; it was that nothing checked status against reality.
+- **Two live behaviors documented because they surprised this work.** The boards run a built-in auto-close workflow, so setting Status to Done closes the linked issue — which is also why board status and issue state agreed perfectly beforehand. And `gh issue close` discards `--comment` when the issue is already closed, so no close-with-comment path may assume the comment landed.
+- Both governing designs amended in the same landing, with the rejected alternatives and re-audit triggers recorded. 34 new tests across the three additions.
+
 ## [v3.35.0] — 2026-08-01 — Minor: an issue can be tracked without being rewritten
 
 **MINOR.** Board sync assumed the vault owns every issue body it tracks — the assumption that makes `update` drift safe to auto-correct. Five real, open issues on agentm's board broke it: a human had written each one in full, while every board template renders a single-line digest. Reconciling them the obvious way turned out to arm their destruction.

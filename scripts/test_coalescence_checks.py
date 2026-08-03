@@ -258,3 +258,68 @@ class MainEndToEndTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ExtractGhRefsTests(unittest.TestCase):
+    def test_finds_the_real_v9_0_2_form(self):
+        # The literal shape that shipped: "Plan A of 2 (GH #70)".
+        body = ("**PATCH.** Loose Ends Release 3, Plan A of 2 (GH #70). Builds "
+                "out the install-mode x OS test matrix.")
+        self.assertEqual(cc.extract_gh_refs(body), [70])
+
+    def test_finds_several_and_dedupes_preserving_order(self):
+        body = "ships GH #72 and GH #45, and again GH #72"
+        self.assertEqual(cc.extract_gh_refs(body), [72, 45])
+
+    def test_is_case_insensitive(self):
+        self.assertEqual(cc.extract_gh_refs("closes gh #9"), [9])
+
+    def test_ignores_a_bare_pr_reference(self):
+        # A bare #359 is a PR link; a merged PR closes by a different mechanism
+        # than the issue it ships, so matching it would fail every release.
+        self.assertEqual(cc.extract_gh_refs("merged in #359, see also #12"), [])
+
+    def test_empty_or_none_body_yields_nothing(self):
+        self.assertEqual(cc.extract_gh_refs(""), [])
+        self.assertEqual(cc.extract_gh_refs(None), [])
+
+
+class ReleaseBodyRefsClosedTests(unittest.TestCase):
+    def _check(self, body, states, **kw):
+        return cc.check_release_body_refs_closed(
+            body, gh_repo="o/r",
+            gh_issue_state_fn=lambda repo, n: states.get(n), **kw)
+
+    def test_fails_when_a_named_id_is_still_open(self):
+        # THE regression. v9.0.2's body named GH #70 while #70 stayed open for
+        # weeks. This check would have stopped that release.
+        r = self._check("Plan A of 2 (GH #70).", {70: "OPEN"})
+        self.assertEqual(r.status, "fail")
+        self.assertIn("#70", r.message)
+
+    def test_passes_when_every_named_id_is_closed(self):
+        r = self._check("ships GH #70 and GH #72", {70: "CLOSED", 72: "CLOSED"})
+        self.assertEqual(r.status, "pass")
+
+    def test_fails_naming_only_the_open_ones(self):
+        r = self._check("ships GH #70 and GH #72", {70: "CLOSED", 72: "OPEN"})
+        self.assertEqual(r.status, "fail")
+        self.assertIn("#72", r.message)
+        self.assertNotIn("#70", r.message)
+
+    def test_passes_when_the_body_names_no_ids(self):
+        r = self._check("a routine patch release", {})
+        self.assertEqual(r.status, "pass")
+
+    def test_an_unreadable_id_is_skipped_not_failed(self):
+        # gh unavailable, or the ref resolves to a PR — must not block a release.
+        r = self._check("ships GH #70", {70: None})
+        self.assertEqual(r.status, "pass")
+        self.assertIn("unreadable", r.message)
+
+    def test_skips_without_a_body(self):
+        self.assertEqual(cc.check_release_body_refs_closed(None).status, "skip")
+
+    def test_skips_when_ids_are_named_but_no_repo_is_given(self):
+        r = cc.check_release_body_refs_closed("ships GH #70")
+        self.assertEqual(r.status, "skip")
