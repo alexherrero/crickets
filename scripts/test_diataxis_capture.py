@@ -142,10 +142,14 @@ class TestWritePathRoundTrip(unittest.TestCase):
                 "global", vault_path=vault, mode="silent", datestamp=_STAMP)
             self.assertIsNotNone(written)
             self.assertTrue(written.is_file())
-            # Correct on-demand store, NOT _always-load.
+            # Correct on-demand store, NOT _always-load. An empty scratch vault
+            # has no project space on any layout, so the write lands in the
+            # current one (see vault_layout.PROJECT_SPACE_SEGMENTS); a vault
+            # still on the older `projects/` rung is covered in
+            # test_vault_layout.py.
             self.assertEqual(
                 written,
-                vault / "projects" / "_global" / "wiki-style"
+                vault / "desk" / "projects" / "_global" / "wiki-style"
                 / f"{_STAMP}-peacock-words.md")
             self.assertNotIn("_always-load", str(written))
             self.assertFalse((vault / "personal" / "_always-load").exists())
@@ -175,14 +179,15 @@ class TestWritePathRoundTrip(unittest.TestCase):
             # No slug -> nothing written.
             self.assertIsNone(amc.confirm_save_lesson(
                 "t", "g", "per-project", vault_path=vault, mode="silent", datestamp=_STAMP))
-            # With slug -> writes under projects/<slug>/wiki-style/ and round-trips.
+            # With slug -> writes under <projects-space>/<slug>/wiki-style/ and
+            # round-trips. Empty scratch vault -> the current layout.
             written = amc.confirm_save_lesson(
                 "domain-term", "Prefer 'plugin' over 'extension' in this project.",
                 "per-project", vault_path=vault, project_slug="crickets",
                 mode="silent", datestamp=_STAMP)
             self.assertEqual(
                 written,
-                vault / "projects" / "crickets" / "wiki-style"
+                vault / "desk" / "projects" / "crickets" / "wiki-style"
                 / f"{_STAMP}-domain-term.md")
             resolved = sr.resolve_style(
                 vault_path=vault, project_slug="crickets", base_text="")
@@ -236,8 +241,11 @@ class TestNeverAutoCommit(unittest.TestCase):
                     "t", "g", "global", vault_path=vault,
                     mode="auto", stdin=io.StringIO(""), datestamp=_STAMP)
             self.assertIsNone(written)
-            # Denied write created nothing under the (now top-level) projects root.
+            # Denied write created nothing under the project space — on the
+            # current layout or any older one the probe would have fallen back to.
+            self.assertFalse((vault / "desk").exists())
             self.assertFalse((vault / "projects").exists())
+            self.assertFalse((vault / "personal-projects").exists())
 
     def test_interactive_non_tty_defaults_to_deny(self):
         with tempfile.TemporaryDirectory() as td:

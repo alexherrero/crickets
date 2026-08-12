@@ -35,7 +35,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/prose_pass.py" path/to/doc.md \
   -o /tmp/doc.revised.md
 ```
 
-The script assembles a four-block prompt — task header, your fact-guard list, the operator's voice pack (the always-load voice kernel plus the genre overlay, inlined verbatim from the vault), the document — and sends it to `agy` in one shot. For a genre other than design docs, point `--overlay` at the matching file under `projects/_global/wiki-style/`. The vault resolves at runtime; never pass a remembered absolute path.
+The script assembles a four-block prompt — task header, your fact-guard list, the operator's voice pack (the always-load voice kernel plus the genre overlay, inlined verbatim from the vault), the document — and sends it to `agy` in one shot. For a genre other than design docs, point `--overlay` at the matching file in the vault's global wiki-style store (`desk/projects/_global/wiki-style/` on the current vault layout; the script probes older layouts too). The vault resolves at runtime; never pass a remembered absolute path.
 
 | Exit | Meaning | What you do |
 |---|---|---|

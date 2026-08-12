@@ -30,6 +30,12 @@ import sys
 from datetime import date
 from pathlib import Path
 
+_SCRIPTS_DIR = Path(__file__).resolve().parent
+if str(_SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS_DIR))
+
+import vault_layout  # noqa: E402  (needs the sys.path insert above)
+
 
 # Hardcoded ADR 0004 defaults — used when no operator entries exist anywhere.
 _DEFAULTS = {
@@ -280,15 +286,18 @@ def lesson_target(
 ) -> tuple[Path | None, bool]:
     """Resolve (target_path, writes_outside_vault) for a voice lesson by scope.
 
-      global      -> <vault>/projects/_global/wiki-style/<date>-<trigger>.md
-      per-project -> <vault>/projects/<slug>/wiki-style/<date>-<trigger>.md
+      global      -> <projects-space>/_global/wiki-style/<date>-<trigger>.md
+      per-project -> <projects-space>/<slug>/wiki-style/<date>-<trigger>.md
       per-repo    -> <wiki_root>/.diataxis-conventions.md   (OUTSIDE the vault)
 
-    Project-keyed stores live under the top-level `projects/` root (canonical
-    post-V4#26 layout; see agentm ADR 0010 vault internal taxonomy) — NOT under
-    `personal/` (that root is for personal, non-project-keyed data; its
-    `_always-load/` subset is the always-injected globals). `_global` is the
-    reserved cross-project pseudo-project.
+    Project-keyed stores live in the vault's project space (see agentm ADR 0010
+    vault internal taxonomy) — NOT under `personal/` (that root is for personal,
+    non-project-keyed data; its `_always-load/` subset is the always-injected
+    globals). `_global` is the reserved cross-project pseudo-project.
+
+    `vault_layout` resolves the project space, so a captured lesson lands in
+    the same directory `style_resolver` reads back — one probe chain for both
+    sides, on whichever layout generation this vault is sitting on.
 
     The date-prefixed filename gives the directory scopes their recent-wins order
     (the resolver sorts by filename within a scope). Returns (None, False) when
@@ -298,12 +307,12 @@ def lesson_target(
     if scope == "global":
         if vault_path is None:
             return None, False
-        d = Path(vault_path) / "projects" / "_global" / "wiki-style"
+        d = vault_layout.global_wiki_style_dir(vault_path)
         return d / f"{datestamp}-{trig}.md", False
     if scope == "per-project":
         if vault_path is None or not project_slug:
             return None, False
-        d = Path(vault_path) / "projects" / project_slug / "wiki-style"
+        d = vault_layout.project_wiki_style_dir(vault_path, project_slug)
         return d / f"{datestamp}-{trig}.md", False
     if scope == "per-repo":
         if wiki_root is None:

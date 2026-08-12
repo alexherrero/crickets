@@ -396,7 +396,7 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument(
         "--project-slug", default=None,
         help="project slug for the per-project voice scope "
-             "(projects/<slug>/wiki-style/; absent → skip the per-project scope)",
+             "(<projects-space>/<slug>/wiki-style/; absent → skip the per-project scope)",
     )
     parser.add_argument(
         "--overwrite", action="store_true",

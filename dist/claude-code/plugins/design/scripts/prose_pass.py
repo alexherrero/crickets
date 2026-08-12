@@ -60,7 +60,7 @@ Options:
   --fact-guard <file>        file with one must-not-drift truth per line
   --fact-guard-text <line>   inline guard line (repeatable; adds to --fact-guard)
   --overlay <path>           genre voice overlay — absolute, vault-relative, or a
-                             bare filename under projects/_global/wiki-style/
+                             bare filename in the vault's global wiki-style store
                              (default: 2026-06-09-design-doc-prose.md)
   --voice-kernel <path>      override the always-load voice kernel (default:
                              <vault>/personal/_always-load/voice-kernel.md)
@@ -109,8 +109,19 @@ from pathlib import Path
 MODEL_DEFAULT = "Gemini 3.1 Pro (High)"
 TIMEOUT_DEFAULT = "480s"
 VOICE_KERNEL_REL = "personal/_always-load/voice-kernel.md"
-WIKI_STYLE_REL = "projects/_global/wiki-style"
 OVERLAY_DEFAULT = "2026-06-09-design-doc-prose.md"
+
+# The vault's project-keyed space, newest layout generation first. The stage-2
+# four-space migration (2026-08-11) pushed it down to `desk/projects/`; V4 #26
+# had already renamed `personal-projects/` to `projects/`. Probing beats a
+# pinned literal: a vault on an older rung keeps working, and a vault that
+# migrates keeps working without a code change. Same shape as agentm's
+# scripts/migrate-harness-to-vault.sh. Duplicated locally rather than imported
+# from the wiki plugin's vault_layout.py — plugins emit independently into
+# dist/, the same reason resolve_vault_path below mirrors harness_memory
+# instead of importing it.
+PROJECT_SPACE_SEGMENTS = ("desk/projects", "projects", "personal-projects")
+WIKI_STYLE_LEAF = "_global/wiki-style"
 
 TASK_HEADER = """\
 You are running a simplification/readability pass on the document below.
@@ -402,6 +413,20 @@ def resolve_agy_cmd() -> list[str] | None:
     return [agy_bin] if agy_bin else None
 
 
+def wiki_style_dir(vault: Path) -> Path:
+    """The vault's global wiki-style overlay store, newest layout first.
+
+    Returns the first generation that exists; with none present, the current
+    layout — never a literal pinned to one generation.
+    """
+    for seg in PROJECT_SPACE_SEGMENTS:
+        cand = vault.joinpath(*seg.split("/"), *WIKI_STYLE_LEAF.split("/"))
+        if cand.is_dir():
+            return cand
+    return vault.joinpath(*PROJECT_SPACE_SEGMENTS[0].split("/"),
+                          *WIKI_STYLE_LEAF.split("/"))
+
+
 def resolve_overlay(vault: Path, overlay_arg: str) -> Path:
     """Absolute path → as-is; else vault-relative; else a bare filename under
     the wiki-style overlay directory."""
@@ -411,7 +436,7 @@ def resolve_overlay(vault: Path, overlay_arg: str) -> Path:
     rel = vault / overlay_arg
     if rel.is_file():
         return rel
-    return vault / WIKI_STYLE_REL / overlay_arg
+    return wiki_style_dir(vault) / overlay_arg
 
 
 # ── flow ─────────────────────────────────────────────────────────────────────
