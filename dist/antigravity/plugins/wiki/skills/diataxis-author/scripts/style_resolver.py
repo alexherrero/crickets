@@ -11,9 +11,12 @@
 #                       full personal entry layers on at runtime as a vault overlay.
 #   Overlay           — learned voice lessons read ON-DEMAND (never _always-load)
 #                       from three scopes, narrower + recent wins:
-#                         global      <vault>/projects/_global/wiki-style/*.md
-#                         per-project <vault>/projects/<slug>/wiki-style/*.md
+#                         global      <projects-space>/_global/wiki-style/*.md
+#                         per-project <projects-space>/<slug>/wiki-style/*.md
 #                         per-repo    <wiki-root>/.diataxis-conventions.md
+#                       <projects-space> is resolved per-vault by vault_layout
+#                       (desk/projects → projects → personal-projects), never
+#                       pinned to one layout generation.
 #                       Precedence (lowest→highest): global → project → repo. On a
 #                       trigger conflict the narrower scope wins.
 #
@@ -35,6 +38,8 @@ from pathlib import Path
 _SCRIPTS_DIR = Path(__file__).resolve().parent
 if str(_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS_DIR))
+
+import vault_layout  # noqa: E402  (needs the sys.path insert above)
 
 # The committed base style-guide floor — ships in dist/ alongside the skill,
 # at <skill-root>/style/base-style-guide.md.
@@ -137,6 +142,34 @@ def _read_per_repo_lessons(wiki_root: Path | None) -> list:
     return [parse_lesson(text, scope="per-repo", source=f.name)]
 
 
+def _warn_if_no_overlay_store(vault_path: Path) -> None:
+    """One stderr line when a vault has no global overlay store on any layout.
+
+    This is the guard on the failure this resolver already shipped once: the
+    voice overlays moved with the vault, the read path stayed pinned to the old
+    layout, `read_scope_lessons` reported a missing directory as "no lessons",
+    and every authored draft quietly lost the operator's learned voice.
+
+    The discrimination that matters is present-but-empty vs absent-everywhere.
+    A store that exists with nothing in it is a legitimate state — an operator
+    who has captured no lessons yet — and says nothing. A store that exists on
+    no known layout means either the vault moved again or it was never
+    created, and both are worth a word at the moment of harm: the draft being
+    authored right now is the one going out without the voice.
+
+    A note, not an error. Authoring on the committed base floor alone is the
+    documented fallback; it should just stop being invisible.
+    """
+    if vault_layout.global_wiki_style_dir_if_present(vault_path) is None:
+        expected = vault_layout.global_wiki_style_dir(vault_path)
+        print(
+            f"style_resolver: no voice-overlay store under {vault_path} on any known "
+            f"vault layout — authoring on the committed base style guide alone. "
+            f"Expected {expected} (or an older layout's equivalent).",
+            file=sys.stderr,
+        )
+
+
 def resolve_style(
     *,
     wiki_root: Path | None = None,
@@ -162,15 +195,17 @@ def resolve_style(
 
     if vault_path is not None:
         vp = Path(vault_path)
-        # Project-keyed stores live under the top-level `projects/` root (the
-        # canonical post-V4#26 layout agentm + the live vault use) — NOT under
-        # `personal/`, which is for personal, non-project-keyed data.
-        # `_global` is a reserved pseudo-project for cross-project on-demand
-        # conventions. See agentm ADR 0010 (vault internal taxonomy).
-        gdir = vp / "projects" / "_global" / "wiki-style"
+        # Project-keyed stores live in the vault's project space — NOT under
+        # `personal/`, which is for personal, non-project-keyed data. `_global`
+        # is a reserved pseudo-project for cross-project on-demand conventions.
+        # See agentm ADR 0010 (vault internal taxonomy). The space itself has
+        # moved between layout generations, so vault_layout probes for it
+        # rather than pinning one path (see its header).
+        gdir = vault_layout.global_wiki_style_dir(vp)
+        _warn_if_no_overlay_store(vp)
         _apply(read_scope_lessons(gdir, "global"))
         if project_slug:
-            pdir = vp / "projects" / project_slug / "wiki-style"
+            pdir = vault_layout.project_wiki_style_dir(vp, project_slug)
             _apply(read_scope_lessons(pdir, "per-project"))
     _apply(_read_per_repo_lessons(wiki_root))
 

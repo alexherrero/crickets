@@ -128,7 +128,17 @@ standalone: true
 #          capabilities: is composition-layer soft-aliasing (crickets-
 #          composition.md), renamed_from: is the host-marketplace plugin-
 #          name rename; the two mechanisms solve different problems.
-version: 0.9.0
+# 0.9.1: new scripts/vault_layout.py -- one probe chain for the vault's
+#         project-keyed space (desk/projects -> projects -> personal-projects),
+#         called by BOTH the overlay read path (style_resolver, rule_pack) and
+#         the write paths (agentmemory_conventions capture, relocate), so a
+#         captured voice lesson always lands where the resolver reads it back.
+#         Fixes the silent miss the stage-2 four-space migration caused on
+#         2026-08-11: nine learned voice lessons orphaned under the old
+#         literal, absent from every authored draft, nothing raised.
+#         style_resolver now also prints one stderr note when no overlay store
+#         exists on any layout -- present-but-empty stays silent.
+version: 0.9.1
 capabilities: [wiki-maintenance, wiki]
 renamed_from: [wiki-maintenance]
 enhances:

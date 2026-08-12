@@ -109,7 +109,10 @@ class TestClaudeEmitter(unittest.TestCase):
         # 0.9.0 = Loose Ends arc, "Release and generator polish" task 2 —
         # declares renamed_from: [wiki-maintenance], the single-hop proof of
         # the generator's new Claude Code marketplace renames map.
-        self.assertEqual(self._plugin_json("wiki")["version"], "0.9.0")
+        # 0.9.1 = scripts/vault_layout.py — the voice-overlay read and write
+        # paths probe the vault's project-space layout generations instead of
+        # pinning `projects/`, which the stage-2 migration silently emptied.
+        self.assertEqual(self._plugin_json("wiki")["version"], "0.9.1")
         # 0.3.0 = check-no-pii.sh + templates/hooks/pre-push moved into src/pii/
         # so they actually ship inside the plugin payload (R2.4 task 7).
         # 0.3.1 = check-no-pii.sh scan collapsed to one grep per file (fixes a

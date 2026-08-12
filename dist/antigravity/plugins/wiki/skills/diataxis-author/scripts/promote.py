@@ -3,7 +3,7 @@
 # (wiki-maintenance part 5/5, dogfood-finale, task 2).
 #
 # Graduates a PROVEN overlay voice lesson — from the on-demand store the resolver
-# reads (`<vault>/projects/_global/wiki-style/<date>-<trigger>.md`, per-project,
+# reads (`<projects-space>/_global/wiki-style/<date>-<trigger>.md`, per-project,
 # or a per-repo `.diataxis-conventions.md`) — INTO the committed repo base
 # `src/wiki/skills/diataxis-author/style/base-style-guide.md`, so
 # every fresh draft inherits it without the overlay. This is the `promote` path

@@ -299,11 +299,24 @@ class VaultResolutionTests(unittest.TestCase):
         self.assertIsNone(prose_pass.resolve_vault_path("/nonexistent/vault/path"))
 
     def test_overlay_bare_filename_lands_in_wiki_style(self):
+        # A vault path that doesn't exist has no project space to probe, so the
+        # bare filename resolves into the current layout's store.
         vault = Path("/v")
         self.assertEqual(
             prose_pass.resolve_overlay(vault, "2026-06-09-design-doc-prose.md"),
-            vault / "projects/_global/wiki-style/2026-06-09-design-doc-prose.md",
+            vault / "desk/projects/_global/wiki-style/2026-06-09-design-doc-prose.md",
         )
+
+    def test_overlay_bare_filename_follows_an_unmigrated_vault(self):
+        # The store still on the pre-stage-2 rung is found there, not shadowed
+        # by the current-layout default. (Full layout matrix: test_vault_layout.py.)
+        with tempfile.TemporaryDirectory() as td:
+            vault = Path(td)
+            (vault / "projects" / "_global" / "wiki-style").mkdir(parents=True)
+            self.assertEqual(
+                prose_pass.resolve_overlay(vault, "2026-06-09-design-doc-prose.md"),
+                vault / "projects/_global/wiki-style/2026-06-09-design-doc-prose.md",
+            )
 
 
 # ── e2e: fake agy wired in via $PROSE_PASS_TEST_AGY_CMD ──────────────────────
@@ -381,6 +394,9 @@ else:
 
 
 def _make_vault(root: Path) -> Path:
+    # Deliberately built on the PRE-stage-2 `projects/` rung: the e2e path must
+    # keep working on a vault that never migrated. The current `desk/projects/`
+    # layout is covered in test_vault_layout.py.
     vault = root / "vault"
     kernel = vault / "personal" / "_always-load"
     style = vault / "projects" / "_global" / "wiki-style"

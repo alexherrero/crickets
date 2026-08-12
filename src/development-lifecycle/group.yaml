@@ -584,5 +584,9 @@ enhances:
 # work.md fires post-work after each task's commit (step 9.6), release.md
 # fires post-release after the release lands (step 8.5). Both graceful-skip
 # identically to every other verb.
-version: 0.43.0
+# 0.43.1: resolve_project.py probes the same layout chain for the vault's
+#          project space, in scan_vault_projects and in the recall-hit slug
+#          match. Both were pinned to the pre-stage-2 `projects/` literal, so
+#          `/open` silently lost its vault-projects source on a migrated vault.
+version: 0.43.1
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

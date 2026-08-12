@@ -14,6 +14,11 @@ import sys
 from pathlib import Path
 
 _SCRIPTS_DIR = Path(__file__).resolve().parent
+if str(_SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS_DIR))
+
+import vault_layout  # noqa: E402  (needs the sys.path insert above)
+
 _SKILL_ROOT = _SCRIPTS_DIR.parent
 _RULE_PACK_PATH = _SKILL_ROOT / "style" / "voice-rules.json"
 
@@ -23,6 +28,8 @@ _VALID_KINDS = ("word", "phrase", "template", "metric")
 
 _OVERLAY_SCOPE_ORDER = ("global", "per-project", "per-repo")
 _PER_REPO_OVERLAY_FILE = ".diataxis-voice-rules.json"
+# The vault-side overlay filename in the global / per-project wiki-style stores.
+_OVERLAY_FILE = "voice-rules-overlay.json"
 
 
 class RulePackError(ValueError):
@@ -96,11 +103,13 @@ def load_rule_pack(
 
     if vault_path is not None:
         vp = Path(vault_path)
-        gdir = vp / "projects" / "_global" / "wiki-style" / "voice-rules-overlay.json"
+        gdir = vault_layout.resolve_under_projects(
+            vp, "_global", "wiki-style", _OVERLAY_FILE)
         for r in _read_overlay(gdir).get("rules", []):
             merged[r["id"]] = r
         if project_slug:
-            pdir = vp / "projects" / project_slug / "wiki-style" / "voice-rules-overlay.json"
+            pdir = vault_layout.resolve_under_projects(
+                vp, project_slug, "wiki-style", _OVERLAY_FILE)
             for r in _read_overlay(pdir).get("rules", []):
                 merged[r["id"]] = r
     if wiki_root is not None:

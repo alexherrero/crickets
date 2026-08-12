@@ -5,7 +5,7 @@
 # Moves the operator's GLOBAL wiki/Diataxis conventions out of the always-load
 # tier (`<vault>/personal/_always-load/diataxis-*.md`, injected into
 # EVERY session's context) into the on-demand global store the resolver reads
-# (`<vault>/projects/_global/wiki-style/*.md`) — so they load only when authoring.
+# (`<projects-space>/_global/wiki-style/*.md`) — so they load only when authoring.
 #
 # Touches the operator's LIVE VAULT, so it mirrors agentm's migrate-harness-to-vault
 # discipline: PREVIEW-FIRST (--preview prints WOULD: lines, mutates nothing),
@@ -13,10 +13,12 @@
 # (byte-compare; never clobber a differing dest), and CLEANUP only after a
 # byte-identical verify (--cleanup, gated by --yes / TTY confirm). Idempotent.
 #
-# `_global` is a reserved cross-project pseudo-project under the top-level
-# `projects/` root (NOT under personal/ — that root is personal,
-# non-project-keyed data; its `_always-load/` subset is the always-injected
-# globals). See agentm ADR 0010 (vault internal taxonomy). Stdlib-only.
+# `_global` is a reserved cross-project pseudo-project in the vault's project
+# space (NOT under personal/ — that root is personal, non-project-keyed data;
+# its `_always-load/` subset is the always-injected globals). See agentm ADR
+# 0010 (vault internal taxonomy). The space itself is resolved by vault_layout,
+# so a relocation lands in the same directory the resolver reads back on
+# whichever layout generation this vault is sitting on. Stdlib-only.
 
 from __future__ import annotations
 
@@ -25,6 +27,12 @@ import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+
+_SCRIPTS_DIR = Path(__file__).resolve().parent
+if str(_SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS_DIR))
+
+import vault_layout  # noqa: E402  (needs the sys.path insert above)
 
 # Default source set: the global wiki/Diataxis conventions in always-load.
 _DEFAULT_SOURCE_GLOB = "diataxis-*.md"
@@ -57,7 +65,7 @@ def _always_load_dir(vault: Path) -> Path:
 
 
 def _global_wiki_style_dir(vault: Path) -> Path:
-    return vault / "projects" / "_global" / "wiki-style"
+    return vault_layout.global_wiki_style_dir(vault)
 
 
 def _manifest_path(vault: Path) -> Path:
@@ -102,7 +110,7 @@ def relocate(
     cleanup: bool = False,
     assume_yes: bool = False,
 ) -> list:
-    """Copy `_always-load/<source_glob>` -> `projects/_global/wiki-style/`.
+    """Copy `_always-load/<source_glob>` -> `<projects-space>/_global/wiki-style/`.
 
     Conflict-safe (never overwrites a differing dest), idempotent (byte-identical
     dest -> skip), records relocated filenames in the manifest. `--cleanup` then

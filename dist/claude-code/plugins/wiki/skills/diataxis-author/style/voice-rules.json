@@ -5,10 +5,11 @@
   "overlay": {
     "description": "Vault-side additions layer on top of this shipped pack without editing it. An overlay file is the same {id, severity, kind, pattern, hint, weight, source-url} shape as this pack's \"rules\" array, resolved narrower-wins by id (an overlay rule reusing a shipped id replaces it; a new id appends) — same scope precedence rule_pack.py borrows from style_resolver.py.",
     "scopes": {
-      "global": "<vault>/projects/_global/wiki-style/voice-rules-overlay.json",
-      "per-project": "<vault>/projects/<slug>/wiki-style/voice-rules-overlay.json",
+      "global": "<projects-space>/_global/wiki-style/voice-rules-overlay.json",
+      "per-project": "<projects-space>/<slug>/wiki-style/voice-rules-overlay.json",
       "per-repo": "<wiki-root>/.diataxis-voice-rules.json"
     },
+    "projects-space": "The vault's project-keyed root, probed newest-layout-first by scripts/vault_layout.py: <vault>/desk/projects/ on the current layout, <vault>/projects/ before it. Never pin one generation — a stale literal reads as an empty overlay store, which is silent.",
     "precedence": "global → per-project → per-repo (narrower wins on an id conflict; distinct ids accumulate)"
   },
   "rules": [

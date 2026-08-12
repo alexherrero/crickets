@@ -8,16 +8,17 @@ context across three independent sources, each individually graceful-skip
 
   (a) **repo-registry** — agentm's registered-repos list, via
       `agentm_bridge.py repo-registry list` (task 1's new verb).
-  (b) **vault `projects/` tree** — file-path-loads agentm's `harness_memory.py`
+  (b) **vault project tree** — file-path-loads agentm's `harness_memory.py`
       (same conventional-clone cascade `agentm_bridge.py` already uses) to
-      resolve `vault_path()` in-process, then globs `<vault>/projects/*/`.
+      resolve `vault_path()` in-process, then globs the vault's project space
+      (`desk/projects/` on the current layout — see PROJECT_SPACE_SEGMENTS).
       Catches vault-only projects/ideas that were never registered as a repo
       (e.g. a pure design/roadmap context with no local git checkout).
   (c) **agentm recall** — file-path-loads `harness/skills/memory/scripts/
       recall.py`, mirroring `src/research/scripts/agentm_bridge.py`'s
       `load_recall_module()` / `query_semantic()` exactly (same cascade, same
-      graceful-skip-to-`[]` contract). A recall hit under `projects/<slug>/...`
-      surfaces that slug as a candidate.
+      graceful-skip-to-`[]` contract). A recall hit under
+      `<projects-space>/<slug>/...` surfaces that slug as a candidate.
 
 `resolve(query_text)` merges + dedupes the three sources' candidates by
 normalized slug and classifies the result as **none** / **one** / **many**
@@ -189,14 +190,44 @@ def _one_line_gloss(project_dir: Path) -> "str | None":
     return None
 
 
+# The vault's project-keyed space, newest layout generation first. The stage-2
+# four-space migration (2026-08-11) pushed it down to `desk/projects/`; V4 #26
+# had already renamed `personal-projects/` to `projects/`. Probe rather than pin
+# a literal — a vault on any rung stays discoverable, and one that migrates does
+# not silently stop resolving projects. Same shape as agentm's
+# scripts/migrate-harness-to-vault.sh. Duplicated locally rather than imported
+# from the wiki plugin's vault_layout.py: plugins emit independently into dist/,
+# the same reason this file file-path-loads harness_memory instead of importing it.
+PROJECT_SPACE_SEGMENTS = (("desk", "projects"), ("projects",), ("personal-projects",))
+
+
+def vault_projects_dir(vault: "Path") -> "Path | None":
+    """The vault's project space on whichever layout it sits, or None if absent."""
+    for seg in PROJECT_SPACE_SEGMENTS:
+        cand = vault.joinpath(*seg)
+        if cand.is_dir():
+            return cand
+    return None
+
+
+def _project_slug_from_vault_relpath(path: str) -> "str | None":
+    """The slug in a vault-relative `<projects-space>/<slug>/...` path, else None."""
+    parts = Path(path).parts
+    for seg in PROJECT_SPACE_SEGMENTS:
+        n = len(seg)
+        if len(parts) >= n + 1 and parts[:n] == seg:
+            return parts[n]
+    return None
+
+
 def scan_vault_projects(*, vault: "Path | None" = None) -> "list[dict]":
     """[{'slug', 'vault_project_path', 'gloss'}, ...], or [] on any failure."""
     if vault is None:
         vault = resolve_vault_path()
     if vault is None:
         return []
-    projects_dir = vault / "projects"
-    if not projects_dir.is_dir():
+    projects_dir = vault_projects_dir(vault)
+    if projects_dir is None:
         return []
     try:
         entries = sorted(p for p in projects_dir.iterdir() if p.is_dir() and not p.name.startswith("."))
@@ -269,7 +300,7 @@ def query_recall(vault: Path, query_text: str, *, k: int = 5) -> "list[dict]":
 
 
 def _recall_project_candidates(query_text: str) -> "list[dict]":
-    """Recall hits whose vault-relative path starts with `projects/<slug>/`
+    """Recall hits whose vault-relative path starts with `<projects-space>/<slug>/`
     surface that slug as a candidate. [] when recall or the vault is absent,
     or the query is empty (nothing to search for)."""
     if not query_text.strip():
@@ -279,10 +310,9 @@ def _recall_project_candidates(query_text: str) -> "list[dict]":
         return []
     out: "list[dict]" = []
     for hit in query_recall(vault, query_text):
-        path = hit.get("path") or ""
-        parts = Path(path).parts
-        if len(parts) >= 2 and parts[0] == "projects":
-            out.append({"slug": parts[1], "recall_score": hit.get("combined")})
+        slug = _project_slug_from_vault_relpath(hit.get("path") or "")
+        if slug:
+            out.append({"slug": slug, "recall_score": hit.get("combined")})
     return out
 
 
