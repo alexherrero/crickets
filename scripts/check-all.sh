@@ -8,6 +8,8 @@
 # no-dangling-name · no-duplicate-diagnosis (the "no two diagnosis engines"
 # regression net — dependabot-fixer/bugfix.md must delegate to diagnose.py,
 # never re-grow their own inline category+confidence judgment) · unit tests ·
+# vault-content tests (test_voice_kernel, run un-isolated against the real
+# vault; skips itself when none resolves, so it is a no-op in CI) ·
 # evidence-tracker self-test (61 embedded tests — the default-FAIL evidence
 # contract, named- and singleton-plan aware) · generate drift ·
 # dist-references (every emitted plugin's relative links + ${CLAUDE_PLUGIN_ROOT}
@@ -63,6 +65,15 @@ run "conventions conformance" python3 scripts/check_conventions_conformance.py
 # .harness/ fallback (seam=None / resolver=None) spuriously hit the new
 # refusal. Point the probe at a scratch path that never has a config file.
 run "unit tests"     env AGENTM_INSTALL_PREFIX="$ROOT/.no-such-agentm-prefix" MEMORY_VAULT_PATH="" bash -c "cd scripts && python3 -m unittest discover -p 'test_*.py'"
+# Vault-content tests, run WITHOUT the isolation above — they assert facts about
+# the operator's real vault (the voice kernel, the demoted genre files), so the
+# scratch prefix that protects the suite above makes them skip themselves into
+# silence. They already skipUnless a vault resolves, so this is a no-op in CI
+# and on any machine without one. Split out as its own step because it needs the
+# opposite environment from every other test, not because it is a different kind
+# of check. Four of these were failing against a healthy vault, unnoticed, for
+# exactly as long as nothing ran them.
+run "vault-content tests" python3 scripts/test_voice_kernel.py
 run "evidence-tracker self-test" python3 src/code-review/hooks/evidence-tracker/evidence_tracker.py --mode self-test
 run "generate drift" python3 scripts/generate.py check
 run "dist-references" python3 scripts/check-dist-references.py

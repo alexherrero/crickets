@@ -2,13 +2,24 @@
 """Tests for the voice kernel + on-demand genre demotion (PLAN-r3-voice-mechanism
 task 3). Vault content, not repo-tracked — graceful-skips (skipUnless) when the
 vault isn't reachable, matching test_check_slop.py's TestCorpusCalibration
-pattern. Resolves the vault path via agentm_config.py (never a hardcoded
-absolute literal — AGENTS.md's vault-path convention).
+pattern.
+
+Addressing goes through `vault_layout`, the same resolver production uses, for
+two reasons this suite learned the hard way. It had been resolving the config's
+`vault_path` — the OBSIDIAN vault — and then joining agent-tree segments onto
+it, landing a level too high; and it pinned `personal/` and `projects/`, two
+retired memory- and project-space generations. Four of its six tests were
+failing against a healthy vault. They never surfaced, because the suite skips
+whenever no vault resolves and the gate battery deliberately isolates itself
+from this machine's config — so the only place these could fire was a bare
+local run nobody makes. `check-all.sh` now runs this module un-isolated as its
+own step; it still skips cleanly in CI, which has no vault.
+
+Never a hardcoded absolute literal — AGENTS.md's vault-path convention.
 """
 from __future__ import annotations
 
 import os
-import subprocess
 import sys
 import unittest
 from pathlib import Path
@@ -23,29 +34,22 @@ _RULE_PACK_SCRIPTS = (
 if str(_RULE_PACK_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_RULE_PACK_SCRIPTS))
 import style_resolver  # noqa: E402
+import vault_layout  # noqa: E402
+
+_PROSE_PASS_SCRIPTS = _CRICKETS_ROOT / "src" / "design" / "scripts"
+if str(_PROSE_PASS_SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(_PROSE_PASS_SCRIPTS))
+import prose_pass  # noqa: E402
 
 _KERNEL_MAX_LINES = 25
+_KERNEL_NAME = "voice-kernel.md"
+_DEMOTED_GENRE_SLUGS = ("docs-prose-style", "personal-comms-style",
+                        "personal-narrative-style")
 
-
-def _resolve_vault() -> Path | None:
-    config_script = _AGENTM_ROOT / "scripts" / "agentm_config.py"
-    if not config_script.is_file():
-        return None
-    try:
-        result = subprocess.run(
-            [sys.executable, str(config_script), "--get", "vault_path"],
-            capture_output=True, text=True, timeout=10,
-        )
-    except OSError:
-        return None
-    vault_path = result.stdout.strip()
-    if result.returncode != 0 or not vault_path:
-        return None
-    p = Path(vault_path)
-    return p if p.is_dir() else None
-
-
-_VAULT = _resolve_vault()
+# The agent's MEMORY ROOT, not the Obsidian vault root — `vault_path` joined
+# with `plugins.obsidian-vault.memory_root`. Everything below addresses agent
+# content, so it hangs off this one.
+_VAULT = vault_layout.resolve_memory_root()
 
 
 def _kernel_body_lines(text: str) -> list[str]:
@@ -56,33 +60,76 @@ def _kernel_body_lines(text: str) -> list[str]:
 
 @unittest.skipUnless(_VAULT is not None, "vault not reachable in this environment")
 class TestVoiceKernel(unittest.TestCase):
-    def test_kernel_exists_and_is_always_load(self):
-        kernel = _VAULT / "personal" / "_always-load" / "voice-kernel.md"
-        self.assertTrue(kernel.is_file(), f"expected {kernel}")
-        text = kernel.read_text(encoding="utf-8")
-        self.assertIn("always_load: true", text)
+    def test_kernel_is_locatable(self):
+        """Found by the SAME lookup prose_pass uses, wherever it currently sits.
+
+        This replaces an assertion that the kernel is a file at
+        `_always-load/voice-kernel.md` carrying `always_load: true`. That is no
+        longer where it lives: it graduated into the dated tree
+        (`memory/2026/07/`) and is tagged `always-load-graduate`. Pinning the
+        tier as the kernel's address is the very bug that had prose_pass
+        running degraded, so the contract worth holding is "production can find
+        it", not "it sits in one directory". Whether the tier SHOULD still hold
+        it is a question about vault content, answered by
+        test_the_always_load_tier_is_not_silently_empty below.
+        """
+        kernel = vault_layout.find_memory_entry(_VAULT, _KERNEL_NAME)
+        self.assertIsNotNone(
+            kernel, f"no {_KERNEL_NAME} anywhere in the memory space under {_VAULT}")
+        self.assertTrue(kernel.is_file())
+
+    def test_prose_pass_resolves_the_same_kernel(self):
+        """The production consumer and this suite must agree on which file is
+        the kernel — two lookups disagreeing is how a stale copy wins."""
+        self.assertEqual(prose_pass.resolve_voice_kernel(_VAULT),
+                         vault_layout.find_memory_entry(_VAULT, _KERNEL_NAME))
 
     def test_kernel_body_at_most_25_lines(self):
-        kernel = _VAULT / "personal" / "_always-load" / "voice-kernel.md"
+        kernel = vault_layout.find_memory_entry(_VAULT, _KERNEL_NAME)
+        self.assertIsNotNone(kernel, f"no {_KERNEL_NAME} to measure")
         lines = _kernel_body_lines(kernel.read_text(encoding="utf-8"))
         self.assertLessEqual(
             len(lines), _KERNEL_MAX_LINES,
-            f"voice-kernel.md body grew to {len(lines)} lines (> {_KERNEL_MAX_LINES}) — "
+            f"{_KERNEL_NAME} body grew to {len(lines)} lines (> {_KERNEL_MAX_LINES}) — "
             f"genre detail is leaking into the always-on layer, per the design's own "
             f"re-audit trigger; move the detail to an on-demand genre file instead",
         )
 
+    def test_the_kernel_reaches_at_least_one_live_consumer(self):
+        """The voice floor must actually be delivered by SOMETHING.
+
+        Two mechanisms can deliver it: the always-load tier, which recall.py
+        globs flat and injects into every session, or prose_pass, which inlines
+        it into every cross-model prose pass. Which one is a design choice —
+        this kernel is tagged `always-load-graduate`, and the tier is currently
+        empty, so on this vault delivery rests entirely on prose_pass.
+
+        Asserting a specific mechanism would encode a guess about the operator's
+        own content. Asserting that at least one works does not, and it is the
+        check that would have caught the real defect: the kernel graduated out
+        of the tier, prose_pass still probed only the tier, and the voice floor
+        was reaching nothing at all while both halves looked individually fine.
+        """
+        in_tier = (vault_layout.always_load_dir(_VAULT) / _KERNEL_NAME).is_file()
+        via_prose_pass = prose_pass.resolve_voice_kernel(_VAULT) is not None
+        self.assertTrue(
+            in_tier or via_prose_pass,
+            f"{_KERNEL_NAME} is delivered by no live mechanism: absent from the "
+            f"always-load tier AND unresolvable by prose_pass. The voice floor "
+            f"reaches nothing.",
+        )
+
     def test_three_heavy_files_absent_from_always_load(self):
-        always_load = _VAULT / "personal" / "_always-load"
-        for slug in ("docs-prose-style", "personal-comms-style", "personal-narrative-style"):
+        always_load = vault_layout.always_load_dir(_VAULT)
+        for slug in _DEMOTED_GENRE_SLUGS:
             self.assertFalse(
                 (always_load / f"{slug}.md").is_file(),
                 f"{slug}.md should be demoted out of _always-load/ (task 3)",
             )
 
     def test_three_heavy_files_present_on_demand_not_always_loaded(self):
-        wiki_style = _VAULT / "projects" / "_global" / "wiki-style"
-        for slug in ("docs-prose-style", "personal-comms-style", "personal-narrative-style"):
+        wiki_style = vault_layout.global_wiki_style_dir(_VAULT)
+        for slug in _DEMOTED_GENRE_SLUGS:
             matches = list(wiki_style.glob(f"*-{slug}.md"))
             self.assertTrue(matches, f"expected an on-demand {slug}.md under {wiki_style}")
             text = matches[0].read_text(encoding="utf-8")
@@ -109,7 +156,7 @@ class TestRoleNounCarveOutWrittenInVaultStore(unittest.TestCase):
     """PLAN-r3-voice-mechanism task 5 verification 1, vault half."""
 
     def test_docs_prose_style_carries_the_carve_out_clause(self):
-        matches = list((_VAULT / "projects" / "_global" / "wiki-style").glob("*-docs-prose-style.md"))
+        matches = list(vault_layout.global_wiki_style_dir(_VAULT).glob("*-docs-prose-style.md"))
         self.assertTrue(matches, "expected the demoted docs-prose-style.md on-demand copy")
         content = matches[0].read_text(encoding="utf-8")
         self.assertIn("Role-noun carve-out", content)
