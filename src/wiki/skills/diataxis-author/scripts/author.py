@@ -62,6 +62,28 @@ _VALID_FILENAME_STYLES = {"CamelCase-With-Dashes", "snake_case", "kebab-case"}
 # (author-wiring 3/4 — template-driven validation replaces _VALID_MODES).
 _TEMPLATE_NON_PAGES = frozenset({"README"})
 
+# This command authors wiki pages, so the voice it wants is the docs register.
+# The heavy genre conventions the operator keeps in the global overlay store
+# (personal-comms-style, personal-narrative-style, design-doc-prose) each speak
+# to a different surface; loading all of them into a wiki draft spent ~18k
+# tokens and mixed three registers. A lesson that declares no genre is
+# universal and still loads — narrowing is opt-in per lesson, never inferred.
+_DEFAULT_GENRE = "docs"
+
+
+def _parse_genre_arg(raw: str | None):
+    """`--genre` -> a genre set, or None for "load everything".
+
+    `all` (or an empty value) disables the filter. This is the escape hatch that
+    keeps a mis-tagged lesson recoverable without editing the vault.
+    """
+    if raw is None:
+        return None
+    value = raw.strip().lower()
+    if not value or value == "all":
+        return None
+    return frozenset(part.strip() for part in value.split(",") if part.strip())
+
 # Why each recognized-but-deferred manifest page-type's placement is not wired this
 # part — surfaced in the fail-closed NotImplementedError so the operator sees the
 # specific reason, not just "not wired" (author-wiring 3/4 fail-closed edge (c)).
@@ -130,6 +152,7 @@ def _dispatch_content(
     wiki_root: Path | None = None,
     vault_path: Path | None = None,
     project_slug: str | None = None,
+    genres=None,   # applies-to filter; None = every lesson
 ) -> str:
     """The compose-vs-verbatim dispatch — the one branch author-wiring adds.
 
@@ -151,6 +174,7 @@ def _dispatch_content(
             wiki_root=wiki_root,
             vault_path=vault_path,
             project_slug=project_slug,
+            genres=genres,
         )
     return composer.compose_voice(
         template_text,
@@ -158,6 +182,7 @@ def _dispatch_content(
         wiki_root=wiki_root,
         vault_path=vault_path,
         project_slug=project_slug,
+        genres=genres,
     )
 
 
@@ -167,6 +192,7 @@ def _voice_provenance(
     wiki_root: Path | None,
     vault_path: Path | None,
     project_slug: str | None,
+    genres=None,   # applies-to filter; None = every lesson
 ) -> tuple[bool, list]:
     """Report ``(style_composed, style_scopes)`` for the operator summary.
 
@@ -186,6 +212,7 @@ def _voice_provenance(
                 wiki_root=wiki_root,
                 vault_path=vault_path,
                 project_slug=project_slug,
+                genres=genres,
             )
         if resolved.base_text.strip() or resolved.lessons:
             return True, list(resolved.provenance)
@@ -242,6 +269,7 @@ def author_page(
     overwrite: bool = False,
     vault_path: Path | None = None,
     project_slug: str | None = None,
+    genres=None,   # applies-to filter; None = every lesson
     resolved_style=None,  # style_resolver.ResolvedStyle | None — inject to pin voice (proofs)
 ) -> dict:
     """Emit a page to its target under ``wiki_root`` — composed manifest or verbatim monolith.
@@ -307,6 +335,7 @@ def author_page(
             wiki_root=wiki_root,
             vault_path=vault_path,
             project_slug=project_slug,
+            genres=genres,
         )
     except FileNotFoundError as e:
         # A manifest named a section with no library file. Fail closed naming the
@@ -324,6 +353,7 @@ def author_page(
         wiki_root=wiki_root,
         vault_path=vault_path,
         project_slug=project_slug,
+        genres=genres,
     )
     target.parent.mkdir(parents=True, exist_ok=True)
     # write_bytes for LF-only line endings (Windows portability — same
@@ -399,6 +429,14 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
              "(<projects-space>/<slug>/wiki-style/; absent → skip the per-project scope)",
     )
     parser.add_argument(
+        "--genre", default=_DEFAULT_GENRE,
+        help="comma-separated genres this page is written in; only overlay "
+             "lessons declaring a matching genre load, alongside every lesson "
+             "that declares none (those are universal). This command authors "
+             f"wiki pages, so it defaults to '{_DEFAULT_GENRE}'. Pass "
+             "--genre all to load every lesson regardless.",
+    )
+    parser.add_argument(
         "--overwrite", action="store_true",
         help="overwrite existing target (default: refuse + ask operator to pick a different slug)",
     )
@@ -460,6 +498,7 @@ def main(argv: list[str] | None = None) -> int:
             overwrite=args.overwrite,
             vault_path=vault_path,
             project_slug=args.project_slug,
+            genres=_parse_genre_arg(args.genre),
         )
     except (FileNotFoundError, FileExistsError, ValueError, NotImplementedError) as e:
         print(f"ERROR: {e}", file=sys.stderr)

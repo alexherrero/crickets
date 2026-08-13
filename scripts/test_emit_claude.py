@@ -115,7 +115,9 @@ class TestClaudeEmitter(unittest.TestCase):
         # 0.9.2 = vault_layout resolves the memory ROOT (vault_path joined with
         # plugins.obsidian-vault.memory_root) and probes the memory space;
         # authoring had been resolving no vault at all in ordinary sessions.
-        self.assertEqual(self._plugin_json("wiki")["version"], "0.9.2")
+        # 0.9.3 = genre filter on the author-time voice overlay; a lesson opts
+        # into being narrow via `genres:`, absent stays universal.
+        self.assertEqual(self._plugin_json("wiki")["version"], "0.9.3")
         # 0.3.0 = check-no-pii.sh + templates/hooks/pre-push moved into src/pii/
         # so they actually ship inside the plugin payload (R2.4 task 7).
         # 0.3.1 = check-no-pii.sh scan collapsed to one grep per file (fixes a

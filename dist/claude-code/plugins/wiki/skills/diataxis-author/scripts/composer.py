@@ -96,6 +96,7 @@ def compose_voice(
     wiki_root: Path | None = None,
     vault_path: Path | None = None,
     project_slug: str | None = None,
+    genres=None,   # applies-to filter; None = every lesson
 ) -> str:
     """Inject the resolved house voice once, after the page H1 — or degrade to the bare page.
 
@@ -125,6 +126,7 @@ def compose_voice(
                 wiki_root=wiki_root,
                 vault_path=vault_path,
                 project_slug=project_slug,
+                genres=genres,
             )
         # Empty voice (no committed floor, no overlay lessons) → bare page; an
         # empty comment block would be noise. Same guard as author_page().
@@ -195,6 +197,7 @@ def compose_page(
     wiki_root: Path | None = None,
     vault_path: Path | None = None,
     project_slug: str | None = None,
+    genres=None,   # applies-to filter; None = every lesson
 ) -> str:
     """Assemble a page from a manifest: load · strip · concatenate · resolve-voice.
 
@@ -229,4 +232,5 @@ def compose_page(
         wiki_root=wiki_root,
         vault_path=vault_path,
         project_slug=project_slug,
+        genres=genres,
     )

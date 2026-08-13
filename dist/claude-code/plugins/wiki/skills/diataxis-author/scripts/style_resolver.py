@@ -32,7 +32,7 @@ from __future__ import annotations
 
 import re
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 _SCRIPTS_DIR = Path(__file__).resolve().parent
@@ -60,6 +60,7 @@ class StyleLesson:
     trigger: str     # conflict key (lowercased) — narrower scope wins on the same trigger
     guidance: str    # the voice guidance text
     source: str      # filename it came from (provenance)
+    genres: frozenset = frozenset()   # declared applicability; EMPTY MEANS UNIVERSAL
 
 
 @dataclass
@@ -69,6 +70,8 @@ class ResolvedStyle:
     base_text: str
     lessons: list      # list[StyleLesson], precedence applied (narrower wins)
     provenance: list   # list[str] "<scope>:<source>" lines, in application order
+    excluded: list = field(default_factory=list)  # [(trigger, sorted-genres)] held back
+    genres: frozenset = frozenset()               # what was asked for; empty = no filter
 
 
 def load_base_style_guide(path: Path | None = None) -> str:
@@ -97,16 +100,47 @@ def _split_frontmatter(text: str) -> tuple[dict, str]:
     return fm, m.group(2)
 
 
+def _parse_genres(raw) -> frozenset:
+    """`[docs, design]` or `docs, design` -> {"docs", "design"}. Absent -> empty."""
+    if not raw or not str(raw).strip():
+        return frozenset()
+    return frozenset(
+        part.strip().lower()
+        for part in str(raw).strip().strip("[]").split(",")
+        if part.strip()
+    )
+
+
+def lesson_applies(lesson: StyleLesson, genres) -> bool:
+    """Does this lesson belong in a draft of these genres?
+
+    Universal lessons (no declared genre) always apply. With no genre asked for,
+    everything applies — the unfiltered default. Otherwise the lesson's declared
+    genres must intersect what was asked for.
+    """
+    if not lesson.genres or not genres:
+        return True
+    return bool(lesson.genres & frozenset(genres))
+
+
 def parse_lesson(text: str, *, scope: str, source: str) -> StyleLesson:
     """Parse one overlay lesson file into a StyleLesson.
 
     A lesson may carry frontmatter `trigger:` to set its conflict key; absent
     that, the filename stem is the trigger. The body (after frontmatter) is the
     guidance. Triggers are lowercased so conflict matching is case-insensitive.
+
+    `genres:` declares what the lesson applies to — `[docs, design]` or a bare
+    comma list. AN ABSENT OR EMPTY `genres:` MEANS UNIVERSAL, not "applies to
+    nothing": a lesson has to opt IN to being narrow. That asymmetry is the
+    whole safety property of the filter — every lesson written before genres
+    existed keeps applying everywhere, and a typo in the field name widens a
+    lesson rather than silently deleting it from every draft.
     """
     fm, body = _split_frontmatter(text)
     trigger = (fm.get("trigger") or Path(source).stem).strip().lower()
-    return StyleLesson(scope=scope, trigger=trigger, guidance=body.strip(), source=source)
+    return StyleLesson(scope=scope, trigger=trigger, guidance=body.strip(),
+                       source=source, genres=_parse_genres(fm.get("genres")))
 
 
 def read_scope_lessons(scope_dir: Path | None, scope: str) -> list:
@@ -114,7 +148,12 @@ def read_scope_lessons(scope_dir: Path | None, scope: str) -> list:
 
     Sorted by filename; within the scope a later-sorted file with the same
     trigger overrides an earlier one (recent wins — capture writes date/counter
-    prefixes, so later-sorted == more recent). Missing dir → []."""
+    prefixes, so later-sorted == more recent). Missing dir → [].
+
+    Unfiltered by design: this is the plain reader, and the round-trip checks
+    that a captured lesson reads back use it. `partition_scope_lessons` is the
+    genre-aware wrapper.
+    """
     if scope_dir is None or not scope_dir.is_dir():
         return []
     merged: dict = {}
@@ -126,6 +165,20 @@ def read_scope_lessons(scope_dir: Path | None, scope: str) -> list:
         lesson = parse_lesson(text, scope=scope, source=entry.name)
         merged[lesson.trigger] = lesson  # later-sorted overrides earlier
     return list(merged.values())
+
+
+def partition_scope_lessons(scope_dir: Path | None, scope: str, genres=None) -> tuple:
+    """`read_scope_lessons` split into (applies, held-back) for these genres.
+
+    The held-back ones are returned rather than dropped so the caller can name
+    them. Genre matching happens AFTER the trigger merge, so a narrow lesson
+    still overrides a broader one with the same trigger before either is
+    considered for exclusion.
+    """
+    kept, excluded = [], []
+    for lesson in read_scope_lessons(scope_dir, scope):
+        (kept if lesson_applies(lesson, genres) else excluded).append(lesson)
+    return kept, excluded
 
 
 def _read_per_repo_lessons(wiki_root: Path | None) -> list:
@@ -140,6 +193,14 @@ def _read_per_repo_lessons(wiki_root: Path | None) -> list:
     except OSError:
         return []
     return [parse_lesson(text, scope="per-repo", source=f.name)]
+
+
+def _partition_per_repo_lessons(wiki_root: Path | None, genres=None) -> tuple:
+    """`_read_per_repo_lessons` split into (applies, held-back)."""
+    kept, excluded = [], []
+    for lesson in _read_per_repo_lessons(wiki_root):
+        (kept if lesson_applies(lesson, genres) else excluded).append(lesson)
+    return kept, excluded
 
 
 def _warn_if_no_overlay_store(vault_path: Path) -> None:
@@ -192,6 +253,7 @@ def resolve_style(
     vault_path: Path | None = None,
     project_slug: str | None = None,
     base_text: str | None = None,
+    genres=None,
 ) -> ResolvedStyle:
     """Compose base style-guide ⊕ overlay lessons across the three on-demand scopes.
 
@@ -199,15 +261,31 @@ def resolve_style(
     conflict the narrower scope wins; distinct triggers accumulate. Each scope is
     independently graceful-skipped when its store is absent — with no vault and no
     overlay the result is the committed base floor alone (the documented fallback).
+
+    `genres` narrows the overlay to lessons that apply to what is being written
+    — `{"docs"}` for a wiki page, `{"design"}` for a design doc. Lessons that
+    declare no genre are universal and always survive; only a lesson that opted
+    into a non-matching genre is held back, and it lands in `.excluded` so the
+    composed block can name it. Default `None` filters nothing.
+
+    The heavy genre conventions are what motivate this: docs-prose-style,
+    personal-comms-style and personal-narrative-style are ~52k characters
+    between them, and a wiki draft was carrying the email register and the
+    letter-of-recommendation register alongside the one it wanted.
     """
     base = base_text if base_text is not None else load_base_style_guide()
+    wanted = frozenset(genres) if genres else frozenset()
     merged: dict = {}   # trigger -> StyleLesson; dict keeps first-insert position, replaces value
     provenance: list = []
+    excluded: list = []
 
-    def _apply(lessons: list) -> None:
-        for lz in lessons:
+    def _apply(result: tuple) -> None:
+        kept, held = result
+        for lz in kept:
             merged[lz.trigger] = lz
             provenance.append(f"{lz.scope}:{lz.source}")
+        for lz in held:
+            excluded.append((lz.trigger, sorted(lz.genres)))
 
     if vault_path is not None:
         vp = Path(vault_path)
@@ -219,15 +297,16 @@ def resolve_style(
         # rather than pinning one path (see its header).
         gdir = vault_layout.global_wiki_style_dir(vp)
         _warn_if_no_overlay_store(vp)
-        _apply(read_scope_lessons(gdir, "global"))
+        _apply(partition_scope_lessons(gdir, "global", wanted))
         if project_slug:
             pdir = vault_layout.project_wiki_style_dir(vp, project_slug)
-            _apply(read_scope_lessons(pdir, "per-project"))
+            _apply(partition_scope_lessons(pdir, "per-project", wanted))
     else:
         _warn_no_vault_resolved()
-    _apply(_read_per_repo_lessons(wiki_root))
+    _apply(_partition_per_repo_lessons(wiki_root, wanted))
 
-    return ResolvedStyle(base_text=base, lessons=list(merged.values()), provenance=provenance)
+    return ResolvedStyle(base_text=base, lessons=list(merged.values()),
+                         provenance=provenance, excluded=excluded, genres=wanted)
 
 
 # ── Page composition ────────────────────────────────────────────────────────
@@ -257,6 +336,17 @@ def compose_voice_block(resolved: ResolvedStyle) -> str:
         for lz in resolved.lessons:
             g = _sanitize_comment(lz.guidance).strip()
             lines.append(f"  [{lz.scope}] {lz.trigger}: {g}")
+        lines.append("")
+    if resolved.excluded:
+        # Name what was held back. A filtered lesson that leaves no trace is the
+        # same silent absence this resolver already shipped once — the point of
+        # the genre filter is to spend fewer tokens, not to make the omission
+        # unauditable. Triggers only: the guidance is what costs, and the
+        # trigger is enough to notice a wrong exclusion and re-run wider.
+        asked = ", ".join(sorted(resolved.genres)) or "none"
+        held = "; ".join(f"{trig} (genres: {', '.join(gs)})"
+                         for trig, gs in resolved.excluded)
+        lines.append(f"NOT LOADED — genre filter asked for [{asked}]: {held}")
         lines.append("")
     lines.append(_BLOCK_CLOSE)
     return "\n".join(lines)
