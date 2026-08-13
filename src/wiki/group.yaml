@@ -147,7 +147,16 @@ standalone: true
 #         style_resolver says so on stderr when no vault resolves at all --
 #         the sibling of the 0.9.1 guard, and the more common failure.
 #         wiki_watch_config likewise exports a memory root, not a vault root.
-version: 0.9.2
+# 0.9.3: the author-time voice overlay gains a genre filter. A lesson declares
+#         `genres: [docs]` to opt INTO being narrow; absent means universal, so
+#         nothing written before this can be filtered out and a typo widens
+#         rather than deletes. author.py --genre (default `docs`, `all` to
+#         disable) selects; held-back lessons are NAMED in the composed block
+#         rather than silently missing. On the operator's store a wiki draft
+#         drops from ~18.2k to ~7.7k tokens of overlay -- it had been carrying
+#         the email and letter-of-recommendation registers alongside the docs
+#         one, all three at full length.
+version: 0.9.3
 capabilities: [wiki-maintenance, wiki]
 renamed_from: [wiki-maintenance]
 enhances:

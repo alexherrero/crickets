@@ -32,6 +32,28 @@ This keeps the read pattern uniform across all three doc-touching primitives (th
 
 The full read-side wiring lands with part 5 (`agentmemory-docs-release`); this section locks the *path* (through the resolver) so part 5 doesn't reintroduce a direct vault glob.
 
+### Genre — which lessons a draft actually loads
+
+The global overlay store holds both small universal voice rules and heavy genre conventions: a docs register, an email register, a letter-of-recommendation register, a design-doc register. Loading all of them into a wiki page cost about 18k tokens of overlay, two thirds of it addressed to surfaces that page is not.
+
+A lesson opts into being narrow by declaring `genres:` in its frontmatter:
+
+```yaml
+---
+trigger: personal-comms-style
+genres: [comms]
+---
+```
+
+`--genre` names what the draft is; `--genre all` turns the filter off. Authoring defaults to `docs`, because that is what this command writes.
+
+Two rules make the filter safe to leave on:
+
+- **A lesson with no `genres:` is universal.** Narrowing is opt-in, never inferred, so every lesson written before this existed keeps applying everywhere — and a typo in the field name widens a lesson rather than deleting it from every draft.
+- **An excluded lesson is named, not silently gone.** The composed block ends with a `NOT LOADED — genre filter asked for [docs]: …` line listing each held-back trigger and the genres it declares. A wrong exclusion is visible in the draft that suffered it; re-run with `--genre all` to recover it.
+
+On the operator's own store this takes a wiki draft from ~18,200 tokens of overlay to ~7,700, and the five universal lessons are untouched.
+
 ## When to reach for which sub-command
 
 | You want to... | Reach for |

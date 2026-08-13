@@ -134,9 +134,23 @@ class TestVoice(unittest.TestCase):
             out = composer.compose_voice(
                 self._PAGE, wiki_root=Path("/w"), vault_path=Path("/v"), project_slug="proj"
             )
-        m.assert_called_once_with(wiki_root=Path("/w"), vault_path=Path("/v"), project_slug="proj")
+        m.assert_called_once_with(wiki_root=Path("/w"), vault_path=Path("/v"),
+                                  project_slug="proj", genres=None)
         self.assertIn(style_resolver._BLOCK_OPEN, out, "the resolved voice is applied")
         self.assertLess(out.index("# Sample Page"), out.index(style_resolver._BLOCK_OPEN))
+
+    def test_genres_thread_through_to_the_resolver(self):
+        """The genre filter is only useful if the caller's choice reaches the
+        resolver — composer sits between them, so the threading is pinned here
+        the same way the three scope args are."""
+        rs = self._nonempty_style()
+        with mock.patch("style_resolver.resolve_style", return_value=rs) as m:
+            composer.compose_voice(
+                self._PAGE, wiki_root=Path("/w"), vault_path=Path("/v"),
+                project_slug="proj", genres=frozenset({"docs"}),
+            )
+        m.assert_called_once_with(wiki_root=Path("/w"), vault_path=Path("/v"),
+                                  project_slug="proj", genres=frozenset({"docs"}))
 
 
 class TestManifestParser(unittest.TestCase):
