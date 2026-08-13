@@ -78,6 +78,15 @@ jobs:
           AGENTM_INSTALL_PREFIX: /tmp/no-such-agentm-prefix
           MEMORY_VAULT_PATH: ""
         run: cd scripts && python3 -m unittest discover -p 'test_*.py'
+      - name: Vault-content tests (test_voice_kernel — skips without a vault)
+        # Deliberately WITHOUT the isolation above: these assert facts about a
+        # real MemoryVault (the voice kernel, the demoted genre files), and the
+        # scratch prefix that protects the step above makes them skip into
+        # silence. They skipUnless a vault resolves, so on a CI runner — which
+        # has none — this is a clean 8-skip. It runs here so the both-places
+        # rule holds and so the skip path itself stays exercised; the assertions
+        # only ever fire on an operator machine, which is where the content is.
+        run: python3 scripts/test_voice_kernel.py
       - name: evidence-tracker self-test (61 embedded tests)
         # R2.2 / cricketsPluginsA#3 — the flagship default-FAIL evidence
         # contract was pinned to the singleton .harness/PLAN.md and silently
