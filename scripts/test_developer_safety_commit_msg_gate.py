@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -308,6 +309,132 @@ class NoConflictWithCoauthorGuardTests(unittest.TestCase):
         commit_result = self._run(_HOOK_SH)
         self.assertEqual(commit_result.returncode, 0, commit_result.stderr)
         self.assertNotIn("Co-Authored-By", self.msg_file.read_text(encoding="utf-8"))
+
+
+class RulePackResolutionTests(unittest.TestCase):
+    """The vocabulary half of this gate must actually run outside crickets.
+
+    Regression for a silent no-op: the resolver used `git rev-parse
+    --show-toplevel` and looked only at `<that>/src/wiki/...`. The rule pack
+    lives in crickets, but the hook is installed per-repo, so two very common
+    layouts never found it and skipped the vocabulary check on every commit:
+
+      1. a SIBLING repo (agentm) — no src/wiki/ under its own root, ever;
+      2. any git WORKTREE — show-toplevel gives the worktree path, whose
+         `../crickets` is a worktrees-dir sibling that does not exist.
+
+    Both reported "skipping the slop-vocabulary check" and exited 0, which
+    reads identically to a clean subject. These tests build real git repos on
+    disk (a fake crickets carrying a minimal rule pack, a sibling repo beside
+    it, and a worktree of that sibling) and assert the gate REJECTS a
+    known-slop subject from each — i.e. that it resolved the pack rather than
+    skipping. The crickets-absent case must still skip and exit 0.
+    """
+
+    SLOP_SUBJECT = "fix(x): this plugin stands as a testament to good design"
+
+    @classmethod
+    def setUpClass(cls):
+        if _MOD is None:
+            raise unittest.SkipTest("hook py missing")
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        self.msg = self.root / "msg.txt"
+        self.msg.write_text(self.SLOP_SUBJECT + "\n", encoding="utf-8")
+        # A fake crickets checkout carrying the REAL rule pack + loader, so the
+        # test exercises resolution rather than a stubbed vocabulary.
+        real_scripts = (
+            REPO_ROOT / "src" / "wiki" / "skills" / "diataxis-author" / "scripts"
+        )
+        real_style = (
+            REPO_ROOT / "src" / "wiki" / "skills" / "diataxis-author" / "style"
+        )
+        if not (real_scripts / "rule_pack.py").is_file():
+            self.skipTest("real rule pack not present in this checkout")
+        self.crickets = self.root / "crickets"
+        dest = self.crickets / "src" / "wiki" / "skills" / "diataxis-author"
+        dest.mkdir(parents=True)
+        shutil.copytree(real_scripts, dest / "scripts")
+        shutil.copytree(real_style, dest / "style")
+        self._git_init(self.crickets)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    @staticmethod
+    def _git_init(path: Path):
+        path.mkdir(parents=True, exist_ok=True)
+        env = {**os.environ, "GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_SYSTEM": "/dev/null"}
+        for args in (["init", "-q"], ["config", "user.email", "t@example.com"],
+                     ["config", "user.name", "t"]):
+            subprocess.run(["git", "-C", str(path), *args], check=True,
+                           capture_output=True, env=env)
+
+    def _run_from(self, cwd: Path):
+        return subprocess.run(
+            [sys.executable, str(_HOOK_PY), str(self.msg)],
+            cwd=str(cwd), capture_output=True, text=True,
+            env={k: v for k, v in os.environ.items() if k != "CRICKETS_REPO_ROOT"},
+        )
+
+    def test_rejects_from_inside_crickets_itself(self):
+        result = self._run_from(self.crickets)
+        self.assertEqual(result.returncode, 1, result.stderr)
+
+    def test_rejects_from_a_sibling_repo(self):
+        """The agentm case — pack is beside the repo, not inside it."""
+        sibling = self.root / "agentm"
+        self._git_init(sibling)
+        result = self._run_from(sibling)
+        self.assertEqual(
+            result.returncode, 1,
+            "a sibling repo must resolve crickets beside it; instead:\n"
+            + result.stderr,
+        )
+
+    def test_rejects_from_a_worktree_of_a_sibling_repo(self):
+        """The worktree case — `../crickets` from the WORKTREE does not exist,
+        so the pack is only reachable via the main checkout."""
+        sibling = self.root / "agentm"
+        self._git_init(sibling)
+        (sibling / "f.txt").write_text("x\n", encoding="utf-8")
+        env = {**os.environ, "GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_SYSTEM": "/dev/null"}
+        subprocess.run(["git", "-C", str(sibling), "add", "-A"], check=True,
+                       capture_output=True, env=env)
+        subprocess.run(["git", "-C", str(sibling), "commit", "-qm", "seed",
+                        "--no-verify"], check=True, capture_output=True, env=env)
+        wt = sibling / ".claude" / "worktrees" / "slug"
+        subprocess.run(["git", "-C", str(sibling), "worktree", "add", "-q",
+                        str(wt), "-b", "probe"], check=True, capture_output=True, env=env)
+        self.assertFalse((wt.parent / "crickets").exists(),
+                         "precondition: ../crickets from the worktree must NOT exist")
+        result = self._run_from(wt)
+        self.assertEqual(
+            result.returncode, 1,
+            "a worktree must resolve crickets beside its MAIN checkout; instead:\n"
+            + result.stderr,
+        )
+
+    def test_skips_cleanly_when_no_crickets_anywhere(self):
+        """The genuine standalone case keeps the graceful-skip: exit 0."""
+        lonely = self.root / "elsewhere" / "solo"
+        self._git_init(lonely)
+        result = self._run_from(lonely)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("skipping the slop-vocabulary check", result.stderr)
+
+    def test_env_override_wins(self):
+        """$CRICKETS_REPO_ROOT resolves even with no crickets nearby."""
+        lonely = self.root / "elsewhere" / "solo"
+        self._git_init(lonely)
+        result = subprocess.run(
+            [sys.executable, str(_HOOK_PY), str(self.msg)],
+            cwd=str(lonely), capture_output=True, text=True,
+            env={**os.environ, "CRICKETS_REPO_ROOT": str(self.crickets)},
+        )
+        self.assertEqual(result.returncode, 1, result.stderr)
 
 
 if __name__ == "__main__":

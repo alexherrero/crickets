@@ -35,61 +35,119 @@ the commit message file) — never the body, where a fuller narrative
 
 Graceful-skip, mirroring coauthor-guard's determinism discipline: a missing/
 unreadable message file is a no-op (exit 0); if the shared rule pack can't be
-found (e.g. this file was copied out standalone into `.git/hooks/`, without
-its `src/wiki/...` sibling tree), the codename check still runs and the
+found (no crickets checkout inside this repo, beside it, or beside its main
+checkout, and no `$CRICKETS_REPO_ROOT`), the codename check still runs and the
 vocabulary check is skipped with a one-line stderr notice — this gate never
 hard-fails a commit over its own missing dependency.
+
+That graceful-skip is meant for a genuinely crickets-less install. It was
+firing far more widely than intended until the resolver below learned to look
+outside the current working tree: installed in a sibling repo (agentm), or run
+from any git worktree, the pack was never found, so the vocabulary half of
+this gate silently did nothing. See `_find_rule_pack_scripts`.
 
 Stdlib-only.
 """
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 import sys
 from pathlib import Path
 
 # ── locate + import the shared voice rule-pack loader ───────────────────────
-# Resolved via `git rev-parse --show-toplevel` rather than a fixed number of
+# Resolved by asking git where it is rather than a fixed number of
 # `__file__.parent`s: a live end-to-end install test (CONS-8) found that a
 # static parents[N] walk breaks the moment this file is copied to a different
 # depth (e.g. installed standalone alongside its .sh/.ps1 twin directly under
-# `.git/hooks/`, only one level below the repo root instead of four). A git
-# hook always runs inside a git repository, so "ask git for the repo root" is
-# the one location fact that holds across every install layout — in-place
-# inside src/developer-safety/hooks/commit-msg-gate/, copied alongside its
-# twins into .git/hooks/, or anywhere else. When the resolved root has no
-# src/wiki/... tree at all (a standalone install outside a full crickets/
-# agentm checkout), the import is skipped -- same graceful-skip outcome the
-# static-path version had for that case, now reached without a wrong-path
-# crash for the *other* install layouts.
-def _find_repo_root() -> Path | None:
+# `.git/hooks/`, only one level below the repo root instead of four).
+#
+# The rule pack lives in CRICKETS, but this hook is installed per-repo — so
+# "the repo root" is not enough on its own. Two layouts the earlier
+# show-toplevel-only version could not reach, both of which silently skipped
+# the vocabulary check rather than failing loudly:
+#
+#   1. **A sibling repo.** Installed in agentm, show-toplevel resolves to the
+#      agentm checkout, which has no src/wiki/ — so the check never ran there
+#      at all, on any commit, since the hook was introduced.
+#   2. **A git worktree.** show-toplevel gives the WORKTREE path
+#      (…/agentm/.claude/worktrees/<slug>), whose `../crickets` is a
+#      worktrees-dir sibling that does not exist. The main checkout has to be
+#      recovered from `--git-common-dir` (absolute from a worktree, relative
+#      to the toplevel from a main checkout — both handled below).
+#
+# The ladder mirrors the resolver idiom already used for the same cross-repo
+# problem by agentm's check-slop.py ($CRICKETS_REPO_ROOT, else ../crickets)
+# and the wiki plugin's recent-wiki-changes.sh (_find_agentm_script):
+#
+#   1. $CRICKETS_REPO_ROOT             — explicit operator override
+#   2. <toplevel>/src/wiki/…           — installed inside crickets itself
+#   3. <toplevel>/../crickets/src/…    — installed in a sibling repo
+#   4. <main checkout> then its ../crickets — same two, from a worktree
+#
+# First hit wins. When nothing resolves (a standalone install with no crickets
+# checkout anywhere), the import is skipped — the same graceful-skip outcome as
+# before, this gate never hard-fails a commit over its own missing dependency.
+_PACK_REL = ("src", "wiki", "skills", "diataxis-author", "scripts")
+
+
+def _git(*args: str) -> str | None:
     try:
         result = subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],
-            capture_output=True, text=True, timeout=5,
+            ["git", *args], capture_output=True, text=True, timeout=5,
         )
     except (OSError, subprocess.SubprocessError):
         return None
     if result.returncode != 0:
         return None
-    top = result.stdout.strip()
-    return Path(top) if top else None
+    return result.stdout.strip() or None
+
+
+def _candidate_roots() -> list[Path]:
+    """Repo roots to probe, nearest first: the working tree, then — when that
+    is a git worktree — the main checkout it was spawned from."""
+    roots: list[Path] = []
+    top = _git("rev-parse", "--show-toplevel")
+    if top:
+        roots.append(Path(top))
+    common = _git("rev-parse", "--git-common-dir")
+    if common:
+        # Absolute from a worktree; relative to the toplevel from a main
+        # checkout (plain ".git"). Resolve against the toplevel either way.
+        common_path = Path(common)
+        if not common_path.is_absolute() and top:
+            common_path = Path(top) / common_path
+        main_root = common_path.parent
+        if main_root not in roots:
+            roots.append(main_root)
+    return roots
+
+
+def _find_rule_pack_scripts() -> Path | None:
+    """First existing rule-pack scripts dir on the ladder, or None."""
+    env_root = os.environ.get("CRICKETS_REPO_ROOT", "").strip()
+    candidates: list[Path] = []
+    if env_root:
+        candidates.append(Path(env_root).joinpath(*_PACK_REL))
+    for root in _candidate_roots():
+        candidates.append(root.joinpath(*_PACK_REL))            # inside crickets
+        candidates.append(root.parent / "crickets" / Path(*_PACK_REL))  # sibling
+    for candidate in candidates:
+        if (candidate / "rule_pack.py").is_file():
+            return candidate
+    return None
 
 
 _rule_pack = None
-_repo_root = _find_repo_root()
-if _repo_root is not None:
-    _RULE_PACK_SCRIPTS = (
-        _repo_root / "src" / "wiki" / "skills" / "diataxis-author" / "scripts"
-    )
-    if (_RULE_PACK_SCRIPTS / "rule_pack.py").is_file():
-        if str(_RULE_PACK_SCRIPTS) not in sys.path:
-            sys.path.insert(0, str(_RULE_PACK_SCRIPTS))
-        try:
-            import rule_pack as _rule_pack  # noqa: E402
-        except ImportError:
-            _rule_pack = None
+_RULE_PACK_SCRIPTS = _find_rule_pack_scripts()
+if _RULE_PACK_SCRIPTS is not None:
+    if str(_RULE_PACK_SCRIPTS) not in sys.path:
+        sys.path.insert(0, str(_RULE_PACK_SCRIPTS))
+    try:
+        import rule_pack as _rule_pack  # noqa: E402
+    except ImportError:
+        _rule_pack = None
 
 
 # ── codename patterns (ruling 4's named families) ───────────────────────────
@@ -144,9 +202,11 @@ def _load_rules() -> list[dict]:
     never hard-fail a commit over its own missing dependency."""
     if _rule_pack is None:
         print(
-            "commit-msg-gate: rule_pack.py not importable (no src/wiki/ sibling "
-            "tree found) — skipping the slop-vocabulary check; codename check "
-            "still applies.",
+            "commit-msg-gate: no crickets checkout found to load the voice rule "
+            "pack from (looked inside this repo, beside it, and — from a "
+            "worktree — beside its main checkout; set $CRICKETS_REPO_ROOT to "
+            "point at one) — skipping the slop-vocabulary check; codename "
+            "check still applies.",
             file=sys.stderr,
         )
         return []
