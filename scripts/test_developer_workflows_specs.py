@@ -235,6 +235,39 @@ class TestTagSerializationContracts(unittest.TestCase):
         self.assertIn("sole tag writer", low,
                       "/release must document the sole-tag-writer invariant")
 
+    def test_work_resume_re_enters_the_bound_worktree(self):
+        # The gap this locks: step 1.5 used to skip outright on resume, so a
+        # session opened at the repo root ran in the main clone and the plan's
+        # own worktree sat there untouched. The resume branch must read the
+        # root-side pointer and re-enter through the host's own primitive.
+        text = self.work
+        self.assertIn(
+            'python3 "${CLAUDE_PLUGIN_ROOT}/scripts/worktree_marker.py" read <slug>',
+            text, "/work's resume branch must read the root-side worktree pointer")
+        self.assertIn("`EnterWorktree` with `path`", text,
+                      "re-entry names the host primitive's existing-worktree form")
+
+    def test_work_resume_never_blocks_on_a_stale_pointer(self):
+        # Re-entry is a convenience layer: an absent / stale / unverifiable
+        # pointer degrades to a note and the plan carries on where it is.
+        low = self.work.lower()
+        self.assertIn("stale", low, "/work must name the stale-pointer case")
+        self.assertIn("proceed in the current directory", low,
+                      "/work must say a failed re-entry carries on in place")
+        self.assertIn("never blocks the plan", low,
+                      "/work must state that re-entry can never stop a plan")
+
+    def test_work_re_entry_is_not_an_auto_spawn(self):
+        # The operator's worktree doctrine forbids authority-free creation;
+        # re-entering an already-registered worktree is not a spawn, and the
+        # spec has to say so or the distinction erodes on the next edit.
+        self.assertIn("re-entry, not a spawn", self.work.lower())
+
+    def test_per_task_bind_suppresses_the_root_pointer(self):
+        # A step-2.5 worktree is merged back and pruned inside one session —
+        # recording it as *the plan's* worktree would aim resume at a corpse.
+        self.assertIn("--no-root-pointer", self.work)
+
     def test_release_documents_reaudit_trigger(self):
         # The escalation path (release-please/changesets) is the re-audit trigger
         # when the serialized-single-writer model's ceiling is reached.

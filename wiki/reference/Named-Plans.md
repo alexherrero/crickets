@@ -176,9 +176,25 @@ The auto-spawn step in the `/work` command gives a named plan its own isolated c
 | Worktree creation | the host's native primitive — `EnterWorktree` (Claude Code) or New-Worktree-Mode / `invoke_subagent` (Antigravity) |
 | Location | `.claude/worktrees/<name>` on a fresh branch named `worktree-<name>` |
 | Plan binding | `worktree_marker.py` writes the plan name into the worktree's local `.harness/active-plan` marker, so `/work` inside the worktree resolves *its* named plan without re-passing `--name` — the one piece of the old `spawn_worker.py` with no host equivalent, since neither host has a concept of "plan" |
+| Resume binding | `worktree_marker.py` also writes `.harness/worktree-for-<slug>` in the **original root**, holding the worktree's path. Both other writes are worktree-local, so without it a later session opened at the repo root has no way to learn which worktree the plan is bound to. Per-slug by name — more than one plan is routinely in flight, and a shared file would have them overwrite each other |
 | `vault_project` | `worktree_marker.py` reproduces a divergent `vault_project` into the worktree as a fallback only (the LC-2 behavior `spawn_worker.py` used to carry) |
 | Preflight | `worktree_marker.py` also carries the LC-6 "already shipped" preflight-reconcile guard |
 | Guard | an in-worktree single-owner check (`is_inside_worktree()`) prevents nested spawns |
+
+### Resuming a plan in its worktree
+
+A plan that outlives one session resumes at step 1.5's *Re-enter* branch instead of its *Auto-spawn* branch. `worktree_marker.py read <slug> --project-root <root>` resolves the pointer above; `/work` re-enters the printed path through the host's own primitive (Claude Code: `EnterWorktree` with `path`, which accepts an existing worktree). You no longer have to tell a resumed session where its worktree is.
+
+This is a re-entry, not a spawn. The pointer is only ever followed to a directory `git worktree list` already claims, so nothing here creates a worktree, and the authority that permitted the original spawn is what put the pointer there in the first place.
+
+| Read result | What `/work` does |
+|---|---|
+| exit 0 | announces, then re-enters the printed worktree and runs the rest of the plan from inside it |
+| exit 1 | proceeds in the current directory, printing the reason: singleton plan, no pointer recorded, a **stale** pointer (the worktree was removed by hand, is no longer registered, can't be verified, or now carries a different plan's marker), or already being inside the right worktree |
+| exit 2 | a malformed slug — surfaces the error and still proceeds in the current directory |
+
+> [!NOTE]
+> Every state-of-the-world failure collapses to exit 1 on purpose. Re-entry is a convenience layer, so a pointer left behind by a worktree you deleted by hand degrades to a visible note and carries on — it can never become something that stops a plan. `worktree_marker.py clear <slug>` drops a pointer; `/work` runs it itself at close-out (step 12), and the note tells you the command when a stale one turns up.
 
 > [!NOTE]
 > **Operator authority, two forms.** Worker worktrees require your authority. You provide this through an explicit instruction to spawn one, or through a durable `isolation.mode: worktree-per-plan` configuration in `.harness/project.json`. We forbid silent, authority-free auto-spawning. The [Developer safety design](crickets-developer-safety) document explains both forms.
