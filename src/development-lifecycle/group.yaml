@@ -588,5 +588,9 @@ enhances:
 #          project space, in scan_vault_projects and in the recall-hit slug
 #          match. Both were pinned to the pre-stage-2 `projects/` literal, so
 #          `/open` silently lost its vault-projects source on a migrated vault.
-version: 0.43.1
+# 0.43.2: resolve_project.py asks the kernel for memory_root(), not
+#          vault_path() -- it joins agent-tree segments onto the result, so the
+#          vault root put every one of them a level too high. Falls back to
+#          vault_path() on a kernel too old to have memory_root.
+version: 0.43.2
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

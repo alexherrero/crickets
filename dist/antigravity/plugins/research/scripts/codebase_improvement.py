@@ -37,8 +37,21 @@ _HERE = Path(__file__).resolve().parent
 if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 
-WATCHLIST_REL = Path("personal") / "_watchlist"
+# The memory space, newest generation first — `personal-private/` -> `personal/`
+# (V5-3) -> `memory/` (stage-2, 2026-08-11). Probe rather than pin: a literal
+# left on a retired generation writes into a directory nothing reads back.
+MEMORY_SPACE_SEGMENTS = ("memory", "personal", "personal-private")
+WATCHLIST_LEAF = "_watchlist"
 SOURCE_SLUG = "codebase-improvement"
+
+
+def watchlist_dir(vault: Path) -> Path:
+    """`<memory-space>/_watchlist`, newest generation first, current as fallback."""
+    for seg in MEMORY_SPACE_SEGMENTS:
+        cand = vault / seg / WATCHLIST_LEAF
+        if cand.is_dir():
+            return cand
+    return vault / MEMORY_SPACE_SEGMENTS[0] / WATCHLIST_LEAF
 
 # Directories a scan never descends into -- matches the repo hygiene any
 # stale-pattern scan should already assume (VCS metadata, dependency trees).
@@ -89,7 +102,7 @@ def _slugify(text: str) -> str:
 
 
 def _entry_path(vault: Path, insight: ResearchInsight) -> Path:
-    return vault / WATCHLIST_REL / SOURCE_SLUG / f"{_slugify(insight.slug)}.md"
+    return watchlist_dir(vault) / SOURCE_SLUG / f"{_slugify(insight.slug)}.md"
 
 
 def _read_frontmatter_field(entry_path: Path, field: str) -> "Optional[str]":

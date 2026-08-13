@@ -25,7 +25,75 @@
 
 from __future__ import annotations
 
+import json
+import os
 from pathlib import Path
+
+# ── The memory root ─────────────────────────────────────────────────────────
+#
+# `vault_path` and the memory root are two different directories and conflating
+# them is its own silent miss. The kernel is explicit about it:
+#
+#   vault_path()   -> the Obsidian vault      (/Users/…/Vault)
+#   memory_root()  -> the agent's own tree    (/Users/…/Vault/Agent)
+#
+# `memory_root` is `vault_path` joined with `plugins.obsidian-vault.memory_root`
+# from the install config. Anything addressing agent content — memory/,
+# desk/projects/, _meta/ — wants the memory root; only callers reaching for the
+# repository or the operator's OWN notes want the vault root. Resolving the
+# vault root and then joining `desk/projects` onto it lands one level too high,
+# and on a case-insensitive filesystem `<vault>/projects` can collide with the
+# operator's own `Projects/` folder — a wrong neighbor, not just a miss.
+#
+# `$MEMORY_VAULT_PATH` is returned as-is: the variable has always named the
+# memory tree to the consumers that read it, so joining the prefix again would
+# address `<vault>/Agent/Agent`. Same contract as harness_memory.memory_root().
+#
+# Mirrored here rather than imported — the agentm kernel is not bundled with a
+# dist-installed plugin.
+
+_CONFIG_NAME = ".agentm-config.json"
+_MEMORY_ROOT_KEY = "plugins.obsidian-vault.memory_root"
+_PLUGIN_VAULT_PATH_KEY = "plugins.obsidian-vault.vault_path"
+
+
+def _install_prefix() -> Path:
+    prefix = os.environ.get("AGENTM_INSTALL_PREFIX", "").strip()
+    return Path(os.path.expanduser(prefix)) if prefix else Path.home() / ".claude"
+
+
+def _read_config(install_prefix: Path | None = None) -> dict:
+    config = (install_prefix or _install_prefix()) / _CONFIG_NAME
+    try:
+        data = json.loads(config.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def resolve_memory_root(cli_value: str | None = None,
+                        install_prefix: Path | None = None):
+    """The agent's own tree, or None. Never a cached literal.
+
+    Order: explicit CLI value -> `$MEMORY_VAULT_PATH` (as-is; already a memory
+    root) -> config `vault_path` joined with `plugins.obsidian-vault.memory_root`.
+    Returns None when nothing resolves to a real directory — graceful-skip, the
+    same shape every caller here already handles.
+    """
+    for raw in (cli_value, os.environ.get("MEMORY_VAULT_PATH", "")):
+        if raw and raw.strip():
+            p = Path(os.path.expanduser(raw.strip()))
+            return p if p.is_dir() else None
+    data = _read_config(install_prefix)
+    vp = data.get(_PLUGIN_VAULT_PATH_KEY) or data.get("vault_path")
+    if not isinstance(vp, str) or not vp.strip():
+        return None
+    root = Path(os.path.expanduser(vp.strip()))
+    rel = data.get(_MEMORY_ROOT_KEY)
+    if isinstance(rel, str) and rel.strip():
+        root = root.joinpath(*rel.strip().split("/"))
+    return root if root.is_dir() else None
+
 
 # Newest layout first. Each entry is one generation of the project space.
 PROJECT_SPACE_SEGMENTS: tuple[tuple[str, ...], ...] = (
@@ -77,6 +145,66 @@ def global_wiki_style_dir(vault) -> Path:
 def project_wiki_style_dir(vault, project_slug: str) -> Path:
     """One project's voice-overlay store, `<projects-space>/<slug>/wiki-style`."""
     return resolve_under_projects(vault, project_slug, "wiki-style")
+
+
+# ── The memory space ────────────────────────────────────────────────────────
+#
+# The second half of the same migration: the personal-notes space was renamed
+# `personal-private/` -> `personal/` (V5-3) -> `memory/` (stage-2, 2026-08-11).
+# Same probe discipline, same reason.
+
+MEMORY_SPACE_SEGMENTS: tuple[tuple[str, ...], ...] = (
+    ("memory",),             # stage-2 four-space migration, 2026-08-11
+    ("personal",),           # V5-3
+    ("personal-private",),   # pre-V5-3
+)
+
+CURRENT_MEMORY_SEGMENT: tuple[str, ...] = MEMORY_SPACE_SEGMENTS[0]
+
+
+def resolve_existing_under_memory(root, *parts: str):
+    """First existing candidate for `<memory-space>/<parts>`, else None."""
+    r = Path(root)
+    for seg in MEMORY_SPACE_SEGMENTS:
+        cand = r.joinpath(*seg, *parts)
+        if cand.exists():
+            return cand
+    return None
+
+
+def resolve_under_memory(root, *parts: str) -> Path:
+    """`<memory-space>/<parts>`, newest generation first, current one as fallback."""
+    found = resolve_existing_under_memory(root, *parts)
+    if found is not None:
+        return found
+    return Path(root).joinpath(*CURRENT_MEMORY_SEGMENT, *parts)
+
+
+def always_load_dir(root) -> Path:
+    """The always-injected entry tier, `<memory-space>/_always-load`."""
+    return resolve_under_memory(root, "_always-load")
+
+
+def watchlist_dir(root) -> Path:
+    """The forward-learning watchlist, `<memory-space>/_watchlist`."""
+    return resolve_under_memory(root, "_watchlist")
+
+
+def find_memory_entry(root, filename: str):
+    """Locate a curated memory entry by filename anywhere in the memory space.
+
+    The always-load tier is a *tier*, not a permanent address: an entry that
+    graduates out of it stays curated content and moves into the dated tree
+    (`memory/2026/07/…`). A caller that only probes `_always-load/` therefore
+    loses the entry the moment it graduates — which is what happened to
+    voice-kernel.md. Returns the shallowest match so a promoted copy in
+    `_always-load/` still wins over an archived one, or None.
+    """
+    space = resolve_existing_under_memory(root)
+    if space is None:
+        return None
+    matches = sorted(space.rglob(filename), key=lambda p: (len(p.parts), str(p)))
+    return matches[0] if matches else None
 
 
 def global_wiki_style_dir_if_present(vault):

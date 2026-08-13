@@ -49,7 +49,7 @@
       "description": "Design-doc and ADR authoring — the /design command (author → translate → sequence) and the ADR skill for capturing architectural decisions with re-audit triggers.",
       "name": "design",
       "source": "./plugins/design",
-      "version": "0.9.1"
+      "version": "0.9.2"
     },
     {
       "capabilities": [
@@ -87,7 +87,7 @@
       ],
       "name": "development-lifecycle",
       "source": "./plugins/development-lifecycle",
-      "version": "0.43.1"
+      "version": "0.43.2"
     },
     {
       "capabilities": [
@@ -163,7 +163,7 @@
       "description": "Discovery-to-watchlist research primitives. idea-search is a read-only scan over the agentm recall engine surfacing existing vault/codebase entries relevant to a question. learn-forward leans by name on agentm's approved-source forward-learning pipeline to mine operator-configured sources onto the watchlist. codebase-improvement applies a research insight's stale pattern against the operator's own repo, surfacing exactly one watchlist finding per match -- never auto-editing. All three are strictly discovery-surfacing: findings land in the watchlist for operator review, nothing is ever auto-adopted.",
       "name": "research",
       "source": "./plugins/research",
-      "version": "0.2.0"
+      "version": "0.2.1"
     },
     {
       "capabilities": [
@@ -191,7 +191,7 @@
       ],
       "name": "wiki",
       "source": "./plugins/wiki",
-      "version": "0.9.1"
+      "version": "0.9.2"
     }
   ],
   "renames": {

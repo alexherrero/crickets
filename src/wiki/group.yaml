@@ -138,7 +138,16 @@ standalone: true
 #         literal, absent from every authored draft, nothing raised.
 #         style_resolver now also prints one stderr note when no overlay store
 #         exists on any layout -- present-but-empty stays silent.
-version: 0.9.1
+# 0.9.2: vault_layout gains resolve_memory_root() + the memory-space chain
+#         (memory -> personal -> personal-private). agentmemory_conventions
+#         read the vault from $MEMORY_VAULT_PATH alone, which the hooks export
+#         but an interactive session does not -- so authoring resolved NO vault
+#         and fell back to the base floor no matter how correct the overlay
+#         path was. It now mirrors the kernel's env-then-config chain, and
+#         style_resolver says so on stderr when no vault resolves at all --
+#         the sibling of the 0.9.1 guard, and the more common failure.
+#         wiki_watch_config likewise exports a memory root, not a vault root.
+version: 0.9.2
 capabilities: [wiki-maintenance, wiki]
 renamed_from: [wiki-maintenance]
 enhances:

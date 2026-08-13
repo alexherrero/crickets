@@ -104,11 +104,16 @@ def read_enablement(install_prefix: Optional[Path] = None) -> bool:
 
 
 def read_vault_path(install_prefix: Optional[Path] = None) -> Optional[str]:
-    """Resolve the MemoryVault root for registry/state lookups, vault-free of the
-    agentm kernel: $MEMORY_VAULT_PATH env (must exist) -> .agentm-config.json::vault_path.
+    """Resolve the agent's MEMORY ROOT for registry/state lookups, free of the
+    agentm kernel: $MEMORY_VAULT_PATH env (must exist) -> the install config's
+    `vault_path` joined with `plugins.obsidian-vault.memory_root`.
+
+    Mirrors harness_memory.memory_root(), not vault_path(): the result is
+    exported as `$MEMORY_VAULT_PATH` to a subprocess, and that variable names
+    the memory tree to every consumer that reads it. Handing it the Obsidian
+    vault root tells the child the memory tree is one level higher than it is.
 
     Returns the path string when a directory exists there, else None (graceful-skip).
-    Mirrors harness_memory.vault_path() without importing agentm_config.py (not bundled).
     """
     raw = os.environ.get("MEMORY_VAULT_PATH", "").strip()
     if raw:
@@ -117,10 +122,13 @@ def read_vault_path(install_prefix: Optional[Path] = None) -> Optional[str]:
     data = _load_agentm_config(install_prefix)
     if data is None:
         return None
-    vp = data.get("vault_path")
+    vp = data.get("plugins.obsidian-vault.vault_path") or data.get("vault_path")
     if not isinstance(vp, str) or not vp.strip():
         return None
     p = Path(os.path.expanduser(vp.strip()))
+    rel = data.get("plugins.obsidian-vault.memory_root")
+    if isinstance(rel, str) and rel.strip():
+        p = p.joinpath(*rel.strip().split("/"))
     return str(p) if p.is_dir() else None
 
 

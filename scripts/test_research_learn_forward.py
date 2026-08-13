@@ -157,10 +157,20 @@ class LearnForwardTests(unittest.TestCase):
         learn_forward.learn(self.vault, fetcher=fetcher, now=1_700_000_000.0)
         post = _snapshot(self.vault)
 
+        # The watchlist/cache, on whichever memory-space generation this vault
+        # sits: `personal-private/` -> `personal/` -> `memory/`. The assertion
+        # is unchanged in intent — a scan writes ONLY into the watchlist or the
+        # cache — but the space itself was renamed by the stage-2 migration, so
+        # naming only `personal/` here would fail a correctly-behaving scan.
+        allowed = tuple(
+            f"{space}/{leaf}"
+            for space in ("memory", "personal", "personal-private")
+            for leaf in ("_watchlist", "_skill-watchlist")
+        ) + ("_meta",)
         new_or_changed = (post - pre) | {p for p in pre if p not in post}
         for rel in new_or_changed:
             self.assertTrue(
-                rel.startswith("personal/_watchlist") or rel.startswith("_meta") or rel.startswith("personal/_skill-watchlist"),
+                rel.startswith(allowed),
                 f"unexpected write outside the watchlist/cache: {rel}",
             )
 

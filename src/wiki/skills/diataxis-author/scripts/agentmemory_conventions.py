@@ -2,7 +2,7 @@
 # agentmemory_conventions.py — AgentMemory read + write integration
 # for the diataxis-author skill (plan #13 part 5).
 #
-# Read-side: globs `<vault>/personal/_always-load/diataxis-*.md`
+# Read-side: globs `<memory-space>/_always-load/diataxis-*.md`
 # at invocation; parses simple `key: value` lines from each entry's
 # frontmatter + body to build a conventions dict. Per-repo override at
 # `<repo>/wiki/.diataxis-conventions.md` takes precedence when present.
@@ -49,13 +49,16 @@ _ALWAYS_LOAD_PREFIX = "diataxis-"
 
 
 def _resolve_vault_path(arg_path: str | None = None) -> Path | None:
-    """Resolve vault path: arg → MEMORY_VAULT_PATH env → None (no vault)."""
-    if arg_path:
-        return Path(arg_path).expanduser()
-    env_path = os.environ.get("MEMORY_VAULT_PATH", "").strip()
-    if env_path:
-        return Path(env_path).expanduser()
-    return None
+    """Resolve the agent's memory root: arg → env → install config → None.
+
+    Previously this read `$MEMORY_VAULT_PATH` and stopped. That env var is set
+    by the memory hooks but is absent from an ordinary interactive session, so
+    authoring resolved no vault at all and every draft silently fell back to the
+    committed base floor — the overlay path being correct made no difference
+    when nothing ever passed a vault to it. The config branch is what the
+    kernel's own resolver has always had; this mirrors it (see vault_layout).
+    """
+    return vault_layout.resolve_memory_root(arg_path)
 
 
 # Optional `**bold**` markdown wrapping around the key — both formats
@@ -125,7 +128,7 @@ def load_conventions(
 
     Priority (highest to lowest):
       1. Per-repo `<wiki_root>/.diataxis-conventions.md`
-      2. Vault `<vault>/personal/_always-load/diataxis-*.md` (any entry)
+      2. Vault `<memory-space>/_always-load/diataxis-*.md` (any entry)
       3. ADR 0004 hardcoded defaults
     """
     # Start with defaults.
@@ -135,7 +138,7 @@ def load_conventions(
     if vault_path is None:
         vault_path = _resolve_vault_path()
     if vault_path:
-        always_load_dir = vault_path / "personal" / "_always-load"
+        always_load_dir = vault_layout.always_load_dir(vault_path)
         if always_load_dir.exists():
             for entry in sorted(always_load_dir.glob(f"{_ALWAYS_LOAD_PREFIX}*.md")):
                 out.update(_parse_always_load_entry(entry))
@@ -175,7 +178,7 @@ def confirm_save_convention(
         return None
     # Compute target path.
     slug = re.sub(r"[^a-z0-9-]", "-", key.lower()).strip("-")
-    target = vault_path / "personal" / "_always-load" / f"{_ALWAYS_LOAD_PREFIX}{slug}.md"
+    target = vault_layout.always_load_dir(vault_path) / f"{_ALWAYS_LOAD_PREFIX}{slug}.md"
     # Mode resolution (matches MEMORY_REVIEW_MODE pattern from existing scripts).
     if mode is None:
         mode = os.environ.get("MEMORY_REVIEW_MODE", "interactive").strip().lower()
