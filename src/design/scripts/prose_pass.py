@@ -63,9 +63,10 @@ Options:
                              bare filename in the vault's global wiki-style store
                              (default: 2026-06-09-design-doc-prose.md)
   --voice-kernel <path>      override the always-load voice kernel (default:
-                             <vault>/personal/_always-load/voice-kernel.md)
-  --vault-path <path>        vault root override (else $MEMORY_VAULT_PATH, else
-                             .agentm-config.json::vault_path)
+                             located in the vault's memory space — the
+                             always-load tier first, then by filename)
+  --vault-path <path>        memory-root override (else $MEMORY_VAULT_PATH, else
+                             .agentm-config.json vault_path + memory_root)
   --model <name>             agy display-string model (default: Gemini 3.1 Pro (High))
   --timeout <dur>            agy --print-timeout value (default: 480s)
   -o, --output <file>        write the revised doc here instead of stdout
@@ -108,8 +109,12 @@ from pathlib import Path
 
 MODEL_DEFAULT = "Gemini 3.1 Pro (High)"
 TIMEOUT_DEFAULT = "480s"
-VOICE_KERNEL_REL = "personal/_always-load/voice-kernel.md"
+VOICE_KERNEL_NAME = "voice-kernel.md"
 OVERLAY_DEFAULT = "2026-06-09-design-doc-prose.md"
+
+# The memory space, newest generation first — `personal-private/` -> `personal/`
+# (V5-3) -> `memory/` (stage-2, 2026-08-11). The always-load tier lives under it.
+MEMORY_SPACE_SEGMENTS = ("memory", "personal", "personal-private")
 
 # The vault's project-keyed space, newest layout generation first. The stage-2
 # four-space migration (2026-08-11) pushed it down to `desk/projects/`; V4 #26
@@ -367,11 +372,20 @@ def build_agy_argv(prompt: str, model: str, timeout: str,
 
 
 def resolve_vault_path(cli_value: str | None) -> Path | None:
-    """--vault-path → $MEMORY_VAULT_PATH → .agentm-config.json::vault_path.
+    """--vault-path → $MEMORY_VAULT_PATH → the configured MEMORY ROOT.
 
-    Mirrors harness_memory.vault_path() without importing the agentm kernel
-    (not bundled with the dist-installed plugin). Returns a real directory or
-    None — never a cached literal.
+    Mirrors harness_memory.memory_root(), not vault_path() — the distinction is
+    load-bearing. `vault_path` is the Obsidian vault; the memory root is
+    `vault_path` joined with `plugins.obsidian-vault.memory_root`, and every
+    path this script builds (the voice kernel, the wiki-style store) addresses
+    agent content, so it hangs off the memory root. Reading `vault_path` alone
+    lands one level too high, where on a case-insensitive filesystem the joined
+    segments can collide with the operator's own folders. `$MEMORY_VAULT_PATH`
+    is returned as-is: it already names the memory tree, so joining the prefix
+    again would address `<vault>/Agent/Agent`.
+
+    Not imported from the kernel — that is not bundled with a dist-installed
+    plugin. Returns a real directory or None; never a cached literal.
     """
     for raw in (cli_value, os.environ.get("MEMORY_VAULT_PATH", "")):
         if raw and raw.strip():
@@ -383,11 +397,41 @@ def resolve_vault_path(cli_value: str | None) -> Path | None:
         data = json.loads(config.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return None
-    vp = data.get("vault_path") if isinstance(data, dict) else None
+    if not isinstance(data, dict):
+        return None
+    vp = data.get("plugins.obsidian-vault.vault_path") or data.get("vault_path")
     if not isinstance(vp, str) or not vp.strip():
         return None
     p = Path(os.path.expanduser(vp.strip()))
+    rel = data.get("plugins.obsidian-vault.memory_root")
+    if isinstance(rel, str) and rel.strip():
+        p = p.joinpath(*rel.strip().split("/"))
     return p if p.is_dir() else None
+
+
+def resolve_voice_kernel(vault: Path) -> Path | None:
+    """Locate the always-load voice kernel, or None.
+
+    Probes the always-load tier across memory-space generations first, then
+    falls back to a lookup by filename anywhere in the memory space. That
+    fallback is not belt-and-braces: `_always-load/` is a tier, not a permanent
+    address, and this kernel has already graduated out of it into the dated
+    tree (`memory/2026/07/voice-kernel.md`) while staying the live kernel. A
+    resolver that only knows the tier loses the file the moment it is demoted.
+    """
+    for seg in MEMORY_SPACE_SEGMENTS:
+        cand = vault / seg / "_always-load" / VOICE_KERNEL_NAME
+        if cand.is_file():
+            return cand
+    for seg in MEMORY_SPACE_SEGMENTS:
+        space = vault / seg
+        if not space.is_dir():
+            continue
+        matches = sorted(space.rglob(VOICE_KERNEL_NAME),
+                         key=lambda p: (len(p.parts), str(p)))
+        if matches:
+            return matches[0]
+    return None
 
 
 _TEST_AGY_CMD_ENV = "PROSE_PASS_TEST_AGY_CMD"
@@ -590,12 +634,12 @@ def main(argv=None) -> int:
                   ".agentm-config.json::vault_path) — voice pack unreachable")
         return 1
     kernel_path = (Path(os.path.expanduser(args.voice_kernel))
-                   if args.voice_kernel else vault / VOICE_KERNEL_REL)
+                   if args.voice_kernel else resolve_voice_kernel(vault))
     overlay_path = resolve_overlay(vault, args.overlay)
-    missing = [p for p in (kernel_path, overlay_path) if not p.is_file()]
+    missing = [p for p in (kernel_path, overlay_path) if p is None or not p.is_file()]
     if missing:
-        _degraded("voice pack unresolved",
-                  f"missing voice file(s): {', '.join(p.name for p in missing)}")
+        names = ", ".join(VOICE_KERNEL_NAME if p is None else p.name for p in missing)
+        _degraded("voice pack unresolved", f"missing voice file(s): {names}")
         return 1
     voice_pack = (kernel_path.read_text(encoding="utf-8").strip()
                   + "\n\n" + overlay_path.read_text(encoding="utf-8").strip())

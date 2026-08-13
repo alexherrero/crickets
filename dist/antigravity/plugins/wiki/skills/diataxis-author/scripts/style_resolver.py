@@ -170,6 +170,22 @@ def _warn_if_no_overlay_store(vault_path: Path) -> None:
         )
 
 
+def _warn_no_vault_resolved() -> None:
+    """One stderr line when the caller passed no vault at all.
+
+    The sibling of _warn_if_no_overlay_store, and the more common failure: a
+    correct overlay path buys nothing if nothing ever hands the resolver a
+    vault. That was the state of every ordinary authoring session — the hooks
+    export `$MEMORY_VAULT_PATH`, an interactive run does not, and the resolver
+    said nothing because "no vault" and "no lessons" reach the same empty list.
+    """
+    print(
+        "style_resolver: no vault resolved (--vault-path, $MEMORY_VAULT_PATH, or "
+        ".agentm-config.json) — authoring on the committed base style guide alone.",
+        file=sys.stderr,
+    )
+
+
 def resolve_style(
     *,
     wiki_root: Path | None = None,
@@ -207,6 +223,8 @@ def resolve_style(
         if project_slug:
             pdir = vault_layout.project_wiki_style_dir(vp, project_slug)
             _apply(read_scope_lessons(pdir, "per-project"))
+    else:
+        _warn_no_vault_resolved()
     _apply(_read_per_repo_lessons(wiki_root))
 
     return ResolvedStyle(base_text=base, lessons=list(merged.values()), provenance=provenance)

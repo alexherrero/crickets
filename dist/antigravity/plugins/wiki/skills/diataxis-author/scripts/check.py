@@ -460,10 +460,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"ERROR: {e}", file=sys.stderr)
         return 1
     check_wiki_py = _resolve_check_wiki_py(args.check_wiki_py)
-    vault_path = Path(args.vault_path).expanduser() if args.vault_path else None
-    if vault_path is None:
-        env = os.environ.get("MEMORY_VAULT_PATH", "").strip()
-        vault_path = Path(env).expanduser() if env else None
+    vault_path = style_resolver.vault_layout.resolve_memory_root(args.vault_path)
     report = run_check(
         wiki_root=wiki_root,
         strict=args.strict,

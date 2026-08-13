@@ -33,5 +33,8 @@ standalone: false
 #          observed as an AttributeError in a same-process, cross-plugin
 #          test run (PLAN-wave-c-maintenance task 3). Now a private,
 #          uniquely-named file-path load. Zero behavior change otherwise.
-version: 0.2.0
+# 0.2.1: codebase_improvement.py probes the memory space for _watchlist
+#         (memory -> personal -> personal-private) instead of pinning
+#         `personal/`, which the stage-2 migration retired.
+version: 0.2.1
 capabilities: [research]

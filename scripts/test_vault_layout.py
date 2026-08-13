@@ -29,10 +29,13 @@ from __future__ import annotations
 import contextlib
 import importlib.util
 import io
+import json
+import os
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
@@ -68,6 +71,8 @@ prose_pass = _load_file("prose_pass_for_layout",
                         _ROOT / "src" / "design" / "scripts" / "prose_pass.py")
 resolve_project = _load_file("resolve_project_for_layout",
                              _ROOT / "src" / "development-lifecycle" / "scripts" / "resolve_project.py")
+codebase_improvement = _load_file("codebase_improvement_for_layout",
+                                  _ROOT / "src" / "research" / "scripts" / "codebase_improvement.py")
 
 
 # The two layouts under test, written out by hand rather than read from the
@@ -244,12 +249,17 @@ class TestNoOverlayStoreGuard(unittest.TestCase):
             _write_lesson(gdir, "a.md", trigger="x", guidance="y")
             self.assertEqual(self._stderr_of_resolve(vault), "")
 
-    def test_no_vault_stays_silent(self):
-        """No vault at all is the documented base-floor-only mode, not a miss."""
+    def test_no_vault_still_returns_the_base_floor(self):
+        """No vault degrades to the committed floor, as documented — but it is
+        no longer SILENT about it (see TestNoVaultGuard). An earlier draft of
+        this suite asserted silence here on the reasoning that base-floor-only
+        is a legitimate mode. It is legitimate and it is also the single most
+        common way a draft loses the operator's voice, so it now says so."""
         buf = io.StringIO()
         with contextlib.redirect_stderr(buf):
-            sr.resolve_style(wiki_root=None, vault_path=None, project_slug=None)
-        self.assertEqual(buf.getvalue(), "")
+            r = sr.resolve_style(wiki_root=None, vault_path=None, project_slug=None)
+        self.assertEqual(r.lessons, [])
+        self.assertIn("Second person", r.base_text)
 
 
 # ── Write paths land where the read path looks ───────────────────────────────
@@ -433,6 +443,306 @@ class TestResolveProjectSpace(unittest.TestCase):
         self.assertIsNone(f("projects"))          # root alone, no slug
         self.assertIsNone(f("desk/projects"))     # ditto
         self.assertIsNone(f(""))
+
+
+# ── The memory root: vault_path is NOT the memory root ──────────────────────
+
+class TestResolveMemoryRoot(unittest.TestCase):
+    """`vault_path` is the Obsidian vault; the memory root is that joined with
+    `plugins.obsidian-vault.memory_root`. Conflating them lands every agent-tree
+    path one level too high — and on a case-insensitive filesystem, possibly on
+    the operator's own similarly-named folder."""
+
+    def _config(self, prefix: Path, **keys) -> None:
+        prefix.mkdir(parents=True, exist_ok=True)
+        (prefix / ".agentm-config.json").write_text(json.dumps(keys), encoding="utf-8")
+
+    def test_composes_vault_path_with_memory_root(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "Vault" / "Agent").mkdir(parents=True)
+            self._config(root / "prefix", **{
+                "vault_path": str(root / "Vault"),
+                "plugins.obsidian-vault.memory_root": "Agent",
+            })
+            with mock.patch.dict(os.environ, {}, clear=False):
+                os.environ.pop("MEMORY_VAULT_PATH", None)
+                got = vl.resolve_memory_root(install_prefix=root / "prefix")
+            self.assertEqual(got, root / "Vault" / "Agent")
+
+    def test_absent_memory_root_key_means_the_vault_path_itself(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "Vault").mkdir(parents=True)
+            self._config(root / "prefix", vault_path=str(root / "Vault"))
+            with mock.patch.dict(os.environ, {}, clear=False):
+                os.environ.pop("MEMORY_VAULT_PATH", None)
+                got = vl.resolve_memory_root(install_prefix=root / "prefix")
+            self.assertEqual(got, root / "Vault")
+
+    def test_plugin_namespaced_key_wins_over_legacy_flat_key(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "New" / "Agent").mkdir(parents=True)
+            (root / "Old").mkdir(parents=True)
+            self._config(root / "prefix", **{
+                "vault_path": str(root / "Old"),
+                "plugins.obsidian-vault.vault_path": str(root / "New"),
+                "plugins.obsidian-vault.memory_root": "Agent",
+            })
+            with mock.patch.dict(os.environ, {}, clear=False):
+                os.environ.pop("MEMORY_VAULT_PATH", None)
+                got = vl.resolve_memory_root(install_prefix=root / "prefix")
+            self.assertEqual(got, root / "New" / "Agent")
+
+    def test_env_is_returned_as_is_without_joining_the_prefix(self):
+        """$MEMORY_VAULT_PATH already names the memory tree. Joining the
+        configured prefix onto it again would address <vault>/Agent/Agent."""
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "Vault" / "Agent").mkdir(parents=True)
+            self._config(root / "prefix", **{
+                "vault_path": str(root / "Vault"),
+                "plugins.obsidian-vault.memory_root": "Agent",
+            })
+            with mock.patch.dict(
+                os.environ, {"MEMORY_VAULT_PATH": str(root / "Vault" / "Agent")}
+            ):
+                got = vl.resolve_memory_root(install_prefix=root / "prefix")
+            self.assertEqual(got, root / "Vault" / "Agent")
+
+    def test_cli_value_wins_over_everything(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "explicit").mkdir()
+            with mock.patch.dict(os.environ, {"MEMORY_VAULT_PATH": str(root)}):
+                self.assertEqual(vl.resolve_memory_root(str(root / "explicit")),
+                                 root / "explicit")
+
+    def test_none_when_nothing_resolves(self):
+        with tempfile.TemporaryDirectory() as td:
+            with mock.patch.dict(os.environ, {}, clear=False):
+                os.environ.pop("MEMORY_VAULT_PATH", None)
+                self.assertIsNone(
+                    vl.resolve_memory_root(install_prefix=Path(td) / "no-such-prefix"))
+
+    def test_none_when_the_composed_root_does_not_exist(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "Vault").mkdir()          # no Agent/ inside it
+            self._config(root / "prefix", **{
+                "vault_path": str(root / "Vault"),
+                "plugins.obsidian-vault.memory_root": "Agent",
+            })
+            with mock.patch.dict(os.environ, {}, clear=False):
+                os.environ.pop("MEMORY_VAULT_PATH", None)
+                self.assertIsNone(
+                    vl.resolve_memory_root(install_prefix=root / "prefix"))
+
+
+# ── The memory space: personal-private -> personal -> memory ────────────────
+
+class TestMemorySpaceChain(unittest.TestCase):
+    def test_always_load_current_generation(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "memory" / "_always-load").mkdir(parents=True)
+            self.assertEqual(_rel(vl.always_load_dir(root), root),
+                             "memory/_always-load")
+
+    def test_always_load_previous_generation(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "personal" / "_always-load").mkdir(parents=True)
+            self.assertEqual(_rel(vl.always_load_dir(root), root),
+                             "personal/_always-load")
+
+    def test_always_load_oldest_generation(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "personal-private" / "_always-load").mkdir(parents=True)
+            self.assertEqual(_rel(vl.always_load_dir(root), root),
+                             "personal-private/_always-load")
+
+    def test_always_load_defaults_to_current_generation(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            self.assertEqual(_rel(vl.always_load_dir(root), root),
+                             "memory/_always-load")
+
+    def test_watchlist_follows_the_same_chain(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "personal" / "_watchlist").mkdir(parents=True)
+            self.assertEqual(_rel(vl.watchlist_dir(root), root),
+                             "personal/_watchlist")
+
+    def test_find_memory_entry_reaches_a_graduated_entry(self):
+        """The kernel graduated out of _always-load/ into the dated tree and
+        stayed the live kernel. A tier-only probe loses it."""
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "memory" / "_always-load").mkdir(parents=True)
+            dated = root / "memory" / "2026" / "07"
+            dated.mkdir(parents=True)
+            (dated / "voice-kernel.md").write_text("kernel\n", encoding="utf-8")
+            self.assertEqual(_rel(vl.find_memory_entry(root, "voice-kernel.md"), root),
+                             "memory/2026/07/voice-kernel.md")
+
+    def test_find_memory_entry_prefers_the_shallowest_match(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            al = root / "memory" / "_always-load"
+            al.mkdir(parents=True)
+            (al / "voice-kernel.md").write_text("promoted\n", encoding="utf-8")
+            dated = root / "memory" / "2026" / "07"
+            dated.mkdir(parents=True)
+            (dated / "voice-kernel.md").write_text("archived\n", encoding="utf-8")
+            self.assertEqual(_rel(vl.find_memory_entry(root, "voice-kernel.md"), root),
+                             "memory/_always-load/voice-kernel.md")
+
+    def test_find_memory_entry_none_when_absent(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "memory").mkdir()
+            self.assertIsNone(vl.find_memory_entry(root, "voice-kernel.md"))
+
+
+# ── The guard's second direction: no vault resolved at all ──────────────────
+
+class TestNoVaultGuard(unittest.TestCase):
+    def test_no_vault_says_so(self):
+        """The common real-world failure: nothing ever hands the resolver a
+        vault, so a correct overlay path buys nothing and nothing is said."""
+        buf = io.StringIO()
+        with contextlib.redirect_stderr(buf):
+            sr.resolve_style(wiki_root=None, vault_path=None, project_slug=None)
+        err = buf.getvalue()
+        self.assertIn("no vault resolved", err)
+        self.assertIn("committed base style guide alone", err)
+
+    def test_a_resolved_vault_with_lessons_stays_silent(self):
+        with tempfile.TemporaryDirectory() as td:
+            vault = Path(td) / "vault"
+            _write_lesson(vault / "desk" / "projects" / "_global" / "wiki-style",
+                          "a.md", trigger="x", guidance="y")
+            buf = io.StringIO()
+            with contextlib.redirect_stderr(buf):
+                sr.resolve_style(wiki_root=None, vault_path=vault, project_slug=None)
+            self.assertEqual(buf.getvalue(), "")
+
+
+# ── design plugin: prose_pass's memory-root + kernel resolution ─────────────
+
+class TestProsePassMemoryRoot(unittest.TestCase):
+    def test_resolve_vault_path_composes_the_memory_root(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "Vault" / "Agent").mkdir(parents=True)
+            prefix = root / "prefix"
+            prefix.mkdir()
+            (prefix / ".agentm-config.json").write_text(json.dumps({
+                "vault_path": str(root / "Vault"),
+                "plugins.obsidian-vault.memory_root": "Agent",
+            }), encoding="utf-8")
+            env = {"AGENTM_INSTALL_PREFIX": str(prefix)}
+            with mock.patch.dict(os.environ, env):
+                os.environ.pop("MEMORY_VAULT_PATH", None)
+                got = prose_pass.resolve_vault_path(None)
+            self.assertEqual(got, root / "Vault" / "Agent")
+
+    def test_kernel_found_in_the_always_load_tier(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            al = root / "memory" / "_always-load"
+            al.mkdir(parents=True)
+            (al / "voice-kernel.md").write_text("k\n", encoding="utf-8")
+            self.assertEqual(_rel(prose_pass.resolve_voice_kernel(root), root),
+                             "memory/_always-load/voice-kernel.md")
+
+    def test_kernel_found_after_it_graduates_out_of_the_tier(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "memory" / "_always-load").mkdir(parents=True)
+            dated = root / "memory" / "2026" / "07"
+            dated.mkdir(parents=True)
+            (dated / "voice-kernel.md").write_text("k\n", encoding="utf-8")
+            self.assertEqual(_rel(prose_pass.resolve_voice_kernel(root), root),
+                             "memory/2026/07/voice-kernel.md")
+
+    def test_kernel_found_on_an_older_memory_generation(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            al = root / "personal" / "_always-load"
+            al.mkdir(parents=True)
+            (al / "voice-kernel.md").write_text("k\n", encoding="utf-8")
+            self.assertEqual(_rel(prose_pass.resolve_voice_kernel(root), root),
+                             "personal/_always-load/voice-kernel.md")
+
+    def test_kernel_absent_is_none_not_a_guess(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "memory").mkdir()
+            self.assertIsNone(prose_pass.resolve_voice_kernel(root))
+
+
+# ── research plugin: the watchlist chain ────────────────────────────────────
+
+class TestResearchWatchlistDir(unittest.TestCase):
+    def test_current_generation(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "memory" / "_watchlist").mkdir(parents=True)
+            self.assertEqual(_rel(codebase_improvement.watchlist_dir(root), root),
+                             "memory/_watchlist")
+
+    def test_previous_generation(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "personal" / "_watchlist").mkdir(parents=True)
+            self.assertEqual(_rel(codebase_improvement.watchlist_dir(root), root),
+                             "personal/_watchlist")
+
+    def test_defaults_to_current_generation(self):
+        with tempfile.TemporaryDirectory() as td:
+            self.assertEqual(_rel(codebase_improvement.watchlist_dir(Path(td)), Path(td)),
+                             "memory/_watchlist")
+
+
+# ── development-lifecycle: resolve_project asks for the memory root ─────────
+
+class TestResolveProjectUsesMemoryRoot(unittest.TestCase):
+    class _Kernel:
+        def __init__(self, vault, memory):
+            self._vault, self._memory = vault, memory
+        def vault_path(self):
+            return self._vault
+        def memory_root(self):
+            return self._memory
+
+    class _OldKernel:
+        def __init__(self, vault):
+            self._vault = vault
+        def vault_path(self):
+            return self._vault
+
+    def test_prefers_memory_root_over_vault_path(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "Vault" / "Agent").mkdir(parents=True)
+            kernel = self._Kernel(root / "Vault", root / "Vault" / "Agent")
+            with mock.patch.object(resolve_project, "load_harness_memory_module",
+                                   return_value=kernel):
+                self.assertEqual(resolve_project.resolve_vault_path(),
+                                 root / "Vault" / "Agent")
+
+    def test_falls_back_to_vault_path_on_a_kernel_without_memory_root(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "Vault").mkdir()
+            with mock.patch.object(resolve_project, "load_harness_memory_module",
+                                   return_value=self._OldKernel(root / "Vault")):
+                self.assertEqual(resolve_project.resolve_vault_path(), root / "Vault")
 
 
 if __name__ == "__main__":

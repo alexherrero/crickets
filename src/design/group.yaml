@@ -108,4 +108,11 @@ capabilities: [design-docs, design, architecture]
 #         2026-08-11 and the pinned path silently resolved to nothing --
 #         a missing overlay dir is indistinguishable from an empty one, so
 #         every prose pass ran on the base voice alone with no error.
-version: 0.9.1
+# 0.9.2: prose_pass.py resolves the MEMORY ROOT, not the vault root -- the
+#         config's `vault_path` is the Obsidian vault and the agent's tree is
+#         that joined with `plugins.obsidian-vault.memory_root`, so every path
+#         built here was landing one level too high. The voice kernel is now
+#         located in the memory space (always-load tier first, then by
+#         filename): it graduated out of `_always-load/` into the dated tree
+#         and a tier-only probe had lost it, degrading every prose pass.
+version: 0.9.2

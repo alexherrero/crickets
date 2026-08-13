@@ -132,13 +132,21 @@ def load_harness_memory_module():
 
 
 def resolve_vault_path() -> "Path | None":
-    """The configured vault root, or None — graceful-skip on any failure
-    (module unresolvable, vault_path() raises, or the path doesn't exist)."""
+    """The agent's MEMORY ROOT, or None — graceful-skip on any failure
+    (module unresolvable, the resolver raises, or the path doesn't exist).
+
+    `memory_root()`, not `vault_path()`: the latter is the Obsidian vault, and
+    everything below joins agent-tree segments (`desk/projects/…`) onto this.
+    Rooting at the vault lands one level too high, where a case-insensitive
+    filesystem can match the operator's own `Projects/` folder instead. Falls
+    back to `vault_path()` only for a kernel old enough to lack `memory_root`.
+    """
     module = load_harness_memory_module()
     if module is None:
         return None
     try:
-        vp = module.vault_path()
+        resolver = getattr(module, "memory_root", None) or module.vault_path
+        vp = resolver()
     except Exception:
         return None
     if not vp:

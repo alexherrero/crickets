@@ -3,7 +3,7 @@
 # (wiki-maintenance part 3/5, style-learning-loop, task 4).
 #
 # Moves the operator's GLOBAL wiki/Diataxis conventions out of the always-load
-# tier (`<vault>/personal/_always-load/diataxis-*.md`, injected into
+# tier (`<memory-space>/_always-load/diataxis-*.md`, injected into
 # EVERY session's context) into the on-demand global store the resolver reads
 # (`<projects-space>/_global/wiki-style/*.md`) — so they load only when authoring.
 #
@@ -54,14 +54,12 @@ class Action:
 
 
 def _resolve_vault(arg_path: str | None) -> Path | None:
-    if arg_path:
-        return Path(arg_path).expanduser()
-    env = os.environ.get("MEMORY_VAULT_PATH", "").strip()
-    return Path(env).expanduser() if env else None
+    """The agent's memory root — arg, else env, else the install config."""
+    return vault_layout.resolve_memory_root(arg_path)
 
 
 def _always_load_dir(vault: Path) -> Path:
-    return vault / "personal" / "_always-load"
+    return vault_layout.always_load_dir(vault)
 
 
 def _global_wiki_style_dir(vault: Path) -> Path:
