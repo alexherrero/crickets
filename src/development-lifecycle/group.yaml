@@ -592,5 +592,16 @@ enhances:
 #          vault_path() -- it joins agent-tree segments onto the result, so the
 #          vault root put every one of them a level too high. Falls back to
 #          vault_path() on a kernel too old to have memory_root.
-version: 0.43.2
+# 0.44.0: worktree_marker.py's bind gains a root-side half -- a per-slug
+#          .harness/worktree-for-<slug> pointer in the ORIGINAL root, plus
+#          `read` / `clear` verbs over it. Both of the bind's prior writes
+#          were worktree-local, so nothing on the main-clone side recorded
+#          which worktree a plan was bound to and /work's resume path just
+#          ran wherever it happened to be. work.md step 1.5 splits into
+#          auto-spawn (first run) / re-enter (resume); step 2.5's transient
+#          per-task bind passes --no-root-pointer; step 12 clears at
+#          close-out. Every stale-pointer case degrades to "carry on here"
+#          with a note -- re-entry never blocks a plan, and following a
+#          registered worktree is not a spawn.
+version: 0.44.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

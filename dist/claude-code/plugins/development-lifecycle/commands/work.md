@@ -74,9 +74,11 @@ Then read the **resolved `PLAN.md`** (find the first unchecked `[ ]` task, or ho
 
 Both checks are read-only. A clean plan (not done, no live branch) passes both silently.
 
-### 1.5. Check isolation mode + auto-spawn (first run only, skip on resume)
+### 1.5. Bind this session to the plan's worktree (spawn on the first run, re-enter on resume)
 
-**Skip this step if resuming a plan already in progress** (first task is `[x]`).
+**Pick the branch first.** If no task in the resolved `PLAN.md` is `[x]` yet, this is the plan's **first run** — take *Auto-spawn* below. If any task is already `[x]`, the plan is **resuming** — skip the spawn entirely and take *Re-enter* instead. Either way, the plan pair resolved in step 1 stays authoritative: those are absolute paths, and entering a worktree neither re-resolves them nor moves them.
+
+#### Auto-spawn (first run)
 
 Run the isolation check — **operator authority required**: this step fires only when the operator enabled `isolation.mode: worktree-per-plan` in `.harness/project.json` (a durable config opt-in), or passed `--isolate` explicitly. It never runs silently without that authority.
 
@@ -85,7 +87,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/isolation_config.py" check [--no-isolate 
 ```
 
 - **Exit 0** (should auto-spawn): call the **host's own worktree primitive** — Claude Code: `EnterWorktree` with `name` set to the plan's slug; Antigravity: New-Worktree-Mode / `invoke_subagent` (best-effort, per Antigravity-Limitations). Do not invent a worktree path or branch name — read back whatever the primitive actually returns (Claude Code: `.claude/worktrees/<name>` on branch `worktree-<name>`, not the retired `<repo>.worktrees/<slug>` / `worker/<slug>` convention). Then bind it: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/worktree_marker.py" write <worktree-path> <slug> <plan-path> --project-root <original-root>` (the `<plan-path>` is the resolved path from step 1 — never re-resolved here).
-  - **Exit 0**: **announce the spawn** ("Auto-spawning worktree at `<path>` — operator config-gated"), then proceed from inside the new worktree for all subsequent steps.
+  - **Exit 0**: **announce the spawn** ("Auto-spawning worktree at `<path>` — operator config-gated"), then proceed from inside the new worktree for all subsequent steps. The bind writes three things: the worktree-local `.harness/active-plan` marker, the worktree-local `.harness/project.json` copy, and — in the **original root**, not the worktree — `.harness/worktree-for-<slug>`, the pointer the *Re-enter* branch below reads on every later session. A `WARNING:` line on stderr about that pointer is not a failure: the worktree is bound and usable, and only the resume convenience is lost.
   - **Exit 3** (LC-6 already-shipped no-op): the plan shipped before this session got here — exit the worktree (`ExitWorktree` `remove`, or the Antigravity equivalent; nothing was written to it) and report the `already shipped` message. Stop; do not proceed to step 2.
   - **Exit 2**: surface stderr, exit/remove the now-orphaned worktree, and stop. Do not retry.
 - **Exit 1** (no auto-spawn): proceed directly — no worktree needed (mode is `direct`, no config, or single-owner guard fired because we're already inside a worktree).
@@ -93,6 +95,20 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/isolation_config.py" check [--no-isolate 
 **Note:** `--no-isolate` in `$ARGUMENTS` is the command-arg override that wins over any config setting.
 
 **`worktree-per-task` mode does NOT trigger a per-plan auto-spawn here.** When `isolation.mode` is `worktree-per-task`, this check returns exit 1 (no plan-level worktree). Per-task worktrees are spawned mid-loop in step 2.5, one per operator-declared-isolated task.
+
+#### Re-enter (resume)
+
+A plan that spawned a worktree on its first run recorded it in the **original root** at `.harness/worktree-for-<slug>`. Without reading that back, a session opened at the repo root just runs in the main clone — the plan's own worktree sits there untouched, and every resumed multi-session plan needs a hand-written "enter the worktree at `<path>` first" sentence in its opening prompt. Read the pointer instead:
+
+```
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/worktree_marker.py" read <slug> --project-root <root>
+```
+
+- **Exit 0**: stdout is the worktree's path. Announce (*"Re-entering this plan's worktree at `<path>`"*), then call the host's own primitive against that **existing** path — Claude Code: `EnterWorktree` with `path` set to it (it accepts an already-existing worktree; do **not** pass `name`, which would ask for a new one); Antigravity: New-Worktree-Mode / `invoke_subagent`, best-effort per Antigravity-Limitations. Proceed from inside for every subsequent step.
+- **Exit 1**: nothing to re-enter — print the note and **proceed in the current directory**. One code covers all five non-blocking cases, and stderr says which: singleton plan, no pointer recorded, a **stale** pointer (the worktree was removed by hand, is no longer registered, can't be verified, or now carries a different plan's marker), or this session is already inside the right worktree. A stale pointer degrades with a visible note; it never blocks the plan.
+- **Exit 2**: a malformed slug. Surface stderr and still proceed in the current directory — re-entry is best-effort and is never a reason to stop a plan.
+
+**This is a re-entry, not a spawn.** Nothing here creates a worktree: the pointer is only ever followed to a directory `git worktree list` already claims, and the authority that permitted the original spawn (durable `isolation.mode: worktree-per-plan`, or an explicit operator instruction) is what put the pointer there. Skip the read for a bare (singleton) `/work` — the pointer is per-slug, and a singleton plan never has one.
 
 ### 2. Safety pre-check (before each task)
 
@@ -120,7 +136,7 @@ If `mode` is `worktree-per-task`, run the task isolation check before starting t
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/task_isolation.py" check <plan_path> <task_num>
 ```
 
-- **Exit 0** (task is isolated): spawn a per-task worktree for this task via the host's own primitive — `EnterWorktree` with `name` set to `<plan-slug>-task-<N>` (Antigravity: New-Worktree-Mode / `invoke_subagent`, best-effort) — then bind it with `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/worktree_marker.py" write <worktree-path> <plan-slug> <plan-path> --project-root <original-root>` (the marker binds to the *plan* slug, not the task-scoped worktree name — a per-task worktree still resolves the same plan). Announce: *"Spawning per-task worktree for task N — operator-declared isolated (N× CI cost)."* Proceed with steps 3–9 from inside the task worktree. After step 9 (commit): merge the task branch back with `git merge --no-ff <task-branch>` (the branch name the primitive returned) from the plan's main context, then prune with `ExitWorktree` `remove` (or the Antigravity equivalent). Resume the task loop in the plan's main context.
+- **Exit 0** (task is isolated): spawn a per-task worktree for this task via the host's own primitive — `EnterWorktree` with `name` set to `<plan-slug>-task-<N>` (Antigravity: New-Worktree-Mode / `invoke_subagent`, best-effort) — then bind it with `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/worktree_marker.py" write <worktree-path> <plan-slug> <plan-path> --project-root <original-root> --no-root-pointer` (the marker binds to the *plan* slug, not the task-scoped worktree name — a per-task worktree still resolves the same plan). `--no-root-pointer` is required here: this worktree is merged back and pruned before the task ends, so recording it as the plan's worktree would point step 1.5's resume branch at something that no longer exists. Announce: *"Spawning per-task worktree for task N — operator-declared isolated (N× CI cost)."* Proceed with steps 3–9 from inside the task worktree. After step 9 (commit): merge the task branch back with `git merge --no-ff <task-branch>` (the branch name the primitive returned) from the plan's main context, then prune with `ExitWorktree` `remove` (or the Antigravity equivalent). Resume the task loop in the plan's main context.
 - **Exit 1** (task is not isolated): proceed directly in the current context — no worktree spawned.
 - **Exit 2** or any error from `task_isolation.py`: surface stderr and stop.
 
@@ -210,7 +226,13 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/finalize_unit.py" <slug> --branch <worktr
 - **`direct-push`:** PII guard → push on current branch (no PR).
 - **`gh` unavailable / unauthenticated / no remote:** fall back to direct push + announce the downgrade. A completed unit of work is **never hard-stopped** by a missing `gh` — the push always goes through.
 
-After the helper returns, `ExitWorktree` `keep` (never `remove` — the branch has an open PR against it; the shepherd in task 5 or the PR's own merge is what eventually cleans it up).
+After the helper returns, drop the plan's root-side worktree pointer — the plan is finished, so no later session should be re-entered into a worktree whose PR is about to retire it:
+
+```
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/worktree_marker.py" clear <slug> --project-root <root>
+```
+
+Idempotent and local (`.harness/` is gitignored) → recoverable, announce + proceed; a non-zero exit here is informational, never a hard stop. Then `ExitWorktree` `keep` (never `remove` — the branch has an open PR against it; the shepherd in task 5 or the PR's own merge is what eventually cleans it up).
 
 Announce what's about to happen before running. A non-zero exit from the helper is a hard stop — surface the full error output.
 

@@ -5,6 +5,28 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+**MINOR.** `/work` could spawn a worktree for a plan's first task, and nothing brought a later session back to it. Both halves of the bind wrote inside the new worktree, so the main clone kept no record of where a plan lived — and step 1.5 skipped itself outright on resume, leaving a resumed session running wherever it happened to open. On Claude Code Desktop that meant hand-writing "enter the existing worktree at `<path>` first" into the opening prompt of every multi-session plan.
+
+### Added
+
+- **A root-side worktree pointer, and a `/work` resume path that follows it** (`development-lifecycle 0.43.2 → 0.44.0`). `worktree_marker.py write` now also records `<main-root>/.harness/worktree-for-<slug>` — one line, the resolved worktree path — alongside the two worktree-local writes it already made, and gains `read` / `clear` verbs over it. Step 1.5 splits into an auto-spawn branch (first run, unchanged) and a re-enter branch (resume) that reads the pointer and calls the host's own primitive against the existing path: `EnterWorktree` with `path`, never `name`.
+
+  The pointer is per-slug because agentm routinely carries more than one active plan, and a shared file would have two in-flight plans overwrite each other's binding. It lives in `.harness/`, which is gitignored, so it stays local state rather than becoming a committed artifact.
+
+  **This is a re-entry, not a spawn.** The pointer is only ever followed to a directory `git worktree list` already claims, and the authority that permitted the original spawn is what put it there — so the durable `isolation.mode: worktree-per-plan` requirement is unchanged and agentm's `check-no-auto-worktree` gate stays clean against this tree (verified by running it here). Staleness is judged by the bind's own `_is_registered_worktree()` rather than a second check, so the fake-slot hazard keeps exactly one definition.
+
+  Every state-of-the-world failure collapses to one non-blocking exit code: absent, stale, unverifiable, repurposed, and already-inside all return exit 1 with a note naming which, so a pointer left behind by a hand-deleted worktree degrades to "carry on in the current directory" and can never stop a plan. Only a malformed slug is loud — and that check is new, because a slug now becomes part of a filename.
+
+### Changed
+
+- **A per-task worktree bind no longer claims to be the plan's worktree.** Step 2.5's bind passes `--no-root-pointer`: that worktree is merged back and pruned inside one session, so recording it would aim the resume path at something already gone. Step 12 clears the pointer at close-out, so a finished plan leaves nothing pointing into a worktree its PR is about to retire.
+
+### Internal
+
+- **`resolve_plan.py` was evaluated and left alone.** It resolves plan *state paths*, delegating to agentm's process seam, which has no concept of a host worktree; the pair it returns in step 1 is absolute and stays authoritative across a re-entry exactly as it already did across a first-run spawn. Teaching it about worktrees would put an isolation-layer concern behind the DC-2 seam boundary for no gain.
+
 ## [v3.36.0] — 2026-08-02 — Minor: the board can say "parked", and something finally checks it
 
 **MINOR.** Two GitHub Project boards showed roughly 35 open issues while the roadmap declared every arc complete — under fully green checks. The drift gate diffs rendered issue *bodies*, and status appears in no body template, so a row left Todo whose issue closed months ago was zero drift by construction. Nothing was checking that axis at all.
