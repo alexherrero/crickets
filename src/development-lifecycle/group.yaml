@@ -414,8 +414,10 @@ enhances:
 #          orphan reclaim (age threshold + `is_safe_to_reclaim` — every commit
 #          already on the remote copy, or the branch never diverged at all;
 #          anything not provably safe is left alone, never guessed away) and
-#          stalled-PR rebase (`gh pr update-branch` on any open PR GitHub
-#          reports `BEHIND` its base; a resulting conflict is recorded and
+#          stalled-PR rebase (`gh pr update-branch --rebase` on any open PR
+#          GitHub reports `BEHIND` its base — `--rebase` is required, since the
+#          default merges base into the branch and under squash-merge that
+#          silently re-adds reverted work; a resulting conflict is recorded and
 #          surfaced, never silently left). Wired into `agentm-runner` via two
 #          new `.harness/jobs/worktree-shepherd-{agentm,crickets}.yaml`
 #          manifests (device-local, gitignored, dry-run per the runner's own
@@ -603,5 +605,5 @@ enhances:
 #          close-out. Every stale-pointer case degrades to "carry on here"
 #          with a note -- re-entry never blocks a plan, and following a
 #          registered worktree is not a spawn.
-version: 0.44.0
+version: 0.44.1
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

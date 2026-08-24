@@ -14,9 +14,18 @@ see agentm's `wiki/designs/agentm-runner.md`), not a bespoke cron
     left alone and reported, never guessed at.
 
 (b) **Stalled-PR rebase.** An armed PR that GitHub reports `BEHIND` its base
-    branch (a sibling plan's PR merged first) gets `gh pr update-branch`; a
-    resulting merge conflict is surfaced loudly in the report, never silently
-    left stuck (Locked design calls, Fable rider 2).
+    branch (a sibling plan's PR merged first) gets `gh pr update-branch
+    --rebase`; a resulting conflict is surfaced loudly in the report, never
+    silently left stuck (Locked design calls, Fable rider 2).
+
+    **`--rebase` is required, not stylistic.** `gh pr update-branch` defaults to
+    merging the base branch into the PR branch. These repos squash-merge, so a
+    commit on `main` carries no ancestry link to the branch commits it was built
+    from — git cannot tell that the squashed commit already contains work the
+    branch later reverted, and a back-merge re-adds that work with no conflict
+    and no signal. Rebasing replays the branch's own commits onto the new base
+    and can never carry anything backwards. The same rule applies by hand: in a
+    squash repo, never merge `main` backwards into a branch.
 
     worktree_shepherd.py [--project-root <path>] [--age-days N] [--dry-run]
 
@@ -192,7 +201,13 @@ def shepherd_stalled_prs(repo_root: str, *, runner: Optional[Runner] = None) -> 
         number = pr.get("number")
         branch = pr.get("headRefName", "")
         url = pr.get("url")
-        rc, out = run(["gh", "pr", "update-branch", str(number)], repo_root)
+        # --rebase is not optional. `gh pr update-branch` defaults to MERGING the
+        # base branch into the PR branch, and this repo squash-merges: a squashed
+        # commit on main has no ancestry link to the branch commits it came from,
+        # so a back-merge re-introduces work the branch deliberately reverted, with
+        # no conflict and no signal. Rebasing replays the branch's own commits onto
+        # the new base and can never carry anything backwards.
+        rc, out = run(["gh", "pr", "update-branch", "--rebase", str(number)], repo_root)
         if rc == 0:
             report.updated.append(UpdatedPR(pr_number=number, branch=branch, url=url))
         else:
