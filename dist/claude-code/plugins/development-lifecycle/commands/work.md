@@ -222,6 +222,13 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/finalize_unit.py" <slug> --branch <worktr
 ```
 
 `<worktree-branch>` is the branch step 1.5's `EnterWorktree` call actually returned — never assume `worker/<slug>` (that convention retired with `spawn_worker.py`). The helper reads `isolation.integration` from `.harness/project.json` and acts accordingly:
+- **Refreshing a stale branch: rebase, never merge.** When GitHub reports a PR `BEHIND` its base (branch
+  protection here requires branches be up to date before merging, so this happens routinely), refresh it
+  with `gh pr update-branch --rebase` or a local `git rebase origin/main`. **Never merge `main` backwards
+  into the branch.** `gh pr update-branch` defaults to that merge, and these repos squash-merge: the commit
+  on `main` shares no ancestry with the branch commits it came from, so git cannot see that it already
+  contains work the branch has since reverted — the back-merge re-adds it with no conflict and no signal.
+  Force-pushing your own rebased branch is recoverable → announce + proceed.
 - **`pull-request` (default):** PII guard → push `<worktree-branch>` → `gh pr create` with the close-out summary as its body → **arm auto-merge** (`gh pr merge --auto --squash`, immediately after PR creation). **`gh pr create` and `gh pr merge --auto` are both recoverable** (closeable / revertable) → announce + proceed. A PR that opens but fails to arm (e.g. "Allow auto-merge" isn't enabled on the repo yet — task 4's one-time setting) still counts as success; the helper surfaces the arm failure in its reason, not as a hard stop — merge it by hand and go fix the repo setting.
 - **`direct-push`:** PII guard → push on current branch (no PR).
 - **`gh` unavailable / unauthenticated / no remote:** fall back to direct push + announce the downgrade. A completed unit of work is **never hard-stopped** by a missing `gh` — the push always goes through.

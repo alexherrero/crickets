@@ -227,6 +227,11 @@ class TestStalledPRShepherd(unittest.TestCase):
         self.assertEqual(report.updated[0].pr_number, 42)
         update_calls = [c for c in runner.calls if c[:2] == ("gh", "pr") and "update-branch" in c]
         self.assertEqual(len(update_calls), 1)
+        # The refresh MUST rebase, never merge. `gh pr update-branch` defaults to
+        # merging base into the PR branch; under squash-merge that re-introduces
+        # reverted work silently, because the squashed commit on main shares no
+        # ancestry with the branch commits it was built from.
+        self.assertIn("--rebase", update_calls[0])
 
     def test_clean_pr_is_left_alone(self):
         runner = self._runner({
