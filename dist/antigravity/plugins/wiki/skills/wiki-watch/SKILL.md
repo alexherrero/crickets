@@ -4,7 +4,6 @@ description: "Run the wiki-watcher (W1) — one idempotent cycle that detects do
 kind: skill
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-install_scope: project
 ---
 
 # wiki-watch — run the wiki-watcher (W1)

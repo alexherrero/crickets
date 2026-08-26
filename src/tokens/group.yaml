@@ -122,6 +122,6 @@ standalone: true
 #          resolves. Complements, not duplicates, the capabilities:
 #          dual-declaration above (composition-layer soft-aliasing) --
 #          renamed_from: is the host-marketplace plugin-name rename.
-version: 0.6.0
+version: 0.6.1
 capabilities: [status-line-meter, token-audit, tokens]
 renamed_from: [status-line-meter, token-audit]

@@ -4,7 +4,6 @@ description: Critic for recently-written code. Framing is "the code contains bug
 kind: agent
 supported_hosts: [claude-code, antigravity]
 version: 0.1.1
-install_scope: either
 tools: Read, Glob, Grep, Bash
 opinions: [good]
 ---

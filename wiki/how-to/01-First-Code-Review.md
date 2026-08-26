@@ -23,7 +23,7 @@ Confirm it's enabled:
 claude plugin list
 ```
 
-You should see `code-review`. (On Antigravity the install is by path instead — see [Install crickets plugins](Install-Into-Project).)
+You should see `code-review`. (On Antigravity the install is by path instead — see [Install crickets plugins](Install-Crickets-Plugins).)
 
 ## Step 2 — Plant a bug in a scratch repo
 
@@ -93,4 +93,4 @@ rm -rf "$SCRATCH"
 
 - [Run a standalone code review](Use-Code-Review) — the recipe form, once you've done this once.
 - [Why adversarial review](Why-Adversarial-Review) — why "assume bugs exist" finds real ones a neutral pass misses.
-- [Install more crickets plugins](Install-Into-Project) — the full six-plugin set and all three install modes.
+- [Install more crickets plugins](Install-Crickets-Plugins) — the full six-plugin set and all three install modes.

@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > **Goal:** Simplify a finished design doc (or any authored prose) with a second model, then verify nothing drifted before deploying the result.
-> **Prereqs:** the `design` plugin installed ([Install crickets plugins](Install-Into-Project)); the `agy` CLI authenticated; a vault configured with your voice pack (`agentm_config --vault-path`).
+> **Prereqs:** the `design` plugin installed ([Install crickets plugins](Install-Crickets-Plugins)); the `agy` CLI authenticated; a vault configured with your voice pack (`agentm_config --vault-path`).
 
 The pass is two steps: **Gemini simplifies, Claude verifies.** A simplification pass run by the model that wrote the prose is an echo chamber — it cannot see the sentences only the author can parse. The `prose-pass` skill sends the document to Gemini (via `agy`) for the readability edit, then your agent verifies every guarded fact held before anything overwrites the original. It is the prose sibling of code-review's `cross-review.sh`.
 

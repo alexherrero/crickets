@@ -4,7 +4,6 @@ description: Show wiki pages modified recently across registered repos. Walks re
 kind: command
 supported_hosts: [claude-code]
 version: 0.1.0
-install_scope: project
 ---
 
 Show wiki pages modified recently across all registered repos.

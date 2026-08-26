@@ -4,7 +4,6 @@ description: Pre-merge gate — verify plan done, gates green, CI passing, then 
 kind: command
 supported_hosts: [claude-code, antigravity]
 version: 0.1.2
-install_scope: project
 ---
 
 You are running the **release** phase of the developer-workflows loop. This is a **pre-merge gate**: verify the plan is complete and everything is green, then prepare and ship the release. Invoking `/release` **is** the authorization to push / tag / release — those are recoverable, so they run announce-and-proceed under the recoverability gate below; only a genuinely unrecoverable action stops for confirmation.

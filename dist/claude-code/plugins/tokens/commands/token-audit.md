@@ -4,7 +4,6 @@ description: Print a deterministic cost breakdown for a Claude Code session tran
 kind: command
 supported_hosts: [claude-code]
 version: 0.1.0
-install_scope: project
 argument-hint: "[--session <session-id>] [--by-phase] [--routing [--routing-fixture <path>]]"
 ---
 

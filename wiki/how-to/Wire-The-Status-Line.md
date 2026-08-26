@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > **Goal:** Point Claude Code's status line at the `tokens` plugin's script — a one-time, one-line settings change every status-line plugin needs, since only one command can own the status line at a time.
-> **Prereqs:** `tokens` installed ([Install crickets plugins](Install-Into-Project)) — the cost and floor-share badges ship in the same plugin, no separate install needed.
+> **Prereqs:** `tokens` installed ([Install crickets plugins](Install-Crickets-Plugins)) — the cost and floor-share badges ship in the same plugin, no separate install needed.
 
 Claude Code's status line is a single, exclusive slot: `.claude/settings.json` names exactly one command to run after every response, and its stdout becomes the status bar. Because two plugins can't both own that slot automatically, installing `tokens` puts the script in place but does not — and structurally cannot — wire itself in for you. This is the one manual step.
 

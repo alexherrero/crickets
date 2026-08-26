@@ -4,7 +4,6 @@ description: "Pre-launch readiness gate — run before shipping any feature to p
 kind: command
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-install_scope: project
 argument-hint: <feature, diff, or PR being shipped — required>
 ---
 

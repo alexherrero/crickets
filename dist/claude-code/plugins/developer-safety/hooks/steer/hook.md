@@ -4,7 +4,6 @@ description: Mid-run redirect — write `.harness/STEER.md` with a "do it this w
 kind: hook
 supported_hosts: [claude-code, antigravity]
 version: 0.2.0
-install_scope: project
 ---
 
 # steer — inject mid-run guidance without restart

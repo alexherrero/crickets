@@ -4,7 +4,6 @@ description: "Update or create a Diátaxis wiki page for the current repo (or an
 kind: skill
 supported_hosts: [claude-code]
 version: 0.1.1
-install_scope: user
 ---
 
 # wiki-author — operator-facing dispatcher for wiki edits

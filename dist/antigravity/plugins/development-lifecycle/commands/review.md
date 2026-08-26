@@ -4,7 +4,6 @@ description: Adversarial review — gates first, then dispatch a deeper adversar
 kind: command
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-install_scope: project
 argument-hint: [optional — "--name <plan-name>" to target a named plan, plus a commit range, branch, or task number to scope the review]
 ---
 

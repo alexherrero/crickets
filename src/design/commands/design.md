@@ -4,7 +4,6 @@ description: Author → translate → sequence a design doc into a topo-ordered 
 kind: command
 supported_hosts: [claude-code, antigravity]
 version: 0.3.0
-install_scope: project
 argument-hint: author <slug|brief> [--rung full|abbreviated|architecture] (default)  |  translate <slug>  |  sequence <slug>
 opinions: [good, how-we-engineer]
 ---

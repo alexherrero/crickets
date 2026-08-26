@@ -4,7 +4,6 @@ description: "CI/CD pipeline authoring discipline. Shift Left (move quality gate
 kind: command
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-install_scope: project
 argument-hint: <pipeline file, workflow, or CI config being authored or modified — required>
 ---
 

@@ -4,7 +4,6 @@ description: Bug triage pipeline — Report → Analyze → Fix → Verify. Use 
 kind: command
 supported_hosts: [claude-code, antigravity]
 version: 0.2.1
-install_scope: project
 argument-hint: <bug report, issue link, or reproduction steps>
 opinions: [how-we-engineer]
 ---

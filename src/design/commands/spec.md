@@ -4,7 +4,6 @@ description: "Write a PRD covering objectives, commands/UX, code structure, code
 kind: command
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-install_scope: project
 argument-hint: <feature name or brief>  |  <path to confirmed brief from /interview-me>
 ---
 

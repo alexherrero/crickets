@@ -75,4 +75,4 @@ capabilities: [recoverability]
 # body is never scanned. Same install posture as coauthor-guard -- no
 # automated installer yet, see hooks/commit-msg-gate/hook.md for manual
 # install steps on both hosts.
-version: 0.5.1
+version: 0.5.2

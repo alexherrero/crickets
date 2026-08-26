@@ -4,7 +4,6 @@ description: Read-only grader returning PASS/NEEDS_WORK against an explicit rubr
 kind: agent
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-install_scope: either
 ---
 
 # evaluator — fresh-context grader

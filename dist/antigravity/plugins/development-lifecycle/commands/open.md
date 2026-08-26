@@ -4,7 +4,6 @@ description: Open a project by name — LOCATE it (registered repos, vault proje
 kind: command
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-install_scope: project
 argument-hint: <project name> [--note]
 ---
 

@@ -96,7 +96,6 @@ _FOLDER_MODE = {
 }
 MODE_DIRS = tuple(_FOLDER_MODE)
 STRUCTURAL_BASENAMES = {"Home", "_Sidebar", "_Footer", "README"}
-WORD_CAPS = {"tutorial": 1200, "how-to": 600, "explanation": 2000}
 
 # Shape axis (rule p) — soft warns. A reference page should be lookup-shaped
 # (tables / quick-ref); an explanation page should read as prose. Thresholds are
@@ -450,18 +449,6 @@ def rule_j_home_sidebar(wiki_root: Path, modes: dict[Path, str | None],
                  f"per-folder); every page must be reachable within 2 levels of the sitemap")
 
 
-def rule_k_word_count(p: Path, mode: str | None, text: str,
-                      issues: list[Issue]) -> None:
-    cap = WORD_CAPS.get(mode or "")
-    if cap is None:
-        return
-    count = word_count(text)
-    if count > cap:
-        emit(issues, p, 1, "k",
-             f"{mode} page is {count} words (soft ceiling {cap}); consider splitting",
-             soft=True)
-
-
 # ── repo-root doc governance (rule l) ───────────────────────────────────────
 
 EXTERNAL_LINK_PREFIXES = ("http://", "https://", "mailto:", "tel:", "#")
@@ -788,7 +775,6 @@ def collect_issues(wiki_root: Path) -> list[Issue]:
             rule_c_tutorial_shape(p, mode, heads, issues)
             rule_d_howto_shape(p, mode, heads, lines, issues)
             rule_e_reference_shape(p, mode, lines, heads, issues)
-            rule_k_word_count(p, mode, text, issues)
             rule_p_shape(p, mode, lines, text, heads, issues)
             rule_q_topnote_length(p, mode, lines, issues)
             if _is_component_overview(p, wiki_root):

@@ -4,7 +4,6 @@ description: Autonomy doctrine — classify every action as recoverable or unrec
 kind: skill
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-install_scope: project
 ---
 
 You are applying the `recoverability` skill. This is a standing principle — it governs every action in every session, not just code changes. Apply it before any action that has side effects outside the current working tree.

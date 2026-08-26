@@ -117,7 +117,11 @@ class TestClaudeEmitter(unittest.TestCase):
         # authoring had been resolving no vault at all in ordinary sessions.
         # 0.9.3 = genre filter on the author-time voice overlay; a lesson opts
         # into being narrow via `genres:`, absent stays universal.
-        self.assertEqual(self._plugin_json("wiki")["version"], "0.9.3")
+        # 0.10.0 = check-wiki rule k (per-mode page word-count ceiling) removed,
+        # matching agentm, which dropped its page-length ceilings in #465. Minor
+        # rather than patch: a lint rule disappearing is a behaviour change —
+        # pages that used to warn on length no longer do.
+        self.assertEqual(self._plugin_json("wiki")["version"], "0.10.0")
         # 0.3.0 = check-no-pii.sh + templates/hooks/pre-push moved into src/pii/
         # so they actually ship inside the plugin payload (R2.4 task 7).
         # 0.3.1 = check-no-pii.sh scan collapsed to one grep per file (fixes a
@@ -130,7 +134,9 @@ class TestClaudeEmitter(unittest.TestCase):
         # wiring once PLAN-opinion-consumer-grammar (#167) landed.
         # 0.6.1 = Consolidation CONS-2 task 6 — stale src/pii/ header-comment
         # path in templates/hooks/pre-push fixed to src/privacy/. Doc-only.
-        self.assertEqual(self._plugin_json("privacy")["version"], "0.6.1")
+        # 0.6.2 = the inert `install_scope:` frontmatter field retired from every
+        # primitive. Metadata-only; nothing read it. Patch.
+        self.assertEqual(self._plugin_json("privacy")["version"], "0.6.2")
 
     def test_dependencies_from_requires(self):
         # post-seed-retirement: maintenance (ex-github-ci) depends on

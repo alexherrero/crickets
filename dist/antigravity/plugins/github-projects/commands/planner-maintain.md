@@ -4,7 +4,6 @@ description: Run one Planner (TPM) depth-maintenance + drift-correction cycle â€
 kind: command
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-install_scope: project
 ---
 
 Run **one** Planner (TPM) persona maintenance cycle for the current repo's project board.

@@ -18,7 +18,7 @@ Find your symptom here when something stops working. Follow the steps. Jump to t
 ## A plugin isn't loading (or a command/skill is missing)
 
 1. Confirm the plugin is installed and enabled. Run `claude plugin list`. It must show the plugin. Nothing lands in `.claude/` in the v3 model. Everything runs from the plugin.
-2. Re-sync the plugin. Run `claude plugin install <plugin>@crickets`. Run `claude plugin marketplace update crickets` first if the marketplace is stale. On Antigravity, reinstall by path against `dist/antigravity/plugins/<plugin>` ([Install crickets plugins](Install-Into-Project)).
+2. Re-sync the plugin. Run `claude plugin install <plugin>@crickets`. Run `claude plugin marketplace update crickets` first if the marketplace is stale. On Antigravity, reinstall by path against `dist/antigravity/plugins/<plugin>` ([Install crickets plugins](Install-Crickets-Plugins)).
 3. Check your path if you develop locally with `--plugin-dir`. It must point at the **generated** plugin (`dist/claude-code/plugins/<plugin>`). It must not point at `src/`. Regenerate the plugin after you make edits ([Modify a plugin](Modify-A-Plugin)).
 4. Check a primitive's `supported_hosts:` if it is missing on one host only. The generator only emits it for the hosts it declares ([Manifest schema](Manifest-Schema)).
 5. **Shows `✘ failed to load` after an upgrade** means the plugin was **renamed or removed**. For example, `wiki-maintenance` became `wiki` in the AG Wave A rename wave, v3.24.0. This reversed an earlier `wiki` to `wiki-maintenance` rename from v3.2.0 for this same plugin. The old install points at a name the marketplace no longer offers. Uninstall the old name and install the new one:

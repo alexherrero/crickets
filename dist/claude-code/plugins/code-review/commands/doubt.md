@@ -4,7 +4,6 @@ description: "Subjects every non-trivial decision to a fresh-context adversarial
 kind: command
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-install_scope: either
 ---
 
 You are running **/doubt** — in-flight adversarial review of a specific decision before it stands.

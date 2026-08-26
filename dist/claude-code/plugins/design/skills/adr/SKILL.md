@@ -4,7 +4,6 @@ description: ADR authoring via the adr-shape convention — when to write, the 5
 kind: skill
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-install_scope: project
 ---
 
 You are applying the `adr` skill. An Architecture Decision Record (ADR) captures a load-bearing

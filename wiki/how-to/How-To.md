@@ -8,7 +8,7 @@ Task-focused recipes for the crickets plugins. For field-level detail like plugi
 | How-to | What it does |
 |---|---|
 | [Run the development loop](Run-The-Development-Loop) | Take a change from brief to shipped through the phases. |
-| [Install crickets plugins](Install-Into-Project) | Install the plugins on Claude Code or Antigravity. |
+| [Install crickets plugins](Install-Crickets-Plugins) | Install the plugins on Claude Code or Antigravity. |
 | [Using code review](01-First-Code-Review) | Hands-on first run: plant a bug, catch it. |
 | [Install the vault backend](Install-The-Vault-Backend) | Set up the storage backend for the vault. |
 

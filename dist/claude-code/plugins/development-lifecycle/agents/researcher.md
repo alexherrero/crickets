@@ -4,7 +4,6 @@ description: Read-only brief-research front of the developer-workflows loop. A t
 kind: agent
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-install_scope: either
 model: claude-sonnet-5
 tools: Read, Glob, Grep, WebFetch
 ---

@@ -4,7 +4,6 @@ description: Day-to-day testing principles — tests-are-sacred, verification-fi
 kind: skill
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-install_scope: project
 ---
 
 Day-to-day testing practice for developers. These are standing principles, not one-off review rules — they apply every time you write, change, or touch code with observable behavior.

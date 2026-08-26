@@ -4,7 +4,6 @@ description: Run one report-only board-drift cycle — detect vault==board drift
 kind: command
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-install_scope: project
 ---
 
 Run **one** board-drift report cycle for the current repo's project board.

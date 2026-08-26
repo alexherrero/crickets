@@ -4,7 +4,6 @@ description: Non-disruptive safety snapshot at Stop. Fires on Claude Code's Stop
 kind: hook
 supported_hosts: [claude-code, antigravity]
 version: 0.2.0
-install_scope: project
 ---
 
 # commit-on-stop — non-disruptive safety snapshot at Stop

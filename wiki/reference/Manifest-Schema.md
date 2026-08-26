@@ -13,9 +13,10 @@ You use these fields in the primitive frontmatter atop a manifest file:
 | `kind` | yes | enum | `skill` · `agent` · `hook` · `command` · `mcp-server` · `status-line` · `output-style` · `workflow` · `rule` · `snippet` · `settings-fragment` |
 | `supported_hosts` | yes | list | non-empty subset of `[claude-code, antigravity]` |
 | `version` | no | string | semver `MAJOR.MINOR.PATCH` (optional `-prerelease`) |
-| `install_scope` | no | enum | `user` · `project` · `either` (default `either`) |
 
-The primitive's **group is the folder it lives in**. You do not use a `group:` field. The `install_scope` field is advisory. You set the actual placement with the host's plugin-install command (`claude plugin install … --scope user|project`).
+The primitive's **group is the folder it lives in**. You do not use a `group:` field.
+
+crickets primitives are operator-scoped rather than project-scoped: a plugin installs once for the machine and travels with you. There is no per-primitive placement field — an `install_scope` key survived here as inert metadata from the v2 manifest schema until it was retired, and nothing ever read it.
 
 ## The group manifest (`group.yaml`)
 
@@ -57,7 +58,6 @@ description: Scan the current git diff for personal information before commit or
 kind: skill
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-install_scope: project
 ---
 
 <skill body — operational instructions for the agent>

@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > **Goal:** Stand up a repo's `wiki/` from nothing — the six-section folder structure plus the CI that lints and publishes it — with one idempotent, preview-first command.
-> **Prereqs:** the `wiki-maintenance` plugin installed ([Install crickets plugins](Install-Into-Project)); run from the target repo's root; `git`, and — for visibility detection + publishing — an authenticated `gh` and a wiki enabled on the repo.
+> **Prereqs:** the `wiki-maintenance` plugin installed ([Install crickets plugins](Install-Crickets-Plugins)); run from the target repo's root; `git`, and — for visibility detection + publishing — an authenticated `gh` and a wiki enabled on the repo.
 
 `wiki-init` is an **agent action**, not an install hook — plugins have no target-repo install step, so you run the bundled scaffolder yourself. It's **idempotent + preview-first**: it fills only what's missing, never overwrites an operator-authored page, and a second run is a no-op. The companion that keeps the wiki current afterward is the [wiki-watcher](Run-The-Wiki-Watcher).
 
@@ -49,4 +49,4 @@
 - [Provisioning design](crickets-wiki) — why provisioning joins authoring, and the gate-distribution split (reference for the agent, vendor for CI).
 - [Declare a project's Architecture](Declare-Architecture) — write the `wiki/architecture.yml` that grows the scaffolded `architecture/` section.
 - [Wiki design — six-section wiki taxonomy](crickets-wiki) — why the frame is fixed at six, and the two conditional-section gates.
-- [Install crickets plugins](Install-Into-Project) — get `wiki-maintenance` onto your host.
+- [Install crickets plugins](Install-Crickets-Plugins) — get `wiki-maintenance` onto your host.

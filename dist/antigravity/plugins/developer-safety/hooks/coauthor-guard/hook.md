@@ -4,7 +4,6 @@ description: Deterministic prepare-commit-msg git hook that strips any Co-Author
 kind: hook
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-install_scope: project
 ---
 
 # coauthor-guard — deterministic Co-Authored-By strip

@@ -4,7 +4,6 @@ description: Structural maintainer of the wiki/ documentation tree, dispatched a
 kind: agent
 supported_hosts: [claude-code, antigravity]
 version: 0.2.0
-install_scope: either
 ---
 
 # Sub-agent: documenter

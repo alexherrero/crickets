@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > **Goal:** Run a targeted simplification pass over a diff, file, or directory — reduce accidental complexity without removing structure the rest of the code depends on.
-> **Prereqs:** the `code-review` plugin installed ([Install crickets plugins](Install-Into-Project)); `git`.
+> **Prereqs:** the `code-review` plugin installed ([Install crickets plugins](Install-Crickets-Plugins)); `git`.
 
 `/simplify` is distinct from `/code-review`. `/code-review` hunts for bugs. `/simplify` hunts for accidental complexity — code that is harder to read, longer, or more indirected than the behavior requires. It applies Chesterton's Fence (understand why code exists before removing it) and the Rule of 500 (long functions and files are signals, not violations) to produce a rationalization table before it changes anything.
 
@@ -57,5 +57,5 @@ Run `/simplify` **after a feature lands**, not before — you need the tests gre
 - [Review a change for bugs](Use-Code-Review) — `/code-review` for adversarial bug-finding
 - [In-flight decision review](Use-Doubt-Review) — `/doubt` for pre-commit decisions
 - [Why adversarial review](Why-Adversarial-Review) — the adversarial framing behind the `code-review` plugin
-- [Install crickets plugins](Install-Into-Project) — get the `code-review` plugin onto your host
+- [Install crickets plugins](Install-Crickets-Plugins) — get the `code-review` plugin onto your host
 - [Manifest schema](Manifest-Schema) — command primitive frontmatter reference

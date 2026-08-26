@@ -5,7 +5,7 @@
 
 > [!NOTE]
 > **Goal:** Walk a code surface (API, module, flag, or internal abstraction) through the full deprecation lifecycle — classify compulsory vs advisory, execute removal or write a migration path, and delete zombie code — using the `/deprecate` command.
-> **Prereqs:** the `development-lifecycle` plugin installed at a version that ships `/deprecate` ([Install crickets plugins](Install-Into-Project)); a named target surface to deprecate (the argument is required; `/deprecate` without a target is an error).
+> **Prereqs:** the `development-lifecycle` plugin installed at a version that ships `/deprecate` ([Install crickets plugins](Install-Crickets-Plugins)); a named target surface to deprecate (the argument is required; `/deprecate` without a target is an error).
 
 `/deprecate` encodes a code-as-liability mindset. It first classifies the deprecation:
 

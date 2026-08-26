@@ -4,7 +4,6 @@ description: First-time project scaffold — write the .harness/ files and popul
 kind: command
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-install_scope: project
 ---
 
 You are running the **setup** phase of the developer-workflows loop. First-time initialization in a project: produce the `.harness/` state artifacts populated with **real, project-specific values — not templates**. Run once per project (or after a major restructure).

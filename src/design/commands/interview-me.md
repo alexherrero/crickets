@@ -4,7 +4,6 @@ description: "Extracts what the user actually wants through a one-Q+hypothesis i
 kind: command
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-install_scope: project
 argument-hint: <brief or topic to clarify>
 ---
 

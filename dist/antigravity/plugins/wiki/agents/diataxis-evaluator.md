@@ -4,7 +4,6 @@ description: Read-only sub-agent for ambiguous Diátaxis mode-classification cas
 kind: agent
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-install_scope: either
 ---
 
 # diataxis-evaluator — read-only sub-agent for Diátaxis mode-classification ambiguity

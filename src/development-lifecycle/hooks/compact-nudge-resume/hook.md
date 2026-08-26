@@ -4,7 +4,6 @@ description: On every user prompt, nudge toward /clear over /compact when the se
 kind: hook
 supported_hosts: [claude-code]
 version: 0.1.0
-install_scope: project
 ---
 
 # compact-nudge-resume — /clear-not-/compact nudge on large context

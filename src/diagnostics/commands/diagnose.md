@@ -4,7 +4,6 @@ description: Deterministic-first failure diagnosis — classify a failure, recal
 kind: command
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-install_scope: project
 argument-hint: "[--project <slug>] [--tool <name>] [--exit-code <n>] <traceback-file-or->"
 ---
 

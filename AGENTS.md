@@ -25,7 +25,7 @@ curl -fsSL https://raw.githubusercontent.com/alexherrero/crickets/main/bootstrap
 claude plugin marketplace add alexherrero/crickets && claude plugin install developer@crickets
 ```
 
-Full detail (three modes × both hosts): [Install crickets plugins](https://github.com/alexherrero/crickets/wiki/Install-Into-Project). The v2.x `install.sh` dispatcher was retired in v3.0.
+Full detail (three modes × both hosts): [Install crickets plugins](https://github.com/alexherrero/crickets/wiki/Install-Crickets-Plugins). The v2.x `install.sh` dispatcher was retired in v3.0.
 
 ## Conventions
 
@@ -56,7 +56,6 @@ description: <one-sentence>
 kind: bundle | skill | command | agent | hook | mcp-server | status-line | output-style | workflow | rule | snippet | settings-fragment
 supported_hosts: [claude-code, antigravity]                # subset
 version: 0.1.0
-install_scope: user | project | either                     # optional, default: either
 deprecated: <reason>                                       # optional, lifecycle marker
 contents:                                                  # bundles only
   - skill: <name>

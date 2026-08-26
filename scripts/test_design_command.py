@@ -96,9 +96,6 @@ class TestCommandManifest(unittest.TestCase):
     def test_has_version(self):
         self.assertIn("version", self.fm)
 
-    def test_install_scope_is_project(self):
-        self.assertEqual(self.fm.get("install_scope"), "project")
-
     def test_has_argument_hint(self):
         self.assertTrue(str(self.fm.get("argument-hint", "")).strip())
 

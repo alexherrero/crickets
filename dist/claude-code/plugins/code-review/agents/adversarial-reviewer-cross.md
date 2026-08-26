@@ -4,7 +4,6 @@ description: Cross-model adversarial reviewer. Shells out to `agy` (the Antigrav
 kind: agent
 supported_hosts: [claude-code, antigravity]
 version: 0.3.0
-install_scope: either
 tools: Read, Glob, Grep, Bash
 ---
 

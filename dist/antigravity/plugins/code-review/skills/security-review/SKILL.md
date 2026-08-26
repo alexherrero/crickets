@@ -4,7 +4,6 @@ description: "Structured security review via the three-tier boundary model: LLM 
 kind: skill
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-install_scope: project
 ---
 
 # security-review
