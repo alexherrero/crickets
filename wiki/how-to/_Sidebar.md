@@ -1,7 +1,7 @@
 **[Home](Home)**
 
 ### 🔧 [How-to](How-To)
-- [Install plugins](Install-Into-Project)
+- [Install plugins](Install-Crickets-Plugins)
 - [Run the development loop](Run-The-Development-Loop)
 - [Using code review](01-First-Code-Review)
 - [Provision a repo's wiki](Provision-A-Repo-Wiki)

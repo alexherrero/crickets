@@ -4,7 +4,6 @@ description: "Decision-record trigger workflow — WHEN to capture an architectu
 kind: command
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-install_scope: project
 argument-hint: <decision being made — a one-sentence description of the architectural call — required>
 ---
 

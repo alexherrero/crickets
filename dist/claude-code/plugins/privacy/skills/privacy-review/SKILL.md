@@ -4,7 +4,6 @@ description: "Structured privacy-engineering review of a diff/PR, adapted from O
 kind: skill
 supported_hosts: [claude-code, antigravity]
 version: 0.2.0
-install_scope: project
 opinions: [good, how-we-engineer]
 ---
 

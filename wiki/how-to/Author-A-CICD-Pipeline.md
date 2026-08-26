@@ -5,7 +5,7 @@
 
 > [!NOTE]
 > **Goal:** Author or modify a CI/CD pipeline that moves quality gates as early as possible (Shift Left), makes the pipeline fast enough that smaller-diff deploys become the natural cadence (Faster is Safer), and eliminates any "ship anyway" bypass path.
-> **Prereqs:** the `development-lifecycle` plugin installed ([Install crickets plugins](Install-Into-Project)); a CI/CD config file to create or modify (e.g., `.github/workflows/`, `.gitlab-ci.yml`).
+> **Prereqs:** the `development-lifecycle` plugin installed ([Install crickets plugins](Install-Crickets-Plugins)); a CI/CD config file to create or modify (e.g., `.github/workflows/`, `.gitlab-ci.yml`).
 
 `/ci-cd` enforces four principles:
 

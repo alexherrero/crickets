@@ -57,7 +57,7 @@ description: Standalone adversarial code review of any diff or PR — the advers
 # because it was never capable of exercising the condition the wrong fix
 # failed to handle. New checklist item; new Common Rationalizations row (own
 # frontmatter version 0.1.0 -> 0.1.1).
-version: 0.3.2
+version: 0.3.3
 category: Coding
 requires: []
 standalone: true

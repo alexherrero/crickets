@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > **Goal:** List every active plan in the harness state dir — each plan's name, its `Status:` line, and the most-recent entry of its `progress*.md` — in one read-only dashboard, so a coordinator can see the queue before deciding what to `/work` next.
-> **Prereqs:** the `development-lifecycle` plugin installed ([Install crickets plugins](Install-Into-Project)); at least one plan in the harness dir (the singleton `PLAN.md`, or named `PLAN-<slug>.md` pairs — see [Named plans](Named-Plans)).
+> **Prereqs:** the `development-lifecycle` plugin installed ([Install crickets plugins](Install-Crickets-Plugins)); at least one plan in the harness dir (the singleton `PLAN.md`, or named `PLAN-<slug>.md` pairs — see [Named plans](Named-Plans)).
 
 Use `/queue-status-lite` when several plans are in flight at once and you want a single view of all of them. It is the **read side** of the multi-plan surface: the `--name` writers ([Run a named plan](Run-A-Named-Plan)) drive one plan; this glance shows them all. It only reads: it shows you the queue and leaves every decision — what to work, review, or merge — to you.
 

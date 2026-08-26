@@ -4,7 +4,6 @@ description: Fix breakage on a Dependabot PR. Trigger when (a) the current branc
 kind: skill
 supported_hosts: [claude-code, antigravity]
 version: 1.1.0
-install_scope: project
 ---
 
 You are running the `dependabot-fixer` skill. Migrated from `agentm` to `crickets` in toolkit v0.1.0. The body below is the operational version.

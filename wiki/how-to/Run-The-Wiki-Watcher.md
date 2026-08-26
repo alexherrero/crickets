@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > **Goal:** Run the `wiki-watch` engine over a watched repo and drive it on a loop, so the `documenter` keeps a wiki in sync — PR by default, direct-commit opt-in per trusted repo.
-> **Prereqs:** the `wiki-maintenance` plugin installed ([Install crickets plugins](Install-Into-Project)); the watched repo registered in `repo_registry` (`<vault>/_meta/repos.json`) with a `wiki_path`; `git` and — for PR dispatch — an authenticated `gh`. Optional: a durable-memory vault for cross-device cursors + audit log; without one, state falls back to `<repo>/.harness/wiki-watch/`.
+> **Prereqs:** the `wiki-maintenance` plugin installed ([Install crickets plugins](Install-Crickets-Plugins)); the watched repo registered in `repo_registry` (`<vault>/_meta/repos.json`) with a `wiki_path`; `git` and — for PR dispatch — an authenticated `gh`. Optional: a durable-memory vault for cross-device cursors + audit log; without one, state falls back to `<repo>/.harness/wiki-watch/`.
 
 The wiki-watcher is an **idempotent single-cycle engine you run on a loop**, not a daemon: one invocation runs one `poll → detect → judge → dispatch` cycle and exits. It's cooldown-gated and cursor-backed, so re-running it (`/loop` or cron) never drops a change or double-dispatches. The full config contract is in [Wiki-watch config](Wiki-Watch-Config).
 
@@ -47,5 +47,5 @@ The wiki-watcher is an **idempotent single-cycle engine you run on a loop**, not
 - [Wiki-watch config](Wiki-Watch-Config) — the three config sources, state/audit, and what's watched vs. filtered.
 - [Antigravity limitations](Antigravity-Limitations) — the scheduling gap that makes the loop Claude-first.
 - [Style-learning loop](Style-Learning-Loop) — the sibling wiki-maintenance reference (how the wiki stays in your voice).
-- [Install crickets plugins](Install-Into-Project) — get `wiki-maintenance` onto your host.
+- [Install crickets plugins](Install-Crickets-Plugins) — get `wiki-maintenance` onto your host.
 - [Wiki-watcher design](crickets-wiki) — why the watch loop, PR-default, and idempotency exist.

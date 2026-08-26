@@ -4,7 +4,6 @@ description: Scaffold a repo's wiki to the wiki-maintenance intent-group structu
 kind: command
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-install_scope: project
 argument-hint: [optional — "--preview", "--sections a,b,c", "--name <project>"]
 ---
 

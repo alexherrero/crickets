@@ -85,7 +85,6 @@ YAML frontmatter atop each primitive (`SKILL.md`, agent `.md`, hook `hook.md`, �
 | `kind` | **yes** | enum | `skill` \| `agent` \| `hook` \| `command` \| `mcp-server` \| `status-line` \| `output-style` \| `workflow` \| `rule` \| `snippet` \| `settings-fragment`. |
 | `supported_hosts` | **yes** | list | Subset of `[claude-code, antigravity]`. |
 | `version` | no | string | Semver. |
-| `install_scope` | no | enum | `user` \| `project` \| `either`. |
 
 **Note:** the primitive's **group is its folder**, not a frontmatter field — there is no `group:` key. A primitive belongs to exactly one group; cross-plugin reuse is via the group's `requires:`, not multi-group membership.
 
@@ -97,7 +96,6 @@ description: Scan the current git diff for personal information before commit or
 kind: skill
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-install_scope: project
 ```
 
 ## Group-level assets — `scripts/` and `templates/`

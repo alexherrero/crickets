@@ -4,7 +4,6 @@ description: "Simplify code for clarity and maintainability without removing loa
 kind: command
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-install_scope: project
 argument-hint: <file, directory, or diff range — defaults to uncommitted working-tree diff>
 ---
 

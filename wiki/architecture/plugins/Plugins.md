@@ -1,7 +1,7 @@
 <!-- mode: index -->
 # Plugins
 
-These are the plugins crickets ships. Each is a native host plugin generated from `src/<group>/`; see [Plugin anatomy](Plugin-Anatomy) for the shared structure, and [Install crickets plugins](Install-Into-Project) to get them.
+These are the plugins crickets ships. Each is a native host plugin generated from `src/<group>/`; see [Plugin anatomy](Plugin-Anatomy) for the shared structure, and [Install crickets plugins](Install-Crickets-Plugins) to get them.
 
 ## What's here
 
@@ -31,4 +31,4 @@ These are the plugins crickets ships. Each is a native host plugin generated fro
 
 ## See also
 
-[Reference](Reference) · [Plugin anatomy](Plugin-Anatomy) · [Install crickets plugins](Install-Into-Project) · [Home](Home)
+[Reference](Reference) · [Plugin anatomy](Plugin-Anatomy) · [Install crickets plugins](Install-Crickets-Plugins) · [Home](Home)

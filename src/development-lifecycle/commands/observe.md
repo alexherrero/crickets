@@ -4,7 +4,6 @@ description: "Instrumentation discipline — 'instrument as you build.' Structur
 kind: command
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-install_scope: project
 argument-hint: <component, service, or diff to instrument — defaults to current diff>
 ---
 

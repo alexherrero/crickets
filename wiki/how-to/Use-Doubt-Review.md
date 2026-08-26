@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > **Goal:** Catch a wrong decision before it stands — before you write the code, commit the architecture, or invoke an irreversible action.
-> **Prereqs:** the `code-review` plugin installed ([Install crickets plugins](Install-Into-Project)). Optional: `agy` CLI authed (for cross-model escalation).
+> **Prereqs:** the `code-review` plugin installed ([Install crickets plugins](Install-Crickets-Plugins)). Optional: `agy` CLI authed (for cross-model escalation).
 
 `/doubt` is distinct from `/code-review`. `/code-review` reviews a diff **after** code is written. `/doubt` fires **in flight**, while course-correction is still cheap.
 
@@ -96,6 +96,6 @@ After each cycle confirm:
 ## See also
 
 - [Review a change after it's written](Use-Code-Review) — `/code-review` for post-hoc diff review
-- [Install crickets plugins](Install-Into-Project) — get the `code-review` plugin installed
+- [Install crickets plugins](Install-Crickets-Plugins) — get the `code-review` plugin installed
 - [Why adversarial review](Why-Adversarial-Review) — the reasoning behind the adversarial stance
 - [Manifest schema](Manifest-Schema) — command primitive frontmatter reference

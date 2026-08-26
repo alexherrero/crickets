@@ -4,7 +4,6 @@ description: "Deprecation lifecycle — code-as-liability mindset. Compulsory vs
 kind: command
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-install_scope: project
 argument-hint: <interface, module, or function being deprecated — required>
 ---
 

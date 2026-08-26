@@ -4,7 +4,6 @@ description: Run one wiki-watcher (W1) cycle — detect doc-worthy changes in a 
 kind: command
 supported_hosts: [claude-code]
 version: 0.1.0
-install_scope: project
 ---
 
 Run **one** wiki-watcher cycle for the current repo (or a named repo).

@@ -4,7 +4,6 @@ description: On SessionStart, inject the project's .harness/PLAN.md + progress.m
 kind: hook
 supported_hosts: [claude-code]
 version: 0.1.0
-install_scope: project
 ---
 
 # harness-context-session-start — surface the harness state at session boot

@@ -4,7 +4,6 @@ description: Snapshot an expensive session's outputs into a vault handoff direct
 kind: command
 supported_hosts: [claude-code]
 version: 0.1.0
-install_scope: project
 argument-hint: "<dest-dir> [--title <entry title> --model <model-id> --tier <tier> --effort <effort> --prompt <text>]..."
 ---
 

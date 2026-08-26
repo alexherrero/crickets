@@ -3,7 +3,7 @@
 
 > [!NOTE]
 > **Goal:** Run individual plan tasks inside their own git worktrees so each task's changes are fully isolated — rollback and CI granularity at the task level, not the plan level.
-> **Prereqs:** `development-lifecycle` plugin installed ([Install crickets plugins](Install-Into-Project)); `isolation.mode: worktree-per-task` set in `.harness/project.json`; tasks to isolate marked `**Isolated:** true` in `PLAN.md`.
+> **Prereqs:** `development-lifecycle` plugin installed ([Install crickets plugins](Install-Crickets-Plugins)); `isolation.mode: worktree-per-task` set in `.harness/project.json`; tasks to isolate marked `**Isolated:** true` in `PLAN.md`.
 
 ## When to use this
 

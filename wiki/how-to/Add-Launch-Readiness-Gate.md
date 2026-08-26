@@ -5,7 +5,7 @@
 
 > [!NOTE]
 > **Goal:** Gate a first production rollout with a structured readiness checklist — observability wired, rollback tested, feature flag off-switch confirmed, staged rollout plan written — using the `/launch` command before any production users see the feature.
-> **Prereqs:** the `development-lifecycle` plugin installed ([Install crickets plugins](Install-Into-Project)); a feature ready for first production exposure; observability instrumented (see [/observe](Add-Observability-With-Observe)).
+> **Prereqs:** the `development-lifecycle` plugin installed ([Install crickets plugins](Install-Crickets-Plugins)); a feature ready for first production exposure; observability instrumented (see [/observe](Add-Observability-With-Observe)).
 
 `/launch` is the **first-production-rollout gate**; it is distinct from `/release` (which is the pre-merge code gate). `/launch` enforces:
 

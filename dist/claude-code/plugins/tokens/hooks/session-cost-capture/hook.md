@@ -4,7 +4,6 @@ description: "Stop-hook capture of a closing session's token cost. Runs analyzer
 kind: hook
 supported_hosts: [claude-code, antigravity]
 version: 0.2.0
-install_scope: project
 ---
 
 # session-cost-capture — the capture half of the session-cost Stop hook

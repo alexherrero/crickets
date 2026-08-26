@@ -4,7 +4,6 @@ description: Scan the current git diff (or working tree) for personal informatio
 kind: skill
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-install_scope: project
 ---
 
 # pii-scrubber

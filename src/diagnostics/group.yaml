@@ -38,5 +38,5 @@ enhances:
 #          (that's a hard dependency, not an optional enhancement). The
 #          relationship is documented in bugfix.md and this comment instead.
 #          diagnose.py itself is untouched.
-version: 0.1.4
+version: 0.1.5
 capabilities: [diagnostics]

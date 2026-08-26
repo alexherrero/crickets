@@ -4,7 +4,6 @@ description: Operator emergency halt for long-running agent sessions. Fires on P
 kind: hook
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-install_scope: project
 ---
 
 # kill-switch — operator emergency halt

@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > **Goal:** Run the full coordinator loop as one operator — take a brief through research, plan-authoring, isolated execution, integration, and a queue read — using the role roster as personas over the phase commands you already have. This is the capstone that ties the four V5-10 worker-team siblings together.
-> **Prereqs:** the `development-lifecycle` plugin installed ([Install crickets plugins](Install-Into-Project)) at 0.8.0 or later (the version that ships the role roster); a clean `main` working tree; a brief — the thing you want built. Read [Coordinator roles](Coordinator-Roles) first for what each role wraps and which are read-only.
+> **Prereqs:** the `development-lifecycle` plugin installed ([Install crickets plugins](Install-Crickets-Plugins)) at 0.8.0 or later (the version that ships the role roster); a clean `main` working tree; a brief — the thing you want built. Read [Coordinator roles](Coordinator-Roles) first for what each role wraps and which are read-only.
 
 You are the **coordinator**. The roster gives you four personas — `researcher`, `tech-lead`, `worker`, and `project-manager` — that are thin skins over the shipped phase commands ([Coordinator roles](Coordinator-Roles)), and this page walks through them once, in order, cross-linking each step's own recipe. Each role wraps a command you can also run bare; the roster just names the persona doing it.
 

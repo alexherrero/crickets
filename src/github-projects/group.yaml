@@ -162,5 +162,5 @@ standalone: false
 #         untracked item, so report_drift names it in its own section on
 #         every path including the clean one. Body-owned lines stay out of
 #         the marker digest so a steady state never re-posts a report.
-version: 0.5.0
+version: 0.5.1
 capabilities: [board-sync]

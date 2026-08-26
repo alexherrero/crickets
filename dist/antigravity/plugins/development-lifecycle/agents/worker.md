@@ -4,7 +4,6 @@ description: Active executor role — the autonomous /work persona, one per work
 kind: agent
 supported_hosts: [claude-code, antigravity]
 version: 0.1.1
-install_scope: either
 model: claude-sonnet-5
 ---
 

@@ -4,7 +4,6 @@ description: Diagnose the Obsidian/Google-Drive vault storage backend (the obsid
 kind: skill
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-install_scope: user
 ---
 
 # vault-doctor

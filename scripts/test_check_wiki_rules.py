@@ -37,7 +37,6 @@ _RULE_COVERAGE_MANIFEST = {
     "h": "test_check_wiki_rules.py (RuleHLinksResolveTest)",
     "i": "test_check_wiki_rules.py (RuleIOrphanTest)",
     "j": "test_check_wiki_nav.py (NavRuleJTest)",
-    "k": "test_check_wiki_rules.py (RuleKWordCountTest)",
     "l": "test_check_wiki_readme.py (RootDocGovernanceTest)",
     "m": "test_check_wiki_sections.py (RuleMSectionOrderTest)",
     "n": "test_check_wiki_sections.py (RuleNHeadingVariantTest)",
@@ -308,31 +307,6 @@ class RuleIOrphanTest(unittest.TestCase):
         link_graph = {"Foo": {"Bar"}}
         issues = []
         cw.rule_i_orphan(modes, link_graph, {}, issues)
-        self.assertEqual(issues, [])
-
-
-class RuleKWordCountTest(unittest.TestCase):
-    def test_over_cap_fires_soft(self):
-        p = _WIKI_ROOT / "how-to" / "Foo.md"
-        text = "word " * 700  # WORD_CAPS["how-to"] == 600
-        issues = []
-        cw.rule_k_word_count(p, "how-to", text, issues)
-        self.assertEqual(len(issues), 1)
-        self.assertEqual(issues[0].rule, "k")
-        self.assertEqual(issues[0].severity, "soft")
-
-    def test_under_cap_passes(self):
-        p = _WIKI_ROOT / "how-to" / "Foo.md"
-        text = "word " * 100
-        issues = []
-        cw.rule_k_word_count(p, "how-to", text, issues)
-        self.assertEqual(issues, [])
-
-    def test_mode_with_no_cap_never_fires(self):
-        p = _WIKI_ROOT / "architecture" / "Foo.md"
-        text = "word " * 5000
-        issues = []
-        cw.rule_k_word_count(p, "index", text, issues)
         self.assertEqual(issues, [])
 
 

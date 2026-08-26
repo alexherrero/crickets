@@ -4,7 +4,6 @@ description: Never append a Co-Authored-By trailer naming the agent or model to 
 kind: snippet
 supported_hosts: [antigravity]
 version: 0.1.0
-install_scope: project
 ---
 
 ## Commit messages — no `Co-Authored-By` trailer

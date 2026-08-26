@@ -4,7 +4,6 @@ description: Default-FAIL evidence enforcement for /work. Fires on PreToolUse fo
 kind: hook
 supported_hosts: [claude-code]
 version: 0.1.0
-install_scope: project
 ---
 
 # evidence-tracker — default-FAIL evidence enforcement for `/work`

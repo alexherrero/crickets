@@ -21,7 +21,7 @@
       ],
       "name": "code-review",
       "source": "./dist/claude-code/plugins/code-review",
-      "version": "0.3.2"
+      "version": "0.3.3"
     },
     {
       "capabilities": [
@@ -35,7 +35,7 @@
       "description": "Day-to-day testing + release discipline in one plugin — tests-are-sacred, verification-first, the 3-layer pyramid, the pre-release checklist, changelog-shape, and paired-release coordination for cross-repo releases.",
       "name": "conventions",
       "source": "./dist/claude-code/plugins/conventions",
-      "version": "0.11.0"
+      "version": "0.11.1"
     },
     {
       "capabilities": [
@@ -49,7 +49,7 @@
       "description": "Design-doc and ADR authoring — the /design command (author → translate → sequence) and the ADR skill for capturing architectural decisions with re-audit triggers.",
       "name": "design",
       "source": "./dist/claude-code/plugins/design",
-      "version": "0.9.2"
+      "version": "0.9.3"
     },
     {
       "capabilities": [
@@ -63,7 +63,7 @@
       ],
       "name": "developer-safety",
       "source": "./dist/claude-code/plugins/developer-safety",
-      "version": "0.5.1"
+      "version": "0.5.2"
     },
     {
       "capabilities": [
@@ -87,7 +87,7 @@
       ],
       "name": "development-lifecycle",
       "source": "./dist/claude-code/plugins/development-lifecycle",
-      "version": "0.44.1"
+      "version": "0.44.2"
     },
     {
       "capabilities": [
@@ -106,7 +106,7 @@
       ],
       "name": "diagnostics",
       "source": "./dist/claude-code/plugins/diagnostics",
-      "version": "0.1.4"
+      "version": "0.1.5"
     },
     {
       "capabilities": [
@@ -118,7 +118,7 @@
       "description": "One-way, deterministic board-sync — synthesizes a vault project's roadmap/plan/progress state onto a GitHub Project board via six locked per-type templates, a single idempotent project_sync.py write path, and a vault==board drift gate. The vault stays the agent's source of truth; the board is the generated human source.",
       "name": "github-projects",
       "source": "./dist/claude-code/plugins/github-projects",
-      "version": "0.5.0"
+      "version": "0.5.1"
     },
     {
       "capabilities": [
@@ -132,7 +132,7 @@
       "description": "CI workflows + dependency-update tooling — the dependabot-fixer skill that repairs breakage on Dependabot PRs.",
       "name": "maintenance",
       "source": "./dist/claude-code/plugins/maintenance",
-      "version": "0.2.5"
+      "version": "0.2.6"
     },
     {
       "capabilities": [
@@ -141,7 +141,7 @@
       "description": "The Obsidian/Google-Drive vault storage backend for the agentm memory engine — re-homed out of the kernel behind the V5-1 storage seam. Ships the `vault` named backend (and, across V5-2, the vault-specific machinery) as an agentm-discovered scripts/ payload.",
       "name": "obsidian-vault",
       "source": "./dist/claude-code/plugins/obsidian-vault",
-      "version": "0.3.1"
+      "version": "0.3.2"
     },
     {
       "capabilities": [
@@ -151,7 +151,7 @@
       "description": "Scan diffs and the working tree for personal information (emails, personal paths, API keys, phone numbers) before commit or push.",
       "name": "privacy",
       "source": "./dist/claude-code/plugins/privacy",
-      "version": "0.6.1"
+      "version": "0.6.2"
     },
     {
       "capabilities": [
@@ -174,7 +174,7 @@
       "description": "Deterministic transcript-JSONL cost analyzer — per-message cost curve, 5h rolling window, floor breakdown, and cache-read vs cache-write vs fresh-input split. Prerequisite for Part C (status-line meter) and Part G (heat-based floor).",
       "name": "tokens",
       "source": "./dist/claude-code/plugins/tokens",
-      "version": "0.6.0"
+      "version": "0.6.1"
     },
     {
       "capabilities": [
@@ -191,7 +191,7 @@
       ],
       "name": "wiki",
       "source": "./dist/claude-code/plugins/wiki",
-      "version": "0.9.3"
+      "version": "0.10.0"
     }
   ],
   "renames": {

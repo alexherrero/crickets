@@ -4,7 +4,6 @@ description: Read-only coordinator's glance — list every active plan in _harne
 kind: command
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-install_scope: project
 argument-hint: [optional — "--harness-dir <path>" to enumerate a specific _harness/ directory; default resolves from the cwd]
 ---
 

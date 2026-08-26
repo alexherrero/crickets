@@ -47,7 +47,7 @@ Crickets installs into Claude Code and Antigravity with one command. AgentM is i
 curl -fsSL https://raw.githubusercontent.com/alexherrero/crickets/main/bootstrap.sh | bash
 ```
 
-[See requirements](https://github.com/alexherrero/crickets/wiki/Compatibility) and [install modes](https://github.com/alexherrero/crickets/wiki/Install-Into-Project) for more information.
+[See requirements](https://github.com/alexherrero/crickets/wiki/Compatibility) and [install modes](https://github.com/alexherrero/crickets/wiki/Install-Crickets-Plugins) for more information.
 
 ## 📖 Learn more
 

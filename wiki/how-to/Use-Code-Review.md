@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > **Goal:** Adversarially review any diff or PR with the `/code-review` command — no `/work` cycle, no commit required.
-> **Prereqs:** the `code-review` plugin installed ([Install crickets plugins](Install-Into-Project)); `git`. Optional: `gh` (for PR review) and `agy` (for the cross-model pass).
+> **Prereqs:** the `code-review` plugin installed ([Install crickets plugins](Install-Crickets-Plugins)); `git`. Optional: `gh` (for PR review) and `agy` (for the cross-model pass).
 
 `/code-review` is the standalone command from the `code-review` plugin. It dispatches the adversarial reviewers against a diff and **reports** — it never fixes. Run it on an open PR, a branch, a commit range, or your uncommitted working tree.
 
@@ -46,7 +46,7 @@ The cross-model pass sends your diff to **Gemini, via the Antigravity CLI (`agy`
 ## See also
 
 - [In-flight decision review — /doubt](Use-Doubt-Review) — use `/doubt` instead when you want to challenge a decision *before* you write the code.
-- [Install crickets plugins](Install-Into-Project) — get the `code-review` plugin onto your host.
+- [Install crickets plugins](Install-Crickets-Plugins) — get the `code-review` plugin onto your host.
 - [Installing and using the code-review plugin](01-First-Code-Review) — the hands-on first run, if you haven't done one.
 - [Evaluator](Evaluator) — PASS / NEEDS_WORK grading against a rubric (a different reviewer role).
 - [Compatibility](Compatibility) — the `evidence-tracker` hook (also in `code-review`) is Claude-only-effective.

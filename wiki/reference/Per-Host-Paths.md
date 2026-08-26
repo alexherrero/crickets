@@ -47,4 +47,4 @@ These two ship as of v3.13–3.14. The `development-lifecycle` plugin ships `ter
 - [Customization Types](Customization-Types) — what each kind means.
 - [Manifest Schema](Manifest-Schema) — the frontmatter + `group.yaml` contract.
 - [Modify a plugin](Modify-A-Plugin) — edit `src/`, regenerate, dogfood.
-- [Install crickets plugins](Install-Into-Project) — how the host installs a plugin.
+- [Install crickets plugins](Install-Crickets-Plugins) — how the host installs a plugin.

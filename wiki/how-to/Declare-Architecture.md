@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > **Goal:** Write a `wiki/architecture.yml` manifest so the wiki grows an **Architecture** section — one landing per large component, plus the nested sidebar — without hand-building any of the scaffolding.
-> **Prereqs:** the `wiki-maintenance` plugin installed ([Install crickets plugins](Install-Into-Project)); a scaffolded `wiki/` ([Provision a repo's wiki](Provision-A-Repo-Wiki)); `PyYAML` available (`pip install pyyaml` — the manifest reader needs it); run from the target repo's root.
+> **Prereqs:** the `wiki-maintenance` plugin installed ([Install crickets plugins](Install-Crickets-Plugins)); a scaffolded `wiki/` ([Provision a repo's wiki](Provision-A-Repo-Wiki)); `PyYAML` available (`pip install pyyaml` — the manifest reader needs it); run from the target repo's root.
 
 Architecture is the one wiki section whose contents are **per-project**. Rather than hard-code its sub-sections, the generator reads a small manifest — `wiki/architecture.yml` — listing each large component. No manifest means no Architecture section (the section is gated on `bool(components)`); a malformed manifest **fails closed** and scaffolds nothing.
 

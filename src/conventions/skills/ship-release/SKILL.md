@@ -4,7 +4,6 @@ description: Release discipline and mechanics in one skill — pre-release check
 kind: skill
 supported_hosts: [claude-code, antigravity]
 version: 0.3.1
-install_scope: project
 ---
 
 You are running the `ship-release` skill. Work through the pre-release checklist below before cutting anything, then run the mechanical workflow to tag and publish. Trigger phrases: "ship a release", "cut a release", "tag a release", or reviewing a diff that claims to be "release-ready."

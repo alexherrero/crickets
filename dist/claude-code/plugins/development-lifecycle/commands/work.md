@@ -4,7 +4,6 @@ description: Work .harness/PLAN.md's task list autonomously; safety-gate each ta
 kind: command
 supported_hosts: [claude-code, antigravity]
 version: 0.1.1
-install_scope: project
 argument-hint: [optional — "--name <plan-name>" to target a named plan, and/or "task N" to pick a specific task]
 opinions: [done]
 ---

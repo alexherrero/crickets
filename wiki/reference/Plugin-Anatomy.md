@@ -54,7 +54,7 @@ Here is a representative set of shipped plugins. You can find the full roster in
 
 ## From source to installed
 
-The pipeline moves from `src/<group>/` through `python3 scripts/generate.py build` to the committed `dist/<host>/plugins/<group>/`. The host then installs the whole plugin. The generated `dist/` directory is committed. This lets the marketplace serve static files. A CI gate proves it stays in sync with `src/`. You can edit and dogfood your changes via [Modify a plugin](Modify-A-Plugin). You can install plugins via [Install crickets plugins](Install-Into-Project).
+The pipeline moves from `src/<group>/` through `python3 scripts/generate.py build` to the committed `dist/<host>/plugins/<group>/`. The host then installs the whole plugin. The generated `dist/` directory is committed. This lets the marketplace serve static files. A CI gate proves it stays in sync with `src/`. You can edit and dogfood your changes via [Modify a plugin](Modify-A-Plugin). You can install plugins via [Install crickets plugins](Install-Crickets-Plugins).
 
 ## Related
 

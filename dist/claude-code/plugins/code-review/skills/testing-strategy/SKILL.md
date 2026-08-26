@@ -4,7 +4,6 @@ description: "Test coverage audit via the Beyonce Rule (uncovered behavior is be
 kind: skill
 supported_hosts: [claude-code, antigravity]
 version: 0.1.1
-install_scope: project
 ---
 
 # testing-strategy

@@ -83,7 +83,6 @@ class PrivacyReviewSkillContractTests(unittest.TestCase):
         self.assertIn("claude-code", fm["supported_hosts"])
         self.assertIn("antigravity", fm["supported_hosts"])
         self.assertIn("version", fm)
-        self.assertIn("install_scope", fm)
 
     def test_body_documents_the_privacy_risk_output_contract(self):
         text = _SKILL.read_text(encoding="utf-8")

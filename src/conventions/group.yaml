@@ -106,4 +106,4 @@ capabilities: [testing-conventions, releasing-conventions, conventions]
 #          FOLLOWUPS item ("Amend /release phase spec + ship-release skill
 #          for HLD-update step", filed at Plan #18, still open as of
 #          2026-07-14). ship-release SKILL.md 0.3.0 -> 0.3.1.
-version: 0.11.0
+version: 0.11.1

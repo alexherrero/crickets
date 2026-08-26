@@ -4,7 +4,6 @@ description: Active coordinator role — turns a brief into queued/named plans v
 kind: agent
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-install_scope: either
 model: claude-sonnet-5
 ---
 

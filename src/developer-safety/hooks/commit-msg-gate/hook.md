@@ -4,7 +4,6 @@ description: Deterministic commit-msg git hook that rejects a commit subject con
 kind: hook
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-install_scope: project
 ---
 
 # commit-msg-gate — plain-English-at-the-door

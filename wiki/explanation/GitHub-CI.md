@@ -61,6 +61,6 @@ One optional environment variable tunes the fix loop; otherwise the plugin works
 - [Development Lifecycle](Development-Lifecycle) — the base plugin GitHub CI requires.
 - [Manifest schema](Manifest-Schema) — `requires:` vs `enhances:` and the `standalone` invariant.
 - [Plugin anatomy](Plugin-Anatomy) — what a crickets plugin is and how it's structured.
-- [Install crickets plugins](Install-Into-Project) — the install modes.
+- [Install crickets plugins](Install-Crickets-Plugins) — the install modes.
 
 [Reference](Reference) · [Architecture](Architecture) · [Home](Home)

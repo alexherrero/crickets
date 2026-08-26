@@ -44,5 +44,5 @@ The probe is read-only (constructs no backend, writes neither the vault nor `~/.
 ## See also
 
 - [Obsidian vault backend](Obsidian-Vault-Backend) — the reference for the seam verbs, capability descriptor, and discovery/lock contract.
-- [Install crickets plugins](Install-Into-Project) — the general plugin install paths.
+- [Install crickets plugins](Install-Crickets-Plugins) — the general plugin install paths.
 - [CI gates](CI-Gates) — the gate battery the conformance-suite proof joins.

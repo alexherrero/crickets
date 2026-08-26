@@ -4,7 +4,6 @@ description: Turn a brief into .harness/PLAN.md with per-task verification crite
 kind: command
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-install_scope: project
 argument-hint: <brief>  |  --name <slug> <brief> (active named)  |  --stage <slug> <brief> (inactive)  |  --activate <slug> (promote staged→active)
 ---
 

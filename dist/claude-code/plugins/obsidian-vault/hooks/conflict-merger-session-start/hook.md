@@ -4,7 +4,6 @@ description: SessionStart hook that detects GDrive/DriveFS-induced conflict + du
 kind: hook
 supported_hosts: [claude-code]
 version: 0.1.0
-install_scope: project
 ---
 
 # conflict-merger-session-start — GDrive conflict-file detection at SessionStart

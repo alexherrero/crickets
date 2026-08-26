@@ -4,7 +4,6 @@ description: Author + maintain a Diátaxis-style wiki for any repo. Live authori
 kind: skill
 supported_hosts: [claude-code, antigravity]
 version: 0.1.1
-install_scope: project
 ---
 
 # diataxis-author — author + maintain a Diátaxis wiki for any repo
