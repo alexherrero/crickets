@@ -125,7 +125,9 @@ MEMORY_SPACE_SEGMENTS = ("memory", "personal", "personal-private")
 # from the wiki plugin's vault_layout.py — plugins emit independently into
 # dist/, the same reason resolve_vault_path below mirrors harness_memory
 # instead of importing it.
-PROJECT_SPACE_SEGMENTS = ("desk/projects", "projects", "personal-projects")
+# Filing-v2 2b (2026-09): the newest generation is the vault-ROOT `Projects/`,
+# a sibling of the memory root this table is joined onto — hence `../`.
+PROJECT_SPACE_SEGMENTS = ("../Projects", "desk/projects", "projects", "personal-projects")
 WIKI_STYLE_LEAF = "_global/wiki-style"
 
 TASK_HEADER = """\
@@ -467,8 +469,10 @@ def wiki_style_dir(vault: Path) -> Path:
         cand = vault.joinpath(*seg.split("/"), *WIKI_STYLE_LEAF.split("/"))
         if cand.is_dir():
             return cand
-    return vault.joinpath(*PROJECT_SPACE_SEGMENTS[0].split("/"),
-                          *WIKI_STYLE_LEAF.split("/"))
+    # Nothing exists anywhere: default to the newest generation that stays
+    # inside the memory root — the root sibling is discovered, never conjured.
+    current = next(s for s in PROJECT_SPACE_SEGMENTS if not s.startswith("../"))
+    return vault.joinpath(*current.split("/"), *WIKI_STYLE_LEAF.split("/"))
 
 
 def resolve_overlay(vault: Path, overlay_arg: str) -> Path:

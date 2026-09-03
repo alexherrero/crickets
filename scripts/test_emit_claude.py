@@ -121,7 +121,10 @@ class TestClaudeEmitter(unittest.TestCase):
         # matching agentm, which dropped its page-length ceilings in #465. Minor
         # rather than patch: a lint rule disappearing is a behaviour change —
         # pages that used to warn on length no longer do.
-        self.assertEqual(self._plugin_json("wiki")["version"], "0.10.0")
+        # 0.11.0 = vault_layout probes the vault-ROOT Projects/ generation
+        # first (filing-v2 2b, the crickets half); the create-when-absent
+        # default stays inside the memory root.
+        self.assertEqual(self._plugin_json("wiki")["version"], "0.11.0")
         # 0.3.0 = check-no-pii.sh + templates/hooks/pre-push moved into src/pii/
         # so they actually ship inside the plugin payload (R2.4 task 7).
         # 0.3.1 = check-no-pii.sh scan collapsed to one grep per file (fixes a

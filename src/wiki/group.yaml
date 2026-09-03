@@ -156,7 +156,7 @@ standalone: true
 #         drops from ~18.2k to ~7.7k tokens of overlay -- it had been carrying
 #         the email and letter-of-recommendation registers alongside the docs
 #         one, all three at full length.
-version: 0.10.0
+version: 0.11.0
 capabilities: [wiki-maintenance, wiki]
 renamed_from: [wiki-maintenance]
 enhances:

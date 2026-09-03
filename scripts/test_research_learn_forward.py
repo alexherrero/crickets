@@ -22,9 +22,11 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
@@ -91,6 +93,11 @@ class LearnForwardTests(unittest.TestCase):
         self._tmp = tempfile.TemporaryDirectory()
         self.vault = Path(self._tmp.name) / "vault"
         self.vault.mkdir()
+        # agentm keeps the fetch cache in its machine-scoped engine dir
+        # (filing-v2 2a); a scan must never read this machine's real one.
+        self._engine_env = mock.patch.dict(
+            os.environ, {"AGENTM_STATE_DIR": str(Path(self._tmp.name) / "engine-state")})
+        self._engine_env.start()
         fl = learn_forward.agentm_bridge.load_forward_learning_module()
         sources_path = self.vault / fl.SOURCES_CONFIG_REL
         sources_path.parent.mkdir(parents=True, exist_ok=True)
@@ -113,6 +120,7 @@ class LearnForwardTests(unittest.TestCase):
         self.fl = fl
 
     def tearDown(self):
+        self._engine_env.stop()
         self._tmp.cleanup()
 
     def test_a_scan_cycle_produces_watchlist_entries(self):

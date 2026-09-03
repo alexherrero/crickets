@@ -11,7 +11,7 @@ context across three independent sources, each individually graceful-skip
   (b) **vault project tree** — file-path-loads agentm's `harness_memory.py`
       (same conventional-clone cascade `agentm_bridge.py` already uses) to
       resolve `vault_path()` in-process, then globs the vault's project space
-      (`desk/projects/` on the current layout — see PROJECT_SPACE_SEGMENTS).
+      (vault-root `Projects/` on the current layout, `desk/projects/` before it — see PROJECT_SPACE_SEGMENTS).
       Catches vault-only projects/ideas that were never registered as a repo
       (e.g. a pure design/roadmap context with no local git checkout).
   (c) **agentm recall** — file-path-loads `harness/skills/memory/scripts/
@@ -198,30 +198,46 @@ def _one_line_gloss(project_dir: Path) -> "str | None":
     return None
 
 
-# The vault's project-keyed space, newest layout generation first. The stage-2
-# four-space migration (2026-08-11) pushed it down to `desk/projects/`; V4 #26
-# had already renamed `personal-projects/` to `projects/`. Probe rather than pin
-# a literal — a vault on any rung stays discoverable, and one that migrates does
-# not silently stop resolving projects. Same shape as agentm's
-# scripts/migrate-harness-to-vault.sh. Duplicated locally rather than imported
-# from the wiki plugin's vault_layout.py: plugins emit independently into dist/,
-# the same reason this file file-path-loads harness_memory instead of importing it.
-PROJECT_SPACE_SEGMENTS = (("desk", "projects"), ("projects",), ("personal-projects",))
+# The vault's project-keyed space, newest layout generation first. Filing-v2 2b
+# (2026-09) lifts it to the vault-root `Projects/` — a SIBLING of the memory
+# root, hence the `..` segment; the stage-2 four-space migration (2026-08-11)
+# had pushed it down to `desk/projects/`; V4 #26 had already renamed
+# `personal-projects/` to `projects/`. Probe rather than pin a literal — a vault
+# on any rung stays discoverable, and one that migrates does not silently stop
+# resolving projects. Duplicated locally rather than imported from the wiki
+# plugin's vault_layout.py: plugins emit independently into dist/, the same
+# reason this file file-path-loads harness_memory instead of importing it.
+PROJECT_SPACE_SEGMENTS = (("..", "Projects"), ("desk", "projects"), ("projects",),
+                          ("personal-projects",))
+
+
+def vault_projects_dirs(vault: "Path") -> "list[Path]":
+    """Every project space this vault has, newest layout first.
+
+    Filing-v2 2b: the newest generation is the vault-ROOT `Projects/`, a
+    sibling of the memory root (hence the `..` segment). During the merge
+    window both it and `desk/projects/` exist and each may hold projects, so
+    listing callers must union the spaces rather than stop at the first."""
+    return [cand for seg in PROJECT_SPACE_SEGMENTS
+            if (cand := vault.joinpath(*seg)).is_dir()]
 
 
 def vault_projects_dir(vault: "Path") -> "Path | None":
-    """The vault's project space on whichever layout it sits, or None if absent."""
-    for seg in PROJECT_SPACE_SEGMENTS:
-        cand = vault.joinpath(*seg)
-        if cand.is_dir():
-            return cand
-    return None
+    """The newest project space present, or None. Prefer vault_projects_dirs
+    for anything that lists; this remains the single-space answer for callers
+    that only need "where do new projects go"."""
+    dirs = vault_projects_dirs(vault)
+    return dirs[0] if dirs else None
 
 
 def _project_slug_from_vault_relpath(path: str) -> "str | None":
     """The slug in a vault-relative `<projects-space>/<slug>/...` path, else None."""
     parts = Path(path).parts
     for seg in PROJECT_SPACE_SEGMENTS:
+        if seg[0] == "..":
+            # Root-space paths arrive root-relative ("Projects/<slug>/…"),
+            # never with a literal "..".
+            seg = seg[1:]
         n = len(seg)
         if len(parts) >= n + 1 and parts[:n] == seg:
             return parts[n]
@@ -234,16 +250,24 @@ def scan_vault_projects(*, vault: "Path | None" = None) -> "list[dict]":
         vault = resolve_vault_path()
     if vault is None:
         return []
-    projects_dir = vault_projects_dir(vault)
-    if projects_dir is None:
+    spaces = vault_projects_dirs(vault)
+    if not spaces:
         return []
-    try:
-        entries = sorted(p for p in projects_dir.iterdir() if p.is_dir() and not p.name.startswith("."))
-    except OSError:
-        return []
+    # Union the spaces, newest layout winning a slug collision — during the
+    # 2b merge window the root space exists (near-empty) while the agent's
+    # projects still sit under desk/projects; first-space-only would hide
+    # every one of them behind the empty shell.
+    by_slug: "dict[str, Path]" = {}
+    for space in spaces:
+        try:
+            entries = [p for p in space.iterdir() if p.is_dir() and not p.name.startswith(".")]
+        except OSError:
+            continue
+        for p in entries:
+            by_slug.setdefault(p.name, p)
     return [
-        {"slug": p.name, "vault_project_path": str(p), "gloss": _one_line_gloss(p)}
-        for p in entries
+        {"slug": slug, "vault_project_path": str(p), "gloss": _one_line_gloss(p)}
+        for slug, p in sorted(by_slug.items())
     ]
 
 

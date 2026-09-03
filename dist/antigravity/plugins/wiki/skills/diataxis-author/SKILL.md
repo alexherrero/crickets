@@ -478,7 +478,7 @@ python3 src/wiki-maintenance/skills/diataxis-author/scripts/capture.py save \
 
 The store routing mirrors the resolver's read model (part 3 task 1): global → `<projects-space>/_global/wiki-style/<date>-<trigger>.md` · per-project → `<projects-space>/<slug>/wiki-style/<date>-<trigger>.md` · per-repo → `<wiki-root>/.diataxis-conventions.md`. Project-keyed stores live in the vault's project space (see agentm ADR 0010), not under `personal-private/`. The next `/diataxis author` draft reads it back automatically.
 
-`<projects-space>` is `<vault>/desk/projects/` on the current vault layout and `<vault>/projects/` on the one before it. Both the read and the write side resolve it through [`scripts/vault_layout.py`](scripts/vault_layout.py), which probes newest-first and takes the first that exists — so a lesson captured today lands exactly where the resolver reads it back, whichever layout this vault sits on. Pinning either literal is what silently emptied the overlay after the stage-2 migration.
+`<projects-space>` is the vault-root `Projects/` (a sibling of the memory root) on the current vault layout, `<memory-root>/desk/projects/` on the one before it, and `<memory-root>/projects/` before that. Both the read and the write side resolve it through [`scripts/vault_layout.py`](scripts/vault_layout.py), which probes newest-first and takes the first that exists — so a lesson captured today lands exactly where the resolver reads it back, whichever layout this vault sits on. Pinning either literal is what silently emptied the overlay after the stage-2 migration.
 
 **Graceful-degrade (DC-3).** Per-repo writes land *outside* the MemoryVault, so they route through agentm's `permeable_boundary` cross-boundary confirm when the kernel is importable; absent it (crickets-local), the write degrades to the local confirm only and **announces** the degraded mode on stderr (`permeable_boundary unavailable …`) — never silent. The capture still works.
 
@@ -522,7 +522,7 @@ The **operator-gated** path that graduates a *proven* overlay voice lesson into 
 ```bash
 # 1. ALWAYS preview first — prints the unified diff against the base, writes nothing:
 python3 …/skills/diataxis-author/scripts/promote.py \
-    --lesson "$MEMORY_VAULT_PATH/desk/projects/_global/wiki-style/<date>-<trigger>.md" --preview
+    --lesson "$MEMORY_VAULT_PATH/../Projects/_global/wiki-style/<date>-<trigger>.md" --preview
 # 2. Apply — writes ONLY the src/ base, leaving it UNCOMMITTED for you to review:
 python3 …/promote.py --lesson "<…>.md"
 # 3. (maintainer) review the diff, commit, then regenerate dist/ so it ships:
