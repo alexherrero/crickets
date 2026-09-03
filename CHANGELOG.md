@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.37.0] — 2026-09-02 — Minor: the project space learns its root generation, and a resumed /work finds its worktree
+
 **MINOR — filing-v2 2b, crickets half (ships first).** The vault's project space is moving from `<memory-root>/desk/projects/` to the vault-root `Projects/` — a sibling of the memory root, the merge target agentm's filing-v2 design names. Three plugins carried their own newest-first probe of the project space, and none knew the new generation; a moved vault would have silently stopped resolving projects, wiki-style stores, and prose overlays. This release teaches all three the root generation ahead of the move, tolerant across the window: `development-lifecycle`'s `resolve_project` gains `vault_projects_dirs()` and **unions** the spaces when listing (root wins a slug collision — first-space-only would have hidden every project behind the near-empty root shell that already exists), and learns root-relative `Projects/<slug>/…` paths; `wiki`'s `vault_layout` and `design`'s `prose_pass` probe the root sibling first. The root generation is discovered, never conjured: create-when-absent defaults stay inside the memory root, so a scratch vault never writes to `<tmp>/../Projects`. Plan/state resolution (`resolve_plan`, queue-status) delegates to agentm's own resolver and picks the new location up from agentm's paired release. Paired with agentm's filing-v2 part 2b (`projects-merge`); this side ships first, per the locked order.
 
 ### Changed
