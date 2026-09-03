@@ -115,4 +115,4 @@ capabilities: [design-docs, design, architecture]
 #         located in the memory space (always-load tier first, then by
 #         filename): it graduated out of `_always-load/` into the dated tree
 #         and a tier-only probe had lost it, degrading every prose pass.
-version: 0.9.3
+version: 0.10.0

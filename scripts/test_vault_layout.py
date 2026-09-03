@@ -77,6 +77,7 @@ codebase_improvement = _load_file("codebase_improvement_for_layout",
 
 # The two layouts under test, written out by hand rather than read from the
 # module — if someone reorders PROJECT_SPACE_SEGMENTS these tests must notice.
+NEWEST_LAYOUT = "../Projects"   # filing-v2 2b: vault-ROOT Projects/, sibling of the memory root
 NEW_LAYOUT = "desk/projects"
 OLD_LAYOUT = "projects"
 OLDEST_LAYOUT = "personal-projects"
@@ -107,6 +108,36 @@ class TestProbeChain(unittest.TestCase):
             (vault / "projects" / "_global" / "wiki-style").mkdir(parents=True)
             self.assertEqual(_rel(vl.global_wiki_style_dir(vault), vault),
                              "projects/_global/wiki-style")
+
+    def test_root_sibling_layout_resolves(self):
+        """Filing-v2 2b: the newest generation is `<vault>/Projects/`, a sibling
+        of the memory root `<vault>/Agent/`. The vault handed in is the memory
+        root, so the store is one level up and over."""
+        with tempfile.TemporaryDirectory() as td:
+            memory_root = Path(td) / "Agent"
+            (Path(td) / "Projects" / "_global" / "wiki-style").mkdir(parents=True)
+            memory_root.mkdir()
+            self.assertEqual(_rel(vl.global_wiki_style_dir(memory_root), memory_root),
+                             "../Projects/_global/wiki-style")
+
+    def test_root_sibling_wins_over_desk_projects(self):
+        with tempfile.TemporaryDirectory() as td:
+            memory_root = Path(td) / "Agent"
+            (Path(td) / "Projects" / "_global" / "wiki-style").mkdir(parents=True)
+            (memory_root / "desk" / "projects" / "_global" / "wiki-style").mkdir(parents=True)
+            self.assertEqual(_rel(vl.global_wiki_style_dir(memory_root), memory_root),
+                             "../Projects/_global/wiki-style")
+
+    def test_root_sibling_is_probed_never_conjured(self):
+        """An empty memory root defaults to the newest generation INSIDE it —
+        a create-when-absent target that escaped the root would write outside
+        any scratch vault a test builds."""
+        with tempfile.TemporaryDirectory() as td:
+            memory_root = Path(td) / "Agent"
+            memory_root.mkdir()
+            self.assertEqual(vl.CURRENT_SPACE_SEGMENT, ("desk", "projects"))
+            self.assertEqual(_rel(vl.global_wiki_style_dir(memory_root), memory_root),
+                             "desk/projects/_global/wiki-style")
 
     def test_oldest_layout_resolves(self):
         with tempfile.TemporaryDirectory() as td:

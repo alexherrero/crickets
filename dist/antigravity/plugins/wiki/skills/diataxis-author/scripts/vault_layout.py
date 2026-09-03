@@ -97,13 +97,18 @@ def resolve_memory_root(cli_value: str | None = None,
 
 # Newest layout first. Each entry is one generation of the project space.
 PROJECT_SPACE_SEGMENTS: tuple[tuple[str, ...], ...] = (
+    ("..", "Projects"),        # filing-v2 2b, 2026-09: vault-ROOT Projects/, a sibling of the memory root
     ("desk", "projects"),      # stage-2 four-space migration, 2026-08-11
     ("projects",),             # V4 #26
     ("personal-projects",),    # pre-V4 #26
 )
 
-# What a vault with no project space at all gets written into.
-CURRENT_SPACE_SEGMENT: tuple[str, ...] = PROJECT_SPACE_SEGMENTS[0]
+# What a vault with no project space at all gets written into. The root
+# generation is discovered, never conjured: a create-when-absent target that
+# escapes the memory root (`..`) would land outside any vault a scratch test
+# builds — so the default is the newest generation that stays inside.
+CURRENT_SPACE_SEGMENT: tuple[str, ...] = next(
+    seg for seg in PROJECT_SPACE_SEGMENTS if seg[0] != "..")
 
 
 def projects_space_candidates(vault, *parts: str) -> list:

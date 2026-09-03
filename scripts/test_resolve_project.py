@@ -107,6 +107,45 @@ class TestScanVaultProjects(unittest.TestCase):
         result = rp.scan_vault_projects(vault=vault)
         self.assertEqual(result, [{"slug": "bare", "vault_project_path": str(vault / "projects" / "bare"), "gloss": None}])
 
+    # ── filing-v2 2b: the vault-root Projects/ generation ────────────────────
+    # The memory root is `<vault>/Agent`; the newest project space is its
+    # SIBLING `<vault>/Projects/`. During the merge window both exist.
+
+    def test_window_unions_root_shell_with_desk_projects(self):
+        """Root Projects/ exists but near-empty (index.md only) while every
+        project still sits under desk/projects: first-space-only would return
+        nothing. The union lists them all."""
+        vault = self.tmp / "Vault" / "Agent"
+        (self.tmp / "Vault" / "Projects").mkdir(parents=True)
+        (self.tmp / "Vault" / "Projects" / "index.md").write_text("# Projects\n", encoding="utf-8")
+        (vault / "desk" / "projects" / "agentm" / "_harness").mkdir(parents=True)
+        (vault / "desk" / "projects" / "crickets").mkdir(parents=True)
+        slugs = [r["slug"] for r in rp.scan_vault_projects(vault=vault)]
+        self.assertEqual(slugs, ["agentm", "crickets"])
+
+    def test_moved_project_resolves_from_root_and_wins_the_slug(self):
+        """After the move a slug lives at root Projects/; a stale copy left
+        under desk/projects must not shadow it — newest layout wins."""
+        vault = self.tmp / "Vault" / "Agent"
+        root = self.tmp / "Vault" / "Projects" / "agentm" / "_harness"
+        root.mkdir(parents=True)
+        (root / "PLAN.md").write_text("**Brief:** moved.\n", encoding="utf-8")
+        stale = vault / "desk" / "projects" / "agentm" / "_harness"
+        stale.mkdir(parents=True)
+        (stale / "PLAN.md").write_text("**Brief:** stale.\n", encoding="utf-8")
+        (vault / "desk" / "projects" / "other").mkdir(parents=True)
+        result = {r["slug"]: r for r in rp.scan_vault_projects(vault=vault)}
+        self.assertEqual(sorted(result), ["agentm", "other"])
+        self.assertEqual(result["agentm"]["gloss"], "moved.")
+        self.assertEqual(Path(result["agentm"]["vault_project_path"]).resolve(),
+                         (self.tmp / "Vault" / "Projects" / "agentm").resolve())
+
+    def test_relpath_parse_accepts_root_relative_projects_paths(self):
+        """Daemon hits arrive vault-root-relative: `Projects/<slug>/...`."""
+        self.assertEqual(rp._project_slug_from_vault_relpath("Projects/agentm/_harness/PLAN.md"), "agentm")
+        self.assertEqual(rp._project_slug_from_vault_relpath("desk/projects/agentm/x.md"), "agentm")
+        self.assertIsNone(rp._project_slug_from_vault_relpath("memory/semantic/note.md"))
+
     def test_extract_gloss_from_objective_heading(self):
         text = "# Design\n\n## Objective\n\nDoes the widget thing.\n"
         self.assertEqual(rp._extract_gloss(text), "Does the widget thing.")

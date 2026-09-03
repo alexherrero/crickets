@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+**MINOR — filing-v2 2b, crickets half (ships first).** The vault's project space is moving from `<memory-root>/desk/projects/` to the vault-root `Projects/` — a sibling of the memory root, the merge target agentm's filing-v2 design names. Three plugins carried their own newest-first probe of the project space, and none knew the new generation; a moved vault would have silently stopped resolving projects, wiki-style stores, and prose overlays. This release teaches all three the root generation ahead of the move, tolerant across the window: `development-lifecycle`'s `resolve_project` gains `vault_projects_dirs()` and **unions** the spaces when listing (root wins a slug collision — first-space-only would have hidden every project behind the near-empty root shell that already exists), and learns root-relative `Projects/<slug>/…` paths; `wiki`'s `vault_layout` and `design`'s `prose_pass` probe the root sibling first. The root generation is discovered, never conjured: create-when-absent defaults stay inside the memory root, so a scratch vault never writes to `<tmp>/../Projects`. Plan/state resolution (`resolve_plan`, queue-status) delegates to agentm's own resolver and picks the new location up from agentm's paired release. Paired with agentm's filing-v2 part 2b (`projects-merge`); this side ships first, per the locked order.
+
+### Changed
+
+- `development-lifecycle` 0.45.0 — `resolve_project.PROJECT_SPACE_SEGMENTS` gains `("..", "Projects")` newest-first; new `vault_projects_dirs()`; `scan_vault_projects()` unions spaces with newest-wins slug dedupe; `_project_slug_from_vault_relpath` parses root-relative `Projects/<slug>` paths.
+- `wiki` 0.11.0 — `vault_layout.PROJECT_SPACE_SEGMENTS` gains the root sibling; `CURRENT_SPACE_SEGMENT` is now the newest generation that stays inside the memory root; documenter / style-scope-evaluator / diataxis-author prose names the new chain.
+- `design` 0.10.0 — `prose_pass.PROJECT_SPACE_SEGMENTS` gains `../Projects`; the nothing-exists fallback stays inside the memory root; the prose-pass skill names the new store location.
+
 **MINOR.** `/work` could spawn a worktree for a plan's first task, and nothing brought a later session back to it. Both halves of the bind wrote inside the new worktree, so the main clone kept no record of where a plan lived — and step 1.5 skipped itself outright on resume, leaving a resumed session running wherever it happened to open. On Claude Code Desktop that meant hand-writing "enter the existing worktree at `<path>` first" into the opening prompt of every multi-session plan.
 
 ### Added
