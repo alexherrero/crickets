@@ -97,7 +97,8 @@ def resolve_memory_root(cli_value: str | None = None,
 
 # Newest layout first. Each entry is one generation of the project space.
 PROJECT_SPACE_SEGMENTS: tuple[tuple[str, ...], ...] = (
-    ("..", "Projects"),        # filing-v2 2b, 2026-09: vault-ROOT Projects/, a sibling of the memory root
+    ("Projects",),             # filing-v2 2b: the root space of a FLAT vault (memory root = vault root)
+    ("..", "Projects"),        # filing-v2 2b, 2026-09: vault-ROOT Projects/, sibling of a NESTED memory root
     ("desk", "projects"),      # stage-2 four-space migration, 2026-08-11
     ("projects",),             # V4 #26
     ("personal-projects",),    # pre-V4 #26
@@ -106,15 +107,45 @@ PROJECT_SPACE_SEGMENTS: tuple[tuple[str, ...], ...] = (
 # What a vault with no project space at all gets written into. The root
 # generation is discovered, never conjured: a create-when-absent target that
 # escapes the memory root (`..`) would land outside any vault a scratch test
-# builds — so the default is the newest generation that stays inside.
-CURRENT_SPACE_SEGMENT: tuple[str, ...] = next(
-    seg for seg in PROJECT_SPACE_SEGMENTS if seg[0] != "..")
+# builds, and one that conjures `<memory-root>/Projects` would invent the
+# root generation — so the default is the last pre-2b layout, the same call
+# agentm's resolve_project makes for a new project.
+CURRENT_SPACE_SEGMENT: tuple[str, ...] = ("desk", "projects")
+
+
+def root_sibling_witnessed(vault) -> bool:
+    """Whether the `..` rung may be probed at all: the memory root is nested
+    inside an Obsidian vault — `.obsidian/` at the parent, none at the memory
+    root itself. A flat vault (the memory root at the top of its own vault)
+    has the operator's home or a sync folder for a parent, where a directory
+    named `Projects` is common and is not the vault's; probing it would
+    resolve every project into the operator's own tree (agentm's 2b review
+    found exactly that). The flat generation `<memory-root>/Projects` needs
+    no witness — it is inside the memory root."""
+    v = Path(vault)
+    return (v.parent / ".obsidian").is_dir() and not (v / ".obsidian").is_dir()
+
+
+def flat_root_space_present(vault) -> bool:
+    """Whether `<memory-root>/Projects` exists with exactly that name — on a
+    case-insensitive filesystem `Projects/` would otherwise answer for the
+    V4-era `projects/` rung and every legacy project would read as root-space."""
+    v = Path(vault)
+    try:
+        return (v / "Projects").is_dir() and any(p.name == "Projects" for p in v.iterdir())
+    except OSError:
+        return False
 
 
 def projects_space_candidates(vault, *parts: str) -> list:
-    """Every layout's path for `<projects-space>/<parts>`, newest rung first."""
+    """Every layout's path for `<projects-space>/<parts>`, newest rung first —
+    the `..` rung only under the witness, the flat `Projects` rung only when
+    it exists with that exact name."""
     v = Path(vault)
-    return [v.joinpath(*seg, *parts) for seg in PROJECT_SPACE_SEGMENTS]
+    witnessed = root_sibling_witnessed(v)
+    flat = flat_root_space_present(v)
+    return [v.joinpath(*seg, *parts) for seg in PROJECT_SPACE_SEGMENTS
+            if (seg[0] != ".." or witnessed) and (seg != ("Projects",) or flat)]
 
 
 def resolve_existing_under_projects(vault, *parts: str):

@@ -116,6 +116,7 @@ class TestProbeChain(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             memory_root = Path(td) / "Agent"
             (Path(td) / "Projects" / "_global" / "wiki-style").mkdir(parents=True)
+            (Path(td) / ".obsidian").mkdir(exist_ok=True)
             memory_root.mkdir()
             self.assertEqual(_rel(vl.global_wiki_style_dir(memory_root), memory_root),
                              "../Projects/_global/wiki-style")
@@ -124,6 +125,7 @@ class TestProbeChain(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             memory_root = Path(td) / "Agent"
             (Path(td) / "Projects" / "_global" / "wiki-style").mkdir(parents=True)
+            (Path(td) / ".obsidian").mkdir(exist_ok=True)
             (memory_root / "desk" / "projects" / "_global" / "wiki-style").mkdir(parents=True)
             self.assertEqual(_rel(vl.global_wiki_style_dir(memory_root), memory_root),
                              "../Projects/_global/wiki-style")
@@ -775,6 +777,45 @@ class TestResolveProjectUsesMemoryRoot(unittest.TestCase):
                                    return_value=self._OldKernel(root / "Vault")):
                 self.assertEqual(resolve_project.resolve_vault_path(), root / "Vault")
 
+
+
+class TestRootSpaceWitness(unittest.TestCase):
+    """The `..` rung counts only under the Obsidian witness; the flat
+    generation `<memory-root>/Projects` needs none (agentm 2b review)."""
+
+    def test_an_unwitnessed_parent_projects_dir_is_never_probed(self):
+        with tempfile.TemporaryDirectory() as td:
+            home = Path(td) / "home"
+            vault = home / "Vault"
+            (vault / ".obsidian").mkdir(parents=True)  # flat: the vault root IS the memory root
+            (home / "Projects" / "_global" / "wiki-style").mkdir(parents=True)  # the operator's own
+            self.assertFalse(vl.root_sibling_witnessed(vault))
+            self.assertNotIn(home / "Projects" / "_global" / "wiki-style",
+                             vl.projects_space_candidates(vault, "_global", "wiki-style"))
+            self.assertEqual(_rel(vl.global_wiki_style_dir(vault), vault), "desk/projects/_global/wiki-style")
+
+    def test_the_flat_rung_matches_the_directorys_exact_case(self):
+        with tempfile.TemporaryDirectory() as td:
+            vault = Path(td) / "Vault"
+            (vault / ".obsidian").mkdir(parents=True)
+            (vault / "projects" / "_global" / "wiki-style").mkdir(parents=True)
+            self.assertFalse(vl.flat_root_space_present(vault))
+            self.assertEqual(_rel(vl.global_wiki_style_dir(vault), vault), "projects/_global/wiki-style")
+
+    def test_the_flat_root_space_resolves(self):
+        with tempfile.TemporaryDirectory() as td:
+            vault = Path(td) / "Vault"
+            (vault / ".obsidian").mkdir(parents=True)
+            (vault / "Projects" / "_global" / "wiki-style").mkdir(parents=True)
+            self.assertEqual(_rel(vl.global_wiki_style_dir(vault), vault), "Projects/_global/wiki-style")
+
+    def test_a_nested_root_without_the_witness_is_not_a_sibling(self):
+        with tempfile.TemporaryDirectory() as td:
+            memory_root = Path(td) / "Agent"
+            memory_root.mkdir()
+            (Path(td) / "Projects" / "_global" / "wiki-style").mkdir(parents=True)  # no .obsidian
+            self.assertEqual(_rel(vl.global_wiki_style_dir(memory_root), memory_root),
+                             "desk/projects/_global/wiki-style")
 
 if __name__ == "__main__":
     unittest.main()

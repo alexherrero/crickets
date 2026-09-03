@@ -550,5 +550,33 @@ class EndToEndTests(unittest.TestCase):
             self.assertIn("stream truncation suspected", r.stderr)
 
 
+
+class TestWikiStyleDirWitness(unittest.TestCase):
+    """The `../Projects` rung counts only when the memory root is nested
+    inside an Obsidian vault; a flat vault's parent is never probed, and the
+    flat `<memory-root>/Projects` rung needs no witness (agentm 2b review)."""
+
+    def test_unwitnessed_sibling_is_ignored_and_the_default_stays_inside(self):
+        with tempfile.TemporaryDirectory() as td:
+            home = Path(td) / "home"
+            vault = home / "Vault"
+            (vault / ".obsidian").mkdir(parents=True)
+            (home / "Projects" / "_global" / "wiki-style").mkdir(parents=True)
+            self.assertEqual(prose_pass.wiki_style_dir(vault), vault / "desk" / "projects" / "_global" / "wiki-style")
+
+    def test_witnessed_sibling_and_flat_rung_resolve(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "Vault"
+            (root / ".obsidian").mkdir(parents=True)
+            memory_root = root / "Agent"
+            memory_root.mkdir()
+            (root / "Projects" / "_global" / "wiki-style").mkdir(parents=True)
+            self.assertEqual(prose_pass.wiki_style_dir(memory_root).resolve(),
+                             (root / "Projects" / "_global" / "wiki-style").resolve())
+            flat = Path(td) / "Flat"
+            (flat / ".obsidian").mkdir(parents=True)
+            (flat / "Projects" / "_global" / "wiki-style").mkdir(parents=True)
+            self.assertEqual(prose_pass.wiki_style_dir(flat), flat / "Projects" / "_global" / "wiki-style")
+
 if __name__ == "__main__":
     unittest.main()
