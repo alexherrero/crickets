@@ -33,7 +33,11 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Install Python deps
-        run: python3 -m pip install --break-system-packages pyyaml
+        # --ignore-installed: the macos runner image ships a system PyYAML with
+        # no RECORD file, and pip's pre-upgrade uninstall dies with
+        # `uninstall-no-record-file` (agentm PR #528, 2026-09-03). Install
+        # alongside, never uninstall.
+        run: python3 -m pip install --break-system-packages --ignore-installed pyyaml
       - name: Lint src/ source-of-truth tree (group.yaml + primitive frontmatter)
         run: python3 scripts/lint_src.py
       - name: Capability/plugin names obey the AG naming rule (check-capability-naming)
@@ -63,7 +67,11 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       # macos-latest ships python3 and pwsh 7+ preinstalled.
       - name: Install Python deps
-        run: python3 -m pip install --break-system-packages pyyaml
+        # --ignore-installed: the macos runner image ships a system PyYAML with
+        # no RECORD file, and pip's pre-upgrade uninstall dies with
+        # `uninstall-no-record-file` (agentm PR #528, 2026-09-03). Install
+        # alongside, never uninstall.
+        run: python3 -m pip install --break-system-packages --ignore-installed pyyaml
       - name: bash -n on every .sh
         run: bash scripts/check-syntax.sh
       - name: AST-parse every .ps1
