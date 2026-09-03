@@ -207,19 +207,69 @@ def _one_line_gloss(project_dir: Path) -> "str | None":
 # resolving projects. Duplicated locally rather than imported from the wiki
 # plugin's vault_layout.py: plugins emit independently into dist/, the same
 # reason this file file-path-loads harness_memory instead of importing it.
-PROJECT_SPACE_SEGMENTS = (("..", "Projects"), ("desk", "projects"), ("projects",),
-                          ("personal-projects",))
+PROJECT_SPACE_SEGMENTS = (("Projects",), ("..", "Projects"), ("desk", "projects"),
+                          ("projects",), ("personal-projects",))
+
+
+def root_sibling_witnessed(vault: "Path") -> bool:
+    """Whether the `..` rung may be probed at all: the memory root is nested
+    inside an Obsidian vault — `.obsidian/` at the parent, none at the memory
+    root itself. A flat vault (the memory root at the top of its own vault)
+    has the operator's home or a sync folder for a parent, where a directory
+    named `Projects` is common and is not the vault's; probing it would
+    resolve every project into the operator's own tree (agentm's 2b review
+    found exactly that). The flat generation `<memory-root>/Projects` needs
+    no witness — it is inside the memory root."""
+    v = Path(vault)
+    return (v.parent / ".obsidian").is_dir() and not (v / ".obsidian").is_dir()
+
+
+def flat_root_space_present(vault) -> bool:
+    """Whether `<memory-root>/Projects` exists with exactly that name — on a
+    case-insensitive filesystem `Projects/` would otherwise answer for the
+    V4-era `projects/` rung and every legacy project would read as root-space."""
+    v = Path(vault)
+    try:
+        return (v / "Projects").is_dir() and any(p.name == "Projects" for p in v.iterdir())
+    except OSError:
+        return False
+
+
+def _space_candidates(vault: "Path") -> "list[Path]":
+    """Each rung's directory for this vault, newest first — the `..` rung only
+    under the witness, the flat `Projects` rung only when it exists with that
+    exact name."""
+    witnessed = root_sibling_witnessed(vault)
+    flat = flat_root_space_present(vault)
+    return [vault.joinpath(*seg) for seg in PROJECT_SPACE_SEGMENTS
+            if (seg[0] != ".." or witnessed) and (seg != ("Projects",) or flat)]
 
 
 def vault_projects_dirs(vault: "Path") -> "list[Path]":
     """Every project space this vault has, newest layout first.
 
-    Filing-v2 2b: the newest generation is the vault-ROOT `Projects/`, a
-    sibling of the memory root (hence the `..` segment). During the merge
-    window both it and `desk/projects/` exist and each may hold projects, so
-    listing callers must union the spaces rather than stop at the first."""
-    return [cand for seg in PROJECT_SPACE_SEGMENTS
-            if (cand := vault.joinpath(*seg)).is_dir()]
+    Filing-v2 2b: the newest generation is the vault-ROOT `Projects/` — the
+    flat `<memory-root>/Projects`, or the sibling of a nested memory root
+    (the `..` segment, probed only under `root_sibling_witnessed`). During
+    the merge window both it and `desk/projects/` exist and each may hold
+    projects, so listing callers must union the spaces rather than stop at
+    the first. Rungs that name the same directory — `Projects/` and the
+    V4-era `projects/` on a case-insensitive filesystem — count once, under
+    the newest name."""
+    out, seen = [], set()
+    for cand in _space_candidates(vault):
+        if not cand.is_dir():
+            continue
+        try:
+            st = cand.stat()
+        except OSError:
+            continue
+        key = (st.st_dev, st.st_ino)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(cand)
+    return out
 
 
 def vault_projects_dir(vault: "Path") -> "Path | None":

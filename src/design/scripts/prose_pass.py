@@ -127,7 +127,34 @@ MEMORY_SPACE_SEGMENTS = ("memory", "personal", "personal-private")
 # instead of importing it.
 # Filing-v2 2b (2026-09): the newest generation is the vault-ROOT `Projects/`,
 # a sibling of the memory root this table is joined onto — hence `../`.
-PROJECT_SPACE_SEGMENTS = ("../Projects", "desk/projects", "projects", "personal-projects")
+PROJECT_SPACE_SEGMENTS = ("Projects", "../Projects", "desk/projects", "projects", "personal-projects")
+# The create-when-absent default: the last pre-2b layout, inside the memory
+# root — the root generation is discovered, never conjured.
+CURRENT_SPACE_SEGMENT = "desk/projects"
+
+
+def root_sibling_witnessed(vault) -> bool:
+    """Whether the `..` rung may be probed at all: the memory root is nested
+    inside an Obsidian vault — `.obsidian/` at the parent, none at the memory
+    root itself. A flat vault (the memory root at the top of its own vault)
+    has the operator's home or a sync folder for a parent, where a directory
+    named `Projects` is common and is not the vault's; probing it would
+    resolve every project into the operator's own tree (agentm's 2b review
+    found exactly that). The flat generation `<memory-root>/Projects` needs
+    no witness — it is inside the memory root."""
+    v = Path(vault)
+    return (v.parent / ".obsidian").is_dir() and not (v / ".obsidian").is_dir()
+
+
+def flat_root_space_present(vault) -> bool:
+    """Whether `<memory-root>/Projects` exists with exactly that name — on a
+    case-insensitive filesystem `Projects/` would otherwise answer for the
+    V4-era `projects/` rung and every legacy project would read as root-space."""
+    v = Path(vault)
+    try:
+        return (v / "Projects").is_dir() and any(p.name == "Projects" for p in v.iterdir())
+    except OSError:
+        return False
 WIKI_STYLE_LEAF = "_global/wiki-style"
 
 TASK_HEADER = """\
@@ -465,14 +492,19 @@ def wiki_style_dir(vault: Path) -> Path:
     Returns the first generation that exists; with none present, the current
     layout — never a literal pinned to one generation.
     """
+    witnessed = root_sibling_witnessed(vault)
+    flat = flat_root_space_present(vault)
     for seg in PROJECT_SPACE_SEGMENTS:
+        if seg.startswith("../") and not witnessed:
+            continue
+        if seg == "Projects" and not flat:
+            continue
         cand = vault.joinpath(*seg.split("/"), *WIKI_STYLE_LEAF.split("/"))
         if cand.is_dir():
             return cand
-    # Nothing exists anywhere: default to the newest generation that stays
-    # inside the memory root — the root sibling is discovered, never conjured.
-    current = next(s for s in PROJECT_SPACE_SEGMENTS if not s.startswith("../"))
-    return vault.joinpath(*current.split("/"), *WIKI_STYLE_LEAF.split("/"))
+    # Nothing exists anywhere: the create-when-absent default stays inside
+    # the memory root — the root generation is discovered, never conjured.
+    return vault.joinpath(*CURRENT_SPACE_SEGMENT.split("/"), *WIKI_STYLE_LEAF.split("/"))
 
 
 def resolve_overlay(vault: Path, overlay_arg: str) -> Path:

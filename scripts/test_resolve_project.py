@@ -116,6 +116,7 @@ class TestScanVaultProjects(unittest.TestCase):
         project still sits under desk/projects: first-space-only would return
         nothing. The union lists them all."""
         vault = self.tmp / "Vault" / "Agent"
+        (self.tmp / "Vault" / ".obsidian").mkdir(parents=True, exist_ok=True)
         (self.tmp / "Vault" / "Projects").mkdir(parents=True)
         (self.tmp / "Vault" / "Projects" / "index.md").write_text("# Projects\n", encoding="utf-8")
         (vault / "desk" / "projects" / "agentm" / "_harness").mkdir(parents=True)
@@ -127,6 +128,7 @@ class TestScanVaultProjects(unittest.TestCase):
         """After the move a slug lives at root Projects/; a stale copy left
         under desk/projects must not shadow it — newest layout wins."""
         vault = self.tmp / "Vault" / "Agent"
+        (self.tmp / "Vault" / ".obsidian").mkdir(parents=True, exist_ok=True)
         root = self.tmp / "Vault" / "Projects" / "agentm" / "_harness"
         root.mkdir(parents=True)
         (root / "PLAN.md").write_text("**Brief:** moved.\n", encoding="utf-8")
@@ -281,6 +283,55 @@ class TestCLI(unittest.TestCase):
             code = rp.main(["resolve_project.py", "widgets", "--json"])
         self.assertEqual(code, 0)
 
+
+
+class TestRootSpaceWitness(unittest.TestCase):
+    """The `..` rung counts only when the memory root is nested inside an
+    Obsidian vault (`.obsidian/` at the parent, none at the memory root). A
+    flat vault's parent is the operator's home, where `Projects/` is common
+    — never probed. The flat generation `<memory-root>/Projects` needs no
+    witness (agentm 2b review, defect 1)."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="rp-witness-"))
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_a_flat_vault_never_probes_the_operators_projects_dir(self):
+        home = self.tmp / "home"
+        vault = home / "Vault"
+        (vault / ".obsidian").mkdir(parents=True)
+        (vault / "desk" / "projects" / "mine").mkdir(parents=True)
+        (home / "Projects" / "agentm" / "_harness").mkdir(parents=True)  # the operator's own repos
+        self.assertFalse(rp.root_sibling_witnessed(vault))
+        self.assertEqual(rp.vault_projects_dirs(vault), [vault / "desk" / "projects"])
+        self.assertEqual([r["slug"] for r in rp.scan_vault_projects(vault=vault)], ["mine"])
+
+    def test_a_flat_vaults_own_projects_dir_is_the_root_space(self):
+        vault = self.tmp / "Vault"
+        (vault / ".obsidian").mkdir(parents=True)
+        (vault / "Projects" / "agentm" / "_harness").mkdir(parents=True)
+        self.assertEqual(rp.vault_projects_dirs(vault), [vault / "Projects"])
+        result = rp.scan_vault_projects(vault=vault)
+        self.assertEqual([r["slug"] for r in result], ["agentm"])
+        self.assertEqual(Path(result[0]["vault_project_path"]).resolve(), (vault / "Projects" / "agentm").resolve())
+
+    def test_the_flat_rung_matches_the_directorys_exact_case(self):
+        """A V4-era `projects/` rung is not the flat root space, whatever the
+        filesystem's case rules say."""
+        vault = self.tmp / "Vault"
+        (vault / ".obsidian").mkdir(parents=True)
+        (vault / "projects" / "legacy").mkdir(parents=True)
+        self.assertFalse(rp.flat_root_space_present(vault))
+        self.assertEqual(rp.vault_projects_dirs(vault), [vault / "projects"])
+
+    def test_a_nested_root_without_the_witness_is_not_a_sibling(self):
+        vault = self.tmp / "Vault" / "Agent"
+        (vault / "desk" / "projects" / "p").mkdir(parents=True)
+        (self.tmp / "Vault" / "Projects" / "q").mkdir(parents=True)  # no .obsidian anywhere
+        self.assertEqual(rp.vault_projects_dirs(vault), [vault / "desk" / "projects"])
+        self.assertEqual([r["slug"] for r in rp.scan_vault_projects(vault=vault)], ["p"])
 
 if __name__ == "__main__":
     unittest.main()
