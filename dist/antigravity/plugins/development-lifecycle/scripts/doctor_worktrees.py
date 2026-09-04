@@ -364,8 +364,15 @@ def stranded_worktrees(root: str | os.PathLike, *,
             continue
         if w["branch"] != target:
             continue
+        # Resolved, like scan_slots(): git prints this path with forward
+        # slashes on every platform and may print a realpath, and the report
+        # should carry the native form — the one a person pastes into `git -C`.
+        try:
+            path = str(Path(w["path"]).resolve())
+        except OSError:
+            path = w["path"]
         reports.append(StrandedWorktree(
-            w["path"], target,
+            path, target,
             f"a linked worktree is holding `{target}` — the integration branch, "
             "which no worktree but the main one should have checked out. Almost "
             "always `gh pr merge --delete-branch` run from inside this worktree: "

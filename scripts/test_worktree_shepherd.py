@@ -226,8 +226,11 @@ class TestDetachStranded(unittest.TestCase):
         return wt
 
     def _porcelain_block(self, wt: Path) -> str:
+        # Matched by resolved path: git prints forward slashes on Windows.
         out = _git(self.repo, "worktree", "list", "--porcelain").stdout
-        blocks = [b for b in out.split("\n\n") if b.startswith(f"worktree {wt}")]
+        blocks = [b for b in out.split("\n\n")
+                  if b.startswith("worktree ")
+                  and Path(b.splitlines()[0][len("worktree "):]).resolve() == wt]
         self.assertEqual(len(blocks), 1, out)
         return blocks[0]
 
