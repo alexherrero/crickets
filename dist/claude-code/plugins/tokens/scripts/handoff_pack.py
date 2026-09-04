@@ -43,6 +43,13 @@ def label_matches_schema(label: dict) -> bool:
     return set(label.keys()) == set(LABEL_SCHEMA_KEYS)
 
 
+# agentm's handoff marker (agentm miner-provenance, ruling 1, 2026-09-04). A
+# message that carries it is text the agent wrote for the operator to paste,
+# and agentm's reflect miner mines nothing from it — however the host
+# attributes the paste. Kept byte-identical to `reflect.HANDOFF_MARKER`.
+HANDOFF_MARKER = "<!-- agentm:handoff — agent-authored; not the operator's own words -->"
+
+
 def build_handoff_pack(
     entries: list[HandoffEntry],
     session_outputs: dict[str, str],
@@ -71,12 +78,18 @@ def build_handoff_pack(
     }
     (dest_dir / "prompts.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
-    lines = ["# Handoff pack", ""]
+    lines = ["# Handoff pack", "", HANDOFF_MARKER, ""]
     for e in entries:
         lines.append(f"## {e.title} — tier: {e.tier} · model: {e.model_id} · effort: {e.effort}")
         lines.append("")
+        # One marker per prompt, inside the block a person copies: agentm's
+        # reflect miner skips a pasted message that carries it, so a handoff
+        # the agent wrote is never mined as the operator's own words.
+        lines.append(HANDOFF_MARKER)
+        lines.append("")
         lines.append("Paste:")
         lines.append("")
+        lines.append(f"> {HANDOFF_MARKER}")
         lines.append(f"> {e.prompt_text}")
         lines.append("")
     (dest_dir / "PROMPTS.md").write_text("\n".join(lines), encoding="utf-8")
