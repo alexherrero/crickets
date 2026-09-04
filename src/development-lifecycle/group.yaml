@@ -605,5 +605,5 @@ enhances:
 #          close-out. Every stale-pointer case degrades to "carry on here"
 #          with a note -- re-entry never blocks a plan, and following a
 #          registered worktree is not a spawn.
-version: 0.46.0
+version: 0.47.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

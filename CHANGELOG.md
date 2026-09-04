@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Minor: the shepherd learns what "landed" means in a squash-merge repo
+
+Arming the shepherd on 2026-09-04 showed it would leave 17 orphaned branches across agentm and crickets forever. Its safety test was commit identity — every commit on the remote copy, or never diverged — and a branch that lands the normal way can never pass it: the PR squash-merges, GitHub deletes the remote branch, and the branch's own commits are never ancestors of `main`, because the squashed commit carries no ancestry link to them. The operator's own rule for this repo family says it plainly: in a squash-merge repo, only file-level presence on `main` is a reliable test of having landed.
+
+### Added
+
+- `development-lifecycle` 0.47.0 — `doctor_worktrees.py` gains `content_landed()`: for every path a branch changed since it forked, the blob the branch holds is the blob the integration branch holds, or both lack it (a deletion that landed). `worktree_shepherd.py`'s `is_safe_to_reclaim()` tries it as a third rung once the two commit-identity rungs cannot prove safety, and the doctor's own merged-but-unpruned classification consults it too, so an on-disk worktree whose branch squash-landed no longer reads as active. A branch `main` has since edited past stays unsafe — unprovable is the conservative direction, and the docstrings say so. Tests build real squash merges against a bare origin, delete the remote branch, prune, and pin that such an orphan is now reclaimable; that an unmerged branch whose remote was deleted is not; that a later edit on `main` keeps it unsafe; that a landed deletion counts; and that the existing rungs keep every verdict they had.
+
 ### Minor: the shepherd sees a worktree stranded on `main`, and frees it
 
 `gh pr merge --delete-branch`, run from inside a worktree, has to leave the PR branch before it can delete it — so it checks the base branch out *in that worktree*, and the worktree walks off holding `refs/heads/main` with its own branch gone. Nothing in the designed flow runs that command (`/work` arms `gh pr merge --auto` at open and lets GitHub merge), but an agent merging by hand reaches for `-d` by habit, and it happened twice on 2026-09-04 in two sessions. The primary clones are kept detached at `origin/main`, so `main` is never held anywhere and the theft never fails loudly; and neither existing pass of the worktree doctor could see it — the PR branch is gone, so `diagnose()` has nothing to anchor on, and `scan_slots()` correctly calls the slot real. The stranded worktree lingered, unreported and unreclaimed.

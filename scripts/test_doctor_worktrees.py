@@ -157,6 +157,48 @@ class TestDiagnoseClassification(unittest.TestCase):
         self.assertEqual(report.status, dw.ACTIVE)
         self.assertIn("act", report.detail)
 
+    def test_squash_landed_worktree_is_merged_not_active(self):
+        # Landed by squash: main holds the same content but none of the
+        # branch's commits, so ancestry says "no" and only file-level content
+        # says "yes". An on-disk worktree in that state is a prune candidate,
+        # not work in progress.
+        _add_worktree(self.repo, self.tmp, "squashed")
+        _git(self.repo, "merge", "--squash", "worktree-squashed")
+        _git(self.repo, "commit", "-q", "-m", "land squashed")
+        self.assertNotEqual(
+            _git(self.repo, "merge-base", "--is-ancestor", "worktree-squashed", "HEAD",
+                 check=False).returncode, 0, "precondition: no ancestry link")
+        report = {r.slug: r for r in dw.diagnose(str(self.repo))}["squashed"]
+        self.assertEqual(report.status, dw.MERGED)
+
+    def test_squash_landed_then_overtaken_worktree_stays_active(self):
+        # main edited one of its files afterwards: no longer provable, so it
+        # reads as live. Conservative, and documented as such.
+        _add_worktree(self.repo, self.tmp, "overtaken")
+        _git(self.repo, "merge", "--squash", "worktree-overtaken")
+        _git(self.repo, "commit", "-q", "-m", "land overtaken")
+        (self.repo / "worker-overtaken.txt").write_text("edited later\n", encoding="utf-8")
+        _git(self.repo, "add", ".")
+        _git(self.repo, "commit", "-q", "-m", "main moves past it")
+        report = {r.slug: r for r in dw.diagnose(str(self.repo))}["overtaken"]
+        self.assertEqual(report.status, dw.ACTIVE)
+
+    def test_content_landed_answers_directly(self):
+        # Nothing changed since the fork point: trivially landed. A file only
+        # the branch holds: not landed. Deleted on both: landed.
+        _add_worktree(self.repo, self.tmp, "even", commit=False)
+        self.assertTrue(dw.content_landed(self.repo, "worktree-even", ref="HEAD"))
+        _add_worktree(self.repo, self.tmp, "ahead")
+        self.assertFalse(dw.content_landed(self.repo, "worktree-ahead", ref="HEAD"))
+        _, wt = _add_worktree(self.repo, self.tmp, "dropper", commit=False)
+        (wt / "README.md").unlink()
+        _git(wt, "add", "-A")
+        _git(wt, "commit", "-q", "-m", "drop readme")
+        self.assertFalse(dw.content_landed(self.repo, "worktree-dropper", ref="HEAD"))
+        _git(self.repo, "rm", "-q", "README.md")
+        _git(self.repo, "commit", "-q", "-m", "main drops it too")
+        self.assertTrue(dw.content_landed(self.repo, "worktree-dropper", ref="HEAD"))
+
     def test_branch_equal_to_main_is_merged_not_active(self):
         # A worktree branch with no commits ahead is trivially an ancestor of HEAD;
         # with a marker present it must read MERGED (a prune candidate), not ACTIVE.
