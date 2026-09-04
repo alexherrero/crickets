@@ -135,17 +135,21 @@ class TestSafeToReclaim(unittest.TestCase):
         self.assertNotEqual(_git(self.repo, "rev-list", branch, "^HEAD").stdout.strip(), "")
         self.assertTrue(ws.is_safe_to_reclaim(str(self.repo), branch))
 
-    def test_squash_landed_then_main_edited_past_it_is_unsafe(self):
-        # It did land — but main has since changed one of its files, and the
-        # file-level test cannot tell that from never having landed. Unprovable
-        # stays unsafe; that is the direction a mistake is cheap in.
+    def test_squash_landed_then_main_edited_past_it_is_still_safe(self):
+        # It landed, and main has since changed one of its files. The
+        # branch's version is no longer what main holds — but it is in main's
+        # history, so nothing the branch has is absent from main. This was 15
+        # of the 16 real orphans the first, now-only test could not prove.
         branch, _wt = _add_worktree(self.repo, self.tmp, "overtaken", push=True)
         _squash_land(self.repo, branch)
         (self.repo / "work-overtaken.txt").write_text("edited on main later\n", encoding="utf-8")
         _git(self.repo, "add", ".")
         _git(self.repo, "commit", "-q", "-m", "main moves past it")
         _git(self.repo, "push", "-q", "origin", "main")  # landed means on the remote
-        self.assertFalse(ws.is_safe_to_reclaim(str(self.repo), branch))
+        self.assertNotEqual(_git(self.repo, "rev-parse", f"{branch}:work-overtaken.txt").stdout,
+                            _git(self.repo, "rev-parse", "origin/main:work-overtaken.txt").stdout,
+                            "precondition: the blobs differ now")
+        self.assertTrue(ws.is_safe_to_reclaim(str(self.repo), branch))
 
     def test_squash_landed_deletion_is_safe(self):
         # A branch whose whole change was removing a file: landed means main

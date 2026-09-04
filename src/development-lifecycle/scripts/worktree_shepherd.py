@@ -12,9 +12,9 @@ see agentm's `wiki/designs/agentm-runner.md`), not a bespoke cron
     session is presumed gone) AND provably safe (`is_safe_to_reclaim`: every
     commit on the branch is already on its remote copy, or the branch never
     diverged at all, or — the squash-merge case neither of those can ever
-    prove — everything it changed is already on the integration branch file
-    by file). Anything not provably safe is left alone and reported, never
-    guessed at.
+    prove — everything it changed is, or once was, on the integration branch
+    file by file). Anything not provably safe is left alone and reported,
+    never guessed at.
 
 (b) **Stalled-PR rebase.** An armed PR that GitHub reports `BEHIND` its base
     branch (a sibling plan's PR merged first) gets `gh pr update-branch
@@ -103,8 +103,10 @@ def is_safe_to_reclaim(root: str | os.PathLike, branch: str) -> bool:
         landed the normal way read "unsafe" forever.
 
     Any git error collapses to False — never guess "safe" on an unreadable
-    repo. A branch `main` has since edited past stays unsafe: unprovable is
-    the conservative direction.
+    repo. What stays unsafe is a branch holding content that never existed
+    on the integration branch at that path: work `main` does not have. A
+    branch `main` has since edited past is still provably landed — its
+    content is in `main`'s history.
     """
     has_remote = _git(["rev-parse", "--verify", "--quiet", f"refs/remotes/origin/{branch}"],
                       root).returncode == 0

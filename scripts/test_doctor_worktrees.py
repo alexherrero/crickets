@@ -171,9 +171,9 @@ class TestDiagnoseClassification(unittest.TestCase):
         report = {r.slug: r for r in dw.diagnose(str(self.repo))}["squashed"]
         self.assertEqual(report.status, dw.MERGED)
 
-    def test_squash_landed_then_overtaken_worktree_stays_active(self):
-        # main edited one of its files afterwards: no longer provable, so it
-        # reads as live. Conservative, and documented as such.
+    def test_squash_landed_then_overtaken_worktree_reads_merged(self):
+        # main edited one of its files afterwards. The branch's blob is gone
+        # from main's tree but present in its history at that path — landed.
         _add_worktree(self.repo, self.tmp, "overtaken")
         _git(self.repo, "merge", "--squash", "worktree-overtaken")
         _git(self.repo, "commit", "-q", "-m", "land overtaken")
@@ -181,7 +181,22 @@ class TestDiagnoseClassification(unittest.TestCase):
         _git(self.repo, "add", ".")
         _git(self.repo, "commit", "-q", "-m", "main moves past it")
         report = {r.slug: r for r in dw.diagnose(str(self.repo))}["overtaken"]
-        self.assertEqual(report.status, dw.ACTIVE)
+        self.assertEqual(report.status, dw.MERGED)
+
+    def test_a_trivial_blob_elsewhere_does_not_land_a_new_path(self):
+        # Matching is per path: main holds an empty file at one path, the
+        # branch adds an empty file (same blob) at another. That new file
+        # never reached main, and the shared blob must not say otherwise.
+        (self.repo / "a").mkdir()
+        (self.repo / "a" / "__init__.py").write_text("", encoding="utf-8")
+        _git(self.repo, "add", "a")
+        _git(self.repo, "commit", "-q", "-m", "a package")
+        _, wt = _add_worktree(self.repo, self.tmp, "newpkg", commit=False)
+        (wt / "b").mkdir()
+        (wt / "b" / "__init__.py").write_text("", encoding="utf-8")
+        _git(wt, "add", "b")
+        _git(wt, "commit", "-q", "-m", "b package")
+        self.assertFalse(dw.content_landed(self.repo, "worktree-newpkg", ref="HEAD"))
 
     def test_content_landed_answers_directly(self):
         # Nothing changed since the fork point: trivially landed. A file only

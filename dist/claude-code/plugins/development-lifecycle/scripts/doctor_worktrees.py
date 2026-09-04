@@ -50,7 +50,8 @@ one of four states, in precedence order:
     merged-but-unpruned — on disk, marker present, and the branch has landed on
                        the integration branch: an ancestor of it, or — since
                        these repos squash-merge, which leaves no ancestry — the
-                       same content file by file (`content_landed()`). Either
+                       same content file by file, now or at some point in its
+                       history (`content_landed()`). Either
                        the PR merged without a prune, or work that landed by
                        hand — a prune candidate.
     active           — on disk, marker present, branch NOT yet merged. Work in
@@ -205,8 +206,8 @@ def _landed_ref(root: str | os.PathLike) -> str:
 
 
 def content_landed(root: str | os.PathLike, branch: str, *, ref: str | None = None) -> bool:
-    """True iff everything `branch` changed is already on the integration
-    branch, file by file — the squash-merge answer to "has this landed?".
+    """True iff nothing `branch` holds is absent from the integration branch
+    or its history — the squash-merge answer to "has this landed?".
 
     Commit identity cannot answer it here. These repos squash-merge, so the
     commit on `main` has no ancestry link to the branch commits it was built
@@ -215,14 +216,21 @@ def content_landed(root: str | os.PathLike, branch: str, *, ref: str | None = No
     that only file-level presence on `main` is reliable. So: for every path
     the branch touched since it forked (`diff --name-only` from the
     merge-base), the blob the branch holds must be the blob the integration
-    ref holds — or, where the branch deleted the path, the ref must lack it
-    too. A branch that changed nothing since its fork point trivially landed.
+    ref holds now — or must have been the blob at that path in some commit
+    on the ref (`git log --find-object=<blob> -- <path>`), which is how a
+    landed branch looks once `main` has edited the file further. That is
+    the common case, and the first version of this test missed it: on the
+    real repos it proved 1 orphan of 17, and 15 of the other 16 failed only
+    that way. Where the branch deleted the path, the ref must lack it now or
+    have deleted it at that path at some point. A branch that changed nothing
+    since its fork point trivially landed.
 
-    False whenever anything differs — including a file `main` has since
-    edited further. That branch really did land, but this cannot prove it,
-    and unprovable stays unsafe: the conservative direction. False on any git
-    error, never guessing "landed" on an unreadable repo. `ref` defaults to
-    `_landed_ref(root)`.
+    False whenever a path's content never existed on the ref at that path —
+    which is exactly "the branch holds work `main` does not have" — and on
+    any git error, never guessing "landed" on an unreadable repo. Matching is
+    per path on purpose: a trivial blob `main` holds elsewhere (an empty
+    `__init__.py`) does not make a new file at a new path landed. `ref`
+    defaults to `_landed_ref(root)`.
     """
     ref = ref or _landed_ref(root)
     try:
@@ -236,12 +244,23 @@ def content_landed(root: str | os.PathLike, branch: str, *, ref: str | None = No
             on_branch = _git(["rev-parse", "--verify", "--quiet", f"{branch}:{path}"], root)
             on_ref = _git(["rev-parse", "--verify", "--quiet", f"{ref}:{path}"], root)
             if on_branch.returncode != 0:
-                # The branch deleted it: landed only if the ref lacks it too.
-                if on_ref.returncode == 0:
-                    return False
-                continue
-            if on_ref.returncode != 0 or on_ref.stdout.strip() != on_branch.stdout.strip():
+                # The branch deleted it: landed if the ref lacks it now, or
+                # deleted it at this path at some point since.
+                if on_ref.returncode != 0:
+                    continue
+                gone = _git(["log", "--format=%H", "-1", "--diff-filter=D", ref, "--", path], root)
+                if gone.returncode == 0 and gone.stdout.strip():
+                    continue
                 return False
+            blob = on_branch.stdout.strip()
+            if on_ref.returncode == 0 and on_ref.stdout.strip() == blob:
+                continue
+            # Not there now — was it ever? A commit on the ref whose diff at
+            # this path involves exactly this blob means `main` held it here.
+            ever = _git(["log", "--format=%H", "-1", f"--find-object={blob}", ref, "--", path], root)
+            if ever.returncode == 0 and ever.stdout.strip():
+                continue
+            return False
         return True
     except (OSError, subprocess.SubprocessError):
         return False
