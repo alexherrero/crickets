@@ -196,6 +196,97 @@ class TestReclaimOrphans(unittest.TestCase):
             "dry-run must report what it WOULD reclaim without touching the branch")
 
 
+class TestDetachStranded(unittest.TestCase):
+    """`detach_stranded`: a clean linked worktree stranded on the integration
+    branch is detached; a dirty one is reported and left alone; dry-run
+    mutates nothing. The stranding is reproduced the way `gh pr merge
+    --delete-branch` does it inside a worktree."""
+
+    def setUp(self):
+        # Resolved: git reports realpaths (`/private/var/…` on macOS), and these
+        # tests compare worktree paths, not just branch names.
+        self.tmp = Path(tempfile.mkdtemp(prefix="wsh-stranded-")).resolve()
+        self.repo, self.origin = _init_repo_with_origin(self.tmp)
+        # The precondition that makes the theft possible at all: the main
+        # worktree is not holding main (the operator keeps primaries detached).
+        _git(self.repo, "checkout", "-q", "--detach")
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _strand(self, name: str) -> Path:
+        wt = self.tmp / f"wt-{name}"
+        _git(self.repo, "worktree", "add", "-b", f"claude/{name}", str(wt))
+        (wt / "change.txt").write_text("work\n", encoding="utf-8")
+        _git(wt, "add", ".")
+        _git(wt, "commit", "-q", "-m", "work")
+        _git(wt, "checkout", "-q", "main")          # what gh -d does here...
+        _git(wt, "branch", "-D", f"claude/{name}")  # ...before deleting the PR branch
+        return wt
+
+    def _porcelain_block(self, wt: Path) -> str:
+        out = _git(self.repo, "worktree", "list", "--porcelain").stdout
+        blocks = [b for b in out.split("\n\n") if b.startswith(f"worktree {wt}")]
+        self.assertEqual(len(blocks), 1, out)
+        return blocks[0]
+
+    def test_clean_stranded_worktree_is_detached_in_place(self):
+        wt = self._strand("clean")
+        head_before = _git(wt, "rev-parse", "HEAD").stdout.strip()
+        self.assertIn("branch refs/heads/main", self._porcelain_block(wt))
+
+        result = ws.detach_stranded(str(self.repo))
+
+        self.assertEqual([w.path for w in result.detached], [str(wt)])
+        self.assertEqual(result.skipped_dirty, [])
+        block = self._porcelain_block(wt)
+        self.assertIn("detached", block)
+        self.assertNotIn("branch refs/heads/main", block)
+        # Same commit, working tree untouched (main's own files, and still
+        # clean — `change.txt` went with the branch gh deleted, before this
+        # ran), ref released not deleted.
+        self.assertEqual(_git(wt, "rev-parse", "HEAD").stdout.strip(), head_before)
+        self.assertTrue((wt / "README.md").exists())
+        self.assertEqual(_git(wt, "status", "--porcelain").stdout, "")
+        self.assertEqual(_git(self.repo, "rev-parse", "--verify", "--quiet",
+                              "refs/heads/main", check=False).returncode, 0)
+
+    def test_dirty_stranded_worktree_is_left_alone(self):
+        wt = self._strand("dirty")
+        (wt / "scratch.txt").write_text("a session may be mid-edit\n", encoding="utf-8")
+
+        result = ws.detach_stranded(str(self.repo))
+
+        self.assertEqual(result.detached, [])
+        self.assertEqual([w.path for w in result.skipped_dirty], [str(wt)])
+        self.assertIn("branch refs/heads/main", self._porcelain_block(wt))
+
+    def test_dry_run_reports_without_mutating(self):
+        wt = self._strand("dryrun")
+        result = ws.detach_stranded(str(self.repo), dry_run=True)
+        self.assertEqual([w.path for w in result.detached], [str(wt)])
+        self.assertIn("branch refs/heads/main", self._porcelain_block(wt),
+                      "dry-run must report what it WOULD detach without touching the worktree")
+
+    def test_feature_branch_worktree_is_never_touched(self):
+        branch, wt = _add_worktree(self.repo, self.tmp, "live", push=True)
+        result = ws.detach_stranded(str(self.repo))
+        self.assertEqual(result.detached, [])
+        self.assertEqual(result.skipped_dirty, [])
+        self.assertIn(f"branch refs/heads/{branch}", self._porcelain_block(wt))
+
+    def test_format_reports_the_third_duty(self):
+        wt = self._strand("fmt")
+        detach = ws.detach_stranded(str(self.repo), dry_run=True)
+        out = ws._format(ws.ReclaimReport(), ws.StalledPRReport(), dry_run=True, detach=detach)
+        self.assertIn("stranded-on-main detach (dry-run):", out)
+        self.assertIn(f"would detach: {wt} (was holding main)", out)
+        # And the no-op shape, for a report with nothing to say.
+        quiet = ws._format(ws.ReclaimReport(), ws.StalledPRReport(), dry_run=False)
+        self.assertIn("nothing stranded.", quiet)
+
+
 class TestStalledPRShepherd(unittest.TestCase):
     """`shepherd_stalled_prs`: rebase a behind-base armed PR; surface conflicts loudly."""
 

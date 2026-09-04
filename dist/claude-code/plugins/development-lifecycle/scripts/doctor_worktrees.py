@@ -18,10 +18,23 @@ fake-slot bug, where a bare directory sits at `.claude/worktrees/<name>` and
 was never actually `git worktree add`-ed. `scan_slots()` walks every slot
 directory directly and flags any not present in `git worktree list`.
 
+`stranded_worktrees()` is a third pass, over every *linked* worktree git knows
+about, wherever it lives: a linked worktree checked out on the integration
+branch itself (`main`). Nothing in the flow puts one there on purpose. The
+observed cause is `gh pr merge --delete-branch` run from inside the worktree:
+to delete the local PR branch gh first has to leave it, so it runs
+`git checkout main` *in that worktree*, and the worktree walks off holding
+`refs/heads/main` while its own branch is gone. `diagnose()` cannot see it
+(the `worktree-<slug>` branch no longer exists to anchor on) and
+`scan_slots()` calls it real (it is registered), so without this pass the
+theft is silent. The shepherd detaches a clean one; the fix by hand is
+`git -C <worktree> checkout --detach`, which frees the ref and loses nothing.
+
     doctor_worktrees.py [--project-root <path>]
     # stdout: one line per worktree-<slug> worktree, with its status + plan
     # mapping, followed by a fake-slot summary over every .claude/worktrees/*
-    # directory on disk
+    # directory on disk, followed by every linked worktree stranded on the
+    # integration branch
 
 Each `worktree-<slug>` worktree (or lingering branch) is classified into exactly
 one of four states, in precedence order:
@@ -167,6 +180,22 @@ def _is_merged(root: str | os.PathLike, branch: str, ref: str) -> bool:
     return r.returncode == 0
 
 
+def _integration_branch(root: str | os.PathLike) -> str:
+    """The integration branch's short name: what `origin/HEAD` points at, else
+    `main`. A name, not a ref — `diagnose()` compares commits against `HEAD`,
+    but the stranded pass has to compare a *checked-out branch name* against
+    the one branch no linked worktree should hold. Any git error collapses to
+    the fallback (never guess a different name from an unreadable repo)."""
+    try:
+        r = _git(["symbolic-ref", "--short", "--quiet", "refs/remotes/origin/HEAD"], root)
+    except (OSError, subprocess.SubprocessError):
+        return "main"
+    name = r.stdout.strip()
+    if r.returncode != 0 or not name:
+        return "main"
+    return name[len("origin/"):] if name.startswith("origin/") else name
+
+
 def _read_marker(wt: Path) -> str | None:
     """The worktree-local `.harness/active-plan` bare slug, or None if missing/blank."""
     marker = wt / ".harness" / "active-plan"
@@ -301,6 +330,64 @@ def _format_slots(reports: list[SlotReport]) -> str:
     return "\n".join(lines) + "\n"
 
 
+# ── stranded-on-main scan (every linked worktree, wherever it lives) ──────────
+
+STRANDED = "stranded-on-main"
+
+
+class StrandedWorktree(NamedTuple):
+    """One linked worktree checked out on the integration branch. See the
+    module docstring for how one comes to exist; the short version is that
+    `gh pr merge --delete-branch`, run inside a worktree, checks `main` out
+    there before deleting the PR branch."""
+    path: str
+    branch: str          # the integration branch it is holding
+    detail: str
+
+
+def stranded_worktrees(root: str | os.PathLike, *,
+                       integration_branch: str | None = None) -> list[StrandedWorktree]:
+    """Every *linked* worktree whose checked-out branch is the integration
+    branch. Read-only; mutates nothing.
+
+    The main worktree is skipped — it is the one place the integration branch
+    may legitimately be checked out — identified as the first entry of
+    `git worktree list`, which git documents as always the main worktree. A
+    detached linked worktree is never stranded, even at the integration
+    branch's tip: it holds no ref, so it blocks nothing. `integration_branch`
+    defaults to `_integration_branch(root)`.
+    """
+    target = integration_branch or _integration_branch(root)
+    reports: list[StrandedWorktree] = []
+    for i, w in enumerate(_worktrees(root)):
+        if i == 0 or w["bare"] or w["detached"]:
+            continue
+        if w["branch"] != target:
+            continue
+        reports.append(StrandedWorktree(
+            w["path"], target,
+            f"a linked worktree is holding `{target}` — the integration branch, "
+            "which no worktree but the main one should have checked out. Almost "
+            "always `gh pr merge --delete-branch` run from inside this worktree: "
+            "gh checks the base branch out HERE before deleting the PR branch. "
+            "`git -C <path> checkout --detach` frees the ref and loses nothing "
+            "(the working tree stays put); then remove the slot normally. Merge "
+            "with `gh pr merge --squash` (no -d), or arm `--auto` at open, so it "
+            "does not recur."))
+    return reports
+
+
+def _format_stranded(reports: list[StrandedWorktree]) -> str:
+    if not reports:
+        return ""
+    lines = [f"[doctor_worktrees] {len(reports)} linked worktree(s) STRANDED on the "
+             "integration branch:"]
+    for r in reports:
+        lines.append(f"  {r.path}  {STRANDED}  (holding {r.branch})")
+        lines.append(f"    → {r.detail}")
+    return "\n".join(lines) + "\n"
+
+
 # ── CLI (formats + prints; exit 0 always — a report, not a gate) ──────────────
 
 def _format(reports: list[WorkerWorktree]) -> str:
@@ -325,7 +412,9 @@ def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="doctor_worktrees.py",
         description="Read-only: list + classify worktree-<slug> worktrees (active / "
-                    "merged-but-unpruned / dangling-marker / orphaned). Mutates nothing.",
+                    "merged-but-unpruned / dangling-marker / orphaned), flag fake "
+                    ".claude/worktrees/ slots, and flag any linked worktree stranded "
+                    "on the integration branch. Mutates nothing.",
     )
     p.add_argument("--project-root", default=None, help="project root (default: cwd)")
     return p
@@ -336,6 +425,7 @@ def main(argv: list[str]) -> int:
     root = ns.project_root if ns.project_root is not None else os.getcwd()
     sys.stdout.write(_format(diagnose(root)))
     sys.stdout.write(_format_slots(scan_slots(root)))
+    sys.stdout.write(_format_stranded(stranded_worktrees(root)))
     return 0  # read-only diagnostic — never a gate
 
 

@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Periodic shepherd: reclaims safe orphaned worktrees, rebases stalled armed PRs.
+"""Periodic shepherd: reclaims safe orphaned worktrees, rebases stalled armed
+PRs, detaches worktrees stranded on the integration branch.
 
 Runs on the `agentm-runner` scheduler (a `.harness/jobs/<name>.yaml` manifest —
 see agentm's `wiki/designs/agentm-runner.md`), not a bespoke cron
-(worktree-native-flow task 5, Locked design calls). Two independent duties:
+(worktree-native-flow task 5, Locked design calls). Three independent duties:
 
 (a) **Orphan reclaim.** `doctor_worktrees.py`'s `ORPHANED` worktrees/branches
     (a branch with no worktree, or a worktree whose directory is gone) are
@@ -26,6 +27,16 @@ see agentm's `wiki/designs/agentm-runner.md`), not a bespoke cron
     and no signal. Rebasing replays the branch's own commits onto the new base
     and can never carry anything backwards. The same rule applies by hand: in a
     squash repo, never merge `main` backwards into a branch.
+
+(c) **Stranded detach.** `doctor_worktrees.py`'s `stranded_worktrees()` — a
+    linked worktree checked out on the integration branch, which is what
+    `gh pr merge --delete-branch` leaves behind when run inside a worktree —
+    is detached (`git checkout --detach` in that worktree) when its tree is
+    clean. Detaching never loses anything: the working tree stays where it
+    is, only the ref is released. The clean-tree condition is not about data
+    safety, then, but about presence — a dirty tree is the best available
+    sign that a session is still working there, and its git state should not
+    change underneath it. A dirty one is reported and left alone.
 
     worktree_shepherd.py [--project-root <path>] [--age-days N] [--dry-run]
 
@@ -216,9 +227,45 @@ def shepherd_stalled_prs(repo_root: str, *, runner: Optional[Runner] = None) -> 
     return report
 
 
+# ── (c) stranded detach ───────────────────────────────────────────────────────
+
+@dataclass
+class DetachReport:
+    detached: list = field(default_factory=list)       # list[StrandedWorktree]
+    skipped_dirty: list = field(default_factory=list)  # list[StrandedWorktree]
+
+
+def _is_clean(worktree: str | os.PathLike) -> bool:
+    """True iff `git status --porcelain` in `worktree` is empty — no modified,
+    staged, or untracked files. Any git error collapses to False (never call
+    an unreadable tree clean)."""
+    r = _git(["status", "--porcelain"], worktree)
+    if r.returncode != 0:
+        return False
+    return r.stdout.strip() == ""
+
+
+def detach_stranded(root: str | os.PathLike, *, dry_run: bool = False) -> DetachReport:
+    """Detach every linked worktree stranded on the integration branch whose
+    tree is clean. Pure orchestration over `doctor_worktrees.stranded_worktrees`
+    (never re-derives detection). `dry_run=True` reports exactly what would be
+    detached without mutating anything — the report shape is identical."""
+    report = DetachReport()
+    for w in dw.stranded_worktrees(root):
+        if not _is_clean(w.path):
+            report.skipped_dirty.append(w)
+            continue
+        report.detached.append(w)
+        if dry_run:
+            continue
+        _git(["checkout", "--detach"], w.path)
+    return report
+
+
 # ── CLI ────────────────────────────────────────────────────────────────────
 
-def _format(reclaim: ReclaimReport, stalled: StalledPRReport, *, dry_run: bool) -> str:
+def _format(reclaim: ReclaimReport, stalled: StalledPRReport, *, dry_run: bool,
+            detach: DetachReport | None = None) -> str:
     lines = ["[worktree_shepherd] orphan reclaim" + (" (dry-run)" if dry_run else "") + ":"]
     if not (reclaim.reclaimed or reclaim.skipped_unsafe or reclaim.skipped_too_young):
         lines.append("  nothing orphaned.")
@@ -237,13 +284,24 @@ def _format(reclaim: ReclaimReport, stalled: StalledPRReport, *, dry_run: bool) 
         lines.append(f"  updated PR #{u.pr_number} ({u.branch}) — {u.url or ''}".rstrip())
     for c in stalled.conflicts:
         lines.append(f"  CONFLICT on PR #{c.pr_number} ({c.branch}): {c.detail} — {c.url or ''}".rstrip())
+
+    detach = detach or DetachReport()
+    lines.append("[worktree_shepherd] stranded-on-main detach" + (" (dry-run)" if dry_run else "") + ":")
+    if not (detach.detached or detach.skipped_dirty):
+        lines.append("  nothing stranded.")
+    for w in detach.detached:
+        verb = "would detach" if dry_run else "detached"
+        lines.append(f"  {verb}: {w.path} (was holding {w.branch})")
+    for w in detach.skipped_dirty:
+        lines.append(f"  left alone (dirty tree — a session may be live): {w.path} (holding {w.branch})")
     return "\n".join(lines) + "\n"
 
 
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="worktree_shepherd.py",
-        description="Reclaim safe orphaned worktrees; rebase stalled armed PRs.",
+        description="Reclaim safe orphaned worktrees; rebase stalled armed PRs; "
+                    "detach clean worktrees stranded on the integration branch.",
     )
     p.add_argument("--project-root", default=None)
     p.add_argument("--age-days", type=float, default=3.0,
@@ -259,8 +317,9 @@ def main(argv: list[str]) -> int:
 
     reclaim = reclaim_orphans(root, age_threshold_seconds=age_seconds, dry_run=ns.dry_run)
     stalled = shepherd_stalled_prs(root)
+    detach = detach_stranded(root, dry_run=ns.dry_run)
 
-    sys.stdout.write(_format(reclaim, stalled, dry_run=ns.dry_run))
+    sys.stdout.write(_format(reclaim, stalled, dry_run=ns.dry_run, detach=detach))
     return 0  # a shepherd report, never a gate — conflicts are surfaced, not fatal
 
 
