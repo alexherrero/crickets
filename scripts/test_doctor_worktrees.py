@@ -262,6 +262,131 @@ class TestScanSlots(unittest.TestCase):
         self.assertEqual(before, after)
 
 
+class TestStrandedWorktrees(unittest.TestCase):
+    """`stranded_worktrees()`: a *linked* worktree holding the integration branch.
+    The scenario is reproduced the way it happens live — `gh pr merge
+    --delete-branch` run inside the worktree checks `main` out there, then
+    deletes the PR branch — including its precondition: the main worktree
+    must not be holding `main` itself, or git would have refused the theft.
+    (The operator's primary clones are kept detached at `origin/main`, which is
+    exactly why this lands silently there.)"""
+
+    def setUp(self):
+        # Resolved: git reports realpaths (`/private/var/…` on macOS), and these
+        # tests compare worktree paths, not just branch names.
+        self.tmp = Path(tempfile.mkdtemp(prefix="dw-stranded-")).resolve()
+        self.repo = self.tmp / "repo"
+        _init_repo(self.repo)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _strand_like_gh(self, name: str, *, under_slots: bool = False) -> Path:
+        """A worktree on `claude/<name>`, then the exact sequence `gh pr merge
+        --delete-branch` runs inside it: check out the base branch HERE, then
+        delete the branch it was on."""
+        _git(self.repo, "checkout", "--detach")  # the primary lets go of main
+        wt = (self.repo / ".claude" / "worktrees" / name) if under_slots else self.tmp / f"wt-{name}"
+        wt.parent.mkdir(parents=True, exist_ok=True)
+        _git(self.repo, "worktree", "add", "-b", f"claude/{name}", str(wt))
+        (wt / "change.txt").write_text("work\n", encoding="utf-8")
+        _git(wt, "add", ".")
+        _git(wt, "commit", "-q", "-m", "work")
+        _git(wt, "checkout", "-q", "main")
+        _git(wt, "branch", "-D", f"claude/{name}")
+        return wt
+
+    def test_worktree_left_on_main_by_gh_is_stranded(self):
+        wt = self._strand_like_gh("merged-by-hand")
+        reports = dw.stranded_worktrees(self.repo)
+        self.assertEqual([(r.path, r.branch) for r in reports], [(str(wt), "main")])
+        self.assertIn("--delete-branch", reports[0].detail)
+        self.assertIn("checkout --detach", reports[0].detail)
+
+    def test_the_other_two_passes_cannot_see_it(self):
+        # The blind spot this pass fills: the PR branch is gone, so diagnose()
+        # has nothing to anchor on, and scan_slots() reports the slot as real —
+        # which it is. Registered, on disk, and quietly holding main.
+        wt = self._strand_like_gh("invisible", under_slots=True)
+        self.assertEqual(dw.diagnose(self.repo), [])
+        slots = {r.name: r.status for r in dw.scan_slots(self.repo)}
+        self.assertEqual(slots, {"invisible": dw.REAL})
+        self.assertEqual([r.path for r in dw.stranded_worktrees(self.repo)], [str(wt)])
+
+    def test_main_worktree_holding_main_is_not_stranded(self):
+        # The one place the integration branch belongs. A feature-branch
+        # worktree beside it is not stranded either.
+        _add_worktree(self.repo, self.tmp, "feature")
+        self.assertEqual(dw.stranded_worktrees(self.repo), [])
+
+    def test_detached_linked_worktree_at_main_tip_is_not_stranded(self):
+        # Holds no ref, blocks nothing — the state the remedy leaves behind.
+        wt = self.tmp / "wt-detached"
+        _git(self.repo, "worktree", "add", "--detach", str(wt), "main")
+        self.assertEqual(dw.stranded_worktrees(self.repo), [])
+
+    def test_the_remedy_clears_it(self):
+        wt = self._strand_like_gh("fixable")
+        self.assertEqual(len(dw.stranded_worktrees(self.repo)), 1)
+        _git(wt, "checkout", "-q", "--detach")
+        self.assertEqual(dw.stranded_worktrees(self.repo), [])
+        # And the ref survived — detaching releases it, never deletes it.
+        self.assertEqual(_git(self.repo, "rev-parse", "--verify", "--quiet",
+                              "refs/heads/main", check=False).returncode, 0)
+
+    def test_integration_branch_defaults_to_main_without_a_remote(self):
+        self.assertEqual(dw._integration_branch(self.repo), "main")
+
+    def test_integration_branch_follows_origin_head(self):
+        # A clone's origin/HEAD names the remote's default branch; a linked
+        # worktree holding THAT branch is the stranded one, whatever it is called.
+        seed = self.tmp / "seed"
+        seed.mkdir()
+        _git(seed, "init", "-q", "-b", "trunk")
+        _git(seed, "config", "user.email", "test@example.com")
+        _git(seed, "config", "user.name", "Test")
+        _git(seed, "config", "commit.gpgsign", "false")
+        (seed / "README.md").write_text("seed\n", encoding="utf-8")
+        _git(seed, "add", "README.md")
+        _git(seed, "commit", "-q", "-m", "seed")
+        origin = self.tmp / "origin.git"
+        _git(self.tmp, "clone", "-q", "--bare", str(seed), str(origin))
+        clone = self.tmp / "clone"
+        _git(self.tmp, "clone", "-q", str(origin), str(clone))
+        self.assertEqual(dw._integration_branch(clone), "trunk")
+
+        _git(clone, "checkout", "-q", "--detach")
+        wt = self.tmp / "wt-on-trunk"
+        _git(clone, "worktree", "add", str(wt), "trunk")
+        self.assertEqual([r.branch for r in dw.stranded_worktrees(clone)], ["trunk"])
+
+    def test_scan_is_read_only(self):
+        wt = self._strand_like_gh("untouched")
+        before = _snapshot(self.repo, [wt])
+        dw.stranded_worktrees(self.repo)
+        self.assertEqual(before, _snapshot(self.repo, [wt]))
+        # Still stranded afterwards: the probe reported, it did not repair.
+        self.assertEqual(len(dw.stranded_worktrees(self.repo)), 1)
+
+    def test_main_prints_the_stranded_section_with_remedy(self):
+        wt = self._strand_like_gh("printed")
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            rc = dw.main(["doctor_worktrees.py", "--project-root", str(self.repo)])
+        self.assertEqual(rc, 0)
+        out = buf.getvalue()
+        self.assertIn("STRANDED on the integration branch", out)
+        self.assertIn(str(wt), out)
+        self.assertIn("checkout --detach", out)
+
+    def test_main_silent_on_stranded_when_none(self):
+        _add_worktree(self.repo, self.tmp, "fine")
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            dw.main(["doctor_worktrees.py", "--project-root", str(self.repo)])
+        self.assertNotIn("STRANDED", buf.getvalue())
+
+
 class TestFormatAndMain(unittest.TestCase):
     """Formatting + the CLI: a report, never a gate (exit 0 always)."""
 
