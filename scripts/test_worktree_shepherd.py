@@ -78,6 +78,19 @@ def _add_worktree(repo: Path, tmp: Path, slug: str, *, commit: bool = True,
     return branch, wt
 
 
+def _squash_land(repo: Path, branch: str) -> None:
+    """The normal life of a plan branch after its PR: squash-merged onto main,
+    main pushed, the remote branch deleted server-side (delete_branch_on_merge),
+    and the stale remote-tracking ref pruned locally. After this, neither
+    commit-identity safety rung can fire: no `origin/<branch>` exists, and the
+    branch's own commits are not ancestors of main."""
+    _git(repo, "merge", "--squash", branch)
+    _git(repo, "commit", "-q", "-m", f"squash-land {branch}")
+    _git(repo, "push", "-q", "origin", "main")
+    _git(repo, "push", "-q", "origin", "--delete", branch)
+    _git(repo, "fetch", "-q", "--prune")
+
+
 class TestSafeToReclaim(unittest.TestCase):
     """`is_safe_to_reclaim`: the branch's content must be fully present on the
     remote (or never diverged at all) before this shepherd removes anything."""
@@ -108,6 +121,54 @@ class TestSafeToReclaim(unittest.TestCase):
         (wt / "more.txt").write_text("more\n", encoding="utf-8")
         _git(wt, "add", ".")
         _git(wt, "commit", "-q", "-m", "one more, never pushed")
+        self.assertFalse(ws.is_safe_to_reclaim(str(self.repo), branch))
+
+    def test_squash_landed_branch_with_remote_gone_is_safe(self):
+        # The case the first armed run left behind seventeen times: landed the
+        # normal way, and provable only file by file.
+        branch, _wt = _add_worktree(self.repo, self.tmp, "landed", push=True)
+        _squash_land(self.repo, branch)
+        # Neither commit-identity rung can fire — pinned, so this test cannot
+        # pass for the wrong reason.
+        self.assertNotEqual(_git(self.repo, "rev-parse", "--verify", "--quiet",
+                                 f"refs/remotes/origin/{branch}", check=False).returncode, 0)
+        self.assertNotEqual(_git(self.repo, "rev-list", branch, "^HEAD").stdout.strip(), "")
+        self.assertTrue(ws.is_safe_to_reclaim(str(self.repo), branch))
+
+    def test_squash_landed_then_main_edited_past_it_is_still_safe(self):
+        # It landed, and main has since changed one of its files. The
+        # branch's version is no longer what main holds — but it is in main's
+        # history, so nothing the branch has is absent from main. This was 15
+        # of the 16 real orphans the first, now-only test could not prove.
+        branch, _wt = _add_worktree(self.repo, self.tmp, "overtaken", push=True)
+        _squash_land(self.repo, branch)
+        (self.repo / "work-overtaken.txt").write_text("edited on main later\n", encoding="utf-8")
+        _git(self.repo, "add", ".")
+        _git(self.repo, "commit", "-q", "-m", "main moves past it")
+        _git(self.repo, "push", "-q", "origin", "main")  # landed means on the remote
+        self.assertNotEqual(_git(self.repo, "rev-parse", f"{branch}:work-overtaken.txt").stdout,
+                            _git(self.repo, "rev-parse", "origin/main:work-overtaken.txt").stdout,
+                            "precondition: the blobs differ now")
+        self.assertTrue(ws.is_safe_to_reclaim(str(self.repo), branch))
+
+    def test_squash_landed_deletion_is_safe(self):
+        # A branch whose whole change was removing a file: landed means main
+        # lacks it too, not that main holds some blob for it.
+        branch, wt = _add_worktree(self.repo, self.tmp, "deleter", commit=False)
+        (wt / "README.md").unlink()
+        _git(wt, "add", "-A")
+        _git(wt, "commit", "-q", "-m", "drop the readme")
+        _git(wt, "push", "-q", "-u", "origin", branch)
+        _squash_land(self.repo, branch)
+        self.assertFalse((self.repo / "README.md").exists())
+        self.assertTrue(ws.is_safe_to_reclaim(str(self.repo), branch))
+
+    def test_unmerged_branch_whose_remote_was_deleted_is_unsafe(self):
+        # The negative that matters most: remote gone, nothing landed. Its
+        # work exists nowhere but this ref, and the shepherd must not touch it.
+        branch, _wt = _add_worktree(self.repo, self.tmp, "abandoned", push=True)
+        _git(self.repo, "push", "-q", "origin", "--delete", branch)
+        _git(self.repo, "fetch", "-q", "--prune")
         self.assertFalse(ws.is_safe_to_reclaim(str(self.repo), branch))
 
     def test_no_remote_at_all_and_no_divergence_is_safe(self):
@@ -153,6 +214,22 @@ class TestReclaimOrphans(unittest.TestCase):
             _git(self.repo, "rev-parse", "--verify", "--quiet",
                  f"refs/heads/{branch}", check=False).returncode, 1,
             "the branch must actually be gone after reclaim")
+
+    def test_squash_landed_orphan_is_reclaimed(self):
+        # End to end: the shape every one of the seventeen had.
+        branch, wt = _add_worktree(self.repo, self.tmp, "shipped", push=True)
+        _squash_land(self.repo, branch)
+        import shutil
+        shutil.rmtree(wt)
+
+        result = ws.reclaim_orphans(str(self.repo), age_threshold_seconds=0)
+        self.assertIn(branch, [r.branch for r in result.reclaimed])
+        self.assertNotIn(branch, [r.branch for r in result.skipped_unsafe])
+        self.assertEqual(
+            _git(self.repo, "rev-parse", "--verify", "--quiet",
+                 f"refs/heads/{branch}", check=False).returncode, 1)
+        # And nothing the branch held is missing from main.
+        self.assertTrue((self.repo / "work-shipped.txt").exists())
 
     def test_orphaned_unsafe_worktree_is_left_alone(self):
         branch, wt = _add_worktree(self.repo, self.tmp, "risky", push=False)

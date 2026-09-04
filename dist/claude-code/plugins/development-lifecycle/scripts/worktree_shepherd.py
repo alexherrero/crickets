@@ -11,8 +11,10 @@ see agentm's `wiki/designs/agentm-runner.md`), not a bespoke cron
     reclaimed only when BOTH: old enough (age threshold — the originating
     session is presumed gone) AND provably safe (`is_safe_to_reclaim`: every
     commit on the branch is already on its remote copy, or the branch never
-    diverged at all — nothing would be lost). Anything not provably safe is
-    left alone and reported, never guessed at.
+    diverged at all, or — the squash-merge case neither of those can ever
+    prove — everything it changed is, or once was, on the integration branch
+    file by file). Anything not provably safe is left alone and reported,
+    never guessed at.
 
 (b) **Stalled-PR rebase.** An armed PR that GitHub reports `BEHIND` its base
     branch (a sibling plan's PR merged first) gets `gh pr update-branch
@@ -85,30 +87,38 @@ def _git(args: list[str], root: str | os.PathLike) -> subprocess.CompletedProces
 # ── (a) orphan reclaim ────────────────────────────────────────────────────────
 
 def is_safe_to_reclaim(root: str | os.PathLike, branch: str) -> bool:
-    """True iff removing `branch` loses nothing.
+    """True iff removing `branch` loses nothing. Three rungs; any one proves it.
 
-    Safe when every commit reachable from `branch` is already reachable from
-    its remote copy (`origin/<branch>`) — `git rev-list branch ^origin/branch`
-    is empty. If no remote copy exists at all (never pushed), safe only if the
-    branch never diverged from where it forked (no unique commits to lose
-    either way) — checked via `git rev-list branch ^main` against the local
-    default integration ref. Any git error collapses to False (never guess
-    "safe" on an unreadable repo).
+    (a) Every commit reachable from `branch` is already reachable from its
+        remote copy — `git rev-list branch ^origin/branch` is empty.
+    (b) There is no remote copy, and the branch never diverged from the local
+        integration ref — `git rev-list branch ^HEAD` is empty.
+    (c) Everything the branch changed is already on the integration branch,
+        file by file (`doctor_worktrees.content_landed`). This is the
+        squash-merge case, and (a) and (b) can never prove it: once the PR
+        squash-merges and GitHub deletes the remote branch there is no
+        `origin/<branch>` left to compare against, and the branch's own
+        commits are never ancestors of `main`, because the squashed commit
+        carries no ancestry link to them. Before this rung, every branch that
+        landed the normal way read "unsafe" forever.
+
+    Any git error collapses to False — never guess "safe" on an unreadable
+    repo. What stays unsafe is a branch holding content that never existed
+    on the integration branch at that path: work `main` does not have. A
+    branch `main` has since edited past is still provably landed — its
+    content is in `main`'s history.
     """
     has_remote = _git(["rev-parse", "--verify", "--quiet", f"refs/remotes/origin/{branch}"],
                       root).returncode == 0
     if has_remote:
         r = _git(["rev-list", branch, f"^origin/{branch}"], root)
-        if r.returncode != 0:
-            return False
-        return r.stdout.strip() == ""
-
-    # No remote copy — safe only if the branch has no commits beyond the
-    # current default branch (HEAD), i.e. it never diverged.
-    r = _git(["rev-list", branch, "^HEAD"], root)
-    if r.returncode != 0:
-        return False
-    return r.stdout.strip() == ""
+        if r.returncode == 0 and r.stdout.strip() == "":
+            return True
+    else:
+        r = _git(["rev-list", branch, "^HEAD"], root)
+        if r.returncode == 0 and r.stdout.strip() == "":
+            return True
+    return dw.content_landed(root, branch)
 
 
 @dataclass
@@ -273,7 +283,7 @@ def _format(reclaim: ReclaimReport, stalled: StalledPRReport, *, dry_run: bool,
         verb = "would reclaim" if dry_run else "reclaimed"
         lines.append(f"  {verb}: {w.branch} ({w.worktree or '(no worktree)'})")
     for w in reclaim.skipped_unsafe:
-        lines.append(f"  left alone (unsafe — unpushed commits): {w.branch}")
+        lines.append(f"  left alone (unsafe — not provably landed): {w.branch}")
     for w in reclaim.skipped_too_young:
         lines.append(f"  left alone (too young): {w.branch}")
 
