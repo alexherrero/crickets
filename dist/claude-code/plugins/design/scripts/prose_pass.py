@@ -32,7 +32,12 @@ surfaced two more failure modes, now hardened against:
      re-audit trigger. The FACT-GUARD block is verification context, not
      draftable prose; guard_leakage() flags any output sentence with no
      counterpart in the input that closely paraphrases a guard line, and it
-     joins the same retry-then-degrade path as the structural checks.
+     joins the same retry-then-degrade path as the structural checks. A
+     documenter dry-run (2026-09-11) showed the other shape: every guard cut
+     into short sentences ("Exit 1 is never the usage-error code.", "The
+     flat rung always runs."), none close enough to a whole guard line to
+     score. So guard_leakage() also counts the words a revision brings in
+     that the document never had, and flags a guard that supplied three.
   4. Stream truncation on tag-like tokens. agy's print-mode reads a literal
      `<thought>`/`<thinking>`/`<answer>` token in the document body as its
      own reasoning-tag opener and truncates output at that exact byte,
@@ -349,21 +354,64 @@ def _sentences(text: str) -> list[str]:
     return parts
 
 
+_WORD_RE = re.compile(r"[a-z0-9_]+(?:['.\-][a-z0-9_]+)*")
+_STOPWORDS = frozenset("""
+    a about after again against all also an and any are as at be been before
+    being below between both but by can could did do does done down during
+    each either every few for from further had has have having he her here his
+    how i if in into is it its just may me might more most must my neither no
+    nor not of off on once one only or other our out over own same she should
+    so some such than that the their them then there these they this those
+    through to too under until up us very was we were what when where which
+    while who whom why will with without would you your
+""".split())
+
+
+def _content_words(text: str) -> set[str]:
+    """Lowercased content words, stopwords and bare numbers dropped, with a
+    possessive and a plural/third-person `s` folded off so `exits` meets
+    `exit`. Crude, but applied the same way to both sides of a comparison."""
+    words = set()
+    for w in _WORD_RE.findall(text.lower().replace("`", "")):
+        if w in _STOPWORDS or w.isdigit():
+            continue
+        if w.endswith("'s"):
+            w = w[:-2]
+        if len(w) > 3 and w.endswith("s") and not w.endswith("ss"):
+            w = w[:-1]
+        words.add(w)
+    return words
+
+
+def _ratio(a: str, b: str) -> float:
+    return difflib.SequenceMatcher(None, a.lower(), b.lower()).ratio()
+
+
 def guard_leakage(original: str, revised: str, fact_guards: list[str],
-                   threshold: float = 0.82) -> list[str]:
+                   threshold: float = 0.82, min_new_words: int = 3) -> list[str]:
     """FACT-GUARD lines stapled into the document as new content instead of
     staying verification-only context (lesson 3 in the module docstring: ~10
     such insertions in one real pass, including the same guard verbatim in
     three places and a meta-sentence explaining a re-audit trigger).
 
-    Flags any sentence in `revised` that has no counterpart in `original`
-    and closely paraphrases a guard line. A legitimate simplification of an
-    existing sentence that happens to converge on similar wording can also
-    trip this — that is an acceptable false-positive rate for a check that
-    only trigger one retry (or an exit-2 for human review), never a silent
-    auto-revert.
+    Two passes. The first flags any sentence in `revised` that closely
+    paraphrases a whole guard line and sits closer to that guard than to any
+    sentence `original` already had — a light edit of a sentence the guard
+    quotes is not new content.
+    The second catches a guard cut into pieces: it takes the content words
+    the revision uses that `original` never did, and flags a guard that
+    supplied `min_new_words` of them. A simplifier rewords with the
+    document's own vocabulary; on six clean real passes it brought in at
+    most one new word from any guard, against three to seven per guard in
+    the pass that leaked.
+
+    Either pass can trip on a legitimate rewording that converges on a
+    guard's wording. That is an acceptable false-positive rate for a check
+    that only triggers one retry (or an exit-2 for human review), never a
+    silent auto-revert.
     """
-    orig_sentences = set(_sentences(original))
+    orig_list = _sentences(original)
+    orig_sentences = set(orig_list)
     violations: list[str] = []
     flagged_guards: set[str] = set()
     for sentence in _sentences(revised):
@@ -373,12 +421,29 @@ def guard_leakage(original: str, revised: str, fact_guards: list[str],
             g = guard.strip()
             if not g or g in flagged_guards:
                 continue
-            if difflib.SequenceMatcher(None, sentence.lower(), g.lower()).ratio() >= threshold:
+            to_guard = _ratio(sentence, g)
+            # A guard often quotes the draft, and the simplifier edits that
+            # sentence lightly ("The captured pass" -> "That captured pass").
+            # It leaked only if it sits closer to the guard than to anything
+            # the document already said.
+            if to_guard >= threshold and not any(_ratio(sentence, o) >= to_guard for o in orig_list):
                 violations.append(
                     f"FACT-GUARD line leaked into the document as new content: "
                     f"{g!r} (found as {sentence!r})")
                 flagged_guards.add(g)
                 break
+
+    added = _content_words(revised) - _content_words(original)
+    for guard in fact_guards:
+        g = guard.strip()
+        if not g or g in flagged_guards:
+            continue
+        taken = sorted(added & _content_words(g))
+        if len(taken) >= min_new_words:
+            violations.append(
+                f"FACT-GUARD line leaked into the document in pieces: {g!r} "
+                f"(words it supplied that the document never used: {', '.join(taken)})")
+            flagged_guards.add(g)
     return violations
 
 

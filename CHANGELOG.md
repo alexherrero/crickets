@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Patch: the prose pass catches a fact-guard cut into pieces
+
+A documenter dry-run on 2026-09-11 showed Gemini writing the fact-guard list into the page. `prose_pass.py` passed it on a clean exit 0. Gemini cut each guard into short sentences, such as "Exit 1 is never the usage-error code." and "The flat rung always runs." The leakage check compared each new sentence with a whole guard line. No piece scored close enough. The documenter's own verify step caught it that time.
+
+Testing the fix surfaced the opposite error in the same check. A guard often quotes the draft, and when Gemini changed one word of that sentence ("The captured pass" became "That captured pass"), the check read the edit as new content and degraded a clean pass.
+
+### Fixed
+
+- `design` 0.10.4 — `guard_leakage()` adds a second pass. It takes the content words a revision uses that the document never did, and flags a guard that supplied three of them. The captured pass trips 7 of its 8 guards. Six clean real passes took at most one word from any guard. Three of them were run to test for this. The violation names the words, so the retry tells Gemini what it copied. The prose-pass skill's warning now names the remaining risk. A short guard fact reworded in the document's own words can still slip through.
+- `design` 0.10.4 — the whole-line pass flags a sentence only when it sits closer to the guard than to anything the document already said, so a light edit of a sentence a guard quotes passes.
+
 ### Patch: a timeout typo no longer reads as agy being down
 
 `prose_pass.py --timeout 300` printed `PROSE-PASS-DEGRADED: agy call failed` and exited 1, while the default `480s` worked. The value went straight to agy's `--print-timeout`, which only takes a Go duration. agy refused the bare integer, and the script reported that as a failed call, so a usage typo sent the caller down the Claude-only fallback.

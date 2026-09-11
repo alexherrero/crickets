@@ -228,6 +228,89 @@ class GuardLeakageTests(unittest.TestCase):
             "## Decisions", "A short unrelated aside.\n\n## Decisions")
         self.assertEqual(prose_pass.guard_leakage(SAMPLE_DOC, revised, [self.GUARD]), [])
 
+    def test_light_edit_of_a_sentence_the_guard_quotes_not_flagged(self):
+        # From a real pass (2026-09-11): the guard quoted the draft, Gemini
+        # changed one word, and the pass degraded on its own author's text.
+        guard = "The captured pass trips 7 of its 8 guards."
+        original = f"It adds a second pass. {guard} The rest held.\n"
+        revised = "It adds a second pass. That captured pass trips 7 of its 8 guards. The rest held.\n"
+        self.assertEqual(prose_pass.guard_leakage(original, revised, [guard]), [])
+
+    # Verbatim from a documenter dry-run (2026-09-11): Gemini cut each guard
+    # into short sentences, and the whole-line pass scored none of them.
+    PIECES_ORIGINAL = (
+        "It exits 1 when the plugin or file is not installed, and lists every path it "
+        "tried on stderr. It exits 2 on a usage error: the wrong argument count, a "
+        "malformed plugin name, or a relative path that leaves the plugin. Three rungs "
+        "run in order, and the first hit wins. The flat rung looks beside the calling "
+        "plugin's root, first as written and then through any symlink on it. The last "
+        "two rungs run only when the plugin root has the cache's shape.\n")
+    PIECES_REVISED = (
+        "It exits 1 when the plugin or the file is missing from the install. It lists "
+        "the tried paths on stderr. Exit 1 is never the usage-error code.\n\n"
+        "The installed and newest rungs are appended only when the plugin root sits in "
+        "Claude Code's cache layout. Its grandparent's parent must be named `cache`. "
+        "The flat rung always runs.\n")
+    PIECES_GUARDS = [
+        "exit 1 means the plugin or the file is missing from the install, with the tried "
+        "paths on stderr — exit 1 is never the usage-error code (sibling_plugin.py:107-110)",
+        "installed and newest are appended only when the plugin root sits in Claude Code's "
+        "cache layout (its grandparent's parent is named cache); the flat rung always runs "
+        "(sibling_plugin.py:65-69)",
+    ]
+
+    def test_guard_cut_into_pieces_flagged(self):
+        whole_line_only = prose_pass.guard_leakage(
+            self.PIECES_ORIGINAL, self.PIECES_REVISED, self.PIECES_GUARDS, min_new_words=10**6)
+        self.assertEqual(whole_line_only, [])  # the miss this pass exists for
+        violations = prose_pass.guard_leakage(
+            self.PIECES_ORIGINAL, self.PIECES_REVISED, self.PIECES_GUARDS)
+        self.assertEqual(len(violations), 2)
+        self.assertTrue(all("leaked into the document in pieces" in v for v in violations))
+        self.assertIn("usage-error", violations[0])
+        self.assertIn("grandparent", violations[1])
+
+    def test_real_clean_rewording_not_flagged(self):
+        # A real Gemini pass over crickets' Why-Deterministic-Gates page, with
+        # guards paraphrased the way the documenter writes them: it split and
+        # listed, and brought in no guard's vocabulary.
+        original = (
+            "Crickets gates every change on deterministic checks — typecheck, lint, tests, "
+            "build — before any LLM judgment is consulted. Deterministic checks are cheap, "
+            "repeatable, and truthful: a test either passes or it doesn't, and it says so the "
+            "same way every time. LLM judgment is expensive and can be sycophantic — it may "
+            "bless output a compiler would reject.\n\nSo the order is fixed: machines verify "
+            "what machines can verify; the LLM augments at the margins — review, naming, "
+            "intent — and never replaces the gate. A green LLM opinion sitting on top of red "
+            "tests is worthless, so the red tests run first and win.\n")
+        revised = (
+            "Crickets gates every change on these deterministic checks before it consults an "
+            "LLM:\n\n- typecheck\n- lint\n- tests\n- build\n\nDeterministic checks are:\n\n"
+            "- cheap\n- repeatable\n- truthful\n\nA test either passes or fails. It says so "
+            "the same way every time. LLM judgment is expensive. An LLM may bless output a "
+            "compiler would reject.\n\nThe order is fixed. Machines verify what machines can "
+            "verify.\n\nThe LLM augments:\n\n- review\n- naming\n- intent\n\nThe LLM never "
+            "replaces the gate. A green LLM opinion on top of red tests means nothing. The "
+            "red tests run first and win.\n")
+        guards = [
+            "deterministic checks (typecheck, lint, tests, build) execute ahead of any model-based judgment",
+            "a deterministic check yields an identical verdict on every run",
+            "model judgment costs more and may approve output a compiler rejects",
+            "the LLM supplements review, naming and intent but never substitutes for the gate",
+            "when tests are red, a green LLM opinion carries no weight; the failing tests take precedence",
+        ]
+        self.assertEqual(prose_pass.guard_leakage(original, revised, guards), [])
+
+    def test_three_new_words_from_one_guard_is_the_line(self):
+        guard = ["stale entries expire weekly unless pinned"]
+        original = "The store keeps entries.\n"
+        two = "The store keeps entries, and they expire weekly.\n"
+        three = "The store keeps entries, and stale ones expire weekly.\n"
+        self.assertEqual(prose_pass.guard_leakage(original, two, guard), [])
+        violations = prose_pass.guard_leakage(original, three, guard)
+        self.assertEqual(len(violations), 1)
+        self.assertIn("expire, stale, weekly", violations[0])
+
 
 # ── unit: truncation heuristic + section splitting ───────────────────────────
 class LooksTruncatedTests(unittest.TestCase):
