@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Patch: a plugin finds its siblings in Claude Code's versioned cache
+
+The documenter's cross-model prose pass never ran on an installed machine. It reached the design plugin's `prose_pass.py` as `${CLAUDE_PLUGIN_ROOT}/../design/scripts/prose_pass.py`, which works in the flat `dist/` tree. Claude Code installs each plugin at `cache/<marketplace>/<plugin>/<version>/`, where that path names nothing. Every dispatch printed `PROSE-PASS-DEGRADED` and fell back to a Claude-only pass. The same pattern stopped `/design translate` at import time. It broke `/design`'s plan staging, board sync, diagnosis seeding and the evidence-tracker reset on every Claude Code install. Thirteen paths in markdown and one in Python used it, and `check-dist-references` passed all of them.
+
+### Fixed
+
+- `wiki` 0.11.2, `design` 0.10.2, `development-lifecycle` 0.47.1, `maintenance` 0.2.7 — each ships `scripts/sibling_plugin.py`, and every sibling lookup goes through it: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sibling_plugin.py" <plugin> <relative-path>` prints the installed path, or exits 1 with the paths it tried. It takes the flat sibling first, then the install path `installed_plugins.json` records, then the highest cached version. `design_doc.py` loads `resolve_plan.py` the same way.
+
+### Internal
+
+- `check-dist-references` now holds a `${CLAUDE_PLUGIN_ROOT}` path to its own plugin tree and names the resolver when one steps out. The `work.md` → evidence-tracker grandfather entry is gone, since that path no longer ships.
+- `test_sibling_plugin.py` rebuilds Claude Code's cache from `dist/claude-code/` and resolves every call site in it, and it pins the four resolver copies byte-identical. Put the old documenter path back and the gate goes red.
+
 ### Minor: the shepherd learns what "landed" means in a squash-merge repo
 
 Arming the shepherd on 2026-09-04 showed it would leave 17 orphaned branches across agentm and crickets forever. Its safety test was commit identity — every commit on the remote copy, or never diverged — and a branch that lands the normal way can never pass it: the PR squash-merges, GitHub deletes the remote branch, and the branch's own commits are never ancestors of `main`, because the squashed commit carries no ancestry link to them. The operator's own rule for this repo family says it plainly: in a squash-merge repo, only file-level presence on `main` is a reliable test of having landed.

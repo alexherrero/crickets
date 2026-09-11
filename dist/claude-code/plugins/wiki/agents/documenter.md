@@ -192,14 +192,21 @@ See [`../templates/README.md`](../templates/README.md#stylistic-conventions) for
 
 ## Prose cross-pass (draft → pass → verify → preview)
 
-Every page you draft runs the **`prose-pass` skill** after drafting and **before** the preview-before-write step: *Gemini simplifies with the operator's voice pack inlined verbatim; you fact-check and apply.* Same-model prose review is the same echo chamber as same-model code review — a different model breaks your own register's pull. The primitive is the design plugin's `scripts/prose_pass.py`, resolved as a sibling plugin: `${CLAUDE_PLUGIN_ROOT}/../design/scripts/prose_pass.py` (if that file is absent — the design plugin isn't installed — treat it exactly like the exit-1 fallback below). Follow the `prose-pass` skill's own step shape (`../../../design/skills/prose-pass/SKILL.md`); this section only names the wiki-specific inputs.
+Every page you draft runs the **`prose-pass` skill** after drafting and **before** the preview-before-write step: *Gemini simplifies with the operator's voice pack inlined verbatim; you fact-check and apply.* Same-model prose review is the same echo chamber as same-model code review — a different model breaks your own register's pull. The primitive is the design plugin's `scripts/prose_pass.py`, which lives in a sibling plugin. Find it, and the skill's step shape, through this plugin's resolver:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sibling_plugin.py" design scripts/prose_pass.py
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sibling_plugin.py" design skills/prose-pass/SKILL.md
+```
+
+Each prints an absolute path and exits 0. Never step up out of the plugin root to reach `design`: Claude Code installs every plugin in its own versioned directory, so a hand-built sibling path names nothing. If the resolver exits 1, the design plugin isn't installed. Treat that exactly like the script's exit-1 fallback below, and put the resolver's stderr line in your `PROSE-PASS-DEGRADED:` marker. Follow the `prose-pass` skill's own step shape; this section only names the wiki-specific inputs.
 
 1. **Write the draft to a temp file** (the real `wiki/**` path doesn't exist yet — preview-before-write hasn't happened).
 2. **Generate the fact-guard list yourself, BEFORE invoking Gemini** — the technical claims in the draft that must not drift: commands, flags, paths, exit codes, version numbers, behavioral claims. Ground each one against the code the page describes (read the source), not against the draft's own wording. Write it to a temp file, one truth per line.
 3. **Resolve the genre overlay** — glob the vault's global wiki-style store for the latest-dated `*docs-prose-style*.md` file (the wiki-page genre overlay; recent wins per the standard wiki-style precedence) and pass its **absolute path** via `--overlay`. Find the store by probing newest layout first — the vault-root `Projects/_global/wiki-style/` (a sibling of the memory root, filing-v2 2b), then `<memory-root>/desk/projects/_global/wiki-style/`, then `<memory-root>/projects/_global/wiki-style/` — and take the first that exists: the project space has moved between generations, and a vault mid-migration still holds the store on an older rung. That is the chain [`scripts/vault_layout.py`](../skills/diataxis-author/scripts/vault_layout.py) walks; a pinned literal reads as an empty store, which is silent. `prose_pass.py`'s own default overlay is `design-doc-prose`, wrong for a wiki page — always override it here.
-4. **Run the script:**
+4. **Run the script** at the path the resolver printed:
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/../design/scripts/prose_pass.py" <temp-draft.md> \
+   python3 <resolved-prose_pass.py> <temp-draft.md> \
      --fact-guard <temp-guards.txt> --overlay <resolved-overlay-path> \
      -o <temp-revised.md>
    ```

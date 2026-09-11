@@ -57,22 +57,20 @@ def _load_resolve_plan():
     this sibling is always co-installed — but DC-2 forbids a plain cross-plugin
     `import` (a same-directory `import resolve_plan` worked before the AG Wave
     A rename 2 moved this file out of development-lifecycle/scripts/; it's a
-    different plugin now). Resolve the sibling's `scripts/` the same way the
-    `${CLAUDE_PLUGIN_ROOT}/../development-lifecycle/scripts/...` shell pattern
-    already used elsewhere in this repo does (commands/design.md's stage_plan.py
-    calls, work.md's evidence_tracker.py reference): one level up from this
-    plugin's own root, into the sibling plugin, into its scripts/. `_HERE.parent`
-    is this plugin's root under any install layout (src/ tree, dist/<host>/
-    plugins/, or a real host's plugin cache) since it's the same directory
-    `${CLAUDE_PLUGIN_ROOT}` resolves to at runtime — mirrored here via the env
-    var when set, falling back to `_HERE.parent` for local/test invocation.
+    different plugin now). This plugin's `sibling_plugin.py` finds it. A path
+    one level up from this plugin's root worked in the flat `src/` and `dist/`
+    trees, but Claude Code installs each plugin in its own versioned directory,
+    where that path names nothing — and since this loader runs at import time,
+    `/design translate` halted before its first step.
     """
-    plugin_root = Path(os.environ.get("CLAUDE_PLUGIN_ROOT") or _HERE.parent)
-    sibling = (plugin_root / ".." / "development-lifecycle" / "scripts" / "resolve_plan.py").resolve()
-    if not sibling.is_file():
+    spec = importlib.util.spec_from_file_location("sibling_plugin", _HERE / "sibling_plugin.py")
+    finder = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(finder)
+    sibling = finder.resolve_sibling("development-lifecycle", "scripts/resolve_plan.py")
+    if sibling is None:
         raise ModuleNotFoundError(
-            f"resolve_plan.py not found at {sibling} — design/ requires development-lifecycle "
-            "to be installed alongside it"
+            "resolve_plan.py not found in the development-lifecycle plugin — design/ "
+            "requires development-lifecycle to be installed alongside it"
         )
     spec = importlib.util.spec_from_file_location("resolve_plan", sibling)
     mod = importlib.util.module_from_spec(spec)

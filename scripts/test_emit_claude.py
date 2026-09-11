@@ -125,7 +125,9 @@ class TestClaudeEmitter(unittest.TestCase):
         # first (filing-v2 2b, the crickets half); the create-when-absent
         # default stays inside the memory root.
         # 0.11.1 = the root sibling needs the Obsidian witness (agentm 2b review)
-        self.assertEqual(self._plugin_json("wiki")["version"], "0.11.1")
+        # 0.11.2 = the documenter finds design's prose_pass.py through
+        # scripts/sibling_plugin.py, which resolves Claude Code's versioned cache.
+        self.assertEqual(self._plugin_json("wiki")["version"], "0.11.2")
         # 0.3.0 = check-no-pii.sh + templates/hooks/pre-push moved into src/pii/
         # so they actually ship inside the plugin payload (R2.4 task 7).
         # 0.3.1 = check-no-pii.sh scan collapsed to one grep per file (fixes a

@@ -47,16 +47,11 @@ _PLUGIN_ROOT_RE = re.compile(r"\$\{CLAUDE_PLUGIN_ROOT\}/([^\s\"'`)]+)")
 #       don't share. Real content debt this gate now makes visible; not
 #       Task 3's job to fix (Task 3 is "the gate that would have caught it,
 #       not the content fix").
-#   (c) a genuine, PERMANENT host boundary: `work.md` (host-agnostic,
-#       emitted to both claude-code and antigravity) references
-#       code-review's evidence-tracker CLI, which is declared
-#       `supported_hosts: [claude-code]` only (`hook.md`) — it is never
-#       emitted on antigravity at all, by design (PLAN-r2-enforcement-
-#       and-sync task 1). The reference resolves correctly in the
-#       claude-code copy (the only host where evidence-tracker, and thus
-#       this instruction, is ever actionable); it is structurally
-#       unreachable in the antigravity copy of the SAME prose, forever —
-#       not a defect a future task will "land a fix" for.
+#   (c) a genuine, PERMANENT host boundary. None today: the one entry,
+#       `work.md` -> code-review's claude-code-only evidence-tracker, left
+#       the list on 2026-09-10 when work.md began reaching it through
+#       `sibling_plugin.py`. The resolver exits 1 on antigravity, where the
+#       tracker is never emitted, and work.md treats that as a no-op.
 # This list mostly shrinks as (a)/(b)-class entries' owning plans land their
 # fix; a (c)-class entry (a genuinely permanent host-boundary fact) may be
 # added when equally justified — never as a shortcut to skip fixing a real,
@@ -76,7 +71,6 @@ _KNOWN_VIOLATIONS: frozenset[tuple[str, str]] = frozenset({
     ("developer-safety/hooks/commit-on-stop/hook.md", "../../wiki/how-to/Use-The-Base-Hooks.md"),
     ("developer-safety/hooks/kill-switch/hook.md", "../../wiki/how-to/Use-The-Base-Hooks.md"),
     ("developer-safety/hooks/steer/hook.md", "../../wiki/how-to/Use-The-Base-Hooks.md"),
-    ("development-lifecycle/commands/work.md", "${CLAUDE_PLUGIN_ROOT}/../code-review/hooks/evidence-tracker/evidence_tracker.py"),
 })
 
 
@@ -173,16 +167,14 @@ def find_dangling_references(dist_root: Path | None = None) -> list[dict]:
                     if _is_placeholder(rel):
                         continue
                     resolved = (plugin_root / rel).resolve()
-                    # `${CLAUDE_PLUGIN_ROOT}/../other-plugin/...` is a documented,
-                    # working cross-plugin pattern (e.g. developer-workflows'
-                    # commands reach github-projects' project_sync.py this way) —
-                    # a real install co-locates every one of a host's plugins
-                    # under one `plugins/` dir, so the right scope for THIS
-                    # extraction is "somewhere under this host's plugins/", not
-                    # strictly this one plugin's own subtree.
-                    host_plugins_root = plugin_root.parent.resolve()
-                    inside_host_plugins = resolved.is_relative_to(host_plugins_root)
-                    if resolved.exists() and inside_host_plugins:
+                    # Held to this plugin's own tree, like a markdown link. A
+                    # `${CLAUDE_PLUGIN_ROOT}/../other-plugin/...` path resolves
+                    # in this flat dist/ tree but names nothing in Claude Code's
+                    # plugin cache, which installs each plugin in its own
+                    # `<marketplace>/<plugin>/<version>/` directory. Reach a
+                    # sibling plugin through the caller's own
+                    # `scripts/sibling_plugin.py` instead.
+                    if resolved.exists() and resolved.is_relative_to(plugin_root.resolve()):
                         continue
                     results.append({
                         "plugin": plugin_root.name,
@@ -218,6 +210,9 @@ def main(argv: list[str] | None = None) -> int:
     for f in findings:
         tag = "GRANDFATHERED" if f["grandfathered"] and not args.strict else "DANGLING"
         print(f"check-dist-references: [{tag}] {f['plugin']}/{f['file']} -> {f['target']}", file=sys.stderr)
+    if any(f["target"].startswith("${CLAUDE_PLUGIN_ROOT}/../") for f in blocking):
+        print("check-dist-references: a sibling plugin is reached through the caller's "
+              "scripts/sibling_plugin.py, never ${CLAUDE_PLUGIN_ROOT}/../<plugin>/", file=sys.stderr)
 
     if blocking:
         print(f"check-dist-references: {len(blocking)} dangling reference(s) (excluding grandfathered)", file=sys.stderr)
