@@ -203,13 +203,16 @@ class EmittedCallSitesResolveInTheVersionedCache(unittest.TestCase):
                      ("maintenance", "development-lifecycle", "scripts/agentm_bridge.py")):
             self.assertIn(site, checked)
 
-    def test_design_doc_imports_its_plan_resolver_from_the_cache(self) -> None:
+    def test_design_helpers_import_their_plan_resolver_from_the_cache(self) -> None:
         # design_doc.py loads development-lifecycle's resolve_plan.py at import
-        # time; through the old sibling path, /design translate halted here.
-        res = subprocess.run(
-            [sys.executable, str(self.roots["design"] / "scripts" / "design_doc.py"), "--help"],
-            capture_output=True, text=True, timeout=60)
-        self.assertEqual(res.returncode, 0, res.stderr)
+        # time, and design_sequence.py imports design_doc; through the old
+        # sibling path, /design translate and sequence both halted here.
+        for script in ("design_doc.py", "design_sequence.py"):
+            with self.subTest(script=script):
+                res = subprocess.run(
+                    [sys.executable, str(self.roots["design"] / "scripts" / script), "--help"],
+                    capture_output=True, text=True, timeout=60)
+                self.assertEqual(res.returncode, 0, res.stderr)
 
 
 if __name__ == "__main__":
