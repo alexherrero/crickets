@@ -115,4 +115,9 @@ capabilities: [design-docs, design, architecture]
 #         located in the memory space (always-load tier first, then by
 #         filename): it graduated out of `_always-load/` into the dated tree
 #         and a tier-only probe had lost it, degrading every prose pass.
-version: 0.10.2
+# 0.10.3: prose_pass.py --timeout takes bare seconds (300 -> 300s) or a Go
+#         duration and rejects anything else as a usage error (exit 2, no
+#         degrade marker). A bare integer used to reach agy's --print-timeout
+#         unchanged, agy refused it, and the run degraded to the Claude-only
+#         pass. The wall-clock backstop now reads the unit too ("5m" was 125s).
+version: 0.10.3

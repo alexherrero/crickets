@@ -68,7 +68,9 @@ Options:
   --vault-path <path>        memory-root override (else $MEMORY_VAULT_PATH, else
                              .agentm-config.json vault_path + memory_root)
   --model <name>             agy display-string model (default: Gemini 3.1 Pro (High))
-  --timeout <dur>            agy --print-timeout value (default: 480s)
+  --timeout <dur>            agy --print-timeout value: a Go duration (90s, 5m,
+                             1h30m) or bare seconds (300 -> 300s); anything
+                             else is a usage error (default: 480s)
   -o, --output <file>        write the revised doc here instead of stdout
 
 Exit codes (cross-review.sh parity):
@@ -109,6 +111,15 @@ from pathlib import Path
 
 MODEL_DEFAULT = "Gemini 3.1 Pro (High)"
 TIMEOUT_DEFAULT = "480s"
+
+# agy parses --print-timeout with Go's time.ParseDuration: an optional sign,
+# then one or more <decimal><unit> terms ("90s", "5m0s", "1.5h"). A bare
+# number is not in that grammar, and agy rejecting it looked exactly like a
+# failed call — so the flag is checked here, before agy ever sees it.
+_GO_DURATION_TERM = re.compile(r"([0-9]+(?:\.[0-9]*)?|\.[0-9]+)(ns|us|µs|μs|ms|s|m|h)")
+_GO_DURATION = re.compile(rf"[-+]?(?:{_GO_DURATION_TERM.pattern})+")
+_GO_DURATION_UNIT_SECONDS = {"ns": 1e-9, "us": 1e-6, "µs": 1e-6, "μs": 1e-6,
+                             "ms": 1e-3, "s": 1.0, "m": 60.0, "h": 3600.0}
 VOICE_KERNEL_NAME = "voice-kernel.md"
 OVERLAY_DEFAULT = "2026-06-09-design-doc-prose.md"
 
@@ -400,6 +411,38 @@ def build_agy_argv(prompt: str, model: str, timeout: str,
     return [*(agy_cmd or ["agy"]), "-p", prompt, "--model", model, "--print-timeout", timeout]
 
 
+def go_duration_seconds(value: str) -> float:
+    """Seconds in a Go duration string. Raises ValueError on anything Go's
+    time.ParseDuration would reject — including a bare number other than 0."""
+    if value in ("0", "+0", "-0"):
+        return 0.0
+    if not _GO_DURATION.fullmatch(value):
+        raise ValueError(f"{value!r} is not a Go duration")
+    total = sum(float(n) * _GO_DURATION_UNIT_SECONDS[u]
+                for n, u in _GO_DURATION_TERM.findall(value))
+    return -total if value.startswith("-") else total
+
+
+def normalize_timeout(value: str) -> str:
+    """The --timeout value as agy's --print-timeout wants it. A bare integer
+    means seconds ("300" -> "300s"); anything else must already be a positive
+    Go duration ("90s", "5m", "1h30m"). Raises ValueError otherwise."""
+    s = value.strip()
+    if re.fullmatch(r"[0-9]+", s):
+        s += "s"
+    if go_duration_seconds(s) <= 0:
+        raise ValueError(f"{value!r} is not a positive duration")
+    return s
+
+
+def _timeout_arg(value: str) -> str:
+    try:
+        return normalize_timeout(value)
+    except ValueError as e:
+        raise argparse.ArgumentTypeError(
+            f"{e} — pass seconds (300) or a Go duration (90s, 5m, 1h30m)") from None
+
+
 def resolve_vault_path(cli_value: str | None) -> Path | None:
     """--vault-path → $MEMORY_VAULT_PATH → the configured MEMORY ROOT.
 
@@ -527,9 +570,9 @@ def _degraded(reason: str, diag: str) -> None:
 
 def _call_agy(agy_cmd: list[str], prompt: str, model: str, timeout: str) -> tuple[int, str]:
     # Hard wall-clock backstop: agy's own --print-timeout plus a grace period,
-    # so a wedged CLI can never hang the caller indefinitely.
-    m = re.match(r"^(\d+)", timeout)
-    wall = (int(m.group(1)) if m else 480) + 120
+    # so a wedged CLI can never hang the caller indefinitely. `timeout` is
+    # already normalized by main(), so every unit counts ("5m" is 300s here).
+    wall = go_duration_seconds(timeout) + 120
     try:
         r = subprocess.run(
             build_agy_argv(prompt, model, timeout, agy_cmd),
@@ -634,7 +677,10 @@ def main(argv=None) -> int:
     ap.add_argument("--voice-kernel")
     ap.add_argument("--vault-path")
     ap.add_argument("--model", default=MODEL_DEFAULT)
-    ap.add_argument("--timeout", default=TIMEOUT_DEFAULT)
+    # A bad value exits 2 here (argparse's usage error), before any agy call,
+    # so a typo never prints PROSE-PASS-DEGRADED or sends the caller to the
+    # Claude-only fallback.
+    ap.add_argument("--timeout", type=_timeout_arg, default=TIMEOUT_DEFAULT)
     ap.add_argument("-o", "--output")
     args = ap.parse_args(argv)
 
