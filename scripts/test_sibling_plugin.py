@@ -141,6 +141,7 @@ class ResolverCli(unittest.TestCase):
 
     def test_usage_errors_exit_2(self) -> None:
         for args in ((), ("design",), ("design", "../escape.py"), ("design", "/etc/hosts"),
+                     ("design", "C:\\x.py"), ("design", "scripts\\..\\..\\x.py"), ("design", ""),
                      ("Design!", "scripts/prose_pass.py")):
             with self.subTest(args=args):
                 self.assertEqual(self._run(*args).returncode, 2)

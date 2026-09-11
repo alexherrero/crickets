@@ -34,7 +34,7 @@ from __future__ import annotations
 import json
 import re
 import sys
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 PLUGIN_ROOT = Path(__file__).absolute().parent.parent
 
@@ -86,8 +86,10 @@ def resolve_sibling(plugin: str, rel: str, plugin_root: "Path | None" = None) ->
 def _usage_error(plugin: str, rel: str) -> "str | None":
     if not _PLUGIN_NAME.match(plugin):
         return f"not a plugin name: {plugin!r}"
-    parts = Path(rel).parts
-    if not parts or Path(rel).is_absolute() or ".." in parts:
+    # Judge both flavors: on Windows `/etc/hosts` has a root but no drive, so
+    # it is not is_absolute(), yet it still escapes the plugin.
+    posix, windows = PurePosixPath(rel), PureWindowsPath(rel)
+    if not rel or posix.anchor or windows.anchor or ".." in posix.parts + windows.parts:
         return f"relative path must stay inside the plugin: {rel!r}"
     return None
 
