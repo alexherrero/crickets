@@ -127,7 +127,8 @@ class TestWorkSpec(_NamedPlanWriterContract, unittest.TestCase):
         # existed in this file — locks that the wiring is real, not just
         # asserted from the other side.
         self.assertIn(
-            'python3 "${CLAUDE_PLUGIN_ROOT}/../code-review/hooks/evidence-tracker/evidence_tracker.py" --mode reset',
+            'python3 "$(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sibling_plugin.py" '
+            'code-review hooks/evidence-tracker/evidence_tracker.py)" --mode reset',
             self.text)
 
 

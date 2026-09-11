@@ -350,11 +350,11 @@ parent_part_slug: <the part's part_slug>
 
 ### Step 4 — Write via `stage_plan.py` (first activated, rest queued — never the singleton)
 
-The named-plan name for each part is `<doc-slug>-<part-slug>`. Use the shipped writer — cross-plugin, since `stage_plan.py` lives in **development-lifecycle** (a hard `requires:` dependency, always installed alongside this plugin); **never** write `PLAN.md` directly.
+The named-plan name for each part is `<doc-slug>-<part-slug>`. Use the shipped writer — cross-plugin, since `stage_plan.py` lives in **development-lifecycle** (a hard `requires:` dependency, always installed alongside this plugin); **never** write `PLAN.md` directly. Find it through this plugin's resolver — `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sibling_plugin.py" development-lifecycle scripts/stage_plan.py` prints its absolute path, `<stage_plan.py>` below. Claude Code installs each plugin in its own versioned directory, so a path that steps up out of this plugin's root names nothing.
 
 - **First part (topo-order):**
-  1. Get the staging path: `python3 "${CLAUDE_PLUGIN_ROOT}/../development-lifecycle/scripts/stage_plan.py" path <doc-slug>-<first-part-slug>` → write the PLAN body there.
-  2. Activate it: `python3 "${CLAUDE_PLUGIN_ROOT}/../development-lifecycle/scripts/stage_plan.py" activate <doc-slug>-<first-part-slug>` → promotes it to the active `PLAN-<doc-slug>-<first-part-slug>.md`. `activate` is **guarded** — exit 2 if an active plan of that name already exists; surface it, never clobber.
+  1. Get the staging path: `python3 <stage_plan.py> path <doc-slug>-<first-part-slug>` → write the PLAN body there.
+  2. Activate it: `python3 <stage_plan.py> activate <doc-slug>-<first-part-slug>` → promotes it to the active `PLAN-<doc-slug>-<first-part-slug>.md`. `activate` is **guarded** — exit 2 if an active plan of that name already exists; surface it, never clobber.
 - **Each remaining part:** get its staging `path` (`stage_plan.py path <doc-slug>-<part-slug>`, same cross-plugin invocation) and write the PLAN body there — it stays inert in `queued-plans/`, invisible to `/work` until a coordinator activates it.
 
 If a staged or active file already exists on a re-run, show the diff and ask **Overwrite / Keep existing / Cancel** per file — **never silent-clobber** (mirrors translate's Step 5).

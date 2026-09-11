@@ -54,10 +54,10 @@ class TestFindDanglingReferences(unittest.TestCase):
         self.assertFalse(findings[0]["grandfathered"])
 
     def test_link_escaping_the_plugin_tree_is_dangling_even_if_file_exists_elsewhere(self) -> None:
-        # A markdown link (not ${CLAUDE_PLUGIN_ROOT}) escaping to a sibling
-        # plugin is still dangling — plain relative links are NOT the
-        # documented cross-plugin escape hatch; only ${CLAUDE_PLUGIN_ROOT}/..
-        # is (see the sibling-plugin test below).
+        # A markdown link escaping to a sibling plugin is dangling even when
+        # the file exists in this flat tree — Claude Code's versioned plugin
+        # cache has no such path. The same holds for ${CLAUDE_PLUGIN_ROOT}/..
+        # (see the sibling-plugin test below).
         _write(self.dist / "claude-code" / "plugins" / "demo" / "hooks" / "h.md",
                "See [sibling](../../other/README.md).\n")
         _write(self.dist / "claude-code" / "plugins" / "other" / "README.md", "# other\n")
@@ -65,10 +65,22 @@ class TestFindDanglingReferences(unittest.TestCase):
         self.assertEqual(len(findings), 1)
         self.assertEqual(findings[0]["target"], "../../other/README.md")
 
-    def test_plugin_root_var_reaching_a_sibling_plugin_resolves_cleanly(self) -> None:
+    def test_plugin_root_var_reaching_a_sibling_plugin_is_dangling(self) -> None:
+        # The file exists in this flat tree, but Claude Code installs each
+        # plugin at cache/<marketplace>/<plugin>/<version>/, where
+        # ${CLAUDE_PLUGIN_ROOT}/../other names nothing. The documenter's prose
+        # pass degraded on every dispatch through exactly this path.
         _write(self.dist / "claude-code" / "plugins" / "demo" / "commands" / "c.md",
                "Run `python3 ${CLAUDE_PLUGIN_ROOT}/../other/scripts/tool.py`.\n")
         _write(self.dist / "claude-code" / "plugins" / "other" / "scripts" / "tool.py", "# tool\n")
+        findings = cdr.find_dangling_references(self.dist)
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0]["target"], "${CLAUDE_PLUGIN_ROOT}/../other/scripts/tool.py")
+
+    def test_plugin_root_var_reaching_the_sibling_resolver_resolves_cleanly(self) -> None:
+        _write(self.dist / "claude-code" / "plugins" / "demo" / "commands" / "c.md",
+               "Run `python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/sibling_plugin.py\" other scripts/tool.py`.\n")
+        _write(self.dist / "claude-code" / "plugins" / "demo" / "scripts" / "sibling_plugin.py", "# resolver\n")
         findings = cdr.find_dangling_references(self.dist)
         self.assertEqual(findings, [])
 
