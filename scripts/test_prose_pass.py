@@ -39,6 +39,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 _HERE = Path(__file__).resolve().parent
 _REPO = _HERE.parent
@@ -284,6 +285,45 @@ class PromptAssemblyTests(unittest.TestCase):
         self.assertEqual(argv[:3], ["agy", "-p", "THE PROMPT"])
         self.assertEqual(argv[3:], ["--model", "Gemini 3.1 Pro (High)",
                                     "--print-timeout", "480s"])
+
+
+class TimeoutTests(unittest.TestCase):
+    """agy reads --print-timeout as a Go duration. A bare integer used to go
+    through as-is, agy rejected it, and the run degraded as if agy were
+    unavailable (seen 2026-09-10 with --timeout 300)."""
+
+    def test_bare_integer_means_seconds(self):
+        self.assertEqual(prose_pass.normalize_timeout("300"), "300s")
+
+    def test_go_durations_pass_through(self):
+        for value in ("90s", "5m", "5m0s", "1h30m", "1.5h", "480s"):
+            with self.subTest(value=value):
+                self.assertEqual(prose_pass.normalize_timeout(value), value)
+
+    def test_non_durations_are_rejected(self):
+        for value in ("", "abc", "5 m", "5min", "1.5", "s", "300x", "0", "0s", "-5s"):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                prose_pass.normalize_timeout(value)
+
+    def test_every_unit_counts_toward_seconds(self):
+        cases = {"90s": 90, "5m": 300, "5m0s": 300, "1h30m": 5400,
+                 "1.5h": 5400, "500ms": 0.5, ".5s": 0.5}
+        for value, seconds in cases.items():
+            with self.subTest(value=value):
+                self.assertAlmostEqual(prose_pass.go_duration_seconds(value), seconds)
+
+    def test_wall_clock_backstop_reads_the_unit(self):
+        # The backstop used to read only the leading digits, so "5m" got a
+        # 125s wall clock and killed agy long before its own 300s timeout.
+        seen = {}
+
+        def fake_run(argv, **kw):
+            seen["timeout"] = kw["timeout"]
+            return subprocess.CompletedProcess(argv, 0, stdout="ok", stderr="")
+
+        with mock.patch.object(prose_pass.subprocess, "run", fake_run):
+            prose_pass._call_agy(["agy"], "prompt", "model", "5m")
+        self.assertEqual(seen["timeout"], 300 + 120)
 
 
 class VaultResolutionTests(unittest.TestCase):
@@ -548,6 +588,31 @@ class EndToEndTests(unittest.TestCase):
             self.assertEqual(r.stdout, expected)
             self.assertNotIn("PROSE-PASS-DEGRADED", r.stdout)
             self.assertIn("stream truncation suspected", r.stderr)
+
+    def test_timeout_reaches_agy_as_a_go_duration(self):
+        for value, sent in (("300", "300s"), ("90s", "90s"), ("5m", "5m")):
+            with self.subTest(value=value), tempfile.TemporaryDirectory() as t:
+                tmp = Path(t)
+                _make_vault(tmp)
+                impl = _write_fake_agy(tmp, _ECHO_DOC_IMPL)
+                r = _run_pass(tmp, "--fact-guard-text", "a truth",
+                              "--timeout", value, fake_impl=impl)
+                self.assertEqual(r.returncode, 0, f"stderr={r.stderr!r}")
+                argv = json.loads((tmp / "args.json").read_text(encoding="utf-8"))
+                self.assertEqual(argv[-2:], ["--print-timeout", sent])
+
+    def test_bad_timeout_is_a_usage_error_not_a_degradation(self):
+        with tempfile.TemporaryDirectory() as t:
+            tmp = Path(t)
+            _make_vault(tmp)
+            impl = _write_fake_agy(tmp, _ECHO_DOC_IMPL)
+            r = _run_pass(tmp, "--fact-guard-text", "a truth",
+                          "--timeout", "five minutes", fake_impl=impl)
+            self.assertEqual(r.returncode, 2, f"stderr={r.stderr!r}")
+            self.assertNotIn("PROSE-PASS-DEGRADED", r.stdout)
+            self.assertIn("--timeout", r.stderr)
+            # Rejected before agy was ever called.
+            self.assertFalse((tmp / "args.json").exists())
 
 
 

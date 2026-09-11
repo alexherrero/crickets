@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Patch: a timeout typo no longer reads as agy being down
+
+`prose_pass.py --timeout 300` printed `PROSE-PASS-DEGRADED: agy call failed` and exited 1, while the default `480s` worked. The value went straight to agy's `--print-timeout`, which only takes a Go duration. agy refused the bare integer, and the script reported that as a failed call, so a usage typo sent the caller down the Claude-only fallback.
+
+### Fixed
+
+- `design` 0.10.3 — `--timeout` takes bare seconds (`300` becomes `300s`) or a Go duration (`90s`, `5m`, `1h30m`). Anything else, or a duration that isn't positive, stops at argument parsing with exit 2 and no degrade marker, before agy is called. The wall-clock backstop around the agy call now reads the unit too. It used to read only the leading digits, so `--timeout 5m` got a 125-second backstop that killed agy before its own 300-second timeout. `test_prose_pass.py` pins the normalization, the pass-through, the rejection without a marker, and the backstop.
+
 ### Patch: a plugin finds its siblings in Claude Code's versioned cache
 
 The documenter's cross-model prose pass never ran on an installed machine. It reached the design plugin's `prose_pass.py` as `${CLAUDE_PLUGIN_ROOT}/../design/scripts/prose_pass.py`, which works in the flat `dist/` tree. Claude Code installs each plugin at `cache/<marketplace>/<plugin>/<version>/`, where that path names nothing. Every dispatch printed `PROSE-PASS-DEGRADED` and fell back to a Claude-only pass. The same pattern stopped `/design translate` at import time. It broke `/design`'s plan staging, board sync, diagnosis seeding and the evidence-tracker reset on every Claude Code install. Thirteen paths in markdown and one in Python used it, and `check-dist-references` passed all of them.
