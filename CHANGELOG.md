@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.38.0] — 2026-09-11 — Minor: the shepherd proves what landed, and every reader takes MEMORY_ROOT first
+
+**MINOR.** Two new capabilities in `development-lifecycle`, both from arming the worktree shepherd against the real repos: it can now prove a squash-merged branch landed by the content `main` holds, and it sees a worktree stranded on `main` and frees it. The rest are fixes across five plugins. Every reader takes agentm's renamed `MEMORY_ROOT` first, so agentm can drop the old name on schedule. A plugin finds its siblings in Claude Code's versioned cache, which had degraded every installed prose pass to Claude-only without saying so. The prose pass catches a fact-guard copied in pieces, a timeout typo no longer reads as agy being down, and a handoff pack carries agentm's marker so its prompts are never mined as the operator's own words.
+
 ### Patch: every reader takes `MEMORY_ROOT` first
 
 agentm renamed `MEMORY_VAULT_PATH` to `MEMORY_ROOT` on 2026-09-11, in its PR "MEMORY_VAULT_PATH has one meaning, and a name that says it: MEMORY_ROOT". The value is the memory root: the directory holding `memory/`, `personal/`, `projects/` and `desk/`, never the vault root. agentm's four memory hooks and `agentm-runner.sh` export both names with the same value for one release, then drop the old one. Every crickets reader read only the old name, so on the day the alias export goes, the conflict-merger hook, `doctor_vault.py`, `prose_pass.py`, `resolve_plan.py`'s vault probe, `diagnose.py`, `wiki_watch_config.py`, `recent-wiki-changes.{sh,ps1}` and the diataxis-author scripts would all stop seeing the vault the hooks had just handed them.
@@ -52,6 +56,14 @@ The documenter's cross-model prose pass never ran on an installed machine. It re
 
 - `check-dist-references` now holds a `${CLAUDE_PLUGIN_ROOT}` path to its own plugin tree and names the resolver when one steps out. The `work.md` → evidence-tracker grandfather entry is gone, since that path no longer ships.
 - `test_sibling_plugin.py` rebuilds Claude Code's cache from `dist/claude-code/` and resolves every call site in it, and it pins the four resolver copies byte-identical. Put the old documenter path back and the gate goes red.
+
+### Patch: a handoff pack carries agentm's marker on every prompt
+
+agentm's reflect miner mines nothing from a pasted message that carries `<!-- agentm:handoff — agent-authored; not the operator's own words -->`. A handoff pack is exactly that kind of text, written by the agent for the operator to paste into the next session, and a labeled sample found five "User stated" preferences mined from one paste.
+
+### Fixed
+
+- `tokens` 0.6.2 — the handoff-pack renderer puts the marker at the top of `PROMPTS.md` and inside every prompt's own section and quoted paste block, so a section copied on its own still carries it. The marker stays byte-identical to agentm's `reflect.HANDOFF_MARKER`; `test_handoff_pack_marker.py` pins it.
 
 ### Minor: the shepherd learns what "landed" means in a squash-merge repo
 

@@ -59,7 +59,7 @@ The [wiki](https://github.com/alexherrero/crickets/wiki) covers everything there
 - [Reference](https://github.com/alexherrero/crickets/wiki/Reference) — plugin anatomy, the manifest schema, and the install modes.
 
 > [!NOTE]
-> **Latest release: [v3.36.0](https://github.com/alexherrero/crickets/releases/tag/v3.36.0).** The board can say "parked" now, and something finally checks what it says — a new gate fails when a row's status disagrees with its issue being open or closed, in either direction.
+> **Latest release: [v3.38.0](https://github.com/alexherrero/crickets/releases/tag/v3.38.0).** Every reader takes agentm's renamed `MEMORY_ROOT` first, so agentm can drop the old name on schedule; the worktree shepherd now proves a squash-merged branch landed and frees a worktree stranded on `main`; and a plugin finds its siblings in Claude Code's versioned cache.
 
 ---
 
