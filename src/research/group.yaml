@@ -36,5 +36,9 @@ standalone: false
 # 0.2.1: codebase_improvement.py probes the memory space for _watchlist
 #         (memory -> personal -> personal-private) instead of pinning
 #         `personal/`, which the stage-2 migration retired.
-version: 0.2.1
+# 0.2.2: codebase_improvement.py writes the watchlist at
+#         `Projects/agentm/_watchlist` when the vault has it (agentm-vault
+#         plan 05 moved the feature's state into its project) and falls back
+#         to the memory-space spelling.
+version: 0.2.2
 capabilities: [research]

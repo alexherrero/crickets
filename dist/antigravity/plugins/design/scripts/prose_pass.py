@@ -127,6 +127,13 @@ _GO_DURATION = re.compile(rf"[-+]?(?:{_GO_DURATION_TERM.pattern})+")
 _GO_DURATION_UNIT_SECONDS = {"ns": 1e-9, "us": 1e-6, "µs": 1e-6, "μs": 1e-6,
                              "ms": 1e-3, "s": 1.0, "m": 60.0, "h": 3600.0}
 VOICE_KERNEL_NAME = "voice-kernel.md"
+# agentm-vault plan 05 (2026-09-11): the pen's voice kernel folded into the
+# operator's `<vault>/standards/user-preferences.md`, and the voice rules
+# moved to `<vault>/standards/voice/`. Both sit at the vault root beside a
+# nested memory root; a flat vault holds them inside the root.
+STANDARDS_DIRNAME = "standards"
+PREFERENCES_NAME = "user-preferences.md"
+VOICE_DIRNAME = "voice"
 OVERLAY_DEFAULT = "2026-06-09-design-doc-prose.md"
 
 # The memory space, newest generation first — `personal-private/` -> `personal/`
@@ -559,6 +566,10 @@ def resolve_voice_kernel(vault: Path) -> Path | None:
     tree (`memory/2026/07/voice-kernel.md`) while staying the live kernel. A
     resolver that only knows the tier loses the file the moment it is demoted.
     """
+    for s in standards_dir_candidates(vault):
+        cand = s / PREFERENCES_NAME
+        if cand.is_file():
+            return cand
     for seg in MEMORY_SPACE_SEGMENTS:
         cand = vault / seg / "_always-load" / VOICE_KERNEL_NAME
         if cand.is_file():
@@ -597,12 +608,30 @@ def resolve_agy_cmd() -> list[str] | None:
     return [agy_bin] if agy_bin else None
 
 
+def standards_dir_candidates(vault: Path) -> list[Path]:
+    """`<vault>/standards` spelled both ways, the sibling first when the
+    memory root is nested (witnessed by `.obsidian/` at the parent, or by a
+    `standards/` directory beside the root — the loader's own contract)."""
+    out = []
+    witnessed = root_sibling_witnessed(vault) or (
+        (vault.parent / STANDARDS_DIRNAME).is_dir() and not (vault / ".obsidian").is_dir())
+    if witnessed:
+        out.append(vault.parent / STANDARDS_DIRNAME)
+    out.append(vault / STANDARDS_DIRNAME)
+    return out
+
+
 def wiki_style_dir(vault: Path) -> Path:
-    """The vault's global wiki-style overlay store, newest layout first.
+    """The vault's global wiki-style overlay store, newest layout first:
+    `standards/voice/` since the memory-root trims, then the project-space
+    generations.
 
     Returns the first generation that exists; with none present, the current
     layout — never a literal pinned to one generation.
     """
+    for s in standards_dir_candidates(vault):
+        if (s / VOICE_DIRNAME).is_dir():
+            return s / VOICE_DIRNAME
     witnessed = root_sibling_witnessed(vault)
     flat = flat_root_space_present(vault)
     for seg in PROJECT_SPACE_SEGMENTS:

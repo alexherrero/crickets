@@ -160,5 +160,29 @@ class RescanNeverResetsOperatorReviewTests(unittest.TestCase):
         self.assertIn("updated: 2023-11-16T02:00:00+00:00", second_text)  # advanced
 
 
+class WatchlistHomeTests(unittest.TestCase):
+    """agentm-vault plan 05: the watchlist lives in the vault's project space
+    when the vault has it there; the memory-space spelling stays the fallback."""
+
+    def test_projects_watchlist_wins_when_present(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "Vault"
+            (root / ".obsidian").mkdir(parents=True)
+            mr = root / "Agent"
+            old = mr / "memory" / "_watchlist"
+            old.mkdir(parents=True)
+            self.assertEqual(codebase_improvement.watchlist_dir(mr), old)
+            new = root / "Projects" / "agentm" / "_watchlist"
+            new.mkdir(parents=True)
+            self.assertEqual(codebase_improvement.watchlist_dir(mr).resolve(), new.resolve())
+
+    def test_a_flat_vault_probes_inside_the_root_only(self):
+        with tempfile.TemporaryDirectory() as td:
+            flat = Path(td) / "Flat"
+            (flat / ".obsidian").mkdir(parents=True)
+            (Path(td) / "Projects" / "agentm" / "_watchlist").mkdir(parents=True)  # not the vault's
+            self.assertEqual(codebase_improvement.watchlist_dir(flat), flat / "memory" / "_watchlist")
+
+
 if __name__ == "__main__":
     unittest.main()

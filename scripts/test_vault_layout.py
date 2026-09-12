@@ -856,5 +856,70 @@ class TestRootSpaceWitness(unittest.TestCase):
             self.assertEqual(_rel(vl.global_wiki_style_dir(memory_root), memory_root),
                              "desk/projects/_global/wiki-style")
 
+class TestMemoryRootTrims(unittest.TestCase):
+    """agentm-vault plan 05: standards/ is the always-load tier, standards/voice/
+    the voice library, Projects/agentm/_watchlist the watchlist — each read
+    first, the retired rung as the fallback, nothing conjured."""
+
+    def _nested(self, td: str) -> Path:
+        root = Path(td) / "Vault"
+        (root / ".obsidian").mkdir(parents=True)
+        memory_root = root / "Agent"
+        memory_root.mkdir()
+        return memory_root
+
+    def test_voice_library_wins_over_the_project_space_store(self):
+        with tempfile.TemporaryDirectory() as td:
+            mr = self._nested(td)
+            old = mr.parent / "Projects" / "_global" / "wiki-style"
+            old.mkdir(parents=True)
+            self.assertEqual(vl.global_wiki_style_dir(mr).resolve(), old.resolve())
+            new = mr.parent / "standards" / "voice"
+            new.mkdir(parents=True)
+            self.assertEqual(vl.global_wiki_style_dir(mr).resolve(), new.resolve())
+            self.assertEqual(vl.global_wiki_style_dir_if_present(mr).resolve(), new.resolve())
+
+    def test_standards_without_a_voice_library_is_not_the_store(self):
+        with tempfile.TemporaryDirectory() as td:
+            mr = self._nested(td)
+            (mr.parent / "standards").mkdir()
+            self.assertIsNone(vl.global_wiki_style_dir_if_present(mr))
+
+    def test_always_load_dir_is_standards_when_present(self):
+        with tempfile.TemporaryDirectory() as td:
+            mr = self._nested(td)
+            pen = mr / "memory" / "_always-load"
+            pen.mkdir(parents=True)
+            self.assertEqual(vl.always_load_dir(mr), pen)
+            (mr.parent / "standards").mkdir()
+            self.assertEqual(vl.always_load_dir(mr).resolve(), (mr.parent / "standards").resolve())
+
+    def test_a_standards_sibling_witnesses_the_vault_root_without_obsidian(self):
+        with tempfile.TemporaryDirectory() as td:
+            mr = Path(td) / "Agent"
+            mr.mkdir()
+            (Path(td) / "standards" / "voice").mkdir(parents=True)
+            self.assertEqual(vl.global_wiki_style_dir(mr).resolve(),
+                             (Path(td) / "standards" / "voice").resolve())
+
+    def test_flat_vault_reads_standards_inside_the_root(self):
+        with tempfile.TemporaryDirectory() as td:
+            flat = Path(td) / "Flat"
+            (flat / ".obsidian").mkdir(parents=True)
+            (flat / "standards" / "voice").mkdir(parents=True)
+            (Path(td) / "standards").mkdir()  # the operator's own folder beside a flat vault
+            self.assertEqual(vl.global_wiki_style_dir(flat), flat / "standards" / "voice")
+
+    def test_watchlist_is_the_projects_one_when_present(self):
+        with tempfile.TemporaryDirectory() as td:
+            mr = self._nested(td)
+            old = mr / "memory" / "_watchlist"
+            old.mkdir(parents=True)
+            self.assertEqual(vl.watchlist_dir(mr), old)
+            new = mr.parent / "Projects" / "agentm" / "_watchlist"
+            new.mkdir(parents=True)
+            self.assertEqual(vl.watchlist_dir(mr).resolve(), new.resolve())
+
+
 if __name__ == "__main__":
     unittest.main()
