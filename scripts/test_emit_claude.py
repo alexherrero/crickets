@@ -129,7 +129,7 @@ class TestClaudeEmitter(unittest.TestCase):
         # scripts/sibling_plugin.py, which resolves Claude Code's versioned cache.
         # 0.11.3 = every reader takes $MEMORY_ROOT first, $MEMORY_VAULT_PATH only
         # as the deprecated alias (agentm's 2026-09-11 rename).
-        self.assertEqual(self._plugin_json("wiki")["version"], "0.11.3")
+        self.assertEqual(self._plugin_json("wiki")["version"], "0.11.4")
         # 0.3.0 = check-no-pii.sh + templates/hooks/pre-push moved into src/pii/
         # so they actually ship inside the plugin payload (R2.4 task 7).
         # 0.3.1 = check-no-pii.sh scan collapsed to one grep per file (fixes a

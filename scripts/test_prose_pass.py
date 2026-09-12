@@ -744,5 +744,38 @@ class TestWikiStyleDirWitness(unittest.TestCase):
             (flat / "Projects" / "_global" / "wiki-style").mkdir(parents=True)
             self.assertEqual(prose_pass.wiki_style_dir(flat), flat / "Projects" / "_global" / "wiki-style")
 
+class TestMemoryRootTrimsResolution(unittest.TestCase):
+    """agentm-vault plan 05: the kernel is `standards/user-preferences.md` and
+    the overlay store `standards/voice/` on a migrated vault; the pen and the
+    project-space stores still resolve on one that never migrated."""
+
+    def test_kernel_prefers_the_preferences_file(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "Vault"
+            (root / ".obsidian").mkdir(parents=True)
+            mr = root / "Agent"
+            pen = mr / "memory" / "_always-load"
+            pen.mkdir(parents=True)
+            (pen / "voice-kernel.md").write_text("pen\n", encoding="utf-8")
+            self.assertEqual(prose_pass.resolve_voice_kernel(mr), pen / "voice-kernel.md")
+            (root / "standards").mkdir()
+            (root / "standards" / "user-preferences.md").write_text("mine\n", encoding="utf-8")
+            self.assertEqual(prose_pass.resolve_voice_kernel(mr).resolve(),
+                             (root / "standards" / "user-preferences.md").resolve())
+
+    def test_overlay_store_prefers_the_voice_library(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "Vault"
+            (root / ".obsidian").mkdir(parents=True)
+            mr = root / "Agent"
+            mr.mkdir()
+            (root / "Projects" / "_global" / "wiki-style").mkdir(parents=True)
+            self.assertEqual(prose_pass.wiki_style_dir(mr).resolve(),
+                             (root / "Projects" / "_global" / "wiki-style").resolve())
+            (root / "standards" / "voice").mkdir(parents=True)
+            self.assertEqual(prose_pass.wiki_style_dir(mr).resolve(),
+                             (root / "standards" / "voice").resolve())
+
+
 if __name__ == "__main__":
     unittest.main()

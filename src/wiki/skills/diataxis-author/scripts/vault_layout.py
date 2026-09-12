@@ -176,8 +176,57 @@ def resolve_under_projects(vault, *parts: str) -> Path:
     return Path(vault).joinpath(*CURRENT_SPACE_SEGMENT, *parts)
 
 
+# ── standards/ — the always-load tier and the voice library ─────────────────
+#
+# agentm-vault plan 05 (the memory-root trims, 2026-09-11) moved two more
+# stores. The always-load pen `<memory-space>/_always-load/` folded into
+# `<vault>/standards/`, the operator's rule files; the cross-project voice
+# rules left `<projects-space>/_global/wiki-style/` for `<vault>/standards/voice/`.
+# Both sit at the VAULT root beside a nested memory root, so the sibling probe
+# comes first — under the same witness the `..` Projects rung uses, or a
+# `standards/` directory beside the root (the loader's own contract) — and the
+# flat `<memory-root>/standards` second. The retired rungs stay behind as the
+# fallback, so a vault on either side of the move resolves; nothing here
+# conjures `standards/` on a vault that has none.
+
+STANDARDS_DIRNAME = "standards"
+VOICE_DIRNAME = "voice"
+
+
+def standards_dir_candidates(vault) -> list:
+    """`<vault>/standards` spelled both ways, sibling first when witnessed."""
+    v = Path(vault)
+    out = []
+    witnessed = root_sibling_witnessed(v) or (
+        (v.parent / STANDARDS_DIRNAME).is_dir() and not (v / ".obsidian").is_dir())
+    if witnessed:
+        out.append(v.parent / STANDARDS_DIRNAME)
+    out.append(v / STANDARDS_DIRNAME)
+    return out
+
+
+def standards_dir_if_present(vault):
+    """The standards directory on whichever spelling exists, else None."""
+    for cand in standards_dir_candidates(vault):
+        if cand.is_dir():
+            return cand
+    return None
+
+
+def voice_library_dir_if_present(vault):
+    """`<standards>/voice/` when it exists, else None."""
+    s = standards_dir_if_present(vault)
+    if s is not None and (s / VOICE_DIRNAME).is_dir():
+        return s / VOICE_DIRNAME
+    return None
+
+
 def global_wiki_style_dir(vault) -> Path:
-    """The cross-project voice-overlay store, `<projects-space>/_global/wiki-style`."""
+    """The cross-project voice store: `<vault>/standards/voice/` since the
+    memory-root trims, `<projects-space>/_global/wiki-style/` before them."""
+    voice = voice_library_dir_if_present(vault)
+    if voice is not None:
+        return voice
     return resolve_under_projects(vault, "_global", "wiki-style")
 
 
@@ -220,12 +269,29 @@ def resolve_under_memory(root, *parts: str) -> Path:
 
 
 def always_load_dir(root) -> Path:
-    """The always-injected entry tier, `<memory-space>/_always-load`."""
+    """The always-injected tier: `<vault>/standards/` since the memory-root
+    trims (the operator's rule files, read whole every session), the retired
+    pen `<memory-space>/_always-load` on a vault that still has only that.
+    A convention captured here lands in standards/ — where the loader reads
+    it — on a migrated vault, and in the pen on an unmigrated one."""
+    s = standards_dir_if_present(root)
+    if s is not None:
+        return s
     return resolve_under_memory(root, "_always-load")
 
 
+# The project every feature's working state files under since plan 05: the
+# watchlists are agentm's feature state, not memory, and you edit them in
+# Obsidian, so they live in the vault's project space.
+FEATURE_PROJECT = "agentm"
+
+
 def watchlist_dir(root) -> Path:
-    """The forward-learning watchlist, `<memory-space>/_watchlist`."""
+    """The forward-learning watchlist: `<projects-space>/agentm/_watchlist`
+    since the memory-root trims, `<memory-space>/_watchlist` before them."""
+    found = resolve_existing_under_projects(root, FEATURE_PROJECT, "_watchlist")
+    if found is not None:
+        return found
     return resolve_under_memory(root, "_watchlist")
 
 
@@ -253,4 +319,7 @@ def global_wiki_style_dir_if_present(vault):
     store anywhere" (worth a word to the operator) from "store present, no
     lessons in it" (a legitimately empty store — say nothing).
     """
+    voice = voice_library_dir_if_present(vault)
+    if voice is not None:
+        return voice
     return resolve_existing_under_projects(vault, "_global", "wiki-style")

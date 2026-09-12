@@ -165,7 +165,15 @@ standalone: true
 #         same value, so a kernel on either side of agentm's 2026-09-11
 #         rename reads them. Docs, help text and the documenter contract
 #         name MEMORY_ROOT.
-version: 0.11.3
+# 0.11.4: agentm-vault plan 05 (the memory-root trims, 2026-09-11) moved the
+#         always-load pen into `<vault>/standards/` and the cross-project
+#         voice rules into `<vault>/standards/voice/`; the watchlist is
+#         `Projects/agentm/_watchlist`. vault_layout resolves each new home
+#         first and the retired one as the fallback, so style_resolver,
+#         author, relocate, agentmemory_conventions and rule_pack read the
+#         voice library wherever the vault holds it; a captured convention
+#         lands in standards/ on a migrated vault.
+version: 0.11.4
 capabilities: [wiki-maintenance, wiki]
 renamed_from: [wiki-maintenance]
 enhances:
