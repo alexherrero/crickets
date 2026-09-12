@@ -248,8 +248,10 @@ class TestVaultConfiguredAndReachableProbe(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="rp-vaultprobe-"))
         self._saved_env = {
-            k: os.environ.get(k) for k in ("MEMORY_VAULT_PATH", "AGENTM_INSTALL_PREFIX")
+            k: os.environ.get(k)
+            for k in ("MEMORY_ROOT", "MEMORY_VAULT_PATH", "AGENTM_INSTALL_PREFIX")
         }
+        os.environ.pop("MEMORY_ROOT", None)
         os.environ.pop("MEMORY_VAULT_PATH", None)
         os.environ.pop("AGENTM_INSTALL_PREFIX", None)
 
@@ -268,12 +270,32 @@ class TestVaultConfiguredAndReachableProbe(unittest.TestCase):
     def test_env_override_existing_dir_true(self):
         vault_dir = self.tmp / "envvault"
         vault_dir.mkdir()
-        os.environ["MEMORY_VAULT_PATH"] = str(vault_dir)
+        os.environ["MEMORY_ROOT"] = str(vault_dir)
         self.assertTrue(rp._vault_configured_and_reachable())
 
     def test_env_override_nonexistent_dir_false(self):
-        os.environ["MEMORY_VAULT_PATH"] = str(self.tmp / "does-not-exist")
+        os.environ["MEMORY_ROOT"] = str(self.tmp / "does-not-exist")
         self.assertFalse(rp._vault_configured_and_reachable())
+
+    def test_deprecated_alias_still_read_when_memory_root_unset(self):
+        # MEMORY_VAULT_PATH is the name agentm exported before 2026-09-11 and
+        # keeps as an alias for one release; alone, it still counts as reachable.
+        vault_dir = self.tmp / "aliasvault"
+        vault_dir.mkdir()
+        os.environ["MEMORY_VAULT_PATH"] = str(vault_dir)
+        self.assertTrue(rp._vault_configured_and_reachable())
+
+    def test_memory_root_wins_over_the_alias(self):
+        # MEMORY_ROOT names a missing dir while the alias names a real one:
+        # the probe answers for MEMORY_ROOT, so it is False.
+        vault_dir = self.tmp / "aliasvault"
+        vault_dir.mkdir()
+        os.environ["MEMORY_ROOT"] = str(self.tmp / "does-not-exist")
+        os.environ["MEMORY_VAULT_PATH"] = str(vault_dir)
+        self.assertFalse(rp._vault_configured_and_reachable())
+        # Empty MEMORY_ROOT (CI's isolation value) falls through to the alias.
+        os.environ["MEMORY_ROOT"] = ""
+        self.assertTrue(rp._vault_configured_and_reachable())
 
     def test_no_config_file_false(self):
         empty_prefix = self.tmp / "no-config-here"

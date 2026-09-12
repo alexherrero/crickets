@@ -443,7 +443,7 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     )
     parser.add_argument(
         "--vault-path", default=None,
-        help="vault root for the voice overlay (default: $MEMORY_VAULT_PATH)",
+        help="vault root for the voice overlay (default: $MEMORY_ROOT)",
     )
     parser.add_argument(
         "--project-slug", default=None,

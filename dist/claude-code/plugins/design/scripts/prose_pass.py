@@ -70,8 +70,9 @@ Options:
   --voice-kernel <path>      override the always-load voice kernel (default:
                              located in the vault's memory space — the
                              always-load tier first, then by filename)
-  --vault-path <path>        memory-root override (else $MEMORY_VAULT_PATH, else
-                             .agentm-config.json vault_path + memory_root)
+  --vault-path <path>        memory-root override (else $MEMORY_ROOT, else
+                             .agentm-config.json vault_path + memory_root;
+                             $MEMORY_VAULT_PATH is the deprecated alias)
   --model <name>             agy display-string model (default: Gemini 3.1 Pro (High))
   --timeout <dur>            agy --print-timeout value: a Go duration (90s, 5m,
                              1h30m) or bare seconds (300 -> 300s); anything
@@ -509,7 +510,7 @@ def _timeout_arg(value: str) -> str:
 
 
 def resolve_vault_path(cli_value: str | None) -> Path | None:
-    """--vault-path → $MEMORY_VAULT_PATH → the configured MEMORY ROOT.
+    """--vault-path → $MEMORY_ROOT → the configured MEMORY ROOT.
 
     Mirrors harness_memory.memory_root(), not vault_path() — the distinction is
     load-bearing. `vault_path` is the Obsidian vault; the memory root is
@@ -517,14 +518,16 @@ def resolve_vault_path(cli_value: str | None) -> Path | None:
     path this script builds (the voice kernel, the wiki-style store) addresses
     agent content, so it hangs off the memory root. Reading `vault_path` alone
     lands one level too high, where on a case-insensitive filesystem the joined
-    segments can collide with the operator's own folders. `$MEMORY_VAULT_PATH`
-    is returned as-is: it already names the memory tree, so joining the prefix
-    again would address `<vault>/Agent/Agent`.
+    segments can collide with the operator's own folders. `$MEMORY_ROOT` is
+    returned as-is: it already names the memory tree, so joining the prefix
+    again would address `<vault>/Agent/Agent`. `$MEMORY_VAULT_PATH` is the
+    deprecated alias agentm still exports for one release; it is read only
+    when `$MEMORY_ROOT` is unset or empty.
 
     Not imported from the kernel — that is not bundled with a dist-installed
     plugin. Returns a real directory or None; never a cached literal.
     """
-    for raw in (cli_value, os.environ.get("MEMORY_VAULT_PATH", "")):
+    for raw in (cli_value, os.environ.get("MEMORY_ROOT") or os.environ.get("MEMORY_VAULT_PATH", "")):
         if raw and raw.strip():
             p = Path(os.path.expanduser(raw.strip()))
             return p if p.is_dir() else None
@@ -777,7 +780,7 @@ def main(argv=None) -> int:
     vault = resolve_vault_path(args.vault_path)
     if vault is None:
         _degraded("vault unresolved",
-                  "no vault root (--vault-path / $MEMORY_VAULT_PATH / "
+                  "no vault root (--vault-path / $MEMORY_ROOT / "
                   ".agentm-config.json::vault_path) — voice pack unreachable")
         return 1
     kernel_path = (Path(os.path.expanduser(args.voice_kernel))

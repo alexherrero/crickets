@@ -145,7 +145,7 @@ def _check_vault_path(
                 "vault-path",
                 FAIL,
                 "no vault_path configured — set it (agentm_config --vault-path "
-                "<dir>) or export MEMORY_VAULT_PATH",
+                "<dir>) or export MEMORY_ROOT",
             ),
             None,
         )
@@ -321,15 +321,16 @@ def diagnose(
 # ── CLI (resolves inputs, formats, prints; exit 1 iff any FAIL) ──────────────
 
 def _resolve_vault_path(install_prefix: Optional[Path]) -> Optional[str]:
-    """Resolve the vault path the way the engine does: ``$MEMORY_VAULT_PATH`` →
-    the on-device config's ``vault_path`` → None. Read-only (LC-4): never writes.
+    """Resolve the vault path the way the engine does: ``$MEMORY_ROOT`` (else its
+    deprecated alias ``$MEMORY_VAULT_PATH``) → the on-device config's
+    ``vault_path`` → None. Read-only (LC-4): never writes.
 
     Reads the config directly (a tiny JSON load) rather than importing the engine,
     so the path resolves even when no engine is reachable — the hook uses the same
-    inline read for the same reason (Claude Code does not inject MEMORY_VAULT_PATH
+    inline read for the same reason (Claude Code does not inject MEMORY_ROOT
     into a user-scope hook/skill env).
     """
-    env = os.environ.get("MEMORY_VAULT_PATH")
+    env = os.environ.get("MEMORY_ROOT") or os.environ.get("MEMORY_VAULT_PATH")
     if env:
         return env
     prefix = install_prefix or Path(
@@ -374,7 +375,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--vault-path",
         default=None,
-        help="vault root to check (default: $MEMORY_VAULT_PATH or the configured "
+        help="vault root to check (default: $MEMORY_ROOT or the configured "
         "vault_path)",
     )
     p.add_argument(

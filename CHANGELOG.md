@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Patch: every reader takes `MEMORY_ROOT` first
+
+agentm renamed `MEMORY_VAULT_PATH` to `MEMORY_ROOT` on 2026-09-11, in its PR "MEMORY_VAULT_PATH has one meaning, and a name that says it: MEMORY_ROOT". The value is the memory root: the directory holding `memory/`, `personal/`, `projects/` and `desk/`, never the vault root. agentm's four memory hooks and `agentm-runner.sh` export both names with the same value for one release, then drop the old one. Every crickets reader read only the old name, so on the day the alias export goes, the conflict-merger hook, `doctor_vault.py`, `prose_pass.py`, `resolve_plan.py`'s vault probe, `diagnose.py`, `wiki_watch_config.py`, `recent-wiki-changes.{sh,ps1}` and the diataxis-author scripts would all stop seeing the vault the hooks had just handed them.
+
+### Changed
+
+- `obsidian-vault` 0.3.3, `design` 0.10.5, `development-lifecycle` 0.47.2, `diagnostics` 0.1.6, `wiki` 0.11.3 — every reader takes `$MEMORY_ROOT` first and falls back to `$MEMORY_VAULT_PATH` only when the new name is unset or empty. Python reads `(os.environ.get("MEMORY_ROOT") or os.environ.get("MEMORY_VAULT_PATH", "")).strip()`, bash `"${MEMORY_ROOT:-${MEMORY_VAULT_PATH:-}}"`, PowerShell `if ($env:MEMORY_ROOT) { $env:MEMORY_ROOT } else { $env:MEMORY_VAULT_PATH }`. The two writers, `wiki_watch_config.py`'s registry subprocess and the embedded Python in `recent-wiki-changes.{sh,ps1}`, export both names with the same value, so a kernel on either side of the rename reads them. Help text, the skill docs, the hook doc and the documenter contract name `MEMORY_ROOT` and mention the alias once.
+- `github-projects` 0.5.2 — `project_schema.json`'s `env` example names `MEMORY_ROOT`.
+
+### Internal
+
+- The unit-test isolation in `check-all.sh` and the three CI workflows clears `MEMORY_ROOT` alongside `MEMORY_VAULT_PATH`. A reader that prefers the new name would otherwise see straight through the old isolation on a machine that exports it.
+- The tests for the conflict-merger hook, `doctor_vault.py`, `prose_pass.py`, `resolve_plan.py`, `recent-wiki-changes.sh` and `vault_layout.py` pin all three cases: `MEMORY_ROOT` alone resolves, the alias alone still resolves, and `MEMORY_ROOT` decides when both are set. An empty `MEMORY_ROOT`, the value CI's isolation sets, falls through to the alias rather than reading as a configured empty path.
+
 ### Patch: the prose pass catches a fact-guard cut into pieces
 
 A documenter dry-run on 2026-09-11 showed Gemini writing the fact-guard list into the page. `prose_pass.py` passed it on a clean exit 0. Gemini cut each guard into short sentences, such as "Exit 1 is never the usage-error code." and "The flat rung always runs." The leakage check compared each new sentence with a whole guard line. No piece scored close enough. The documenter's own verify step caught it that time.

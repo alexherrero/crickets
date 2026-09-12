@@ -7,7 +7,8 @@
 # Usage:
 #   pwsh -File scripts\recent-wiki-changes.ps1 [-Repo <slug>] [-Days <N>] [-Limit <N>] [-VaultPath <path>]
 #
-# Env: MEMORY_VAULT_PATH, AGENTM_WIKI_RECENT_DAYS, AGENTM_SCRIPTS_DIR (explicit
+# Env: MEMORY_ROOT (MEMORY_VAULT_PATH is the deprecated alias),
+# AGENTM_WIKI_RECENT_DAYS, AGENTM_SCRIPTS_DIR (explicit
 # override for locating agentm kernel scripts — agentm_config.py /
 # repo_registry.py — when this script runs from its installed dist location,
 # which ships neither file nor a lib/ fallback dir; mirrors wiki_watch_config.py's
@@ -46,7 +47,7 @@ function Find-AgentmScript {
     return $null
 }
 
-if (-not $VaultPath) { $VaultPath = $env:MEMORY_VAULT_PATH }
+if (-not $VaultPath) { $VaultPath = if ($env:MEMORY_ROOT) { $env:MEMORY_ROOT } else { $env:MEMORY_VAULT_PATH } }
 # v4.5.1: fall back to vault_path in .agentm-config.json when env+CLI empty.
 if (-not $VaultPath) {
     $agentmConfigPy = Find-AgentmScript 'agentm_config.py'
@@ -57,7 +58,7 @@ if (-not $VaultPath) {
     }
 }
 if (-not $VaultPath -or -not (Test-Path -LiteralPath $VaultPath -PathType Container)) {
-    Write-Output '{"skipped": true, "reason": "MEMORY_VAULT_PATH unset AND no vault_path resolved (agentm_config.py unreachable -- set $env:AGENTM_SCRIPTS_DIR if agentm is installed separately from this plugin -- or no vault_path in .agentm-config.json, or resolved directory missing). Run agentm_config.py --vault-path <path> to set."}'
+    Write-Output '{"skipped": true, "reason": "MEMORY_ROOT unset AND no vault_path resolved (agentm_config.py unreachable -- set $env:AGENTM_SCRIPTS_DIR if agentm is installed separately from this plugin -- or no vault_path in .agentm-config.json, or resolved directory missing). Run agentm_config.py --vault-path <path> to set."}'
     exit 1
 }
 
@@ -83,7 +84,8 @@ if (-not $pythonCmd) {
 }
 
 # Set env for the Python child
-$env:MEMORY_VAULT_PATH = $VaultPath
+$env:MEMORY_ROOT = $VaultPath
+$env:MEMORY_VAULT_PATH = $VaultPath  # deprecated alias, kept one release
 $env:AGENTM_WIKI_RECENT_DAYS = $Days
 $env:_RWC_REPO_FILTER = $Repo
 $env:_RWC_LIMIT = $Limit
@@ -98,7 +100,7 @@ import sys
 import time
 from pathlib import Path
 
-vault = os.environ["MEMORY_VAULT_PATH"]
+vault = os.environ["MEMORY_ROOT"]
 days = int(os.environ.get("AGENTM_WIKI_RECENT_DAYS", "7"))
 filter_slug = os.environ.get("_RWC_REPO_FILTER", "")
 limit = int(os.environ.get("_RWC_LIMIT", "50"))
@@ -107,7 +109,8 @@ registry_py = os.environ["_RWC_REGISTRY_PY"]
 try:
     res = subprocess.run(
         [sys.executable, registry_py, "list"],
-        capture_output=True, text=True, env={**os.environ, "MEMORY_VAULT_PATH": vault},
+        capture_output=True, text=True,
+        env={**os.environ, "MEMORY_ROOT": vault, "MEMORY_VAULT_PATH": vault},
     )
     data = json.loads(res.stdout or '{"repos": []}')
 except Exception:

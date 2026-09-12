@@ -60,7 +60,7 @@ _BASH = _find_bash()
 
 def _run(env_overrides: dict) -> subprocess.CompletedProcess:
     env = dict(os.environ)
-    for k in ("MEMORY_VAULT_PATH", "AGENTM_SCRIPTS_DIR"):
+    for k in ("MEMORY_ROOT", "MEMORY_VAULT_PATH", "AGENTM_SCRIPTS_DIR"):
         env.pop(k, None)
     env.update(env_overrides)
     return subprocess.run(
@@ -79,7 +79,7 @@ class TestKernelDependencyResolution(unittest.TestCase):
         self.assertIn("AGENTM_SCRIPTS_DIR", r.stdout)
 
     def test_resolves_registry_script_via_agentm_scripts_dir_env_override(self):
-        # MEMORY_VAULT_PATH set directly (bypasses the agentm_config.py branch,
+        # MEMORY_ROOT set directly (bypasses the agentm_config.py branch,
         # which the next test exercises) so this isolates repo_registry.py's
         # resolution specifically — the fix's more directly cited defect.
         with tempfile.TemporaryDirectory() as td:
@@ -87,10 +87,41 @@ class TestKernelDependencyResolution(unittest.TestCase):
             (scripts_dir / "repo_registry.py").write_text(_STUB_REPO_REGISTRY, encoding="utf-8")
             vault_dir = scripts_dir / "vault"
             vault_dir.mkdir()
-            r = _run({"AGENTM_SCRIPTS_DIR": str(scripts_dir), "MEMORY_VAULT_PATH": str(vault_dir)})
+            r = _run({"AGENTM_SCRIPTS_DIR": str(scripts_dir), "MEMORY_ROOT": str(vault_dir)})
             self.assertNotIn("not found", r.stdout + r.stderr)
             self.assertIn("No repos registered", r.stderr)
             self.assertEqual(r.returncode, 0)
+
+    def test_deprecated_alias_still_resolves_the_vault(self):
+        # agentm exported only MEMORY_VAULT_PATH before 2026-09-11 and keeps it
+        # as an alias for one release; the old name alone must keep working.
+        with tempfile.TemporaryDirectory() as td:
+            scripts_dir = Path(td)
+            (scripts_dir / "repo_registry.py").write_text(_STUB_REPO_REGISTRY, encoding="utf-8")
+            vault_dir = scripts_dir / "vault"
+            vault_dir.mkdir()
+            r = _run({"AGENTM_SCRIPTS_DIR": str(scripts_dir), "MEMORY_VAULT_PATH": str(vault_dir)})
+            self.assertIn("No repos registered", r.stderr)
+            self.assertEqual(r.returncode, 0)
+
+    def test_memory_root_wins_over_the_alias(self):
+        # Both set: MEMORY_ROOT names a real dir, the alias a missing one. The
+        # run resolves — so MEMORY_ROOT was read, not the alias.
+        with tempfile.TemporaryDirectory() as td:
+            scripts_dir = Path(td)
+            (scripts_dir / "repo_registry.py").write_text(_STUB_REPO_REGISTRY, encoding="utf-8")
+            vault_dir = scripts_dir / "vault"
+            vault_dir.mkdir()
+            r = _run({"AGENTM_SCRIPTS_DIR": str(scripts_dir), "MEMORY_ROOT": str(vault_dir),
+                      "MEMORY_VAULT_PATH": str(scripts_dir / "missing")})
+            self.assertIn("No repos registered", r.stderr)
+            self.assertEqual(r.returncode, 0)
+            # Swapped: MEMORY_ROOT names the missing dir → skip marker, even
+            # though the alias points at a real vault.
+            r = _run({"AGENTM_SCRIPTS_DIR": str(scripts_dir), "MEMORY_ROOT": str(scripts_dir / "missing"),
+                      "MEMORY_VAULT_PATH": str(vault_dir)})
+            self.assertEqual(r.returncode, 1)
+            self.assertIn('"skipped": true', r.stdout)
 
     def test_resolves_vault_path_via_agentm_config_py_env_override(self):
         # MEMORY_VAULT_PATH left unset -> forces the agentm_config.py branch

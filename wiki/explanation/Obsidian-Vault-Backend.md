@@ -87,7 +87,7 @@ On Antigravity you don't lose conflict detection — only the automatic nudge. T
 
 ### Configuration
 
-The vault location is resolved at runtime, not baked into the plugin. The engine reads `plugins.obsidian-vault.vault_path` from its config (set via `agentm_config --vault-path`), and `$MEMORY_VAULT_PATH` is the per-invocation override. The plugin itself reads that path in place and never writes it. There's nothing else to configure — it works out of the box once a vault is set.
+The vault location is resolved at runtime, not baked into the plugin. The engine reads `plugins.obsidian-vault.vault_path` from its config (set via `agentm_config --vault-path`) and joins `memory_root` onto it; `$MEMORY_ROOT` is the per-invocation override for that result (`$MEMORY_VAULT_PATH`, the old name, is still read as a deprecated alias for one release). The plugin itself reads that path in place and never writes it. There's nothing else to configure — it works out of the box once a vault is set.
 
 ## See also
 

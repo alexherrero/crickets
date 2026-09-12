@@ -605,5 +605,8 @@ enhances:
 #          close-out. Every stale-pointer case degrades to "carry on here"
 #          with a note -- re-entry never blocks a plan, and following a
 #          registered worktree is not a spawn.
-version: 0.47.1
+# 0.47.2: resolve_plan.py's vault-reachability probe reads $MEMORY_ROOT first
+#          and $MEMORY_VAULT_PATH only as the deprecated alias (agentm's
+#          2026-09-11 rename; the alias export goes one release later).
+version: 0.47.2
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

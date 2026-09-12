@@ -52,7 +52,7 @@ The probe ships beside the backend in this plugin's `scripts/`. Locate and run i
    `$CLAUDE_PLUGIN_ROOT/scripts/doctor_vault.py` (Claude Code) or the equivalent
    plugin root on Antigravity. In a dogfood checkout:
    `<crickets>/src/obsidian-vault/scripts/doctor_vault.py`.
-2. **Run it** (it resolves `vault_path` from `$MEMORY_VAULT_PATH` → the on-device
+2. **Run it** (it resolves `vault_path` from `$MEMORY_ROOT` → the on-device
    `~/.claude/.agentm-config.json` automatically; pass `--vault-path <dir>` to
    override):
 
@@ -64,7 +64,8 @@ The probe ships beside the backend in this plugin's `scripts/`. Locate and run i
 
 3. **Read the rows** and act:
    - `vault-path [FAIL]` → set `vault_path` (`agentm_config --vault-path <dir>`) or
-     point `MEMORY_VAULT_PATH` at the real MemoryVault.
+     point `MEMORY_ROOT` at the real MemoryVault (`MEMORY_VAULT_PATH`, the
+     deprecated alias, is still read for one release).
    - `backend [FAIL]` → the message carries the exact remediation (install
      `obsidian-vault@crickets`, set `$OBSIDIAN_VAULT_SCRIPTS`, or change
      `storage.backend`). It mirrors what the engine prints on refusal.

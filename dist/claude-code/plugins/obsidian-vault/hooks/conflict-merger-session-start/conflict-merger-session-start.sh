@@ -25,14 +25,16 @@ if [[ "$MODE" == "off" ]]; then
     exit 0
 fi
 
-# Resolve MEMORY_VAULT_PATH: env → engine .agentm-config.json vault_path → none.
-# Claude Code does NOT inject MEMORY_VAULT_PATH into the hook env on user-scope
+# Resolve the vault root: $MEMORY_ROOT env (else its deprecated alias
+# $MEMORY_VAULT_PATH) → engine .agentm-config.json vault_path → none.
+# Claude Code does NOT inject MEMORY_ROOT into the hook env on user-scope
 # installs, so an env-only check silently skipped on every real session boot and
 # never ran detect_conflict_files(). LC-4: the engine config is read in place,
 # never written.
 _resolve_vault_path() {
-    if [[ -n "${MEMORY_VAULT_PATH:-}" ]]; then
-        printf '%s\n' "$MEMORY_VAULT_PATH"; return 0
+    local env_root="${MEMORY_ROOT:-${MEMORY_VAULT_PATH:-}}"
+    if [[ -n "$env_root" ]]; then
+        printf '%s\n' "$env_root"; return 0
     fi
     local cfg="${AGENTM_INSTALL_PREFIX:-$HOME/.claude}/.agentm-config.json"
     if [[ -f "$cfg" ]] && command -v python3 >/dev/null 2>&1; then
@@ -49,13 +51,13 @@ print(d.get("vault_path") or "")
     fi
     return 1
 }
-MEMORY_VAULT_PATH="$(_resolve_vault_path 2>/dev/null)" || MEMORY_VAULT_PATH=""
+VAULT_ROOT="$(_resolve_vault_path 2>/dev/null)" || VAULT_ROOT=""
 
 # Graceful-skip if no vault resolved or it doesn't exist on disk.
-if [[ -z "$MEMORY_VAULT_PATH" ]]; then
+if [[ -z "$VAULT_ROOT" ]]; then
     exit 0
 fi
-if [[ ! -d "$MEMORY_VAULT_PATH" ]]; then
+if [[ ! -d "$VAULT_ROOT" ]]; then
     exit 0
 fi
 
@@ -88,7 +90,7 @@ fi
 # helper. stderr is intentionally NOT redirected — the Python writes operator-
 # facing findings there. Python-level errors (import / runtime) also surface —
 # that's acceptable; the hook still exits 0 (never blocks session boot).
-python3 - "$VC_PY" "$KERNEL_SCRIPTS" "$MEMORY_VAULT_PATH" <<'PY' || true
+python3 - "$VC_PY" "$KERNEL_SCRIPTS" "$VAULT_ROOT" <<'PY' || true
 import importlib.util, os, sys
 from pathlib import Path
 vc_path, kernel_scripts, vault_root = sys.argv[1], sys.argv[2], sys.argv[3]

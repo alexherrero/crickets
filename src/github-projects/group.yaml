@@ -162,5 +162,7 @@ standalone: false
 #         untracked item, so report_drift names it in its own section on
 #         every path including the clean one. Body-owned lines stay out of
 #         the marker digest so a steady state never re-posts a report.
-version: 0.5.1
+# 0.5.2: project_schema.json's `env` example names MEMORY_ROOT, the name
+#         agentm gave MEMORY_VAULT_PATH on 2026-09-11. No script change.
+version: 0.5.2
 capabilities: [board-sync]

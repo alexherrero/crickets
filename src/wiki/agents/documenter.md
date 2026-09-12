@@ -76,7 +76,7 @@ Interpret by exit code:
 
 - **rc 0** — bundle printed. Treat its contents as *operator conventions to honor* + *project decisions to respect* + *locked design calls to NOT re-litigate*. Read it before you touch any page.
 - **rc 2** — vault reachable but this project isn't registered. The bundle still carries operator-global `_always-load/` conventions; honor those and fall back to repo-local context for project specifics.
-- **rc 1** — vault unreachable. **Graceful-skip:** emit on stderr `[documenter] vault unreachable; falling back to repo-local conventions only` and proceed with pre-v4.6.0 behavior (scan the repo for conventions as before). This is not an error — the harness must run on machines without the vault mounted (CI, fresh devices). Per v4.5.1 the resolver also consults `~/.claude/.agentm-config.json::vault_path` when `$MEMORY_VAULT_PATH` is unset, so rc 1 means the vault is genuinely absent, not merely un-exported in this shell.
+- **rc 1** — vault unreachable. **Graceful-skip:** emit on stderr `[documenter] vault unreachable; falling back to repo-local conventions only` and proceed with pre-v4.6.0 behavior (scan the repo for conventions as before). This is not an error — the harness must run on machines without the vault mounted (CI, fresh devices). Per v4.5.1 the resolver also consults `~/.claude/.agentm-config.json::vault_path` when `$MEMORY_ROOT` is unset, so rc 1 means the vault is genuinely absent, not merely un-exported in this shell.
 
 For a **cross-repo dispatch** (per the cross-repo write contract above), pass the TARGET repo's registry slug to `--slug`, not the cwd project's — honor the conventions of the repo you're writing into.
 

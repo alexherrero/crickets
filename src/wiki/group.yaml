@@ -156,7 +156,16 @@ standalone: true
 #         drops from ~18.2k to ~7.7k tokens of overlay -- it had been carrying
 #         the email and letter-of-recommendation registers alongside the docs
 #         one, all three at full length.
-version: 0.11.2
+# 0.11.3: every reader takes $MEMORY_ROOT first and $MEMORY_VAULT_PATH only
+#         as the deprecated alias -- vault_layout.resolve_memory_root (and so
+#         author / relocate / style_resolver / agentmemory_conventions),
+#         wiki_watch_config.read_vault_path, recent-wiki-changes.{sh,ps1}.
+#         The two writers (wiki_watch_config's registry subprocess env and
+#         recent-wiki-changes' embedded Python) export BOTH names with the
+#         same value, so a kernel on either side of agentm's 2026-09-11
+#         rename reads them. Docs, help text and the documenter contract
+#         name MEMORY_ROOT.
+version: 0.11.3
 capabilities: [wiki-maintenance, wiki]
 renamed_from: [wiki-maintenance]
 enhances:

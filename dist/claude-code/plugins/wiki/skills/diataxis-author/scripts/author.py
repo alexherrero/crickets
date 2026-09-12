@@ -421,7 +421,7 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument(
         "--vault-path", default=None,
         help="AgentMemory vault path for the voice overlay "
-             "(default: MEMORY_VAULT_PATH env; absent → committed base floor only)",
+             "(default: MEMORY_ROOT env; absent → committed base floor only)",
     )
     parser.add_argument(
         "--project-slug", default=None,
@@ -480,7 +480,7 @@ def main(argv: list[str] | None = None) -> int:
     # explicitly passed.
     resolved_style = _resolve_filename_style(args.filename_style, wiki_root)
     # Resolve the vault for the voice overlay: explicit --vault-path, else
-    # MEMORY_VAULT_PATH env (absent → committed base floor only).
+    # MEMORY_ROOT env (absent → committed base floor only).
     if args.vault_path:
         vault_path = Path(args.vault_path).expanduser()
     else:
