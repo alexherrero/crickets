@@ -127,7 +127,9 @@ class TestClaudeEmitter(unittest.TestCase):
         # 0.11.1 = the root sibling needs the Obsidian witness (agentm 2b review)
         # 0.11.2 = the documenter finds design's prose_pass.py through
         # scripts/sibling_plugin.py, which resolves Claude Code's versioned cache.
-        self.assertEqual(self._plugin_json("wiki")["version"], "0.11.2")
+        # 0.11.3 = every reader takes $MEMORY_ROOT first, $MEMORY_VAULT_PATH only
+        # as the deprecated alias (agentm's 2026-09-11 rename).
+        self.assertEqual(self._plugin_json("wiki")["version"], "0.11.3")
         # 0.3.0 = check-no-pii.sh + templates/hooks/pre-push moved into src/pii/
         # so they actually ship inside the plugin payload (R2.4 task 7).
         # 0.3.1 = check-no-pii.sh scan collapsed to one grep per file (fixes a

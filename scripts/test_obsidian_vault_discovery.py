@@ -236,6 +236,7 @@ class FirstRunAdoptionEdge(unittest.TestCase):
         with mock.patch.dict(
             os.environ, {"AGENTM_INSTALL_PREFIX": str(self.prefix)}, clear=False
         ):
+            os.environ.pop("MEMORY_ROOT", None)
             os.environ.pop("MEMORY_VAULT_PATH", None)
             os.environ.pop("OBSIDIAN_VAULT_SCRIPTS", None)
             with redirect_stdout(out), redirect_stderr(err):

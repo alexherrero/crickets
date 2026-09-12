@@ -194,7 +194,8 @@ def _vault_configured_and_reachable(*, install_prefix: "str | os.PathLike | None
     Instead it reads the same two facts `harness_memory.vault_path()` checks,
     directly off disk:
 
-      1. `$MEMORY_VAULT_PATH` env set and the path exists → vault reachable.
+      1. `$MEMORY_ROOT` env (else its deprecated alias `$MEMORY_VAULT_PATH`)
+         set and the path exists → vault reachable.
       2. else `<install-prefix>/.agentm-config.json`'s `"storage.backend"` is
          `"vault"` and its `"plugins.obsidian-vault.vault_path"` (falling back to
          the legacy flat `"vault_path"` key) resolves to an existing directory.
@@ -210,7 +211,7 @@ def _vault_configured_and_reachable(*, install_prefix: "str | os.PathLike | None
     a genuinely standalone install); a false positive would wrongly block a
     legitimate resolution, which this must never do.
     """
-    env_vault = os.environ.get("MEMORY_VAULT_PATH", "").strip()
+    env_vault = (os.environ.get("MEMORY_ROOT") or os.environ.get("MEMORY_VAULT_PATH", "")).strip()
     if env_vault:
         return Path(os.path.expanduser(env_vault)).is_dir()
 

@@ -71,11 +71,13 @@ jobs:
         # content correctness.
         run: python3 scripts/check_conventions_conformance.py
       - name: Unit tests (scripts/ — lint_src, src_model, generate, …)
-        # AGENTM_INSTALL_PREFIX + MEMORY_VAULT_PATH: isolate resolve_plan.py's
+        # AGENTM_INSTALL_PREFIX + MEMORY_ROOT (+ its deprecated alias
+        # MEMORY_VAULT_PATH, which every reader falls back to): isolate resolve_plan.py's
         # R2.5 task 12 vault-mismatch guard from the runner's environment — see
         # scripts/check-all.sh's identical isolation for the local mirror.
         env:
           AGENTM_INSTALL_PREFIX: /tmp/no-such-agentm-prefix
+          MEMORY_ROOT: ""
           MEMORY_VAULT_PATH: ""
         run: cd scripts && python3 -m unittest discover -p 'test_*.py'
       - name: Vault-content tests (test_voice_kernel — skips without a vault)

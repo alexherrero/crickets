@@ -211,7 +211,7 @@ def main(argv: list | None = None) -> int:
     p = argparse.ArgumentParser(
         prog="diataxis-relocate",
         description="Relocate global wiki conventions from _always-load to the on-demand _global store.")
-    p.add_argument("--vault-path", default=None, help="vault root (default: $MEMORY_VAULT_PATH)")
+    p.add_argument("--vault-path", default=None, help="vault root (default: $MEMORY_ROOT)")
     p.add_argument("--source-glob", default=_DEFAULT_SOURCE_GLOB,
                    help=f"which _always-load files to relocate (default: {_DEFAULT_SOURCE_GLOB})")
     p.add_argument("--preview", action="store_true", help="dry-run: print WOULD: lines, mutate nothing")
@@ -223,7 +223,7 @@ def main(argv: list | None = None) -> int:
 
     vault = _resolve_vault(args.vault_path)
     if vault is None:
-        print("relocate: no vault (pass --vault-path or set MEMORY_VAULT_PATH)", file=sys.stderr)
+        print("relocate: no vault (pass --vault-path or set MEMORY_ROOT)", file=sys.stderr)
         return 1
     if not vault.is_dir():
         print(f"relocate: vault path is not a directory: {vault}", file=sys.stderr)

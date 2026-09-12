@@ -69,7 +69,7 @@
       "type": "object",
       "description": "Optional path overrides resolved at sync time. Real local paths live HERE in the gitignored vault copy only — never in a committed file. Keys are environment-variable names, values are absolute paths.",
       "additionalProperties": {"type": "string"},
-      "examples": [{"MEMORY_VAULT_PATH": "<vault>", "IDEAS_SURFACE_PATH": "<vault>/_ideas"}]
+      "examples": [{"MEMORY_ROOT": "<memory-root>", "IDEAS_SURFACE_PATH": "<vault>/_ideas"}]
     },
     "isolation": {
       "type": "object",

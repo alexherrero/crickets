@@ -105,17 +105,19 @@ def read_enablement(install_prefix: Optional[Path] = None) -> bool:
 
 def read_vault_path(install_prefix: Optional[Path] = None) -> Optional[str]:
     """Resolve the agent's MEMORY ROOT for registry/state lookups, free of the
-    agentm kernel: $MEMORY_VAULT_PATH env (must exist) -> the install config's
-    `vault_path` joined with `plugins.obsidian-vault.memory_root`.
+    agentm kernel: $MEMORY_ROOT env (else its deprecated alias
+    $MEMORY_VAULT_PATH; must exist) -> the install config's `vault_path`
+    joined with `plugins.obsidian-vault.memory_root`.
 
     Mirrors harness_memory.memory_root(), not vault_path(): the result is
-    exported as `$MEMORY_VAULT_PATH` to a subprocess, and that variable names
-    the memory tree to every consumer that reads it. Handing it the Obsidian
-    vault root tells the child the memory tree is one level higher than it is.
+    exported as `$MEMORY_ROOT` (and the alias) to a subprocess, and that
+    variable names the memory tree to every consumer that reads it. Handing it
+    the Obsidian vault root tells the child the memory tree is one level higher
+    than it is.
 
     Returns the path string when a directory exists there, else None (graceful-skip).
     """
-    raw = os.environ.get("MEMORY_VAULT_PATH", "").strip()
+    raw = (os.environ.get("MEMORY_ROOT") or os.environ.get("MEMORY_VAULT_PATH", "")).strip()
     if raw:
         p = Path(os.path.expanduser(raw))
         return str(p) if p.is_dir() else None
@@ -331,7 +333,7 @@ def list_repos_via_registry(
         vault_path = read_vault_path()
     if not vault_path:
         return []
-    env = {**os.environ, "MEMORY_VAULT_PATH": vault_path}
+    env = {**os.environ, "MEMORY_ROOT": vault_path, "MEMORY_VAULT_PATH": vault_path}
     try:
         res = subprocess.run(
             [sys.executable, str(registry_script), "list"],

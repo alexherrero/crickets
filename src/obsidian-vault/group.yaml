@@ -22,4 +22,8 @@ capabilities: [storage-backend]
 # (3-part lockstep; doctor_vault.py message string updated to match).
 # 0.3.1 = vault-doctor SKILL.md's own vault-path check description still said
 # personal-private/ (doctor_vault.py's real check already said personal/) — doc-truth fix.
-version: 0.3.2
+# 0.3.3 = the conflict-merger hook (bash + pwsh) and doctor_vault.py read
+# $MEMORY_ROOT first and $MEMORY_VAULT_PATH only as the deprecated alias --
+# agentm renamed the variable on 2026-09-11 and drops the alias export one
+# release later. hook.md + the vault-doctor skill name the new variable.
+version: 0.3.3

@@ -17,11 +17,13 @@
 #   --repo <slug>       Filter to one repo only (default: all registered)
 #   --days N            Override AGENTM_WIKI_RECENT_DAYS env (default: 7)
 #   --limit N           Cap rows shown (default: 50)
-#   --vault-path <path> Override $MEMORY_VAULT_PATH env
+#   --vault-path <path> Override $MEMORY_ROOT env
 #   --help, -h          Print this help and exit
 #
 # Env:
-#   MEMORY_VAULT_PATH         vault root (required unless --vault-path passed)
+#   MEMORY_ROOT               memory root (required unless --vault-path passed;
+#                             MEMORY_VAULT_PATH is the deprecated alias, read
+#                             when MEMORY_ROOT is unset)
 #   AGENTM_WIKI_RECENT_DAYS   default recent-window in days (default: 7)
 #   AGENTM_SCRIPTS_DIR        explicit override for locating agentm kernel scripts
 #                             (agentm_config.py / repo_registry.py) when this
@@ -37,7 +39,7 @@
 
 set -euo pipefail
 
-VAULT_PATH="${MEMORY_VAULT_PATH:-}"
+VAULT_PATH="${MEMORY_ROOT:-${MEMORY_VAULT_PATH:-}}"
 REPO_FILTER=""
 DAYS="${AGENTM_WIKI_RECENT_DAYS:-7}"
 LIMIT=50
@@ -102,8 +104,9 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# v4.5.1: resolution order: --vault-path CLI → $MEMORY_VAULT_PATH env (set as
-# $VAULT_PATH default above) → vault_path in .agentm-config.json.
+# v4.5.1: resolution order: --vault-path CLI → $MEMORY_ROOT env, else its
+# deprecated alias $MEMORY_VAULT_PATH (set as $VAULT_PATH default above) →
+# vault_path in .agentm-config.json.
 if [[ -z "$VAULT_PATH" ]]; then
     AGENTM_CONFIG_PY="$(_find_agentm_script agentm_config.py || true)"
     if [[ -n "$AGENTM_CONFIG_PY" ]]; then
@@ -111,7 +114,7 @@ if [[ -z "$VAULT_PATH" ]]; then
     fi
 fi
 if [[ -z "$VAULT_PATH" || ! -d "$VAULT_PATH" ]]; then
-    echo '{"skipped": true, "reason": "MEMORY_VAULT_PATH unset AND no vault_path resolved (agentm_config.py unreachable — set $AGENTM_SCRIPTS_DIR if agentm is installed separately from this plugin — or no vault_path in .agentm-config.json, or resolved directory missing). Run agentm_config.py --vault-path <path> to set."}'
+    echo '{"skipped": true, "reason": "MEMORY_ROOT unset AND no vault_path resolved (agentm_config.py unreachable — set $AGENTM_SCRIPTS_DIR if agentm is installed separately from this plugin — or no vault_path in .agentm-config.json, or resolved directory missing). Run agentm_config.py --vault-path <path> to set."}'
     exit 1
 fi
 
@@ -128,7 +131,8 @@ fi
 
 # Delegate the heavy lifting to a Python script via stdin to avoid bash heredoc
 # quote-nesting hell. Exports env so child reads vault + registry.
-export MEMORY_VAULT_PATH="$VAULT_PATH"
+export MEMORY_ROOT="$VAULT_PATH"
+export MEMORY_VAULT_PATH="$VAULT_PATH"  # deprecated alias, kept one release
 export AGENTM_WIKI_RECENT_DAYS="$DAYS"
 export _RWC_REPO_FILTER="$REPO_FILTER"
 export _RWC_LIMIT="$LIMIT"
@@ -142,7 +146,7 @@ import sys
 import time
 from pathlib import Path
 
-vault = os.environ["MEMORY_VAULT_PATH"]
+vault = os.environ["MEMORY_ROOT"]
 days = int(os.environ.get("AGENTM_WIKI_RECENT_DAYS", "7"))
 filter_slug = os.environ.get("_RWC_REPO_FILTER", "")
 limit = int(os.environ.get("_RWC_LIMIT", "50"))
@@ -152,7 +156,8 @@ registry_py = os.environ["_RWC_REGISTRY_PY"]
 try:
     res = subprocess.run(
         [sys.executable, registry_py, "list"],
-        capture_output=True, text=True, env={**os.environ, "MEMORY_VAULT_PATH": vault},
+        capture_output=True, text=True,
+        env={**os.environ, "MEMORY_ROOT": vault, "MEMORY_VAULT_PATH": vault},
     )
     data = json.loads(res.stdout or '{"repos": []}')
 except (subprocess.CalledProcessError, json.JSONDecodeError):

@@ -237,11 +237,11 @@ def _warn_no_vault_resolved() -> None:
     The sibling of _warn_if_no_overlay_store, and the more common failure: a
     correct overlay path buys nothing if nothing ever hands the resolver a
     vault. That was the state of every ordinary authoring session — the hooks
-    export `$MEMORY_VAULT_PATH`, an interactive run does not, and the resolver
+    export `$MEMORY_ROOT`, an interactive run does not, and the resolver
     said nothing because "no vault" and "no lessons" reach the same empty list.
     """
     print(
-        "style_resolver: no vault resolved (--vault-path, $MEMORY_VAULT_PATH, or "
+        "style_resolver: no vault resolved (--vault-path, $MEMORY_ROOT, or "
         ".agentm-config.json) — authoring on the committed base style guide alone.",
         file=sys.stderr,
     )

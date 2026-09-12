@@ -58,13 +58,14 @@ run "capability naming" python3 scripts/check-capability-naming.py
 run "no-dangling-name" python3 scripts/check-no-dangling-name.py
 run "no-duplicate-diagnosis" python3 scripts/check-no-duplicate-diagnosis.py
 run "conventions conformance" python3 scripts/check_conventions_conformance.py
-# AGENTM_INSTALL_PREFIX + MEMORY_VAULT_PATH: isolate resolve_plan.py's R2.5
+# AGENTM_INSTALL_PREFIX + MEMORY_ROOT (+ its deprecated alias MEMORY_VAULT_PATH,
+# which every reader falls back to): isolate resolve_plan.py's R2.5
 # task 12 vault-mismatch guard from this MACHINE's own ~/.claude/.agentm-config.json
 # — a real operator install can have storage.backend=vault configured and
 # reachable, which would make dozens of tests that force the standalone
 # .harness/ fallback (seam=None / resolver=None) spuriously hit the new
 # refusal. Point the probe at a scratch path that never has a config file.
-run "unit tests"     env AGENTM_INSTALL_PREFIX="$ROOT/.no-such-agentm-prefix" MEMORY_VAULT_PATH="" bash -c "cd scripts && python3 -m unittest discover -p 'test_*.py'"
+run "unit tests"     env AGENTM_INSTALL_PREFIX="$ROOT/.no-such-agentm-prefix" MEMORY_ROOT="" MEMORY_VAULT_PATH="" bash -c "cd scripts && python3 -m unittest discover -p 'test_*.py'"
 # Vault-content tests, run WITHOUT the isolation above — they assert facts about
 # the operator's real vault (the voice kernel, the demoted genre files), so the
 # scratch prefix that protects the suite above makes them skip themselves into

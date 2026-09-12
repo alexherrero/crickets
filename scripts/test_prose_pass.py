@@ -412,11 +412,28 @@ class TimeoutTests(unittest.TestCase):
 class VaultResolutionTests(unittest.TestCase):
     def test_env_var_resolves_when_dir_exists(self):
         with tempfile.TemporaryDirectory() as tmp:
-            os.environ["MEMORY_VAULT_PATH"] = tmp
-            try:
+            with mock.patch.dict(os.environ, {"MEMORY_ROOT": tmp}):
                 self.assertEqual(prose_pass.resolve_vault_path(None), Path(tmp))
-            finally:
-                del os.environ["MEMORY_VAULT_PATH"]
+
+    def test_deprecated_alias_resolves_when_memory_root_unset(self):
+        # The name agentm exported before 2026-09-11, kept as an alias for one
+        # release — still honored on its own.
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.dict(os.environ, {"MEMORY_VAULT_PATH": tmp}):
+                os.environ.pop("MEMORY_ROOT", None)
+                self.assertEqual(prose_pass.resolve_vault_path(None), Path(tmp))
+
+    def test_memory_root_wins_over_the_alias(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            new, old = Path(tmp) / "new", Path(tmp) / "old"
+            new.mkdir()
+            old.mkdir()
+            both = {"MEMORY_ROOT": str(new), "MEMORY_VAULT_PATH": str(old)}
+            with mock.patch.dict(os.environ, both):
+                self.assertEqual(prose_pass.resolve_vault_path(None), new)
+            # Empty MEMORY_ROOT (CI's isolation value) falls through to the alias.
+            with mock.patch.dict(os.environ, {**both, "MEMORY_ROOT": ""}):
+                self.assertEqual(prose_pass.resolve_vault_path(None), old)
 
     def test_missing_dir_is_none(self):
         self.assertIsNone(prose_pass.resolve_vault_path("/nonexistent/vault/path"))
@@ -547,7 +564,8 @@ def _run_pass(tmp: Path, *extra_args: str, fake_impl: Path | None = None,
     else:
         # Prove the "agy unavailable" path without depending on PATH state.
         env["PATH"] = ""
-    env["MEMORY_VAULT_PATH"] = str(tmp / "vault")
+    env.pop("MEMORY_VAULT_PATH", None)
+    env["MEMORY_ROOT"] = str(tmp / "vault")
     env.update(env_extra or {})
     return subprocess.run(
         [sys.executable, str(_SCRIPT), str(doc), *extra_args],
@@ -579,7 +597,7 @@ class EndToEndTests(unittest.TestCase):
             impl = _write_fake_agy(tmp, _ECHO_DOC_IMPL)
             # No vault dir; point the config prefix somewhere empty too.
             r = _run_pass(tmp, "--fact-guard-text", "a truth", fake_impl=impl,
-                          env_extra={"MEMORY_VAULT_PATH": "",
+                          env_extra={"MEMORY_ROOT": "", "MEMORY_VAULT_PATH": "",
                                      "AGENTM_INSTALL_PREFIX": str(tmp / "empty")})
             self.assertEqual(r.returncode, 1, f"stderr={r.stderr!r}")
             self.assertIn("PROSE-PASS-DEGRADED: vault unresolved", r.stdout)

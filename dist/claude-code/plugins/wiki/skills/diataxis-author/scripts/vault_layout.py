@@ -45,9 +45,11 @@ from pathlib import Path
 # and on a case-insensitive filesystem `<vault>/projects` can collide with the
 # operator's own `Projects/` folder — a wrong neighbor, not just a miss.
 #
-# `$MEMORY_VAULT_PATH` is returned as-is: the variable has always named the
-# memory tree to the consumers that read it, so joining the prefix again would
-# address `<vault>/Agent/Agent`. Same contract as harness_memory.memory_root().
+# `$MEMORY_ROOT` is returned as-is: the variable names the memory tree to every
+# consumer that reads it, so joining the prefix again would address
+# `<vault>/Agent/Agent`. Same contract as harness_memory.memory_root().
+# `$MEMORY_VAULT_PATH` is the deprecated alias agentm exports alongside it for
+# one release; it is read only when `$MEMORY_ROOT` is unset or empty.
 #
 # Mirrored here rather than imported — the agentm kernel is not bundled with a
 # dist-installed plugin.
@@ -75,12 +77,13 @@ def resolve_memory_root(cli_value: str | None = None,
                         install_prefix: Path | None = None):
     """The agent's own tree, or None. Never a cached literal.
 
-    Order: explicit CLI value -> `$MEMORY_VAULT_PATH` (as-is; already a memory
-    root) -> config `vault_path` joined with `plugins.obsidian-vault.memory_root`.
+    Order: explicit CLI value -> `$MEMORY_ROOT` (else `$MEMORY_VAULT_PATH`;
+    as-is, already a memory root) -> config `vault_path` joined with
+    `plugins.obsidian-vault.memory_root`.
     Returns None when nothing resolves to a real directory — graceful-skip, the
     same shape every caller here already handles.
     """
-    for raw in (cli_value, os.environ.get("MEMORY_VAULT_PATH", "")):
+    for raw in (cli_value, os.environ.get("MEMORY_ROOT") or os.environ.get("MEMORY_VAULT_PATH", "")):
         if raw and raw.strip():
             p = Path(os.path.expanduser(raw.strip()))
             return p if p.is_dir() else None

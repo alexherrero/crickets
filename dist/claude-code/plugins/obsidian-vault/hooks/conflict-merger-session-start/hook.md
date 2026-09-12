@@ -18,7 +18,7 @@ This hook ships in the **obsidian-vault** plugin, beside the backend it serves �
 
 ## What it does
 
-1. Resolves the vault path: `MEMORY_VAULT_PATH` env → the present engine's `.agentm-config.json` `vault_path` (read in place, never written — LC-4) → none. Graceful-skip if nothing resolves or the directory is missing.
+1. Resolves the vault path: `MEMORY_ROOT` env (its deprecated alias `MEMORY_VAULT_PATH` is read when `MEMORY_ROOT` is unset) → the present engine's `.agentm-config.json` `vault_path` (read in place, never written — LC-4) → none. Graceful-skip if nothing resolves or the directory is missing.
 2. Locates this plugin's `scripts/vault_conflicts.py` via `$CLAUDE_PLUGIN_ROOT`, and locates the present engine's `scripts/` dir (where `harness_memory.py` lives) to put on `sys.path` so `vault_conflicts.py`'s `from harness_memory import _conflict_family` resolves. Graceful-skip if either is absent — no engine present means nothing to import.
 3. Calls `vault_conflicts.default_lost_and_found_root()` + `vault_conflicts.detect_conflict_files(vault_root, lost_and_found_root=laf)`, which walk the vault for the four marker families plus the DriveFS dump.
 4. For each entry, prints a one-line operator-facing summary on stderr:
@@ -36,7 +36,7 @@ Conflict-file accumulation correlates with operator-active multi-device work. Se
 
 ## Graceful-skip conditions (silent)
 
-- No vault resolves (`MEMORY_VAULT_PATH` unset and no engine config `vault_path`).
+- No vault resolves (`MEMORY_ROOT` unset and no engine config `vault_path`).
 - Vault directory missing.
 - `$CLAUDE_PLUGIN_ROOT/scripts/vault_conflicts.py` not found (plugin not installed as a plugin).
 - The present engine's `scripts/harness_memory.py` not importable on this device — no engine, nothing to scan.

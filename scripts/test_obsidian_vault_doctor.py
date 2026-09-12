@@ -5,7 +5,8 @@ Two layers, mirroring the rest of the obsidian-vault cross-repo suite:
 
   1. **Pure rows (always run).** The mechanics that need no agentm clone — the
      `vault-path [FAIL]` rows (unconfigured / missing dir), the `vault_path`
-     resolution precedence (`$MEMORY_VAULT_PATH` → config → None), the formatter,
+     resolution precedence (`$MEMORY_ROOT` → its deprecated alias
+     `$MEMORY_VAULT_PATH` → config → None), the formatter,
      the `locate_kernel_scripts` search, and `main`'s exit-code contract (1 iff a
      FAIL row). These pin the read-only-diagnostic shape regardless of environment.
 
@@ -100,8 +101,25 @@ class DoctorVaultPureRows(unittest.TestCase):
         self.assertEqual((conflicts.name, conflicts.status), ("conflicts", doctor.WARN))
 
     def test_resolve_vault_path_prefers_env(self) -> None:
-        with mock.patch.dict(os.environ, {"MEMORY_VAULT_PATH": "/tmp/envwins"}, clear=False):
+        with mock.patch.dict(os.environ, {"MEMORY_ROOT": "/tmp/envwins"}, clear=False):
             self.assertEqual(doctor._resolve_vault_path(None), "/tmp/envwins")
+
+    def test_resolve_vault_path_reads_the_deprecated_alias_when_memory_root_unset(self) -> None:
+        # agentm renamed MEMORY_VAULT_PATH → MEMORY_ROOT on 2026-09-11 and exports
+        # both for one release; the old name alone must keep resolving until then.
+        env = {k: v for k, v in os.environ.items() if k not in ("MEMORY_ROOT", "MEMORY_VAULT_PATH")}
+        env["MEMORY_VAULT_PATH"] = "/tmp/alias"
+        with mock.patch.dict(os.environ, env, clear=True):
+            self.assertEqual(doctor._resolve_vault_path(None), "/tmp/alias")
+
+    def test_resolve_vault_path_memory_root_wins_over_the_alias(self) -> None:
+        both = {"MEMORY_ROOT": "/tmp/new-name", "MEMORY_VAULT_PATH": "/tmp/old-name"}
+        with mock.patch.dict(os.environ, both, clear=False):
+            self.assertEqual(doctor._resolve_vault_path(None), "/tmp/new-name")
+        # An EMPTY MEMORY_ROOT — the value CI's isolation sets — falls through
+        # to the alias rather than reading as a configured empty path.
+        with mock.patch.dict(os.environ, {**both, "MEMORY_ROOT": ""}, clear=False):
+            self.assertEqual(doctor._resolve_vault_path(None), "/tmp/old-name")
 
     def test_resolve_vault_path_reads_config_when_env_absent(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -109,7 +127,7 @@ class DoctorVaultPureRows(unittest.TestCase):
             (prefix / ".agentm-config.json").write_text(
                 json.dumps({"vault_path": "/tmp/from-config"}), encoding="utf-8"
             )
-            env = {k: v for k, v in os.environ.items() if k != "MEMORY_VAULT_PATH"}
+            env = {k: v for k, v in os.environ.items() if k not in ("MEMORY_ROOT", "MEMORY_VAULT_PATH")}
             with mock.patch.dict(os.environ, env, clear=True):
                 self.assertEqual(
                     doctor._resolve_vault_path(prefix), "/tmp/from-config"
@@ -117,7 +135,7 @@ class DoctorVaultPureRows(unittest.TestCase):
 
     def test_resolve_vault_path_none_when_no_env_no_config(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            env = {k: v for k, v in os.environ.items() if k != "MEMORY_VAULT_PATH"}
+            env = {k: v for k, v in os.environ.items() if k not in ("MEMORY_ROOT", "MEMORY_VAULT_PATH")}
             with mock.patch.dict(os.environ, env, clear=True):
                 self.assertIsNone(doctor._resolve_vault_path(Path(tmp)))
 
@@ -130,7 +148,7 @@ class DoctorVaultPureRows(unittest.TestCase):
         for blob in ("[]", "42", '"just-a-string"', "null", "true"):
             with self.subTest(blob=blob), tempfile.TemporaryDirectory() as tmp:
                 (Path(tmp) / ".agentm-config.json").write_text(blob, encoding="utf-8")
-                env = {k: v for k, v in os.environ.items() if k != "MEMORY_VAULT_PATH"}
+                env = {k: v for k, v in os.environ.items() if k not in ("MEMORY_ROOT", "MEMORY_VAULT_PATH")}
                 with mock.patch.dict(os.environ, env, clear=True):
                     self.assertIsNone(doctor._resolve_vault_path(Path(tmp)))
 
@@ -144,7 +162,7 @@ class DoctorVaultPureRows(unittest.TestCase):
                 (Path(tmp) / ".agentm-config.json").write_text(
                     json.dumps({"vault_path": bad}), encoding="utf-8"
                 )
-                env = {k: v for k, v in os.environ.items() if k != "MEMORY_VAULT_PATH"}
+                env = {k: v for k, v in os.environ.items() if k not in ("MEMORY_ROOT", "MEMORY_VAULT_PATH")}
                 with mock.patch.dict(os.environ, env, clear=True):
                     self.assertIsNone(doctor._resolve_vault_path(Path(tmp)))
 
@@ -169,7 +187,7 @@ class DoctorVaultPureRows(unittest.TestCase):
             (prefix / ".agentm-config.json").write_text(
                 json.dumps({"vault_path": "~/somedir"}), encoding="utf-8"
             )
-            env = {k: v for k, v in os.environ.items() if k != "MEMORY_VAULT_PATH"}
+            env = {k: v for k, v in os.environ.items() if k not in ("MEMORY_ROOT", "MEMORY_VAULT_PATH")}
             with mock.patch.dict(os.environ, env, clear=True):
                 self.assertEqual(
                     doctor._resolve_vault_path(prefix),
@@ -185,7 +203,7 @@ class DoctorVaultPureRows(unittest.TestCase):
             (prefix / ".agentm-config.json").write_text(
                 json.dumps({"vault_path": "  /padded  "}), encoding="utf-8"
             )
-            env = {k: v for k, v in os.environ.items() if k != "MEMORY_VAULT_PATH"}
+            env = {k: v for k, v in os.environ.items() if k not in ("MEMORY_ROOT", "MEMORY_VAULT_PATH")}
             with mock.patch.dict(os.environ, env, clear=True):
                 self.assertEqual(doctor._resolve_vault_path(prefix), "/padded")
 
@@ -199,7 +217,7 @@ class DoctorVaultPureRows(unittest.TestCase):
             with self.subTest(blob=blob), tempfile.TemporaryDirectory() as tmp:
                 (Path(tmp) / ".agentm-config.json").write_text(blob, encoding="utf-8")
                 env = {k: v for k, v in os.environ.items()
-                       if k not in ("MEMORY_VAULT_PATH", "AGENTM_SCRIPTS")}
+                       if k not in ("MEMORY_ROOT", "MEMORY_VAULT_PATH", "AGENTM_SCRIPTS")}
                 env["AGENTM_INSTALL_PREFIX"] = tmp
                 with mock.patch.dict(os.environ, env, clear=True):
                     with mock.patch.object(doctor, "locate_kernel_scripts", return_value=None):
@@ -240,7 +258,7 @@ class DoctorVaultPureRows(unittest.TestCase):
     def test_main_exit_1_on_fail_row(self) -> None:
         # Unconfigured vault_path with no engine → vault-path FAIL → exit 1.
         env = {k: v for k, v in os.environ.items()
-               if k not in ("MEMORY_VAULT_PATH", "AGENTM_SCRIPTS", "AGENTM_INSTALL_PREFIX")}
+               if k not in ("MEMORY_ROOT", "MEMORY_VAULT_PATH", "AGENTM_SCRIPTS", "AGENTM_INSTALL_PREFIX")}
         with mock.patch.dict(os.environ, env, clear=True):
             with mock.patch.object(doctor, "locate_kernel_scripts", return_value=None):
                 with mock.patch.object(
@@ -309,7 +327,7 @@ class DoctorVaultWithEngine(unittest.TestCase):
             encoding="utf-8",
         )
         # Hermetic env: point the engine's vault_path() read at the synthetic config,
-        # clear MEMORY_VAULT_PATH (so the config key is the source, not an override),
+        # clear MEMORY_ROOT + its alias (so the config key is the source, not an override),
         # clear OBSIDIAN_VAULT_SCRIPTS (the plugin is injected explicitly).
         self._env = mock.patch.dict(
             os.environ,
@@ -317,7 +335,7 @@ class DoctorVaultWithEngine(unittest.TestCase):
             clear=False,
         )
         self._env.start()
-        for var in ("MEMORY_VAULT_PATH", "OBSIDIAN_VAULT_SCRIPTS"):
+        for var in ("MEMORY_ROOT", "MEMORY_VAULT_PATH", "OBSIDIAN_VAULT_SCRIPTS"):
             os.environ.pop(var, None)
 
     def tearDown(self) -> None:

@@ -499,6 +499,7 @@ class TestResolveMemoryRoot(unittest.TestCase):
                 "plugins.obsidian-vault.memory_root": "Agent",
             })
             with mock.patch.dict(os.environ, {}, clear=False):
+                os.environ.pop("MEMORY_ROOT", None)
                 os.environ.pop("MEMORY_VAULT_PATH", None)
                 got = vl.resolve_memory_root(install_prefix=root / "prefix")
             self.assertEqual(got, root / "Vault" / "Agent")
@@ -509,6 +510,7 @@ class TestResolveMemoryRoot(unittest.TestCase):
             (root / "Vault").mkdir(parents=True)
             self._config(root / "prefix", vault_path=str(root / "Vault"))
             with mock.patch.dict(os.environ, {}, clear=False):
+                os.environ.pop("MEMORY_ROOT", None)
                 os.environ.pop("MEMORY_VAULT_PATH", None)
                 got = vl.resolve_memory_root(install_prefix=root / "prefix")
             self.assertEqual(got, root / "Vault")
@@ -524,13 +526,33 @@ class TestResolveMemoryRoot(unittest.TestCase):
                 "plugins.obsidian-vault.memory_root": "Agent",
             })
             with mock.patch.dict(os.environ, {}, clear=False):
+                os.environ.pop("MEMORY_ROOT", None)
                 os.environ.pop("MEMORY_VAULT_PATH", None)
                 got = vl.resolve_memory_root(install_prefix=root / "prefix")
             self.assertEqual(got, root / "New" / "Agent")
 
     def test_env_is_returned_as_is_without_joining_the_prefix(self):
-        """$MEMORY_VAULT_PATH already names the memory tree. Joining the
+        """$MEMORY_ROOT already names the memory tree. Joining the
         configured prefix onto it again would address <vault>/Agent/Agent."""
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "Vault" / "Agent").mkdir(parents=True)
+            self._config(root / "prefix", **{
+                "vault_path": str(root / "Vault"),
+                "plugins.obsidian-vault.memory_root": "Agent",
+            })
+            with mock.patch.dict(
+                os.environ, {"MEMORY_ROOT": str(root / "Vault" / "Agent")}
+            ):
+                os.environ.pop("MEMORY_ROOT", None)
+                os.environ.pop("MEMORY_VAULT_PATH", None)
+                got = vl.resolve_memory_root(install_prefix=root / "prefix")
+            self.assertEqual(got, root / "Vault" / "Agent")
+
+    def test_deprecated_alias_is_read_when_memory_root_unset(self):
+        """$MEMORY_VAULT_PATH — the name agentm exported before 2026-09-11 and
+        keeps as an alias for one release — still resolves on its own, as-is,
+        with the same no-join contract."""
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             (root / "Vault" / "Agent").mkdir(parents=True)
@@ -541,20 +563,35 @@ class TestResolveMemoryRoot(unittest.TestCase):
             with mock.patch.dict(
                 os.environ, {"MEMORY_VAULT_PATH": str(root / "Vault" / "Agent")}
             ):
+                os.environ.pop("MEMORY_ROOT", None)
                 got = vl.resolve_memory_root(install_prefix=root / "prefix")
             self.assertEqual(got, root / "Vault" / "Agent")
+
+    def test_memory_root_wins_over_the_alias(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "new").mkdir()
+            (root / "old").mkdir()
+            both = {"MEMORY_ROOT": str(root / "new"), "MEMORY_VAULT_PATH": str(root / "old")}
+            with mock.patch.dict(os.environ, both):
+                self.assertEqual(vl.resolve_memory_root(), root / "new")
+            # CI isolates the suite with MEMORY_ROOT="" — an empty new name
+            # falls through to the alias, not to nothing.
+            with mock.patch.dict(os.environ, {**both, "MEMORY_ROOT": ""}):
+                self.assertEqual(vl.resolve_memory_root(), root / "old")
 
     def test_cli_value_wins_over_everything(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             (root / "explicit").mkdir()
-            with mock.patch.dict(os.environ, {"MEMORY_VAULT_PATH": str(root)}):
+            with mock.patch.dict(os.environ, {"MEMORY_ROOT": str(root)}):
                 self.assertEqual(vl.resolve_memory_root(str(root / "explicit")),
                                  root / "explicit")
 
     def test_none_when_nothing_resolves(self):
         with tempfile.TemporaryDirectory() as td:
             with mock.patch.dict(os.environ, {}, clear=False):
+                os.environ.pop("MEMORY_ROOT", None)
                 os.environ.pop("MEMORY_VAULT_PATH", None)
                 self.assertIsNone(
                     vl.resolve_memory_root(install_prefix=Path(td) / "no-such-prefix"))
@@ -568,6 +605,7 @@ class TestResolveMemoryRoot(unittest.TestCase):
                 "plugins.obsidian-vault.memory_root": "Agent",
             })
             with mock.patch.dict(os.environ, {}, clear=False):
+                os.environ.pop("MEMORY_ROOT", None)
                 os.environ.pop("MEMORY_VAULT_PATH", None)
                 self.assertIsNone(
                     vl.resolve_memory_root(install_prefix=root / "prefix"))
@@ -680,6 +718,7 @@ class TestProsePassMemoryRoot(unittest.TestCase):
             }), encoding="utf-8")
             env = {"AGENTM_INSTALL_PREFIX": str(prefix)}
             with mock.patch.dict(os.environ, env):
+                os.environ.pop("MEMORY_ROOT", None)
                 os.environ.pop("MEMORY_VAULT_PATH", None)
                 got = prose_pass.resolve_vault_path(None)
             self.assertEqual(got, root / "Vault" / "Agent")

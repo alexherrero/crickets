@@ -473,7 +473,7 @@ python3 src/wiki-maintenance/skills/diataxis-author/scripts/capture.py \
 python3 src/wiki-maintenance/skills/diataxis-author/scripts/capture.py save \
     --trigger hedging-adverbs --scope per-project --project-slug crickets \
     --guidance "In any how-to, cut hedging adverbs (just, simply, easily)." \
-    --vault-path "$MEMORY_VAULT_PATH"
+    --vault-path "$MEMORY_ROOT"
 ```
 
 The store routing mirrors the resolver's read model (part 3 task 1): global → `<projects-space>/_global/wiki-style/<date>-<trigger>.md` · per-project → `<projects-space>/<slug>/wiki-style/<date>-<trigger>.md` · per-repo → `<wiki-root>/.diataxis-conventions.md`. Project-keyed stores live in the vault's project space (see agentm ADR 0010), not under `personal-private/`. The next `/diataxis author` draft reads it back automatically.
@@ -495,13 +495,13 @@ A **one-time, operator-run** migration that moves the global wiki/Diátaxis conv
 ```bash
 # 1. ALWAYS preview first — prints WOULD: lines, mutates nothing:
 python3 src/wiki-maintenance/skills/diataxis-author/scripts/relocate.py \
-    --preview --vault-path "$MEMORY_VAULT_PATH"
+    --preview --vault-path "$MEMORY_ROOT"
 # 2. Relocate (copies; leaves the source in place; records a rollback manifest):
-python3 …/relocate.py --vault-path "$MEMORY_VAULT_PATH"
+python3 …/relocate.py --vault-path "$MEMORY_ROOT"
 # 3. (optional) Remove the now-redundant always-load sources, after a byte-identical verify:
-python3 …/relocate.py --cleanup --yes --vault-path "$MEMORY_VAULT_PATH"
+python3 …/relocate.py --cleanup --yes --vault-path "$MEMORY_ROOT"
 # Reverse a relocation at any point (restores cleaned-up sources from the copies):
-python3 …/relocate.py --rollback --vault-path "$MEMORY_VAULT_PATH"
+python3 …/relocate.py --rollback --vault-path "$MEMORY_ROOT"
 ```
 
 - **Conflict-safe:** a byte-differing dest is never overwritten (`CONFLICT`, exit 2); a byte-identical dest is a no-op (`SKIP-IDENTICAL`). Idempotent.
@@ -522,7 +522,7 @@ The **operator-gated** path that graduates a *proven* overlay voice lesson into 
 ```bash
 # 1. ALWAYS preview first — prints the unified diff against the base, writes nothing:
 python3 …/skills/diataxis-author/scripts/promote.py \
-    --lesson "$MEMORY_VAULT_PATH/../Projects/_global/wiki-style/<date>-<trigger>.md" --preview
+    --lesson "$MEMORY_ROOT/../Projects/_global/wiki-style/<date>-<trigger>.md" --preview
 # 2. Apply — writes ONLY the src/ base, leaving it UNCOMMITTED for you to review:
 python3 …/promote.py --lesson "<…>.md"
 # 3. (maintainer) review the diff, commit, then regenerate dist/ so it ships:

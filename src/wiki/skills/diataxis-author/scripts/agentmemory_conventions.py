@@ -15,7 +15,7 @@
 #
 # Fallback chain (lookup order):
 #   1. Per-repo `.diataxis-conventions.md` (when wiki_root provided + file present)
-#   2. Vault `_always-load/diataxis-*.md` (when MEMORY_VAULT_PATH or
+#   2. Vault `_always-load/diataxis-*.md` (when MEMORY_ROOT or
 #      --vault-path resolves)
 #   3. ADR 0004 defaults (hardcoded fallbacks).
 #

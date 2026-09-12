@@ -52,7 +52,7 @@ If operator's phrasing is ambiguous (e.g. *"add this somewhere"*), do NOT fire â
    ```
 3. **Cwd outside any registered repo + no explicit slug.** Refuse with actionable error:
    > "Current directory isn't a registered repo. Register first: `python3 scripts/repo_registry.py register <slug> --root <path>`. Or specify the target: *update {slug}'s wiki*."
-4. **`MEMORY_VAULT_PATH` unset OR registry empty.** Falls back to cwd-only mode. Cross-repo phrases refuse with: "Cross-repo writes need a vault-backed repo registry (V4 #30 plan 1). Run `bash install.sh --scope user` to set up, OR work in cwd."
+4. **`MEMORY_ROOT` unset (`MEMORY_VAULT_PATH`, the deprecated alias, is read as a fallback) OR registry empty.** Falls back to cwd-only mode. Cross-repo phrases refuse with: "Cross-repo writes need a vault-backed repo registry (V4 #30 plan 1). Run `bash install.sh --scope user` to set up, OR work in cwd."
 
 ## Dispatch contract
 

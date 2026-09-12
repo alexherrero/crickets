@@ -15,11 +15,12 @@ $ErrorActionPreference = 'Continue'  # never block session boot on hook failure
 $mode = if ($env:HARNESS_CONFLICT_MERGER_MODE) { $env:HARNESS_CONFLICT_MERGER_MODE } else { 'interactive' }
 if ($mode -eq 'off') { exit 0 }
 
-# Resolve the vault path: env -> engine .agentm-config.json vault_path -> none.
-# Claude Code does not inject MEMORY_VAULT_PATH into the hook env on user-scope
+# Resolve the vault path: $env:MEMORY_ROOT (else its deprecated alias
+# $env:MEMORY_VAULT_PATH) -> engine .agentm-config.json vault_path -> none.
+# Claude Code does not inject MEMORY_ROOT into the hook env on user-scope
 # installs. LC-4: the engine config is read in place, never written. Mirrors the
 # bash twin's _resolve_vault_path().
-$vaultPath = $env:MEMORY_VAULT_PATH
+$vaultPath = if ($env:MEMORY_ROOT) { $env:MEMORY_ROOT } else { $env:MEMORY_VAULT_PATH }
 if (-not $vaultPath) {
     $prefix = if ($env:AGENTM_INSTALL_PREFIX) { $env:AGENTM_INSTALL_PREFIX } else { (Join-Path $HOME '.claude') }
     $cfg = Join-Path $prefix '.agentm-config.json'

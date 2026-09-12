@@ -71,4 +71,4 @@ The `/design` command's *interactive* external-review handoff (transfer-context 
 
 ## No PII
 
-This is a public repo pattern: the vault path is resolved at runtime (`--vault-path` → `$MEMORY_VAULT_PATH` → `.agentm-config.json`), never committed, never echoed into the revised document or the Document History row.
+This is a public repo pattern: the vault path is resolved at runtime (`--vault-path` → `$MEMORY_ROOT`, with `$MEMORY_VAULT_PATH` read as its deprecated alias → `.agentm-config.json`), never committed, never echoed into the revised document or the Document History row.

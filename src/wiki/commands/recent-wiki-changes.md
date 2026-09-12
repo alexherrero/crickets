@@ -48,7 +48,7 @@ sherwood reference    reference/CI-Conventions.md              2026-05-27 14:00
 
 ## Graceful-skip
 
-- **`MEMORY_VAULT_PATH` unset OR vault missing** → exits 1 with `{"skipped": true, "reason": "..."}` JSON marker.
+- **`MEMORY_ROOT` unset (its deprecated alias `MEMORY_VAULT_PATH` is read as a fallback) OR vault missing** → exits 1 with `{"skipped": true, "reason": "..."}` JSON marker.
 - **No repos registered** → prints an actionable hint with the `repo_registry register` command.
 - **No recent changes** → prints "No wiki changes in the last N day(s)" and exits 0.
 

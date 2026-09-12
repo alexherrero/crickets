@@ -7,7 +7,7 @@ at this plugin's hook after the V5-2 task-2 re-home. The load-bearing assertions
 that travel with it:
 
   - `test_resolves_vault_from_config_when_env_unset` — Claude Code does NOT inject
-    `MEMORY_VAULT_PATH` into the hook env on user-scope installs, so the hook must
+    `MEMORY_ROOT` into the hook env on user-scope installs, so the hook must
     fall back to the present engine's `.agentm-config.json::vault_path` (LC-4 —
     read in place). Fails against a hook that only checks the env var.
   - The broadened sweep (bracket / copy-of / numbered families + the DriveFS
@@ -112,6 +112,7 @@ class TestConflictMergerHook(unittest.TestCase):
             "CLAUDE_PLUGIN_ROOT": str(_PLUGIN_ROOT),
         }
         # Clean slate: env var must be UNSET to exercise the config fallback.
+        env.pop("MEMORY_ROOT", None)
         env.pop("MEMORY_VAULT_PATH", None)
         env.pop("AGENTM_INSTALL_PREFIX", None)
         env.update(over)
@@ -126,7 +127,7 @@ class TestConflictMergerHook(unittest.TestCase):
 
     # ── The regression ─────────────────────────────────────────────────────
     def test_resolves_vault_from_config_when_env_unset(self) -> None:
-        """MEMORY_VAULT_PATH unset → resolve vault_path from .agentm-config.json
+        """MEMORY_ROOT unset → resolve vault_path from .agentm-config.json
         and still detect the conflict file."""
         r = self._run(self._env())
         self.assertEqual(r.returncode, 0, r.stderr)
@@ -136,10 +137,34 @@ class TestConflictMergerHook(unittest.TestCase):
 
     # ── Companion behaviors (must keep passing) ────────────────────────────
     def test_env_var_still_wins_when_set(self) -> None:
+        r = self._run(self._env(MEMORY_ROOT=str(self.vault)))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("[conflict-merger]", r.stderr)
+        self.assertIn(_CONFLICT_NAME, r.stderr)
+
+    def test_deprecated_alias_still_read_when_memory_root_unset(self) -> None:
+        """agentm exported only MEMORY_VAULT_PATH before 2026-09-11 and keeps
+        exporting it as an alias for one release; the hook reads it when
+        MEMORY_ROOT is absent."""
         r = self._run(self._env(MEMORY_VAULT_PATH=str(self.vault)))
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("[conflict-merger]", r.stderr)
         self.assertIn(_CONFLICT_NAME, r.stderr)
+
+    def test_memory_root_wins_over_the_alias(self) -> None:
+        """Both set → MEMORY_ROOT decides. The alias points at a clean vault;
+        the notice can only come from the fixture vault MEMORY_ROOT names."""
+        clean = self.root / "clean-vault"
+        clean.mkdir()
+        self._write_config(vault_path=None)
+        r = self._run(self._env(MEMORY_ROOT=str(self.vault), MEMORY_VAULT_PATH=str(clean)))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn(_CONFLICT_NAME, r.stderr)
+        # And the other way round: the alias names the fixture, MEMORY_ROOT the
+        # clean one → no notice, proving the alias was not consulted.
+        r = self._run(self._env(MEMORY_ROOT=str(clean), MEMORY_VAULT_PATH=str(self.vault)))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn("[conflict-merger]", r.stderr)
 
     def test_graceful_skip_when_no_vault_anywhere(self) -> None:
         self._write_config(vault_path=None)
