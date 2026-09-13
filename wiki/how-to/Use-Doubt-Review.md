@@ -47,7 +47,7 @@ Use `/doubt` when one or more of the following apply:
    The adversarial prompt is locked: *"find issues, assume overconfidence, do NOT validate."*
 
    - **Exit 0** — cross-model reviewer returned findings.
-   - **Exit 1/2** — agy unavailable; falls back to the in-process `adversarial-reviewer` agent with the same material and the same prompt.
+   - **Exit 1/2** — no cross-model review this time (agy missing, failing or out of time, material over the size ceiling, or a reply that broke the contract twice). The script prints one `CROSS-REVIEW-DEGRADED: <reason>` line saying which; relay it, then fall back to the in-process `adversarial-reviewer` agent with the same material and the same prompt.
 
    In an **interactive session**, after the single-model pass completes, the command always offers: *"Single-model review complete — want a cross-model second opinion?"* The user decides.
 

@@ -1,9 +1,9 @@
 ---
 name: adversarial-reviewer-cross
-description: Cross-model adversarial reviewer. Shells out to `agy` (the Antigravity CLI, serving Gemini) via the bundled cross-review.sh for a second opinion from a different model. Same contract as adversarial-reviewer (failing test, DEFECT file:line, or NO ISSUES FOUND — no prose). Falls back to the in-process adversarial-reviewer when agy is unavailable, visibly — relays the script's CROSS-REVIEW-DEGRADED marker rather than degrading silently.
+description: Cross-model adversarial reviewer. Shells out to `agy` (the Antigravity CLI, serving Gemini) via the bundled cross-review.sh for a second opinion from a different model. Same contract as adversarial-reviewer (failing test, DEFECT file:line, or NO ISSUES FOUND — no prose). Falls back to the in-process adversarial-reviewer whenever the script returns no cross-model review (agy missing, failing or out of time, or material over its size ceiling), visibly — relays the script's CROSS-REVIEW-DEGRADED marker rather than degrading silently.
 kind: agent
 supported_hosts: [claude-code, antigravity]
-version: 0.3.0
+version: 0.3.1
 tools: Read, Glob, Grep, Bash
 ---
 
@@ -51,14 +51,19 @@ Capture stdout and the exit code.
 ## Step 4 — handle the exit code
 
 - **Exit 0:** return the stdout **unchanged** as your findings. The output matches the three-form contract; pass it through.
-- **Exit 1:** cross-model unavailable (agy missing/unauthed). The script itself prints a `CROSS-REVIEW-DEGRADED: agy CLI unavailable, using same-model reviewer` line on stdout before exiting — relay that line to the caller verbatim, don't paraphrase it away, then add: *"Cross-model reviewer unavailable — falling back to in-process adversarial-reviewer."* Then dispatch the in-process `adversarial-reviewer` with the same material.
-- **Exit 2:** the cross-model reviewer violated the contract twice. The script prints a `CROSS-REVIEW-DEGRADED: agy response violated the output contract twice, using same-model reviewer` line on stdout before exiting — relay that line too, then add: *"Cross-model reviewer returned non-contract output twice (raw output on stderr) — ran in-process adversarial-reviewer instead."* Then fall back to the in-process reviewer.
+- **Exit 1:** no cross-model review this time. Stdout is one `CROSS-REVIEW-DEGRADED: <reason>, using same-model reviewer` line, and the reason names the case:
+  - `agy CLI unavailable` — agy is not installed.
+  - `agy returned no output (...)`, `agy returned partial output (...)` or `agy failed (...)` — agy ran and gave no finished answer. The parenthesis carries agy's exit code, the seconds it ran, and whether its print timeout fired; agy's own stderr follows on the script's stderr.
+  - `review material is N bytes, over the M-byte ceiling ...` — agy was not called: material that size outruns agy's print timeout. You may split the material at file boundaries into parts under M bytes and run the script once per part, handling each part's exit code by these rules.
+
+  Relay the line to the caller verbatim, don't paraphrase it away, then add: *"Cross-model reviewer unavailable — falling back to in-process adversarial-reviewer."* Then dispatch the in-process `adversarial-reviewer` with the same material.
+- **Exit 2:** `agy response violated the output contract twice` — relay that line too, then add: *"Cross-model reviewer returned non-contract output twice (raw output on stderr) — ran in-process adversarial-reviewer instead."* Then fall back to the in-process reviewer. `no review material on stdin` means your Step 2 file was empty: rebuild it and run the script again, and relay the line and fall back only if it is still empty.
 
 Degradation is never silent by design: whichever fallback path fires, the caller sees the exact `CROSS-REVIEW-DEGRADED: ...` line the script printed, not just your own paraphrase of it — so a transcript or log always carries a durable, grep-able trace that a "cross-model" review actually ran same-model this time.
 
 ## Step 5 — log the outcome (best-effort)
 
-If a `.harness/progress.md` exists, append: `/review (cross-model) — <outcome>` (or `… (cross-model fallback) — agy unavailable`). Over time, the fallback rate + the agreement rate between cross-model and in-process reviewers are useful telemetry.
+If a `.harness/progress.md` exists, append: `/review (cross-model) — <outcome>` (or `… (cross-model fallback) — <the marker's reason>`). Over time, the fallback rate + the agreement rate between cross-model and in-process reviewers are useful telemetry.
 
 ## Hard rules
 

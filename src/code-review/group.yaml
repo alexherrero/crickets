@@ -57,7 +57,20 @@ description: Standalone adversarial code review of any diff or PR — the advers
 # because it was never capable of exercising the condition the wrong fix
 # failed to handle. New checklist item; new Common Rationalizations row (own
 # frontmatter version 0.1.0 -> 0.1.1).
-version: 0.3.3
+# 0.3.4 = cross-review.sh prints its CROSS-REVIEW-DEGRADED marker on every
+# fallback exit. agy meets --print-timeout by exiting 0 with nothing (or a
+# cut-off answer) on stdout and a "print timeout" line on stderr; the script
+# sent that stderr to /dev/null and wrote only "agy call failed (exit 0)", so
+# the agentm plan 07 review (2026-09-13) fell back to a same-model review
+# five times with no marker. The reason now gives agy's exit code, the
+# seconds it ran and whether the print timeout fired, and a cut-off answer
+# degrades instead of passing validate(). Material over MAX_MATERIAL_BYTES
+# (50,000: the largest code-diff review measured inside the 180s timeout)
+# degrades before agy is called; CROSS_REVIEW_MAX_BYTES overrides it. Empty
+# stdin carries the marker too. adversarial-reviewer-cross.md's Step 4,
+# /code-review and /doubt name the new reasons and say agy, not gemini (own
+# frontmatter versions 0.3.0 -> 0.3.1, 0.1.0 -> 0.1.1).
+version: 0.3.4
 category: Coding
 requires: []
 standalone: true

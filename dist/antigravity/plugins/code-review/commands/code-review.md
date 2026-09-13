@@ -3,7 +3,7 @@ name: code-review
 description: Adversarial review of any diff or PR — standalone, no /work cycle. Dispatches the cross-model + in-process adversarial reviewers; reports a failing test, a DEFECT file:line, or NO ISSUES FOUND. Never fixes. For in-flight review of a specific decision before it stands, use /doubt instead.
 kind: command
 supported_hosts: [claude-code, antigravity]
-version: 0.1.0
+version: 0.1.1
 argument-hint: <diff range | branch | PR number/URL — defaults to the working-tree diff>
 ---
 
@@ -32,7 +32,7 @@ If the repo has deterministic gates (from `.harness/init.sh` / package scripts /
 
 ### 4. Dispatch the reviewers
 
-- If the cross-model reviewer is available (the `adversarial-reviewer-cross` agent + `gemini` on PATH), dispatch **`adversarial-reviewer-cross`** first — cross-model review escapes the same-model echo chamber. On its exit-1 fallback (no gemini), it falls back to the in-process reviewer.
+- If the cross-model reviewer is available (the `adversarial-reviewer-cross` agent + `agy` on PATH), dispatch **`adversarial-reviewer-cross`** first — cross-model review escapes the same-model echo chamber. When `cross-review.sh` can't return a cross-model review (exit 1 or 2: agy missing, failed or out of time, material over the size ceiling, or a reply that broke the contract twice), the agent relays the script's `CROSS-REVIEW-DEGRADED: ...` line and falls back to the in-process reviewer. Surface that line with the findings.
 - Then dispatch **`adversarial-reviewer`** (in-process) — corroboration, or sole reviewer if cross-model fell back.
 - Pass each the diff + the spec/PLAN-task + `AGENTS.md`. Do **NOT** pass an implementer reasoning trace — fresh context only.
 
