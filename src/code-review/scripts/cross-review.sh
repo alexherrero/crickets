@@ -29,8 +29,12 @@
 #
 # Exit codes:
 #   0 — review produced, output on stdout matches the contract
-#   1 — agy not installed / not authed — caller should fall back
-#   2 — agy ran but violated the output contract twice — caller decides
+#   1 — no cross-model review this time — caller should fall back: agy is
+#       not installed; agy failed, returned nothing, or ran out of its print
+#       timeout; or the material is over MAX_MATERIAL_BYTES, so agy was
+#       never called
+#   2 — no review material on stdin, or agy ran but violated the output
+#       contract twice — caller decides
 #
 # The contract (what stdout must match): exactly one of
 #   1. A failing test inside a fenced code block
@@ -38,12 +42,21 @@
 #   3. A block starting with `NO ISSUES FOUND`
 # Prose-only responses are rejected.
 #
-# Degradation is never silent: both fallback paths (exit 1 and exit 2) print
-# a "CROSS-REVIEW-DEGRADED: ..." line on stdout before exiting, in addition to
-# the diagnostic already on stderr. A missing/broken agy CLI used to leave
-# only a stderr line + the exit code as evidence -- easy to miss in a
-# transcript, and invisible to anything that only captures stdout. The marker
-# text is a stable, grep-able contract of its own (see
+# agy's print timeout does not fail the call. agy 1.2.2 writes "[agy] print
+# timeout after <duration> with turn in progress; returning partial output"
+# to stderr and exits 0 with what it had, usually nothing. Until 2026-09-13
+# this script sent agy's stderr to /dev/null and had no marker on that
+# branch: five runs of an agentm plan review left only "agy call failed
+# (exit 0)" on stderr. agy's stderr is kept now, so the reason names the
+# timeout, and a cut-off answer is never passed off as a finished review.
+#
+# Degradation is never silent: every non-zero exit goes through degrade(),
+# which prints one "CROSS-REVIEW-DEGRADED: <reason>, using same-model
+# reviewer" line on stdout, and nothing else there, in addition to the
+# diagnostic on stderr. A missing/broken agy CLI used to leave only a stderr
+# line + the exit code as evidence -- easy to miss in a transcript, and
+# invisible to anything that only captures stdout. The marker text is a
+# stable, grep-able contract of its own (see
 # scripts/test_cross_review_degradation.py): callers should relay it verbatim
 # rather than paraphrase it away (adversarial-reviewer-cross.md's Step 4
 # does exactly that).
@@ -56,6 +69,20 @@ set -uo pipefail
 # Claude Sonnet 4.6 (Thinking), Claude Opus 4.6 (Thinking), GPT-OSS 120B
 # Medium) -- `--model` takes this string verbatim, not a short id.
 MODEL="Gemini 3.1 Pro (High)"
+
+# How long agy's print mode waits for the answer, in seconds.
+PRINT_TIMEOUT_SECS=180
+
+# Review material over this many bytes degrades before agy is called (exit
+# 1): past it a review measurably outruns the print timeout, and the call
+# would only burn it. Measured 2026-09-13 with this framing and model, one
+# call at a time, on code diffs: 34 KB answered in 112s, 50 KB in 154s,
+# 67 KB in 197s, 130 KB in 239s. Of eleven runs at 67 KB or more, the
+# agentm plan 07 review's five among them, one finished inside 180s: an
+# 84 KB design doc, in 146s (another, 82 KB, took 304s). 50 KB is the
+# largest code review measured inside the timeout; move the two together.
+# CROSS_REVIEW_MAX_BYTES overrides the ceiling; 0 turns the check off.
+MAX_MATERIAL_BYTES=50000
 
 # Use `read -r -d ''` for the heredoc assignment — `$(cat <<'EOF'...)` gets
 # confused by backticks inside fenced code blocks in the prompt body.
@@ -113,29 +140,88 @@ call_agy() {
   # explicitly closed (a connected-but-unread pipe was observed to
   # intermittently hang until --print-timeout fired).
   local full_prompt="${prompt}"$'\n\n=== REVIEW MATERIAL ==='$'\n'"${material}"
-  agy -p "$full_prompt" --model "$MODEL" --print-timeout 180s < /dev/null 2>/dev/null
+  agy -p "$full_prompt" --model "$MODEL" --print-timeout "${PRINT_TIMEOUT_SECS}s" \
+    < /dev/null 2>"$agy_stderr"
+}
+
+# degrade <exit-code> <reason> [<stderr line>...] -- the one way this script
+# gives up on a cross-model review. The marker is the only line it prints on
+# stdout; the remaining arguments go to stderr, one per line, verbatim.
+degrade() {
+  local code="$1" reason="$2"
+  shift 2
+  echo "CROSS-REVIEW-DEGRADED: ${reason}, using same-model reviewer"
+  (( $# )) && printf '%s\n' "$@" >&2
+  exit "$code"
+}
+
+# ask_agy <framing> <label> -- one agy call. Returns, with the answer in
+# $output, only when agy exited 0 with output and did not report its print
+# timeout; every other ending degrades with exit 1. <label> goes into the
+# reason (" on retry").
+ask_agy() {
+  local label="$2" started=$SECONDS rc elapsed when said timed_out=""
+  output=$(call_agy "$1")
+  rc=$?
+  elapsed=$((SECONDS - started))
+  said=$(tail -n 5 "$agy_stderr")
+  # agy 1.2.2: "[agy] print timeout after ..."; agy 1.1.26: "Print mode:
+  # timed out after ...". A looser "timed out" could be retry chatter under a
+  # finished answer.
+  grep -qiE 'print timeout|print mode: timed out' "$agy_stderr" && timed_out=1
+
+  if [[ -n "$timed_out" ]]; then
+    when="exit $rc after ${elapsed}s; its ${PRINT_TIMEOUT_SECS}s print timeout fired"
+  elif (( elapsed >= PRINT_TIMEOUT_SECS )); then
+    when="exit $rc after ${elapsed}s; its ${PRINT_TIMEOUT_SECS}s print timeout may have fired"
+  else
+    when="exit $rc after ${elapsed}s, before its ${PRINT_TIMEOUT_SECS}s print timeout"
+  fi
+
+  if [[ -z "$output" ]]; then
+    degrade 1 "agy returned no output${label} (${when})" \
+      "cross-review: agy call${label} ended without a review (${when})" ${said:+"$said"}
+  fi
+  if [[ -n "$timed_out" ]]; then
+    # "returning partial output": the answer was cut off, even when its
+    # first lines would pass validate().
+    degrade 1 "agy returned partial output${label} (${when})" \
+      "cross-review: agy's print timeout cut the answer off${label}; partial output follows" \
+      ${said:+"$said"} "$output"
+  fi
+  if (( rc != 0 )); then
+    degrade 1 "agy failed${label} (exit $rc after ${elapsed}s)" \
+      "cross-review: agy call${label} failed (exit $rc after ${elapsed}s); its output follows" \
+      ${said:+"$said"} "$output"
+  fi
 }
 
 main() {
-  command -v agy >/dev/null 2>&1 || {
-    echo "CROSS-REVIEW-DEGRADED: agy CLI unavailable, using same-model reviewer"
-    echo "cross-review: agy CLI not found — caller should fall back" >&2
-    exit 1
-  }
+  command -v agy >/dev/null 2>&1 \
+    || degrade 1 "agy CLI unavailable" "cross-review: agy CLI not found — caller should fall back"
 
   material=$(cat)
-  if [[ -z "$material" ]]; then
-    echo "cross-review: no review material on stdin" >&2
-    exit 2
+  [[ -n "$material" ]] \
+    || degrade 2 "no review material on stdin" "cross-review: no review material on stdin"
+
+  local ceiling="$MAX_MATERIAL_BYTES" bytes
+  case "${CROSS_REVIEW_MAX_BYTES:-}" in
+    '') ;;
+    *[!0-9]*) echo "cross-review: ignoring CROSS_REVIEW_MAX_BYTES='${CROSS_REVIEW_MAX_BYTES}', not a byte count" >&2 ;;
+    *) ceiling=$((10#$CROSS_REVIEW_MAX_BYTES)) ;;
+  esac
+  bytes=$(printf '%s' "$material" | LC_ALL=C wc -c)
+  bytes=$((bytes))
+  if (( ceiling > 0 && bytes > ceiling )); then
+    degrade 1 "review material is ${bytes} bytes, over the ${ceiling}-byte ceiling for agy's ${PRINT_TIMEOUT_SECS}s print timeout" \
+      "cross-review: agy not called; review the material in parts under ${ceiling} bytes, one call each"
   fi
 
-  output=$(call_agy "$framing")
-  rc=$?
-  if [[ $rc -ne 0 || -z "$output" ]]; then
-    echo "cross-review: agy call failed (exit $rc)" >&2
-    exit 1
-  fi
+  agy_stderr=$(mktemp "${TMPDIR:-/tmp}/cross-review.XXXXXX") \
+    || degrade 1 "no temp file for agy's stderr" "cross-review: mktemp failed"
+  trap 'rm -f "$agy_stderr"' EXIT
 
+  ask_agy "$framing" ""
   if validate "$output"; then
     printf '%s\n' "$output"
     exit 0
@@ -145,22 +231,14 @@ main() {
   retry_nudge="Your previous response did not match the required output format. Respond again using EXACTLY ONE of the three forms (failing test, DEFECT:, or NO ISSUES FOUND). No prose preamble. No prose outside the form."
   retry_framing="${framing}"$'\n\n'"${retry_nudge}"
 
-  output=$(call_agy "$retry_framing")
-  rc=$?
-  if [[ $rc -ne 0 || -z "$output" ]]; then
-    echo "cross-review: agy retry failed (exit $rc)" >&2
-    exit 1
-  fi
-
+  ask_agy "$retry_framing" " on retry"
   if validate "$output"; then
     printf '%s\n' "$output"
     exit 0
   fi
 
-  echo "CROSS-REVIEW-DEGRADED: agy response violated the output contract twice, using same-model reviewer"
-  echo "cross-review: contract violated after retry. Raw output follows on stderr." >&2
-  printf '%s\n' "$output" >&2
-  exit 2
+  degrade 2 "agy response violated the output contract twice" \
+    "cross-review: contract violated after retry. Raw output follows on stderr." "$output"
 }
 
 # Sourcing this file (e.g. from a test harness that wants to call validate()

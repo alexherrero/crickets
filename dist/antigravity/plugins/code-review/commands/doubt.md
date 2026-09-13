@@ -3,7 +3,7 @@ name: doubt
 description: "Subjects every non-trivial decision to a fresh-context adversarial review before it stands. Use when correctness matters more than speed, when working in unfamiliar code, when stakes are high (production, security-sensitive, irreversible), or when a confident output would be cheaper to verify now than to debug later. Do NOT use for mechanical operations, one-line renames, or following clear unambiguous instructions."
 kind: command
 supported_hosts: [claude-code, antigravity]
-version: 0.1.0
+version: 0.1.1
 ---
 
 You are running **/doubt** — in-flight adversarial review of a specific decision before it stands.
@@ -70,7 +70,7 @@ The adversarial prompt to the reviewer is: **"find issues, assume overconfidence
 
 **Exit code handling:**
 - **Exit 0** — cross-model reviewer returned findings. Use them.
-- **Exit 1 or 2** — gemini unavailable or contract violated. Fall back to the in-process `adversarial-reviewer` agent with the same `/tmp/doubt-material.txt` material and the same adversarial prompt.
+- **Exit 1 or 2** — no cross-model review this time: `agy` is missing, failed, or ran out of its print timeout; the material is empty or over the script's size ceiling; or the reply broke the output contract twice. Stdout is then one `CROSS-REVIEW-DEGRADED: <reason>, using same-model reviewer` line. Relay it verbatim, then fall back to the in-process `adversarial-reviewer` agent with the same `/tmp/doubt-material.txt` material and the same adversarial prompt.
 
 **Interactive vs non-interactive branching:**
 

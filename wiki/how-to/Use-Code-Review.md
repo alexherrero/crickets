@@ -40,7 +40,7 @@ The cross-model pass sends your diff to **Gemini, via the Antigravity CLI (`agy`
 
 - It's **operator-opt-in per invocation** — the cross-model reviewer runs only when you invoke `/code-review` and `agy` is present.
 - The model is **editable** — point the cross-review reviewer at `claude` instead of `agy` to keep the diff inside your model boundary.
-- It **graceful-skips** when `agy` is absent or unauthed: `cross-review.sh` exits non-zero and the command falls back to the in-process `adversarial-reviewer` (same model, no external send).
+- It **graceful-skips** when `agy` is absent, unauthed, or out of time (it waits 180 seconds for an answer), and when the diff is over `cross-review.sh`'s size ceiling: the script exits non-zero, prints a `CROSS-REVIEW-DEGRADED: <reason>` line saying which, and the command falls back to the in-process `adversarial-reviewer` (same model, no external send).
 - The in-process `adversarial-reviewer` always stays on the current model — it never sends the diff anywhere.
 
 ## See also

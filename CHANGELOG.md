@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Patch: a cross-review that runs out of time says so
+
+`cross-review.sh` promises a `CROSS-REVIEW-DEGRADED` line on stdout whenever it gives up on the cross-model review. It broke that promise when agy ran into its 180-second print timeout. agy exits 0 with nothing on stdout and says "print timeout" on stderr, which the script sent to `/dev/null`. The script then wrote only `cross-review: agy call failed (exit 0)` to stderr and exited 1. The agentm plan 07 review on 2026-09-13 ran it five times on 67–216 KB of material, about 196 seconds each, and fell back to a same-model review with no marker to relay.
+
+### Fixed
+
+- `code-review` 0.3.4 — every fallback exit prints exactly one `CROSS-REVIEW-DEGRADED: <reason>, using same-model reviewer` line on stdout, and nothing else there. A call that ends without an answer reads `agy returned no output (exit 0 after 196s; its 180s print timeout fired)`. The reason gives agy's exit code and the seconds it ran, and says whether the print timeout fired, may have fired, or came after. agy's own stderr now reaches the script's stderr. A timeout that returns part of an answer degrades instead of passing a cut-off review through `validate()`. A failed retry and empty stdin carry the marker too.
+- `code-review` 0.3.4 — `/code-review`, `/doubt` and the `/doubt` how-to still said `gemini` or "agy unavailable" for every fallback. They name `agy` and tell the caller to relay the marker's reason.
+
+### Changed
+
+- `code-review` 0.3.4 — review material over 50,000 bytes degrades before agy is called, instead of spending the timeout. The number is measured. With the script's framing and model, one call at a time, code-diff reviews took 112 seconds at 34 KB, 154 at 50 KB, 197 at 67 KB and 239 at 130 KB. Of eleven runs at 67 KB or more, one finished inside 180 seconds. `CROSS_REVIEW_MAX_BYTES` sets another ceiling, and `0` turns the check off. The marker names the size and the ceiling, and the stderr line says to send the material in parts under it.
+
+### Internal
+
+- `test_cross_review_degradation.py` drives each fallback exit against a stub `agy`, including one that prints nothing and exits 0, one that writes agy's real timeout line, and the 216,549 bytes of the agentm review. Each asserts that stdout is the marker alone. Eleven of the fourteen new tests fail against the 0.3.3 script. The other three check that a finished answer, material at the ceiling and a turned-off ceiling still reach agy, and pass on both.
+
 ## [v3.38.0] — 2026-09-11 — Minor: the shepherd proves what landed, and every reader takes MEMORY_ROOT first
 
 **MINOR.** Two new capabilities in `development-lifecycle`, both from arming the worktree shepherd against the real repos: it can now prove a squash-merged branch landed by the content `main` holds, and it sees a worktree stranded on `main` and frees it. The rest are fixes across five plugins. Every reader takes agentm's renamed `MEMORY_ROOT` first, so agentm can drop the old name on schedule. A plugin finds its siblings in Claude Code's versioned cache, which had degraded every installed prose pass to Claude-only without saying so. The prose pass catches a fact-guard copied in pieces, a timeout typo no longer reads as agy being down, and a handoff pack carries agentm's marker so its prompts are never mined as the operator's own words.
