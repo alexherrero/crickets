@@ -67,9 +67,11 @@ Options:
   --overlay <path>           genre voice overlay — absolute, vault-relative, or a
                              bare filename in the vault's global wiki-style store
                              (default: 2026-06-09-design-doc-prose.md)
-  --voice-kernel <path>      override the always-load voice kernel (default:
-                             located in the vault's memory space — the
-                             always-load tier first, then by filename)
+  --voice-kernel <path>      override the voice kernel (default: the vault's
+                             standards/user-preferences.md, whose ## Voice
+                             section holds it; on a vault from before the
+                             memory-root trims, voice-kernel.md in the memory
+                             space — always-load tier first, then by filename)
   --vault-path <path>        memory-root override (else $MEMORY_ROOT, else
                              .agentm-config.json vault_path + memory_root;
                              $MEMORY_VAULT_PATH is the deprecated alias)
@@ -557,14 +559,18 @@ def resolve_vault_path(cli_value: str | None) -> Path | None:
 
 
 def resolve_voice_kernel(vault: Path) -> Path | None:
-    """Locate the always-load voice kernel, or None.
+    """Locate the voice kernel's file, or None.
 
-    Probes the always-load tier across memory-space generations first, then
-    falls back to a lookup by filename anywhere in the memory space. That
-    fallback is not belt-and-braces: `_always-load/` is a tier, not a permanent
-    address, and this kernel has already graduated out of it into the dated
-    tree (`memory/2026/07/voice-kernel.md`) while staying the live kernel. A
-    resolver that only knows the tier loses the file the moment it is demoted.
+    Since agentm-vault plan 05 (the memory-root trims) the kernel is the
+    `## Voice` section of `<vault>/standards/user-preferences.md`, and the
+    whole file is what gets inlined. A vault that never migrated still has
+    `voice-kernel.md`, so two older rungs stay behind it: the always-load tier
+    across memory-space generations, then a lookup by filename anywhere in the
+    memory space. That last rung is not belt-and-braces: `_always-load/` was a
+    tier, not a permanent address, and the kernel once graduated out of it into
+    the dated tree (`memory/2026/07/voice-kernel.md`) while staying the live
+    kernel. A resolver that only knows one address loses the file the moment
+    it moves.
     """
     for s in standards_dir_candidates(vault):
         cand = s / PREFERENCES_NAME
@@ -817,7 +823,9 @@ def main(argv=None) -> int:
     overlay_path = resolve_overlay(vault, args.overlay)
     missing = [p for p in (kernel_path, overlay_path) if p is None or not p.is_file()]
     if missing:
-        names = ", ".join(VOICE_KERNEL_NAME if p is None else p.name for p in missing)
+        # An unresolved kernel is named by its current home; the retired
+        # voice-kernel.md would send the reader after a file plan 05 deleted.
+        names = ", ".join(PREFERENCES_NAME if p is None else p.name for p in missing)
         _degraded("voice pack unresolved", f"missing voice file(s): {names}")
         return 1
     voice_pack = (kernel_path.read_text(encoding="utf-8").strip()

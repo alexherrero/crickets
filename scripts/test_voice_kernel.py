@@ -15,6 +15,15 @@ from this machine's config — so the only place these could fire was a bare
 local run nobody makes. `check-all.sh` now runs this module un-isolated as its
 own step; it still skips cleanly in CI, which has no vault.
 
+Then the kernel moved again. agentm-vault plan 05 (the memory-root trims,
+2026-09-11) folded the pen's `voice-kernel.md` into the `## Voice` section of
+`<vault>/standards/user-preferences.md` and deleted the old file. prose_pass
+followed in #242; this suite kept looking for the old filename, so three of
+its tests failed against a vault that had migrated cleanly. It now finds the
+kernel in the same order prose_pass does — the preferences file first, the
+retired filename behind it for a vault that never migrated — and measures
+only the voice section, because the rest of that file is the operator's own.
+
 Never a hardcoded absolute literal — AGENTS.md's vault-path convention.
 """
 from __future__ import annotations
@@ -42,7 +51,11 @@ if str(_PROSE_PASS_SCRIPTS) not in sys.path:
 import prose_pass  # noqa: E402
 
 _KERNEL_MAX_LINES = 25
-_KERNEL_NAME = "voice-kernel.md"
+# The kernel's home since the memory-root trims, and its section there.
+_PREFERENCES_NAME = "user-preferences.md"
+_VOICE_HEADING = "## Voice"
+# The kernel's own file before them — what an unmigrated vault still holds.
+_LEGACY_KERNEL_NAME = "voice-kernel.md"
 _DEMOTED_GENRE_SLUGS = ("docs-prose-style", "personal-comms-style",
                         "personal-narrative-style")
 
@@ -52,47 +65,84 @@ _DEMOTED_GENRE_SLUGS = ("docs-prose-style", "personal-comms-style",
 _VAULT = vault_layout.resolve_memory_root()
 
 
-def _kernel_body_lines(text: str) -> list[str]:
+def _locate_kernel(root) -> Path | None:
+    """The voice kernel's file: `standards/user-preferences.md` when the vault
+    has one, else `voice-kernel.md` wherever it sits in the memory space."""
+    standards = vault_layout.standards_dir_if_present(root)
+    if standards is not None and (standards / _PREFERENCES_NAME).is_file():
+        return standards / _PREFERENCES_NAME
+    return vault_layout.find_memory_entry(root, _LEGACY_KERNEL_NAME)
+
+
+def _always_load_tiers(root) -> list[Path]:
+    """Every directory the session-start loader injects from, in its order:
+    `standards/`, then the retired pen while it still exists. The loader reads
+    the `*.md` at the top of each and never descends, so `standards/voice/`
+    stays on demand. agentm's `vault_layout.always_load_dirs()` is its copy."""
+    tiers = []
+    standards = vault_layout.standards_dir_if_present(root)
+    if standards is not None:
+        tiers.append(standards)
+    pen = vault_layout.resolve_existing_under_memory(root, "_always-load")
+    if pen is not None:
+        tiers.append(pen)
+    return tiers
+
+
+def _kernel_lines(text: str) -> list[str]:
+    """The kernel's non-blank body lines. In the preferences file that is the
+    `## Voice` section alone, up to the next heading at its level or above; a
+    file with no such section, like the retired `voice-kernel.md`, is all kernel."""
     parts = text.split("---\n", 2)
     body = parts[2] if len(parts) >= 3 else text
-    return [ln for ln in body.splitlines() if ln.strip()]
+    lines = body.splitlines()
+    start = next((i for i, ln in enumerate(lines) if ln.strip() == _VOICE_HEADING), None)
+    if start is not None:
+        section = []
+        for ln in lines[start + 1:]:
+            if ln.startswith(("# ", "## ")):
+                break
+            section.append(ln)
+        lines = section
+    return [ln for ln in lines if ln.strip()]
 
 
 @unittest.skipUnless(_VAULT is not None, "vault not reachable in this environment")
 class TestVoiceKernel(unittest.TestCase):
     def test_kernel_is_locatable(self):
-        """Found by the SAME lookup prose_pass uses, wherever it currently sits.
+        """Found by the vault's own layout, wherever it currently sits.
 
-        This replaces an assertion that the kernel is a file at
-        `_always-load/voice-kernel.md` carrying `always_load: true`. That is no
-        longer where it lives: it graduated into the dated tree
-        (`memory/2026/07/`) and is tagged `always-load-graduate`. Pinning the
-        tier as the kernel's address is the very bug that had prose_pass
-        running degraded, so the contract worth holding is "production can find
-        it", not "it sits in one directory". Whether the tier SHOULD still hold
-        it is a question about vault content, answered by
-        test_the_always_load_tier_is_not_silently_empty below.
+        The kernel has had three addresses: a file at
+        `_always-load/voice-kernel.md`; the same file in the dated tree
+        (`memory/2026/07/`) once it graduated out of the tier; and, since the
+        memory-root trims, the `## Voice` section of
+        `standards/user-preferences.md`, with `voice-kernel.md` deleted. Pinning
+        any one address is how first prose_pass and then this suite lost the
+        kernel, so the contract worth holding is "production can find it", not
+        "it sits in one place".
         """
-        kernel = vault_layout.find_memory_entry(_VAULT, _KERNEL_NAME)
+        kernel = _locate_kernel(_VAULT)
         self.assertIsNotNone(
-            kernel, f"no {_KERNEL_NAME} anywhere in the memory space under {_VAULT}")
+            kernel,
+            f"no voice kernel under {_VAULT}: no {_PREFERENCES_NAME} in standards/ "
+            f"and no {_LEGACY_KERNEL_NAME} anywhere in the memory space")
         self.assertTrue(kernel.is_file())
 
     def test_prose_pass_resolves_the_same_kernel(self):
         """The production consumer and this suite must agree on which file is
         the kernel — two lookups disagreeing is how a stale copy wins."""
-        self.assertEqual(prose_pass.resolve_voice_kernel(_VAULT),
-                         vault_layout.find_memory_entry(_VAULT, _KERNEL_NAME))
+        self.assertEqual(prose_pass.resolve_voice_kernel(_VAULT), _locate_kernel(_VAULT))
 
     def test_kernel_body_at_most_25_lines(self):
-        kernel = vault_layout.find_memory_entry(_VAULT, _KERNEL_NAME)
-        self.assertIsNotNone(kernel, f"no {_KERNEL_NAME} to measure")
-        lines = _kernel_body_lines(kernel.read_text(encoding="utf-8"))
+        kernel = _locate_kernel(_VAULT)
+        self.assertIsNotNone(kernel, "no voice kernel to measure")
+        lines = _kernel_lines(kernel.read_text(encoding="utf-8"))
         self.assertLessEqual(
             len(lines), _KERNEL_MAX_LINES,
-            f"{_KERNEL_NAME} body grew to {len(lines)} lines (> {_KERNEL_MAX_LINES}) — "
-            f"genre detail is leaking into the always-on layer, per the design's own "
-            f"re-audit trigger; move the detail to an on-demand genre file instead",
+            f"the voice kernel in {kernel.name} grew to {len(lines)} lines "
+            f"(> {_KERNEL_MAX_LINES}) — genre detail is leaking into the always-on "
+            f"layer, per the design's own re-audit trigger; move the detail to an "
+            f"on-demand genre file instead",
         )
 
     def test_the_kernel_reaches_at_least_one_live_consumer(self):
@@ -100,9 +150,10 @@ class TestVoiceKernel(unittest.TestCase):
 
         Two mechanisms can deliver it: the always-load tier, which recall.py
         globs flat and injects into every session, or prose_pass, which inlines
-        it into every cross-model prose pass. Which one is a design choice —
-        this kernel is tagged `always-load-graduate`, and the tier is currently
-        empty, so on this vault delivery rests entirely on prose_pass.
+        it into every cross-model prose pass. Which one is a design choice. The
+        graduated kernel sat outside the tier and rested on prose_pass alone;
+        since the memory-root trims it sits at the top of `standards/`, so on a
+        migrated vault both deliver it.
 
         Asserting a specific mechanism would encode a guess about the operator's
         own content. Asserting that at least one works does not, and it is the
@@ -110,22 +161,28 @@ class TestVoiceKernel(unittest.TestCase):
         of the tier, prose_pass still probed only the tier, and the voice floor
         was reaching nothing at all while both halves looked individually fine.
         """
-        in_tier = (vault_layout.always_load_dir(_VAULT) / _KERNEL_NAME).is_file()
+        kernel = _locate_kernel(_VAULT)
+        in_tier = kernel is not None and kernel.parent in _always_load_tiers(_VAULT)
         via_prose_pass = prose_pass.resolve_voice_kernel(_VAULT) is not None
         self.assertTrue(
             in_tier or via_prose_pass,
-            f"{_KERNEL_NAME} is delivered by no live mechanism: absent from the "
-            f"always-load tier AND unresolvable by prose_pass. The voice floor "
-            f"reaches nothing.",
+            "the voice kernel is delivered by no live mechanism: absent from the "
+            "always-load tier AND unresolvable by prose_pass. The voice floor "
+            "reaches nothing.",
         )
 
     def test_three_heavy_files_absent_from_always_load(self):
-        always_load = vault_layout.always_load_dir(_VAULT)
-        for slug in _DEMOTED_GENRE_SLUGS:
-            self.assertFalse(
-                (always_load / f"{slug}.md").is_file(),
-                f"{slug}.md should be demoted out of _always-load/ (task 3)",
-            )
+        """Absent from the top of every tier directory, under the pen's bare
+        slug or the voice library's dated name — either one there would be
+        injected into every session again."""
+        for tier in _always_load_tiers(_VAULT):
+            for slug in _DEMOTED_GENRE_SLUGS:
+                leaked = sorted(tier.glob(f"{slug}.md")) + sorted(tier.glob(f"*-{slug}.md"))
+                self.assertFalse(
+                    leaked,
+                    f"{slug} should be demoted out of the always-load tier (task 3); "
+                    f"found {[p.name for p in leaked]} in {tier}",
+                )
 
     def test_three_heavy_files_present_on_demand_not_always_loaded(self):
         wiki_style = vault_layout.global_wiki_style_dir(_VAULT)

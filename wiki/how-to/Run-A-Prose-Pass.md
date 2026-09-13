@@ -42,11 +42,11 @@ The pass is two steps: **Gemini simplifies, Claude verifies.** A simplification 
 | Symptom | Cause | Fix |
 |---|---|---|
 | `PROSE-PASS-DEGRADED: agy CLI unavailable` (exit 1) | `agy` missing or unauthenticated | Install/authenticate `agy`, or run the skill's Claude-only fallback pass |
-| `PROSE-PASS-DEGRADED: vault unresolved` / `voice pack unresolved` (exit 1) | No vault path configured, or the voice files moved | `agentm_config --vault-path <path>`, or pass `--vault-path` / `--voice-kernel` / `--overlay` explicitly |
+| `PROSE-PASS-DEGRADED: vault unresolved` / `voice pack unresolved` (exit 1) | No vault path configured, or no voice kernel (`standards/user-preferences.md`) or overlay in the vault | `agentm_config --vault-path <path>`, or pass `--vault-path` / `--voice-kernel` / `--overlay` explicitly |
 | `a FACT-GUARD list is required` (exit 2) | No guards passed | Write the guard list (step 2); it is not optional |
 | `argument --timeout: ... is not a Go duration` (exit 2) | `--timeout` got something agy can't read | Pass seconds (`300`) or a Go duration (`90s`, `5m`, `1h30m`) |
 | `structural contract violated twice` (exit 2) | The model kept rewriting structure | Re-run; if it persists, pass sections separately or fall back to the Claude-only pass |
-| Revision reads generic, voice gone | Overlay didn't match the genre | Point `--overlay` at the right file under `projects/_global/wiki-style/` |
+| Revision reads generic, voice gone | Overlay didn't match the genre | Point `--overlay` at the right file under `standards/voice/` |
 
 ## See also
 
