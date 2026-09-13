@@ -35,7 +35,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/prose_pass.py" path/to/doc.md \
   -o /tmp/doc.revised.md
 ```
 
-The script assembles a four-block prompt — task header, your fact-guard list, the operator's voice pack (the always-load voice kernel plus the genre overlay, inlined verbatim from the vault), the document — and sends it to `agy` in one shot. For a genre other than design docs, point `--overlay` at the matching file in the vault's global wiki-style store (`<vault>/Projects/_global/wiki-style/` on the current vault layout — the vault-root sibling of the memory root — with `desk/projects/` and older rungs probed as fallbacks). The vault resolves at runtime; never pass a remembered absolute path.
+The script assembles a four-block prompt — task header, your fact-guard list, the operator's voice pack (the voice kernel plus the genre overlay, inlined verbatim from the vault), the document — and sends it to `agy` in one shot. The kernel is the `## Voice` section of `<vault>/standards/user-preferences.md`, and the script inlines that whole file; on a vault from before the memory-root trims it finds the older `voice-kernel.md` in the memory space instead. For a genre other than design docs, point `--overlay` at the matching file in the vault's voice library (`<vault>/standards/voice/` on the current vault layout — the vault-root sibling of the memory root — with `Projects/_global/wiki-style/` and older project-space rungs probed as fallbacks). The vault resolves at runtime; never pass a remembered absolute path.
 
 | Exit | Meaning | What you do |
 |---|---|---|
@@ -63,7 +63,7 @@ Apply your corrections to the revised file. Then — and only then — deploy it
 
 ## Fallback: the Claude-only pass
 
-When the script exits 1, run the same discipline yourself: read the voice kernel and genre overlay from the vault, hold the fact-guard list in front of you, and make one simplification edit pass — improve existing sentences, never regenerate, structure untouched. You lose the cross-model read, not the standard. Say so in the Document History row ("Claude-only; agy unavailable").
+When the script exits 1, run the same discipline yourself: read the voice kernel (the `## Voice` section of `standards/user-preferences.md`) and the genre overlay (under `standards/voice/`) from the vault, hold the fact-guard list in front of you, and make one simplification edit pass — improve existing sentences, never regenerate, structure untouched. You lose the cross-model read, not the standard. Say so in the Document History row ("Claude-only; agy unavailable").
 
 ## Relationship to /design external review
 

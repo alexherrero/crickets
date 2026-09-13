@@ -602,6 +602,20 @@ class EndToEndTests(unittest.TestCase):
             self.assertEqual(r.returncode, 1, f"stderr={r.stderr!r}")
             self.assertIn("PROSE-PASS-DEGRADED: vault unresolved", r.stdout)
 
+    def test_unresolvable_kernel_degrades_naming_its_current_home(self):
+        # A kernel found on no layout is reported as the file the current
+        # layout expects; naming the retired voice-kernel.md would send the
+        # operator after a file plan 05 deleted.
+        with tempfile.TemporaryDirectory() as t:
+            tmp = Path(t)
+            vault = _make_vault(tmp)
+            (vault / "personal" / "_always-load" / "voice-kernel.md").unlink()
+            impl = _write_fake_agy(tmp, _ECHO_DOC_IMPL)
+            r = _run_pass(tmp, "--fact-guard-text", "a truth", fake_impl=impl)
+            self.assertEqual(r.returncode, 1, f"stderr={r.stderr!r}")
+            self.assertIn("PROSE-PASS-DEGRADED: voice pack unresolved", r.stdout)
+            self.assertIn("missing voice file(s): user-preferences.md", r.stderr)
+
     def test_identity_pass_round_trips_and_orders_argv(self):
         with tempfile.TemporaryDirectory() as t:
             tmp = Path(t)

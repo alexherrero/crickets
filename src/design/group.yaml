@@ -129,4 +129,9 @@ capabilities: [design-docs, design, architecture]
 #         folded the pen's kernel into the operator's preferences file) and
 #         the voice overlay store from `<vault>/standards/voice/` first; the
 #         pen and the project-space stores stay as fallbacks.
-version: 0.10.6
+# 0.10.7: the prose-pass skill, prose_pass.py's help text and its resolver
+#         docstring name the current homes -- the kernel is the `## Voice`
+#         section of `standards/user-preferences.md`, overlays live in
+#         `standards/voice/` -- and a kernel found on no layout degrades
+#         naming user-preferences.md, not the retired voice-kernel.md.
+version: 0.10.7
