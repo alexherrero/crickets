@@ -183,7 +183,15 @@ standalone: true
 #         promote, relocate, author, capture and classify. The capture and
 #         relocate docs now say a global write lands in the operator's
 #         standards/. Resolution is unchanged.
-version: 0.11.5
+# 0.11.6: rule_pack reads the global voice-rules-overlay.json from
+#         `<vault>/standards/voice/` first and from the retired
+#         `<projects-space>/_global/wiki-style/` rungs second. 0.11.4 said it
+#         read the voice library wherever the vault holds it, but it probed only
+#         the retired rungs, and an overlay it never reads composes exactly like
+#         an absent one. The probe is on the file, not the directory, so an
+#         overlay left on a retired rung is still read once `standards/voice/`
+#         exists. voice-rules.json names the new home first.
+version: 0.11.6
 capabilities: [wiki-maintenance, wiki]
 renamed_from: [wiki-maintenance]
 enhances:
