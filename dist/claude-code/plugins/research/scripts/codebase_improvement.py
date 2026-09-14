@@ -38,40 +38,35 @@ _HERE = Path(__file__).resolve().parent
 if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 
-# The memory space, newest generation first — `personal-private/` -> `personal/`
-# (V5-3) -> `memory/` (stage-2, 2026-08-11). Probe rather than pin: a literal
-# left on a retired generation writes into a directory nothing reads back.
-MEMORY_SPACE_SEGMENTS = ("memory", "personal", "personal-private")
 WATCHLIST_LEAF = "_watchlist"
 SOURCE_SLUG = "codebase-improvement"
 
 
 # agentm-vault plan 05 (2026-09-11): the watchlist is agentm's feature state
 # and lives in the vault's project space, `Projects/agentm/_watchlist`. The
-# project space sits at the VAULT root beside a nested memory root (probed
-# only when `.obsidian/` witnesses the parent) or inside a flat one.
+# project space sits at the VAULT root beside a nested memory root, or inside a
+# flat one; the parent counts as the vault root on the witness agentm's
+# vault_layout uses (`.obsidian/` or `standards/` there, no `.obsidian/` in the
+# root). The watchlist's memory-space homes before that (`memory/`,
+# `personal/`, `personal-private/`) are retired: nothing writes there any more,
+# even on a vault that still has one.
 FEATURE_PROJECT = "agentm"
 
 
 def _project_watchlist_candidates(vault: Path) -> list:
     out = []
-    if (vault.parent / ".obsidian").is_dir() and not (vault / ".obsidian").is_dir():
-        out.append(vault.parent / "Projects" / FEATURE_PROJECT / WATCHLIST_LEAF)
+    parent = vault.parent
+    if not (vault / ".obsidian").is_dir() and ((parent / ".obsidian").is_dir() or (parent / "standards").is_dir()):
+        out.append(parent / "Projects" / FEATURE_PROJECT / WATCHLIST_LEAF)
     out.append(vault / "Projects" / FEATURE_PROJECT / WATCHLIST_LEAF)
     return out
 
 
 def watchlist_dir(vault: Path) -> Path:
-    """`Projects/agentm/_watchlist` since the memory-root trims, else
-    `<memory-space>/_watchlist` newest generation first, current as fallback."""
-    for cand in _project_watchlist_candidates(vault):
-        if cand.is_dir():
-            return cand
-    for seg in MEMORY_SPACE_SEGMENTS:
-        cand = vault / seg / WATCHLIST_LEAF
-        if cand.is_dir():
-            return cand
-    return vault / MEMORY_SPACE_SEGMENTS[0] / WATCHLIST_LEAF
+    """`Projects/agentm/_watchlist`: the first candidate that exists, else the
+    first candidate. Never a retired memory-space home."""
+    cands = _project_watchlist_candidates(vault)
+    return next((c for c in cands if c.is_dir()), cands[0])
 
 # Directories a scan never descends into -- matches the repo hygiene any
 # stale-pattern scan should already assume (VCS metadata, dependency trees).

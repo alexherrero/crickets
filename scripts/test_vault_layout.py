@@ -802,24 +802,21 @@ class TestProsePassMemoryRoot(unittest.TestCase):
 # ── research plugin: the watchlist chain ────────────────────────────────────
 
 class TestResearchWatchlistDir(unittest.TestCase):
-    def test_current_generation(self):
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            (root / "memory" / "_watchlist").mkdir(parents=True)
-            self.assertEqual(_rel(codebase_improvement.watchlist_dir(root), root),
-                             "memory/_watchlist")
+    """codebase-improvement writes only to `Projects/agentm/_watchlist`; a
+    retired memory-space generation is passed over even when present."""
 
-    def test_previous_generation(self):
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            (root / "personal" / "_watchlist").mkdir(parents=True)
-            self.assertEqual(_rel(codebase_improvement.watchlist_dir(root), root),
-                             "personal/_watchlist")
+    def test_a_retired_generation_is_passed_over(self):
+        for space in ("memory", "personal", "personal-private"):
+            with self.subTest(space=space), tempfile.TemporaryDirectory() as td:
+                root = Path(td)
+                (root / space / "_watchlist").mkdir(parents=True)
+                self.assertEqual(_rel(codebase_improvement.watchlist_dir(root), root),
+                                 "Projects/agentm/_watchlist")
 
-    def test_defaults_to_current_generation(self):
+    def test_defaults_to_the_projects_watchlist(self):
         with tempfile.TemporaryDirectory() as td:
             self.assertEqual(_rel(codebase_improvement.watchlist_dir(Path(td)), Path(td)),
-                             "memory/_watchlist")
+                             "Projects/agentm/_watchlist")
 
 
 # ── development-lifecycle: resolve_project asks for the memory root ─────────

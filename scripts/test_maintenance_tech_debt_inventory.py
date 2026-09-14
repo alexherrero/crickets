@@ -87,8 +87,9 @@ class TechDebtInventoryTests(unittest.TestCase):
     def test_planted_debt_items_each_produce_exactly_one_classified_entry(self):
         written = tech_debt_inventory.scan_and_record(self.repo_root, self.vault)
         self.assertEqual(len(written), 2)
-        entries = list((self.vault / "personal" / "debt").glob("*.md"))
+        entries = list((self.vault / "memory" / "debt").glob("*.md"))
         self.assertEqual(len(entries), 2)
+        self.assertFalse((self.vault / "personal").exists(), "a debt entry went to the retired personal/ space")
         contents = [p.read_text(encoding="utf-8") for p in entries]
         self.assertTrue(any("tags: [documentation]" in c for c in contents))
         self.assertTrue(any("tags: [refactoring]" in c for c in contents))
@@ -97,7 +98,7 @@ class TechDebtInventoryTests(unittest.TestCase):
         tech_debt_inventory.scan_and_record(self.repo_root, self.vault)
         second_run_written = tech_debt_inventory.scan_and_record(self.repo_root, self.vault)
         self.assertEqual(second_run_written, [])
-        entries = list((self.vault / "personal" / "debt").glob("*.md"))
+        entries = list((self.vault / "memory" / "debt").glob("*.md"))
         self.assertEqual(len(entries), 2)
 
 

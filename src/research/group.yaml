@@ -49,5 +49,10 @@ standalone: false
 #         first on sys.path, and sets aside any module held under one of that
 #         dir's script names but loaded from another file (the wiki plugin's
 #         vault_layout.py), putting it back once the load is done.
-version: 0.2.4
+# 0.2.5: codebase_improvement.py writes only to `Projects/agentm/_watchlist`
+#         (a retired memory-space home is never chosen, and a `standards/` dir
+#         beside the root marks the vault root, as in agentm's vault_layout);
+#         agentm_bridge.py gives agentm its own siblings for every call, not
+#         just the load, and learn_forward.py runs its scan through it.
+version: 0.2.5
 capabilities: [research]

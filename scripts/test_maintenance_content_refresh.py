@@ -103,8 +103,9 @@ class ContentRefreshTests(unittest.TestCase):
         self.assertEqual(result["classification"], "judgment-bound")
         self.assertFalse(result["applied"])
         self.assertEqual(chart_path.read_text(encoding="utf-8"), original)
-        entries = list((self.vault / "personal" / "content-refresh-watchlist").glob("*.md"))
+        entries = list((self.vault / "memory" / "content-refresh-watchlist").glob("*.md"))
         self.assertEqual(len(entries), 1)
+        self.assertFalse((self.vault / "personal").exists(), "the entry went to the retired personal/ space")
 
 
 if __name__ == "__main__":
