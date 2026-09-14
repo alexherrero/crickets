@@ -52,15 +52,12 @@ def learn(vault: Path, *, fetcher=None, now: Optional[float] = None):
     `fetcher`/`now` pass straight through to agentm's
     `run_forward_learning` (test-injectable determinism; production callers
     omit both and get the real network fetcher + wall-clock time)."""
-    module = agentm_bridge.load_forward_learning_module()
-    if module is None:
-        return None
     kwargs = {}
     if fetcher is not None:
         kwargs["fetcher"] = fetcher
     if now is not None:
         kwargs["now"] = now
-    return module.run_forward_learning(vault, **kwargs)
+    return agentm_bridge.run_forward_learning(vault, **kwargs)
 
 
 def main(argv=None) -> int:

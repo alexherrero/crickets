@@ -42,5 +42,9 @@ enhances:
 #          the deprecated alias (agentm's 2026-09-11 rename; the alias export
 #          goes one release later). --vault-path help + the no-vault error
 #          name the new variable.
-version: 0.1.6
+# 0.1.7 = agentm_bridge.py runs every load of and call into agentm (recall,
+#          save, opinion_resolver) with agentm's own scripts behind their bare
+#          names, so a same-named module a shared process holds never reaches
+#          agentm.
+version: 0.1.7
 capabilities: [diagnostics]

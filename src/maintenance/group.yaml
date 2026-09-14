@@ -33,5 +33,9 @@ standalone: false
 #          mapping (no confidence score exists on the shared engine) is
 #          locked in the plan and documented in SKILL.md itself. The bounded
 #          fix loop is unchanged -- only diagnosis moved.
-version: 0.2.7
+# 0.2.8 = agentm_bridge.py files debt and content-refresh-watchlist entries
+#          under agentm's default `memory` group instead of `personal`, the
+#          memory space's retired name, and runs every load of and call into
+#          save.py with agentm's own scripts behind their bare names.
+version: 0.2.8
 capabilities: [github-ci, ci-repair, maintenance]

@@ -11,9 +11,17 @@ Also bridges agentm's top-level opinion_resolver.py (a sibling dir to the
 memory scripts, not the same one) so diagnostics can request the
 `how-we-engineer` opinion by name (PLAN-wave-d-opinion-wiring task 1) --
 same path-fallback shape, same graceful-skip-on-absence contract.
+
+The loaded modules bare-import their siblings, at module level and inside
+functions, and crickets ships modules under some of the same names: this
+plugin's fingerprint.py, the wiki plugin's vault_layout.py. diagnose.py loads
+its fingerprint.py under a private name, but a shared process such as the
+unittest run can hold a same-named module. Every load of and call into agentm
+goes through _agentm_names, which keeps such a module from reaching agentm.
 """
 from __future__ import annotations
 
+import contextlib
 import importlib.util
 import os
 import sys
@@ -32,6 +40,10 @@ _save_module = None
 _save_loaded = False
 _opinion_module = None
 _opinion_loaded = False
+
+# agentm's own sibling modules by bare name, per scripts dir, kept from one
+# _agentm_names block to the next.
+_agentm_siblings: dict = {}
 
 
 def _candidate_dirs() -> list[Path]:
@@ -77,12 +89,60 @@ def _find_opinion_scripts_dir() -> "Path | None":
     return None
 
 
+def _origin_dir(module) -> "Path | None":
+    f = getattr(module, "__file__", None)
+    return Path(f).resolve().parent if f else None
+
+
+@contextlib.contextmanager
+def _agentm_names(scripts_dir: Path):
+    # Same mechanism as src/research/scripts/agentm_bridge.py's: for the length
+    # of the block agentm's scripts dir goes first on sys.path, a module held
+    # under one of its script names but loaded from another file is set aside,
+    # and agentm's own copy from an earlier block takes the name. Afterwards the
+    # set-aside modules go back, and agentm's copies are kept, so a call gets
+    # the same module its load bound rather than a second copy. A dir that was
+    # not on sys.path stays there, where agentm's scripts put it themselves.
+    scripts_dir = scripts_dir.resolve()
+    names = {p.stem for p in scripts_dir.glob("*.py")}
+    set_aside = {
+        name: sys.modules.pop(name)
+        for name in names & sys.modules.keys()
+        if _origin_dir(sys.modules[name]) not in (None, scripts_dir)
+    }
+    kept = _agentm_siblings.setdefault(scripts_dir, {})
+    for name, module in kept.items():
+        sys.modules.setdefault(name, module)
+    entry = str(scripts_dir)
+    was_on_path = entry in sys.path
+    sys.path.insert(0, entry)
+    try:
+        yield
+    finally:
+        kept.update({
+            name: sys.modules[name]
+            for name in names & sys.modules.keys()
+            if _origin_dir(sys.modules[name]) == scripts_dir
+        })
+        sys.modules.update(set_aside)
+        if was_on_path:
+            sys.path.remove(entry)
+
+
 def _load_module(name: str, path: Path):
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
     sys.modules[name] = module
-    spec.loader.exec_module(module)
+    with _agentm_names(path.parent):
+        spec.loader.exec_module(module)
     return module
+
+
+def _call(module, function: str, *args, **kwargs):
+    # A module with no file behind it (a test's stand-in) is called as it is.
+    origin = _origin_dir(module)
+    with _agentm_names(origin) if origin else contextlib.nullcontext():
+        return getattr(module, function)(*args, **kwargs)
 
 
 def load_recall_module():
@@ -105,7 +165,7 @@ def query_semantic(vault: Path, query_text: str, *, filter_expr: str, k: int = 5
     module = load_recall_module()
     if module is None:
         return []
-    return module.query(vault=vault, query_text=query_text, filter_expr=filter_expr, k=k)
+    return _call(module, "query", vault=vault, query_text=query_text, filter_expr=filter_expr, k=k)
 
 
 def load_save_module():
@@ -135,8 +195,8 @@ def write_failure_incident(
     if module is None:
         raise RuntimeError("agentm is unresolvable -- cannot write a failure-incident entry")
     group = f"projects/{project}/failure-incident"
-    return module.save_entry(
-        vault, "failure-incident", slug, body,
+    return _call(
+        module, "save_entry", vault, "failure-incident", slug, body,
         group=group, tags=tags, fingerprint=fingerprint,
     )
 
@@ -164,7 +224,7 @@ def opinion_resolve(name: str) -> dict:
     if module is None:
         return {"name": name, "reason": "no-opinion", "base": None, "supplement": None,
                 "question": None, "implements": None, "composes": []}
-    return module.opinion_resolve(name)
+    return _call(module, "opinion_resolve", name)
 
 
 def _reset_cache_for_tests() -> None:
@@ -177,3 +237,4 @@ def _reset_cache_for_tests() -> None:
     _save_loaded = False
     _opinion_module = None
     _opinion_loaded = False
+    _agentm_siblings.clear()

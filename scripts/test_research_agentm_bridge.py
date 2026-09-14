@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Tests for how src/research/scripts/agentm_bridge.py loads an agentm module
-into a process that already holds a same-named module of its own.
+"""Tests for how src/research/scripts/agentm_bridge.py loads and calls an
+agentm module in a process that already holds a same-named module of its own.
 
 agentm's memory scripts bare-import their siblings (`import vault_layout`),
-and crickets ships modules under some of the same names: the wiki plugin's
-vault_layout.py has a different API. In one process -- the unit suite is one --
-the bridge must hand the agentm module agentm's sibling, then give the process
-back the module it already held.
+at module level and inside functions, and crickets ships modules under some
+of the same names: the wiki plugin's vault_layout.py has a different API. In
+one process -- the unit suite is one -- the bridge must hand agentm agentm's
+sibling, for the load and for every call, then give the process back the
+module it already held.
 
 Hermetic: a stand-in agentm scripts dir in a temp directory, reached through
 AGENTM_SCRIPTS_DIR, so these run without an agentm checkout, CI included. The
@@ -28,9 +29,9 @@ from unittest import mock
 _HERE = Path(__file__).resolve().parent
 _SRC = _HERE.parent / "src" / "research" / "scripts"
 
-# The sys.modules names a load can leave behind; each test puts back whatever
-# the suite held under them.
-_TOUCHED_MODULES = ("vault_layout", "research_forward_learning_bridge")
+# The sys.modules names a load or call can leave behind; each test puts back
+# whatever the suite held under them.
+_TOUCHED_MODULES = ("vault_layout", "research_forward_learning_bridge", "research_recall_bridge")
 
 
 def _load(name, path):
@@ -46,7 +47,8 @@ def _load(name, path):
 agentm_bridge = _load("research_agentm_bridge_under_test", _SRC / "agentm_bridge.py")
 
 # The shape of agentm's forward_learning.py header: put its own dir on
-# sys.path, bare-import a sibling at module level, use it later.
+# sys.path, bare-import a sibling at module level, use it later. The scan
+# imports the sibling again inside the function, as some agentm scripts do.
 _FORWARD_LEARNING = textwrap.dedent(
     """\
     import sys
@@ -60,6 +62,20 @@ _FORWARD_LEARNING = textwrap.dedent(
 
     def layout_owner():
         return vault_layout.OWNER
+
+
+    def run_forward_learning(vault, **kwargs):
+        import vault_layout as layout_at_call_time
+        return layout_at_call_time
+    """
+)
+
+# The shape of recall.py's query path: the sibling is imported inside the call.
+_RECALL = textwrap.dedent(
+    """\
+    def query(vault, query_text, filter_expr=None, k=5):
+        import vault_layout
+        return [vault_layout.OWNER]
     """
 )
 
@@ -69,13 +85,13 @@ def _write(path: Path, text: str) -> None:
     path.write_text(text, encoding="utf-8")
 
 
-class LoadModuleSiblingTests(unittest.TestCase):
+class AgentmSiblingTests(unittest.TestCase):
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         root = Path(tmp.name).resolve()
         self.agentm_dir = root / "agentm" / "harness" / "skills" / "memory" / "scripts"
-        _write(self.agentm_dir / "recall.py", "")  # the file the resolver looks for
+        _write(self.agentm_dir / "recall.py", _RECALL)
         _write(self.agentm_dir / "forward_learning.py", _FORWARD_LEARNING)
         _write(self.agentm_dir / "vault_layout.py", 'OWNER = "agentm"\n')
         self.wiki_dir = root / "wiki" / "scripts"
@@ -120,6 +136,23 @@ class LoadModuleSiblingTests(unittest.TestCase):
         agentm_bridge.load_forward_learning_module()
 
         self.assertIn(str(self.agentm_dir), sys.path)
+
+    def test_a_call_hands_agentm_its_sibling_for_an_import_inside_the_function(self):
+        cached = _load("vault_layout", self.wiki_dir / "vault_layout.py")
+
+        owners = agentm_bridge.query_semantic(self.agentm_dir, "anything")
+
+        self.assertEqual(owners, ["agentm"])
+        self.assertIs(sys.modules["vault_layout"], cached,
+                      "the module cached before the call was not put back")
+
+    def test_a_call_gets_the_same_sibling_its_load_bound(self):
+        _load("vault_layout", self.wiki_dir / "vault_layout.py")
+        fl = agentm_bridge.load_forward_learning_module()
+
+        layout = agentm_bridge.run_forward_learning(self.agentm_dir)
+
+        self.assertIs(layout, fl.vault_layout)
 
 
 if __name__ == "__main__":

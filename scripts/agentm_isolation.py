@@ -9,14 +9,15 @@ sys.path. The unit suite is one process, and discovery imports every test file
 before any test runs, so a crickets module under the same name is often
 already there: the wiki plugin's vault_layout.py, whose API differs.
 
-The research bridge's _load_module keeps that module away while agentm's
-module executes (#249). An import agentm makes later, inside a function, runs
-against whatever the process holds by then. recall.py imports lifecycle that
+The research bridge's _load_module kept that module away only while agentm's
+module executed (#249), so an import agentm made later, inside a function, ran
+against whatever the process held by then. recall.py imports lifecycle that
 way, and lifecycle's own `import vault_layout` was handed the wiki's module in
 four suites, which passed only because none of them asserts on lifecycle's
 sidecar. isolate_agentm_imports() sets such modules aside for the life of the
 class instead, with agentm's scripts dir first on sys.path, and a class cleanup
-puts them back.
+puts them back. The bridges have since run every load and call inside their own
+_agentm_names; this still covers whatever else a class does with agentm.
 
 Not named test_*.py, so discovery never collects it. stdlib only.
 """

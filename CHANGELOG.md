@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Patch: nothing in crickets writes to agentm's retired memory-space homes, and the bridges hand agentm its own modules for every call
+
+The watchlist moved to `Projects/agentm/_watchlist` with the memory-root trims, and `personal/` became `memory/` in stage 2. Three crickets writers still reached the old homes, and the learn-forward test accepted a scan writing there so that an older agentm could still run it. A write to a retired home is now a failure. The patch below keeps agentm's call-time imports on agentm's own modules inside the real-bridge test suites; the bridges now do the same for every call they make, in any process.
+
+### Fixed
+
+- `research` 0.2.5 — `codebase_improvement.py` always writes to `Projects/agentm/_watchlist`. It had fallen back to an existing `memory/`, `personal/` or `personal-private/` watchlist, and to `memory/_watchlist` on a vault with none. A `standards/` dir beside the root now marks the vault root, as it does in agentm's `vault_layout`.
+- `maintenance` 0.2.8 — `debt` and `content-refresh-watchlist` entries file under agentm's default group, `memory`. The bridge passed `personal`, so agentm filed every entry in `personal/`. Entries already there are not moved.
+- `research` 0.2.5, `diagnostics` 0.1.7, `maintenance` 0.2.8 — each `agentm_bridge.py` runs every load of and every call into agentm inside `_agentm_names`: agentm's scripts dir goes first on `sys.path`, same-named modules loaded from other files are set aside and put back, and agentm's own copies are reused from one call to the next. `recall.query` imports `lifecycle` inside the call and `lifecycle` imports `vault_layout`; `save_entry()` imports `fingerprint` when none is passed. `learn_forward.py` runs its scan through the research bridge's new `run_forward_learning()`.
+
+### Internal
+
+- `test_research_learn_forward.py` allows writes only under `Projects/agentm/_watchlist`, and writes the sources whitelist to `Projects/agentm/`.
+- `test_research_codebase_improvement.py` and `test_vault_layout.py` check that a retired memory-space watchlist is passed over even when it exists, and that a `standards/` dir marks the vault root.
+- `test_maintenance_tech_debt_inventory.py` and `test_maintenance_content_refresh.py` look for entries under `memory/` and fail if a `personal/` dir appears.
+- `test_research_agentm_bridge.py` gains call-time checks, and the new `test_diagnostics_agentm_bridge.py` and `test_maintenance_agentm_bridge.py` cover each bridge call against a stand-in agentm, so all three run in CI.
+
 ### Patch: agentm's lazy imports in the real-bridge suites get agentm's own siblings
 
 Four real-bridge suites handed agentm the wiki plugin's `vault_layout` and passed anyway: the bugfix and dependabot diagnose wiring tests, the diagnostics e2e test and research's idea_search test. agentm's `recall.py` imports `lifecycle` inside a function, so lifecycle's own `import vault_layout` runs after the research bridge's load-time swap has put the suite's modules back (#249 covers the load only), and the diagnostics bridge has no swap at all. It got the wiki's module, which has no `sidecar_path`, and none of those tests asserts on lifecycle's sidecar. A hook on `__import__` over the real-bridge suites found the four; with this change it finds none, and with the helper disabled all four come back.

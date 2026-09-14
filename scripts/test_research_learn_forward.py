@@ -106,10 +106,10 @@ class LearnForwardTests(unittest.TestCase):
             os.environ, {"AGENTM_STATE_DIR": str(Path(self._tmp.name) / "engine-state")})
         self._engine_env.start()
         fl = learn_forward.agentm_bridge.load_forward_learning_module()
-        # Every agentm reads the whitelist at its own SOURCES_CONFIG_REL (the
-        # current one as a retired spelling it still honours), while
-        # sources_config_path() only exists since the memory-root trims.
-        sources_path = self.vault / fl.SOURCES_CONFIG_REL
+        # The whitelist goes where the current agentm keeps it, in its own
+        # project; the retired `standards/` spelling it still reads is agentm's
+        # to test, not a home this suite leans on.
+        sources_path = self.vault / "Projects" / "agentm" / "forward-learning-sources.json"
         sources_path.parent.mkdir(parents=True, exist_ok=True)
         sources_path.write_text(
             json.dumps(
@@ -175,27 +175,22 @@ class LearnForwardTests(unittest.TestCase):
         learn_forward.learn(self.vault, fetcher=fetcher, now=1_700_000_000.0)
         post = _snapshot(self.vault)
 
-        # The watchlist/cache, on whichever generation of agentm wrote it. Since
-        # the memory-root trims agentm keeps the watchlist in its own project,
-        # `Projects/agentm/_watchlist`; an older agentm wrote it to the memory
-        # space, `personal-private/` -> `personal/` -> `memory/`, and its cache
-        # to `_meta/`. The assertion is unchanged in intent — a scan writes ONLY
-        # into the watchlist or the cache — but the watchlist has moved, so
-        # naming only its old homes would fail a correctly-behaving scan. The
-        # homes are named here rather than asked of agentm's watchlist_root(),
-        # which only exists since the trims, so an older agentm still runs this.
-        allowed = [
-            (space, leaf)
-            for space in ("memory", "personal", "personal-private")
-            for leaf in ("_watchlist", "_skill-watchlist")
-        ] + [("Projects", "agentm", "_watchlist"), ("_meta",)]
+        # A scan writes ONLY into the watchlist, and only into its current home,
+        # `Projects/agentm/_watchlist`; the fetch cache sits in the engine state
+        # dir setUp points at the scratch directory, outside the vault. The
+        # watchlist's retired memory-space homes (`memory/`, `personal/`,
+        # `personal-private/`) and the old `_meta/` cache count as stray writes:
+        # agentm must not write there any more. The home is named here rather
+        # than asked of agentm's watchlist_root(), so a resolver that hands back
+        # a retired home fails this check instead of vouching for itself.
+        watchlist = ("Projects", "agentm", "_watchlist")
         new_or_changed = {p for p in pre.keys() | post.keys() if pre.get(p) != post.get(p)}
         self.assertTrue(new_or_changed, "the scan wrote nothing, so this check would prove nothing")
         for rel in new_or_changed:
-            parts = Path(rel).parts
-            self.assertTrue(
-                any(parts[: len(home)] == home for home in allowed),
-                f"unexpected write outside the watchlist/cache: {rel}",
+            self.assertEqual(
+                Path(rel).parts[: len(watchlist)],
+                watchlist,
+                f"unexpected write outside Projects/agentm/_watchlist: {rel}",
             )
 
     def test_main_cli_smoke(self):
