@@ -3,7 +3,8 @@
 # (wiki-maintenance part 3/5, style-learning-loop, task 3).
 #
 # The DECISION-driven capture (agentmemory_conventions.confirm_save_convention)
-# records key:value conventions to _always-load/. THIS is the EDIT-driven path:
+# records key:value conventions to the always-load tier (<vault>/standards/, else
+# the retired _always-load/ pen). THIS is the EDIT-driven path:
 # diff an authored draft against the operator's edited version, cluster the
 # changes by kind, and propose voice lessons {trigger, guidance, before->after}
 # for the operator to generalize (gate 1) + the style-scope-evaluator sub-agent

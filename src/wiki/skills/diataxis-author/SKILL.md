@@ -1,6 +1,6 @@
 ---
 name: diataxis-author
-description: Author + maintain a Diátaxis-style wiki for any repo. Live authoring guidance (mode selection + template-fill + filename style), ongoing drift detection + repair, one-shot migration of legacy audience-based wikis to the six-section documentation layout (how-to · reference · architecture · designs · explanation · operational; onboarding folds into how-to, marked with a mode-tutorial hint), and single-page mode classification with sub-agent fallback on ambiguous cases. Reads operator conventions from AgentMemory `_always-load/diataxis-*.md`; composes a base style-guide ⊕ on-demand voice overlay into authored drafts, and learns generalizable voice lessons from the operator's own edits (edit-driven capture, operator-gated for generality + scope); offers to capture judgment calls back as new conventions (operator-confirmed via permeable-boundary helper). Dispatches the existing `documenter` sub-agent for mechanical-write work; never auto-forks into wiki/ without preview. Subsumes the predecessor `migrate-to-diataxis` skill (harness-side) per ROADMAP #13. Hosts: Claude Code + Antigravity (`gemini-cli` removed in v0.9.0 per the gemini-cli host-removal decision, crickets-hld design).
+description: Author + maintain a Diátaxis-style wiki for any repo. Live authoring guidance (mode selection + template-fill + filename style), ongoing drift detection + repair, one-shot migration of legacy audience-based wikis to the six-section documentation layout (how-to · reference · architecture · designs · explanation · operational; onboarding folds into how-to, marked with a mode-tutorial hint), and single-page mode classification with sub-agent fallback on ambiguous cases. Reads operator conventions from `diataxis-*.md` in the vault's `standards/` (the retired `_always-load/` pen as fallback); composes a base style-guide ⊕ on-demand voice overlay into authored drafts, and learns generalizable voice lessons from the operator's own edits (edit-driven capture, operator-gated for generality + scope); offers to capture judgment calls back as new conventions (operator-confirmed via permeable-boundary helper). Dispatches the existing `documenter` sub-agent for mechanical-write work; never auto-forks into wiki/ without preview. Subsumes the predecessor `migrate-to-diataxis` skill (harness-side) per ROADMAP #13. Hosts: Claude Code + Antigravity (`gemini-cli` removed in v0.9.0 per the gemini-cli host-removal decision, crickets-hld design).
 kind: skill
 supported_hosts: [claude-code, antigravity]
 version: 0.1.1
@@ -8,7 +8,7 @@ version: 0.1.1
 
 # diataxis-author — author + maintain a Diátaxis wiki for any repo
 
-The second major skill in `crickets` (after `memory`). Encodes the operator's Diátaxis discipline from the [crickets-conventions design — documentation domain](https://github.com/alexherrero/crickets/wiki/crickets-conventions) into proactive authoring guidance + ongoing drift detection + repair + one-shot migration, with per-repo overrides via `wiki/.diataxis-conventions.md` and global conventions stored in AgentMemory (`_always-load/diataxis-*.md`). Designed via [crickets's design skill](https://github.com/alexherrero/crickets/wiki/crickets-wiki) — second real dogfood of plan #6's `/design author` after MemoryVault closed.
+The second major skill in `crickets` (after `memory`). Encodes the operator's Diátaxis discipline from the [crickets-conventions design — documentation domain](https://github.com/alexherrero/crickets/wiki/crickets-conventions) into proactive authoring guidance + ongoing drift detection + repair + one-shot migration, with per-repo overrides via `wiki/.diataxis-conventions.md` and global conventions stored in the vault (`<vault>/standards/diataxis-*.md`, or the retired `_always-load/` pen on a vault from before the memory-root trims). Designed via [crickets's design skill](https://github.com/alexherrero/crickets/wiki/crickets-wiki) — second real dogfood of plan #6's `/design author` after MemoryVault closed.
 
 **Position vs. `check-wiki.py` strict validator**: validators catch violations after-the-fact; diataxis-author provides **proactive** guidance at write time (template selection, mode classification, filename style). Both layers complement: skill prevents drift at write time; `check-wiki.py` catches drift at commit time + during `/diataxis check`.
 
@@ -18,7 +18,7 @@ The second major skill in `crickets` (after `memory`). Encodes the operator's Di
 
 ## Operator convention read path (V4 #35)
 
-The global Diátaxis conventions this skill honors (`_always-load/diataxis-*.md` — filename style, mode-classification thresholds, page-length norms) are read through the **shared `documenter-context` resolver**, NOT by globbing the vault directly:
+The global Diátaxis conventions this skill honors (`diataxis-*.md` in `<vault>/standards/`, or the retired `_always-load/` pen: filename style, mode-classification thresholds, page-length norms) are read through the **shared `documenter-context` resolver**, NOT by globbing the vault directly:
 
 ```bash
 python3 scripts/harness_memory.py documenter-context --slug "<slug>" --format json
@@ -27,7 +27,7 @@ python3 scripts/harness_memory.py documenter-context --slug "<slug>" --format js
 
 This keeps the read pattern uniform across all three doc-touching primitives (this skill, `wiki-author`, and the `documenter` sub-agent): one resolver is the single source of truth, so a future move to per-project conventions (`<projects-space>/<slug>/wiki-style/*.md`, already surfaced by the resolver) needs no skill-side change.
 
-**Graceful-skip (same contract as the other two primitives):** on **rc 1** (vault unreachable) proceed with the built-in defaults + per-repo `wiki/.diataxis-conventions.md` only — emit `[diataxis-author] vault unreachable; using built-in + per-repo conventions` on stderr; never hard-fail. On **rc 2** (slug unregistered) the operator-global `_always-load/` conventions still resolve.
+**Graceful-skip (same contract as the other two primitives):** on **rc 1** (vault unreachable) proceed with the built-in defaults + per-repo `wiki/.diataxis-conventions.md` only — emit `[diataxis-author] vault unreachable; using built-in + per-repo conventions` on stderr; never hard-fail. On **rc 2** (slug unregistered) the operator-global conventions in `<vault>/standards/` (the retired `_always-load/` pen on an unmigrated vault) still resolve.
 
 The full read-side wiring lands with part 5 (`agentmemory-docs-release`); this section locks the *path* (through the resolver) so part 5 doesn't reintroduce a direct vault glob.
 
@@ -63,7 +63,7 @@ On the operator's own store this takes a wiki draft from ~18,200 tokens of overl
 | One-shot migrate a legacy audience-based wiki to the six-section documentation layout | `/diataxis migrate` |
 | Classify a single page's mode (operator-debug; sub-agent dispatches here for ambiguous cases) | `/diataxis classify <file>` |
 | Capture a generalizable voice lesson from your own edits to an authored draft | `/diataxis capture <draft> <edited>` |
-| Relocate global wiki conventions out of `_always-load` into the on-demand `_global` store (one-time, operator-run) | `/diataxis relocate --preview` |
+| Relocate global wiki conventions out of the always-load tier into the on-demand global voice store (one-time, operator-run; on a migrated vault both are inside your `standards/`) | `/diataxis relocate --preview` |
 | Promote a proven overlay voice lesson into the committed base style-guide (maintainer; `src/`-only, operator-gated) | `/diataxis promote --preview` |
 
 > **Six-section layout.** The target taxonomy is the crickets six-section documentation layout — `how-to` · `reference` · `architecture` · `designs` · `explanation` · `operational`. Four are always present (how-to · reference · designs · explanation); `architecture` is gated on a `wiki/architecture.yml` manifest and `operational` on a non-public wiki. Onboarding "tutorials" fold into `how-to/` with a `<!-- mode: tutorial -->` hint — there is **no** `tutorials/` folder. `migrate.py` targets this layout. (Reconciliation pending: `author.py` / `classify.py` / `check.py` / `repair.py` still carry the legacy four-mode `tutorial → tutorials/` dir map — tracked follow-up.)
@@ -467,7 +467,7 @@ python3 src/wiki-maintenance/skills/diataxis-author/scripts/capture.py \
 
 **Step 3 — Gate 2: scope (evaluator recommends, operator confirms).** Dispatch the [`style-scope-evaluator`](https://github.com/alexherrero/crickets/blob/main/agents/style-scope-evaluator.md) sub-agent with the confirmed lesson + the existing overlay stores (its caller-supplies-inline-rubric contract). It recommends exactly **one** scope — `global | per-project | per-repo` — and you confirm or override. When torn, it recommends the narrower (reversible) scope.
 
-**Step 4 — Write.** `capture.py save` writes the confirmed lesson to that scope's **on-demand** store via [`agentmemory_conventions.confirm_save_lesson()`](scripts/agentmemory_conventions.py) — **never** `_always-load`:
+**Step 4 — Write.** `capture.py save` writes the confirmed lesson to that scope's **on-demand** store via [`agentmemory_conventions.confirm_save_lesson()`](scripts/agentmemory_conventions.py) — **never** the always-load tier (the session-start loader skips `standards/voice/`):
 
 ```bash
 python3 src/wiki-maintenance/skills/diataxis-author/scripts/capture.py save \
@@ -476,9 +476,11 @@ python3 src/wiki-maintenance/skills/diataxis-author/scripts/capture.py save \
     --vault-path "$MEMORY_ROOT"
 ```
 
-The store routing mirrors the resolver's read model (part 3 task 1): global → `<projects-space>/_global/wiki-style/<date>-<trigger>.md` · per-project → `<projects-space>/<slug>/wiki-style/<date>-<trigger>.md` · per-repo → `<wiki-root>/.diataxis-conventions.md`. Project-keyed stores live in the vault's project space (see agentm ADR 0010), not under `personal-private/`. The next `/diataxis author` draft reads it back automatically.
+The store routing mirrors the resolver's read model (part 3 task 1): global → `<vault>/standards/voice/<date>-<trigger>.md` (the retired `<projects-space>/_global/wiki-style/` on a vault without `standards/voice/`) · per-project → `<projects-space>/<slug>/wiki-style/<date>-<trigger>.md` · per-repo → `<wiki-root>/.diataxis-conventions.md`. Project-keyed stores live in the vault's project space (see agentm ADR 0010), not under `personal-private/`. The next `/diataxis author` draft reads it back automatically.
 
 `<projects-space>` is the vault-root `Projects/` (a sibling of the memory root) on the current vault layout, `<memory-root>/desk/projects/` on the one before it, and `<memory-root>/projects/` before that. Both the read and the write side resolve it through [`scripts/vault_layout.py`](scripts/vault_layout.py), which probes newest-first and takes the first that exists — so a lesson captured today lands exactly where the resolver reads it back, whichever layout this vault sits on. Pinning either literal is what silently emptied the overlay after the stage-2 migration.
+
+**A global lesson is written into `<vault>/standards/voice/`.** Since the memory-root trims (agentm-vault plan 05, 2026-09-11) the global store is part of `<vault>/standards/`, your own rule tree beside the memory root, and [`vault_layout.global_wiki_style_dir()`](scripts/vault_layout.py) gives the read and the write side that same directory. Inside `capture.py save` the confirm prompt is the only check before that write: the cross-boundary confirm runs for per-repo writes alone, and `MEMORY_REVIEW_MODE=silent` in the environment skips the prompt.
 
 **Graceful-degrade (DC-3).** Per-repo writes land *outside* the MemoryVault, so they route through agentm's `permeable_boundary` cross-boundary confirm when the kernel is importable; absent it (crickets-local), the write degrades to the local confirm only and **announces** the degraded mode on stderr (`permeable_boundary unavailable …`) — never silent. The capture still works.
 
@@ -490,7 +492,7 @@ The store routing mirrors the resolver's read model (part 3 task 1): global → 
 
 ### `/diataxis relocate [--preview | --cleanup --yes | --rollback]`
 
-A **one-time, operator-run** migration that moves the global wiki/Diátaxis conventions out of the always-load tier (`<vault>/personal/_always-load/diataxis-*.md`, injected into **every** session's context) into the on-demand global store the resolver reads (`<projects-space>/_global/wiki-style/*.md`) — so they load only when authoring. It touches your **live vault**, so it mirrors the [`migrate-harness-to-vault`](https://github.com/alexherrero/agentm/blob/main/scripts/migrate-harness-to-vault.sh) discipline: **preview-first, reversible, conflict-safe, never auto.**
+A **one-time, operator-run** migration that moves the global wiki/Diátaxis conventions out of the always-load tier (`diataxis-*.md` at the top of `<vault>/standards/`, injected into **every** session's context; the retired `<memory-space>/_always-load/` pen on an unmigrated vault) into the on-demand global store the resolver reads (`<vault>/standards/voice/*.md`; the retired `<projects-space>/_global/wiki-style/*.md` on a vault without `standards/voice/`) — so they load only when authoring. It touches your **live vault**, so it mirrors the [`migrate-harness-to-vault`](https://github.com/alexherrero/agentm/blob/main/scripts/migrate-harness-to-vault.sh) discipline: **preview-first, reversible, conflict-safe, never auto.**
 
 ```bash
 # 1. ALWAYS preview first — prints WOULD: lines, mutates nothing:
@@ -506,9 +508,9 @@ python3 …/relocate.py --rollback --vault-path "$MEMORY_ROOT"
 
 - **Conflict-safe:** a byte-differing dest is never overwritten (`CONFLICT`, exit 2); a byte-identical dest is a no-op (`SKIP-IDENTICAL`). Idempotent.
 - **Reversible:** relocated filenames are recorded in a manifest (`<dest>/.relocated-from-always-load`); `--rollback` reverses *only* those, restoring any cleaned-up source from its copy and leaving lessons captured directly into `_global` untouched.
-- **`_global` lives under the top-level `projects/` root** (canonical layout; see agentm ADR 0010), not under `personal-private/`.
+- **On a migrated vault both ends are inside `<vault>/standards/`**, your own rule tree: the copy and its manifest land in `standards/voice/`, and `--cleanup --yes` deletes the source from `standards/`. Before the memory-root trims the destination was `_global`, a pseudo-project in the project space (see agentm ADR 0010), never `personal-private/`.
 
-Today this is typically a **no-op** — no `diataxis-*.md` exist in `_always-load/` yet (the capture loop is what creates global voice lessons, and it writes straight to `_global/`). The script ships the mechanism for when they do; whether your `docs-prose-style` entry itself relocates is an operator call you make by widening `--source-glob` after reviewing the preview.
+Today this is typically a **no-op** — no `diataxis-*.md` exist in the always-load tier yet (the capture loop is what creates global voice lessons, and it writes straight to the global voice store). The script ships the mechanism for when they do; whether your `docs-prose-style` entry itself relocates is an operator call you make by widening `--source-glob` after reviewing the preview.
 
 #### Anti-patterns
 
@@ -522,7 +524,7 @@ The **operator-gated** path that graduates a *proven* overlay voice lesson into 
 ```bash
 # 1. ALWAYS preview first — prints the unified diff against the base, writes nothing:
 python3 …/skills/diataxis-author/scripts/promote.py \
-    --lesson "$MEMORY_ROOT/../Projects/_global/wiki-style/<date>-<trigger>.md" --preview
+    --lesson "<vault>/standards/voice/<date>-<trigger>.md" --preview
 # 2. Apply — writes ONLY the src/ base, leaving it UNCOMMITTED for you to review:
 python3 …/promote.py --lesson "<…>.md"
 # 3. (maintainer) review the diff, commit, then regenerate dist/ so it ships:

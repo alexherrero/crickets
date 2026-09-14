@@ -28,7 +28,7 @@ Use the diataxis-evaluator sub-agent to classify the following wiki page.
 PAGE: <absolute path>
 TIER-1-HEURISTIC-RESULT: {mode: <tier1-guess>, confidence: <0.0-1.0>, rationale: <regex-match details>}
 PER-REPO-CONVENTIONS: <contents of <repo>/wiki/.diataxis-conventions.md if present, else "none">
-OPERATOR-CONVENTIONS: <contents of all <vault>/personal/_always-load/diataxis-*.md entries>
+OPERATOR-CONVENTIONS: <contents of all <vault>/standards/diataxis-*.md entries (the retired <memory-space>/_always-load/diataxis-*.md on a vault without standards/)>
 RUBRIC:
   Decide the page's target section (six-section documentation layout) + its check-wiki shape mode.
   Six sections — four always present (how-to · reference · designs · explanation) + two conditional

@@ -3,8 +3,9 @@
 # (wiki-maintenance part 5/5, dogfood-finale, task 2).
 #
 # Graduates a PROVEN overlay voice lesson — from the on-demand store the resolver
-# reads (`<projects-space>/_global/wiki-style/<date>-<trigger>.md`, per-project,
-# or a per-repo `.diataxis-conventions.md`) — INTO the committed repo base
+# reads (`<vault>/standards/voice/<date>-<trigger>.md`, else the retired
+# `<projects-space>/_global/wiki-style/`; per-project; or a per-repo
+# `.diataxis-conventions.md`) — INTO the committed repo base
 # `src/wiki/skills/diataxis-author/style/base-style-guide.md`, so
 # every fresh draft inherits it without the overlay. This is the `promote` path
 # SKILL.md forward-references; it closes the style-learning loop.

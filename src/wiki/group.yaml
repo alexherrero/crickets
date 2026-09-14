@@ -173,7 +173,17 @@ standalone: true
 #         author, relocate, agentmemory_conventions and rule_pack read the
 #         voice library wherever the vault holds it; a captured convention
 #         lands in standards/ on a migrated vault.
-version: 0.11.4
+# 0.11.5: docs, comments and relocate's help text name the memory-root trims'
+#         homes first -- `<vault>/standards/` for the always-load tier,
+#         `<vault>/standards/voice/` for the global voice store -- and the
+#         retired `_always-load/` and `_global/wiki-style/` second, as the
+#         fallback vault_layout still probes: diataxis-author and wiki-author
+#         SKILL.md, the documenter, diataxis-evaluator and style-scope-evaluator
+#         agents, and the headers of style_resolver, agentmemory_conventions,
+#         promote, relocate, author, capture and classify. The capture and
+#         relocate docs now say a global write lands in the operator's
+#         standards/. Resolution is unchanged.
+version: 0.11.5
 capabilities: [wiki-maintenance, wiki]
 renamed_from: [wiki-maintenance]
 enhances:

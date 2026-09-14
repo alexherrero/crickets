@@ -63,7 +63,7 @@ The authoring primitives work out of the box; only the watcher is opt-in. `wiki-
 - **Device toggle** — set `wiki_watch.enabled: true` (or `wiki_watch_enabled: true`) in `<install-prefix>/.agentm-config.json`.
 - **Per-repo marker** — add a `<repo>/.harness/wiki-watch.json` file; its presence is the opt-in. It carries `watch_sources` and `dispatch_mode` (`pr` default, or `direct` for a trusted repo).
 
-Per-repo voice and structure overrides live in `wiki/.diataxis-conventions.md`; global voice conventions come from AgentMemory `_always-load/diataxis-*.md`.
+Per-repo voice and structure overrides live in `wiki/.diataxis-conventions.md`. Global structure conventions come from the `diataxis-*.md` files in `<vault>/standards/`, and global voice lessons come from `<vault>/standards/voice/`. A vault from before the memory-root trims keeps them in the retired `_always-load/` and `_global/wiki-style/` folders, which are read as the fallback.
 
 ## See also
 
