@@ -11,10 +11,17 @@ agentm's real engines in-process. Absent agentm -> graceful-skip
 never raises.
 
 Deliberately narrower than diagnostics' bridge: this module never resolves or
-loads agentm's save.py directly -- forward_learning.py's own writes (to
-personal/_watchlist/ + _meta/forward-learning-cache/) already route through
-agentm's save/write primitives internally; this bridge adds no new write path
-of its own.
+loads agentm's save.py directly -- forward_learning.py's own writes (the
+watchlist its watchlist_root() resolves, and the watermark cache in agentm's
+engine state dir) already route through agentm's save/write primitives
+internally; this bridge adds no new write path of its own.
+
+The loaded modules bare-import their siblings, and a bare import returns
+whatever sys.modules already holds under that name. A process that has loaded
+another `vault_layout` (the wiki plugin ships one) hands agentm that module
+instead. The research CLIs each run in a process of their own; the shared
+unittest process is where it happens, and scripts/test_research_learn_forward.py
+sets such modules aside before loading agentm.
 """
 from __future__ import annotations
 

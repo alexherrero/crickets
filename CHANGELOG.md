@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Patch: the learn-forward tests hand agentm its own `vault_layout` and find the watchlist where agentm writes it
+
+`test_research_learn_forward.py` turned the `unit tests` gate in `check-all.sh` red two ways. CI never saw either, because those tests skip wherever no agentm checkout resolves. In the full suite all three tests errored: discovery loads the wiki plugin's `vault_layout.py` under that bare name before any test runs, and agentm's `forward_learning.py`, which has imported its own `vault_layout` since the memory-root trims, was handed the wiki's module. Run alone, the no-writes test failed a correct scan, because agentm-vault plan 05 moved the watchlist to `Projects/agentm/_watchlist` and the test allowed only memory-space paths.
+
+### Fixed
+
+- `research` 0.2.3 — the docstrings in `learn_forward.py`, `agentm_bridge.py` and `codebase_improvement.py` stop naming the retired `personal/_watchlist/` and `_meta/forward-learning-cache/`. `agentm_bridge.py` says when a process can hand agentm the wrong `vault_layout`: only a shared test process, since each research CLI runs in its own.
+
+### Internal
+
+- `test_research_learn_forward.py` sets aside every loaded module named like a script in agentm's memory scripts directory before it loads agentm, and restores them after the class. It takes the watchlist from agentm's `watchlist_root()` and the sources whitelist's home from `sources_config_path()`, compares file contents as well as names, and fails when a scan writes nothing. The CLI smoke test stubs agentm's default fetcher instead of sending a real GET.
+- The research design names those resolvers where it named paths, and logs the change.
+
 ### Patch: the vault-content tests find the voice kernel where the memory-root trims put it
 
 agentm-vault plan 05 moved the voice kernel into the `## Voice` section of `<vault>/standards/user-preferences.md` and deleted `voice-kernel.md`. `prose_pass.py` already read the new home. `test_voice_kernel.py` still searched the memory space for the old file, so three of its tests failed against the migrated vault and the `vault-content tests` gate in `check-all.sh` went red. CI never saw it, because the suite skips wherever no vault resolves.

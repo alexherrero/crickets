@@ -38,6 +38,16 @@ _SRC = _ROOT / "src" / "research" / "scripts"
 # sys.path and bare-imports siblings into sys.modules as a side effect of
 # being loaded -- purged in tearDownClass so it doesn't leak into whatever
 # test file runs next alphabetically.
+#
+# The leak runs the other way too. A bare import returns whatever sys.modules
+# already holds under that name, and discovery imports every test file before
+# any test runs; several of them (test_vault_layout.py, the diataxis-author
+# suites) load the wiki plugin's own vault_layout.py as `vault_layout`.
+# agentm's memory scripts carry a vault_layout.py with a different API, which
+# forward_learning.py has imported since the memory-root trims, so the scan was
+# handed the wiki's module and failed on `feature_state_candidates`. setUpClass
+# sets aside every module holding a name agentm's scripts dir also owns, and a
+# class cleanup puts them back once the purge has run.
 _AGENTM_PATH_MARKERS = ("/agentm/harness/", "/agentm/scripts/")
 _REAL_BRIDGE_SYS_PATH_MARKER = "/agentm/harness/skills/memory/scripts"
 
@@ -55,6 +65,18 @@ def _purge_agentm_modules(pre_existing_names):
             del sys.modules[name]
 
 
+def _set_aside_shadowing_modules(scripts_dir: Path) -> dict:
+    """Remove and return every loaded module that holds the name of a script in
+    agentm's `scripts_dir` but was loaded from a file somewhere else."""
+    scripts_dir = scripts_dir.resolve()
+    set_aside = {}
+    for name, mod in list(sys.modules.items()):
+        f = getattr(mod, "__file__", None)
+        if f and (scripts_dir / f"{name}.py").is_file() and Path(f).resolve().parent != scripts_dir:
+            set_aside[name] = sys.modules.pop(name)
+    return set_aside
+
+
 def _load(name, path):
     spec = importlib.util.spec_from_file_location(name, path)
     m = importlib.util.module_from_spec(spec)
@@ -66,8 +88,8 @@ def _load(name, path):
 learn_forward = _load("research_learn_forward", _SRC / "learn_forward.py")
 
 
-def _snapshot(vault: Path) -> set:
-    return {p.relative_to(vault).as_posix() for p in vault.rglob("*") if p.is_file()}
+def _snapshot(vault: Path) -> dict:
+    return {p.relative_to(vault).as_posix(): p.read_bytes() for p in vault.rglob("*") if p.is_file()}
 
 
 def _fixture_fetcher(candidates_by_slug: dict):
@@ -79,10 +101,15 @@ def _fixture_fetcher(candidates_by_slug: dict):
 class LearnForwardTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls._pre_existing_modules = set(sys.modules)
         learn_forward.agentm_bridge._reset_cache_for_tests()
-        if learn_forward.agentm_bridge.load_forward_learning_module() is None:
+        scripts_dir = learn_forward.agentm_bridge._find_memory_scripts_dir()
+        if scripts_dir is None:
             raise unittest.SkipTest("agentm sibling checkout unavailable -- real-bridge test skipped")
+        # Class cleanups run after tearDownClass, and also when setUpClass
+        # raises, so the set-aside modules return only after the purge.
+        cls.addClassCleanup(sys.modules.update, _set_aside_shadowing_modules(scripts_dir))
+        cls._pre_existing_modules = set(sys.modules)
+        learn_forward.agentm_bridge.load_forward_learning_module()
 
     @classmethod
     def tearDownClass(cls):
@@ -99,7 +126,9 @@ class LearnForwardTests(unittest.TestCase):
             os.environ, {"AGENTM_STATE_DIR": str(Path(self._tmp.name) / "engine-state")})
         self._engine_env.start()
         fl = learn_forward.agentm_bridge.load_forward_learning_module()
-        sources_path = self.vault / fl.SOURCES_CONFIG_REL
+        # agentm's resolver names the whitelist's home on a fresh vault; the
+        # retired `standards/` spelling it still reads is agentm's to test.
+        sources_path = fl.sources_config_path(self.vault)
         sources_path.parent.mkdir(parents=True, exist_ok=True)
         sources_path.write_text(
             json.dumps(
@@ -161,29 +190,30 @@ class LearnForwardTests(unittest.TestCase):
                 ]
             }
         )
+        # Ask agentm where the watchlist is before the scan, as its own writer
+        # does. The watchlist has moved from personal-private/ to personal/ to
+        # memory/ to Projects/agentm/, and a list of path literals here goes
+        # stale on every move. The fetch cache is not in the vault at all: it
+        # sits in the engine state dir setUp points at the scratch directory.
+        watchlist = self.fl.watchlist_root(self.vault).relative_to(self.vault).parts
         pre = _snapshot(self.vault)
         learn_forward.learn(self.vault, fetcher=fetcher, now=1_700_000_000.0)
         post = _snapshot(self.vault)
 
-        # The watchlist/cache, on whichever memory-space generation this vault
-        # sits: `personal-private/` -> `personal/` -> `memory/`. The assertion
-        # is unchanged in intent — a scan writes ONLY into the watchlist or the
-        # cache — but the space itself was renamed by the stage-2 migration, so
-        # naming only `personal/` here would fail a correctly-behaving scan.
-        allowed = tuple(
-            f"{space}/{leaf}"
-            for space in ("memory", "personal", "personal-private")
-            for leaf in ("_watchlist", "_skill-watchlist")
-        ) + ("_meta",)
-        new_or_changed = (post - pre) | {p for p in pre if p not in post}
+        new_or_changed = {p for p in pre.keys() | post.keys() if pre.get(p) != post.get(p)}
+        self.assertTrue(new_or_changed, "the scan wrote nothing, so this check would prove nothing")
         for rel in new_or_changed:
-            self.assertTrue(
-                rel.startswith(allowed),
-                f"unexpected write outside the watchlist/cache: {rel}",
+            self.assertEqual(
+                Path(rel).parts[: len(watchlist)],
+                watchlist,
+                f"unexpected write outside the watchlist: {rel}",
             )
 
     def test_main_cli_smoke(self):
-        rc = learn_forward.main(["--vault-path", str(self.vault)])
+        # main() takes no fetcher, so stub agentm's default one; otherwise the
+        # scan sends a real GET to the fixture source's URL.
+        with mock.patch.object(self.fl, "default_fetcher", _fixture_fetcher({})):
+            rc = learn_forward.main(["--vault-path", str(self.vault)])
         self.assertEqual(rc, 0)
 
 
