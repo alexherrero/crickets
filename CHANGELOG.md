@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Patch: agentm's lazy imports in the real-bridge suites get agentm's own siblings
+
+Four real-bridge suites handed agentm the wiki plugin's `vault_layout` and passed anyway: the bugfix and dependabot diagnose wiring tests, the diagnostics e2e test and research's idea_search test. agentm's `recall.py` imports `lifecycle` inside a function, so lifecycle's own `import vault_layout` runs after the research bridge's load-time swap has put the suite's modules back (#249 covers the load only), and the diagnostics bridge has no swap at all. It got the wiki's module, which has no `sidecar_path`, and none of those tests asserts on lifecycle's sidecar. A hook on `__import__` over the real-bridge suites found the four; with this change it finds none, and with the helper disabled all four come back.
+
+### Internal
+
+- `scripts/agentm_isolation.py`: `isolate_agentm_imports(cls, scripts_dir)` sets aside every loaded module named like a script in agentm's scripts dir but loaded from another file, and puts that dir first on `sys.path`, for the life of a test class. A class cleanup restores both after the class's own purge. It does nothing when no agentm checkout resolves.
+- The eight real-bridge suites other than `test_research_learn_forward.py` call it in `setUpClass`, before their first agentm load, with the scripts dir their bridge already resolves. `test_research_learn_forward.py` stays on the bridge's own swap, so its real-bridge tests keep exercising that swap end to end.
+- `test_agentm_isolation.py` runs in CI against a stand-in agentm whose `recall` imports `lifecycle` inside a function. Without the helper that import gets the stand-in wiki module; with it, agentm's. The class cleanup gives back the suite's module and `sys.path`.
+
 ### Patch: the research bridge hands agentm its own `vault_layout` in any process
 
 The patch below set same-named modules aside in `test_research_learn_forward.py`, which protected that one test class. The clash belongs to the bridge: any process that already holds another `vault_layout` hands it to agentm's `forward_learning.py`. This moves the set-aside into the bridge, and lets the learn-forward tests run against an agentm from before the memory-root trims again.

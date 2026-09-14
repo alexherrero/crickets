@@ -17,6 +17,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import agentm_isolation
+
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
 _SRC = _ROOT / "src" / "research" / "scripts"
@@ -67,6 +69,9 @@ class IdeaSearchTests(unittest.TestCase):
         # already imported every test module by now, including ones that
         # cached their own agentm modules earlier and still need them.
         cls._pre_existing_modules = set(sys.modules)
+        # For the whole class, agentm's imports (lazy ones too) get agentm's
+        # siblings, not the suite's same-named modules; see agentm_isolation.py.
+        agentm_isolation.isolate_agentm_imports(cls, idea_search.agentm_bridge._find_memory_scripts_dir())
         idea_search.agentm_bridge._reset_cache_for_tests()
         if idea_search.agentm_bridge.load_recall_module() is None:
             raise unittest.SkipTest("agentm sibling checkout unavailable -- real-bridge test skipped")
