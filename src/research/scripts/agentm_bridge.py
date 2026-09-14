@@ -16,12 +16,10 @@ watchlist its watchlist_root() resolves, and the watermark cache in agentm's
 engine state dir) already route through agentm's save/write primitives
 internally; this bridge adds no new write path of its own.
 
-The loaded modules bare-import their siblings, and a bare import returns
-whatever sys.modules already holds under that name. A process that has loaded
-another `vault_layout` (the wiki plugin ships one) hands agentm that module
-instead. The research CLIs each run in a process of their own; the shared
-unittest process is where it happens, and scripts/test_research_learn_forward.py
-sets such modules aside before loading agentm.
+The loaded modules bare-import their siblings, and crickets ships modules under
+some of the same names (the wiki plugin's `vault_layout`). The research CLIs
+each run in a process of their own, but a shared process such as the unittest
+run can already hold one; _load_module keeps it from reaching agentm.
 """
 from __future__ import annotations
 
@@ -57,11 +55,47 @@ def _find_memory_scripts_dir() -> "Path | None":
     return None
 
 
+def _set_aside_shadowing_modules(scripts_dir: Path) -> dict:
+    """Take out of sys.modules, and return, every module held under the name
+    of a script in `scripts_dir` that was loaded from some other file."""
+    set_aside = {}
+    for name in sys.modules.keys() & {p.stem for p in scripts_dir.glob("*.py")}:
+        f = getattr(sys.modules[name], "__file__", None)
+        if f and Path(f).resolve().parent != scripts_dir:
+            set_aside[name] = sys.modules.pop(name)
+    return set_aside
+
+
 def _load_module(name: str, path: Path):
+    # agentm's scripts bare-import their siblings (`import vault_layout`). A
+    # bare import returns whatever sys.modules already holds under that name,
+    # else the first match on sys.path, and crickets ships modules under some
+    # of the same names: the wiki plugin's vault_layout.py has a different
+    # API. A process that loaded one of those first would hand it to agentm.
+    # idea_search.py's _load_sibling sidesteps this kind of collision with a
+    # private name, but agentm's imports are not ours to rename. So for the
+    # length of the load, agentm's scripts dir goes first on sys.path and any
+    # same-named module from elsewhere is set aside; afterwards those modules
+    # go back, so the code that loaded them keeps them. This covers module
+    # execution only: a bare import agentm makes inside a function runs later,
+    # against the restored modules.
+    scripts_dir = path.resolve().parent
+    entry = str(scripts_dir)
+    was_on_path = entry in sys.path
+    set_aside = _set_aside_shadowing_modules(scripts_dir)
+    sys.path.insert(0, entry)
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
     sys.modules[name] = module
-    spec.loader.exec_module(module)
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        # agentm's scripts put their dir on sys.path themselves and import from
+        # it later, so the entry stays -- unless it was already there, in which
+        # case only the copy inserted above comes out.
+        if was_on_path:
+            sys.path.remove(entry)
+        sys.modules.update(set_aside)
     return module
 
 
