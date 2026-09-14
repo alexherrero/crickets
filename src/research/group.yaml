@@ -40,5 +40,10 @@ standalone: false
 #         `Projects/agentm/_watchlist` when the vault has it (agentm-vault
 #         plan 05 moved the feature's state into its project) and falls back
 #         to the memory-space spelling.
-version: 0.2.2
+# 0.2.3: the docstrings in learn_forward.py, agentm_bridge.py and
+#         codebase_improvement.py stop naming the retired
+#         `personal/_watchlist/` and `_meta/forward-learning-cache/` homes;
+#         agentm_bridge.py says why a shared process can hand agentm the
+#         wrong `vault_layout`. No behavior change.
+version: 0.2.3
 capabilities: [research]

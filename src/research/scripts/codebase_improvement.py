@@ -15,8 +15,9 @@ Deliberately thin, stdlib-only detection (a substring/regex scan, not an
 AST pass) -- matches the "small fixture repo containing one deliberately
 stale pattern" scope this task's own verification names. Writes directly
 in the SAME watchlist entry shape `forward_learning.py` uses
-(`personal/_watchlist/<source-slug>/<item-slug>.md`, `status: pending-
-review` + `evaluator_classification` frontmatter) so agentm's
+(`<watchlist>/<source-slug>/<item-slug>.md`, the watchlist that
+`watchlist_dir()` below resolves; `status: pending-review` +
+`evaluator_classification` frontmatter) so agentm's
 `watchlist_review.py` picks it up as one merged review surface -- no
 private agentm function is called to do this; the shape is small enough to
 duplicate honestly rather than reach into agentm's internals.

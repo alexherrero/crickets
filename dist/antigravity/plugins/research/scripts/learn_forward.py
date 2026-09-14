@@ -14,9 +14,11 @@ registers the actual scheduled job against ITS runner; this module is what
 that job's command runs.
 
 Strictly discovery-surfacing: findings land in the watchlist via agentm's
-own write path (personal/_watchlist/) -- this module never adopts, merges,
-or auto-edits anything itself. The negative assertion (nothing outside the
-watchlist/cache changes) is proven in scripts/test_research_learn_forward.py.
+own write path (wherever forward_learning.watchlist_root() resolves it,
+Projects/agentm/_watchlist/ since agentm's memory-root trims) -- this module
+never adopts, merges, or auto-edits anything itself. The negative assertion
+(nothing in the vault outside the watchlist changes) is proven in
+scripts/test_research_learn_forward.py.
 """
 from __future__ import annotations
 
