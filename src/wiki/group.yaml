@@ -191,7 +191,14 @@ standalone: true
 #         an absent one. The probe is on the file, not the directory, so an
 #         overlay left on a retired rung is still read once `standards/voice/`
 #         exists. voice-rules.json names the new home first.
-version: 0.11.6
+# 0.11.7: vault_layout lists both spellings of the vault-root project space,
+#         `projects` and `../projects` ahead of `Projects` and `../Projects`
+#         (agentm's root casing, agentm-vault plan 08). The lowercase flat rung
+#         is also the V4-era spelling and needs no witness; the Title Case one
+#         is admitted under a witness that reads the listing case-folded. A
+#         rung's path comes back spelled as the disk lists it, so a caller sees
+#         one spelling per vault on any disk.
+version: 0.11.7
 capabilities: [wiki-maintenance, wiki]
 renamed_from: [wiki-maintenance]
 enhances:

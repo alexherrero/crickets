@@ -172,7 +172,7 @@ class WatchlistHomeTests(unittest.TestCase):
             mr = root / "Agent"
             for space in ("memory", "personal", "personal-private"):
                 (mr / space / "_watchlist").mkdir(parents=True)
-            self.assertEqual(codebase_improvement.watchlist_dir(mr), root / "Projects" / "agentm" / "_watchlist")
+            self.assertEqual(codebase_improvement.watchlist_dir(mr), root / "projects" / "agentm" / "_watchlist")
 
     def test_the_projects_watchlist_is_used_once_it_exists(self):
         with tempfile.TemporaryDirectory() as td:
@@ -189,7 +189,7 @@ class WatchlistHomeTests(unittest.TestCase):
             flat = Path(td) / "Flat"
             (flat / ".obsidian").mkdir(parents=True)
             (Path(td) / "Projects" / "agentm" / "_watchlist").mkdir(parents=True)  # not the vault's
-            self.assertEqual(codebase_improvement.watchlist_dir(flat), flat / "Projects" / "agentm" / "_watchlist")
+            self.assertEqual(codebase_improvement.watchlist_dir(flat), flat / "projects" / "agentm" / "_watchlist")
 
     def test_a_standards_dir_beside_the_root_marks_the_parent_as_the_vault_root(self):
         with tempfile.TemporaryDirectory() as td:
@@ -197,7 +197,7 @@ class WatchlistHomeTests(unittest.TestCase):
             (root / "standards").mkdir(parents=True)
             mr = root / "Agent"
             mr.mkdir()
-            self.assertEqual(codebase_improvement.watchlist_dir(mr), root / "Projects" / "agentm" / "_watchlist")
+            self.assertEqual(codebase_improvement.watchlist_dir(mr), root / "projects" / "agentm" / "_watchlist")
 
 
 if __name__ == "__main__":

@@ -98,12 +98,16 @@ def resolve_memory_root(cli_value: str | None = None,
     return root if root.is_dir() else None
 
 
-# Newest layout first. Each entry is one generation of the project space.
+# Newest layout first. Each entry is one generation of the project space. The
+# root casing (agentm-vault plan 08, 2026-09-14) spells the root space
+# lowercase; both spellings stay listed so a vault on either side of the rename
+# resolves, and on a case-insensitive disk they name one directory.
 PROJECT_SPACE_SEGMENTS: tuple[tuple[str, ...], ...] = (
-    ("Projects",),             # filing-v2 2b: the root space of a FLAT vault (memory root = vault root)
-    ("..", "Projects"),        # filing-v2 2b, 2026-09: vault-ROOT Projects/, sibling of a NESTED memory root
+    ("projects",),             # the root space of a FLAT vault since the root casing; also the V4 #26 spelling
+    ("..", "projects"),        # the root casing, 2026-09-14: vault-ROOT projects/, sibling of a NESTED memory root
+    ("Projects",),             # filing-v2 2b: the root space of a FLAT vault, spelled the retired way
+    ("..", "Projects"),        # filing-v2 2b, 2026-09: vault-ROOT Projects/, spelled the retired way
     ("desk", "projects"),      # stage-2 four-space migration, 2026-08-11
-    ("projects",),             # V4 #26
     ("personal-projects",),    # pre-V4 #26
 )
 
@@ -130,12 +134,14 @@ def root_sibling_witnessed(vault) -> bool:
 
 
 def flat_root_space_present(vault) -> bool:
-    """Whether `<memory-root>/Projects` exists with exactly that name — on a
-    case-insensitive filesystem `Projects/` would otherwise answer for the
-    V4-era `projects/` rung and every legacy project would read as root-space."""
+    """Whether a directory named `projects` — in either spelling — sits at the
+    memory root, which is what admits the Title Case flat rung. The name is
+    read from the listing, case-folded, so a vault on either side of the root
+    casing answers; the lowercase rung needs no witness, since it is the V4-era
+    spelling as well as the root space's."""
     v = Path(vault)
     try:
-        return (v / "Projects").is_dir() and any(p.name == "Projects" for p in v.iterdir())
+        return any(p.name.lower() == "projects" and p.is_dir() for p in v.iterdir())
     except OSError:
         return False
 
@@ -160,8 +166,32 @@ def resolve_existing_under_projects(vault, *parts: str):
     """
     for cand in projects_space_candidates(vault, *parts):
         if cand.exists():
-            return cand
+            return as_listed(cand, vault)
     return None
+
+
+def as_listed(cand, vault) -> Path:
+    """A rung's path under `vault` (or, through a leading `..`, beside it)
+    with each segment spelled as its directory lists it, the `..` kept. A
+    case-insensitive disk opens `projects` on a vault still spelled
+    `Projects`; the path handed back names what is there, on any disk."""
+    cand, vault = Path(cand), Path(vault)
+    try:
+        parts = cand.relative_to(vault).parts
+    except ValueError:
+        return cand
+    nested = parts[:1] == ("..",)
+    out = vault.parent if nested else vault
+    spelled = []
+    for part in (parts[1:] if nested else parts):
+        try:
+            names = {n.lower(): n for n in os.listdir(out)}
+        except OSError:
+            return cand
+        real = names.get(part.lower(), part)
+        spelled.append(real)
+        out = out / real
+    return vault.joinpath("..", *spelled) if nested else vault.joinpath(*spelled)
 
 
 def resolve_under_projects(vault, *parts: str) -> Path:

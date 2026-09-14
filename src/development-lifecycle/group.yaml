@@ -608,5 +608,12 @@ enhances:
 # 0.47.2: resolve_plan.py's vault-reachability probe reads $MEMORY_ROOT first
 #          and $MEMORY_VAULT_PATH only as the deprecated alias (agentm's
 #          2026-09-11 rename; the alias export goes one release later).
-version: 0.47.2
+# 0.47.3: resolve_project.py's project-space rungs list both spellings of the
+#         vault-root space, `projects` and `../projects` ahead of `Projects`
+#         and `../Projects` (agentm's root casing, agentm-vault plan 08). The
+#         lowercase flat rung is also the V4-era spelling and needs no
+#         witness; the Title Case one is admitted under a witness that reads
+#         the listing case-folded. vault_projects_dirs hands a space back
+#         spelled as the disk lists it, still one entry per directory.
+version: 0.47.3
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

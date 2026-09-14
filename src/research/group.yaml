@@ -54,5 +54,10 @@ standalone: false
 #         beside the root marks the vault root, as in agentm's vault_layout);
 #         agentm_bridge.py gives agentm its own siblings for every call, not
 #         just the load, and learn_forward.py runs its scan through it.
-version: 0.2.5
+# 0.2.6: codebase_improvement.py probes both spellings of the vault-root
+#        project space for the watchlist, `projects` ahead of `Projects`
+#        (agentm's root casing, agentm-vault plan 08), hands the first that
+#        exists back spelled as the disk lists it, and defaults new state to
+#        the lowercase space.
+version: 0.2.6
 capabilities: [research]
