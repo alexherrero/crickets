@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Patch: the vault-content tests find the voice kernel where the memory-root trims put it
+
+agentm-vault plan 05 moved the voice kernel into the `## Voice` section of `<vault>/standards/user-preferences.md` and deleted `voice-kernel.md`. `prose_pass.py` already read the new home. `test_voice_kernel.py` still searched the memory space for the old file, so three of its tests failed against the migrated vault and the `vault-content tests` gate in `check-all.sh` went red. CI never saw it, because the suite skips wherever no vault resolves.
+
+### Fixed
+
+- `design` 0.10.7 — a prose pass that finds no voice kernel names `user-preferences.md` in its degraded message, not the deleted `voice-kernel.md`. The `--voice-kernel` help text, the resolver's docstring, the prose-pass skill and the Run-A-Prose-Pass how-to name the kernel's current home, and `standards/voice/` as the overlay store.
+
+### Internal
+
+- `test_voice_kernel.py` finds the kernel through `vault_layout`, in the same order as `prose_pass.py`: `standards/user-preferences.md` first, then `voice-kernel.md` anywhere in the memory space for a vault that never migrated. The 25-line budget counts only the `## Voice` section, since the rest of that file is the operator's own. The always-load tier is `standards/` plus the retired pen, and a demoted genre file there is caught under its dated name as well as its bare slug.
+- `test_voice_kernel_layouts.py` runs that suite in CI against scratch vaults on five layouts: `standards/` beside a nested memory root, `standards/` inside a flat vault, the retired pen, the dated tree the kernel once graduated into, and a migrated vault with a pen copy left behind. A healthy vault passes on every layout with nothing skipped. A 30-line voice section, a dated genre file in `standards/` and a vault with no kernel each fail the test written for that defect.
+- `test_prose_pass.py` pins the file name the degraded message gives.
+
 ### Patch: a cross-review that runs out of time says so
 
 `cross-review.sh` promises a `CROSS-REVIEW-DEGRADED` line on stdout whenever it gives up on the cross-model review. It broke that promise when agy ran into its 180-second print timeout. agy exits 0 with nothing on stdout and says "print timeout" on stderr, which the script sent to `/dev/null`. The script then wrote only `cross-review: agy call failed (exit 0)` to stderr and exited 1. The agentm plan 07 review on 2026-09-13 ran it five times on 67–216 KB of material, about 196 seconds each, and fell back to a same-model review with no marker to relay.
@@ -23,6 +37,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Internal
 
 - `test_cross_review_degradation.py` drives each fallback exit against a stub `agy`, including one that prints nothing and exits 0, one that writes agy's real timeout line, and the 216,549 bytes of the agentm review. Each asserts that stdout is the marker alone. Eleven of the fourteen new tests fail against the 0.3.3 script. The other three check that a finished answer, material at the ceiling and a turned-off ceiling still reach agy, and pass on both.
+
+### Patch: the wiki, design and research plugins read the memory-root trims' new homes
+
+agentm-vault plan 05 moved three stores. The always-load pen became `<vault>/standards/`, the cross-project voice rules moved from `Projects/_global/wiki-style/` to `<vault>/standards/voice/`, and the watchlist moved into `Projects/agentm/_watchlist`. These readers had to land before the data moved on 2026-09-12. Each takes the new home first and the retired one as the fallback, so a vault on either side of the move resolves.
+
+### Changed
+
+- `wiki` 0.11.4 — `vault_layout.py` resolves each new home first, so `style_resolver`, `author`, `relocate`, `agentmemory_conventions` and `rule_pack` read the voice library wherever the vault holds it. `always_load_dir` is `standards/` when it exists and the pen otherwise, so a captured convention lands in `standards/` on a migrated vault. `watchlist_dir` is `Projects/agentm/_watchlist` when it exists. A `standards/` directory beside the memory root marks the vault root, the way `.obsidian/` does.
+- `design` 0.10.6 — `prose_pass.py` reads the voice kernel from `standards/user-preferences.md` first, where plan 05 folded the pen's kernel, then from the pen, then by filename. The overlay store is `standards/voice/` first.
+- `research` 0.2.2 — `codebase_improvement.py` writes the watchlist at `Projects/agentm/_watchlist` when the vault has it, and falls back to the memory-space spelling.
+
+### Internal
+
+- `test_vault_layout.py`, `test_prose_pass.py` and `test_research_codebase_improvement.py` pin each reader on both layouts.
 
 ## [v3.38.0] — 2026-09-11 — Minor: the shepherd proves what landed, and every reader takes MEMORY_ROOT first
 

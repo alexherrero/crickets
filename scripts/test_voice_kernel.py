@@ -13,7 +13,8 @@ failing against a healthy vault. They never surfaced, because the suite skips
 whenever no vault resolves and the gate battery deliberately isolates itself
 from this machine's config — so the only place these could fire was a bare
 local run nobody makes. `check-all.sh` now runs this module un-isolated as its
-own step; it still skips cleanly in CI, which has no vault.
+own step; it still skips cleanly in CI, which has no vault, and
+`test_voice_kernel_layouts.py` runs it against scratch vaults there instead.
 
 Then the kernel moved again. agentm-vault plan 05 (the memory-root trims,
 2026-09-11) folded the pen's `voice-kernel.md` into the `## Voice` section of
