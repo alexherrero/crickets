@@ -39,4 +39,4 @@ The [wiki](https://github.com/alexherrero/crickets/wiki) covers everything there
 ---
 
 > [!NOTE]
-> **Latest release: [v3.38.0](https://github.com/alexherrero/crickets/releases/tag/v3.38.0).** Every reader takes agentm's renamed `MEMORY_ROOT` first, so agentm can drop the old name on schedule; the worktree shepherd now proves a squash-merged branch landed and frees a worktree stranded on `main`; and a plugin finds its siblings in Claude Code's versioned cache.
+> **Latest release: [v3.38.1](https://github.com/alexherrero/crickets/releases/tag/v3.38.1).** The project space resolves under either spelling of its root, lowercase first, so agentm's root casing can rename the vault without breaking a crickets command on either side; nothing in crickets writes to agentm's retired memory-space homes any more, and every bridge hands agentm its own modules for every call.
