@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Patch: the research bridge hands agentm its own `vault_layout` in any process
+
+The patch below set same-named modules aside in `test_research_learn_forward.py`, which protected that one test class. The clash belongs to the bridge: any process that already holds another `vault_layout` hands it to agentm's `forward_learning.py`. This moves the set-aside into the bridge, and lets the learn-forward tests run against an agentm from before the memory-root trims again.
+
+### Fixed
+
+- `research` 0.2.4 — `agentm_bridge.py` loads an agentm module with agentm's scripts directory first on `sys.path`. Any module held under the name of one of that directory's scripts, but loaded from another file, is set aside for the load and put back after it. A process that already holds another `vault_layout` keeps it, and agentm gets its own.
+
+### Internal
+
+- `test_research_agentm_bridge.py` loads a stand-in agentm scripts directory, so it runs without an agentm checkout, in CI too. One test caches a foreign `vault_layout` before the load, and another puts a directory holding one ahead of agentm's on `sys.path`. Both fail against the 0.2.3 bridge. A third checks that agentm's directory stays on `sys.path` for the imports it makes later.
+- `test_research_learn_forward.py` drops its own set-aside, so its tests go through the bridge's. The no-writes test names the watchlist's homes, `Projects/agentm/_watchlist` and the memory-space spellings, and `setUp` writes the whitelist at `SOURCES_CONFIG_REL`. The test had asked agentm's `watchlist_root()` and `sources_config_path()`, which only exist since agentm #602, so it errored against any older agentm. The content snapshot and the wrote-nothing guard stay, and a write outside those homes still fails the test.
+
 ### Patch: the learn-forward tests hand agentm its own `vault_layout` and find the watchlist where agentm writes it
 
 `test_research_learn_forward.py` turned the `unit tests` gate in `check-all.sh` red two ways. CI never saw either, because those tests skip wherever no agentm checkout resolves. In the full suite all three tests errored: discovery loads the wiki plugin's `vault_layout.py` under that bare name before any test runs, and agentm's `forward_learning.py`, which has imported its own `vault_layout` since the memory-root trims, was handed the wiki's module. Run alone, the no-writes test failed a correct scan, because agentm-vault plan 05 moved the watchlist to `Projects/agentm/_watchlist` and the test allowed only memory-space paths.

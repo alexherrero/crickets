@@ -39,15 +39,12 @@ _SRC = _ROOT / "src" / "research" / "scripts"
 # being loaded -- purged in tearDownClass so it doesn't leak into whatever
 # test file runs next alphabetically.
 #
-# The leak runs the other way too. A bare import returns whatever sys.modules
-# already holds under that name, and discovery imports every test file before
-# any test runs; several of them (test_vault_layout.py, the diataxis-author
-# suites) load the wiki plugin's own vault_layout.py as `vault_layout`.
-# agentm's memory scripts carry a vault_layout.py with a different API, which
-# forward_learning.py has imported since the memory-root trims, so the scan was
-# handed the wiki's module and failed on `feature_state_candidates`. setUpClass
-# sets aside every module holding a name agentm's scripts dir also owns, and a
-# class cleanup puts them back once the purge has run.
+# The leak runs the other way too: discovery imports every test file before
+# any test runs, and several (test_vault_layout.py, the diataxis-author suites)
+# load the wiki plugin's own vault_layout.py as `vault_layout`, a name agentm's
+# forward_learning.py imports for its own module. Keeping the wiki's module
+# from reaching agentm is agentm_bridge._load_module's job, so these tests go
+# through it; test_research_agentm_bridge.py pins it without an agentm checkout.
 _AGENTM_PATH_MARKERS = ("/agentm/harness/", "/agentm/scripts/")
 _REAL_BRIDGE_SYS_PATH_MARKER = "/agentm/harness/skills/memory/scripts"
 
@@ -63,18 +60,6 @@ def _purge_agentm_modules(pre_existing_names):
         f = getattr(mod, "__file__", None)
         if f and any(marker in f for marker in _AGENTM_PATH_MARKERS):
             del sys.modules[name]
-
-
-def _set_aside_shadowing_modules(scripts_dir: Path) -> dict:
-    """Remove and return every loaded module that holds the name of a script in
-    agentm's `scripts_dir` but was loaded from a file somewhere else."""
-    scripts_dir = scripts_dir.resolve()
-    set_aside = {}
-    for name, mod in list(sys.modules.items()):
-        f = getattr(mod, "__file__", None)
-        if f and (scripts_dir / f"{name}.py").is_file() and Path(f).resolve().parent != scripts_dir:
-            set_aside[name] = sys.modules.pop(name)
-    return set_aside
 
 
 def _load(name, path):
@@ -101,15 +86,10 @@ def _fixture_fetcher(candidates_by_slug: dict):
 class LearnForwardTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        learn_forward.agentm_bridge._reset_cache_for_tests()
-        scripts_dir = learn_forward.agentm_bridge._find_memory_scripts_dir()
-        if scripts_dir is None:
-            raise unittest.SkipTest("agentm sibling checkout unavailable -- real-bridge test skipped")
-        # Class cleanups run after tearDownClass, and also when setUpClass
-        # raises, so the set-aside modules return only after the purge.
-        cls.addClassCleanup(sys.modules.update, _set_aside_shadowing_modules(scripts_dir))
         cls._pre_existing_modules = set(sys.modules)
-        learn_forward.agentm_bridge.load_forward_learning_module()
+        learn_forward.agentm_bridge._reset_cache_for_tests()
+        if learn_forward.agentm_bridge.load_forward_learning_module() is None:
+            raise unittest.SkipTest("agentm sibling checkout unavailable -- real-bridge test skipped")
 
     @classmethod
     def tearDownClass(cls):
@@ -126,9 +106,10 @@ class LearnForwardTests(unittest.TestCase):
             os.environ, {"AGENTM_STATE_DIR": str(Path(self._tmp.name) / "engine-state")})
         self._engine_env.start()
         fl = learn_forward.agentm_bridge.load_forward_learning_module()
-        # agentm's resolver names the whitelist's home on a fresh vault; the
-        # retired `standards/` spelling it still reads is agentm's to test.
-        sources_path = fl.sources_config_path(self.vault)
+        # Every agentm reads the whitelist at its own SOURCES_CONFIG_REL (the
+        # current one as a retired spelling it still honours), while
+        # sources_config_path() only exists since the memory-root trims.
+        sources_path = self.vault / fl.SOURCES_CONFIG_REL
         sources_path.parent.mkdir(parents=True, exist_ok=True)
         sources_path.write_text(
             json.dumps(
@@ -190,23 +171,31 @@ class LearnForwardTests(unittest.TestCase):
                 ]
             }
         )
-        # Ask agentm where the watchlist is before the scan, as its own writer
-        # does. The watchlist has moved from personal-private/ to personal/ to
-        # memory/ to Projects/agentm/, and a list of path literals here goes
-        # stale on every move. The fetch cache is not in the vault at all: it
-        # sits in the engine state dir setUp points at the scratch directory.
-        watchlist = self.fl.watchlist_root(self.vault).relative_to(self.vault).parts
         pre = _snapshot(self.vault)
         learn_forward.learn(self.vault, fetcher=fetcher, now=1_700_000_000.0)
         post = _snapshot(self.vault)
 
+        # The watchlist/cache, on whichever generation of agentm wrote it. Since
+        # the memory-root trims agentm keeps the watchlist in its own project,
+        # `Projects/agentm/_watchlist`; an older agentm wrote it to the memory
+        # space, `personal-private/` -> `personal/` -> `memory/`, and its cache
+        # to `_meta/`. The assertion is unchanged in intent — a scan writes ONLY
+        # into the watchlist or the cache — but the watchlist has moved, so
+        # naming only its old homes would fail a correctly-behaving scan. The
+        # homes are named here rather than asked of agentm's watchlist_root(),
+        # which only exists since the trims, so an older agentm still runs this.
+        allowed = [
+            (space, leaf)
+            for space in ("memory", "personal", "personal-private")
+            for leaf in ("_watchlist", "_skill-watchlist")
+        ] + [("Projects", "agentm", "_watchlist"), ("_meta",)]
         new_or_changed = {p for p in pre.keys() | post.keys() if pre.get(p) != post.get(p)}
         self.assertTrue(new_or_changed, "the scan wrote nothing, so this check would prove nothing")
         for rel in new_or_changed:
-            self.assertEqual(
-                Path(rel).parts[: len(watchlist)],
-                watchlist,
-                f"unexpected write outside the watchlist: {rel}",
+            parts = Path(rel).parts
+            self.assertTrue(
+                any(parts[: len(home)] == home for home in allowed),
+                f"unexpected write outside the watchlist/cache: {rel}",
             )
 
     def test_main_cli_smoke(self):

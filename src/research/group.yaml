@@ -45,5 +45,9 @@ standalone: false
 #         `personal/_watchlist/` and `_meta/forward-learning-cache/` homes;
 #         agentm_bridge.py says why a shared process can hand agentm the
 #         wrong `vault_layout`. No behavior change.
-version: 0.2.3
+# 0.2.4: agentm_bridge.py loads an agentm module with agentm's scripts dir
+#         first on sys.path, and sets aside any module held under one of that
+#         dir's script names but loaded from another file (the wiki plugin's
+#         vault_layout.py), putting it back once the load is done.
+version: 0.2.4
 capabilities: [research]
