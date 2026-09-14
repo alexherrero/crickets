@@ -10,9 +10,10 @@
 #     ambiguous tail. Lands when caller dispatches; in --stub mode we
 #     return the canned "needs_subagent: true" marker without invoking.
 #
-# Confidence threshold: 0.7 default (tunable via operator's
-# AgentMemory `_always-load/diataxis-classify-threshold.md` entry; v1
-# reads only at startup; part 5 wires that read fully).
+# Confidence threshold: 0.7 default (tunable via the operator's
+# `diataxis-classify-threshold.md` entry in `<vault>/standards/`, else the
+# retired `_always-load/` pen; v1 reads only at startup; part 5 wires that
+# read fully).
 #
 # Locked design calls (parent §1 + §5):
 #   - Heuristic rules mirror agentm/scripts/check-wiki.py:

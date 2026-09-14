@@ -9,22 +9,26 @@
 #                       Always present (ships in dist/ with the skill). A public-safe
 #                       distillation of the operator's docs-prose-style voice; the
 #                       full personal entry layers on at runtime as a vault overlay.
-#   Overlay           — learned voice lessons read ON-DEMAND (never _always-load)
+#   Overlay           — learned voice lessons read ON-DEMAND (never the always-load
+#                       tier; the session-start loader skips standards/voice/)
 #                       from three scopes, narrower + recent wins:
-#                         global      <projects-space>/_global/wiki-style/*.md
+#                         global      <vault>/standards/voice/*.md, else the retired
+#                                     <projects-space>/_global/wiki-style/*.md
 #                         per-project <projects-space>/<slug>/wiki-style/*.md
 #                         per-repo    <wiki-root>/.diataxis-conventions.md
-#                       <projects-space> is resolved per-vault by vault_layout
-#                       (desk/projects → projects → personal-projects), never
-#                       pinned to one layout generation.
+#                       vault_layout resolves both vault stores per-vault
+#                       (standards/voice, then the project-space rungs
+#                       Projects → desk/projects → projects → personal-projects),
+#                       never pinned to one layout generation.
 #                       Precedence (lowest→highest): global → project → repo. On a
 #                       trigger conflict the narrower scope wins.
 #
 # The composed voice is injected into the authored page as an author-facing HTML
 # comment block (same idiom as the per-template scaffolding comments), positioned
 # after the H1 so page structure is preserved. The operator deletes it before
-# publishing. The `_global` slug is the relocation target for task 4 (the
-# _always-load → on-demand move); this resolver already reads it.
+# publishing. The global store is the relocation target for task 4 (the
+# always-load → on-demand move) — `<vault>/standards/voice/` since the
+# memory-root trims, the `_global` slug before them; this resolver reads both.
 #
 # Stdlib-only; matches the established skill convention.
 

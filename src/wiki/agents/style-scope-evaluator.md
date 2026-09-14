@@ -16,15 +16,17 @@ Mirrors the sibling [`diataxis-evaluator`](diataxis-evaluator.md) — same calle
 
 ## The three scopes (the resolver's read model)
 
-The author-time resolver ([`scripts/style_resolver.py`](../skills/diataxis-author/scripts/style_resolver.py)) reads voice lessons **on-demand** (never `_always-load`) from three scopes, lowest→highest precedence, narrower + recent wins on a trigger conflict:
+The author-time resolver ([`scripts/style_resolver.py`](../skills/diataxis-author/scripts/style_resolver.py)) reads voice lessons **on-demand** (never the always-load tier — the session-start loader skips `standards/voice/`) from three scopes, lowest→highest precedence, narrower + recent wins on a trigger conflict:
 
 | Scope | Store | Applies to | Recommend when the lesson is… |
 |---|---|---|---|
-| **global** | `<projects-space>/_global/wiki-style/*.md` | every repo's wiki the operator authors (the cross-project house voice) | a universal voice rule — register, banned words, sentence rhythm, slop/jargon cuts — that holds regardless of project or repo |
+| **global** | `<vault>/standards/voice/*.md` (the retired `<projects-space>/_global/wiki-style/*.md` on a vault without `standards/voice/`) | every repo's wiki the operator authors (the cross-project house voice) | a universal voice rule — register, banned words, sentence rhythm, slop/jargon cuts — that holds regardless of project or repo |
 | **per-project** | `<projects-space>/<slug>/wiki-style/*.md` | one project's wiki across all its repos | tied to a project's domain vocabulary, audience, or conventions — true for *this* project but not a house-wide rule |
 | **per-repo** | `<wiki-root>/.diataxis-conventions.md` | one repo's wiki only (committed in-repo) | tied to one repo's structure, tooling, file layout, or naming — narrowest; or a convention the operator wants version-controlled alongside the code |
 
 `<projects-space>` is the vault's project-keyed root, which has moved between layout generations — the vault-root `Projects/` (sibling of the memory root) on the current one, `<memory-root>/desk/projects/` before it, `<memory-root>/projects/` before that. Never pin one: [`scripts/vault_layout.py`](../skills/diataxis-author/scripts/vault_layout.py) probes newest-first and both the read and the write side call it, so a captured lesson always lands where the resolver reads it back.
+
+The global store moved in the memory-root trims (agentm-vault plan 05, 2026-09-11): `<vault>/standards/voice/`, beside the memory root, replaced `<projects-space>/_global/wiki-style/`. `vault_layout.global_wiki_style_dir()` returns the new home when it exists and the retired one otherwise, for the read and the write side alike — so a confirmed `global` lesson is written into the operator's own `standards/` tree.
 
 Precedence is **global → project → repo**: a narrower scope overrides a broader one on the same `trigger`. So the scope choice is also a *blast-radius* choice — `global` changes the voice everywhere; `per-repo` changes it in exactly one place. **When genuinely torn, recommend the narrower scope** and say so in the rationale: starting narrow is reversible (promote later via the operator-gated `promote` path); starting broad silently re-voices unrelated wikis. This matches the loop's "start narrow" constraint.
 
@@ -44,7 +46,7 @@ LESSON:
 PROJECT-SLUG: <the active project slug, or "none" if authoring outside a known project>
 WIKI-ROOT: <absolute path to the repo's wiki root, or "none">
 EXISTING-OVERLAY:
-  global:      <triggers already in <projects-space>/_global/wiki-style/, or "empty">
+  global:      <triggers already in <vault>/standards/voice/ (or the retired <projects-space>/_global/wiki-style/), or "empty">
   per-project: <triggers already in <projects-space>/<slug>/wiki-style/, or "empty/none">
   per-repo:    <triggers already in <wiki-root>/.diataxis-conventions.md, or "empty/none">
 RUBRIC:

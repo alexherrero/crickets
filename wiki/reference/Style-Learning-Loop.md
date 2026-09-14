@@ -33,15 +33,17 @@ This is the lifecycle of a voice lesson:
 - **Compose.** The `style_resolver` builds a draft from `template ⊕ base style-guide ⊕ overlay`. It takes structure from the template. It takes voice from the base plus any learned lessons.
 - **Capture.** You edit that draft. The capture diffs draft ↔ edited. It clusters the changes (word choice · rhythm · structure · cuts · additions) into proposed lessons.
 - **Two gates.** Each proposal passes *generality*. You rewrite it into a real lesson with a semantic trigger. You reject one-offs. Then it passes *scope*. The read-only `style-scope-evaluator` recommends `global`/`per-project`/`per-repo`. You confirm this scope.
-- **Store + read back.** The confirmed lesson lands in that scope's on-demand store. It never lands in `_always-load`. The next draft's `style_resolver` reads it back automatically.
+- **Store + read back.** The confirmed lesson lands in that scope's on-demand store. It never lands in the always-load tier. (The global store sits in `standards/voice/`, which the session-start loader skips.) The next draft's `style_resolver` reads it back automatically.
 
 ## Where lessons live
 
 | Scope | Store |
 |---|---|
-| global | `projects/_global/wiki-style/` |
-| per-project | `projects/<slug>/wiki-style/` |
+| global | `<vault>/standards/voice/` |
+| per-project | `<projects-space>/<slug>/wiki-style/` |
 | per-repo | `wiki/.diataxis-conventions.md` |
+
+The global store is part of `<vault>/standards/`, which is yours. A global lesson you confirm is written there. A vault from before the memory-root trims has no `standards/voice/`. On that vault, the retired `<projects-space>/_global/wiki-style/` is read and written instead. `<projects-space>` is the vault-root `Projects/` on the current layout, and the resolver probes the older layouts after it.
 
 Narrower scopes win. More recent lessons win. You can promote a proven lesson into the committed base style-guide. It then ships in the plugin. Every fresh draft inherits it without an overlay. `convention-drift` catches voice drift. The `/diataxis check` command flags every banned term a page uses. It logs info by default. It fails under `--strict`.
 

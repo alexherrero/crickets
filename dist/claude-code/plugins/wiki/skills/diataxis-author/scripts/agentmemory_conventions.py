@@ -2,8 +2,9 @@
 # agentmemory_conventions.py — AgentMemory read + write integration
 # for the diataxis-author skill (plan #13 part 5).
 #
-# Read-side: globs `<memory-space>/_always-load/diataxis-*.md`
-# at invocation; parses simple `key: value` lines from each entry's
+# Read-side: globs `diataxis-*.md` in the always-load tier — `<vault>/standards/`
+# since the memory-root trims, the retired `<memory-space>/_always-load/` pen
+# before them — at invocation; parses simple `key: value` lines from each entry's
 # frontmatter + body to build a conventions dict. Per-repo override at
 # `<repo>/wiki/.diataxis-conventions.md` takes precedence when present.
 #
@@ -11,12 +12,13 @@
 # `permeable_boundary` helper (shipped in plan #7a part 4) for operator
 # confirmation on cross-boundary writes. Same A3 contract as
 # `ideas_surface.py`'s Ideas.md writer — never silent; respects
-# `MEMORY_REVIEW_MODE=silent` env var.
+# `MEMORY_REVIEW_MODE=silent` env var. On a migrated vault the write lands in
+# `<vault>/standards/`, the operator's own rule tree beside the memory root.
 #
 # Fallback chain (lookup order):
 #   1. Per-repo `.diataxis-conventions.md` (when wiki_root provided + file present)
-#   2. Vault `_always-load/diataxis-*.md` (when MEMORY_ROOT or
-#      --vault-path resolves)
+#   2. Vault always-load tier `diataxis-*.md` — `standards/`, else the retired
+#      `_always-load/` (when MEMORY_ROOT or --vault-path resolves)
 #   3. ADR 0004 defaults (hardcoded fallbacks).
 #
 # Stdlib-only; matches the established convention.
@@ -128,7 +130,8 @@ def load_conventions(
 
     Priority (highest to lowest):
       1. Per-repo `<wiki_root>/.diataxis-conventions.md`
-      2. Vault `<memory-space>/_always-load/diataxis-*.md` (any entry)
+      2. Vault always-load tier `diataxis-*.md` (any entry) — `<vault>/standards/`,
+         else the retired `<memory-space>/_always-load/`
       3. ADR 0004 hardcoded defaults
     """
     # Start with defaults.
@@ -162,10 +165,12 @@ def confirm_save_convention(
     """Offer to save a new convention to the operator's AgentMemory.
 
     Routes through the existing `permeable_boundary.confirm_write_outside_
-    memoryvault()` helper for A3-boundary respect (writes to `_always-load/`
-    are INSIDE the MemoryVault, so technically don't need cross-boundary
-    confirmation — but we use a similar interactive-confirm pattern for
-    consistency + to avoid surprise saves).
+    memoryvault()` helper for A3-boundary respect (writes to the retired
+    `_always-load/` pen were INSIDE the MemoryVault, so technically didn't need
+    cross-boundary confirmation — but we use a similar interactive-confirm
+    pattern for consistency + to avoid surprise saves). Since the memory-root
+    trims the target is `<vault>/standards/`, beside the memory root in the
+    operator's own rule tree, and that same local confirm is still the only gate.
 
     Returns Path written on operator-approved save; None if declined or
     no vault resolved.
@@ -258,10 +263,11 @@ def confirm_save_convention(
 
 # ── Edit-driven voice-lesson capture (part 3, task 3) ───────────────────────
 # `confirm_save_convention()` above is the DECISION-driven path: it records a
-# key:value judgment call (filename_style, …) to `_always-load/diataxis-*.md`.
+# key:value judgment call (filename_style, …) to `diataxis-*.md` in the
+# always-load tier (`standards/`, else the retired `_always-load/`).
 # `confirm_save_lesson()` below is the EDIT-driven counterpart: it writes a VOICE
 # LESSON {trigger, guidance} to the ON-DEMAND scope store the resolver reads —
-# NOT `_always-load` — in `trigger:`-frontmatter + guidance-body form, so it
+# NOT the always-load tier — in `trigger:`-frontmatter + guidance-body form, so it
 # round-trips with style_resolver.read_scope_lessons / _read_per_repo_lessons.
 
 _PER_REPO_FILE = ".diataxis-conventions.md"
@@ -289,18 +295,23 @@ def lesson_target(
 ) -> tuple[Path | None, bool]:
     """Resolve (target_path, writes_outside_vault) for a voice lesson by scope.
 
-      global      -> <projects-space>/_global/wiki-style/<date>-<trigger>.md
+      global      -> <vault>/standards/voice/<date>-<trigger>.md
+                     (the retired <projects-space>/_global/wiki-style/ on a
+                     vault without standards/voice/)
       per-project -> <projects-space>/<slug>/wiki-style/<date>-<trigger>.md
       per-repo    -> <wiki_root>/.diataxis-conventions.md   (OUTSIDE the vault)
 
+    Since the memory-root trims the global store sits in `<vault>/standards/`,
+    the operator's own rule tree beside the memory root, yet its second element
+    is still False, so no cross-boundary confirm runs before that write.
     Project-keyed stores live in the vault's project space (see agentm ADR 0010
-    vault internal taxonomy) — NOT under `personal/` (that root is for personal,
-    non-project-keyed data; its `_always-load/` subset is the always-injected
-    globals). `_global` is the reserved cross-project pseudo-project.
+    vault internal taxonomy) — NOT in the memory space, which holds personal,
+    non-project-keyed data. Before the trims `_global` was the reserved
+    cross-project pseudo-project there.
 
-    `vault_layout` resolves the project space, so a captured lesson lands in
-    the same directory `style_resolver` reads back — one probe chain for both
-    sides, on whichever layout generation this vault is sitting on.
+    `vault_layout` resolves both, so a captured lesson lands in the same
+    directory `style_resolver` reads back — one probe chain for both sides, on
+    whichever layout generation this vault is sitting on.
 
     The date-prefixed filename gives the directory scopes their recent-wins order
     (the resolver sorts by filename within a scope). Returns (None, False) when

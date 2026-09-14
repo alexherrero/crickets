@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-# relocate.py — _always-load -> on-demand _global relocation for diataxis-author
+# relocate.py — always-load -> on-demand global-store relocation for diataxis-author
 # (wiki-maintenance part 3/5, style-learning-loop, task 4).
 #
 # Moves the operator's GLOBAL wiki/Diataxis conventions out of the always-load
-# tier (`<memory-space>/_always-load/diataxis-*.md`, injected into
+# tier (`diataxis-*.md` at the top of `<vault>/standards/`, injected into
 # EVERY session's context) into the on-demand global store the resolver reads
-# (`<projects-space>/_global/wiki-style/*.md`) — so they load only when authoring.
+# (`<vault>/standards/voice/*.md`) — so they load only when authoring. A vault
+# from before the memory-root trims (agentm-vault plan 05) resolves the retired
+# homes instead: `<memory-space>/_always-load/` and
+# `<projects-space>/_global/wiki-style/`.
 #
 # Touches the operator's LIVE VAULT, so it mirrors agentm's migrate-harness-to-vault
 # discipline: PREVIEW-FIRST (--preview prints WOULD: lines, mutates nothing),
@@ -13,12 +16,14 @@
 # (byte-compare; never clobber a differing dest), and CLEANUP only after a
 # byte-identical verify (--cleanup, gated by --yes / TTY confirm). Idempotent.
 #
-# `_global` is a reserved cross-project pseudo-project in the vault's project
-# space (NOT under personal/ — that root is personal, non-project-keyed data;
-# its `_always-load/` subset is the always-injected globals). See agentm ADR
-# 0010 (vault internal taxonomy). The space itself is resolved by vault_layout,
-# so a relocation lands in the same directory the resolver reads back on
-# whichever layout generation this vault is sitting on. Stdlib-only.
+# On a migrated vault both ends sit inside `<vault>/standards/`, the operator's
+# own rule tree: the copy and its rollback manifest land in `standards/voice/`,
+# and --cleanup deletes the source from `standards/`. Before the trims the
+# destination was `_global`, a reserved cross-project pseudo-project in the
+# vault's project space (see agentm ADR 0010, vault internal taxonomy).
+# vault_layout resolves both ends, so a relocation lands in the same directory
+# the resolver reads back on whichever layout generation this vault is sitting
+# on. Stdlib-only.
 
 from __future__ import annotations
 
@@ -108,7 +113,11 @@ def relocate(
     cleanup: bool = False,
     assume_yes: bool = False,
 ) -> list:
-    """Copy `_always-load/<source_glob>` -> `<projects-space>/_global/wiki-style/`.
+    """Copy the always-load tier's `<source_glob>` into the global voice store.
+
+    Both ends resolve through vault_layout: `<vault>/standards/` ->
+    `<vault>/standards/voice/` on a migrated vault, `_always-load/` ->
+    `_global/wiki-style/` before the memory-root trims.
 
     Conflict-safe (never overwrites a differing dest), idempotent (byte-identical
     dest -> skip), records relocated filenames in the manifest. `--cleanup` then
@@ -200,7 +209,7 @@ def rollback(vault: Path, *, preview: bool = False) -> list:
 
 def _print_actions(actions: list) -> None:
     if not actions:
-        print("relocate: nothing to do (no matching _always-load/ conventions).")
+        print("relocate: nothing to do (no matching conventions in the always-load tier).")
         return
     for a in actions:
         note = f"  ({a.note})" if a.note else ""
@@ -210,10 +219,10 @@ def _print_actions(actions: list) -> None:
 def main(argv: list | None = None) -> int:
     p = argparse.ArgumentParser(
         prog="diataxis-relocate",
-        description="Relocate global wiki conventions from _always-load to the on-demand _global store.")
+        description="Relocate global wiki conventions from the always-load tier to the on-demand global voice store.")
     p.add_argument("--vault-path", default=None, help="vault root (default: $MEMORY_ROOT)")
     p.add_argument("--source-glob", default=_DEFAULT_SOURCE_GLOB,
-                   help=f"which _always-load files to relocate (default: {_DEFAULT_SOURCE_GLOB})")
+                   help=f"which always-load files to relocate (default: {_DEFAULT_SOURCE_GLOB})")
     p.add_argument("--preview", action="store_true", help="dry-run: print WOULD: lines, mutate nothing")
     p.add_argument("--cleanup", action="store_true",
                    help="delete each source after a byte-identical verify (needs --yes)")

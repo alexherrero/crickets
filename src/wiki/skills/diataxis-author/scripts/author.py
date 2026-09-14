@@ -18,7 +18,8 @@
 #   7. Emit operator-facing summary (path written + template fields to fill in).
 #
 # Stdlib-only. Filename style + mode default are operator-tunable via
-# AgentMemory `_always-load/diataxis-*.md`; the voice overlay is read on-demand
+# `diataxis-*.md` in the always-load tier (`<vault>/standards/`, else the retired
+# `_always-load/` pen); the voice overlay is read on-demand
 # from the three scopes the resolver knows (global / per-project / per-repo).
 
 from __future__ import annotations
