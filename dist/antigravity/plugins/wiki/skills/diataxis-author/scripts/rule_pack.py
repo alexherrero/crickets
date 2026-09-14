@@ -28,7 +28,8 @@ _VALID_KINDS = ("word", "phrase", "template", "metric")
 
 _OVERLAY_SCOPE_ORDER = ("global", "per-project", "per-repo")
 _PER_REPO_OVERLAY_FILE = ".diataxis-voice-rules.json"
-# The vault-side overlay filename in the global / per-project wiki-style stores.
+# The vault-side overlay filename in the global voice store and the per-project
+# wiki-style stores.
 _OVERLAY_FILE = "voice-rules-overlay.json"
 
 
@@ -84,6 +85,23 @@ def _read_overlay(path: Path) -> dict:
     return overlay
 
 
+def _global_overlay_file(vault: Path) -> Path:
+    """The global overlay: `<vault>/standards/voice/` when the file is there,
+    else `<projects-space>/_global/wiki-style/`, the store the memory-root trims
+    retired.
+
+    Probes the file, not the directory. `vault_layout.global_wiki_style_dir`
+    answers `standards/voice/` as soon as that directory exists, which would
+    leave an overlay still on a retired rung unread, and an unread overlay
+    composes exactly like an absent one.
+    """
+    voice = vault_layout.voice_library_dir_if_present(vault)
+    if voice is not None and (voice / _OVERLAY_FILE).is_file():
+        return voice / _OVERLAY_FILE
+    return vault_layout.resolve_under_projects(
+        vault, "_global", "wiki-style", _OVERLAY_FILE)
+
+
 def load_rule_pack(
     *,
     vault_path: Path | None = None,
@@ -103,9 +121,7 @@ def load_rule_pack(
 
     if vault_path is not None:
         vp = Path(vault_path)
-        gdir = vault_layout.resolve_under_projects(
-            vp, "_global", "wiki-style", _OVERLAY_FILE)
-        for r in _read_overlay(gdir).get("rules", []):
+        for r in _read_overlay(_global_overlay_file(vp)).get("rules", []):
             merged[r["id"]] = r
         if project_slug:
             pdir = vault_layout.resolve_under_projects(

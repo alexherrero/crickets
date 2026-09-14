@@ -376,6 +376,13 @@ class TestRulePackOverlayAcrossLayouts(unittest.TestCase):
         by_id = {r["id"]: r for r in composed["rules"]}
         return by_id["voice-a4-groundbreaking"]["hint"]
 
+    def _nested(self, td: str) -> Path:
+        root = Path(td) / "Vault"
+        (root / ".obsidian").mkdir(parents=True)
+        memory_root = root / "Agent"
+        memory_root.mkdir()
+        return memory_root
+
     def test_new_layout(self):
         with tempfile.TemporaryDirectory() as td:
             vault = Path(td) / "vault"
@@ -398,6 +405,40 @@ class TestRulePackOverlayAcrossLayouts(unittest.TestCase):
             vault.mkdir()
             self.assertEqual(self._composed_hint(vault),
                              "peacock word — strip, name the concrete mechanism instead")
+
+    # agentm-vault plan 05 moved the global voice rules to <vault>/standards/voice/.
+    # The overlay file is looked for there first, then on the retired rungs.
+
+    def test_voice_library_beside_a_nested_memory_root(self):
+        with tempfile.TemporaryDirectory() as td:
+            mr = self._nested(td)
+            d = mr.parent / "standards" / "voice"
+            d.mkdir(parents=True)
+            (d / "voice-rules-overlay.json").write_text(self.OVERLAY, encoding="utf-8")
+            self.assertEqual(self._composed_hint(mr), "overlaid")
+
+    def test_retired_rung_is_read_when_the_voice_library_has_no_overlay(self):
+        # standards/voice/ exists but holds no overlay. A probe that stopped at
+        # the directory would never reach the copy on the retired rung.
+        with tempfile.TemporaryDirectory() as td:
+            mr = self._nested(td)
+            (mr.parent / "standards" / "voice").mkdir(parents=True)
+            d = mr.parent / "Projects" / "_global" / "wiki-style"
+            d.mkdir(parents=True)
+            (d / "voice-rules-overlay.json").write_text(self.OVERLAY, encoding="utf-8")
+            self.assertEqual(self._composed_hint(mr), "overlaid")
+
+    def test_voice_library_overlay_wins_over_a_retired_one(self):
+        with tempfile.TemporaryDirectory() as td:
+            mr = self._nested(td)
+            d = mr.parent / "standards" / "voice"
+            d.mkdir(parents=True)
+            (d / "voice-rules-overlay.json").write_text(self.OVERLAY, encoding="utf-8")
+            retired = mr.parent / "Projects" / "_global" / "wiki-style"
+            retired.mkdir(parents=True)
+            (retired / "voice-rules-overlay.json").write_text(
+                self.OVERLAY.replace("overlaid", "retired copy"), encoding="utf-8")
+            self.assertEqual(self._composed_hint(mr), "overlaid")
 
 
 # ── design plugin: prose_pass's own copy of the chain ────────────────────────
