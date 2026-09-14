@@ -317,14 +317,37 @@ class TestRootSpaceWitness(unittest.TestCase):
         self.assertEqual([r["slug"] for r in result], ["agentm"])
         self.assertEqual(Path(result[0]["vault_project_path"]).resolve(), (vault / "Projects" / "agentm").resolve())
 
-    def test_the_flat_rung_matches_the_directorys_exact_case(self):
-        """A V4-era `projects/` rung is not the flat root space, whatever the
-        filesystem's case rules say."""
+    def test_the_lowercase_flat_rung_is_the_root_space_and_needs_no_witness(self):
+        """Since the root casing (agentm-vault plan 08) the flat root space is
+        `projects/`, the V4-era spelling as well, so one rung serves both and
+        the witness reads True for either spelling."""
         vault = self.tmp / "Vault"
         (vault / ".obsidian").mkdir(parents=True)
         (vault / "projects" / "legacy").mkdir(parents=True)
-        self.assertFalse(rp.flat_root_space_present(vault))
+        self.assertTrue(rp.flat_root_space_present(vault))
         self.assertEqual(rp.vault_projects_dirs(vault), [vault / "projects"])
+
+    def test_either_spelling_resolves_and_is_reported_as_the_disk_lists_it(self):
+        """A vault the rename has not reached keeps resolving under `Projects`,
+        and one that has resolves under `projects`; on a case-insensitive disk
+        the two rungs open one directory, which counts once, spelled as it is
+        listed — never as the rung that happened to open it."""
+        old = self.tmp / "Old" / "Vault"
+        (old / ".obsidian").mkdir(parents=True)
+        (old / "Projects" / "kept").mkdir(parents=True)
+        self.assertEqual(rp.vault_projects_dirs(old), [old / "Projects"])
+        self.assertEqual([r["slug"] for r in rp.scan_vault_projects(vault=old)], ["kept"])
+        new = self.tmp / "New" / "Vault"
+        (new / ".obsidian").mkdir(parents=True)
+        memory_root = new / "agent"
+        memory_root.mkdir()
+        (new / "projects" / "moved").mkdir(parents=True)
+        dirs = rp.vault_projects_dirs(memory_root)
+        self.assertEqual([d.resolve() for d in dirs], [(new / "projects").resolve()])
+        self.assertEqual(dirs[0].name, "projects")
+        self.assertEqual([r["slug"] for r in rp.scan_vault_projects(vault=memory_root)], ["moved"])
+        self.assertEqual(rp._project_slug_from_vault_relpath("projects/moved/x.md"), "moved")
+        self.assertEqual(rp._project_slug_from_vault_relpath("Projects/kept/x.md"), "kept")
 
     def test_a_nested_root_without_the_witness_is_not_a_sibling(self):
         vault = self.tmp / "Vault" / "Agent"

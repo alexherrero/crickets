@@ -151,9 +151,14 @@ MEMORY_SPACE_SEGMENTS = ("memory", "personal", "personal-private")
 # from the wiki plugin's vault_layout.py — plugins emit independently into
 # dist/, the same reason resolve_vault_path below mirrors harness_memory
 # instead of importing it.
-# Filing-v2 2b (2026-09): the newest generation is the vault-ROOT `Projects/`,
-# a sibling of the memory root this table is joined onto — hence `../`.
-PROJECT_SPACE_SEGMENTS = ("Projects", "../Projects", "desk/projects", "projects", "personal-projects")
+# The root casing (agentm-vault plan 08, 2026-09-14): the newest generation is
+# the vault-ROOT `projects/`, a sibling of the memory root this table is joined
+# onto — hence `../`; filing-v2 2b (2026-09) had put it there as `Projects/`,
+# and both spellings stay listed so a vault on either side of the rename
+# resolves. The lowercase flat rung is also the V4-era spelling, so one rung
+# serves both; the Title Case flat rung is admitted only under the witness.
+PROJECT_SPACE_SEGMENTS = ("projects", "../projects", "Projects", "../Projects", "desk/projects",
+                          "personal-projects")
 # The create-when-absent default: the last pre-2b layout, inside the memory
 # root — the root generation is discovered, never conjured.
 CURRENT_SPACE_SEGMENT = "desk/projects"
@@ -173,12 +178,13 @@ def root_sibling_witnessed(vault) -> bool:
 
 
 def flat_root_space_present(vault) -> bool:
-    """Whether `<memory-root>/Projects` exists with exactly that name — on a
-    case-insensitive filesystem `Projects/` would otherwise answer for the
-    V4-era `projects/` rung and every legacy project would read as root-space."""
+    """Whether a directory named `projects` — in either spelling — sits at the
+    memory root, which is what admits the Title Case flat rung. The name is
+    read from the listing, case-folded, so a vault on either side of the root
+    casing answers; the lowercase rung needs no witness."""
     v = Path(vault)
     try:
-        return (v / "Projects").is_dir() and any(p.name == "Projects" for p in v.iterdir())
+        return any(p.name.lower() == "projects" and p.is_dir() for p in v.iterdir())
     except OSError:
         return False
 WIKI_STYLE_LEAF = "_global/wiki-style"
@@ -614,6 +620,30 @@ def resolve_agy_cmd() -> list[str] | None:
     return [agy_bin] if agy_bin else None
 
 
+def as_listed(cand, vault) -> Path:
+    """A rung's path under `vault` (or, through a leading `..`, beside it)
+    with each segment spelled as its directory lists it, the `..` kept. A
+    case-insensitive disk opens `projects` on a vault still spelled
+    `Projects`; the path handed back names what is there, on any disk."""
+    cand, vault = Path(cand), Path(vault)
+    try:
+        parts = cand.relative_to(vault).parts
+    except ValueError:
+        return cand
+    nested = parts[:1] == ("..",)
+    out = vault.parent if nested else vault
+    spelled = []
+    for part in (parts[1:] if nested else parts):
+        try:
+            names = {n.lower(): n for n in os.listdir(out)}
+        except OSError:
+            return cand
+        real = names.get(part.lower(), part)
+        spelled.append(real)
+        out = out / real
+    return vault.joinpath("..", *spelled) if nested else vault.joinpath(*spelled)
+
+
 def standards_dir_candidates(vault: Path) -> list[Path]:
     """`<vault>/standards` spelled both ways, the sibling first when the
     memory root is nested (witnessed by `.obsidian/` at the parent, or by a
@@ -647,7 +677,7 @@ def wiki_style_dir(vault: Path) -> Path:
             continue
         cand = vault.joinpath(*seg.split("/"), *WIKI_STYLE_LEAF.split("/"))
         if cand.is_dir():
-            return cand
+            return as_listed(cand, vault)
     # Nothing exists anywhere: the create-when-absent default stays inside
     # the memory root — the root generation is discovered, never conjured.
     return vault.joinpath(*CURRENT_SPACE_SEGMENT.split("/"), *WIKI_STYLE_LEAF.split("/"))

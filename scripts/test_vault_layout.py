@@ -155,10 +155,19 @@ class TestProbeChain(unittest.TestCase):
                              "desk/projects/_global/wiki-style")
 
     def test_newest_wins_when_several_layouts_carry_the_store(self):
+        """Since the root casing (agentm-vault plan 08) the flat root space is
+        `projects/`, the newest rung; `desk/projects/` is the generation
+        before it, and wins only when no root space exists."""
         with tempfile.TemporaryDirectory() as td:
             vault = Path(td)
             (vault / "desk" / "projects" / "_global" / "wiki-style").mkdir(parents=True)
             (vault / "projects" / "_global" / "wiki-style").mkdir(parents=True)
+            self.assertEqual(_rel(vl.global_wiki_style_dir(vault), vault),
+                             "projects/_global/wiki-style")
+        with tempfile.TemporaryDirectory() as td:
+            vault = Path(td)
+            (vault / "desk" / "projects" / "_global" / "wiki-style").mkdir(parents=True)
+            (vault / "personal-projects" / "_global" / "wiki-style").mkdir(parents=True)
             self.assertEqual(_rel(vl.global_wiki_style_dir(vault), vault),
                              "desk/projects/_global/wiki-style")
 
@@ -802,7 +811,7 @@ class TestProsePassMemoryRoot(unittest.TestCase):
 # ── research plugin: the watchlist chain ────────────────────────────────────
 
 class TestResearchWatchlistDir(unittest.TestCase):
-    """codebase-improvement writes only to `Projects/agentm/_watchlist`; a
+    """codebase-improvement writes only to `projects/agentm/_watchlist`; a
     retired memory-space generation is passed over even when present."""
 
     def test_a_retired_generation_is_passed_over(self):
@@ -811,12 +820,12 @@ class TestResearchWatchlistDir(unittest.TestCase):
                 root = Path(td)
                 (root / space / "_watchlist").mkdir(parents=True)
                 self.assertEqual(_rel(codebase_improvement.watchlist_dir(root), root),
-                                 "Projects/agentm/_watchlist")
+                                 "projects/agentm/_watchlist")
 
     def test_defaults_to_the_projects_watchlist(self):
         with tempfile.TemporaryDirectory() as td:
             self.assertEqual(_rel(codebase_improvement.watchlist_dir(Path(td)), Path(td)),
-                             "Projects/agentm/_watchlist")
+                             "projects/agentm/_watchlist")
 
 
 # ── development-lifecycle: resolve_project asks for the memory root ─────────
@@ -871,13 +880,38 @@ class TestRootSpaceWitness(unittest.TestCase):
                              vl.projects_space_candidates(vault, "_global", "wiki-style"))
             self.assertEqual(_rel(vl.global_wiki_style_dir(vault), vault), "desk/projects/_global/wiki-style")
 
-    def test_the_flat_rung_matches_the_directorys_exact_case(self):
+    def test_the_lowercase_flat_rung_is_the_root_space_and_needs_no_witness(self):
+        """Since the root casing (agentm-vault plan 08) the flat root space is
+        `projects/`, the V4-era spelling as well, so one rung serves both and
+        the witness reads True for either spelling."""
         with tempfile.TemporaryDirectory() as td:
             vault = Path(td) / "Vault"
             (vault / ".obsidian").mkdir(parents=True)
             (vault / "projects" / "_global" / "wiki-style").mkdir(parents=True)
-            self.assertFalse(vl.flat_root_space_present(vault))
+            self.assertTrue(vl.flat_root_space_present(vault))
             self.assertEqual(_rel(vl.global_wiki_style_dir(vault), vault), "projects/_global/wiki-style")
+
+    def test_either_spelling_resolves_as_the_disk_lists_it(self):
+        """A vault the rename has not reached resolves under `Projects`, one
+        that has under `projects`, nested or flat; on a case-insensitive disk
+        the lowercase rung opens the Title Case directory, and the path handed
+        back still spells it as listed."""
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "Vault"
+            (root / ".obsidian").mkdir(parents=True)
+            memory_root = root / "agent"
+            memory_root.mkdir()
+            (root / "projects" / "_global" / "wiki-style").mkdir(parents=True)
+            self.assertEqual(_rel(vl.global_wiki_style_dir(memory_root), memory_root),
+                             "../projects/_global/wiki-style")
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "Vault"
+            (root / ".obsidian").mkdir(parents=True)
+            memory_root = root / "Agent"
+            memory_root.mkdir()
+            (root / "Projects" / "_global" / "wiki-style").mkdir(parents=True)
+            self.assertEqual(_rel(vl.global_wiki_style_dir(memory_root), memory_root),
+                             "../Projects/_global/wiki-style")
 
     def test_the_flat_root_space_resolves(self):
         with tempfile.TemporaryDirectory() as td:

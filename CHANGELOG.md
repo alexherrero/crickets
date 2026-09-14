@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Patch: the project space resolves under either spelling of its root, lowercase first
+
+agentm's root casing (agentm-vault plan 08) renames the vault's root spaces lowercase: `Projects/` becomes `projects/`. Four scripts here witness or compose that space with a Title Case literal, and they run from the installed plugin copies, so crickets ships first and must keep working on a vault on either side of the rename. The project-space rungs now list `projects` and `../projects` ahead of `Projects` and `../Projects`; the lowercase flat rung is also the V4-era spelling, so one rung serves both and needs no witness; the Title Case flat rung is admitted under a witness that reads the memory root's listing case-folded. A rung's path is handed back spelled as the directory is listed — on a case-insensitive disk `projects` opens a vault still spelled `Projects`, and the path a caller composes or compares by string must name what is there, on any disk. The research plugin's watchlist probes both spellings the same way and defaults new state to the lowercase space.
+
+### Internal
+
+- `development-lifecycle/scripts/resolve_project.py`: `PROJECT_SPACE_SEGMENTS` lists both spellings, lowercase first; `flat_root_space_present` folds case; `as_listed` spells a rung's path as the disk lists it, keeping a leading `..`; `vault_projects_dirs` returns that spelling, still one entry per directory.
+- `design/scripts/prose_pass.py` and `wiki/skills/diataxis-author/scripts/vault_layout.py`: the same rungs, witness and spelling, duplicated per plugin as before.
+- `research/scripts/codebase_improvement.py`: `_project_watchlist_candidates` probes `projects` then `Projects` at the sibling and inside the root; `watchlist_dir` returns the first that exists as listed, else the lowercase default.
+- Tests: the exact-case tests became the new contract (a lowercase `projects/` is the root space and needs no witness), with a test per plugin that a Title Case vault resolves under its own spelling and a lowercase one under its own, nested and flat, and that the reported spelling is the disk's.
+
 ### Patch: nothing in crickets writes to agentm's retired memory-space homes, and the bridges hand agentm its own modules for every call
 
 The watchlist moved to `Projects/agentm/_watchlist` with the memory-root trims, and `personal/` became `memory/` in stage 2. Three crickets writers still reached the old homes, and the learn-forward test accepted a scan writing there so that an older agentm could still run it. A write to a retired home is now a failure. The patch below keeps agentm's call-time imports on agentm's own modules inside the real-bridge test suites; the bridges now do the same for every call they make, in any process.

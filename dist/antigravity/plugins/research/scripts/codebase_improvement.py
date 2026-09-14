@@ -28,6 +28,7 @@ body, never modified. No auto-fix, ever.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -53,20 +54,49 @@ SOURCE_SLUG = "codebase-improvement"
 FEATURE_PROJECT = "agentm"
 
 
+# The root space's spellings, newest first: `projects/` since the root casing
+# (agentm-vault plan 08, 2026-09-14), `Projects/` on a vault the rename has
+# not reached. On a case-insensitive disk the two name one directory, and the
+# first that exists wins.
+_PROJECTS_SPELLINGS = ("projects", "Projects")
+
+
 def _project_watchlist_candidates(vault: Path) -> list:
     out = []
     parent = vault.parent
     if not (vault / ".obsidian").is_dir() and ((parent / ".obsidian").is_dir() or (parent / "standards").is_dir()):
-        out.append(parent / "Projects" / FEATURE_PROJECT / WATCHLIST_LEAF)
-    out.append(vault / "Projects" / FEATURE_PROJECT / WATCHLIST_LEAF)
+        out.extend(parent / name / FEATURE_PROJECT / WATCHLIST_LEAF for name in _PROJECTS_SPELLINGS)
+    out.extend(vault / name / FEATURE_PROJECT / WATCHLIST_LEAF for name in _PROJECTS_SPELLINGS)
     return out
 
 
 def watchlist_dir(vault: Path) -> Path:
-    """`Projects/agentm/_watchlist`: the first candidate that exists, else the
-    first candidate. Never a retired memory-space home."""
+    """`projects/agentm/_watchlist`: the first candidate that exists, spelled
+    as the disk lists it, else the first candidate. Never a retired
+    memory-space home."""
     cands = _project_watchlist_candidates(vault)
-    return next((c for c in cands if c.is_dir()), cands[0])
+    for c in cands:
+        if c.is_dir():
+            return _as_listed(c, vault.parent if c.parent.parent.parent == vault.parent else vault)
+    return cands[0]
+
+
+def _as_listed(path: Path, base: Path) -> Path:
+    """`path` with each segment below `base` spelled as its directory lists
+    it. A case-insensitive disk opens `projects` on a vault still spelled
+    `Projects`; the path handed back names what is there, on any disk."""
+    try:
+        rel = path.relative_to(base)
+    except ValueError:
+        return path
+    out = base
+    for part in rel.parts:
+        try:
+            names = {n.lower(): n for n in os.listdir(out)}
+        except OSError:
+            return path
+        out = out / names.get(part.lower(), part)
+    return out
 
 # Directories a scan never descends into -- matches the repo hygiene any
 # stale-pattern scan should already assume (VCS metadata, dependency trees).
