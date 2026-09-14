@@ -17,6 +17,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import agentm_isolation
+
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
 _SRC = _ROOT / "src" / "diagnostics" / "scripts"
@@ -105,6 +107,9 @@ class DiagnoseEndToEndTests(unittest.TestCase):
         # Snapshot right before the first real-bridge call -- see
         # test_diagnostics_writer.py's matching setUpClass comment.
         cls._pre_existing_modules = set(sys.modules)
+        # For the whole class, agentm's imports (lazy ones too) get agentm's
+        # siblings, not the suite's same-named modules; see agentm_isolation.py.
+        agentm_isolation.isolate_agentm_imports(cls, diagnose_mod.writer.agentm_bridge._find_save_scripts_dir())
         # See test_diagnostics_writer.py: needs the real agentm sibling
         # checkout, absent in CI. Skip gracefully rather than error.
         if diagnose_mod.writer.agentm_bridge.load_save_module() is None:

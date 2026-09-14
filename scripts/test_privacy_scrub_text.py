@@ -21,6 +21,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import agentm_isolation
+
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
 _SRC = _ROOT / "src" / "privacy" / "scripts"
@@ -84,6 +86,9 @@ class ScrubTextRealBridgeTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls._pre_existing_modules = set(sys.modules)
+        # For the whole class, agentm's imports (lazy ones too) get agentm's
+        # siblings, not the suite's same-named modules; see agentm_isolation.py.
+        agentm_isolation.isolate_agentm_imports(cls, scrub_text_mod._find_scrub_scripts_dir())
         scrub_text_mod._reset_cache_for_tests()
         if not scrub_text_mod.scrub_text_available():
             raise unittest.SkipTest("agentm sibling checkout unavailable -- real-bridge test skipped")

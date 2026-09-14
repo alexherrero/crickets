@@ -19,6 +19,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import agentm_isolation
+
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
 _SRC = _ROOT / "src" / "diagnostics" / "scripts"
@@ -101,6 +103,9 @@ class FailureIncidentWriterTests(unittest.TestCase):
         # agentm modules earlier and still need them (see the module-level
         # comment above).
         cls._pre_existing_modules = set(sys.modules)
+        # For the whole class, agentm's imports (lazy ones too) get agentm's
+        # siblings, not the suite's same-named modules; see agentm_isolation.py.
+        agentm_isolation.isolate_agentm_imports(cls, writer.agentm_bridge._find_save_scripts_dir())
         # Integration-style: needs the real agentm sibling checkout (a local
         # dev-machine convention, not present in CI, which has no sibling
         # repo). Skip gracefully rather than error -- matches the codebase's

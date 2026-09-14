@@ -29,6 +29,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import agentm_isolation
+
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
 _DIAGNOSE_SRC = _ROOT / "src" / "diagnostics" / "scripts"
@@ -81,6 +83,9 @@ class DependabotFixerDiagnoseWiringTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls._pre_existing_modules = set(sys.modules)
+        # For the whole class, agentm's imports (lazy ones too) get agentm's
+        # siblings, not the suite's same-named modules; see agentm_isolation.py.
+        agentm_isolation.isolate_agentm_imports(cls, diagnose_mod.writer.agentm_bridge._find_save_scripts_dir())
         if diagnose_mod.writer.agentm_bridge.load_save_module() is None:
             raise unittest.SkipTest("agentm sibling checkout unavailable -- real-bridge test skipped")
 
