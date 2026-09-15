@@ -625,5 +625,9 @@ enhances:
 #          the flat and the task layouts. `process-seam state-path` accepts
 #          `tracker`. In-process callers get find_tracker, run_tracker,
 #          find_project_brief, run_project_brief and run_list_plans.
+#          Task 2: resolve_plan.py prints a third field, the tracker agentm
+#          names. It is empty from the standalone fallback, and from a seam
+#          that predates the tracker, where the exit stays 0. A bare call on a
+#          project that keeps tasks passes exit 4 on with nothing on stdout.
 version: 0.48.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]
