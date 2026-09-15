@@ -14,7 +14,7 @@ enhances:
 # refinements shipped since (the full-task-list /work autonomy + safety
 # pre-check, deferred-items-to-Project offers, and the documenter dispatch
 # graceful-skip wiring). 0.3.0 = the multi-plan writers — a `resolve_plan.py`
-# bridge (delegates to agentm's `resolve-active-plan` verb, graceful `.harness/`
+# bridge (delegates to agentm's process seam, `state-path`, graceful `.harness/`
 # fallback standalone) + named-plan-aware /work, /plan, /review that target
 # PLAN-<name>.md / progress-<name>.md pairs; bare invocations stay byte-identical.
 # 0.4.0 = the read side of the multi-plan surface — a `/queue-status-lite`
@@ -636,5 +636,11 @@ enhances:
 #          tracker, activates, rewrites under active) and `close` (the
 #          Outcome, at done). After a step or a close the plan's Status line
 #          follows the tracker. Every tracker call goes through the bridge.
+#          Task 4: stage_plan.py tells the layouts apart by the plan path
+#          agentm returns. A flat plan stages in queued-plans/ beside it, as
+#          before; its activation refuses a tracker that isn't queued before
+#          writing, and moves a queued one to active after the copy. A task is
+#          its own staging tier: `path` prints its plan, and `activate` is its
+#          tracker's move from queued to active.
 version: 0.48.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

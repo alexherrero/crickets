@@ -1,27 +1,36 @@
 #!/usr/bin/env python3
-"""Two-tier named-plan staging for the phase loop (V5-10 sibling #1).
+"""Two-tier named-plan staging for the phase loop (V5-10 sibling #1), in both
+plan layouts.
 
 The `/plan` command calls this to **stage** a named plan into an inactive tier
-and later **activate** it. Two verbs, one staging dir (`<_harness>/queued-plans/`):
+and later **activate** it:
 
     stage_plan.py path     <name> [--project-root <path>]   # where to write a staged plan
     stage_plan.py activate <name> [--project-root <path>]   # promote staged → active
 
-**Why a second tier.** The shipped `--name` writer (`resolve_plan.py`) targets the
-*active* pair `<_harness>/PLAN-<name>.md` / `progress-<name>.md` directly — the
-path `/work --name` and agentm's `resolve_active_plan` read. Staging adds an
-**inactive** tier: a coordinator pre-authors a batch of worker plans into
-`queued-plans/` (inert — invisible to `/work` and `/queue-status-lite`), then
-activates them one at a time as workers pick them up. The active tier and the
-one-tier `--name` write are unchanged; this is purely additive.
-
-**Composed onto the resolver — never re-derived.** The active-pair resolution
+**Composed onto the resolver — never re-derived.** The active plan's resolution
 (precedence, slug-safety, vault redirection, the dangling-marker loud-error) is
-owned by `resolve_plan.resolve` → agentm's `resolve-active-plan` verb. We call it,
-take the resolved *active* `PLAN-<name>.md`, and compose `queued-plans/` onto its
-parent. We never re-derive the `_harness/` location or the vault redirect: if a
-future resolver moves the active plan, the staging path tracks it automatically.
-`resolve_plan` stays a pure resolver — the side-effecting copy lives only here.
+owned by `resolve_plan.resolve` → agentm's process seam (`process_seam.py
+state-path`), which returns the plan, its progress log and its tracker. We take
+the plan path it returns and tell the two layouts apart by it: a task's plan is
+`plan.md` inside its own directory (`tasks/042-build-the-brief/plan.md`), and a
+flat plan is `PLAN-<name>.md`. Nothing here composes a layout. If a future
+resolver moves the active plan, staging follows it. `resolve_plan` stays a pure
+resolver — the side-effecting copy and the tracker's move live only here.
+
+- **Flat.** A coordinator pre-authors plans into `queued-plans/` beside the
+  flat plan (inert: invisible to `/work` and `/queue-status-lite`), then
+  activates them one at a time as workers pick them up. `path` prints
+  `queued-plans/PLAN-<name>.md`; `activate` is the guarded copy below. A tracker
+  already at the resolved tracker path must say `queued`, or the activation is
+  refused before a byte is written; a `queued` one moves to `active` after the
+  copy. With no tracker, the normal case, the copy is the whole activation, and
+  the plan's tracker opens at its first `/work` step.
+- **Task.** A queued task is its own staging tier, kept inert by its `queued`
+  tracker. `path` prints the task's own `plan.md`, never a `queued-plans/`
+  inside a task directory, and nothing here creates `_harness/`. `activate`
+  requires the tracker to exist and say `queued`; its transition to `active` is
+  the activation, and nothing is copied.
 
 **Staging is named-only.** The singleton `PLAN.md` *is* the active default; there
 is nothing to stage for it. An empty/singleton name is a loud refusal (exit 2),
@@ -30,23 +39,27 @@ before the resolver is even consulted.
 **`activate` is guarded — no clobber, no silent fallback (Risk #7).** It refuses
 (exit 2, stderr, no write) when the staged file is missing *or* an active
 `PLAN-<name>.md` already exists. A resolver that ran and refused (unsafe slug,
-dangling marker) propagates its own non-zero exit verbatim — never a singleton
-fallback.
+dangling marker, exit 4) propagates its own non-zero exit verbatim — never a
+singleton fallback.
 
 Exit codes (aligned with `resolve_plan.py` so the surface is transparent):
     0 — ok; the resolved path (or the activated path) is on stdout.
     1 — graceful-skip propagated from the resolver (agentm present, no `_harness/`).
-    2 — loud: empty/unsafe name, missing staged plan, or active-plan collision.
-    3 — `activate` only: pre-flight reconcile no-op (LC-6) — the staged plan's
-        declared `expected_artifacts` already exist on `main`, so the lane is
-        already shipped. Benign (nothing written), not an error; the operator does
-        not proceed to `/work` / `/spawn-worker`. Absent the key, never fires.
+    2 — loud: empty/unsafe name, missing staged plan, active-plan collision, a
+        tracker that isn't `queued`, a task with no tracker, or a flat copy that
+        landed while its tracker's move failed (the message says which).
+    3 — `activate` only: pre-flight reconcile no-op (LC-6) — the plan's declared
+        `expected_artifacts` already exist on `main`, so the lane is already
+        shipped. Benign (nothing written), not an error; the operator does not
+        proceed to `/work`. Absent the key, never fires. Both layouts.
+    4 — name the task, passed on from the resolver.
 
 Stdlib-only; mirrors `resolve_plan.py`'s shape (pure core + injectable resolver).
 """
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 from pathlib import Path
@@ -61,68 +74,132 @@ if str(_HERE) not in sys.path:
 # to force the delegate branch — exactly as on `resolve_plan`/`queue_status`).
 import resolve_plan  # noqa: E402
 # The cheap pre-flight reconcile (LC-6): refuse to activate a lane whose declared
-# artifacts already exist on `main`. Read-only — it only reads the staged plan's
+# artifacts already exist on `main`. Read-only — it only reads the plan's
 # frontmatter and tests path existence; it never mutates.
 import preflight_reconcile  # noqa: E402
 
 _AUTO = resolve_plan._AUTO
 
-# The inactive staging tier, flat under the resolved `_harness/` (crickets
-# convention — no per-design subdir). Stage as `<_harness>/queued-plans/PLAN-<n>.md`.
+# The inactive staging tier for a flat plan, flat beside it (crickets convention —
+# no per-design subdir). Stage as `queued-plans/PLAN-<n>.md`. A task has none.
 _QUEUED_DIR = "queued-plans"
 
 
-# ── core (pure but for the injected resolver / a single guarded copy) ────────────
+# ── core (pure but for the injected resolver, a single guarded copy, and the
+#    tracker's move through agentm's tracker.py) ──────────────────────────────────
 
-def _active_plan_path(name: str, root: str, *, resolver) -> tuple[int, str, str]:
-    """Resolve the *active* `PLAN-<name>.md` via the bridge, named-only.
+def _resolved(name: str, root: str, *, resolver) -> tuple[int, str, str, str]:
+    """Resolve the active plan and its tracker via the bridge, named-only.
 
-    Returns (0, plan_path, "") on success, else the resolver's non-zero exit and
-    stderr verbatim — or a loud (2, "", msg) when `name` is empty/singleton (there
-    is no staged form of the singleton). The progress half of the pair is dropped:
-    only `PLAN-<name>.md` is staged.
+    Returns (0, plan_path, tracker_path, "") on success — `tracker_path` is ""
+    wherever agentm names no tracker — else the resolver's non-zero exit and
+    stderr verbatim, or a loud (2, "", "", msg) when `name` is empty/singleton
+    (there is no staged form of the singleton). The progress path is dropped.
     """
     if not resolve_plan._normalize_plan_name(name):
-        return (2, "", f"[stage_plan] staging requires a named plan (got {name!r})\n")
+        return (2, "", "", f"[stage_plan] staging requires a named plan (got {name!r})\n")
     rc, out, err = resolve_plan.resolve(name, root, resolver=resolver)
     if rc != 0:
-        return (rc, "", err)
-    plan_path = out.split("\t", 1)[0].strip()
-    return (0, plan_path, "")
+        return (rc, "", "", err)
+    fields = out.rstrip("\r\n").split("\t")
+    tracker = fields[2].strip() if len(fields) > 2 else ""
+    return (0, fields[0].strip(), tracker, "")
+
+
+def _is_task(plan: Path) -> bool:
+    """A task's plan is `plan.md` in its own directory; a flat plan is `PLAN-<name>.md`."""
+    return plan.name == "plan.md"
+
+
+def _tracker_status(tracker: str) -> tuple[int, str, str]:
+    """(0, status, "") from `tracker.py show`, through the bridge; else a non-zero
+    code and the reason."""
+    bridge = resolve_plan._bridge
+    if bridge is None:
+        return (3, "", "agentm_bridge.py could not be loaded")
+    code, out, err = bridge.run_tracker(["show", tracker])
+    if code != 0:
+        return (code, "", err.strip() or f"tracker.py show exited {code}")
+    try:
+        status = json.loads(out).get("status") or ""
+    except (ValueError, AttributeError):
+        return (1, "", f"tracker.py show printed no tracker for {tracker}")
+    return (0, str(status), "")
+
+
+def _move_to_active(tracker: str) -> tuple[int, str]:
+    code, out, err = resolve_plan._bridge.run_tracker(["transition", tracker, "--to", "active"])
+    return (code, err.strip() or out.strip())
 
 
 def staging_path(name: str, root: str, *, resolver=_AUTO) -> tuple[int, str, str]:
-    """Resolve the inactive staging path `<_harness>/queued-plans/PLAN-<name>.md`.
+    """Where a staged plan is written. Read-only — emits the path.
 
-    Composed onto the resolver's active `PLAN-<name>.md`: same `_harness/` parent,
-    same filename, under the `queued-plans/` subdir. Read-only — emits the path.
+    Flat: `queued-plans/PLAN-<name>.md` beside the active plan the resolver
+    returned. Task: the task's own `plan.md`, since a queued task is its own
+    staging tier.
     """
-    rc, active, err = _active_plan_path(name, root, resolver=resolver)
+    rc, active, _tracker, err = _resolved(name, root, resolver=resolver)
     if rc != 0:
         return (rc, "", err)
     p = Path(active)
-    staged = p.parent / _QUEUED_DIR / p.name
-    return (0, f"{staged}\n", "")
+    if _is_task(p):
+        return (0, f"{p}\n", "")
+    return (0, f"{p.parent / _QUEUED_DIR / p.name}\n", "")
 
 
 def activate(name: str, root: str, *, resolver=_AUTO) -> tuple[int, str, str]:
-    """Promote `queued-plans/PLAN-<name>.md` → the active `PLAN-<name>.md`.
+    """Activate a staged plan in whichever layout the resolver returns.
 
-    Guarded copy (Risk #7): refuses with exit 2 + stderr and writes nothing when
-    the staged file is absent or an active `PLAN-<name>.md` already exists. On
-    success the bytes are copied verbatim (fresh mtime) and the active path is
-    emitted; the staged copy is left in place (activation is a copy, not a move).
+    Flat: the guarded copy `queued-plans/PLAN-<name>.md` → the active
+    `PLAN-<name>.md` (Risk #7): refuses with exit 2 + stderr and writes nothing
+    when the staged file is absent, an active `PLAN-<name>.md` already exists, or
+    a tracker already at the resolved path isn't `queued`. On success the bytes
+    are copied verbatim (fresh mtime), a `queued` tracker moves to `active`, and
+    the active path is emitted; the staged copy is left in place (activation is a
+    copy, not a move).
 
-    Pre-flight reconcile (LC-6): before the collision/write, if the staged plan
-    declares `expected_artifacts` and every one already exists on `main` (under
-    `root`), the lane is already shipped — return exit 3 (`SHIPPED_NOOP`) with a
-    benign "already shipped — nothing to do" message and write nothing. The guard is
+    Task: the task's tracker must exist and say `queued`; the transition to
+    `active` is the activation, and the task's plan path is emitted.
+
+    Pre-flight reconcile (LC-6), both layouts: if the plan declares
+    `expected_artifacts` and every one already exists on `main` (under `root`),
+    the lane is already shipped — return exit 3 (`SHIPPED_NOOP`) with a benign
+    "already shipped — nothing to do" message and change nothing. The guard is
     dormant unless the plan opts in via the frontmatter key, so this is back-compat.
     """
-    rc, active_str, err = _active_plan_path(name, root, resolver=resolver)
+    rc, active_str, tracker, err = _resolved(name, root, resolver=resolver)
     if rc != 0:
         return (rc, "", err)
     active = Path(active_str)
+    if _is_task(active):
+        return _activate_task(name, root, active, tracker)
+    return _activate_flat(name, root, active, tracker)
+
+
+def _activate_task(name: str, root: str, plan: Path, tracker: str) -> tuple[int, str, str]:
+    if not plan.is_file():
+        return (2, "", f"[stage_plan] no task plan to activate at {plan}\n")
+    shipped, present = preflight_reconcile.already_shipped(plan, root)
+    if shipped:
+        return (preflight_reconcile.SHIPPED_NOOP, "",
+                preflight_reconcile.shipped_message(name, present))
+    if not tracker or not Path(tracker).is_file():
+        return (2, "", f"[stage_plan] the task at {plan.parent} has no tracker; a staged "
+                       f"task is a queued tracker, so there is nothing to activate\n")
+    code, status, reason = _tracker_status(tracker)
+    if code != 0:
+        return (2, "", f"[stage_plan] could not read the task's tracker at {tracker}: {reason}\n")
+    if status != "queued":
+        return (2, "", f"[stage_plan] the task's tracker at {tracker} is {status}, "
+                       f"not queued; refusing to activate\n")
+    code, reason = _move_to_active(tracker)
+    if code != 0:
+        return (2, "", f"[stage_plan] tracker.py did not move {tracker} to active: {reason}\n")
+    return (0, f"{plan}\n", "")
+
+
+def _activate_flat(name: str, root: str, active: Path, tracker: str) -> tuple[int, str, str]:
     staged = active.parent / _QUEUED_DIR / active.name
     if not staged.is_file():
         return (2, "", f"[stage_plan] no staged plan to activate at {staged}\n")
@@ -145,6 +222,19 @@ def activate(name: str, root: str, *, resolver=_AUTO) -> tuple[int, str, str]:
     # to a path outside the harness.
     if os.path.lexists(str(active)):
         return collision
+    # A tracker already at the resolved path must say `queued` — checked before
+    # anything is written. Usually there is none: a staged flat plan gets its
+    # tracker at its first /work step, or from the migration that moves it.
+    queued_tracker = False
+    if tracker and os.path.lexists(tracker):
+        code, status, reason = _tracker_status(tracker)
+        if code != 0:
+            return (2, "", f"[stage_plan] a tracker already sits at {tracker} and could not "
+                           f"be read ({reason}); refusing to activate\n")
+        if status != "queued":
+            return (2, "", f"[stage_plan] a tracker already sits at {tracker} and is {status}, "
+                           f"not queued; refusing to activate\n")
+        queued_tracker = True
     active.parent.mkdir(parents=True, exist_ok=True)
     data = staged.read_bytes()
     # Atomic, non-following create: O_EXCL fails (EEXIST) if anything — including
@@ -168,6 +258,11 @@ def activate(name: str, root: str, *, resolver=_AUTO) -> tuple[int, str, str]:
             view = view[os.write(fd, view):]
     finally:
         os.close(fd)
+    if queued_tracker:
+        code, reason = _move_to_active(tracker)
+        if code != 0:
+            return (2, "", f"[stage_plan] activated {active}, but its tracker at {tracker} was "
+                           f"not moved to active ({reason}); its first /work step moves it\n")
     return (0, f"{active}\n", "")
 
 
@@ -181,7 +276,8 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("mode", choices=("path", "activate"),
                    help="'path' = print the staging path; 'activate' = promote staged → active")
     p.add_argument("name",
-                   help="plan name ('foo', 'PLAN-foo', 'PLAN-foo.md'); the singleton cannot be staged")
+                   help="plan name ('foo', 'PLAN-foo', 'PLAN-foo.md', or a task's "
+                        "'042-build-the-brief'); the singleton cannot be staged")
     p.add_argument("--project-root", default=None,
                    help="project root (default: cwd)")
     return p
