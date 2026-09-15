@@ -615,5 +615,15 @@ enhances:
 #         witness; the Title Case one is admitted under a witness that reads
 #         the listing case-folded. vault_projects_dirs hands a space back
 #         spelled as the disk lists it, still one entry per directory.
-version: 0.47.3
+# 0.48.0: the commands write and read agentm's tracker (PLAN-tracker-commands).
+#          Task 1: agentm_bridge.py gains three verbs. `tracker` proxies
+#          agentm's tracker.py and passes its exit code, stdout and stderr
+#          through (3 when tracker.py is not found); `project-brief` proxies
+#          project_brief.py (0 with a brief, 3 with none); `plans` lists every
+#          active plan with its progress log and tracker, through one
+#          list-plans and one resolve-active-plan --with-tracker per plan, in
+#          the flat and the task layouts. `process-seam state-path` accepts
+#          `tracker`. In-process callers get find_tracker, run_tracker,
+#          find_project_brief, run_project_brief and run_list_plans.
+version: 0.48.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

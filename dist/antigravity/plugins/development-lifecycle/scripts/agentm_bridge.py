@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Merged thin bridge: agentm capability / governing-design / process-seam /
-workflow-persona / repo-registry / phase-dispatch lookups for the
-development-lifecycle plugin, in one file (Consolidation arc, CONS-2 task 2;
-repo-registry added by PLAN-open-a-project-by-name task 1; phase-dispatch
-added by the Loose Ends follow-on's orphaned-bridge-caller plan).
+workflow-persona / repo-registry / phase-dispatch / tracker / project-brief /
+plans lookups for the development-lifecycle plugin, in one file (Consolidation
+arc, CONS-2 task 2; repo-registry added by PLAN-open-a-project-by-name task 1;
+phase-dispatch added by the Loose Ends follow-on's orphaned-bridge-caller plan;
+tracker, project-brief and plans added by PLAN-tracker-commands task 1).
 
 Previously four separate scripts — find_capability.py, find_governing_design.py,
 find_process_seam.py, resolve_workflow_persona.py — each independently
@@ -14,10 +15,13 @@ keeps every one of those four behaviors verbatim, under one dispatcher:
 
     agentm_bridge.py capability <capability-name> [<version-range>]
     agentm_bridge.py governing-design <file-or-area> [--root DIR] [--include-proposed] [--json]
-    agentm_bridge.py process-seam state-path {plan|progress} [--plan SLUG] [--cwd ROOT]
+    agentm_bridge.py process-seam state-path {plan|progress|tracker} [--plan SLUG] [--cwd ROOT]
     agentm_bridge.py workflow-persona <step> [--explicit NAME]
     agentm_bridge.py repo-registry list
     agentm_bridge.py phase-dispatch {post-work|post-release} [--project-root DIR]
+    agentm_bridge.py tracker {new|show|transition|check} ...
+    agentm_bridge.py project-brief [--cwd DIR]
+    agentm_bridge.py plans [--project-root DIR]
 
 DC-2: siblings not layers. Every verb's discovery is best-effort via
 path-fallback; when agentm is absent (the target script undiscoverable) each
@@ -33,6 +37,16 @@ itself (no/unknown verb) or within a verb's own argument parsing:
     phase-dispatch:     exit 0 always (fired, skipped, or agentm absent — the
                          underlying phase_dispatch() is itself non-blocking
                          by contract) / 2 usage
+    tracker:            exit 0 ok / 1 a finding or a refused transition / 2 a
+                         usage or I/O error — tracker.py's own codes, passed
+                         through with its stdout and stderr / 3 tracker.py
+                         not found
+    project-brief:      exit 0 a brief printed / 3 no brief, or agentm absent / 2 usage
+    plans:              exit 0 listed, possibly nothing / 3 agentm absent or no
+                         listing / 2 usage
+
+The tracker, project-brief and plans verbs answer "agentm absent" with exit 3,
+not 1, because tracker.py already gives 1 and 2 meanings of its own.
 
 Call-sites: src/development-lifecycle/commands/*.md invoke the capability,
 governing-design, and workflow-persona verbs via `python3 .../agentm_bridge.py
@@ -42,12 +56,16 @@ importing agentm's process_seam.py directly, not this bridge, which lives here
 in crickets). resolve_project.py (open-a-project-by-name) shells to the
 repo-registry verb the same way. work.md fires `phase-dispatch post-work`
 after each task's commit; release.md fires `phase-dispatch post-release`
-after the release lands.
+after the release lands. The tracker, project-brief and plans verbs serve the
+commands' tracker bookkeeping and /orient; scripts load run_tracker,
+run_project_brief and run_list_plans in-process, the way resolve_plan.py loads
+run_state_path.
 
 Re-audit trigger honored here (development-lifecycle design, 2026-07-10
 amendment): a fifth agentm-facing lookup extends this dispatcher rather than
 starting a new standalone bridge file — repo-registry was that fifth verb,
-phase-dispatch is the sixth.
+phase-dispatch is the sixth, and tracker, project-brief and plans are the
+seventh, eighth and ninth.
 """
 from __future__ import annotations
 
@@ -240,9 +258,12 @@ def _main_governing_design(rest: "list[str]") -> int:
 #
 # V5-4 downstream adoption (LC-5): resolve_plan.py previously bridged to
 # harness_memory.py directly; it now routes through this designed V5-4
-# process-seam interface instead.
+# process-seam interface instead. `state-path tracker` (agentm-vault plan 09)
+# names a plan's tracker beside its plan and progress log; a seam from before
+# the tracker refuses it with its own usage error, exit 2, which passes through.
 
 _SEAM_NAME = "process_seam.py"
+_STATE_PATH_KINDS = ("plan", "progress", "tracker")
 
 
 def find_seam() -> "Path | None":
@@ -279,10 +300,10 @@ def run_state_path(
 
 
 def _main_process_seam(rest: "list[str]") -> int:
-    """process-seam state-path {plan|progress} [--plan SLUG] [--cwd ROOT]"""
-    if len(rest) < 2 or rest[0] != "state-path":
+    """process-seam state-path {plan|progress|tracker} [--plan SLUG] [--cwd ROOT]"""
+    if len(rest) < 2 or rest[0] != "state-path" or rest[1] not in _STATE_PATH_KINDS:
         print(
-            "usage: agentm_bridge.py process-seam state-path {plan|progress}"
+            "usage: agentm_bridge.py process-seam state-path {plan|progress|tracker}"
             " [--plan SLUG] [--cwd ROOT]",
             file=sys.stderr,
         )
@@ -527,6 +548,249 @@ def _main_phase_dispatch(rest: "list[str]") -> int:
     return code
 
 
+# ── text-carrying runs (tracker / project-brief / plans) ────────────────────────
+# These three verbs carry free text (a plan's title, a tracker's State, a brief)
+# and paths that can hold any character, so their runs are UTF-8 both ways on
+# every OS instead of the platform's locale encoding, and a byte that won't
+# decode is replaced rather than raised.
+
+def _run_utf8(cmd: "list[str]", *, timeout: int = 30) -> "subprocess.CompletedProcess":
+    env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
+    return subprocess.run(
+        cmd, capture_output=True, encoding="utf-8", errors="replace",
+        env=env, timeout=timeout,
+    )
+
+
+# ── tracker (new, PLAN-tracker-commands task 1) ─────────────────────────────────
+# Thin bridge: discovers agentm's scripts/tracker.py and proxies its four
+# subcommands. tracker.py owns the tracker's one schema (agentm-vault § Projects
+# and tasks) and is the only writer of a tracker: crickets composes the
+# arguments and reads `show`'s JSON, and never renders, parses or edits tracker
+# text. So this verb hands argv over untouched and gives back tracker.py's exit
+# code, stdout and stderr as they came: 0 ok, 1 a finding or a refused
+# transition, 2 a usage or I/O error. It adds one code of its own, 3, for
+# "there is no tracker.py to run", which a caller reads as "carry on without a
+# tracker".
+
+_TRACKER_NAME = "tracker.py"
+_TRACKER_SUBCOMMANDS = ("new", "show", "transition", "check")
+TRACKER_UNAVAILABLE = 3
+
+
+def find_tracker() -> "Path | None":
+    """Locate agentm's tracker.py via path-fallback, or None.
+
+    Candidates, first hit wins:
+      1. $AGENTM_SCRIPTS_DIR/tracker.py         (explicit override)
+      2. <this-script-dir>/tracker.py           (co-located install)
+      3. ~/Antigravity/agentm/scripts/tracker.py (conventional clone)
+    """
+    return _first_candidate(_TRACKER_NAME)
+
+
+def run_tracker(
+    args: "list[str]", *, tracker: "Path | None" = None,
+) -> "tuple[int, str, str]":
+    """Run `tracker.py <args>`; return (exit_code, stdout, stderr) as they came.
+
+    Exit 3, with a note on stderr, when tracker.py can't be found or can't be
+    started at all. Injectable tracker path for tests.
+    """
+    if tracker is None:
+        tracker = find_tracker()
+    if tracker is None or not Path(tracker).is_file():
+        return (TRACKER_UNAVAILABLE, "",
+                "[agentm_bridge] tracker: agentm's scripts/tracker.py was not found\n")
+    try:
+        res = _run_utf8([sys.executable, str(tracker)] + [str(a) for a in args])
+    except (OSError, subprocess.SubprocessError) as exc:
+        return (TRACKER_UNAVAILABLE, "",
+                f"[agentm_bridge] tracker: {tracker} could not be run ({exc})\n")
+    return (res.returncode, res.stdout, res.stderr)
+
+
+def _main_tracker(rest: "list[str]") -> int:
+    """tracker {new|show|transition|check} ..."""
+    if not rest or rest[0] not in _TRACKER_SUBCOMMANDS:
+        print("usage: agentm_bridge.py tracker {new|show|transition|check} ...",
+              file=sys.stderr)
+        return 2
+    code, out, err = run_tracker(rest)
+    if out:
+        sys.stdout.write(out)
+    if err:
+        sys.stderr.write(err)
+    return code
+
+
+# ── project-brief (new, PLAN-tracker-commands task 1) ───────────────────────────
+# Thin bridge: discovers agentm's scripts/project_brief.py (the opening brief:
+# where the bound project and task stand, in under twenty lines) and proxies it.
+# project_brief.py exits 0 with a brief and 3 with none. This verb keeps both
+# answers and folds every other outcome into 3 as well (agentm absent, a run
+# that can't start, any other exit, a 0 that printed nothing), because a
+# missing brief is never a reason to stop.
+
+_PROJECT_BRIEF_NAME = "project_brief.py"
+NO_BRIEF = 3
+
+
+def find_project_brief() -> "Path | None":
+    """Locate agentm's project_brief.py via path-fallback, or None.
+
+    Candidates, first hit wins:
+      1. $AGENTM_SCRIPTS_DIR/project_brief.py         (explicit override)
+      2. <this-script-dir>/project_brief.py           (co-located install)
+      3. ~/Antigravity/agentm/scripts/project_brief.py (conventional clone)
+    """
+    return _first_candidate(_PROJECT_BRIEF_NAME)
+
+
+def run_project_brief(
+    cwd: "str | os.PathLike | None", *, brief: "Path | None" = None,
+) -> "tuple[int, str]":
+    """Run project_brief.py for the session directory `cwd`; return (0, brief)
+    or (3, ""). With `cwd` None the brief uses this process's directory.
+    Injectable brief path for tests.
+    """
+    if brief is None:
+        brief = find_project_brief()
+    if brief is None or not Path(brief).is_file():
+        return (NO_BRIEF, "")
+    cmd = [sys.executable, str(brief)]
+    if cwd:
+        cmd += ["--cwd", str(cwd)]
+    try:
+        res = _run_utf8(cmd)
+    except (OSError, subprocess.SubprocessError):
+        return (NO_BRIEF, "")
+    text = res.stdout.rstrip()
+    if res.returncode != 0 or not text:
+        return (NO_BRIEF, "")
+    return (0, text)
+
+
+def _build_project_brief_parser() -> argparse.ArgumentParser:
+    ap = argparse.ArgumentParser(
+        prog="agentm_bridge.py project-brief",
+        description="Print the opening brief for the bound project and task "
+                    "(bridge to agentm's project_brief.py).",
+        add_help=True,
+    )
+    ap.add_argument("--cwd", default=None,
+                    help="the session's directory (default: cwd)")
+    return ap
+
+
+def _main_project_brief(rest: "list[str]") -> int:
+    ap = _build_project_brief_parser()
+    try:
+        args = ap.parse_args(rest)
+    except SystemExit:
+        return 2
+    code, out = run_project_brief(args.cwd or os.getcwd())
+    if out:
+        print(out)
+    return code
+
+
+# ── plans (new, PLAN-tracker-commands task 1) ───────────────────────────────────
+# Lists every active plan agentm knows for a project root, each with its
+# progress log and its tracker: one `harness_memory.py list-plans`, then one
+# `resolve-active-plan --with-tracker --plan <name>` per plan. The name is how
+# agentm's resolver finds that plan again: the file name in the flat layout
+# (`PLAN.md`, `PLAN-foo.md`), the directory's name in the task layout
+# (`tasks/042-build-the-brief/plan.md` is `042-build-the-brief`). Every path
+# comes from agentm; crickets composes none of them.
+#
+# Two answers stay partial rather than wrong. An agentm from before the tracker
+# (plan 09) refuses `--with-tracker`, so its rows carry the pair and an empty
+# tracker field. And a plan the resolver refuses, or resolves to a different
+# plan (a slug with both a task and a flat pair, where the task wins), keeps its
+# own path with empty progress and tracker fields: still listed, and never
+# paired with another plan's files.
+
+PLANS_UNAVAILABLE = 3
+
+
+def _resolver_name(plan: str) -> str:
+    """The name agentm's resolver takes for a plan path list-plans printed."""
+    p = Path(plan)
+    return p.parent.name if p.name == "plan.md" else p.name
+
+
+def _resolve_listed_plan(
+    harness_memory: Path, root: str, plan: str,
+) -> "tuple[str, str, str]":
+    cmd = [sys.executable, str(harness_memory), "resolve-active-plan",
+           "--plan", _resolver_name(plan), "--project-root", root]
+    try:
+        res = _run_utf8(cmd + ["--with-tracker"])
+        if res.returncode == 2 and "--with-tracker" in res.stderr:
+            res = _run_utf8(cmd)  # an agentm from before the tracker
+    except (OSError, subprocess.SubprocessError):
+        return (plan, "", "")
+    fields = res.stdout.strip().split("\t")
+    if res.returncode != 0 or len(fields) < 2 or Path(fields[0]) != Path(plan):
+        return (plan, "", "")
+    return (plan, fields[1], fields[2] if len(fields) > 2 else "")
+
+
+def run_list_plans(
+    root: "str | os.PathLike", *, harness_memory: "Path | None" = None,
+) -> "tuple[int, list[tuple[str, str, str]]]":
+    """Every active plan under project root `root`, as (plan, progress, tracker)
+    rows in agentm's listing order. Returns (0, rows), or (3, []) when agentm is
+    absent or gives no listing. Injectable harness_memory path for tests.
+    """
+    if harness_memory is None:
+        harness_memory = find_harness_memory()
+    if harness_memory is None or not Path(harness_memory).is_file():
+        return (PLANS_UNAVAILABLE, [])
+    root = str(root)
+    try:
+        listed = _run_utf8([sys.executable, str(harness_memory), "list-plans",
+                            "--project-root", root])
+    except (OSError, subprocess.SubprocessError):
+        return (PLANS_UNAVAILABLE, [])
+    if listed.returncode != 0:
+        return (PLANS_UNAVAILABLE, [])
+    rows = []
+    for line in listed.stdout.splitlines():
+        plan = line.strip()
+        if plan and not plan.startswith("active-binding="):
+            rows.append(_resolve_listed_plan(Path(harness_memory), root, plan))
+    return (0, rows)
+
+
+def _build_plans_parser() -> argparse.ArgumentParser:
+    ap = argparse.ArgumentParser(
+        prog="agentm_bridge.py plans",
+        description="List every active plan with its progress log and tracker "
+                    "(bridge to agentm's list-plans and resolve-active-plan).",
+        add_help=True,
+    )
+    ap.add_argument("--project-root", default=None,
+                    help="project root to list plans for (default: cwd)")
+    return ap
+
+
+def _main_plans(rest: "list[str]") -> int:
+    ap = _build_plans_parser()
+    try:
+        args = ap.parse_args(rest)
+    except SystemExit:
+        return 2
+    code, rows = run_list_plans(args.project_root or os.getcwd())
+    for plan, progress, tracker in rows:
+        print(f"{plan}\t{progress}\t{tracker}")
+        if not progress:
+            print(f"[agentm_bridge] plans: agentm did not resolve {plan}; its "
+                  "progress and tracker fields are empty", file=sys.stderr)
+    return code
+
+
 # ── dispatcher ───────────────────────────────────────────────────────────────────
 
 _VERBS = {
@@ -536,17 +800,23 @@ _VERBS = {
     "workflow-persona": _main_workflow_persona,
     "repo-registry": _main_repo_registry,
     "phase-dispatch": _main_phase_dispatch,
+    "tracker": _main_tracker,
+    "project-brief": _main_project_brief,
+    "plans": _main_plans,
 }
 
 _USAGE = (
     "usage: agentm_bridge.py {capability|governing-design|process-seam|"
-    "workflow-persona|repo-registry|phase-dispatch} ...\n"
+    "workflow-persona|repo-registry|phase-dispatch|tracker|project-brief|plans} ...\n"
     "  capability <capability-name> [<version-range>]\n"
     "  governing-design <file-or-area> [--root DIR] [--include-proposed] [--json]\n"
-    "  process-seam state-path {plan|progress} [--plan SLUG] [--cwd ROOT]\n"
+    "  process-seam state-path {plan|progress|tracker} [--plan SLUG] [--cwd ROOT]\n"
     "  workflow-persona <step> [--explicit NAME]\n"
     "  repo-registry list\n"
     "  phase-dispatch {post-work|post-release} [--project-root DIR]\n"
+    "  tracker {new|show|transition|check} ...\n"
+    "  project-brief [--cwd DIR]\n"
+    "  plans [--project-root DIR]\n"
 )
 
 
