@@ -642,5 +642,12 @@ enhances:
 #          writing, and moves a queued one to active after the copy. A task is
 #          its own staging tier: `path` prints its plan, and `activate` is its
 #          tracker's move from queued to active.
+#          Task 5: /plan reads plan_tracker.py status in triage and opens the
+#          plan's tracker at queued after the board step (a staged task gets
+#          one, a staged flat plan does not). A bare call that the resolver
+#          answers with exit 4 proposes a task name, and an arc-sized brief is
+#          pointed to /design. The resolver's output is three fields wherever
+#          it is described, and the plan template, /setup's too, writes
+#          `## Steps`.
 version: 0.48.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

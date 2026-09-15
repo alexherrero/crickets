@@ -143,6 +143,59 @@ class TestPlanSpec(_NamedPlanWriterContract, unittest.TestCase):
         self.assertIn("resolved `PLAN.md`", self.text)
         self.assertIn("PLAN-<slug>.md", self.text)
 
+    def _section(self, start: str, end: str) -> str:
+        i = self.text.index(start)
+        return self.text[i:self.text.index(end, i)]
+
+    def test_triage_reads_the_tracker_status_first(self):
+        # PLAN-tracker-commands task 5: triage asks plan_tracker.py for the
+        # status (tracker first, Status line second) before reading the plan.
+        triage = self._section("### 1. Triage existing state", "### 1b.")
+        self.assertIn('python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" status', triage)
+        self.assertLess(triage.index("plan_tracker.py"), triage.index("Then read `PLAN.md`"))
+
+    def test_opens_the_tracker_after_the_board_step(self):
+        # After the board step, so any issue number is known; before the stop.
+        board = self.text.index("### 7. Sync the plan to the GitHub Project board")
+        opening = self.text.index('python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" open')
+        self.assertLess(board, opening)
+        self.assertLess(opening, self.text.index("### 8. Stop"))
+
+    def test_describes_the_resolver_output_as_three_fields(self):
+        self.assertIn("three tab-separated fields", self.text)
+        self.assertIn("`<plan>\\t<progress>\\t<tracker>`", self.text)
+
+    def test_a_bare_call_that_exits_4_proposes_a_task_name(self):
+        # Ruling 8: no singleton on a project that keeps tasks, so a bare /plan
+        # proposes a name for the operator to confirm, or points to /design.
+        bare = self._section("- **Bare `/plan`**", "- **`--name <slug> <brief>`**")
+        self.assertIn("exits **4**", bare)
+        self.assertIn("propose a verb-first task name", bare)
+        self.assertIn("confirm", bare)
+        self.assertIn("/design", bare)
+
+    def test_a_staged_tracker_opens_only_for_a_task(self):
+        step = self._section("### 7b. Open the plan's tracker", "### 8. Stop")
+        self.assertIn("only a task gets one", step)
+        self.assertIn("A staged flat plan in `queued-plans/` gets none", step)
+
+    def test_the_template_writes_steps_and_keeps_the_status_line(self):
+        template = self._section("```markdown", "## Risks / open questions")
+        self.assertIn("## Steps", template)
+        self.assertIn("### 1. <Step title>", template)
+        self.assertIn("- **Status:** [ ]", template)
+        self.assertIn("**Status:** planning", template)
+        self.assertNotIn("## Tasks", template)
+
+
+class TestSetupTemplateSpec(unittest.TestCase):
+    """`/setup` seeds the same plan shape `/plan` writes."""
+
+    def test_the_seeded_plan_writes_steps(self):
+        text = _read("setup.md")
+        self.assertIn("## Steps\n\n### 1. <Step title>", text)
+        self.assertNotIn("### 1. <Task title>", text)
+
 
 class TestReviewSpec(_NamedPlanWriterContract, unittest.TestCase):
     """`/review` reads the named pair by consuming resolve_plan.py (T4)."""
