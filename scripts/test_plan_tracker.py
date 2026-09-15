@@ -512,6 +512,38 @@ class TestCLI(_Vault, unittest.TestCase):
         self.assertEqual(code, 2)
 
 
+class TestDuplicateGuardStatus(_Vault, unittest.TestCase):
+    """/work's duplicate guard (PLAN-tracker-commands task 6) reads
+    `plan_tracker.py status`: `done` takes the done branch, `dropped` stops,
+    and anything else passes. Driven through the CLI in all three layouts."""
+
+    def status(self, layout: str) -> str:
+        plan, tracker = self.layouts[layout]
+        code, out, _err = self.main("status", "--plan", str(plan), "--tracker", str(tracker))
+        self.assertEqual(code, 0)
+        return out
+
+    def test_each_answer_in_each_layout(self):
+        for layout in ("singleton", "flat", "task"):
+            plan, tracker = self.layouts[layout]
+            with self.subTest(layout=layout, case="done from a tracker"):
+                self.seed(tracker, "done", outcome="shipped")
+                self.assertEqual(self.status(layout), "done\ttracker\n")
+            with self.subTest(layout=layout, case="dropped"):
+                self.seed(tracker, "dropped", outcome="withdrawn")
+                self.assertEqual(self.status(layout), "dropped\ttracker\n")
+            with self.subTest(layout=layout, case="active"):
+                self.seed(tracker, "active")
+                self.assertEqual(self.status(layout), "active\ttracker\n")
+            tracker.unlink()
+            with self.subTest(layout=layout, case="done from a Status line, no tracker"):
+                plan.write_text("# Plan: x\n\n**Status:** done\n", encoding="utf-8")
+                self.assertEqual(self.status(layout), "done\tstatus-line\n")
+            with self.subTest(layout=layout, case="no status at all"):
+                plan.write_text("# Plan: x\n\n### 1. a\n- **Status:** [x]\n", encoding="utf-8")
+                self.assertEqual(self.status(layout), "none\tnone\n")
+
+
 def _real_tracker() -> "Path | None":
     """agentm's own tracker.py in a checkout, or None: $AGENTM_SCRIPTS_DIR,
     else the conventional ~/Antigravity/agentm clone."""

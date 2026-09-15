@@ -649,5 +649,14 @@ enhances:
 #          pointed to /design. The resolver's output is three fields wherever
 #          it is described, and the plan template, /setup's too, writes
 #          `## Steps`.
+#          Task 6: /work reads three fields, and a bare call that exits 4
+#          asks which task, listing the project's plans through
+#          `agentm_bridge.py plans`. The duplicate guard reads plan_tracker.py
+#          status (done accepts both progress spellings; dropped stops); the
+#          worktree marker carries `plan_tracker.py name`; step 1.6 marks the
+#          start in the tracker, step 7 writes `step` or `close`, and a safety
+#          stop records its trigger. The recoverability block, in all three
+#          commands, says a flat plan's tracker stays in _harness/ at close
+#          and a task directory never moves. `step N` joins `task N`.
 version: 0.48.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

@@ -103,6 +103,48 @@ class TestWorkSpec(_NamedPlanWriterContract, unittest.TestCase):
         self.assertIn("task N", self.text)
         self.assertIn("selector keeps its meaning", self.text)
 
+    def _section(self, start: str, end: str) -> str:
+        i = self.text.index(start)
+        return self.text[i:self.text.index(end, i)]
+
+    def test_step_n_joins_task_n(self):
+        # Ruling 2: "step" is a prose change; `task N` keeps working.
+        self.assertIn("`step N` is the same selector", self.text)
+
+    def test_exit_4_asks_which_task_listing_from_the_bridge(self):
+        read_state = self._section("### 1. Read state", "### 1.5.")
+        self.assertIn("**Exit 4**", read_state)
+        self.assertIn("ask which task", read_state)
+        self.assertIn('python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" plans', read_state)
+
+    def test_the_duplicate_guard_reads_the_tracker_status(self):
+        guard = self._section("**Duplicate guard", "### 1.5.")
+        self.assertIn('python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" status', guard)
+        self.assertIn("`completed step N`", guard)
+        self.assertIn("`completed task N`", guard)
+        self.assertIn("**`dropped`**", guard)
+
+    def test_the_marker_carries_the_name_agentm_placed(self):
+        # Ruling 9: the marker carries the task's directory name, not the typed --name.
+        bind = self._section("### 1.5.", "### 1.6.")
+        self.assertIn('python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" name', bind)
+        self.assertIn('scripts/worktree_marker.py" write', bind)
+
+    def test_the_run_marks_its_start_in_the_tracker(self):
+        start = self._section("### 1.6.", "### 2.")
+        self.assertIn('python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" step', start)
+
+    def test_step_7_writes_step_or_close(self):
+        state = self._section("### 7. Update state", "### 8.")
+        self.assertIn('python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" step', state)
+        self.assertIn('python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" close', state)
+        self.assertIn('/work — completed step N: "<title>"', state)
+
+    def test_the_archive_rule_keeps_a_flat_tracker_and_never_moves_a_task(self):
+        block = self._section("<!-- BEGIN recoverability-gate", "<!-- END recoverability-gate -->")
+        self.assertIn("its tracker stays at `_harness/tracker-<slug>.md`", block)
+        self.assertIn("never moves at close-out", block)
+
     def test_nonzero_exit_is_hard_stop_no_singleton_fallback(self):
         # Risk #7: a dangling binding hard-stops; it never silently falls back to
         # the singleton (which would bind the worker to the wrong plan).
