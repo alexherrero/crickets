@@ -6,8 +6,8 @@ find_process_seam.py, merged into the shared bridge — CONS-2 task 2).
 Discovery (find_seam): $AGENTM_SCRIPTS_DIR, co-located sibling, conventional
 ~/Antigravity/ clone, and graceful-skip when absent.
 
-Delegation (run_state_path): propagates seam stdout + exit code for both
-state-path verbs; exits 1 cleanly when seam absent (no hang).
+Delegation (run_state_path): propagates seam stdout + exit code for the plan,
+progress and tracker state paths; exits 1 cleanly when seam absent (no hang).
 
 Every test is hermetic — injectable seam paths and env var overrides ensure no
 dependency on a real agentm install (CI runs with none).
@@ -141,6 +141,28 @@ class TestRunStatePath(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertEqual(out, "/v/_harness/progress.md")
 
+    def test_tracker_path_propagated_exit_zero(self):
+        seam = self._make_seam(
+            "import sys\n"
+            "sys.stdout.write('/v/_harness/tracker-foo.md\\n' if sys.argv[2] == 'tracker' else '')\n"
+            "sys.exit(0)\n"
+        )
+        out, rc = fps.run_state_path("tracker", ["--plan", "foo"], seam=seam)
+        self.assertEqual(rc, 0)
+        self.assertEqual(out, "/v/_harness/tracker-foo.md")
+
+    def test_a_seam_from_before_the_tracker_refuses_it_with_exit_two(self):
+        seam = self._make_seam(
+            "import sys\n"
+            "if sys.argv[2] == 'tracker':\n"
+            "    sys.stderr.write(\"invalid choice: 'tracker'\\n\")\n"
+            "    sys.exit(2)\n"
+            "sys.exit(0)\n"
+        )
+        out, rc = fps.run_state_path("tracker", [], seam=seam)
+        self.assertEqual(rc, 2)
+        self.assertEqual(out, "")
+
     def test_extra_args_forwarded_to_seam(self):
         seam = self._make_seam(
             "import sys\nsys.stdout.write(' '.join(sys.argv[1:]))\nsys.exit(0)\n"
@@ -220,6 +242,29 @@ class TestMainCLI(unittest.TestCase):
                 rc = fps.main(["agentm_bridge.py", "process-seam", "state-path", "plan"])
         self.assertEqual(rc, 1)
         self.assertEqual(out.getvalue(), "")
+
+    def test_state_path_tracker_proxied(self):
+        seam = self.tmp / "seam.py"
+        seam.write_text(
+            "import sys\nsys.stdout.write(' '.join(sys.argv[2:]) + '\\n')\nsys.exit(0)\n",
+            encoding="utf-8")
+        with mock.patch.object(fps, "find_seam", return_value=seam):
+            import io, contextlib
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                rc = fps.main(["agentm_bridge.py", "process-seam", "state-path", "tracker",
+                               "--plan", "foo"])
+        self.assertEqual(rc, 0)
+        self.assertEqual(out.getvalue().strip(), "tracker --plan foo")
+
+    def test_unknown_state_path_kind_exits_two(self):
+        with mock.patch.object(fps, "find_seam", return_value=None):
+            import io, contextlib
+            err = io.StringIO()
+            with contextlib.redirect_stderr(err):
+                rc = fps.main(["agentm_bridge.py", "process-seam", "state-path", "roadmap"])
+        self.assertEqual(rc, 2)
+        self.assertIn("tracker", err.getvalue())
 
 
 if __name__ == "__main__":

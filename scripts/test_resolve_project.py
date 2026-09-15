@@ -107,6 +107,36 @@ class TestScanVaultProjects(unittest.TestCase):
         result = rp.scan_vault_projects(vault=vault)
         self.assertEqual(result, [{"slug": "bare", "vault_project_path": str(vault / "projects" / "bare"), "gloss": None}])
 
+    # ── PLAN-tracker-commands task 8: the charter's What line ────────────────
+    def _widgets_with_a_brief(self) -> Path:
+        project = self.tmp / "vault" / "projects" / "widgets"
+        (project / "_harness").mkdir(parents=True)
+        (project / "_harness" / "PLAN.md").write_text("**Brief:** The brief line.\n", encoding="utf-8")
+        return project
+
+    def test_the_charter_what_line_wins_over_the_brief_line(self):
+        project = self._widgets_with_a_brief()
+        (project / "charter.md").write_text("# widgets\n\n**What:** The charter's what line.\n",
+                                            encoding="utf-8")
+        (project / "_index.md").write_text("# widgets\n\n**What:** The old index's line.\n",
+                                           encoding="utf-8")
+        result = rp.scan_vault_projects(vault=self.tmp / "vault")
+        self.assertEqual(result[0]["gloss"], "The charter's what line.")
+
+    def test_index_md_is_still_read_without_a_charter(self):
+        project = self._widgets_with_a_brief()
+        (project / "_index.md").write_text(
+            "---\nkind: project-index\nslug: _index\n---\n\n# widgets\n\n"
+            "**What:** The index's what line.\n", encoding="utf-8")
+        result = rp.scan_vault_projects(vault=self.tmp / "vault")
+        self.assertEqual(result[0]["gloss"], "The index's what line.")
+
+    def test_a_charter_without_a_what_line_falls_back_to_the_brief(self):
+        project = self._widgets_with_a_brief()
+        (project / "charter.md").write_text("# widgets\n\nNo what line here.\n", encoding="utf-8")
+        result = rp.scan_vault_projects(vault=self.tmp / "vault")
+        self.assertEqual(result[0]["gloss"], "The brief line.")
+
     # ── filing-v2 2b: the vault-root Projects/ generation ────────────────────
     # The memory root is `<vault>/Agent`; the newest project space is its
     # SIBLING `<vault>/Projects/`. During the merge window both exist.

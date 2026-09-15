@@ -11,7 +11,7 @@ The seam is graceful-skip in both directions, so each side works alone. A `devel
 
 | Direction | Mechanism |
 |---|---|
-| **toolkit phase spec → harness substrate** | `development-lifecycle`'s phase specs resolve their `(PLAN, progress)` pair through agentm's `resolve-active-plan` bridge, and graceful-skip to local singleton state when agentm isn't installed. |
+| **toolkit phase spec → harness substrate** | `development-lifecycle`'s phase specs resolve their `(PLAN, progress, tracker)` paths through agentm's `resolve-active-plan` bridge, and graceful-skip to local singleton state when agentm isn't installed. |
 | **toolkit plugin → toolkit phase** | a crickets plugin declares `enhances:` against a phase (e.g. `code-review` at `/review`) and probes for it at run time, staying inert when the phase plugin isn't installed. |
 
 ## How it fits

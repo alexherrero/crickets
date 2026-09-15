@@ -29,7 +29,7 @@ Invoking this phase **is** the authorization to run it to completion. The stop-g
 
 **When uncertain, treat as unrecoverable** (conservative default). Pre-announcing a recoverable-but-destructive action — state what is about to happen; do not ask permission — carries over verbatim. Any summary this phase produces is a **record of what the autonomous run did**, not a stop-and-wait barrier.
 
-**Close-out autonomy.** Archiving a completed plan (`PLAN.md` → `archive/PLAN.archive.YYYYMMDD-<slug>.md` — the archive step writes into an `archive/` subdirectory, not a flat `.harness/`-root path, per the Consolidation arc's ruling 6) and the rest of close-out bookkeeping (append `progress.md`, move the ROADMAP item to Completed/SHIPPED, update staging notes) is **recoverable → autonomous** — never stop to ask approval to archive or to do close-out bookkeeping.
+**Close-out autonomy.** Archiving a completed plan (`PLAN.md` → `archive/PLAN.archive.YYYYMMDD-<slug>.md` — the archive step writes into an `archive/` subdirectory, not a flat `.harness/`-root path, per the Consolidation arc's ruling 6) and the rest of close-out bookkeeping (append `progress.md`, move the ROADMAP item to Completed/SHIPPED, update staging notes) is **recoverable → autonomous** — never stop to ask approval to archive or to do close-out bookkeeping. The archive moves a flat plan only: its tracker stays at `_harness/tracker-<slug>.md`, at `done`, until agentm's migration pairs the two, because agentm's tracker gate refuses a tracker in `archive/`. A task directory (`tasks/<name>/`) never moves at close-out; agentm's nightly job moves its finished records.
 
 **Carve-outs — unchanged by this doctrine.** Worktree initiation requires operator authority — a durable `isolation.mode: worktree-per-plan` config opt-in (this command's own auto-spawn) or an explicit operator instruction to use a worktree; silent authority-free auto-spawn stays forbidden; integration lands via the plan's own PR + required-check gate, armed for auto-merge (`/spawn-worker` and `/integrate-worker` are retired — the auto-spawn-and-PR flow now covers both jobs end-to-end); the PII pre-push hook + `pii-scrubber` invocation stay mandatory; the no-`Co-Authored-By` commit rule is untouched.
 <!-- END recoverability-gate -->
@@ -40,16 +40,20 @@ Invoking this phase **is** the authorization to run it to completion. The stop-g
 - **Root cause before fix.** Ask "why" at least three times — the first suspicious line is usually the symptom, not the cause.
 - **`/review` on every bugfix.** Bugs are evidence of code you already got wrong once — fresh skeptical eyes matter more, not less.
 - **Minimal scope.** Fix the bug, not adjacent issues. "While I'm in here" turns a one-line fix into a regression.
-- **`gh issue *` runs under the recoverability gate.** `gh issue create` / `comment` / `close` are recoverable (editable, reopenable) → **announce + proceed**, no preview-and-ask wait; the issue is still the bug's posterity record. Graceful-skip the whole issue track if `gh` is unavailable, the origin isn't GitHub, or the user opts out (then `.harness/PLAN.md` alone is the record; note the skip in `## Report`).
+- **`gh issue *` runs under the recoverability gate.** `gh issue create` / `comment` / `close` are recoverable (editable, reopenable) → **announce + proceed**, no preview-and-ask wait; the issue is still the bug's posterity record. Graceful-skip the whole issue track if `gh` is unavailable, the origin isn't GitHub, or the user opts out (then the resolved plan alone is the record; note the skip in `## Report`).
 - **Do not create tags.** Tag creation is reserved for `/release` — the sole tag writer that tags `main` HEAD after CI-green. Creating a tag during `/bugfix` would point to a branch tip, not a main commit, violating the tag-reachability guarantee and the concurrent-release serialization model.
 
 ## Four phases, in order
 
 ### 1. Report
 
-Capture the bug **verbatim** in `.harness/PLAN.md` under `## Report` — original text, source, reporter, date, reproduction steps, expected vs. actual, environment. Do not paraphrase; specifics matter for reproducing. If the report is unclear ("login is broken"), **interview** before moving on.
+**Resolve the plan first**, never re-deriving its path: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/resolve_plan.py"` with no name gives the singleton, or, inside a plan's worktree, the plan its `.harness/active-plan` marker binds. It prints `<plan>\t<progress>\t<tracker>`. Where it exits **4** (a project that keeps its plans in numbered tasks, so there is no singleton), propose a verb-first task name for the bug (e.g. `fix-login-redirect`), confirm it with the operator, and resolve again with that name, as `/plan` does. Any other non-zero exit is a hard stop.
 
-Then **open the tracking issue** (graceful-skip): announce a one-sentence title + body (verbatim quote + source/date + reproduction steps), then run `gh issue create --label bug` (recoverable → announce + proceed). Record `**Tracking:** #N` near the top of PLAN.md; reference `#N` in the fix commit.
+**Before writing, check the plan isn't in flight:** `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" status --plan <plan> --tracker <tracker>`. `queued`, `active` or `parked` means work is in flight in that plan, so ask the operator before adding a bug report to it.
+
+Then capture the bug **verbatim** in the resolved plan under `## Report` — original text, source, reporter, date, reproduction steps, expected vs. actual, environment. Do not paraphrase; specifics matter for reproducing. If the report is unclear ("login is broken"), **interview** before moving on.
+
+Then **open the tracking issue** (graceful-skip): announce a one-sentence title + body (verbatim quote + source/date + reproduction steps), then run `gh issue create --label bug` (recoverable → announce + proceed). Record `**Tracking:** #N` near the top of the plan; reference `#N` in the fix commit.
 
 ### 2. Analyze
 
@@ -82,7 +86,7 @@ Run **`/review`** on the fix (non-negotiable for bugs). Confirm: the regression 
 
 Post a Verify summary to the issue, then run `gh issue close --reason completed` with a one-line note referencing the fix SHA (recoverable — a closed issue reopens; announce + proceed).
 
-**Sync the GitHub Project board** (graceful-skip): check availability: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" capability board-sync`; on **exit 1** (unavailable, or no `CLAUDE_PLUGIN_ROOT`) skip silently. On **exit 0** with `.harness/project.json` + `gh` present, the `gh issue` close above stays the bug's posterity record — `Bug` has **no locked board template this cycle** (the renderer raises on `bug`), so direct bug board-emission is deferred. If the fix's closeout belongs to a *materialized* Task/Plan, emit it via the github-projects plugin's `project_sync.py post` (deterministic + idempotent → announce + proceed); otherwise nothing to sync. Append to `progress.md`:
+**Sync the GitHub Project board** (graceful-skip): check availability: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" capability board-sync`; on **exit 1** (unavailable, or no `CLAUDE_PLUGIN_ROOT`) skip silently. On **exit 0** with `.harness/project.json` + `gh` present, the `gh issue` close above stays the bug's posterity record — `Bug` has **no locked board template this cycle** (the renderer raises on `bug`), so direct bug board-emission is deferred. If the fix's closeout belongs to a *materialized* Task/Plan, emit it via the github-projects plugin's `project_sync.py post` (deterministic + idempotent → announce + proceed); otherwise nothing to sync. Append to the resolved `progress.md`:
 
 ```
 <YYYY-MM-DD HH:MM> /bugfix — fixed <one-line> (tracking: #N, root cause: <summary>, regression test: <path>)

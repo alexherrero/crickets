@@ -1,20 +1,27 @@
 #!/usr/bin/env python3
-"""Resolve the active (PLAN, progress) on-disk path pair for the phase loop.
+"""Resolve the active plan's (PLAN, progress, tracker) paths for the phase loop.
 
 The developer-workflows phase specs (`/work`, `/plan`, `/review`) call this to
-learn *which* plan pair a session owns, so they can target a named
-`PLAN-<name>.md` / `progress-<name>.md` instead of only the singleton:
+learn *which* plan a session owns, so they can target a named plan or a task
+instead of only the singleton:
 
     resolve_plan.py [<name>] [--project-root <path>]
-    # stdout: "<plan_path>\t<progress_path>"  (one tab-separated line)
+    # stdout: "<plan_path>\t<progress_path>\t<tracker_path>"  (one tab-separated line)
 
 **Two backends, one contract.** When agentm's process seam is discoverable this
 is a thin **bridge** to `process_seam.py state-path` — the V5-4 designed
-interface. The bridge makes two seam calls (plan, then progress), reassembles
-the tab-separated pair, and **propagates** exit codes; it never re-derives
-resolution. When the seam is **absent** (agentm not installed), developer-workflows
-still works standalone via a plain `.harness/` fallback (bare → `PLAN.md` /
-`progress.md`; named → `PLAN-<name>.md` / `progress-<name>.md`, flat).
+interface. The bridge makes three seam calls (plan, progress, then tracker),
+reassembles the tab-separated line, and **propagates** exit codes; it never
+re-derives resolution. A task's paths (`tasks/<name>/plan.md` and the files
+beside it) come back from the seam the way a flat pair's do. When the seam is
+**absent** (agentm not installed), developer-workflows still works standalone
+via a plain `.harness/` fallback (bare → `PLAN.md` / `progress.md`; named →
+`PLAN-<name>.md` / `progress-<name>.md`, flat).
+
+**Only agentm names a tracker.** The third field is empty wherever agentm can't
+name one: in the standalone fallback, and from a seam that predates the tracker
+(agentm-vault plan 09) and refuses `state-path tracker`. The pair still
+resolves and the exit stays 0; in the second case stderr says why.
 
 **Risk #7 — no silent singleton fallback.** A *located* seam is authoritative:
 if it exits non-zero (a dangling marker or an unsafe slug), the bridge surfaces
@@ -22,10 +29,13 @@ that exit + stderr and emits **no** pair. The `.harness/` fallback fires **only*
 when no seam is discoverable — never to paper over a seam that ran and refused.
 That distinction is what keeps a worker from silently binding to the wrong plan.
 
-Exit codes (identical on both backends, so the two are transparent):
-    0 — resolved; the pair is on stdout.
+Exit codes (the fallback gives only 0 and 2):
+    0 — resolved; the line is on stdout.
     1 — graceful-skip: seam present but no resolvable `_harness/` dir.
     2 — loud: dangling marker or unsafe plan slug. Never a singleton fallback.
+    4 — name the task: a bare call on a project that keeps its plans in tasks
+        has no singleton (agentm-vault plan 10). Nothing on stdout; the
+        commands ask which task, or propose a name.
 
 Stdlib-only; mirrors `capability_probe.py`'s shape (pure core + injectable I/O).
 """
@@ -62,6 +72,12 @@ _bridge = _load_bridge()
 # the seam; tests pass `seam=<stub path>` to force the delegate branch or
 # `seam=None` to force the standalone `.harness/` fallback.
 _AUTO = object()
+
+# agentm-vault plan 10: a bare call on a project that keeps its plans in
+# numbered task directories has no singleton to fall back on, so the seam
+# answers this code instead of a path, and this bridge passes it on. Plan 10
+# names the code; if it ever names another, this is the one line to change.
+NAME_THE_TASK = 4
 
 
 # ── filename mapping (the naming contract, not resolution logic) ───────────────
@@ -148,8 +164,11 @@ def locate_resolver(*, config_path=None, home=None) -> "Path | None":
 def _delegate(seam: Path, name: str, root: str) -> tuple[int, str, str]:
     """Delegate to the V5-4 process seam and reassemble (rc, stdout, stderr).
 
-    Two seam calls: `state-path plan` then `state-path progress`. The seam
-    handles named-plan resolution (V5-10 aware) when agentm is present.
+    Three seam calls: `state-path plan`, `state-path progress`, then
+    `state-path tracker`. The seam handles named-plan and task resolution when
+    agentm is present. A refused plan or progress call passes its exit code on
+    with nothing on stdout. A refused tracker call leaves the third field empty
+    and keeps exit 0, because only the tracker is missing.
     """
     if _bridge is None:
         return (2, "", "[resolve_plan] internal error: bridge not loaded\n")
@@ -162,23 +181,37 @@ def _delegate(seam: Path, name: str, root: str) -> tuple[int, str, str]:
 
     plan_out, plan_rc = _bridge.run_state_path("plan", extra, seam=seam)
     if plan_rc != 0:
+        if plan_rc == NAME_THE_TASK and not slug:
+            return (plan_rc, "", (
+                "[resolve_plan] this project keeps its plans in tasks, so a bare "
+                "call names no plan: name the task (resolve_plan.py <task-name>)\n"
+            ))
         return (plan_rc, "", f"[resolve_plan] seam state-path plan failed (exit {plan_rc})\n")
 
     prog_out, prog_rc = _bridge.run_state_path("progress", extra, seam=seam)
     if prog_rc != 0:
         return (prog_rc, "", f"[resolve_plan] seam state-path progress failed (exit {prog_rc})\n")
 
-    return (0, f"{plan_out}\t{prog_out}\n", "")
+    tracker_out, tracker_rc = _bridge.run_state_path("tracker", extra, seam=seam)
+    err = ""
+    if tracker_rc != 0:
+        tracker_out = ""
+        err = (f"[resolve_plan] seam state-path tracker refused (exit {tracker_rc}), "
+               "as an agentm from before the tracker does; the tracker field is empty\n")
+
+    return (0, f"{plan_out}\t{prog_out}\t{tracker_out}\n", err)
 
 
 def _fallback(name: str, root: str) -> tuple[int, str, str]:
-    """Standalone resolution: plain `.harness/` pair, no vault / marker / CAS."""
+    """Standalone resolution: plain `.harness/` pair, no vault / marker / CAS.
+
+    The tracker field is empty: only agentm names a tracker."""
     slug = _normalize_plan_name(name)
     if slug and not _is_safe_plan_slug(slug):
         return (2, "", f"[resolve_plan] unsafe plan name: {name!r}\n")
     plan_fn, prog_fn = _plan_pair(slug)
     base = Path(root).expanduser() / ".harness"
-    return (0, f"{base / plan_fn}\t{base / prog_fn}\n", "")
+    return (0, f"{base / plan_fn}\t{base / prog_fn}\t\n", "")
 
 
 # ── vault-reachability probe (R2.5 task 12) ─────────────────────────────────
@@ -288,7 +321,7 @@ def resolve(name: str, root: str, *, seam=_AUTO, resolver=_AUTO, vault_check=_AU
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="resolve_plan.py",
-        description="Emit the active (PLAN, progress) path pair for the phase loop.",
+        description="Emit the active plan's (PLAN, progress, tracker) paths for the phase loop.",
     )
     p.add_argument("name", nargs="?", default="",
                    help="plan name ('foo', 'PLAN-foo', 'PLAN-foo.md'); omit for the singleton")

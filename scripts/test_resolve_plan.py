@@ -2,7 +2,7 @@
 """Tests for src/developer-workflows/scripts/resolve_plan.py (multi-plan writers T2).
 
 The bridge has two backends with one contract: **delegate** to agentm's
-process seam (`state-path plan` + `state-path progress`) when discoverable,
+process seam (`state-path plan`, `progress` and `tracker`) when discoverable,
 else a standalone `.harness/` **fallback**. Every test is hermetic — the
 delegate branch is exercised with a planted *stub* seam and the fallback via
 `seam=None`, so nothing here depends on a real agentm clone (CI runs with none).
@@ -19,6 +19,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
@@ -40,6 +41,39 @@ def _write_stub(path: Path, body: str) -> Path:
     """A throwaway seam stub that stands in for agentm's process_seam.py."""
     path.write_text(body, encoding="utf-8")
     return path
+
+
+# A seam stub for one vault project in both layouts. It answers
+# `state-path {plan|progress|tracker} [--plan NAME] --cwd ROOT` the way agentm's
+# seam does: no --plan is the singleton, `042-build-the-brief` is a numbered
+# task, and any other name is a flat pair. $STUB_SEAM_BARE_EXIT makes a bare
+# call exit with that code instead (agentm-vault plan 10's answer on a project
+# that keeps tasks), and $STUB_SEAM_NO_TRACKER makes `tracker` an invalid
+# choice, as it is for a seam from before the tracker.
+_LAYOUT_SEAM = r'''
+import os, sys
+argv = sys.argv[1:]
+which = argv[1]
+name = argv[argv.index("--plan") + 1] if "--plan" in argv else None
+project = "/v/projects/probe"
+if which == "tracker" and os.environ.get("STUB_SEAM_NO_TRACKER"):
+    sys.stderr.write("process_seam state-path: error: invalid choice: 'tracker'\n")
+    sys.exit(2)
+if name is None and os.environ.get("STUB_SEAM_BARE_EXIT"):
+    sys.stderr.write("[process_seam] this project keeps tasks\n")
+    sys.exit(int(os.environ["STUB_SEAM_BARE_EXIT"]))
+if name is None:
+    files = {"plan": "PLAN.md", "progress": "progress.md", "tracker": "tracker.md"}
+    print(f"{project}/_harness/{files[which]}")
+elif name == "042-build-the-brief":
+    files = {"plan": "plan.md", "progress": "progress.md", "tracker": "tracker.md"}
+    print(f"{project}/tasks/{name}/{files[which]}")
+else:
+    files = {"plan": f"PLAN-{name}.md", "progress": f"progress-{name}.md",
+             "tracker": f"tracker-{name}.md"}
+    print(f"{project}/_harness/{files[which]}")
+sys.exit(0)
+'''
 
 
 class TestNameMapping(unittest.TestCase):
@@ -108,14 +142,21 @@ class TestFallback(unittest.TestCase):
         self.assertNotIn(".harness", out)
         self.assertIn("unsafe plan name", err)
 
+    def test_d_the_fallback_names_no_tracker(self):
+        # Only agentm names a tracker, so the standalone line's third field is empty.
+        rc, out, err = rp.resolve("foo", str(self.tmp), seam=None)
+        self.assertEqual((rc, err), (0, ""))
+        base = self.tmp / ".harness"
+        self.assertEqual(out, f"{base / 'PLAN-foo.md'}\t{base / 'progress-foo.md'}\t\n")
+
 
 class TestDelegation(unittest.TestCase):
     """A located seam is authoritative — its paths and exit code pass through.
 
     Stubs stand in for process_seam.py: they receive
-    `state-path {plan|progress} [--plan SLUG] [--cwd ROOT]` and return one
-    absolute path per call (or an error exit code). resolve_plan.py makes two
-    calls and assembles the tab-separated pair.
+    `state-path {plan|progress|tracker} [--plan SLUG] [--cwd ROOT]` and return
+    one absolute path per call (or an error exit code). resolve_plan.py makes
+    three calls and assembles the tab-separated line.
     """
 
     def setUp(self):
@@ -125,18 +166,20 @@ class TestDelegation(unittest.TestCase):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def test_d_returns_stub_pair_unchanged(self):
-        # Stub returns one path per verb; resolve_plan reassembles the pair.
+        # Stub returns one path per kind; resolve_plan reassembles the line.
         stub = _write_stub(
             self.tmp / "stub_ok.py",
             "import sys\n"
             "which = sys.argv[2]\n"
-            "sys.stdout.write('/v/PLAN-foo.md\\n' if which == 'plan' else '/v/progress-foo.md\\n')\n"
+            "paths = {'plan': '/v/PLAN-foo.md', 'progress': '/v/progress-foo.md',"
+            " 'tracker': '/v/tracker-foo.md'}\n"
+            "sys.stdout.write(paths[which] + '\\n')\n"
             "sys.exit(0)\n",
         )
         rc, out, err = rp.resolve("foo", str(self.tmp), seam=stub)
         self.assertEqual(rc, 0)
         self.assertEqual(err, "")
-        self.assertEqual(out, "/v/PLAN-foo.md\t/v/progress-foo.md\n")
+        self.assertEqual(out, "/v/PLAN-foo.md\t/v/progress-foo.md\t/v/tracker-foo.md\n")
 
     def test_d_passes_plan_and_cwd_through(self):
         # Bridge forwards --plan and --cwd to each seam call.
@@ -228,7 +271,8 @@ class TestVaultReachabilityGuard(unittest.TestCase):
             self.tmp / "stub_ok.py",
             "import sys\n"
             "which = sys.argv[2]\n"
-            "sys.stdout.write('/v/PLAN.md\\n' if which == 'plan' else '/v/progress.md\\n')\n"
+            "paths = {'plan': '/v/PLAN.md', 'progress': '/v/progress.md', 'tracker': '/v/tracker.md'}\n"
+            "sys.stdout.write(paths[which] + '\\n')\n"
             "sys.exit(0)\n",
         )
         called = []
@@ -237,7 +281,7 @@ class TestVaultReachabilityGuard(unittest.TestCase):
             vault_check=lambda: called.append(1) or True,
         )
         self.assertEqual(rc, 0)
-        self.assertEqual(out, "/v/PLAN.md\t/v/progress.md\n")
+        self.assertEqual(out, "/v/PLAN.md\t/v/progress.md\t/v/tracker.md\n")
         self.assertEqual(called, [])
 
 
@@ -391,6 +435,148 @@ class TestMainCLI(unittest.TestCase):
         self.assertEqual(rc, 2)
         self.assertEqual(out, "")
         self.assertIn("unsafe plan name", err)
+
+    def test_main_prints_three_fields_the_last_empty_without_agentm(self):
+        rc, out, _ = self._run("foo", "--project-root", str(self.tmp))
+        self.assertEqual(rc, 0)
+        base = self.tmp / ".harness"
+        self.assertEqual(out.rstrip("\n").split("\t"),
+                         [str(base / "PLAN-foo.md"), str(base / "progress-foo.md"), ""])
+
+    def test_main_passes_exit_4_on_with_nothing_on_stdout(self):
+        seam = _write_stub(self.tmp / "seam.py", _LAYOUT_SEAM)
+        rp._bridge.find_seam = lambda: seam
+        with mock.patch.dict(os.environ, {"STUB_SEAM_BARE_EXIT": "4"}):
+            rc, out, err = self._run("--project-root", str(self.tmp))
+        self.assertEqual((rc, out), (4, ""))
+        self.assertIn("name the task", err)
+
+
+class TestLayouts(unittest.TestCase):
+    """The line in each layout agentm resolves (the singleton, a flat named
+    pair, a numbered task), and the two answers that aren't a whole line."""
+
+    _PROJECT = "/v/projects/probe"
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="rp-layouts-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.seam = _write_stub(self.tmp / "seam.py", _LAYOUT_SEAM)
+        patcher = mock.patch.dict(os.environ, {"STUB_SEAM_BARE_EXIT": "",
+                                               "STUB_SEAM_NO_TRACKER": ""})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def resolve(self, name: str) -> tuple[int, str, str]:
+        return rp.resolve(name, str(self.tmp), seam=self.seam)
+
+    def test_the_singleton(self):
+        h = f"{self._PROJECT}/_harness"
+        self.assertEqual(self.resolve(""),
+                         (0, f"{h}/PLAN.md\t{h}/progress.md\t{h}/tracker.md\n", ""))
+
+    def test_a_flat_named_pair(self):
+        h = f"{self._PROJECT}/_harness"
+        self.assertEqual(self.resolve("foo"),
+                         (0, f"{h}/PLAN-foo.md\t{h}/progress-foo.md\t{h}/tracker-foo.md\n", ""))
+
+    def test_a_numbered_task(self):
+        t = f"{self._PROJECT}/tasks/042-build-the-brief"
+        self.assertEqual(self.resolve("042-build-the-brief"),
+                         (0, f"{t}/plan.md\t{t}/progress.md\t{t}/tracker.md\n", ""))
+
+    def test_a_seam_from_before_the_tracker_leaves_the_field_empty(self):
+        h = f"{self._PROJECT}/_harness"
+        with mock.patch.dict(os.environ, {"STUB_SEAM_NO_TRACKER": "1"}):
+            rc, out, err = self.resolve("foo")
+        self.assertEqual(rc, 0)
+        self.assertEqual(out, f"{h}/PLAN-foo.md\t{h}/progress-foo.md\t\n")
+        self.assertIn("tracker field is empty", err)
+
+    def test_a_bare_call_on_a_project_that_keeps_tasks_is_exit_4(self):
+        with mock.patch.dict(os.environ, {"STUB_SEAM_BARE_EXIT": "4"}):
+            rc, out, err = self.resolve("")
+        self.assertEqual((rc, out), (4, ""))
+        self.assertIn("name the task", err)
+        self.assertEqual(rp.NAME_THE_TASK, 4)
+
+    def test_a_named_call_on_that_project_still_resolves(self):
+        t = f"{self._PROJECT}/tasks/042-build-the-brief"
+        with mock.patch.dict(os.environ, {"STUB_SEAM_BARE_EXIT": "4"}):
+            rc, out, _err = self.resolve("042-build-the-brief")
+        self.assertEqual((rc, out), (0, f"{t}/plan.md\t{t}/progress.md\t{t}/tracker.md\n"))
+
+    def test_field_one_is_still_the_plan_for_python_callers(self):
+        # stage_plan.py and design_doc.py keep only split("\t", 1)[0].
+        _rc, out, _err = self.resolve("042-build-the-brief")
+        self.assertEqual(out.split("\t", 1)[0],
+                         f"{self._PROJECT}/tasks/042-build-the-brief/plan.md")
+
+
+def _real_seam() -> "Path | None":
+    """agentm's own process_seam.py in a checkout, or None: $AGENTM_SCRIPTS_DIR,
+    else the conventional ~/Antigravity/agentm clone."""
+    env_dir = os.environ.get("AGENTM_SCRIPTS_DIR", "").strip()
+    dirs = [Path(env_dir)] if env_dir else []
+    dirs.append(Path.home() / "Antigravity" / "agentm" / "scripts")
+    for d in dirs:
+        if (d / "process_seam.py").is_file():
+            return (d / "process_seam.py").resolve()
+    return None
+
+
+REAL_SEAM = _real_seam()
+
+
+@unittest.skipIf(REAL_SEAM is None, "no agentm checkout with scripts/process_seam.py")
+class TestRealSeam(unittest.TestCase):
+    """The resolver through agentm's real seam, against a scratch vault: a flat
+    pair, and a numbered task by its full name, trackers included. Nothing
+    points at the live vault or the operator's home: MEMORY_ROOT names the
+    scratch vault, AGENTM_INSTALL_PREFIX a blank scratch prefix, HOME and
+    XDG_CACHE_HOME scratch directories, and OBSIDIAN_VAULT_SCRIPTS this repo's
+    own vault plugin."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="rp-real-seam-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        vault = self.tmp / "vault"
+        self.harness = vault / "projects" / "probe" / "_harness"
+        self.harness.mkdir(parents=True)
+        (self.harness / "PLAN-foo.md").write_text("# Plan: foo\n\n**Status:** planning\n",
+                                                  encoding="utf-8")
+        self.task = vault / "projects" / "probe" / "tasks" / "042-build-the-brief"
+        self.task.mkdir(parents=True)
+        (self.task / "plan.md").write_text("# Plan: Build the brief\n\n**Status:** planning\n",
+                                           encoding="utf-8")
+        self.repo = self.tmp / "repo"
+        (self.repo / ".harness").mkdir(parents=True)
+        (self.repo / ".harness" / "project.json").write_text(
+            json.dumps({"vault_project": "probe"}), encoding="utf-8")
+        home = self.tmp / "home"
+        (home / ".claude").mkdir(parents=True)
+        patcher = mock.patch.dict(os.environ, {
+            "HOME": str(home),
+            "AGENTM_INSTALL_PREFIX": str(home / ".claude"),
+            "MEMORY_ROOT": str(vault),
+            "OBSIDIAN_VAULT_SCRIPTS": str(_ROOT / "src" / "obsidian-vault" / "scripts"),
+            "XDG_CACHE_HOME": str(self.tmp / "cache"),
+        })
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        os.environ.pop("MEMORY_VAULT_PATH", None)
+
+    def test_a_flat_pair_and_its_tracker(self):
+        rc, out, err = rp.resolve("foo", str(self.repo), seam=REAL_SEAM)
+        self.assertEqual(rc, 0, err)
+        h = self.harness
+        self.assertEqual(out, f"{h / 'PLAN-foo.md'}\t{h / 'progress-foo.md'}\t{h / 'tracker-foo.md'}\n")
+
+    def test_a_numbered_task_by_its_full_name(self):
+        rc, out, err = rp.resolve("042-build-the-brief", str(self.repo), seam=REAL_SEAM)
+        self.assertEqual(rc, 0, err)
+        t = self.task
+        self.assertEqual(out, f"{t / 'plan.md'}\t{t / 'progress.md'}\t{t / 'tracker.md'}\n")
 
 
 # ── Plan-name contract — golden vectors shared with the agentm twin ─────────────

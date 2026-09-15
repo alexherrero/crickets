@@ -46,9 +46,9 @@ If `.harness/` doesn't exist, create it and write the files below. **Skip any fi
 
 - <Explicit non-goal. At least one.>
 
-## Tasks
+## Steps
 
-### 1. <Task title>
+### 1. <Step title>
 - **What:** <1-2 sentences describing the concrete change>
 - **Verification:** <executable check — a test to add, a command to run, a flow to exercise>
 - **Status:** [ ]

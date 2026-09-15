@@ -14,7 +14,7 @@ enhances:
 # refinements shipped since (the full-task-list /work autonomy + safety
 # pre-check, deferred-items-to-Project offers, and the documenter dispatch
 # graceful-skip wiring). 0.3.0 = the multi-plan writers — a `resolve_plan.py`
-# bridge (delegates to agentm's `resolve-active-plan` verb, graceful `.harness/`
+# bridge (delegates to agentm's process seam, `state-path`, graceful `.harness/`
 # fallback standalone) + named-plan-aware /work, /plan, /review that target
 # PLAN-<name>.md / progress-<name>.md pairs; bare invocations stay byte-identical.
 # 0.4.0 = the read side of the multi-plan surface — a `/queue-status-lite`
@@ -615,5 +615,60 @@ enhances:
 #         witness; the Title Case one is admitted under a witness that reads
 #         the listing case-folded. vault_projects_dirs hands a space back
 #         spelled as the disk lists it, still one entry per directory.
-version: 0.47.3
+# 0.48.0: the commands write and read agentm's tracker (PLAN-tracker-commands).
+#          Task 1: agentm_bridge.py gains three verbs. `tracker` proxies
+#          agentm's tracker.py and passes its exit code, stdout and stderr
+#          through (3 when tracker.py is not found); `project-brief` proxies
+#          project_brief.py (0 with a brief, 3 with none); `plans` lists every
+#          active plan with its progress log and tracker, through one
+#          list-plans and one resolve-active-plan --with-tracker per plan, in
+#          the flat and the task layouts. `process-seam state-path` accepts
+#          `tracker`. In-process callers get find_tracker, run_tracker,
+#          find_project_brief, run_project_brief and run_list_plans.
+#          Task 2: resolve_plan.py prints a third field, the tracker agentm
+#          names. It is empty from the standalone fallback, and from a seam
+#          that predates the tracker, where the exit stays 0. A bare call on a
+#          project that keeps tasks passes exit 4 on with nothing on stdout.
+#          Task 3: plan_tracker.py, the one helper the commands call for a
+#          plan's tracker: `name`, `status` (the tracker, else the Status line
+#          in five statuses, else none), `open` at queued from the plan's
+#          title, Goal, first open step and design, `step` (opens a missing
+#          tracker, activates, rewrites under active) and `close` (the
+#          Outcome, at done). After a step or a close the plan's Status line
+#          follows the tracker. Every tracker call goes through the bridge.
+#          Task 4: stage_plan.py tells the layouts apart by the plan path
+#          agentm returns. A flat plan stages in queued-plans/ beside it, as
+#          before; its activation refuses a tracker that isn't queued before
+#          writing, and moves a queued one to active after the copy. A task is
+#          its own staging tier: `path` prints its plan, and `activate` is its
+#          tracker's move from queued to active.
+#          Task 5: /plan reads plan_tracker.py status in triage and opens the
+#          plan's tracker at queued after the board step (a staged task gets
+#          one, a staged flat plan does not). A bare call that the resolver
+#          answers with exit 4 proposes a task name, and an arc-sized brief is
+#          pointed to /design. The resolver's output is three fields wherever
+#          it is described, and the plan template, /setup's too, writes
+#          `## Steps`.
+#          Task 6: /work reads three fields, and a bare call that exits 4
+#          asks which task, listing the project's plans through
+#          `agentm_bridge.py plans`. The duplicate guard reads plan_tracker.py
+#          status (done accepts both progress spellings; dropped stops); the
+#          worktree marker carries `plan_tracker.py name`; step 1.6 marks the
+#          start in the tracker, step 7 writes `step` or `close`, and a safety
+#          stop records its trigger. The recoverability block, in all three
+#          commands, says a flat plan's tracker stays in _harness/ at close
+#          and a task directory never moves. `step N` joins `task N`.
+#          Task 7: /release resolves its plan the way /work does and requires
+#          plan_tracker.py status to say done; /review reads the status, stops
+#          on queued when no scope is given, and logs it; /bugfix resolves its
+#          plan instead of naming .harness/PLAN.md, proposes a task name on
+#          exit 4, and asks before writing into a plan in flight.
+#          Task 8: orient_render.py opens with agentm's brief and, for a
+#          project with a checkout, lists its plans through run_list_plans in
+#          both layouts: in flight first by tracker importance, the finished
+#          ones as a count, progress only for unfinished plans, queued ones by
+#          status. Without agentm the _harness/ read stays. --note never
+#          creates a harness directory. resolve_project.py reads the charter's
+#          What line (charter.md, else _index.md) before a plan's Brief line.
+version: 0.48.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

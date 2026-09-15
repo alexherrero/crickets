@@ -15,7 +15,7 @@ Use `/queue-status-lite` when several plans are in flight at once and you want a
    /queue-status-lite --harness-dir /path/to/_harness
    ```
 
-2. **Read the dashboard.** One entry per active plan — its name, its `Status:` line, and the last line of the matching `progress*.md`. The command lists `PLAN.md` plus every `PLAN-<slug>.md`; archives (`PLAN.archive.*.md`) and GDrive conflict copies are skipped. The output is the bridge's verbatim render — the same shape whether an agentm clone is present or not (see [Named plans § Reading the queue](Named-Plans#reading-the-queue--queue-status-lite)).
+2. **Read the dashboard.** One entry per active plan — its name, its `Status:` line, and the last line of the matching `progress*.md`. The phase commands keep a plan's `Status:` line in step with its tracker, so the two agree; in a project that keeps its plans in tasks, agentm's reader shows each task's tracker status. The command lists `PLAN.md` plus every `PLAN-<slug>.md`; archives (`PLAN.archive.*.md`) and GDrive conflict copies are skipped. The output is the bridge's verbatim render — the same shape whether an agentm clone is present or not (see [Named plans § Reading the queue](Named-Plans#reading-the-queue--queue-status-lite)).
 
 3. **Decide, then act.** The glance stops at showing. Choose the next move yourself — `/work --name <slug>` to work a plan, `/review --name <slug>` to review one, or nothing at all.
 
@@ -34,5 +34,6 @@ Use `/queue-status-lite` when several plans are in flight at once and you want a
 
 - [Named plans](Named-Plans) — the lookup: the command's arguments, the two backends, and the read bridge's contract.
 - [Run a named plan](Run-A-Named-Plan) — the write-side recipe: driving `/work --name <slug>` and friends against one named plan.
+- [Open a project by name](Open-A-Project-By-Name) — one project's brief and plans, each with its tracker status.
 - [Development Lifecycle](Development-Lifecycle) — the phase-loop plugin this command belongs to.
 - [Why phase-gating](Why-Phase-Gating) — why state lives on disk and one harness dir can hold several plans.
