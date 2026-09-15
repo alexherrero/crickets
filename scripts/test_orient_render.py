@@ -11,11 +11,13 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import shutil
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
@@ -272,11 +274,185 @@ class TestWriteOrientationNote(unittest.TestCase):
         self.assertEqual(content, "second version")
         self.assertNotIn("first version", content)
 
-    def test_creates_harness_dir_if_absent(self):
+    def test_never_creates_the_harness_dir(self):
+        # PLAN-tracker-commands task 8 changes the contract: --note writes into
+        # a harness directory that exists and never creates one, which after
+        # agentm's move would bring _harness/ back. With none, it writes
+        # nothing and returns None.
         harness = self.tmp / "not-yet-created" / "_harness"
+        self.assertIsNone(orr.write_orientation_note(harness, "text"))
         self.assertFalse(harness.exists())
-        note_path = orr.write_orientation_note(harness, "text")
-        self.assertTrue(note_path.is_file())
+        self.assertFalse(harness.parent.exists())
+
+    def test_no_harness_dir_at_all_writes_nothing(self):
+        self.assertIsNone(orr.write_orientation_note(None, "text"))
+
+
+# A stand-in for agentm's tracker.py: `show` prints a tracker's fields from
+# $STUB_TRACKER_STATE, a JSON map of path to {"status", "importance"}.
+_STUB_TRACKER = r'''#!/usr/bin/env python3
+import json, os, sys
+from pathlib import Path
+argv = sys.argv[1:]
+state = json.loads(Path(os.environ["STUB_TRACKER_STATE"]).read_text(encoding="utf-8"))
+if argv[0] == "show" and argv[1] in state:
+    print(json.dumps(state[argv[1]]))
+    sys.exit(0)
+sys.stderr.write("tracker: no such tracker\n")
+sys.exit(2)
+'''
+
+
+class _AgentmProject:
+    """A vault project `widgets` with a repo checkout, a stub tracker.py under
+    $AGENTM_SCRIPTS_DIR, and a render that patches the bridge's brief and plan
+    list to answer for it (PLAN-tracker-commands task 8)."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="orient-agentm-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        scripts = self.tmp / "agentm" / "scripts"
+        scripts.mkdir(parents=True)
+        (scripts / "tracker.py").write_text(_STUB_TRACKER, encoding="utf-8")
+        home = self.tmp / "home"
+        home.mkdir()
+        self.state = self.tmp / "tracker-state.json"
+        self.state.write_text("{}", encoding="utf-8")
+        for patcher in (
+            mock.patch.dict(os.environ, {"AGENTM_SCRIPTS_DIR": str(scripts),
+                                         "STUB_TRACKER_STATE": str(self.state)}),
+            mock.patch.object(Path, "home", return_value=home),
+        ):
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        self.project = self.tmp / "vault" / "projects" / "widgets"
+        self.repo = self.tmp / "repo"
+        self.repo.mkdir()
+        self.rows = []
+
+    def task(self, name, status, importance=None, progress=None):
+        directory = self.project / "tasks" / name
+        directory.mkdir(parents=True)
+        (directory / "plan.md").write_text(_PLAN_TEXT, encoding="utf-8")
+        tracker = directory / "tracker.md"
+        tracker.write_text("tracker\n", encoding="utf-8")
+        state = json.loads(self.state.read_text(encoding="utf-8"))
+        state[str(tracker)] = {"status": status, "importance": importance}
+        self.state.write_text(json.dumps(state), encoding="utf-8")
+        log = directory / "progress.md"
+        if progress:
+            log.write_text(progress, encoding="utf-8")
+        self.rows.append((str(directory / "plan.md"), str(log), str(tracker)))
+
+    def flat(self, slug, status_line, progress=None):
+        harness = self.project / "_harness"
+        harness.mkdir(parents=True, exist_ok=True)
+        plan = harness / f"PLAN-{slug}.md"
+        plan.write_text(_PLAN_TEXT.replace("**Status:** in-progress", f"**Status:** {status_line}"),
+                        encoding="utf-8")
+        log = harness / f"progress-{slug}.md"
+        if progress:
+            log.write_text(progress, encoding="utf-8")
+        self.rows.append((str(plan), str(log), str(harness / f"tracker-{slug}.md")))
+
+    def render(self, brief=(3, ""), **overrides):
+        project = {"slug": "widgets", "gloss": "A widget project.",
+                   "root_path": str(self.repo), "vault_project_path": str(self.project),
+                   **overrides}
+        with mock.patch.object(orr._bridge, "run_project_brief", return_value=brief) as brief_call, \
+                mock.patch.object(orr._bridge, "run_list_plans", return_value=(0, list(self.rows))):
+            return orr.render_orientation(project), brief_call
+
+    @staticmethod
+    def section(text, heading):
+        start = text.index(heading)
+        end = text.find("\n## ", start + 1)
+        return text[start:] if end == -1 else text[start:end]
+
+
+class TestOrientationBrief(_AgentmProject, unittest.TestCase):
+
+    def test_the_brief_leads_when_agentm_has_one(self):
+        self.task("042-build-the-brief", "active", importance=5)
+        text, brief_call = self.render(brief=(0, "widgets · 042-build-the-brief · active\nNext: Step 2"))
+        brief_call.assert_called_once_with(str(self.repo))
+        self.assertEqual(text.splitlines()[:5],
+                         ["# widgets", "A widget project.", "", "## Brief",
+                          "widgets · 042-build-the-brief · active"])
+        self.assertLess(text.index("## Brief"), text.index("## Plans"))
+
+    def test_no_brief_when_agentm_has_none(self):
+        self.task("042-build-the-brief", "active")
+        text, _brief_call = self.render(brief=(3, ""))
+        self.assertNotIn("## Brief", text)
+        self.assertIn("## Plans", text)
+
+    def test_no_brief_and_no_call_without_a_root_path(self):
+        text, brief_call = self.render(brief=(0, "never shown"), root_path=None)
+        brief_call.assert_not_called()
+        self.assertNotIn("## Brief", text)
+
+
+class TestOrientationPlansThroughAgentm(_AgentmProject, unittest.TestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.task("041-close-the-old-thing", "done",
+                  progress="2026-09-01 /work — the old thing closed\n")
+        self.task("042-build-the-brief", "active", importance=3,
+                  progress="2026-09-14 /work — completed step 1\n")
+        self.task("043-ship-it", "parked", importance=8)
+        self.task("044-next-thing", "queued")
+        self.flat("alpha", "in-progress", progress="2026-09-13 /work — alpha moved\n")
+        self.flat("old", "done", progress="2026-08-01 /work — the old flat plan closed\n")
+        queued_tier = self.project / "_harness" / "queued-plans"
+        queued_tier.mkdir()
+        (queued_tier / "PLAN-later.md").write_text("later\n", encoding="utf-8")
+
+    def test_in_flight_first_by_importance_then_name_finished_as_a_count(self):
+        text, _ = self.render()
+        plans = self.section(text, "## Plans")
+        headers = [line for line in plans.splitlines()[1:] if line and not line.startswith("  ")]
+        self.assertEqual(headers, ["043-ship-it [parked]", "042-build-the-brief [active]",
+                                   "PLAN-alpha.md [active]", "2 finished plans"])
+        self.assertIn("  ✅ First task", plans)
+
+    def test_no_progress_tail_for_a_finished_plan(self):
+        text, _ = self.render()
+        progress = self.section(text, "## Recent progress")
+        self.assertIn("042-build-the-brief:", progress)
+        self.assertIn("PLAN-alpha.md:", progress)
+        self.assertNotIn("the old thing closed", progress)
+        self.assertNotIn("the old flat plan closed", progress)
+
+    def test_queued_plans_by_status_and_the_flat_queued_tier(self):
+        text, _ = self.render()
+        queued = self.section(text, "## Queued plans")
+        self.assertIn("- 044-next-thing", queued)
+        self.assertIn("- PLAN-later.md", queued)
+        self.assertNotIn("044-next-thing", self.section(text, "## Plans"))
+
+    def test_the_harness_is_not_globbed_when_agentm_lists_the_plans(self):
+        (self.project / "_harness" / "PLAN-unlisted.md").write_text(_PLAN_TEXT, encoding="utf-8")
+        (self.project / "_harness" / "progress-unlisted.md").write_text("unlisted\n", encoding="utf-8")
+        text, _ = self.render()
+        self.assertNotIn("PLAN-unlisted.md", text)
+        self.assertNotIn("progress-unlisted.md", text)
+
+
+class TestOrientationWithoutAHarness(_AgentmProject, unittest.TestCase):
+
+    def test_the_brief_and_tasks_render_without_the_nothing_further_line(self):
+        self.task("042-build-the-brief", "active", importance=5)
+        text, _ = self.render(brief=(0, "widgets · 042-build-the-brief · active"))
+        self.assertFalse((self.project / "_harness").exists())
+        self.assertIn("## Brief", text)
+        self.assertIn("042-build-the-brief [active]", text)
+        self.assertNotIn("nothing further", text)
+
+    def test_with_nothing_to_show_it_still_says_so(self):
+        text, _ = self.render(brief=(3, ""))
+        self.assertIn("nothing further to orient on", text)
 
 
 if __name__ == "__main__":

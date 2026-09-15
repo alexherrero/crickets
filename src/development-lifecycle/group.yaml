@@ -663,5 +663,12 @@ enhances:
 #          on queued when no scope is given, and logs it; /bugfix resolves its
 #          plan instead of naming .harness/PLAN.md, proposes a task name on
 #          exit 4, and asks before writing into a plan in flight.
+#          Task 8: orient_render.py opens with agentm's brief and, for a
+#          project with a checkout, lists its plans through run_list_plans in
+#          both layouts: in flight first by tracker importance, the finished
+#          ones as a count, progress only for unfinished plans, queued ones by
+#          status. Without agentm the _harness/ read stays. --note never
+#          creates a harness directory. resolve_project.py reads the charter's
+#          What line (charter.md, else _index.md) before a plan's Brief line.
 version: 0.48.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

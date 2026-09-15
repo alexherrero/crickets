@@ -174,9 +174,40 @@ def _extract_gloss(text: str) -> "str | None":
     return None
 
 
+def _extract_what(text: str) -> "str | None":
+    """A charter's What line: the first `What:` line (markdown-bold tolerated)."""
+    for line in text.splitlines():
+        stripped = line.strip().lstrip("*").strip()
+        if stripped.lower().startswith("what:"):
+            val = stripped.split(":", 1)[1].strip().strip("*").strip()
+            if val:
+                return val
+    return None
+
+
+def _charter_what(project_dir: Path) -> "str | None":
+    """The project charter's What line: `charter.md`, else `_index.md`, the
+    name the charter carries until agentm's migration renames it."""
+    for name in ("charter.md", "_index.md"):
+        charter = project_dir / name
+        if not charter.is_file():
+            continue
+        try:
+            what = _extract_what(charter.read_text(encoding="utf-8"))
+        except OSError:
+            continue
+        if what:
+            return what
+    return None
+
+
 def _one_line_gloss(project_dir: Path) -> "str | None":
-    """Best-effort one-line gloss from the project's own design docs or
-    _harness/PLAN.md — None if nothing found, never an error."""
+    """Best-effort one-line gloss: the charter's What line first, else the
+    project's own design docs or _harness/PLAN.md — None if nothing found,
+    never an error."""
+    what = _charter_what(project_dir)
+    if what:
+        return what
     candidates: "list[Path]" = []
     harness = project_dir / "_harness"
     if harness.is_dir():
