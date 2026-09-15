@@ -53,11 +53,14 @@ vault is a *manual* verification scenario, not an automated (non-hermetic) case.
 from __future__ import annotations
 
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
+
+import agentm_isolation
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PLUGIN_GROUP = REPO_ROOT / "src" / "obsidian-vault"
@@ -96,23 +99,33 @@ _SKIP_REASON = (
 )
 
 if _AGENTM_AVAILABLE:
-    if str(_AGENTM_SCRIPTS) not in sys.path:
+    # The kernel's scripts/ goes on sys.path for these imports only. Left there, it
+    # shadows every later test module whose bare name agentm's scripts/ also carries
+    # (its test_recent_wiki_changes, for one), and discovery stops with an
+    # ImportError before any test runs. `_PluginBackendCase.setUpClass` puts it first
+    # again, through agentm_isolation, for as long as the classes run.
+    _inserted_agentm_path = str(_AGENTM_SCRIPTS) not in sys.path
+    if _inserted_agentm_path:
         sys.path.insert(0, str(_AGENTM_SCRIPTS))
-    # The kernel ships the contract + harness (`backend_selection`,
-    # `storage_conformance`) from _AGENTM_SCRIPTS. The vault backend itself is no
-    # longer a kernel built-in — V5-3 deleted it and re-homed it in THIS plugin
-    # (PLUGIN_SCRIPTS) — so it is loaded only through the engine resolver
-    # `backend_selection._load_vault_plugin_backend` (which execs the plugin in
-    # isolation and pops its self-registration), never by a global `import
-    # storage_vault`. No registry mutation happens at module load.
-    import backend_selection as _bs  # noqa: E402
-    import storage_conformance as _sc  # noqa: E402
-    from storage_conformance import ConformanceSuite, run_conformance  # noqa: E402
+    try:
+        # The kernel ships the contract + harness (`backend_selection`,
+        # `storage_conformance`) from _AGENTM_SCRIPTS. The vault backend itself is no
+        # longer a kernel built-in — V5-3 deleted it and re-homed it in THIS plugin
+        # (PLUGIN_SCRIPTS) — so it is loaded only through the engine resolver
+        # `backend_selection._load_vault_plugin_backend` (which execs the plugin in
+        # isolation and pops its self-registration), never by a global `import
+        # storage_vault`. No registry mutation happens at module load.
+        import backend_selection as _bs  # noqa: E402
+        import storage_conformance as _sc  # noqa: E402
+        from storage_conformance import ConformanceSuite, run_conformance  # noqa: E402
 
-    # The vault's distinguishing safety vocabulary — the CAS raise the byte-only
-    # universal suite never exercises. Single-sourced from its canonical home
-    # (vault_lock, an agentm kernel module the plugin also imports).
-    from vault_lock import ConcurrentModificationError  # noqa: E402
+        # The vault's distinguishing safety vocabulary — the CAS raise the byte-only
+        # universal suite never exercises. Single-sourced from its canonical home
+        # (vault_lock, an agentm kernel module the plugin also imports).
+        from vault_lock import ConcurrentModificationError  # noqa: E402
+    finally:
+        if _inserted_agentm_path and str(_AGENTM_SCRIPTS) in sys.path:
+            sys.path.remove(str(_AGENTM_SCRIPTS))
 else:  # pragma: no cover - exercised only on a clone-less host (e.g. crickets CI)
     # A distinct empty placeholder (NOT `object`) so the `(…, ConformanceSuite,
     # unittest.TestCase)` bases keep a consistent MRO — `object` would illegally
@@ -144,13 +157,16 @@ class _PluginBackendCase:
 
     @classmethod
     def setUpClass(cls) -> None:
+        # Until this class tears down, the kernel's bare sibling imports (here, in
+        # the suite's own setup, and lazily inside its modules) resolve to its scripts/.
+        agentm_isolation.isolate_agentm_imports(cls, _AGENTM_SCRIPTS)
         super().setUpClass()
         # The registry singleton is shared across the whole `discover` run; a sibling
         # module (the structural smoke) may leave a plugin class in the `vault` slot.
         # `_load_vault_plugin_backend` assumes the slot is empty at entry (post-V5-3
         # there is no kernel built-in), so clear it first — else the plugin's
         # import-time self-register would hit the duplicate guard.
-        import storage_seam  # noqa: E402  (path set at module load)
+        import storage_seam  # noqa: E402  (path set by isolate_agentm_imports)
 
         storage_seam.registry._backends.pop(PROTOCOL_NAME, None)
         # The engine's own discovery resolver loads the plugin backend (execs the
@@ -182,6 +198,30 @@ class _PluginBackendCase:
             root=base / "vault" / "projects" / "crickets",
             lock_root=base / "locks",
         )
+
+
+@unittest.skipUnless(_AGENTM_AVAILABLE, _SKIP_REASON)
+class ImportLeavesTheKernelOffSysPath(unittest.TestCase):
+    """Importing this module leaves no kernel scripts/ entry on sys.path. Left
+    there, it shadows every later test module whose bare name agentm's scripts/
+    also carries, and a full run's discovery stops before any test runs. The
+    import runs in a fresh interpreter, so no other test's sys.path changes count."""
+
+    def test_the_kernel_scripts_dir_is_off_sys_path_after_import(self):
+        probe = "\n".join([
+            "import sys",
+            "sys.path.insert(0, sys.argv[1])",
+            "before = list(sys.path)",
+            "import test_obsidian_vault_conformance as m",
+            "entry = str(m._AGENTM_SCRIPTS)",
+            "print(entry in sys.path and entry not in before)",
+        ])
+        result = subprocess.run(
+            [sys.executable, "-c", probe, str(Path(__file__).resolve().parent)],
+            capture_output=True, text=True, timeout=120,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip().splitlines()[-1], "False", result.stdout)
 
 
 @unittest.skipUnless(_AGENTM_AVAILABLE, _SKIP_REASON)
