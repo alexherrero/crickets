@@ -59,7 +59,7 @@ The [wiki](https://github.com/alexherrero/crickets/wiki) covers everything there
 - [Reference](https://github.com/alexherrero/crickets/wiki/Reference) — plugin anatomy, the manifest schema, and the install modes.
 
 > [!NOTE]
-> **Latest release: [v3.38.1](https://github.com/alexherrero/crickets/releases/tag/v3.38.1).** The project space resolves under either spelling of its root, lowercase first, so agentm's root casing can rename the vault without breaking a crickets command on either side; nothing in crickets writes to agentm's retired memory-space homes any more, and every bridge hands agentm its own modules for every call.
+> **Latest release: [v3.39.0](https://github.com/alexherrero/crickets/releases/tag/v3.39.0).** A plan now carries agentm's tracker, and every development-lifecycle phase command reads where the plan stands from it and keeps it current; the commands work in today's flat `_harness/` plans and in the numbered task directories agentm moves every project into next.
 
 ---
 

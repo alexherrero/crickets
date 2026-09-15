@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Minor: the commands write and read agentm's tracker
+## [v3.39.0] — 2026-09-15 — Minor: the commands write and read agentm's tracker
 
 **MINOR.** A plan written or worked after this release carries a tracker that says where it stands. Every phase command reads status from it before the plan's `**Status:**` line. `/plan` opens the tracker at `queued`, and `/work` keeps its State and Next current and writes the Outcome at close. `/review`, `/release` and `/bugfix` read its status, and `/orient` opens with agentm's brief and lists the project's plans through agentm. Only agentm's `tracker.py` writes a tracker: crickets reaches it through a new bridge verb and one helper, `plan_tracker.py`. The commands work in today's flat `_harness/` pairs and in the numbered task directories agentm's plan 10 moves every project into. On a project that keeps tasks, a bare call asks for or proposes a task name. This release needs agentm's tracker rewrite ([#646](https://github.com/alexherrero/agentm/pull/646)) and ships ahead of agentm-vault plan 10's move. development-lifecycle 0.48.0.
 
