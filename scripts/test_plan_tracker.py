@@ -445,10 +445,13 @@ class TestStatusLineMirror(_Vault, unittest.TestCase):
 
     def test_only_the_status_line_changes(self):
         plan, _tracker = self.layouts["task"]
+        # Pin LF: a text-mode fixture is CRLF on Windows (the next test covers CRLF).
+        plan.write_bytes(plan.read_bytes().replace(b"\r\n", b"\n"))
         before = plan.read_bytes()
+        expected = before.replace(b"**Status:** planning\n", b"**Status:** in-progress\n", 1)
+        self.assertNotEqual(expected, before)
         self.assertTrue(pt.mirror_status_line(plan, "active"))
-        self.assertEqual(plan.read_bytes(), before.replace(
-            b"**Status:** planning\n", b"**Status:** in-progress\n", 1))
+        self.assertEqual(plan.read_bytes(), expected)
 
     def test_windows_line_endings_survive(self):
         plan, _tracker = self.layouts["flat"]
