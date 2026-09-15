@@ -658,5 +658,10 @@ enhances:
 #          stop records its trigger. The recoverability block, in all three
 #          commands, says a flat plan's tracker stays in _harness/ at close
 #          and a task directory never moves. `step N` joins `task N`.
+#          Task 7: /release resolves its plan the way /work does and requires
+#          plan_tracker.py status to say done; /review reads the status, stops
+#          on queued when no scope is given, and logs it; /bugfix resolves its
+#          plan instead of naming .harness/PLAN.md, proposes a task name on
+#          exit 4, and asks before writing into a plan in flight.
 version: 0.48.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

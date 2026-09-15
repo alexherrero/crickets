@@ -250,6 +250,65 @@ class TestReviewSpec(_NamedPlanWriterContract, unittest.TestCase):
         self.assertIn("resolved `PLAN-<slug>.md`", self.text)
         self.assertIn("resolved `progress.md`", self.text)
 
+    def test_reads_the_status_and_stops_on_queued_without_scope(self):
+        # PLAN-tracker-commands task 7: with no explicit scope, a queued plan
+        # has nothing worked yet to review, and the log carries the status.
+        self.assertIn('python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" status', self.text)
+        self.assertIn("`queued` means nothing has been worked yet: say so and stop", self.text)
+        self.assertIn("(plan status: <status>)", self.text)
+
+    def test_a_bare_call_that_exits_4_asks_which_task(self):
+        self.assertIn("exits **4**", self.text)
+        self.assertIn("asks which task", self.text)
+
+
+class TestReleaseSpec(unittest.TestCase):
+    """`/release` resolves its plan the way `/work` does and requires the plan's
+    status to be `done` (PLAN-tracker-commands task 7)."""
+
+    @classmethod
+    def setUpClass(cls):
+        text = _read("release.md")
+        start = text.index("1. **Preconditions**")
+        cls.preconditions = text[start:text.index("\n2. ", start)]
+
+    def test_preconditions_resolve_the_plan_and_read_its_status(self):
+        self.assertIn("--name <name>", self.preconditions)
+        self.assertIn(_RESOLVE_PY, self.preconditions)
+        self.assertIn('python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" status',
+                      self.preconditions)
+        self.assertIn("every step is `[x]`", self.preconditions)
+
+    def test_a_bare_call_that_exits_4_asks_which_task(self):
+        self.assertIn("exits **4**", self.preconditions)
+        self.assertIn("asks which task", self.preconditions)
+
+
+class TestBugfixSpec(unittest.TestCase):
+    """`/bugfix` resolves its plan instead of naming `.harness/PLAN.md`
+    (PLAN-tracker-commands task 7)."""
+
+    @classmethod
+    def setUpClass(cls):
+        text = _read("bugfix.md")
+        start = text.index("### 1. Report")
+        cls.report = text[start:text.index("### 2. Analyze", start)]
+
+    def test_the_report_goes_in_the_resolved_plan(self):
+        self.assertIn(_RESOLVE_PY, self.report)
+        self.assertIn("in the resolved plan under `## Report`", self.report)
+        self.assertNotIn("`.harness/PLAN.md` under `## Report`", self.report)
+
+    def test_a_bare_call_that_exits_4_proposes_a_task_name(self):
+        self.assertIn("exits **4**", self.report)
+        self.assertIn("propose a verb-first task name", self.report)
+        self.assertIn("confirm it with the operator", self.report)
+
+    def test_asks_before_writing_into_a_plan_in_flight(self):
+        self.assertIn('python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" status', self.report)
+        self.assertIn("`queued`, `active` or `parked`", self.report)
+        self.assertIn("ask the operator", self.report)
+
 
 class TestQueueStatusLiteSpec(unittest.TestCase):
     """`/queue-status-lite` is the read-only read side of the multi-plan surface.

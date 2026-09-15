@@ -544,6 +544,30 @@ class TestDuplicateGuardStatus(_Vault, unittest.TestCase):
                 self.assertEqual(self.status(layout), "none\tnone\n")
 
 
+class TestReleasePreconditionStatus(_Vault, unittest.TestCase):
+    """/release's precondition (PLAN-tracker-commands task 7) is
+    `plan_tracker.py status` saying `done`: the tracker when there is one, the
+    Status line otherwise. Driven in all three layouts."""
+
+    def status(self, layout: str) -> str:
+        plan, tracker = self.layouts[layout]
+        return pt.plan_status(plan, str(tracker))[0]
+
+    def test_done_only_when_the_authority_says_done(self):
+        for layout in ("singleton", "flat", "task"):
+            plan, tracker = self.layouts[layout]
+            plan.write_text("# Plan: x\n\n**Status:** done\n", encoding="utf-8")
+            with self.subTest(layout=layout, case="a tracker at done"):
+                self.seed(tracker, "done", outcome="shipped")
+                self.assertEqual(self.status(layout), "done")
+            with self.subTest(layout=layout, case="a tracker at active beside a done Status line"):
+                self.seed(tracker, "active")
+                self.assertEqual(self.status(layout), "active")
+            tracker.unlink()
+            with self.subTest(layout=layout, case="a done Status line and no tracker"):
+                self.assertEqual(self.status(layout), "done")
+
+
 def _real_tracker() -> "Path | None":
     """agentm's own tracker.py in a checkout, or None: $AGENTM_SCRIPTS_DIR,
     else the conventional ~/Antigravity/agentm clone."""
