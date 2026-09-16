@@ -33,6 +33,8 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from unittest import mock
 
+import agentm_isolation
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PLUGIN_SCRIPTS = REPO_ROOT / "src" / "obsidian-vault" / "scripts"
 DOCTOR_SRC = PLUGIN_SCRIPTS / "doctor_vault.py"
@@ -59,6 +61,33 @@ def _locate_agentm_scripts() -> Path | None:
         return p if (p / "storage_seam.py").is_file() else None
     sibling = REPO_ROOT.parent / "agentm" / "scripts"
     return sibling if (sibling / "storage_seam.py").is_file() else None
+
+
+def _points_at(entry: str, target: Path) -> bool:
+    """True when this `sys.path` entry names `target`, under any spelling."""
+    try:
+        return bool(entry) and Path(entry).resolve() == target
+    except OSError:  # pragma: no cover - an unresolvable entry is not ours
+        return False
+
+
+def _strip_kernel_entries_added_since(kernel_scripts: Path, before: list[str]) -> None:
+    """Drop engine-`scripts/` entries that appeared on `sys.path` after `before`.
+
+    `doctor._kernel_on_path` puts the dir there itself, as a side effect of
+    running the checks — harmless in the one-shot CLI process the doctor ships
+    as, a leak in the unit suite's single process, where a stray entry shadows
+    every later test module whose bare name agentm's `scripts/` also carries (the
+    #254 failure). It inserts the dir exactly as spelled, which is not always the
+    resolved spelling `agentm_isolation` takes back, so match on the resolved dir
+    — but only for spellings this class is responsible for, so a leak from some
+    other module stays visible rather than being silently cleaned up here.
+    """
+    target = Path(kernel_scripts).resolve()
+    sys.path[:] = [
+        entry for entry in sys.path
+        if entry in before or not _points_at(entry, target)
+    ]
 
 
 doctor = _load_doctor()
@@ -286,8 +315,18 @@ class DoctorVaultWithEngine(unittest.TestCase):
                 "agentm kernel clone not found (set AGENTM_SCRIPTS or check out "
                 "../agentm) — doctor engine edge skipped to keep CI deterministic"
             )
-        if str(agentm_scripts) not in sys.path:
-            sys.path.insert(0, str(agentm_scripts))
+        # The kernel's scripts/ goes first on sys.path until this class has torn
+        # down, and comes back off in a class cleanup. Left there for the rest of
+        # the run, it shadows every later test module whose bare name agentm's
+        # scripts/ also carries — the leak that stopped a full local run at
+        # discovery in #254.
+        agentm_isolation.isolate_agentm_imports(cls, agentm_scripts)
+        # `diagnose` also puts the engine dir on `sys.path` itself, under whatever
+        # spelling it was handed — `agentm_isolation` takes back only its own
+        # (resolved) entry, so take back whatever this class adds on top of it.
+        cls.addClassCleanup(
+            _strip_kernel_entries_added_since, agentm_scripts, list(sys.path)
+        )
         # V5-3 deleted the kernel built-in; the vault backend is plugin-only, and the
         # doctor preview loads it through `_load_vault_plugin_backend(plugin_scripts=…)`
         # (never a pre-registered registry slot). Clear the shared `vault` slot so a

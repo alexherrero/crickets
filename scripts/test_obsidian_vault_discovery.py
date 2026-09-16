@@ -33,12 +33,13 @@ from __future__ import annotations
 import io
 import json
 import os
-import sys
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
+
+import agentm_isolation
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PLUGIN_GROUP = REPO_ROOT / "src" / "obsidian-vault"
@@ -88,15 +89,19 @@ class VaultPluginDiscoveryEdge(unittest.TestCase):
                 "agentm kernel clone not found (set AGENTM_SCRIPTS or check out "
                 "../agentm) — discovery edge skipped to keep CI deterministic"
             )
-        if str(agentm_scripts) not in sys.path:
-            sys.path.insert(0, str(agentm_scripts))
+        # The kernel's scripts/ goes first on sys.path until this class has torn
+        # down, and comes back off in a class cleanup. Left there for the rest of
+        # the run, it shadows every later test module whose bare name agentm's
+        # scripts/ also carries — the leak that stopped a full local run at
+        # discovery in #254.
+        agentm_isolation.isolate_agentm_imports(cls, agentm_scripts)
         # V5-3 deleted the kernel built-in vault backend — the vault backend now
         # lives only in this plugin, discovered on demand by the engine resolver
         # (`backend_selection._load_vault_plugin_backend`). The shared `vault`
         # registry slot is therefore empty in production; clear it here so a sibling
         # plugin-test loader can't leave a stale class in it and skew the
         # leaves-unmutated assertion below.
-        import storage_seam  # noqa: E402  (only importable once path is set)
+        import storage_seam  # noqa: E402  (importable — the path is set above)
 
         storage_seam.registry._backends.pop(PROTOCOL_NAME, None)
         import backend_selection  # noqa: E402
@@ -175,8 +180,12 @@ class FirstRunAdoptionEdge(unittest.TestCase):
                 "agentm kernel clone not found (set AGENTM_SCRIPTS or check out "
                 "../agentm) — adoption edge skipped to keep CI deterministic"
             )
-        if str(agentm_scripts) not in sys.path:
-            sys.path.insert(0, str(agentm_scripts))
+        # The kernel's scripts/ goes first on sys.path until this class has torn
+        # down, and comes back off in a class cleanup. Left there for the rest of
+        # the run, it shadows every later test module whose bare name agentm's
+        # scripts/ also carries — the leak that stopped a full local run at
+        # discovery in #254.
+        agentm_isolation.isolate_agentm_imports(cls, agentm_scripts)
         # V5-3 deleted the kernel built-in; the vault backend is plugin-only,
         # discovered by `select_backend` via `_load_vault_plugin_backend`. Clear the
         # shared `vault` slot so a sibling loader can't leave a stale class in it.

@@ -11,8 +11,10 @@ re-pointed at the plugin module.
 `vault_conflicts.py` imports the pure filename classifier `_conflict_family` from
 the present engine (LC-3 — it stays kernel-side, shared with
 `queue_status_lite.py`). So this test locates the sibling agentm clone, puts its
-`scripts/` on `sys.path` so that import resolves, and **graceful-skips** when no
-clone is reachable (e.g. crickets CI in isolation) to keep the gate deterministic.
+`scripts/` first on `sys.path` for as long as its class runs so that import
+resolves (through `agentm_isolation`, which takes the entry back off in a class
+cleanup), and **graceful-skips** when no clone is reachable (e.g. crickets CI in
+isolation) to keep the gate deterministic.
 The classifier itself stays tested kernel-side; here we exercise the three moved
 functions end to end.
 """
@@ -20,11 +22,12 @@ from __future__ import annotations
 
 import importlib.util
 import os
-import sys
 import tempfile
 import unittest
 import unittest.mock as _mock
 from pathlib import Path
+
+import agentm_isolation
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PLUGIN_CONFLICTS = REPO_ROOT / "src" / "obsidian-vault" / "scripts" / "vault_conflicts.py"
@@ -45,15 +48,14 @@ def _locate_agentm_scripts() -> Path | None:
     return sibling if (sibling / "harness_memory.py").is_file() else None
 
 
-def _load_plugin_conflicts(agentm_scripts: Path):
+def _load_plugin_conflicts():
     """Import the plugin's vault_conflicts.py by path, under a present engine.
 
-    Puts the agentm `scripts/` on `sys.path` (so the module's
-    `from harness_memory import _conflict_family` resolves), then loads the file
-    under a unique module name (avoiding any clash with the kernel module).
+    The caller has already put the agentm `scripts/` first on `sys.path` for the
+    life of its class (`setUpClass`, through `agentm_isolation`), so the module's
+    `from harness_memory import _conflict_family` resolves. Loads the file under
+    a unique module name (avoiding any clash with the kernel module).
     """
-    if str(agentm_scripts) not in sys.path:
-        sys.path.insert(0, str(agentm_scripts))
     spec = importlib.util.spec_from_file_location(
         "obsidian_vault_vault_conflicts", PLUGIN_CONFLICTS
     )
@@ -74,7 +76,13 @@ class TestDetectConflictFiles(unittest.TestCase):
                 "agentm kernel clone not found (set AGENTM_SCRIPTS or check out "
                 "../agentm) — vault_conflicts import skipped to keep CI deterministic"
             )
-        cls.vc = _load_plugin_conflicts(agentm_scripts)
+        # The kernel's scripts/ goes first on sys.path until this class has torn
+        # down, and comes back off in a class cleanup. Left there for the rest of
+        # the run, it shadows every later test module whose bare name agentm's
+        # scripts/ also carries — the leak that stopped a full local run at
+        # discovery in #254.
+        agentm_isolation.isolate_agentm_imports(cls, agentm_scripts)
+        cls.vc = _load_plugin_conflicts()
 
     # ── base set (was kernel TestDetectConflictFiles) ──────────────────────
     def test_returns_empty_when_no_conflicts(self) -> None:
