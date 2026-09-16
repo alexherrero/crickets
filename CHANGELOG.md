@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Internal
+
+- `scripts/test_obsidian_vault_{backend,conflicts,discovery,doctor}.py`: each one now puts agentm's `scripts/` first on `sys.path` in `setUpClass` through `agentm_isolation`, which takes it back in a class cleanup, instead of inserting it for the rest of the run. The unit suite is one process, so an entry left behind shadows every later test module whose bare name agentm's `scripts/` also carries — the leak that, at import time in the conformance suite, stopped a full local run at discovery before any test ran ([#254](https://github.com/alexherrero/crickets/pull/254)). The doctor suite also takes back what `doctor_vault._kernel_on_path` adds while the checks run, under whatever spelling it was handed.
+- `scripts/test_obsidian_vault_sys_path.py` (new): pins the run-time half of that hygiene the way `ImportLeavesTheKernelOffSysPath` pins the import-time half — runs the four suites in a fresh interpreter and asserts agentm's `scripts/` is off `sys.path` after **each** one (a later suite tidying up must not cover for an earlier one's leak), and that each suite really ran rather than skipping. Joins the conformance trio in the `obsidian-vault-conformance` job on both CI OSes.
+
 ## [v3.39.0] — 2026-09-15 — Minor: the commands write and read agentm's tracker
 
 **MINOR.** A plan written or worked after this release carries a tracker that says where it stands. Every phase command reads status from it before the plan's `**Status:**` line. `/plan` opens the tracker at `queued`, and `/work` keeps its State and Next current and writes the Outcome at close. `/review`, `/release` and `/bugfix` read its status, and `/orient` opens with agentm's brief and lists the project's plans through agentm. Only agentm's `tracker.py` writes a tracker: crickets reaches it through a new bridge verb and one helper, `plan_tracker.py`. The commands work in today's flat `_harness/` pairs and in the numbered task directories agentm's plan 10 moves every project into. On a project that keeps tasks, a bare call asks for or proposes a task name. This release needs agentm's tracker rewrite ([#646](https://github.com/alexherrero/agentm/pull/646)) and ships ahead of agentm-vault plan 10's move. development-lifecycle 0.48.0.

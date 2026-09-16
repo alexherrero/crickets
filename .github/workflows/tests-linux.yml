@@ -248,12 +248,12 @@ jobs:
           python-version: '3.11'
       - name: Install Python deps
         run: pip install pyyaml
-      - name: obsidian-vault backend conformance + discovery + doctor (against the real kernel)
+      - name: obsidian-vault backend conformance + discovery + doctor + sys.path hygiene (against the real kernel)
         # AGENTM_SCRIPTS points each suite's `_locate_agentm_scripts()` at the kernel
         # `scripts/` — without it they skip (the CI-deterministic clone-absent path).
         env:
           AGENTM_SCRIPTS: ${{ github.workspace }}/_agentm/scripts
-        run: cd scripts && python3 -m unittest test_obsidian_vault_conformance test_obsidian_vault_discovery test_obsidian_vault_doctor
+        run: cd scripts && python3 -m unittest test_obsidian_vault_conformance test_obsidian_vault_discovery test_obsidian_vault_doctor test_obsidian_vault_sys_path
       - name: check-no-pii.sh / check-wiki.py detection contracts stay in sync with agentm (check-cross-repo-script-parity, report-only)
         # CONS-2 task 4 — with the kernel sibling already checked out above for the
         # obsidian-vault suites, this is the one job where the check can actually

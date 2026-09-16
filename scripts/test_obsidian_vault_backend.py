@@ -11,18 +11,20 @@ in task 5.
 
 The backend imports `storage_seam` and `vault_lock` from the agentm kernel — the
 plugin only ever runs under a present engine (LC-3). So this test locates the
-sibling agentm clone and puts its `scripts/` on `sys.path`; when no clone is
-found (e.g. crickets CI in isolation) it **graceful-skips** so the deterministic
-gate stays deterministic.
+sibling agentm clone and puts its `scripts/` first on `sys.path` for as long as
+its class runs (through `agentm_isolation`, which takes the entry back off in a
+class cleanup); when no clone is found (e.g. crickets CI in isolation) it
+**graceful-skips** so the deterministic gate stays deterministic.
 """
 from __future__ import annotations
 
 import importlib.util
 import os
-import sys
 import tempfile
 import unittest
 from pathlib import Path
+
+import agentm_isolation
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PLUGIN_BACKEND = REPO_ROOT / "src" / "obsidian-vault" / "scripts" / "storage_vault.py"
@@ -46,18 +48,17 @@ def _locate_agentm_scripts() -> Path | None:
     return sibling if (sibling / "storage_seam.py").is_file() else None
 
 
-def _load_plugin_backend(agentm_scripts: Path):
+def _load_plugin_backend():
     """Import the plugin's storage_vault.py by path, under a present engine.
 
-    Puts the agentm `scripts/` on `sys.path` (so the module's `from storage_seam`
-    / `from vault_lock` imports resolve), clears any pre-existing `vault`
-    registration so the module's import-time self-register can't collide, then
-    loads the file under a unique module name (avoiding the name clash with the
-    kernel's own `storage_vault`).
+    The caller has already put the agentm `scripts/` first on `sys.path` for the
+    life of its class (`setUpClass`, through `agentm_isolation`), so the module's
+    `from storage_seam` / `from vault_lock` imports resolve. Clears any
+    pre-existing `vault` registration so the module's import-time self-register
+    can't collide, then loads the file under a unique module name (avoiding the
+    name clash with the kernel's own `storage_vault`).
     """
-    if str(agentm_scripts) not in sys.path:
-        sys.path.insert(0, str(agentm_scripts))
-    import storage_seam  # noqa: E402  (only importable once the path is set)
+    import storage_seam  # noqa: E402  (importable — setUpClass set the path)
 
     # A fresh slot for the import-time `registry.register("vault", ...)` — the
     # default registry refuses a silent duplicate (ProtocolError) otherwise.
@@ -86,7 +87,13 @@ class ObsidianVaultBackendStructure(unittest.TestCase):
                 "agentm kernel clone not found (set AGENTM_SCRIPTS or check out "
                 "../agentm) — structural import skipped to keep CI deterministic"
             )
-        cls.module, cls.seam = _load_plugin_backend(agentm_scripts)
+        # The kernel's scripts/ goes first on sys.path until this class has torn
+        # down, and comes back off in a class cleanup. Left there for the rest of
+        # the run, it shadows every later test module whose bare name agentm's
+        # scripts/ also carries — the leak that stopped a full local run at
+        # discovery in #254.
+        agentm_isolation.isolate_agentm_imports(cls, agentm_scripts)
+        cls.module, cls.seam = _load_plugin_backend()
         cls.Backend = cls.module.VaultBackend
 
     def test_protocol_name_is_vault(self) -> None:
