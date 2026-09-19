@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `tokens` 0.7.0 — `/handoff-pack` is now **`/handoff`**, and it hands each downstream step to a fresh session instead of leaving that to the operator. Where the host exposes a background-task chip surface (`mcp__ccd_session__spawn_task`, Claude Code's desktop app), the command spawns one chip per prompt in the manifest, so starting a handed-off step costs a click rather than opening a session and pasting into it. A host without that surface skips the step silently; `PROMPTS.md` is unchanged and remains the fallback everywhere. A chip carries no `model`/`effort` parameter, so each entry's label is also written into the chip's prompt body as a plain line and the close-out names the chips whose model needs switching on open — `prompts.json` stays the machine-readable source. Each chip's prompt carries agentm's handoff marker for the same reason `PROMPTS.md` does: a chip's prompt lands as the new session's first *user* turn, so without it the reflect miner would mine agent-authored text as the operator's own words.
+- `development-lifecycle` 0.48.1 — `work.md`'s escalation-tripwire paragraph and `escalation_tripwire.py`'s docstring name the renamed `/handoff` (and `tokens`, not the long-retired `token-audit`).
+
 ### Internal
 
 - `scripts/test_obsidian_vault_{backend,conflicts,discovery,doctor}.py`: each one now puts agentm's `scripts/` first on `sys.path` in `setUpClass` through `agentm_isolation`, which takes it back in a class cleanup, instead of inserting it for the rest of the run. The unit suite is one process, so an entry left behind shadows every later test module whose bare name agentm's `scripts/` also carries — the leak that, at import time in the conformance suite, stopped a full local run at discovery before any test ran ([#254](https://github.com/alexherrero/crickets/pull/254)). The doctor suite also takes back what `doctor_vault._kernel_on_path` adds while the checks run, under whatever spelling it was handed.

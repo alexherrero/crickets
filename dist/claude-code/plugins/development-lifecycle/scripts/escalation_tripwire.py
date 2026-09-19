@@ -3,7 +3,7 @@
 
 A counter on the existing per-task verification-gate loop: `FIRE_THRESHOLD`
 (3) consecutive failures on the SAME gate for the SAME task fires the
-tripwire — writes a handoff-pack escalation entry (token-audit's
+tripwire — writes a /handoff escalation entry (tokens'
 `handoff_pack.py`, capability-gated) and returns a loud stop signal. The
 tripwire NEVER attempts to change the session's own model; it hands off to
 a human or a fresh session instead — `FIRE_THRESHOLD` is a prior, not a

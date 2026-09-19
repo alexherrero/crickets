@@ -670,5 +670,8 @@ enhances:
 #          status. Without agentm the _harness/ read stays. --note never
 #          creates a harness directory. resolve_project.py reads the charter's
 #          What line (charter.md, else _index.md) before a plan's Brief line.
-version: 0.48.0
+# 0.48.1 = tokens' /handoff-pack renamed to /handoff (tokens 0.7.0):
+#          work.md's escalation-tripwire paragraph and
+#          escalation_tripwire.py's docstring name the live command.
+version: 0.48.1
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]
