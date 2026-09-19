@@ -179,7 +179,7 @@ Run in order, short-circuit on failure: **typecheck → lint → tests → build
 
 Feed the **full error output** into the next pass (don't summarize). If a test is itself wrong, **stop** — do not edit or delete it to go green; surface the defect and ask.
 
-**Escalation tripwire.** Track consecutive failures on this step's current gate with `escalation_tripwire.py`'s `FailureCounter` (reset on a green pass, `record_failure()` on each red one). After each failure, call `check_and_maybe_fire()` — on the 3rd consecutive failure it writes a `/handoff-pack`-shaped escalation entry (packed context + a tier-labeled prompt, same machine-readable label format that command emits) to a vault escalation directory and returns a loud `ESCALATION:` announcement. Print it and **stop the session** — never attempt a 4th pass, and never change the session's own model to try to push through (the tripwire hands off; it does not self-escalate).
+**Escalation tripwire.** Track consecutive failures on this step's current gate with `escalation_tripwire.py`'s `FailureCounter` (reset on a green pass, `record_failure()` on each red one). After each failure, call `check_and_maybe_fire()` — on the 3rd consecutive failure it writes a `/handoff`-shaped escalation entry (packed context + a tier-labeled prompt, same machine-readable label format that command emits) to a vault escalation directory and returns a loud `ESCALATION:` announcement. Print it and **stop the session** — never attempt a 4th pass, and never change the session's own model to try to push through (the tripwire hands off; it does not self-escalate).
 
 ### 7. Update state
 

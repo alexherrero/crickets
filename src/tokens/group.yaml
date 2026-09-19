@@ -122,6 +122,19 @@ standalone: true
 #          resolves. Complements, not duplicates, the capabilities:
 #          dual-declaration above (composition-layer soft-aliasing) --
 #          renamed_from: is the host-marketplace plugin-name rename.
-version: 0.6.2
+# 0.7.0 = /handoff-pack renames to /handoff (the operator types it; the
+#          longer name bought nothing) and gains a chip step: where the host
+#          exposes mcp__ccd_session__spawn_task, every prompt in the manifest
+#          is also offered as a one-click background-task chip, so a handoff
+#          no longer costs the operator an open-a-session-and-paste. Skipped
+#          silently where no chip surface exists; PROMPTS.md is unchanged and
+#          remains the fallback. A chip carries no model/effort parameter, so
+#          the entry's label is written into the prompt body as a plain line
+#          and the close-out names the chips needing a switch on open --
+#          prompts.json stays the machine-readable source. handoff_pack.py
+#          and build_handoff_pack() keep their names: agentm's
+#          control_plane/handoff.py loads that module by filename and
+#          degrades silently when it is absent.
+version: 0.7.0
 capabilities: [status-line-meter, token-audit, tokens]
 renamed_from: [status-line-meter, token-audit]
