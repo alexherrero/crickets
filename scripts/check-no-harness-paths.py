@@ -62,7 +62,6 @@ _T100 = "100-retire-harness-in-the-other-plugins"
 # Files that still name `_harness`, each with the landing that clears it.
 EXEMPT: dict[str, str] = {
     # task 100 — the other plugins
-    "src/code-review/hooks/evidence-tracker/evidence_tracker.py": f"{_T100} step 3",
     "src/github-projects/scripts/depth_maintain.py": f"{_T100} step 4",
     "src/github-projects/scripts/planner_maintain.py": f"{_T100} step 4",
     "src/github-projects/scripts/project_schema.json": f"{_T100} step 4",

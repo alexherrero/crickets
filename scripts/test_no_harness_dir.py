@@ -8,6 +8,7 @@ agentm names gains a case here.
 """
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 import unittest
@@ -60,6 +61,30 @@ class TheFixture(unittest.TestCase):
                                 "project-path", "desk"], capture_output=True, text=True)
             self.assertEqual(r.returncode, 1)
             self.assertEqual(r.stdout, "")
+
+
+class Writers(unittest.TestCase):
+    """One case per writer a step moved onto a home agentm names."""
+
+    def run_py(self, sp, script: Path, args, stdin: str = "") -> subprocess.CompletedProcess:
+        env = sp.env()
+        env["HOME"] = str(sp.root / "home")
+        return subprocess.run([sys.executable, str(script), *args], input=stdin,
+                              capture_output=True, text=True, env=env)
+
+    def test_the_evidence_tracker(self):
+        """code-review (step 3): a Read, a blocked flip in a task's plan.md, a reset."""
+        hook = HERE.parent / "src" / "code-review" / "hooks" / "evidence-tracker" / "evidence_tracker.py"
+        with nhf.ScratchProject() as sp:
+            root = ["--project-root", str(sp.repo)]
+            read = json.dumps({"tool_name": "Read", "tool_input": {"file_path": str(sp.plan)}})
+            flip = json.dumps({"tool_name": "Edit", "tool_input": {
+                "file_path": str(sp.plan), "old_string": "- **Status:** [ ]",
+                "new_string": "- **Status:** [x]"}})
+            self.assertEqual(self.run_py(sp, hook, ["--mode", "check", *root], read).returncode, 0)
+            self.assertEqual(self.run_py(sp, hook, ["--mode", "check", *root], flip).returncode, 2)
+            self.assertEqual(self.run_py(sp, hook, ["--mode", "reset", *root]).returncode, 0)
+            self.assertEqual(nhf.harness_dirs(sp.root), [])
 
 
 if __name__ == "__main__":
