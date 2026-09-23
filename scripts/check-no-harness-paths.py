@@ -72,17 +72,12 @@ EXEMPT: dict[str, str] = {
     "src/development-lifecycle/scripts/check-plan-grounding.py": _T101,
     "src/development-lifecycle/scripts/orient_render.py": _T101,
     "src/development-lifecycle/scripts/plan_tracker.py": _T101,
-    "src/development-lifecycle/scripts/resolve_plan.py": _T101,
     "src/development-lifecycle/scripts/resolve_project.py": _T101,
-    "src/development-lifecycle/scripts/stage_plan.py": _T101,
     "scripts/test_agentm_bridge_plans.py": _T101,
     "scripts/test_developer_workflows_specs.py": _T101,
-    "scripts/test_find_process_seam.py": _T101,
     "scripts/test_orient_render.py": _T101,
     "scripts/test_plan_tracker.py": _T101,
-    "scripts/test_resolve_plan.py": _T101,
     "scripts/test_resolve_project.py": _T101,
-    "scripts/test_stage_plan.py": _T101,
 }
 
 

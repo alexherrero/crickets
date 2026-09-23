@@ -677,6 +677,11 @@ enhances:
 #          queue_status.py is a pure bridge to agentm's queue_status_lite.py
 #          (the standalone .harness/ enumeration and --harness-dir are gone;
 #          no agentm prints one line, exit 0); harness_root_drift.py, which
-#          nothing called, is deleted with its test.
+#          nothing called, is deleted with its test. resolve_plan.py
+#          answers only from agentm's seam: the standalone .harness/ pair, the
+#          vault-reachability probe, _plan_pair and locate_resolver are gone,
+#          and no seam is exit 1 (no plan). stage_plan.py stages only a task:
+#          queued-plans/ and the flat guarded copy are gone, and a flat answer
+#          from agentm (a repo with no vault) is refused, exit 2.
 version: 0.49.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

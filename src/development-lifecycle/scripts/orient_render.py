@@ -52,7 +52,8 @@ import sys  # noqa: E402
 if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 
-from stage_plan import _QUEUED_DIR  # noqa: E402
+# The retired flat staging tier; step 6 of task 101 drops the listing that reads it.
+_QUEUED_DIR = "queued-plans"
 
 
 # Moved here from queue_status.py when it became a pure bridge to agentm's
