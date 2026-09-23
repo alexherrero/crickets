@@ -9,8 +9,7 @@ in for agentm's process seam (`resolver=<stub path>`), answering `state-path
 plan`, `progress` and `tracker` one path per call — and three layouts: the
 singleton (refused), a flat named plan, and a numbered task
 (`tasks/042-build-the-brief/`). Tracker reads and moves go through a stub
-tracker.py under $AGENTM_SCRIPTS_DIR. The activate guards and the "staged =
-inactive" invariant (against the real `queue_status._list_plan_files`) run over
+tracker.py under $AGENTM_SCRIPTS_DIR. The activate guards run over
 throwaway tmp dirs. No test reaches a real seam except the real-bridge class,
 which runs against a scratch vault and skips when no agentm checkout is found.
 """
@@ -43,7 +42,6 @@ def _load(name: str):
 
 
 sp = _load("stage_plan")
-qs = _load("queue_status")
 
 
 def _write_stub(path: Path, body: str) -> Path:
@@ -388,32 +386,10 @@ class TestActivatePreflightReconcile(unittest.TestCase):
         self.assertEqual(self.active.read_text(encoding="utf-8"), "ACTIVE-IN-FLIGHT\n")
 
 
-class TestStagedIsInactive(unittest.TestCase):
-    """The load-bearing invariant: a staged plan is invisible to the queue reader."""
-
-    def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp(prefix="sp-inactive-"))
-        self.harness = self.tmp / ".harness"
-        (self.harness / "queued-plans").mkdir(parents=True, exist_ok=True)
-
-    def tearDown(self):
-        shutil.rmtree(self.tmp, ignore_errors=True)
-
-    def test_queue_status_does_not_list_staged_plans(self):
-        # An active singleton + an active named plan ARE listed; a staged plan in
-        # the queued-plans/ subdir is NOT (the reader's PLAN-*.md glob is
-        # non-recursive, so the subdir is skipped — staged == inactive).
-        (self.harness / "PLAN.md").write_text("**Status:** in-progress\n", encoding="utf-8")
-        (self.harness / "PLAN-active.md").write_text("**Status:** planning\n", encoding="utf-8")
-        staged = self.harness / "queued-plans" / "PLAN-staged.md"
-        staged.write_text("**Status:** planning\n", encoding="utf-8")
-
-        listed = qs._list_plan_files(self.harness)
-        names = {p.name for p in listed}
-        self.assertIn("PLAN.md", names)
-        self.assertIn("PLAN-active.md", names)
-        self.assertNotIn("PLAN-staged.md", names)
-        self.assertNotIn(staged, listed)
+# TestStagedIsInactive retired with task 101 step 1: it proved a flat plan staged
+# in queued-plans/ was invisible to queue_status.py's own lister. That lister is
+# gone (agentm's reader lists plans, and a staged task is inert by its queued
+# tracker), and step 2 retires flat staging itself.
 
 
 class TestMainCLI(unittest.TestCase):

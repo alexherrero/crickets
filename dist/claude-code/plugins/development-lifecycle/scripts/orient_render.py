@@ -52,10 +52,32 @@ import sys  # noqa: E402
 if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 
-# One owner of plan-file discovery + Status: extraction: the sibling bridge
-# (same import contract queue_status.py itself uses for resolve_plan.py).
-from queue_status import _extract_status, _list_plan_files  # noqa: E402
 from stage_plan import _QUEUED_DIR  # noqa: E402
+
+
+# Moved here from queue_status.py when it became a pure bridge to agentm's
+# reader (task 101 step 1); this module was their only other user. Steps 6 and 8
+# retire the directory read and the Status-line fallback that call them.
+def _extract_status(plan_text: str) -> str:
+    """The value of the first `Status:` line (markdown-bold tolerated), or "—"."""
+    for line in plan_text.splitlines():
+        stripped = line.strip().lstrip("*").strip()
+        if stripped.lower().startswith("status:"):
+            value = stripped[len("status:"):].strip().strip("*").strip()
+            return value or "—"
+    return "—"
+
+
+def _list_plan_files(harness_dir: Path) -> "list[Path]":
+    """Active plan files: the singleton `PLAN.md` plus each `PLAN-<name>.md`."""
+    files: "list[Path]" = []
+    singleton = harness_dir / "PLAN.md"
+    if singleton.is_file():
+        files.append(singleton)
+    named = [p for p in harness_dir.glob("PLAN-*.md")
+             if p.is_file() and "(conflicted copy" not in p.name]
+    files.extend(sorted(named, key=lambda p: p.name))
+    return files
 
 
 def _load_sibling(name: str):

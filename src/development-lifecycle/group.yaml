@@ -673,5 +673,10 @@ enhances:
 # 0.48.1 = tokens' /handoff-pack renamed to /handoff (tokens 0.7.0):
 #          work.md's escalation-tripwire paragraph and
 #          escalation_tripwire.py's docstring name the live command.
-version: 0.48.1
+# 0.49.0 = agentm-vault part 15, crickets task 101-retire-the-flat-plan-layout:
+#          queue_status.py is a pure bridge to agentm's queue_status_lite.py
+#          (the standalone .harness/ enumeration and --harness-dir are gone;
+#          no agentm prints one line, exit 0); harness_root_drift.py, which
+#          nothing called, is deleted with its test.
+version: 0.49.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]
