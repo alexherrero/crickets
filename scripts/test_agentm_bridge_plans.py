@@ -7,12 +7,14 @@ task 1).
 list-plans`, then resolves each with `resolve-active-plan --with-tracker --plan
 <name>`, and pairs every plan with the progress log and tracker agentm names
 for it. The name is the file name for a flat plan and the directory's name for
-a task, so these tests cover the singleton, a flat named pair and a numbered
-task (`tasks/042-build-the-brief/`) in one project.
+a task, so these tests cover a repo-local singleton and flat named pair (what
+agentm keeps for a repo with no vault) and a numbered task
+(`tasks/042-build-the-brief/`). `--project SLUG` asks the same verbs about a
+project with no checkout (crickets task 101, ruling 9).
 
 A stub harness_memory.py plays agentm. It reads the listing and the resolver's
-answers from a fixture.json in the project root it is handed, and logs every
-argv to calls.jsonl beside it. $AGENTM_SCRIPTS_DIR points at the stub and
+answers from a fixture.json in the project root it is handed ($STUB_FIXTURE_DIR
+for a slug), and logs every argv to calls.jsonl beside it. $AGENTM_SCRIPTS_DIR points at the stub and
 Path.home() at an empty directory, so no real agentm is reached.
 """
 from __future__ import annotations
@@ -45,10 +47,13 @@ def _load():
 ab = _load()
 
 _STUB_HARNESS_MEMORY = r'''#!/usr/bin/env python3
-import json, sys
+import json, os, sys
 from pathlib import Path
 argv = sys.argv[1:]
-root = Path(argv[argv.index("--project-root") + 1])
+if "--project-root" in argv:
+    root = Path(argv[argv.index("--project-root") + 1])
+else:
+    root = Path(os.environ["STUB_FIXTURE_DIR"])
 fixture = json.loads((root / "fixture.json").read_text(encoding="utf-8"))
 with (root / "calls.jsonl").open("a", encoding="utf-8") as log:
     log.write(json.dumps(argv) + "\n")
@@ -57,6 +62,9 @@ if argv[0] == "list-plans":
         print(line)
     sys.exit(fixture.get("list_exit", 0))
 if argv[0] == "resolve-active-plan":
+    if "--project" in argv and not fixture.get("resolve_by_slug", True):
+        sys.stderr.write("harness_memory: error: unrecognized arguments: --project probe\n")
+        sys.exit(2)
     if "--with-tracker" in argv and not fixture.get("with_tracker", True):
         sys.stderr.write("harness_memory: error: unrecognized arguments: --with-tracker\n")
         sys.exit(2)
@@ -71,9 +79,9 @@ sys.exit(2)
 
 
 class _Project:
-    """One vault project holding the singleton, `PLAN-foo.md` and the numbered
-    task `042-build-the-brief`, a repo root for agentm to be asked about, and a
-    stub harness_memory.py answering for them."""
+    """A repo-local singleton and `PLAN-foo.md`, the numbered task
+    `042-build-the-brief` in a vault project, a repo root for agentm to be asked
+    about, and a stub harness_memory.py answering for them."""
 
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="bridge-plans-"))
@@ -84,7 +92,8 @@ class _Project:
         home = self.tmp / "home"
         home.mkdir()
         for patcher in (
-            mock.patch.dict(os.environ, {"AGENTM_SCRIPTS_DIR": str(scripts)}),
+            mock.patch.dict(os.environ, {"AGENTM_SCRIPTS_DIR": str(scripts),
+                                         "STUB_FIXTURE_DIR": str(self.tmp / "repo")}),
             mock.patch.object(ab.Path, "home", return_value=home),
         ):
             patcher.start()
@@ -93,7 +102,7 @@ class _Project:
         self.root = self.tmp / "repo"
         self.root.mkdir()
         project = self.tmp / "vault" / "projects" / "probe"
-        harness = project / "_harness"
+        harness = self.root / ".harness"
         task = project / "tasks" / "042-build-the-brief"
         self.singleton = (str(harness / "PLAN.md"), str(harness / "progress.md"),
                           str(harness / "tracker.md"))
@@ -187,6 +196,23 @@ class TestRunListPlans(_Project, unittest.TestCase):
                          (3, []))
 
 
+class TestRunListPlansBySlug(_Project, unittest.TestCase):
+    """A project with no checkout, named by slug (ruling 9)."""
+
+    def test_lists_and_resolves_by_slug(self):
+        self.write_fixture(listed=[self.task[0]])
+        self.assertEqual(ab.run_list_plans(project="probe"), (0, [self.task]))
+        calls = self.calls()
+        self.assertEqual(calls[0], ["list-plans", "--project", "probe"])
+        self.assertEqual(calls[1][calls[1].index("--project") + 1], "probe")
+        self.assertNotIn("--project-root", calls[1])
+        self.assertIn("--with-tracker", calls[1])
+
+    def test_an_agentm_without_resolve_by_slug_gives_partial_rows(self):
+        self.write_fixture(listed=[self.task[0]], resolve_by_slug=False)
+        self.assertEqual(ab.run_list_plans(project="probe"), (0, [(self.task[0], "", "")]))
+
+
 class TestPlansVerb(_Project, unittest.TestCase):
 
     def test_registered_in_the_dispatcher(self):
@@ -213,6 +239,15 @@ class TestPlansVerb(_Project, unittest.TestCase):
         with mock.patch.dict(os.environ, {"AGENTM_SCRIPTS_DIR": ""}):
             code, out, _err = self.main("plans", "--project-root", str(self.root))
         self.assertEqual((code, out), (3, ""))
+
+    def test_prints_the_rows_of_a_project_named_by_slug(self):
+        self.write_fixture(listed=[self.task[0]])
+        code, out, _err = self.main("plans", "--project", "probe")
+        self.assertEqual((code, out.splitlines()), (0, ["\t".join(self.task)]))
+
+    def test_project_and_project_root_together_are_a_usage_error(self):
+        code, out, _err = self.main("plans", "--project", "probe", "--project-root", str(self.root))
+        self.assertEqual((code, out), (2, ""))
 
     def test_an_unknown_flag_is_a_usage_error(self):
         code, out, _err = self.main("plans", "--root", str(self.root))

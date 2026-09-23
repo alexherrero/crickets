@@ -2,10 +2,11 @@
 """Tests for src/development-lifecycle/scripts/orient_render.py — the ORIENT
 renderer for `/open` / `/orient` (PLAN-open-a-project-by-name tasks 3 + 5).
 
-Composes queue_status.py's existing plan-file discovery + Status: extraction
-(imported, not re-derived) and stage_plan.py's `_QUEUED_DIR` constant. Every
-test builds a throwaway fixture `_harness/` tree — no dependency on a real
-agentm install or a real vault.
+Every plan comes from agentm (crickets task 101): the unit tests patch the
+bridge's answers, and `TestInTheScratchVault` runs the real bridge against
+`no_harness_fixture`'s stub agentm — a repo-bound project and one named by slug
+alone. No test builds the retired harness directory, and none reaches a real
+agentm or vault.
 """
 from __future__ import annotations
 
@@ -36,6 +37,10 @@ if str(_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS_DIR))
 
 orr = _load("orient_render", "orient_render.py")
+
+if str(_HERE) not in sys.path:
+    sys.path.insert(0, str(_HERE))
+import no_harness_fixture as nhf  # noqa: E402
 
 
 _PLAN_TEXT = """---
@@ -94,198 +99,90 @@ class TestProgressTail(unittest.TestCase):
         self.assertTrue(tail[0].endswith("…"))
 
 
-class TestRenderPlanStatus(unittest.TestCase):
-    def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp(prefix="orient-plan-status-"))
-
-    def tearDown(self):
-        shutil.rmtree(self.tmp, ignore_errors=True)
-
-    def test_no_plans_returns_empty(self):
-        self.assertEqual(orr.render_plan_status(self.tmp), [])
-
-    def test_singleton_plan_renders_status_and_checklist(self):
-        (self.tmp / "PLAN.md").write_text(_PLAN_TEXT, encoding="utf-8")
-        blocks = orr.render_plan_status(self.tmp)
-        self.assertEqual(len(blocks), 1)
-        self.assertIn("PLAN.md [in-progress]", blocks[0])
-        self.assertIn("✅ First task", blocks[0])
-        self.assertIn("⬜ Second task", blocks[0])
-
-
-class TestRenderQueuedPlans(unittest.TestCase):
-    def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp(prefix="orient-queued-"))
-
-    def tearDown(self):
-        shutil.rmtree(self.tmp, ignore_errors=True)
-
-    def test_no_queued_dir_returns_empty(self):
-        self.assertEqual(orr.render_queued_plans(self.tmp), [])
-
-    def test_lists_queued_plan_files(self):
-        qd = self.tmp / "queued-plans"
-        qd.mkdir()
-        (qd / "PLAN-b.md").write_text("b", encoding="utf-8")
-        (qd / "PLAN-a.md").write_text("a", encoding="utf-8")
-        self.assertEqual(orr.render_queued_plans(self.tmp), ["PLAN-a.md", "PLAN-b.md"])
-
-
 class TestRenderBoardState(unittest.TestCase):
+    """The ledger github-projects reads for the checkout: `items_source`, else
+    `board-items.json` beside the checkout's `project.json`."""
+
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="orient-board-"))
+        self.config_dir = self.tmp / ".harness"
+        self.config_dir.mkdir()
 
     def tearDown(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
-    def test_no_project_json_or_board_items_returns_empty(self):
-        self.assertEqual(orr.render_board_state(self.tmp, "widgets"), [])
+    def config(self, **cfg):
+        (self.config_dir / "project.json").write_text(json.dumps(cfg), encoding="utf-8")
 
-    def test_matches_via_harness_local_board_items_fallback(self):
-        (self.tmp / "board-items.json").write_text(
+    def test_no_checkout_or_no_config_returns_empty(self):
+        self.assertEqual(orr.render_board_state(None, "widgets"), [])
+        self.assertEqual(orr.render_board_state(str(self.tmp), "widgets"), [])
+
+    def test_matches_via_the_ledger_beside_project_json(self):
+        self.config()
+        (self.config_dir / "board-items.json").write_text(
             '{"items": [{"id": "f-widgets", "type": "feature", "title": "Widgets thing", "status": "Todo"},'
             ' {"id": "f-other", "type": "feature", "title": "Unrelated", "status": "Done"}]}',
             encoding="utf-8",
         )
-        result = orr.render_board_state(self.tmp, "widgets")
+        result = orr.render_board_state(str(self.tmp), "widgets")
         self.assertEqual(len(result), 1)
         self.assertIn("Widgets thing", result[0])
 
-    def test_project_json_items_source_takes_precedence(self):
+    def test_items_source_takes_precedence(self):
         items_path = self.tmp / "elsewhere-board-items.json"
         items_path.write_text(
             '{"items": [{"id": "f-widgets", "type": "feature", "title": "Widgets thing", "status": "Todo"}]}',
             encoding="utf-8",
         )
-        (self.tmp / "project.json").write_text(
-            json.dumps({"items_source": str(items_path)}), encoding="utf-8",
-        )
-        # Plant a decoy at the harness-local fallback path to prove it's not used.
-        (self.tmp / "board-items.json").write_text('{"items": []}', encoding="utf-8")
-        result = orr.render_board_state(self.tmp, "widgets")
-        self.assertEqual(len(result), 1)
+        self.config(items_source=str(items_path))
+        # A decoy beside project.json proves the default is not used.
+        (self.config_dir / "board-items.json").write_text('{"items": []}', encoding="utf-8")
+        self.assertEqual(len(orr.render_board_state(str(self.tmp), "widgets")), 1)
+
+    def test_the_path_rule_is_the_board_plugins_own(self):
+        spec = importlib.util.spec_from_file_location(
+            "orient_render_project_sync", _ROOT / "src" / "github-projects" / "scripts" / "project_sync.py")
+        sync = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = sync
+        spec.loader.exec_module(sync)
+        cfg_path = self.config_dir / "project.json"
+        for cfg in ({}, {"items_source": str(self.tmp / "ledger.json")}):
+            with self.subTest(cfg=cfg):
+                self.config(**cfg)
+                self.assertEqual(orr._board_items_path(str(self.tmp)),
+                                 sync._items_path_from_cfg(cfg, str(cfg_path)))
 
     def test_unparsable_board_items_returns_empty(self):
-        (self.tmp / "board-items.json").write_text("not json", encoding="utf-8")
-        self.assertEqual(orr.render_board_state(self.tmp, "widgets"), [])
-
-
-class TestResolveHarnessDir(unittest.TestCase):
-    def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp(prefix="orient-resolve-harness-"))
-
-    def tearDown(self):
-        shutil.rmtree(self.tmp, ignore_errors=True)
-
-    def test_neither_present_returns_none(self):
-        self.assertIsNone(orr.resolve_harness_dir({"slug": "widgets"}))
-
-    def test_prefers_vault_project_path_over_root_path(self):
-        vault_harness = self.tmp / "vault-proj" / "_harness"
-        vault_harness.mkdir(parents=True)
-        local_harness = self.tmp / "local-proj" / ".harness"
-        local_harness.mkdir(parents=True)
-        project = {
-            "vault_project_path": str(self.tmp / "vault-proj"),
-            "root_path": str(self.tmp / "local-proj"),
-        }
-        self.assertEqual(orr.resolve_harness_dir(project), vault_harness)
-
-    def test_falls_back_to_local_root_path(self):
-        local_harness = self.tmp / "local-proj" / ".harness"
-        local_harness.mkdir(parents=True)
-        project = {"root_path": str(self.tmp / "local-proj")}
-        self.assertEqual(orr.resolve_harness_dir(project), local_harness)
+        self.config()
+        (self.config_dir / "board-items.json").write_text("not json", encoding="utf-8")
+        self.assertEqual(orr.render_board_state(str(self.tmp), "widgets"), [])
 
 
 class TestRenderOrientation(unittest.TestCase):
-    def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp(prefix="orient-full-"))
 
-    def tearDown(self):
-        shutil.rmtree(self.tmp, ignore_errors=True)
+    def render(self, listing, project=None):
+        project = project or {"slug": "widgets", "gloss": "A widget project."}
+        with mock.patch.object(orr._bridge, "run_list_plans", return_value=listing):
+            return orr.render_orientation(project)
 
-    def test_no_harness_dir_still_renders_gracefully(self):
-        text = orr.render_orientation({"slug": "widgets", "gloss": "A widget project."})
+    def test_no_plan_list_says_so_in_one_line(self):
+        text = self.render((3, []))
         self.assertIn("# widgets", text)
         self.assertIn("A widget project.", text)
-        self.assertIn("no _harness/ found", text)
-
-    def test_full_render_includes_every_present_section(self):
-        harness = self.tmp / "proj" / "_harness"
-        harness.mkdir(parents=True)
-        (harness / "PLAN.md").write_text(_PLAN_TEXT, encoding="utf-8")
-        (harness / "progress.md").write_text("2026-01-01 did a thing\n", encoding="utf-8")
-        qd = harness / "queued-plans"
-        qd.mkdir()
-        (qd / "PLAN-next.md").write_text("next", encoding="utf-8")
-        (harness / "board-items.json").write_text(
-            '{"items": [{"id": "f-widgets", "type": "feature", "title": "Widgets", "status": "Todo"}]}',
-            encoding="utf-8",
-        )
-        project = {"slug": "widgets", "gloss": "A widget project.", "vault_project_path": str(self.tmp / "proj")}
-        text = orr.render_orientation(project)
-        self.assertIn("## Plans", text)
-        self.assertIn("## Recent progress", text)
-        self.assertIn("## Queued plans", text)
-        self.assertIn("## Board state", text)
-
-    def test_missing_sections_are_omitted_not_stubbed(self):
-        harness = self.tmp / "proj" / "_harness"
-        harness.mkdir(parents=True)
-        # No PLAN.md, no progress.md, no queued-plans/, no board-items.json.
-        project = {"slug": "widgets", "vault_project_path": str(self.tmp / "proj")}
-        text = orr.render_orientation(project)
+        self.assertIn(orr._NO_PLAN_LIST, text)
         self.assertNotIn("## Plans", text)
-        self.assertNotIn("## Recent progress", text)
-        self.assertNotIn("## Queued plans", text)
-        self.assertNotIn("## Board state", text)
 
+    def test_an_empty_listing_says_so_in_one_line(self):
+        text = self.render((0, []))
+        self.assertIn(orr._NO_PLANS, text)
+        for heading in ("## Plans", "## Recent progress", "## Queued plans", "## Board state"):
+            self.assertNotIn(heading, text)
 
-class TestWriteOrientationNote(unittest.TestCase):
-    """Task 5 (goal-6 pointer-note flag) verification."""
-
-    def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp(prefix="orient-note-"))
-
-    def tearDown(self):
-        shutil.rmtree(self.tmp, ignore_errors=True)
-
-    def test_base_render_never_writes_to_disk(self):
-        harness = self.tmp / "proj" / "_harness"
-        harness.mkdir(parents=True)
-        project = {"slug": "widgets", "vault_project_path": str(self.tmp / "proj")}
-        orr.render_orientation(project)
-        self.assertFalse((harness / orr._ORIENTATION_NOTE_NAME).exists())
-
-    def test_writes_note_file(self):
-        harness = self.tmp / "_harness"
-        harness.mkdir()
-        note_path = orr.write_orientation_note(harness, "hello orientation")
-        self.assertEqual(note_path, harness / "orientation-note.md")
-        self.assertEqual(note_path.read_text(encoding="utf-8"), "hello orientation")
-
-    def test_idempotent_overwrite_not_append(self):
-        harness = self.tmp / "_harness"
-        harness.mkdir()
-        orr.write_orientation_note(harness, "first version")
-        note_path = orr.write_orientation_note(harness, "second version")
-        content = note_path.read_text(encoding="utf-8")
-        self.assertEqual(content, "second version")
-        self.assertNotIn("first version", content)
-
-    def test_never_creates_the_harness_dir(self):
-        # PLAN-tracker-commands task 8 changes the contract: --note writes into
-        # a harness directory that exists and never creates one, which after
-        # agentm's move would bring _harness/ back. With none, it writes
-        # nothing and returns None.
-        harness = self.tmp / "not-yet-created" / "_harness"
-        self.assertIsNone(orr.write_orientation_note(harness, "text"))
-        self.assertFalse(harness.exists())
-        self.assertFalse(harness.parent.exists())
-
-    def test_no_harness_dir_at_all_writes_nothing(self):
-        self.assertIsNone(orr.write_orientation_note(None, "text"))
+    def test_a_match_with_no_checkout_is_listed_by_its_slug(self):
+        with mock.patch.object(orr._bridge, "run_list_plans", return_value=(0, [])) as listed:
+            orr.render_orientation({"slug": "widgets"})
+        listed.assert_called_once_with(project="widgets")
 
 
 # A stand-in for agentm's tracker.py: `show` prints a tracker's fields from
@@ -345,7 +242,8 @@ class _AgentmProject:
         self.rows.append((str(directory / "plan.md"), str(log), str(tracker)))
 
     def flat(self, slug, status_line, progress=None):
-        harness = self.project / "_harness"
+        # A repo with no vault: agentm keeps its plans repo-local (ruling 8).
+        harness = self.repo / ".harness"
         harness.mkdir(parents=True, exist_ok=True)
         plan = harness / f"PLAN-{slug}.md"
         plan.write_text(_PLAN_TEXT.replace("**Status:** in-progress", f"**Status:** {status_line}"),
@@ -405,9 +303,6 @@ class TestOrientationPlansThroughAgentm(_AgentmProject, unittest.TestCase):
         self.task("044-next-thing", "queued")
         self.flat("alpha", "in-progress", progress="2026-09-13 /work — alpha moved\n")
         self.flat("old", "done", progress="2026-08-01 /work — the old flat plan closed\n")
-        queued_tier = self.project / "_harness" / "queued-plans"
-        queued_tier.mkdir()
-        (queued_tier / "PLAN-later.md").write_text("later\n", encoding="utf-8")
 
     def test_in_flight_first_by_importance_then_name_finished_as_a_count(self):
         text, _ = self.render()
@@ -425,34 +320,88 @@ class TestOrientationPlansThroughAgentm(_AgentmProject, unittest.TestCase):
         self.assertNotIn("the old thing closed", progress)
         self.assertNotIn("the old flat plan closed", progress)
 
-    def test_queued_plans_by_status_and_the_flat_queued_tier(self):
+    def test_queued_plans_by_their_tracker(self):
         text, _ = self.render()
         queued = self.section(text, "## Queued plans")
-        self.assertIn("- 044-next-thing", queued)
-        self.assertIn("- PLAN-later.md", queued)
+        self.assertEqual(queued.splitlines()[1:], ["- 044-next-thing"])
         self.assertNotIn("044-next-thing", self.section(text, "## Plans"))
 
-    def test_the_harness_is_not_globbed_when_agentm_lists_the_plans(self):
-        (self.project / "_harness" / "PLAN-unlisted.md").write_text(_PLAN_TEXT, encoding="utf-8")
-        (self.project / "_harness" / "progress-unlisted.md").write_text("unlisted\n", encoding="utf-8")
+    def test_nothing_is_globbed_beyond_the_rows_agentm_lists(self):
+        (self.repo / ".harness" / "PLAN-unlisted.md").write_text(_PLAN_TEXT, encoding="utf-8")
+        (self.repo / ".harness" / "progress-unlisted.md").write_text("unlisted\n", encoding="utf-8")
         text, _ = self.render()
         self.assertNotIn("PLAN-unlisted.md", text)
         self.assertNotIn("progress-unlisted.md", text)
 
 
-class TestOrientationWithoutAHarness(_AgentmProject, unittest.TestCase):
+class TestInTheScratchVault(unittest.TestCase):
+    """The real bridge, against the scratch vault's stub agentm: a project
+    bound to a repo and a project named by slug alone each list their task
+    with its tracker status, and `--note` lands in the desk."""
 
-    def test_the_brief_and_tasks_render_without_the_nothing_further_line(self):
-        self.task("042-build-the-brief", "active", importance=5)
-        text, _ = self.render(brief=(0, "widgets · 042-build-the-brief · active"))
-        self.assertFalse((self.project / "_harness").exists())
-        self.assertIn("## Brief", text)
-        self.assertIn("042-build-the-brief [active]", text)
-        self.assertNotIn("nothing further", text)
+    def setUp(self):
+        self.sp = nhf.ScratchProject()
+        self.addCleanup(self.sp.cleanup)
+        home = self.sp.root / "home"
+        home.mkdir()
+        for patcher in (
+            mock.patch.dict(os.environ, {"AGENTM_SCRIPTS_DIR": str(self.sp.agentm)}),
+            mock.patch.object(Path, "home", return_value=home),
+        ):
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        self.by_repo = {"slug": "demo", "root_path": str(self.sp.repo),
+                        "vault_project_path": str(self.sp.project)}
+        self.by_slug = {"slug": "demo", "vault_project_path": str(self.sp.project)}
 
-    def test_with_nothing_to_show_it_still_says_so(self):
-        text, _ = self.render(brief=(3, ""))
-        self.assertIn("nothing further to orient on", text)
+    def test_both_kinds_of_project_list_the_task_with_its_tracker_status(self):
+        for project in (self.by_repo, self.by_slug):
+            with self.subTest(root=project.get("root_path")):
+                text = orr.render_orientation(project)
+                self.assertIn(f"{nhf.TASK} [active]", text)
+        self.assertEqual(nhf.harness_dirs(self.sp.root), [])
+
+    def test_the_base_render_writes_nothing(self):
+        orr.render_orientation(self.by_repo)
+        self.assertEqual(list(self.sp.desk.iterdir()), [])
+
+    def test_the_note_lands_in_the_desk_for_both(self):
+        for project in (self.by_repo, self.by_slug):
+            with self.subTest(root=project.get("root_path")):
+                note = orr.write_orientation_note(project, "hello orientation")
+                self.assertEqual(note, self.sp.desk / "orientation-note.md")
+                self.assertEqual(note.read_text(encoding="utf-8"), "hello orientation")
+        self.assertEqual(nhf.harness_dirs(self.sp.root), [])
+
+    def test_the_note_overwrites(self):
+        orr.write_orientation_note(self.by_repo, "first version")
+        note = orr.write_orientation_note(self.by_repo, "second version")
+        self.assertEqual(note.read_text(encoding="utf-8"), "second version")
+
+    def test_a_desk_not_yet_made_is_not_created(self):
+        shutil.rmtree(self.sp.desk)
+        self.assertIsNone(orr.write_orientation_note(self.by_repo, "text"))
+        self.assertFalse(self.sp.desk.exists())
+
+    def test_an_agentm_without_resolve_by_slug_still_lists_the_task(self):
+        sp = nhf.ScratchProject(resolve_by_slug=False)
+        self.addCleanup(sp.cleanup)
+        with mock.patch.dict(os.environ, {"AGENTM_SCRIPTS_DIR": str(sp.agentm)}):
+            text = orr.render_orientation({"slug": "demo"})
+        self.assertIn(nhf.TASK, text)
+
+
+class TestNoHome(unittest.TestCase):
+
+    def test_no_home_means_no_write(self):
+        with nhf.ScratchProject(no_home=True) as sp, \
+                mock.patch.dict(os.environ, {"AGENTM_SCRIPTS_DIR": str(sp.agentm)}):
+            self.assertIsNone(orr.write_orientation_note(
+                {"slug": "demo", "root_path": str(sp.repo)}, "text"))
+            self.assertEqual(list(sp.desk.iterdir()), [])
+
+    def test_no_slug_and_no_checkout_means_no_write(self):
+        self.assertIsNone(orr.write_orientation_note({}, "text"))
 
 
 if __name__ == "__main__":

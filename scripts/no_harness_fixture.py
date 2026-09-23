@@ -15,11 +15,15 @@ The layout is the project skeleton since the projects migration:
         desk/
     <root>/repo/.harness/project.json      {"vault_project": "demo"}
     <root>/agentm/process_seam.py           project-path {tasks|designs|desk}
-    <root>/agentm/harness_memory.py         list-plans
+    <root>/agentm/harness_memory.py         list-plans, resolve-active-plan
+    <root>/agentm/tracker.py                show
 
 The stubs answer the way agentm's verbs do (`process_seam.py project-path`,
-`harness_memory.py list-plans`), from this scratch vault. `no_home=True` makes
+`harness_memory.py list-plans` and `resolve-active-plan --with-tracker`,
+`tracker.py show`), from this scratch vault. `no_home=True` makes
 `project-path` exit 1, the answer for a project with no vault home.
+`resolve_by_slug=False` makes `resolve-active-plan` refuse `--project`, as an
+agentm from before crickets task 101's ruling 9 does.
 """
 from __future__ import annotations
 
@@ -103,23 +107,52 @@ _HARNESS_MEMORY = '''#!/usr/bin/env python3
 import sys
 from pathlib import Path
 VAULT_PROJECTS = {vault_projects!r}
+RESOLVE_BY_SLUG = {resolve_by_slug!r}
 args = sys.argv[1:]
-if not args or args[0] != "list-plans":
-    sys.stderr.write("usage: harness_memory list-plans\\n")
+if not args or args[0] not in ("list-plans", "resolve-active-plan"):
+    sys.stderr.write("usage: harness_memory {{list-plans,resolve-active-plan}}\\n")
+    sys.exit(2)
+if "--project" in args and args[0] == "resolve-active-plan" and not RESOLVE_BY_SLUG:
+    sys.stderr.write("harness_memory: error: unrecognized arguments: --project\\n")
     sys.exit(2)
 project = "demo"
 if "--project" in args:
     project = args[args.index("--project") + 1]
 tasks = Path(VAULT_PROJECTS) / project / "tasks"
-for plan in sorted(tasks.glob("*/plan.md")):
-    print(plan)
+if args[0] == "list-plans":
+    for plan in sorted(tasks.glob("*/plan.md")):
+        print(plan)
+    sys.exit(0)
+task = tasks / args[args.index("--plan") + 1]
+if not (task / "plan.md").is_file():
+    sys.stderr.write("harness_memory: no such plan\\n")
+    sys.exit(2)
+fields = [task / "plan.md", task / "progress.md"]
+if "--with-tracker" in args:
+    fields.append(task / "tracker.md")
+print("\\t".join(str(f) for f in fields))
+'''
+
+_TRACKER_PY = '''#!/usr/bin/env python3
+import json, sys
+from pathlib import Path
+args = sys.argv[1:]
+if len(args) != 2 or args[0] != "show" or not Path(args[1]).is_file():
+    sys.stderr.write("tracker: usage: show PATH\\n")
+    sys.exit(2)
+fields = {}
+lines = Path(args[1]).read_text(encoding="utf-8").splitlines()
+for line in lines[1:lines.index("---", 1)]:
+    key, _, value = line.partition(":")
+    fields[key.strip()] = value.strip() or None
+print(json.dumps(fields))
 '''
 
 
 class ScratchProject:
     """A scratch vault project in the task layout, a repo bound to it, and a stub agentm."""
 
-    def __init__(self, *, no_home: bool = False):
+    def __init__(self, *, no_home: bool = False, resolve_by_slug: bool = True):
         self.root = Path(tempfile.mkdtemp(prefix="no-harness-")).resolve()
         self.vault = self.root / "vault"
         self.projects = self.vault / "projects"
@@ -146,7 +179,9 @@ class ScratchProject:
         fill = {"vault_projects": str(self.projects), "no_home": no_home}
         (self.agentm / "process_seam.py").write_text(_PROCESS_SEAM.format(**fill), encoding="utf-8")
         (self.agentm / "harness_memory.py").write_text(
-            _HARNESS_MEMORY.format(vault_projects=str(self.projects)), encoding="utf-8")
+            _HARNESS_MEMORY.format(vault_projects=str(self.projects), resolve_by_slug=resolve_by_slug),
+            encoding="utf-8")
+        (self.agentm / "tracker.py").write_text(_TRACKER_PY, encoding="utf-8")
 
     @property
     def plan(self) -> Path:

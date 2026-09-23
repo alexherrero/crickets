@@ -446,14 +446,9 @@ class TestNoFlatLayoutCrickets(unittest.TestCase):
     and `/plan` handles both answers agentm gives a bare call (ruling 8)."""
 
     RETIRED_DIR = "_" + "harness"
-    # Step 6 of task 101 rewrites /open and /orient with orient_render.py and
-    # removes this allowance.
-    NOT_YET = frozenset({"open.md", "orient.md"})
 
     def test_no_command_names_the_staging_tier_or_the_harness_dir(self):
         for cmd in sorted(_CMDS.glob("*.md")):
-            if cmd.name in self.NOT_YET:
-                continue
             text = cmd.read_text(encoding="utf-8")
             with self.subTest(command=cmd.name):
                 self.assertNotIn("queued-plans", text)

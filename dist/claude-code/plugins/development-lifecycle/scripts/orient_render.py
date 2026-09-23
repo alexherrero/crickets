@@ -1,43 +1,38 @@
 #!/usr/bin/env python3
 """orient_render.py — the ORIENT renderer for `/open` / `/orient`
 (PLAN-open-a-project-by-name tasks 3 + 5; the brief and the plan list through
-agentm since PLAN-tracker-commands task 8).
+agentm since PLAN-tracker-commands task 8; agentm alone since crickets task 101).
 
 Given one confirmed project (a match dict from `resolve_project.resolve()`),
 renders a short read-only orientation block:
 
   - **what it is** — the one-line gloss `resolve_project.py` already extracted
-    (the charter's What line, else a plan's Brief line).
+    (the charter's What line).
   - **brief** — agentm's opening brief for the project's checkout, through
     `agentm_bridge.run_project_brief(root_path)`: where the bound project and
     task stand. Left out when agentm has none (exit 3) or the match has no
     `root_path`.
-  - **plans** — for a match with a `root_path`, every active plan agentm lists
-    through `agentm_bridge.run_list_plans(root_path)`, in the flat and the task
-    layouts: the plans in flight first, by their tracker's `importance` and then
-    by name, each with its status from `plan_tracker.py status` and a ✅/⬜ step
-    checklist, and the finished ones collapsed to a count. Without agentm, or
-    for a match with no `root_path`, the plans come from the project's
-    `_harness/` as before, through `queue_status.py`'s `_list_plan_files` /
-    `_extract_status` (imported, not re-derived).
-  - **recent progress** — the last few progress lines: of each unfinished plan
-    on the agentm path, of every `progress*.md` in `_harness/` otherwise.
-  - **queued plans** — the plans whose status is `queued`, and, for a project
-    that still has a `_harness/`, the `queued-plans/` tier `stage_plan.py` owns
-    (imports its `_QUEUED_DIR` constant, doesn't re-derive it).
-  - **board state** — a read-only glance at `board-items.json` (via
-    `project.json`'s `items_source`, or the harness-local fallback), filtered
-    to items whose title/id matches the confirmed project. File-only, no `gh`
-    calls — the same posture as `/queue-status-lite`.
+  - **plans** — every active plan agentm lists through
+    `agentm_bridge.run_list_plans`: by the checkout (`root_path`), or by the
+    project's slug when there is none. The plans in flight come first, by their
+    tracker's `importance` and then by name, each with its status from
+    `plan_tracker.py status` and a ✅/⬜ step checklist, and the finished ones
+    collapse to a count. When agentm lists nothing, one line says so.
+  - **recent progress** — the last few progress lines of each unfinished plan.
+  - **queued plans** — the plans whose tracker is `queued`.
+  - **board state** — a read-only glance at the board ledger github-projects
+    reads (the checkout's `project.json` `items_source`, else its default beside
+    `project.json`), filtered to items whose title/id matches the confirmed
+    project. File-only, no `gh` calls.
 
-Nothing here composes a plan's path: the agentm path takes every path from the
-rows agentm returns, and the fallback reads a `_harness/` that already exists.
+Nothing here composes a plan's path: every path comes from the rows agentm
+returns.
 
 Task 5 (goal 6, the pointer-note flag): `write_orientation_note()` writes the
-rendered block to `<_harness>/orientation-note.md`, idempotent overwrite, only
-ever called from the `--note` opt-in flag — never from the base render path. It
-never creates the directory: a project with no `_harness/` has nowhere to put
-the note yet.
+rendered block to `<desk>/orientation-note.md`, the project's desk as
+`project_homes.py` names it, idempotent overwrite, only ever called from the
+`--note` opt-in flag — never from the base render path. It never creates the
+desk: without one there is nowhere to put the note.
 """
 from __future__ import annotations
 
@@ -52,13 +47,7 @@ import sys  # noqa: E402
 if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 
-# The retired flat staging tier; step 6 of task 101 drops the listing that reads it.
-_QUEUED_DIR = "queued-plans"
-
-
-# Moved here from queue_status.py when it became a pure bridge to agentm's
-# reader (task 101 step 1); this module was their only other user. Steps 6 and 8
-# retire the directory read and the Status-line fallback that call them.
+# Step 8 of crickets task 101 retires the Status line, and this fallback with it.
 def _extract_status(plan_text: str) -> str:
     """The value of the first `Status:` line (markdown-bold tolerated), or "—"."""
     for line in plan_text.splitlines():
@@ -67,18 +56,6 @@ def _extract_status(plan_text: str) -> str:
             value = stripped[len("status:"):].strip().strip("*").strip()
             return value or "—"
     return "—"
-
-
-def _list_plan_files(harness_dir: Path) -> "list[Path]":
-    """Active plan files: the singleton `PLAN.md` plus each `PLAN-<name>.md`."""
-    files: "list[Path]" = []
-    singleton = harness_dir / "PLAN.md"
-    if singleton.is_file():
-        files.append(singleton)
-    named = [p for p in harness_dir.glob("PLAN-*.md")
-             if p.is_file() and "(conflicted copy" not in p.name]
-    files.extend(sorted(named, key=lambda p: p.name))
-    return files
 
 
 def _load_sibling(name: str):
@@ -98,6 +75,7 @@ def _load_sibling(name: str):
 
 _bridge = _load_sibling("agentm_bridge")
 _plan_tracker = _load_sibling("plan_tracker")
+_homes = _load_sibling("project_homes")
 
 _PROGRESS_TAIL_DEFAULT_N = 3
 _PROGRESS_LINE_MAXLEN = 200
@@ -107,26 +85,8 @@ _TASK_STATUS_RE = re.compile(r"^-\s*\*\*Status:\*\*\s*\[( |x|X)\]\s*$")
 _TASK_TITLE_RE = re.compile(r"^###\s*\d+\.\s*(.+)$")
 
 _ORIENTATION_NOTE_NAME = "orientation-note.md"
-_NOTHING_FURTHER = "\n(no _harness/ found for this project — nothing further to orient on)"
-
-
-# ── project → _harness/ resolution ──────────────────────────────────────────────
-
-def resolve_harness_dir(project: dict) -> "Path | None":
-    """The confirmed project's `_harness/` dir — vault-backed
-    (`vault_project_path/_harness`) preferred over the local checkout
-    (`root_path/.harness`); None if neither is present."""
-    vault_project_path = project.get("vault_project_path")
-    if vault_project_path:
-        d = Path(vault_project_path) / "_harness"
-        if d.is_dir():
-            return d
-    root_path = project.get("root_path")
-    if root_path:
-        d = Path(root_path) / ".harness"
-        if d.is_dir():
-            return d
-    return None
+_NO_PLAN_LIST = "(no plan list: agentm is absent, or keeps no plans for this project)"
+_NO_PLANS = "(agentm lists no plans for this project)"
 
 
 # ── PLAN status chart ────────────────────────────────────────────────────────────
@@ -151,24 +111,6 @@ def _task_checklist(plan_text: str) -> "list[str]":
     return out
 
 
-def render_plan_status(harness_dir: Path) -> "list[str]":
-    """One block per active plan file: its name, `Status:`, and step checklist."""
-    blocks: "list[str]" = []
-    for plan_path in _list_plan_files(harness_dir):
-        try:
-            text = plan_path.read_text(encoding="utf-8")
-        except OSError:
-            continue
-        status = _extract_status(text)
-        checklist = _task_checklist(text)
-        header = f"{plan_path.name} [{status}]"
-        if checklist:
-            blocks.append(header + "\n  " + "\n  ".join(checklist))
-        else:
-            blocks.append(header)
-    return blocks
-
-
 # ── recent progress ──────────────────────────────────────────────────────────────
 
 def progress_tail(path: Path, n: int = _PROGRESS_TAIL_DEFAULT_N) -> "list[str]":
@@ -188,17 +130,6 @@ def progress_tail(path: Path, n: int = _PROGRESS_TAIL_DEFAULT_N) -> "list[str]":
     ]
 
 
-def render_recent_progress(harness_dir: Path, n: int = _PROGRESS_TAIL_DEFAULT_N) -> "list[str]":
-    """Recent progress across every progress*.md the harness dir carries."""
-    out: "list[str]" = []
-    for progress_path in sorted(harness_dir.glob("progress*.md")):
-        tail = progress_tail(progress_path, n)
-        if tail:
-            out.append(f"{progress_path.name}:")
-            out.extend(f"  {ln}" for ln in tail)
-    return out
-
-
 # ── the brief and the plans, through agentm ─────────────────────────────────────
 
 def render_brief(root_path) -> "list[str]":
@@ -212,13 +143,19 @@ def render_brief(root_path) -> "list[str]":
     return text.splitlines()
 
 
-def _plan_rows(root_path) -> "list[tuple[str, str, str]] | None":
-    """Every active plan agentm lists for the checkout, as (plan, progress,
-    tracker) rows; None when the match has no `root_path` or agentm gives no
-    listing, which is when the `_harness/` read below still applies."""
-    if not root_path or _bridge is None:
+def _plan_rows(project: dict) -> "list[tuple[str, str, str]] | None":
+    """Every active plan agentm lists for the project, as (plan, progress,
+    tracker) rows: by its checkout, or by its slug when it has none. None when
+    agentm gives no listing."""
+    if _bridge is None:
         return None
-    code, rows = _bridge.run_list_plans(root_path)
+    root_path, slug = project.get("root_path"), project.get("slug")
+    if root_path:
+        code, rows = _bridge.run_list_plans(root_path)
+    elif slug:
+        code, rows = _bridge.run_list_plans(project=slug)
+    else:
+        return None
     return rows if code == 0 else None
 
 
@@ -298,50 +235,30 @@ def render_plans_from_agentm(
     return blocks, progress_lines, sorted(_plan_label(plan) for plan, _ in queued)
 
 
-# ── queued plans ──────────────────────────────────────────────────────────────────
-
-def render_queued_plans(harness_dir: Path) -> "list[str]":
-    """Filenames under `<_harness>/queued-plans/` — the inert staging tier
-    `stage_plan.py` already owns. [] if the dir is absent or empty."""
-    queued_dir = harness_dir / _QUEUED_DIR
-    if not queued_dir.is_dir():
-        return []
-    try:
-        return sorted(p.name for p in queued_dir.glob("*.md") if p.is_file())
-    except OSError:
-        return []
-
-
 # ── board state (read-only glance) ──────────────────────────────────────────────
 
-def _load_project_config(harness_dir: Path) -> "dict | None":
-    cfg_path = harness_dir / "project.json"
-    if not cfg_path.is_file():
+def _board_items_path(root_path) -> "Path | None":
+    """The ledger github-projects reads for the checkout: its `project.json`'s
+    `items_source`, else `board-items.json` beside `project.json` — the rule
+    of github-projects' own `_items_path_from_cfg`. None without a checkout or a
+    config."""
+    if not root_path:
         return None
+    cfg_path = Path(root_path) / ".harness" / "project.json"
     try:
-        return json.loads(cfg_path.read_text(encoding="utf-8"))
+        cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return None
+    src = cfg.get("items_source") if isinstance(cfg, dict) else None
+    return Path(src) if src else cfg_path.resolve().parent / "board-items.json"
 
 
-def _board_items_path(harness_dir: Path, cfg: "dict | None") -> "Path | None":
-    if cfg:
-        items_source = cfg.get("items_source")
-        if items_source:
-            p = Path(items_source)
-            if p.is_file():
-                return p
-    fallback = harness_dir / "board-items.json"
-    return fallback if fallback.is_file() else None
-
-
-def render_board_state(harness_dir: Path, project_slug: str) -> "list[str]":
+def render_board_state(root_path, project_slug: str) -> "list[str]":
     """Board items whose id/title mentions the confirmed project — a
     read-only glance at the existing board-items.json cache, no `gh` calls.
     [] when project.json / board-items.json is absent or unparsable."""
-    cfg = _load_project_config(harness_dir)
-    items_path = _board_items_path(harness_dir, cfg)
-    if items_path is None:
+    items_path = _board_items_path(root_path)
+    if items_path is None or not items_path.is_file():
         return []
     try:
         data = json.loads(items_path.read_text(encoding="utf-8"))
@@ -373,7 +290,6 @@ def render_orientation(project: dict) -> str:
     slug = project.get("slug", "?")
     gloss = project.get("gloss")
     root_path = project.get("root_path")
-    harness_dir = resolve_harness_dir(project)
 
     lines: "list[str]" = [f"# {slug}"]
     if gloss:
@@ -384,25 +300,14 @@ def render_orientation(project: dict) -> str:
         lines.append("\n## Brief")
         lines.extend(brief)
 
-    rows = _plan_rows(root_path)
-    if rows is not None:
-        plan_blocks, progress_blocks, queued = render_plans_from_agentm(rows)
-        if harness_dir is not None:
-            queued = queued + render_queued_plans(harness_dir)
-    elif harness_dir is not None:
-        plan_blocks = render_plan_status(harness_dir)
-        progress_blocks = render_recent_progress(harness_dir)
-        queued = render_queued_plans(harness_dir)
-    else:
-        plan_blocks, progress_blocks, queued = [], [], []
-
-    if harness_dir is None and not (brief or plan_blocks or queued):
-        lines.append(_NOTHING_FURTHER)
-        return "\n".join(lines)
+    rows = _plan_rows(project)
+    plan_blocks, progress_blocks, queued = render_plans_from_agentm(rows or [])
 
     if plan_blocks:
         lines.append("\n## Plans")
         lines.extend(plan_blocks)
+    elif not queued:
+        lines.append("\n" + (_NO_PLAN_LIST if rows is None else _NO_PLANS))
 
     if progress_blocks:
         lines.append("\n## Recent progress")
@@ -412,28 +317,36 @@ def render_orientation(project: dict) -> str:
         lines.append("\n## Queued plans")
         lines.extend(f"- {name}" for name in queued)
 
-    if harness_dir is not None:
-        board = render_board_state(harness_dir, slug)
-        if board:
-            lines.append("\n## Board state")
-            lines.extend(f"- {row}" for row in board)
+    board = render_board_state(root_path, slug)
+    if board:
+        lines.append("\n## Board state")
+        lines.extend(f"- {row}" for row in board)
 
     return "\n".join(lines)
 
 
 # ── task 5: the goal-6 pointer-note flag ─────────────────────────────────────────
 
-def write_orientation_note(harness_dir: "Path | None", rendered_text: str) -> "Path | None":
-    """Write `rendered_text` to `<_harness>/orientation-note.md`, idempotent
-    overwrite (never append), and return the note's path. Never creates the
-    directory: when `harness_dir` is None or doesn't exist there is nowhere to
-    put the note yet, so this writes nothing and returns None (where the note
-    lives once `_harness/` is gone is part 15's call). Only ever called from the
+def write_orientation_note(project: dict, rendered_text: str) -> "Path | None":
+    """Write `rendered_text` to `<desk>/orientation-note.md`, idempotent
+    overwrite (never append), and return the note's path. The desk is the one
+    `project_homes.py` names — by the checkout, or by the slug when there is
+    none. Never creates it: when agentm names no desk, or the desk doesn't exist
+    yet, this writes nothing and returns None. Only ever called from the
     explicit `--note` opt-in — never from the base render path. Raises on a
     genuine write failure (permissions, read-only fs) rather than silently
     dropping the orientation."""
-    if harness_dir is None or not Path(harness_dir).is_dir():
+    if _homes is None:
         return None
-    note_path = Path(harness_dir) / _ORIENTATION_NOTE_NAME
+    root_path, slug = project.get("root_path"), project.get("slug")
+    if root_path:
+        desk = _homes.home("desk", cwd=root_path)
+    elif slug:
+        desk = _homes.home("desk", project=slug)
+    else:
+        return None
+    if desk is None or not Path(desk).is_dir():
+        return None
+    note_path = Path(desk) / _ORIENTATION_NOTE_NAME
     note_path.write_text(rendered_text, encoding="utf-8")
     return note_path

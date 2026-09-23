@@ -155,25 +155,6 @@ def resolve_vault_path() -> "Path | None":
     return p if p.is_dir() else None
 
 
-def _extract_gloss(text: str) -> "str | None":
-    """First `Brief:` line (markdown-bold tolerated), else the first non-empty
-    line under `## Objective`."""
-    lines = text.splitlines()
-    for i, line in enumerate(lines):
-        stripped = line.strip().lstrip("*").strip()
-        if stripped.lower().startswith("brief:"):
-            val = stripped.split(":", 1)[1].strip().strip("*").strip()
-            if val:
-                return val
-        if stripped == "## Objective":
-            for nxt in lines[i + 1:]:
-                nxt = nxt.strip()
-                if nxt:
-                    return nxt
-            break
-    return None
-
-
 def _extract_what(text: str) -> "str | None":
     """A charter's What line: the first `What:` line (markdown-bold tolerated)."""
     for line in text.splitlines():
@@ -185,48 +166,14 @@ def _extract_what(text: str) -> "str | None":
     return None
 
 
-def _charter_what(project_dir: Path) -> "str | None":
-    """The project charter's What line: `charter.md`, else `_index.md`, the
-    name the charter carries until agentm's migration renames it."""
-    for name in ("charter.md", "_index.md"):
-        charter = project_dir / name
-        if not charter.is_file():
-            continue
-        try:
-            what = _extract_what(charter.read_text(encoding="utf-8"))
-        except OSError:
-            continue
-        if what:
-            return what
-    return None
-
-
 def _one_line_gloss(project_dir: Path) -> "str | None":
-    """Best-effort one-line gloss: the charter's What line first, else the
-    project's own design docs or _harness/PLAN.md — None if nothing found,
-    never an error."""
-    what = _charter_what(project_dir)
-    if what:
-        return what
-    candidates: "list[Path]" = []
-    harness = project_dir / "_harness"
-    if harness.is_dir():
-        plan = harness / "PLAN.md"
-        if plan.is_file():
-            candidates.append(plan)
-        candidates.extend(sorted(harness.glob("PLAN-*.md")))
-        designs = harness / "designs"
-        if designs.is_dir():
-            candidates.extend(sorted(designs.glob("*.md")))
-    for c in candidates:
-        try:
-            text = c.read_text(encoding="utf-8")
-        except OSError:
-            continue
-        gloss = _extract_gloss(text)
-        if gloss:
-            return gloss
-    return None
+    """The project charter's What line — None when there is no charter or no
+    What line, never an error. Every project has a charter since agentm's
+    projects migration (agentm-vault plan 10), so nothing else is read."""
+    try:
+        return _extract_what((project_dir / "charter.md").read_text(encoding="utf-8"))
+    except OSError:
+        return None
 
 
 # The vault's project-keyed space, newest layout generation first. The root

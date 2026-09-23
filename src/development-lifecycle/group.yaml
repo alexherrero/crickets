@@ -691,6 +691,13 @@ enhances:
 #          (the sixth copy); /plan and /release find features.json in the
 #          project's desk through it (exit 3, a repo with no vault: the
 #          repo-local file beside the plan), and /plan names the board ledger
-#          by github-projects' own items path.
+#          by github-projects' own items path. /open and /orient read
+#          plans through agentm alone: orient_render lists them by the
+#          checkout, or by slug for a project with no checkout (agentm_bridge
+#          plans --project; ruling 9 asks agentm for resolve-active-plan
+#          --project, and until then those rows are partial); the harness-dir
+#          read, the queued-plans/ listing and the "nothing further" line are
+#          gone; --note writes <desk>/orientation-note.md through
+#          project_homes.py; the gloss is the charter's What line alone.
 version: 0.49.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

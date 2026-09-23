@@ -62,17 +62,10 @@ _T100 = "100-retire-harness-in-the-other-plugins"
 # Files that still name `_harness`, each with the landing that clears it.
 EXEMPT: dict[str, str] = {
     # task 101 — development-lifecycle's leftovers
-    "src/development-lifecycle/commands/open.md": _T101,
-    "src/development-lifecycle/commands/orient.md": _T101,
     "src/development-lifecycle/group.yaml": _T101,
     "src/development-lifecycle/scripts/check-plan-grounding.py": _T101,
-    "src/development-lifecycle/scripts/orient_render.py": _T101,
     "src/development-lifecycle/scripts/plan_tracker.py": _T101,
-    "src/development-lifecycle/scripts/resolve_project.py": _T101,
-    "scripts/test_agentm_bridge_plans.py": _T101,
-    "scripts/test_orient_render.py": _T101,
     "scripts/test_plan_tracker.py": _T101,
-    "scripts/test_resolve_project.py": _T101,
 }
 
 
