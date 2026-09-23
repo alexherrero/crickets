@@ -113,15 +113,16 @@ class TestDetectConflictFiles(unittest.TestCase):
 
     def test_detects_nested_conflicts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            (Path(tmp) / "projects" / "agentm" / "_harness").mkdir(parents=True)
-            conflict = Path(tmp) / "projects" / "agentm" / "_harness" / "PLAN (conflicted copy 2026-05-27).md"
+            task = Path(tmp) / "projects" / "agentm" / "tasks" / "042-build-the-brief"
+            task.mkdir(parents=True)
+            conflict = task / "plan (conflicted copy 2026-05-27).md"
             conflict.write_text("nested")
             result = self.vc.detect_conflict_files(Path(tmp))
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["conflict"], conflict)
         self.assertEqual(
             result[0]["rel"],
-            Path("projects/agentm/_harness/PLAN (conflicted copy 2026-05-27).md"),
+            Path("projects/agentm/tasks/042-build-the-brief/plan (conflicted copy 2026-05-27).md"),
         )
 
     def test_detects_multiple_conflicts(self) -> None:
@@ -211,25 +212,29 @@ class TestDetectConflictFiles(unittest.TestCase):
             result = self.vc.detect_conflict_files(Path(tmp))
         self.assertEqual(len(result), 2)
 
-    # ── named-plan janitor (was test_harness_memory_named_plans) ───────────
+    # ── plan janitor (was test_harness_memory_named_plans) ─────────────────
+    # A plan lives in its task since the projects migration; the base is found
+    # by stripping the conflict marker from the file's own name.
     def test_infer_base_strips_marker_to_named_plan(self) -> None:
         base = self.vc._infer_conflict_base_path(
-            Path("/v/_harness/PLAN-foo (conflicted copy 2026-06-12) - Mac.md")
+            Path("/v/projects/demo/tasks/042-build-the-brief/"
+                 "plan (conflicted copy 2026-06-12) - Mac.md")
         )
-        self.assertEqual(base.name, "PLAN-foo.md")
+        self.assertEqual(base.name, "plan.md")
+        self.assertEqual(base.parent.name, "042-build-the-brief")
 
     def test_detect_conflict_files_finds_named_plan_conflict(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            harness = Path(tmp) / "_harness"
-            harness.mkdir(parents=True)
-            (harness / "PLAN-foo.md").write_text("base\n", encoding="utf-8")
-            conflict = harness / "PLAN-foo (conflicted copy 2026-06-12).md"
+            task = Path(tmp) / "projects" / "demo" / "tasks" / "042-build-the-brief"
+            task.mkdir(parents=True)
+            (task / "plan.md").write_text("base\n", encoding="utf-8")
+            conflict = task / "plan (conflicted copy 2026-06-12).md"
             conflict.write_text("dupe\n", encoding="utf-8")
             found = self.vc.detect_conflict_files(Path(tmp))
         names = {f["conflict"].name for f in found}
         self.assertIn(conflict.name, names)
         match = next(f for f in found if f["conflict"].name == conflict.name)
-        self.assertEqual(match["base"].name, "PLAN-foo.md")
+        self.assertEqual(match["base"].name, "plan.md")
 
     # ── DriveFS lost_and_found/ scan (opt-in, injectable) ──────────────────
     def test_lost_and_found_not_scanned_by_default(self) -> None:

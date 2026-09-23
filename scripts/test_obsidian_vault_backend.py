@@ -127,7 +127,7 @@ class ObsidianVaultBackendStructure(unittest.TestCase):
         # The seam contract: verbs traffic in Locator, never pathlib.Path.
         with tempfile.TemporaryDirectory() as root, tempfile.TemporaryDirectory() as lock:
             backend = self.Backend(root, lock_root=lock)
-            loc = backend.resolve("_harness", "PLAN.md")
+            loc = backend.resolve("tasks", "042-build-the-brief", "plan.md")
             self.assertIsInstance(loc, self.seam.Locator)
             self.assertNotIsInstance(loc, Path)
 

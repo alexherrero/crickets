@@ -515,9 +515,9 @@ class TestResolveProjectSpace(unittest.TestCase):
 
     def test_recall_slug_extraction_both_layouts(self):
         f = resolve_project._project_slug_from_vault_relpath
-        self.assertEqual(f("desk/projects/agentm/_harness/PLAN.md"), "agentm")
-        self.assertEqual(f("projects/agentm/_harness/PLAN.md"), "agentm")
-        self.assertEqual(f("personal-projects/agentm/_harness/PLAN.md"), "agentm")
+        self.assertEqual(f("desk/projects/agentm/tasks/042-build-the-brief/plan.md"), "agentm")
+        self.assertEqual(f("projects/agentm/tasks/042-build-the-brief/plan.md"), "agentm")
+        self.assertEqual(f("personal-projects/agentm/tasks/042-build-the-brief/plan.md"), "agentm")
 
     def test_recall_slug_extraction_rejects_non_project_paths(self):
         f = resolve_project._project_slug_from_vault_relpath

@@ -66,8 +66,8 @@ Design calls this module encodes (see the parent design, ``Status: final``):
 
 Locators map to paths exactly as ``write_state_file`` maps them: the backend is
 rooted at the resolved per-project vault path (``<vault>/projects/<slug>``), and a
-locator such as ``_harness/PLAN.md`` joins under it to
-``<vault>/projects/<slug>/_harness/PLAN.md``. ``Locator`` guarantees the key is
+locator such as ``tasks/042-build-the-brief/plan.md`` joins under it to
+``<vault>/projects/<slug>/tasks/042-build-the-brief/plan.md``. ``Locator`` guarantees the key is
 normalized and carries no ``..`` (it raises ``InvalidLocatorError`` at
 construction), so a key can never escape the root. Internal ``pathlib.Path`` use
 is an implementation detail — every verb returns the seam's ``Locator`` / ``Info``

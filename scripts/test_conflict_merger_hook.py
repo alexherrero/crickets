@@ -36,7 +36,7 @@ REPO_ROOT = _HERE.parent
 _PLUGIN_ROOT = REPO_ROOT / "src" / "obsidian-vault"
 _HOOK = _PLUGIN_ROOT / "hooks" / "conflict-merger-session-start" / "conflict-merger-session-start.sh"
 
-_CONFLICT_NAME = "PLAN (conflicted copy 2026-05-27) - Mac.md"
+_CONFLICT_NAME = "plan (conflicted copy 2026-05-27) - Mac.md"
 
 
 def _locate_agentm_repo() -> Path | None:
@@ -74,8 +74,8 @@ class TestConflictMergerHook(unittest.TestCase):
 
         # Fixture vault with a Google Drive conflict file in it.
         self.vault = self.root / "vault"
-        (self.vault / "projects" / "demo" / "_harness").mkdir(parents=True)
-        self.conflict = self.vault / "projects" / "demo" / "_harness" / _CONFLICT_NAME
+        self._task_dir().mkdir(parents=True)
+        self.conflict = self._task_dir() / _CONFLICT_NAME
         self.conflict.write_text("# conflicted copy\n", encoding="utf-8")
 
         # Neutral cwd for the hook subprocess (keeps the hook's relative
@@ -193,12 +193,12 @@ class TestConflictMergerHook(unittest.TestCase):
         self.assertNotIn("[conflict-merger]", r.stderr)
 
     # ── the broadened sweep surfaces through the hook ──────────────────────
-    def _harness_dir(self) -> Path:
-        return self.vault / "projects" / "demo" / "_harness"
+    def _task_dir(self) -> Path:
+        return self.vault / "projects" / "demo" / "tasks" / "042-build-the-brief"
 
     def test_detects_bracket_conflict_family(self) -> None:
         name = "FOLLOWUPS [Conflict].md"
-        (self._harness_dir() / name).write_text("x", encoding="utf-8")
+        (self._task_dir() / name).write_text("x", encoding="utf-8")
         r = self._run(self._env())
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("[conflict-merger]", r.stderr)
@@ -206,14 +206,14 @@ class TestConflictMergerHook(unittest.TestCase):
 
     def test_detects_copy_of_family(self) -> None:
         name = "Copy of FOLLOWUPS.md"
-        (self._harness_dir() / name).write_text("x", encoding="utf-8")
+        (self._task_dir() / name).write_text("x", encoding="utf-8")
         r = self._run(self._env())
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn(name, r.stderr)
         self.assertIn("FOLLOWUPS.md", r.stderr)  # "Copy of " stripped to canonical
 
     def test_detects_numbered_duplicate_family(self) -> None:
-        d = self._harness_dir()
+        d = self._task_dir()
         (d / "FOLLOWUPS.md").write_text("base", encoding="utf-8")  # base co-exists
         (d / "FOLLOWUPS (1).md").write_text("dup", encoding="utf-8")
         r = self._run(self._env())

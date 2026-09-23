@@ -24,8 +24,8 @@ This hook ships in the **obsidian-vault** plugin, beside the backend it serves â
 4. For each entry, prints a one-line operator-facing summary on stderr:
    ```
    [conflict-merger] N conflict/duplicate file(s) detected (M in vault, K in DriveFS lost_and_found):
-       [vault]      conflict: projects/agentm/_harness/PLAN (conflicted copy 2026-05-27) - Mac.md
-                    base:     projects/agentm/_harness/PLAN.md
+       [vault]      conflict: projects/agentm/tasks/042-build-the-brief/plan (conflicted copy 2026-05-27) - Mac.md
+                    base:     projects/agentm/tasks/042-build-the-brief/plan.md
        [lost+found] conflict: <orphan>
    ```
 5. The hook itself is non-blocking â€” it surfaces information; the actual merge happens via `/work` or operator-direct in Obsidian. SessionStart never freezes on operator input.

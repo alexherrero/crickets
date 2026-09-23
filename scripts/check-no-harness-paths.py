@@ -62,14 +62,6 @@ _T100 = "100-retire-harness-in-the-other-plugins"
 # Files that still name `_harness`, each with the landing that clears it.
 EXEMPT: dict[str, str] = {
     # task 100 — the other plugins
-    "src/obsidian-vault/hooks/conflict-merger-session-start/hook.md": f"{_T100} step 9",
-    "src/obsidian-vault/scripts/storage_vault.py": f"{_T100} step 9",
-    ".github/ISSUE_TEMPLATE/config.yml": f"{_T100} step 9",
-    "scripts/test_obsidian_vault_conflicts.py": f"{_T100} step 9",
-    "scripts/test_conflict_merger_hook.py": f"{_T100} step 9",
-    "scripts/test_obsidian_vault_backend.py": f"{_T100} step 9",
-    "scripts/test_vault_layout.py": f"{_T100} step 9",
-    "scripts/test_check_slop.py": f"{_T100} step 9",
     # task 101 — development-lifecycle's leftovers
     "src/development-lifecycle/commands/bugfix.md": _T101,
     "src/development-lifecycle/commands/open.md": _T101,
