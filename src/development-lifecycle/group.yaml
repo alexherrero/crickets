@@ -682,6 +682,10 @@ enhances:
 #          vault-reachability probe, _plan_pair and locate_resolver are gone,
 #          and no seam is exit 1 (no plan). stage_plan.py stages only a task:
 #          queued-plans/ and the flat guarded copy are gone, and a flat answer
-#          from agentm (a repo with no vault) is refused, exit 2.
+#          from agentm (a repo with no vault) is refused, exit 2. The
+#          commands' prose loses the flat branches crickets composed: a bare
+#          call follows agentm (exit 4 asks for a task, exit 0 is a repo with
+#          no vault and its repo-local singleton, exit 1 is no agentm), staging
+#          is task-only, and close-out archives only a repo-local plan.
 version: 0.49.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

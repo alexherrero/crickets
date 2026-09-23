@@ -74,13 +74,18 @@ class _NamedPlanWriterContract:
         self.assertIn("--name <slug>", self.text)
 
     def test_scoped_progress_never_singleton(self):
-        # A named plan appends to progress-<slug>.md, never the shared singleton.
-        self.assertIn("progress-<slug>.md", self.text)
+        # A plan appends to the progress log the resolver names for it (a task's
+        # own progress.md), never a shared singleton the command picks itself.
+        self.assertRegex(self.text, r"resolver's (second|progress) field")
+        self.assertNotIn("never the singleton", self.text)
 
     def test_bare_invocation_is_byte_identical_singleton(self):
-        # Back-compat invariant: bare (no --name) == today's singleton behavior.
-        self.assertIn("byte-identical", self.text)
-        self.assertIn("singleton", self.text)
+        # A bare call follows agentm (crickets task 101, ruling 8): exit 4 names a
+        # task, exit 0 is a repo with no vault and its repo-local singleton, and
+        # exit 1 is no agentm. The old byte-identical singleton fallback is gone.
+        self.assertIn("repo with no vault", self.text)
+        self.assertRegex(self.text, r"no agentm|agentm is not installed")
+        self.assertNotIn("byte-identical", self.text.split("recoverability-gate")[0])
 
     def test_probe_uses_python3_not_bash(self):
         # Same bug class as the resolver: the capability probe is a .py file too.
@@ -142,7 +147,9 @@ class TestWorkSpec(_NamedPlanWriterContract, unittest.TestCase):
 
     def test_the_archive_rule_keeps_a_flat_tracker_and_never_moves_a_task(self):
         block = self._section("<!-- BEGIN recoverability-gate", "<!-- END recoverability-gate -->")
-        self.assertIn("its tracker stays at `_harness/tracker-<slug>.md`", block)
+        # Only a repo-local plan archives, and its tracker stays beside it; a
+        # task never moves (crickets task 101, ruling 8).
+        self.assertIn("its tracker stays in `.harness/` at `done`", block)
         self.assertIn("never moves at close-out", block)
 
     def test_nonzero_exit_is_hard_stop_no_singleton_fallback(self):
@@ -218,8 +225,8 @@ class TestPlanSpec(_NamedPlanWriterContract, unittest.TestCase):
 
     def test_a_staged_tracker_opens_only_for_a_task(self):
         step = self._section("### 7b. Open the plan's tracker", "### 8. Stop")
-        self.assertIn("only a task gets one", step)
-        self.assertIn("A staged flat plan in `queued-plans/` gets none", step)
+        self.assertIn("`--name` and `--stage`:** `tracker.md` in the task, at `queued`", step)
+        self.assertNotIn("queued-plans", step)
 
     def test_the_template_writes_steps_and_keeps_the_status_line(self):
         template = self._section("```markdown", "## Risks / open questions")
@@ -431,6 +438,32 @@ class TestTagSerializationContracts(unittest.TestCase):
                       "/release must name the re-audit trigger for the single-writer model")
         self.assertIn("release-please", low,
                       "/release must name release-please as the escalation path")
+
+
+class TestNoFlatLayoutCrickets(unittest.TestCase):
+    """Crickets task 101: no development-lifecycle command composes the flat
+    layout — no `queued-plans/` staging tier and no vault harness directory —
+    and `/plan` handles both answers agentm gives a bare call (ruling 8)."""
+
+    RETIRED_DIR = "_" + "harness"
+    # Step 6 of task 101 rewrites /open and /orient with orient_render.py and
+    # removes this allowance.
+    NOT_YET = frozenset({"open.md", "orient.md"})
+
+    def test_no_command_names_the_staging_tier_or_the_harness_dir(self):
+        for cmd in sorted(_CMDS.glob("*.md")):
+            if cmd.name in self.NOT_YET:
+                continue
+            text = cmd.read_text(encoding="utf-8")
+            with self.subTest(command=cmd.name):
+                self.assertNotIn("queued-plans", text)
+                self.assertNotRegex(text, r"(?<![A-Za-z0-9])" + self.RETIRED_DIR + r"(?![A-Za-z0-9_])")
+
+    def test_a_bare_plan_handles_exit_4_and_a_repo_local_answer(self):
+        bare = _read("plan.md").split("- **Bare `/plan`**", 1)[1].split("\n- **`--name", 1)[0]
+        self.assertIn("exits **4**", bare)
+        self.assertIn("exits **0**, you are in a repo with no vault", bare)
+        self.assertIn("exits **1**, agentm is not installed", bare)
 
 
 if __name__ == "__main__":
