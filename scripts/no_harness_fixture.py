@@ -16,11 +16,11 @@ The layout is the project skeleton since the projects migration:
     <root>/repo/.harness/project.json      {"vault_project": "demo"}
     <root>/agentm/process_seam.py           project-path, state-path (exit 4 bare)
     <root>/agentm/harness_memory.py         list-plans, resolve-active-plan
-    <root>/agentm/tracker.py                show
+    <root>/agentm/tracker.py                new, show, transition
 
 The stubs answer the way agentm's verbs do (`process_seam.py project-path` and `state-path`,
 `harness_memory.py list-plans` and `resolve-active-plan --with-tracker`,
-`tracker.py show`), from this scratch vault. `no_home=True` makes
+`tracker.py new`, `show` and `transition`), from this scratch vault. `no_home=True` makes
 `project-path` exit 1, the answer for a project with no vault home.
 `resolve_by_slug=False` makes `resolve-active-plan` refuse `--project`, as an
 agentm from before crickets task 101's ruling 9 does.
@@ -142,14 +142,34 @@ print("\\t".join(str(f) for f in fields))
 '''
 
 _TRACKER_PY = '''#!/usr/bin/env python3
-import json, sys
+import json, re, sys
 from pathlib import Path
 args = sys.argv[1:]
-if len(args) != 2 or args[0] != "show" or not Path(args[1]).is_file():
-    sys.stderr.write("tracker: usage: show PATH\\n")
+
+def opt(flag):
+    return args[args.index(flag) + 1] if flag in args else None
+
+if args[:1] == ["new"]:
+    out = Path(opt("--out"))
+    if out.exists():
+        sys.stderr.write("tracker: exists\\n")
+        sys.exit(1)
+    out.write_text("---\\nkind: tracker\\ntitle: %s\\nproject: %s\\nstatus: queued\\n---\\n"
+                   % (opt("--title"), opt("--project")), encoding="utf-8")
+    print(out)
+    sys.exit(0)
+if len(args) < 2 or args[0] not in ("show", "transition") or not Path(args[1]).is_file():
+    sys.stderr.write("tracker: usage: {new|show|transition} PATH\\n")
     sys.exit(2)
+path = Path(args[1])
+text = path.read_text(encoding="utf-8")
+if args[0] == "transition":
+    path.write_text(re.sub(r"(?m)^status: .*$", "status: " + opt("--to"), text, count=1),
+                    encoding="utf-8")
+    print("%s: -> %s" % (path, opt("--to")))
+    sys.exit(0)
 fields = {}
-lines = Path(args[1]).read_text(encoding="utf-8").splitlines()
+lines = text.splitlines()
 for line in lines[1:lines.index("---", 1)]:
     key, _, value = line.partition(":")
     fields[key.strip()] = value.strip() or None

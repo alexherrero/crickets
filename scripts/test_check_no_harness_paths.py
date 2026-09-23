@@ -29,8 +29,8 @@ class Scratch(unittest.TestCase):
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(text, encoding="utf-8")
 
-    def hits(self, exempt=None):
-        return gate.scan(self.root, exempt={} if exempt is None else exempt)
+    def hits(self):
+        return gate.scan(self.root)
 
 
 class WhatCounts(Scratch):
@@ -71,20 +71,29 @@ class WhatIsAllowed(Scratch):
                  '"""A finished migration. harness-deprecation: file"""\nX = "_harness"\n')
         self.assertEqual([h["allowed"] for h in self.hits()], ["marker (file)"])
 
-    def test_an_exempt_file(self):
-        self.put("src/demo/scripts/w.py", 'd = "_harness"\n')
-        hits = self.hits({"src/demo/scripts/w.py": "task 999"})
-        self.assertEqual([h["allowed"] for h in hits], ["exempt: task 999"])
+    def test_there_is_no_exemption_list(self):
+        self.assertFalse(hasattr(gate, "EXEMPT"))
+        self.assertFalse(hasattr(gate, "stale_exemptions"))
 
-    def test_an_exempt_file_with_no_hits_is_stale(self):
-        self.put("src/demo/scripts/w.py", "clean = True\n")
-        exempt = {"src/demo/scripts/w.py": "task 999"}
-        self.assertEqual(gate.stale_exemptions(self.hits(exempt), exempt),
-                         ["src/demo/scripts/w.py"])
+
+class APlantedLiteral(Scratch):
+    """Anywhere under src/, an unmarked literal fails the gate."""
+
+    def test_fails_the_gate_in_every_plugin_dir(self):
+        for rel in ("src/development-lifecycle/scripts/new.py", "src/code-review/commands/x.md",
+                    "src/wiki/group.yaml"):
+            with self.subTest(rel=rel):
+                shutil.rmtree(self.root / "src", ignore_errors=True)
+                self.put(rel, 'p = vault / "_harness"\n')
+                err = io.StringIO()
+                with redirect_stdout(io.StringIO()), redirect_stderr(err):
+                    rc = gate.main(["--root", str(self.root)])
+                self.assertEqual(rc, 1)
+                self.assertIn(rel, err.getvalue())
 
 
 class TheRepo(unittest.TestCase):
-    """The gate on this repo: every hit is exempt, marked, or gone."""
+    """The gate on this repo: every hit is marked, or gone."""
 
     def test_the_repo_is_clean(self):
         out, err = io.StringIO(), io.StringIO()
@@ -92,9 +101,9 @@ class TheRepo(unittest.TestCase):
             rc = gate.main([])
         self.assertEqual(rc, 0, err.getvalue())
 
-    def test_every_exemption_names_a_landing(self):
-        for rel, owner in gate.EXEMPT.items():
-            self.assertTrue(owner.startswith(("100-", "101-")), rel)
+    def test_the_inventory_has_no_unmarked_hit(self):
+        self.assertEqual([h for h in gate.scan(gate.Path(gate.__file__).resolve().parent.parent)
+                          if not h["allowed"]], [])
 
     def test_inventory_exits_0(self):
         out = io.StringIO()

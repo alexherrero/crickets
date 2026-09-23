@@ -9,8 +9,8 @@ check is deterministic and keyed off the explicit flag, never an inference —
 mirroring agentm's static gates (e.g. check-no-hardcoded-vault-path): a real
 check, not agent judgment.
 
-Plans live in the (gitignored, often vault-backed) `_harness/`, so this is a
-phase-loop gate run against a *resolved plan path*, not a repo-wide CI gate. The
+A plan is a task's `plan.md` in the project's vault home (or, in a repo with no
+vault, a repo-local `.harness/` plan), so this is a phase-loop gate run against a *resolved plan path*, not a repo-wide CI gate. The
 /plan phase self-checks its own output with it; /work can run it as a precondition.
 
 Usage: check-plan-grounding.py <plan-file>

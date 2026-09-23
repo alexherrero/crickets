@@ -3,8 +3,9 @@
 
 Each case runs one writer against a `ScratchProject` — a vault project in the
 task layout with a stub agentm — and then asserts `harness_dirs()` is empty.
-The cases grow with task 100's steps: every writer a step moves onto a home
-agentm names gains a case here.
+The cases grew with tasks 100 and 101: every writer that moved onto a home
+agentm names has a case here — development-lifecycle's plan tracker, staging,
+setup, features seed, resolver and orientation note among them.
 """
 from __future__ import annotations
 
@@ -109,6 +110,50 @@ class Writers(unittest.TestCase):
                 (sp.repo / ".harness" / tool).write_text("#!/usr/bin/env bash\n", encoding="utf-8")
             self.assertTrue((sp.desk / "features.json").is_file())
             self.assertFalse((sp.repo / ".harness" / "PLAN.md").exists())
+            self.assertEqual(nhf.harness_dirs(sp.root), [])
+
+    def test_the_plan_tracker_and_staging_writers(self):
+        """development-lifecycle (task 101 step 9): a task staged, its tracker
+        opened, activated, stepped and closed — the whole write path."""
+        scripts = HERE.parent / "src" / "development-lifecycle" / "scripts"
+        with nhf.ScratchProject() as sp:
+            root = ["--project-root", str(sp.repo)]
+            staged = self.run_py(sp, scripts / "stage_plan.py", ["path", "043-probe", *root])
+            self.assertEqual(staged.returncode, 0, staged.stderr)
+            plan = Path(staged.stdout.strip())
+            plan.parent.mkdir(parents=True)
+            plan.write_text("# Plan: Probe\n\n### 1. One\n- **Status:** [ ]\n", encoding="utf-8")
+            resolved = self.run_py(sp, scripts / "resolve_plan.py", ["043-probe", *root])
+            self.assertEqual(resolved.returncode, 0, resolved.stderr)
+            _plan, _progress, tracker = resolved.stdout.strip().split("\t")
+            pair = ["--plan", str(plan), "--tracker", tracker]
+            for argv in (["open", *pair, "--root", str(sp.repo)],):
+                r = self.run_py(sp, scripts / "plan_tracker.py", argv)
+                self.assertEqual(r.returncode, 0, r.stderr)
+            r = self.run_py(sp, scripts / "stage_plan.py", ["activate", "043-probe", *root])
+            self.assertEqual(r.returncode, 0, r.stderr)
+            for argv in (["step", *pair, "--state", "s", "--next", "n", "--root", str(sp.repo)],
+                         ["close", *pair, "--outcome", "o", "--root", str(sp.repo)]):
+                r = self.run_py(sp, scripts / "plan_tracker.py", argv)
+                self.assertEqual(r.returncode, 0, r.stderr)
+            status = self.run_py(sp, scripts / "plan_tracker.py", ["status", *pair])
+            self.assertEqual(status.stdout, "done\ttracker\n")
+            self.assertEqual(Path(tracker).parent, plan.parent)
+            self.assertEqual(nhf.harness_dirs(sp.root), [])
+
+    def test_the_orientation_note(self):
+        """development-lifecycle (task 101 step 6): `--note` writes the desk."""
+        import importlib.util
+        import os
+        from unittest import mock
+        spec = importlib.util.spec_from_file_location(
+            "orr_no_harness", HERE.parent / "src" / "development-lifecycle" / "scripts" / "orient_render.py")
+        orr = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(orr)
+        with nhf.ScratchProject() as sp, \
+                mock.patch.dict(os.environ, {"AGENTM_SCRIPTS_DIR": str(sp.agentm)}):
+            note = orr.write_orientation_note({"slug": "demo", "root_path": str(sp.repo)}, "text")
+            self.assertEqual(note, sp.desk / "orientation-note.md")
             self.assertEqual(nhf.harness_dirs(sp.root), [])
 
     def test_design_paths(self):
