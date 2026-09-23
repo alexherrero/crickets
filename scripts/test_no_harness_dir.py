@@ -96,6 +96,21 @@ class Writers(unittest.TestCase):
             self.assertEqual(list(sp.desk.iterdir()), [])
             self.assertEqual(nhf.harness_dirs(sp.root), [])
 
+    def test_setup_in_a_project_that_keeps_tasks(self):
+        """development-lifecycle (task 101 step 7): /setup's calls, then its writes."""
+        scripts = HERE.parent / "src" / "development-lifecycle" / "scripts"
+        with nhf.ScratchProject() as sp:
+            bare = self.run_py(sp, scripts / "resolve_plan.py", ["--project-root", str(sp.repo)])
+            self.assertEqual(bare.returncode, 4, bare.stderr)  # seed no plan
+            desk = self.run_py(sp, scripts / "project_homes.py", ["home", "desk", "--cwd", str(sp.repo)])
+            self.assertEqual(desk.returncode, 0, desk.stderr)
+            Path(desk.stdout.strip(), "features.json").write_text('{"features": []}\n', encoding="utf-8")
+            for tool in ("init.sh", "verify.sh"):
+                (sp.repo / ".harness" / tool).write_text("#!/usr/bin/env bash\n", encoding="utf-8")
+            self.assertTrue((sp.desk / "features.json").is_file())
+            self.assertFalse((sp.repo / ".harness" / "PLAN.md").exists())
+            self.assertEqual(nhf.harness_dirs(sp.root), [])
+
     def test_design_paths(self):
         """design (step 5): the designs home, a confidential design, a parts dir."""
         script = HERE.parent / "src" / "design" / "scripts" / "design_doc.py"

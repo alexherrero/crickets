@@ -699,5 +699,8 @@ enhances:
 #          read, the queued-plans/ listing and the "nothing further" line are
 #          gone; --note writes <desk>/orientation-note.md through
 #          project_homes.py; the gloss is the charter's What line alone.
+#          /setup (setup.md 0.2.0) asks agentm first: exit 4 seeds no plan and
+#          puts features.json in the desk, exit 0 (a repo with no vault)
+#          seeds the repo-local plan with no Status line, exit 1 seeds none.
 version: 0.49.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

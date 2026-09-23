@@ -38,7 +38,7 @@ Development Lifecycle is opinionated about how a change should move from brief t
 
 - You already run a lifecycle you like. This could be your own scripts. It could be a CI-driven flow. It could be a different agent harness. You do not want a second set of phase commands layered on top.
 - You prefer a freeform, single-pass style. The discrete `plan → work → review → release` gates are deliberate. They can feel heavier than the change warrants on a small or throwaway change.
-- You want the loop but not the on-disk state contract. This plugin writes `.harness/PLAN.md` and `progress.md`, and a tracker when agentm is mounted. It treats them as the source of truth between sessions. The phases will not fit your project if that convention does not fit.
+- You want the loop without agentm, or without its on-disk state contract. The plugin keeps each plan, its progress log and its tracker where agentm puts them, and treats them as the source of truth between sessions. With no agentm there is no plan, and the phases have nothing to run on.
 
 ## Reference
 
@@ -48,7 +48,7 @@ Each primitive links to the source that implements it. The phase and ship comman
 
 | Primitive | Kind | What it does |
 |---|---|---|
-| [`/setup`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/commands/setup.md) | command | First-time project scaffold — writes the `.harness/` files. Run once. |
+| [`/setup`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/commands/setup.md) | command | First-time project scaffold — writes the repo's `.harness/` tools, and seeds a plan only where agentm gives a path back. Run once. |
 | [`/plan`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/commands/plan.md) | command | Turn a brief into `PLAN.md` with per-step verification criteria, and open its tracker. No code. |
 | [`/work`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/commands/work.md) | command | Work the plan's steps autonomously, single-threaded, safety-gated per step, keeping its tracker current. |
 | [`/review`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/commands/review.md) | command | Adversarial review — gates first, then the deeper pass if available. Reports, never fixes. |
@@ -75,7 +75,7 @@ Each primitive links to the source that implements it. The phase and ship comman
 
 ### Configuration
 
-There is no configuration. The plugin works out of the box. The phase commands read and write the harness's on-disk state. This state includes the plan, progress, tracker and feature files. It includes optional project settings. This is project state the loop maintains. It is not a set of plugin settings you configure up front. The project's **state mode** dictates where those files live. This plugin does not dictate their location. They sit repo-local under `.harness/`. They can alternatively sit inside your synced memory vault. This depends on how you configure the harness.
+There is no plugin configuration. The phase commands read and write the project's on-disk state: the plan, progress, tracker and feature files, plus optional project settings. That is project state the loop maintains, not settings you configure up front. agentm decides where it lives, and the plugin asks. In a project bound to your vault, each plan is a numbered task (`tasks/NNN-<slug>/`) and `features.json` sits in the project's `desk/`. A repo with no vault keeps its plans and `features.json` repo-local under `.harness/`. The repo's own tools (`init.sh`, `verify.sh`, `project.json`) stay in `.harness/` either way.
 
 ## See also
 

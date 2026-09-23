@@ -14,11 +14,11 @@ The layout is the project skeleton since the projects migration:
         designs/
         desk/
     <root>/repo/.harness/project.json      {"vault_project": "demo"}
-    <root>/agentm/process_seam.py           project-path {tasks|designs|desk}
+    <root>/agentm/process_seam.py           project-path, state-path (exit 4 bare)
     <root>/agentm/harness_memory.py         list-plans, resolve-active-plan
     <root>/agentm/tracker.py                show
 
-The stubs answer the way agentm's verbs do (`process_seam.py project-path`,
+The stubs answer the way agentm's verbs do (`process_seam.py project-path` and `state-path`,
 `harness_memory.py list-plans` and `resolve-active-plan --with-tracker`,
 `tracker.py show`), from this scratch vault. `no_home=True` makes
 `project-path` exit 1, the answer for a project with no vault home.
@@ -87,6 +87,14 @@ import sys
 VAULT_PROJECTS = {vault_projects!r}
 NO_HOME = {no_home!r}
 args = sys.argv[1:]
+if args[:1] == ["state-path"] and len(args) > 1 and args[1] in ("plan", "progress", "tracker"):
+    # A project that keeps tasks: a bare call names no plan (exit 4).
+    if "--plan" not in args:
+        sys.stderr.write("process_seam: this project keeps tasks; name one\\n")
+        sys.exit(4)
+    name = args[args.index("--plan") + 1]
+    print(VAULT_PROJECTS + "/demo/tasks/" + name + "/" + {{"plan": "plan.md", "progress": "progress.md", "tracker": "tracker.md"}}[args[1]])
+    sys.exit(0)
 if not args or args[0] != "project-path" or len(args) < 2:
     sys.stderr.write("usage: process_seam project-path {{tasks,designs,desk}}\\n")
     sys.exit(2)

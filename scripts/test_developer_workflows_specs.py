@@ -456,17 +456,26 @@ class TestNoFlatLayoutCrickets(unittest.TestCase):
 
     def test_features_json_is_found_through_project_homes(self):
         # Step 5: features.json is the desk's, asked of project_homes.py; no
-        # command composes a .harness/ path for it. /setup is rewritten in
-        # step 7 and joins then.
+        # command composes a .harness/ path for it.
         for cmd in sorted(_CMDS.glob("*.md")):
-            if cmd.name == "setup.md":
-                continue
             with self.subTest(command=cmd.name):
                 self.assertNotIn(".harness/features.json", cmd.read_text(encoding="utf-8"))
         for name in ("plan.md", "release.md"):
             with self.subTest(command=name):
                 self.assertIn("project_homes.py\" home desk", _read(name))
                 self.assertIn("`<desk>/features.json`", _read(name))
+
+    def test_setup_seeds_a_plan_only_on_agentms_exit_0(self):
+        # Step 7: /setup asks agentm first; only a repo with no vault (exit 0)
+        # gets a seeded plan, and the seed carries no Status line.
+        setup = _read("setup.md")
+        first = setup.split("### 1.", 1)[1].split("### 2.", 1)[0]
+        self.assertIn('python3 "${CLAUDE_PLUGIN_ROOT}/scripts/resolve_plan.py"', first)
+        self.assertIn("**Exit 4** — the project keeps its plans in numbered tasks. **Seed no plan**", first)
+        self.assertIn("**Exit 0** — a repo with no vault", first)
+        self.assertIn("**Exit 1** — no agentm. **Seed no plan", first)
+        seed = first.split("**The plan seed** (exit 0 only)", 1)[1].split("```", 2)[1]
+        self.assertNotIn("**Status:**", seed.replace("- **Status:** [ ]", ""))
 
     def test_a_bare_plan_handles_exit_4_and_a_repo_local_answer(self):
         bare = _read("plan.md").split("- **Bare `/plan`**", 1)[1].split("\n- **`--name", 1)[0]

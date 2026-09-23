@@ -1,14 +1,14 @@
 ---
 name: setup
-description: First-time project scaffold — write the .harness/ files and populate init.sh / AGENTS.md with real commands. Run once per project.
+description: First-time project scaffold — write the repo's .harness/ tools, populate init.sh / AGENTS.md with real commands, and seed a plan only where agentm gives a path back. Run once per project.
 kind: command
 supported_hosts: [claude-code, antigravity]
-version: 0.1.0
+version: 0.2.0
 ---
 
-You are running the **setup** phase of the developer-workflows loop. First-time initialization in a project: produce the `.harness/` state artifacts populated with **real, project-specific values — not templates**. Run once per project (or after a major restructure).
+You are running the **setup** phase of the developer-workflows loop. First-time initialization in a project: produce the repo's `.harness/` tools populated with **real, project-specific values — not templates**, and seed a plan where agentm says one goes. Run once per project (or after a major restructure).
 
-> **Standalone + storage-agnostic.** This plugin carries the phase workflow and writes plain `.harness/<file>` state in the repo. If a memory/storage layer is hosting it (e.g. agentm's MemoryVault), that layer transparently redirects state and adds recall; absent one, everything below works against `.harness/`. Steps that depend on an optional layer are marked **graceful-skip** — do them if the layer is present, silently skip otherwise.
+> **Plans through agentm.** development-lifecycle keeps a project's plans where agentm puts them: numbered tasks in the project's vault home, or, for a repo with no vault, a repo-local `PLAN.md` in `.harness/`. `/setup` writes the repo's own tools (`init.sh`, `verify.sh`) in `.harness/` itself, and seeds a plan and `features.json` only at a path agentm gives back. Steps that depend on an optional layer are marked **graceful-skip** — do them if the layer is present, silently skip otherwise.
 
 ## Non-negotiable constraints
 
@@ -21,16 +21,22 @@ You are running the **setup** phase of the developer-workflows loop. First-time 
 
 ## Process
 
-### 1. Write the `.harness/` scaffold
+### 1. Ask agentm where a plan goes, then write the scaffold
 
-If `.harness/` doesn't exist, create it and write the files below. **Skip any file that already exists — never clobber operator edits.** These are seeds; later steps fill them with real values.
+Run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/resolve_plan.py"` bare, from the repo root, and act on its exit:
 
-**`.harness/PLAN.md`**
+- **Exit 4** — the project keeps its plans in numbered tasks. **Seed no plan**: the first `/plan` names a task. `features.json` goes in the project's desk: `<desk>/features.json`, where `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/project_homes.py" home desk` names it (on its exit 3, seed none and say so).
+- **Exit 0** — a repo with no vault: agentm answered its repo-local singleton. **Seed `PLAN.md` and `progress.md` at the first two paths it printed**, and `features.json` beside them in the repo-local `.harness/`. The plan seed carries **no `**Status:**` line** — the plan's status lives in its tracker, which `/plan` opens.
+- **Exit 1** — no agentm. **Seed no plan and no `features.json`**, and say that development-lifecycle keeps its plans through agentm.
+- **Any other exit** — surface its stderr, seed no plan, and carry on with the tools below.
+
+Whatever the answer, write the repo's `.harness/init.sh` and `.harness/verify.sh`, creating `.harness/` if it's missing. **Skip any file that already exists — never clobber operator edits.** These are seeds; later steps fill them with real values.
+
+**The plan seed** (exit 0 only)
 
 ```markdown
 # Plan: <short title>
 
-**Status:** planning
 **Created:** <YYYY-MM-DD>
 **Brief:** <1-3 sentence restatement of what we're building or changing>
 
@@ -62,7 +68,7 @@ If `.harness/` doesn't exist, create it and write the files below. **Skip any fi
 <Which deterministic gates apply — typecheck, lint, tests, build. Any project extras.>
 ```
 
-**`.harness/progress.md`**
+**The progress seed** (exit 0 only)
 
 ```markdown
 # Progress
@@ -72,7 +78,7 @@ Append-only log. Newest entries at the bottom. Format: `<YYYY-MM-DD HH:MM> /<pha
 ---
 ```
 
-**`.harness/features.json`**
+**`features.json`** (where the answer above places it)
 
 ```json
 {
@@ -165,13 +171,13 @@ If the repo has a `github.com` origin and `gh` is authed, **ask** whether to cre
 
 ### 10. Log and stop
 
-Append to `.harness/progress.md`:
+On exit 0, append to the seeded `progress.md` (with no seeded plan there is no log to append to; the summary is the record):
 
 ```
 <YYYY-MM-DD HH:MM> /setup — initialized harness for this project (stack: <X>, gates: <list>)
 ```
 
-Then return a ≤5-bullet summary (harness at `.harness/`; stack; gates configured; `init.sh` boots clean; next `/plan <first brief>`), plus one standing, non-blocking doctrine reminder — not a hook, not a gate, just a line in the output: *"A worktree you're done with should be closed out (kept intentionally, or removed) rather than left dangling — the periodic shepherd reclaims what's provably safe to reclaim on its own schedule, but it isn't a substitute for you closing out work you know is finished."*
+Then return a ≤5-bullet summary (what was seeded — the plan and `features.json` with their paths, or why none was; stack; gates configured; `init.sh` boots clean; next `/plan <first brief>`), plus one standing, non-blocking doctrine reminder — not a hook, not a gate, just a line in the output: *"A worktree you're done with should be closed out (kept intentionally, or removed) rather than left dangling — the periodic shepherd reclaims what's provably safe to reclaim on its own schedule, but it isn't a substitute for you closing out work you know is finished."*
 
 ## Failure modes to avoid
 
