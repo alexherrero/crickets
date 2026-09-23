@@ -19,7 +19,7 @@ You are running the **spec** phase of the developer-workflows loop. Write a PRD 
 
 A spec answers: what are we building, what does the user see and type, how is it structured, how is it tested, and what are we explicitly not building? It does not answer how individual tasks are sequenced — that's `/plan`.
 
-The output is a `SPEC.md` file in `.harness/` (or the vault `_harness/` in dogfood context). A plan written from a spec is more reliable than one written from a verbal brief because the scope decisions are already made and recorded — pass the SPEC.md content (or its resolved questions) as the brief when invoking `/plan`.
+The output is a spec file in the project's `desk/briefs/` — the project skeleton's home for a brief that has no task yet — named `<slug>-spec.md`. Below, `SPEC.md` means that file. A plan written from a spec is more reliable than one written from a verbal brief because the scope decisions are already made and recorded — pass the SPEC.md content (or its resolved questions) as the brief when invoking `/plan`.
 
 ## When to Use
 
@@ -81,7 +81,7 @@ This is the most important section for preventing scope creep. List at least two
 
 ### Step 1 — Check for existing state
 
-Read `.harness/SPEC.md` (or the vault `_harness/SPEC.md` in dogfood context). If it exists and its brief matches the current brief, ask: **Resume / Replace / Cancel**. Never silent-overwrite.
+Propose a short slug from the brief (`<slug>`, e.g. `board-sync-retry`) and let the operator confirm or change it, the way a bare `/plan` proposes a task name. Then read `<desk>/briefs/<slug>-spec.md`, where `<desk>` is what `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/project_homes.py" home desk` prints. If it exists and its brief matches the current brief, ask: **Resume / Replace / Cancel**. Never silent-overwrite.
 
 If `/interview-me` has just run and produced a confirmed brief, use that as the input rather than `$ARGUMENTS` alone.
 
@@ -93,7 +93,7 @@ If `$ARGUMENTS` leaves the Commands/UX section unwritable or the Out-of-Scope se
 
 Write all six sections. The out-of-scope section requires at least two entries. If the testing plan has gaps, name them explicitly rather than leaving the section vague.
 
-Storage: resolve the harness root with `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_doc.py" harness-root` (if available); fall back to `.harness/SPEC.md` in the repo root. Never hardcode a vault path.
+Storage: `<desk>/briefs/<slug>-spec.md`, with `<desk>` from `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/project_homes.py" home desk`; create `briefs/` inside it if absent, never `desk/` itself. Exit 3 means no desk (agentm absent, or no vault for the project): write no file, say so, and hand the spec to `/plan` as its brief in the conversation. Never hardcode or compose a project path.
 
 ### Step 4 — Review pass
 
@@ -121,7 +121,7 @@ A spec written after the plan is a post-hoc rationalization of decisions already
 
 Before handing off to `/plan`:
 
-- [ ] `SPEC.md` exists at the resolved harness path.
+- [ ] `SPEC.md` exists at `<desk>/briefs/<slug>-spec.md` (or, with no desk, was handed to `/plan` as the brief).
 - [ ] All six sections are present and non-empty.
 - [ ] Out-of-scope section has at least two entries with rationales.
 - [ ] Testing plan names any gaps explicitly.

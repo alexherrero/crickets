@@ -145,4 +145,8 @@ capabilities: [design-docs, design, architecture]
 # asks agentm where a project's tasks/, designs/ and desk/ are and which plans
 # it has (process_seam.py project-path, harness_memory.py list-plans), so no
 # plugin composes a project path.
+# design_doc.py asks agentm for the project's designs/: designs-home,
+# design-path <slug> and parts-dir <slug> replace harness-root, and it no longer
+# loads development-lifecycle's resolve_plan.py; /spec writes
+# <desk>/briefs/<slug>-spec.md.
 version: 0.11.0

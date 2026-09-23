@@ -34,11 +34,10 @@ project: <GitHub Project URL or leave empty>
                 `/design` command's deferred-scope note.)
 
   Visibility field semantics:
-    confidential — doc lives at `<harness>/designs/<slug>.md` (the resolved
-                   harness root — the vault `_harness/` in the dogfood, a
-                   gitignored `.harness/` standalone; never committed to a
-                   public repo). `/design` resolves this path via
-                   `design_doc.py harness-root`, never a hardcoded `.harness/`.
+    confidential — doc lives at `<designs>/<slug>.md`, in the project's own
+                   `designs/`, which agentm names (never committed to a
+                   public repo). `/design` gets this path from
+                   `design_doc.py design-path <slug>`, never a composed path.
     published    — doc lives at `wiki/designs/<slug>.md` (committed; surfaces
                    in wiki/Home.md + _Sidebar.md as the canonical "Why we
                    built X" entry point).

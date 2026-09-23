@@ -154,11 +154,16 @@ class TestCommandBody(unittest.TestCase):
         self.assertNotIn("wiki/explanation/designs/", self.text)
 
     def test_never_hardcodes_dot_harness_for_confidential(self):
-        # Confidential designs resolve through the helper, never a literal .harness.
-        self.assertIn("harness-root", self.text)
+        # Confidential designs and parts resolve through the helper — agentm
+        # names the project's designs/ — never a literal or composed path
+        # (agentm-vault part 15 retired the harness-root verb).
+        self.assertIn("design-path", self.text)
+        self.assertIn("parts-dir", self.text)
+        self.assertNotIn("harness-root", self.text)
+        self.assertNotIn("_" + "harness", self.text)
         self.assertTrue(
             "never" in self.low and "hardcode" in self.low,
-            "command must warn against hardcoding .harness for confidential designs",
+            "command must warn against hardcoding a path for confidential designs",
         )
 
     def test_sequence_wires_onto_stage_plan_not_singleton(self):

@@ -59,13 +59,13 @@ wiki/designs/
 
 ### Scenario B — a confidential design (machine-local, not committed)
 
-A design you don't want committed (sensitive, or just not wiki-worthy). Drop `--visibility` (or pass `confidential` explicitly) and it routes to the resolved harness root, never the repo:
+A design you don't want committed (sensitive, or just not wiki-worthy). Drop `--visibility` (or pass `confidential` explicitly) and it routes to the project's own `designs/` in the vault, never the repo:
 
 ```
 /design author export-pipeline      # confidential is the default
 ```
 
-The command resolves the harness root via `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_doc.py" harness-root` (the vault `_harness/` in the dogfood; a gitignored `.harness/` standalone) — it never hardcodes `.harness/`. The doc lands at `<resolved-harness>/designs/export-pipeline.md`. Translate and sequence are identical to Scenario A; only the doc + `parts/` location differs:
+The command asks agentm where the project's `designs/` is, through `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_doc.py" design-path export-pipeline` — it never composes a project path. The doc lands at `<designs>/export-pipeline.md`. With no agentm, or no vault for the project, the command writes nothing and offers `--visibility published`. Translate and sequence are identical to Scenario A; only the doc + `parts/` location differs:
 
 ```
 <resolved-harness>/

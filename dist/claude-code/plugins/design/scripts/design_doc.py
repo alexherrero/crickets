@@ -10,7 +10,9 @@ Two responsibilities, both stdlib-only:
 
     design_doc.py gate <path>                       # the Status:final hard gate
     design_doc.py detailed-design <path>            # translate's non-empty-DD gate
-    design_doc.py harness-root [--project-root <p>] # where confidential designs live
+    design_doc.py designs-home [--project-root <p>]         # the project's designs/
+    design_doc.py design-path <slug> [--project-root <p>]   # a confidential design
+    design_doc.py parts-dir <slug> [--project-root <p>]     # a design's parts/
 
 **The `final` hard gate (`require_final`).** `/design translate` and `/design
 sequence` only run on a human-approved (`Status: final`) design. This is the
@@ -20,13 +22,16 @@ and **never auto-repairs** — a malformed or non-final doc halts loudly, pointi
 the operator back to `/design author`. Each non-final state gets its own message
 (faithful port of agentm `harness/skills/design/SKILL.md`'s refusal contract).
 
-**Storage resolution (`resolve_harness_root`).** Confidential designs live at
-`<harness>/designs/<slug>.md` — the resolver-resolved harness root (the vault
-`_harness/` in the dogfood), **never a hardcoded `.harness/`**. We compose
-`resolve_plan.resolve` (the one owner of precedence / vault redirection / the
-dangling-marker loud-error): resolve the singleton pair, take the parent of the
-resolved `PLAN.md`. Published designs live at `wiki/designs/<slug>.md` (committed)
-— a plain repo-relative path, no resolver needed.
+**Storage (`designs_home`).** A project keeps its designs in its own
+`designs/` (agentm-vault § Projects and tasks), and where that is — which
+vault, which project — is agentm's answer, asked through this plugin's
+`project_homes.py home designs`. A confidential design is
+`<designs>/<slug>.md`; a design's parts, published or confidential, are
+`<designs>/<slug>/parts/`. Published designs live at `wiki/designs/<slug>.md`
+(committed) — a plain repo-relative path, nothing to ask. With no designs home
+(agentm absent, or no vault for the project) nothing is written: a published
+design still authors standalone, and a confidential one or its parts wait for
+agentm.
 
 **Frontmatter parsing is minimal + stdlib-only.** No PyYAML (it is repo-CI-only,
 not on the plugin runtime — same constraint as `resolve_plan.py`). A regex lifts
@@ -34,9 +39,9 @@ the leading `---`-delimited block; only top-level `key: value` scalars are read,
 which is all the gate needs (`status:`). Anything richer is ignored, not guessed.
 
 Exit codes (aligned with the sibling helpers so the surface is transparent):
-    0 — ok; `gate` → doc is final; `harness-root` → root on stdout.
-    1 — graceful-skip propagated from the resolver (agentm present, no `_harness/`).
-    2 — loud: non-final / malformed / missing doc, or a resolver refusal.
+    0 — ok; `gate` → doc is final; the path verbs → the path on stdout.
+    2 — loud: non-final / malformed / missing doc, or agentm refused.
+    3 — no designs home: agentm is absent or names none; the reason on stderr.
 """
 from __future__ import annotations
 
@@ -50,52 +55,31 @@ from pathlib import Path
 _HERE = Path(__file__).resolve().parent
 
 
-def _load_resolve_plan():
-    """Load resolve_plan.py from the sibling development-lifecycle plugin.
-
-    design/ hard-requires development-lifecycle (group.yaml `requires:`), so
-    this sibling is always co-installed — but DC-2 forbids a plain cross-plugin
-    `import` (a same-directory `import resolve_plan` worked before the AG Wave
-    A rename 2 moved this file out of development-lifecycle/scripts/; it's a
-    different plugin now). This plugin's `sibling_plugin.py` finds it. A path
-    one level up from this plugin's root worked in the flat `src/` and `dist/`
-    trees, but Claude Code installs each plugin in its own versioned directory,
-    where that path names nothing — and since this loader runs at import time,
-    `/design translate` halted before its first step.
-    """
-    spec = importlib.util.spec_from_file_location("sibling_plugin", _HERE / "sibling_plugin.py")
-    finder = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(finder)
-    sibling = finder.resolve_sibling("development-lifecycle", "scripts/resolve_plan.py")
-    if sibling is None:
-        raise ModuleNotFoundError(
-            "resolve_plan.py not found in the development-lifecycle plugin — design/ "
-            "requires development-lifecycle to be installed alongside it"
-        )
-    spec = importlib.util.spec_from_file_location("resolve_plan", sibling)
+def _load_project_homes():
+    """This plugin's `project_homes.py` — the one pinned way crickets asks
+    agentm where a project's `designs/` is. Loaded by path from this plugin's
+    own scripts/, since a cross-plugin import cannot work at runtime."""
+    spec = importlib.util.spec_from_file_location("design_project_homes",
+                                                  _HERE / "project_homes.py")
     mod = importlib.util.module_from_spec(spec)
-    sys.modules.setdefault("resolve_plan", mod)
     spec.loader.exec_module(mod)
     return mod
 
 
-# One owner of active-pair resolution (precedence, vault redirect, slug-safety,
-# the dangling-marker loud-error): the sibling bridge. Reuse its `_AUTO` sentinel
-# verbatim so `resolver=` passes through transparently — tests inject `resolver=None`
-# to force the `.harness/` fallback, or a stub Path to force the delegate branch.
-resolve_plan = _load_resolve_plan()
-
-_AUTO = resolve_plan._AUTO
+project_homes = _load_project_homes()
 
 # The design-doc lifecycle. Only `/design author` advances it (draft → review →
 # final); the harness `/release` flow sets `launched`. translate + sequence gate
 # on `final`.
 STATUS_VALUES = ("draft", "review", "final", "launched")
 
-# Confidential designs sit under `<harness>/designs/`; published under `wiki/designs/`
-# (the crickets path — NOT agentm's `wiki/explanation/designs/`). Subdir name shared.
-_DESIGNS_DIR = "designs"
+# Confidential designs sit in the project's own `designs/`, which agentm names;
+# published ones under `wiki/designs/` (the crickets path — NOT agentm's
+# `wiki/explanation/designs/`). A design's parts sit in `<designs>/<slug>/parts/`.
 _PUBLISHED_BASE = ("wiki", "designs")
+_PARTS_DIR = "parts"
+# No designs home: agentm is absent, or names none for this project.
+NO_HOME = 3
 
 # Leading `---\n … \n---` block. DOTALL so the body spans lines; non-greedy so it
 # stops at the first closing fence.
@@ -343,33 +327,39 @@ def detailed_design_nonempty(path: str | os.PathLike) -> tuple[bool, str]:
 
 # ── storage resolution ─────────────────────────────────────────────────────────
 
-def resolve_harness_root(root: str, *, resolver=_AUTO) -> tuple[int, str, str]:
-    """Resolve the harness root (the dir holding the active `PLAN.md`).
+def designs_home(root: str, *, homes=None) -> tuple[int, str, str]:
+    """The project's `designs/` directory, as agentm names it.
 
-    Composed onto `resolve_plan.resolve` — we resolve the *singleton* pair and
-    take the parent of the resolved `PLAN.md`. This tracks the vault redirect (in
-    the dogfood the root is the vault `_harness/`, not a repo `.harness/`)
-    automatically; we never re-derive it. Returns (0, root, "") on success, else
-    the resolver's non-zero exit + stderr verbatim (Risk #7 — no silent fallback).
+    Asked through `project_homes.py home designs` for the project `root` is
+    bound to; nothing here composes a project path. Returns (0, "<dir>\\n", "")
+    on an answer, (3, "", reason) when agentm is absent or names no home, and
+    (2, "", reason) when agentm refuses. Creates nothing.
     """
-    rc, out, err = resolve_plan.resolve("", root, resolver=resolver)
+    homes = project_homes if homes is None else homes
+    rc, path, reason = homes.ask_home("designs", cwd=root)
+    if rc != 0 or path is None:
+        return (rc or NO_HOME, "", f"[design_doc] no designs home: {reason}\n")
+    return (0, f"{path}\n", "")
+
+
+def confidential_design_path(slug: str, root: str, *, homes=None) -> tuple[int, str, str]:
+    """The confidential design path `<designs>/<slug>.md`, in the project's own
+    `designs/`. Surfaces `designs_home`'s exit and reason on failure."""
+    rc, designs, err = designs_home(root, homes=homes)
     if rc != 0:
         return (rc, "", err)
-    plan_path = out.split("\t", 1)[0].strip()
-    return (0, f"{Path(plan_path).parent}\n", "")
+    return (0, f"{Path(designs.strip()) / f'{slug}.md'}\n", "")
 
 
-def confidential_design_path(slug: str, root: str, *, resolver=_AUTO) -> tuple[int, str, str]:
-    """The confidential design path `<harness>/designs/<slug>.md`.
-
-    Thin compose over `resolve_harness_root`; surfaces the resolver's exit/stderr
-    unchanged on failure.
-    """
-    rc, harness, err = resolve_harness_root(root, resolver=resolver)
+def parts_dir(slug: str, root: str, *, homes=None) -> tuple[int, str, str]:
+    """Where a design's parts go: `<designs>/<slug>/parts/`, in the project's
+    own `designs/`, for a published design as much as a confidential one (the
+    published doc itself stays in `wiki/designs/`). Surfaces `designs_home`'s
+    exit and reason on failure."""
+    rc, designs, err = designs_home(root, homes=homes)
     if rc != 0:
         return (rc, "", err)
-    p = Path(harness.strip()) / _DESIGNS_DIR / f"{slug}.md"
-    return (0, f"{p}\n", "")
+    return (0, f"{Path(designs.strip()) / slug / _PARTS_DIR}\n", "")
 
 
 def published_design_path(slug: str, root: str) -> str:
@@ -386,7 +376,7 @@ def published_design_path(slug: str, root: str) -> str:
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="design_doc.py",
-        description="Design-doc final-gate + harness-root resolution for /design.",
+        description="Design-doc final-gate + designs-home resolution for /design.",
     )
     sub = p.add_subparsers(dest="mode", required=True)
 
@@ -399,8 +389,14 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     d.add_argument("path", help="path to the design doc")
 
-    h = sub.add_parser("harness-root", help="print the resolved harness root (holds PLAN.md)")
+    h = sub.add_parser("designs-home", help="print the project's designs/ directory, from agentm")
     h.add_argument("--project-root", default=None, help="project root (default: cwd)")
+    c = sub.add_parser("design-path", help="print a confidential design's path, <designs>/<slug>.md")
+    c.add_argument("slug")
+    c.add_argument("--project-root", default=None, help="project root (default: cwd)")
+    pd = sub.add_parser("parts-dir", help="print a design's parts directory, <designs>/<slug>/parts/")
+    pd.add_argument("slug")
+    pd.add_argument("--project-root", default=None, help="project root (default: cwd)")
     return p
 
 
@@ -418,9 +414,13 @@ def main(argv: list[str]) -> int:
             return 0
         sys.stderr.write(f"[design_doc] {reason}\n")
         return 2
-    # harness-root
     root = ns.project_root if ns.project_root is not None else os.getcwd()
-    rc, out, err = resolve_harness_root(root)
+    if ns.mode == "designs-home":
+        rc, out, err = designs_home(root)
+    elif ns.mode == "design-path":
+        rc, out, err = confidential_design_path(ns.slug, root)
+    else:
+        rc, out, err = parts_dir(ns.slug, root)
     if out:
         sys.stdout.write(out)
     if err:

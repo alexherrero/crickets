@@ -44,18 +44,18 @@ A design doc carries a `status:` field in its frontmatter with exactly four stat
 
 `/design author` is the **only** verb that transitions `Status` (`draft → review → final`); it never advances past `final`. `translate` and `sequence` **never** change Status — they call the shared gate `design_doc.py gate <path>` (or `require_final()`), which exits non-zero with a state-specific message on any non-`final` doc and **never auto-repairs**. A refusal points the operator back to `/design author` to finish the review pass. This gate is what makes the downstream pipeline trustworthy: it preserves the human-approval signal.
 
-### Storage resolution (never hardcode `.harness/`)
+### Storage resolution (agentm names the project's `designs/`)
 
 Designs live in one of two places, by the doc's `visibility:` field:
 
-- **confidential** → `<harness>/designs/<slug>.md` — the **resolver-resolved** harness root (the vault `_harness/` in the dogfood; a gitignored `.harness/` standalone). Resolve it with `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_doc.py" harness-root` — **never a hardcoded `.harness/`**. A non-zero exit is a hard stop that surfaces stderr (no silent fallback — Risk #7).
+- **confidential** → `<designs>/<slug>.md`, in the project's own `designs/`, which agentm names. Get the path with `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_doc.py" design-path <slug>` (`designs-home` prints the directory) — **never hardcode or compose a project path**. Exit 3 means no designs home (agentm absent, or no vault for the project): write nothing, say so, and offer `--visibility published`. Exit 2 is agentm refusing: a hard stop that surfaces stderr.
 - **published** → `wiki/designs/<slug>.md` — committed; the crickets path (**not** agentm's `wiki/explanation/` tree). Surfaces in `wiki/Home.md` + `_Sidebar.md`.
 
-Parts live beside their doc: `<doc-dir>/parts/<part-slug>.md`.
+Parts of any design, published or confidential, live in the project's `designs/`: `<parts-dir>/<part-slug>.md`, where `<parts-dir>` is what `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_doc.py" parts-dir <slug>` prints (`<designs>/<slug>/parts/`). The published doc itself stays in `wiki/designs/`. Exit 3 means no designs home: translate and sequence stop and write nothing.
 
 ### Tested helper vs. thin prompt
 
-Crickets diverges from agentm's no-Bash `Read/Write/Edit/Glob/Grep`-only skill on purpose: the **deterministic, falsifiable** pieces (the `Status: final` gate, frontmatter parsing, harness-root resolution, the Kahn topo-sort, PLAN emission) live in unit-tested stdlib-only Python helpers — `scripts/design_doc.py` (gate + storage) and `scripts/design_sequence.py` (topo-sort) — invoked via `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/<helper>.py" …`. The **interactive, human-judgment** pieces (the section walk, the split proposal, approve/revise/skip) stay in this prompt body. Helpers never own interactive logic; the prompt never re-derives a gate or a sort.
+Crickets diverges from agentm's no-Bash `Read/Write/Edit/Glob/Grep`-only skill on purpose: the **deterministic, falsifiable** pieces (the `Status: final` gate, frontmatter parsing, the designs-home resolution, the Kahn topo-sort, PLAN emission) live in unit-tested stdlib-only Python helpers — `scripts/design_doc.py` (gate + storage) and `scripts/design_sequence.py` (topo-sort) — invoked via `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/<helper>.py" …`. The **interactive, human-judgment** pieces (the section walk, the split proposal, approve/revise/skip) stay in this prompt body. Helpers never own interactive logic; the prompt never re-derives a gate or a sort.
 
 ### External review is deferred (#5b)
 
@@ -95,7 +95,7 @@ These items are derived from `corrections.md` seeds via the upstream-guardrail m
 
 `author` is the **only** verb that transitions `Status` (`draft → review → final`); it never advances past `final`. It runs in one of three modes by the target doc's existing Status: **bootstrap** (no doc yet), **authoring** (`draft`), **review pass** (`review`). Save after every section so a partial draft survives an interrupted session.
 
-**Inputs.** `<slug>` (filename identifier — required for a new doc, inferred from the path on resume), `--visibility {confidential|published}` (defaults to `confidential`), and `--rung {full|abbreviated|architecture}` (defaults to `full` — new-doc only; ignored on resume, where the existing doc's own section set already fixed the rung). Visibility routes the output path per *Storage resolution* above: `confidential` → `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_doc.py" harness-root` then `<harness>/designs/<slug>.md`; `published` → `wiki/designs/<slug>.md`. To resume, locate the doc through the same two-path lookup (if both exist, ask which); never hardcode the confidential root.
+**Inputs.** `<slug>` (filename identifier — required for a new doc, inferred from the path on resume), `--visibility {confidential|published}` (defaults to `confidential`), and `--rung {full|abbreviated|architecture}` (defaults to `full` — new-doc only; ignored on resume, where the existing doc's own section set already fixed the rung). Visibility routes the output path per *Storage resolution* above: `confidential` → the path `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_doc.py" design-path <slug>` prints (`<designs>/<slug>.md`); `published` → `wiki/designs/<slug>.md`. To resume, locate the doc through the same two-path lookup (if both exist, ask which); never hardcode the confidential root.
 
 **Rungs (v0.2.0, PLAN-wave-c-design-and-conventions).** Three templates, one command:
 
@@ -184,7 +184,7 @@ Once `Status: final`, `/design author` **refuses** further invocations on that d
 
 ## `/design translate` — final doc → structural `parts/`
 
-`translate` consumes a `Status: final` design doc and produces N structural-part files at `<doc-dir>/parts/<part-slug>.md` — each a focused implementation slice small enough for one `/design sequence` → `/work` cycle. translate is **read-mostly** with respect to the parent: it appends one Document-History row and bumps `updated`, but **never changes Status** (only `/design author` and the harness `/release` do).
+`translate` consumes a `Status: final` design doc and produces N structural-part files at `<parts-dir>/<part-slug>.md` — each a focused implementation slice small enough for one `/design sequence` → `/work` cycle. translate is **read-mostly** with respect to the parent: it appends one Document-History row and bumps `updated`, but **never changes Status** (only `/design author` and the harness `/release` do).
 
 **Inputs.** `<slug>` (or full path — resolve via the two-path lookup in *Storage resolution*; if both exist, ask which) and `--allow-large-design` (optional — bypasses the cap-of-6 soft warning; if you reach for it twice running, split the *design* upstream instead).
 
@@ -248,7 +248,7 @@ The reshape loop is the human's primary lever — the proposed split is a starti
 
 ### Step 5 — Write the part files
 
-For each approved part, write `<doc-dir>/parts/<part-slug>.md` (create `parts/` if absent):
+For each approved part, write `<parts-dir>/<part-slug>.md` — that is, `<designs>/<slug>/parts/<part-slug>.md`, in the directory `design_doc.py parts-dir <slug>` printed, created if absent (never the `designs/` home itself):
 
 ```yaml
 ---
@@ -302,7 +302,7 @@ The parent's `Status` **stays `final`** — translate never changes Status.
 
 ## `/design sequence` — `parts/` → topo-ordered named plans
 
-`sequence` consumes the populated `<doc-dir>/parts/` (translate's output) and generates one **named** plan per part, in dependency order, via the shipped `stage_plan.py` writer. This is the bridge from the design phase to the execution phase: after `sequence`, the first part is the active named plan and the rest are queued, ready for `/work`. Like translate, `sequence` is read-mostly with respect to the parent (one Document-History row, bump `updated`) and **never changes Status**.
+`sequence` consumes the populated `<parts-dir>` (translate's output) and generates one **named** plan per part, in dependency order, via the shipped `stage_plan.py` writer. This is the bridge from the design phase to the execution phase: after `sequence`, the first part is the active named plan and the rest are queued, ready for `/work`. Like translate, `sequence` is read-mostly with respect to the parent (one Document-History row, bump `updated`) and **never changes Status**.
 
 **The crickets divergence — named-plan tiers, never the singleton.** agentm's skill writes the first part to the singleton `.harness/PLAN.md`. crickets does **not**: it stages every part as a *named* plan via `stage_plan.py`, so an unrelated active `PLAN.md` is never clobbered. The first part (topo-order) is `activate`d → `PLAN-<doc-slug>-<part-slug>.md`; the rest are written to their staging `path` under `queued-plans/`. The singleton `PLAN.md` is **never** touched.
 
@@ -318,7 +318,7 @@ The parent's `Status` **stays `final`** — translate never changes Status.
 Ordering is deterministic + falsifiable, so it lives in `design_sequence.py` — call it; never hand-order parts in this prompt:
 
 ```
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_sequence.py" order <doc-dir>/parts
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_sequence.py" order <parts-dir>
 ```
 
 It reads `parts/*.md`, builds the dependency DAG keyed by `part_slug`, and **Kahn topo-sorts with an alphabetical tie-break** (so the same parts always yield the same order — `queued-plans/` never churns across re-runs). Exit 0 prints the ordered slugs, one per line — the first line is the part to activate, the rest queue in order. Exit 2 halts with a concrete message on a **cycle** (`dependency cycle detected: a → b → a`) or a **missing dependency** (`part 'x' depends on 'y' which does not exist in parts/`). Surface stderr verbatim; never guess an order past a refusal.

@@ -86,6 +86,20 @@ class Writers(unittest.TestCase):
             self.assertEqual(self.run_py(sp, hook, ["--mode", "reset", *root]).returncode, 0)
             self.assertEqual(nhf.harness_dirs(sp.root), [])
 
+    def test_design_paths(self):
+        """design (step 5): the designs home, a confidential design, a parts dir."""
+        script = HERE.parent / "src" / "design" / "scripts" / "design_doc.py"
+        with nhf.ScratchProject() as sp:
+            root = ["--project-root", str(sp.repo)]
+            for argv, want in ((["designs-home", *root], sp.designs),
+                               (["design-path", "arc", *root], sp.designs / "arc.md"),
+                               (["parts-dir", "arc", *root], sp.designs / "arc" / "parts")):
+                r = self.run_py(sp, script, argv)
+                self.assertEqual(r.returncode, 0, r.stderr)
+                self.assertEqual(Path(r.stdout.strip()), want)
+            self.assertEqual(sorted(p.name for p in sp.designs.iterdir()), [])
+            self.assertEqual(nhf.harness_dirs(sp.root), [])
+
     def test_depth_maintenance(self):
         """github-projects (step 4): a dry-run cycle over agentm's plan list."""
         script = next((HERE.parent / "src").glob("*-projects/scripts/depth_maintain.py"))
