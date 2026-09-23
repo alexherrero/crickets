@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v4.0.0] — 2026-09-23 — Major: the other plugins find a project's homes through agentm
+
+**MAJOR.** The first crickets landing of agentm-vault part 15, the retirement of the vault harness directory. Every plugin except development-lifecycle now asks agentm where a project keeps its tasks, designs and machine files, through one small module pinned identical in each (`project_homes.py`), and none composes, probes or creates a harness directory. Four things that had quietly stopped working since the projects migration of 2026-09-16 work again: the evidence tracker gates a task's `plan.md`, depth maintenance finds the project's plans, `/design` runs on a project that keeps tasks, and wiki-watch keeps real cursors. It is major because a vault that never moved to the projects layout loses these, and three script flags and verbs are gone. It needs agentm with `process_seam.py project-path` and `list-plans --project` ([agentm #681](https://github.com/alexherrero/agentm/pull/681)). The development-lifecycle half follows in the next release.
+
 ### Breaking
 
 - **Every plugin but development-lifecycle now reads a project's plans and homes only where agentm puts them** (agentm-vault part 15, crickets task 100). crickets serves other vaults from its installed copies. On a vault that never moved to the projects layout, whose plans still sit in a vault harness directory, these stop working until it migrates:

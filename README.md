@@ -59,7 +59,7 @@ The [wiki](https://github.com/alexherrero/crickets/wiki) covers everything there
 - [Reference](https://github.com/alexherrero/crickets/wiki/Reference) — plugin anatomy, the manifest schema, and the install modes.
 
 > [!NOTE]
-> **Latest release: [v3.39.0](https://github.com/alexherrero/crickets/releases/tag/v3.39.0).** A plan now carries agentm's tracker, and every development-lifecycle phase command reads where the plan stands from it and keeps it current; the commands work in today's flat `_harness/` plans and in the numbered task directories agentm moves every project into next.
+> **Latest release: [v4.0.0](https://github.com/alexherrero/crickets/releases/tag/v4.0.0).** Every plugin but development-lifecycle now asks agentm where a project keeps its tasks, designs and machine files, so the evidence tracker gates a task's plan again, `/design sequence` opens queued tasks, and wiki-watch and `/handoff` keep their state in the project's `desk/`. Breaking for a vault that never moved to the projects layout.
 
 ---
 
