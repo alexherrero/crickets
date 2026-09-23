@@ -27,7 +27,7 @@ If the brief is underspecified, run `/interview-me` first. If it's a non-trivial
 2. **Read the resolved `PLAN.md` and `progress.md` first** (the paths agentm gives: a task under `--name` and `--stage`, and for a bare call in a repo with no vault its repo-local singleton; `--activate` is promote-only and reads no plan). If a plan is in flight (`plan_tracker.py status` says `active`, from its tracker or, without one, its Status line) and the new brief is related, **ask** "continue or replace?" — never silently overwrite.
 3. **Interview only if the brief is ambiguous** (≤5 batched questions). Skip if it's clear or derivable from the codebase.
 4. **Write the plan using the PLAN.md shape** below.
-5. **Update `.harness/features.json`** only if this plan introduces net-new user-visible features.
+5. **Update `features.json`** (the project's desk copy — see step 5) only if this plan introduces net-new user-visible features.
 6. **Dispatch the `documenter` sub-agent** (via the `wiki-maintenance` capability probe — exit 0 dispatch, exit 1 skip) once `PLAN.md` is written, to create `pending` pages for steps affecting user-visible behavior or architecture.
 7. **Sync the plan to the GitHub Project board** (optional, graceful-skip) — when `github-projects` is installed (capability probe) + `.harness/project.json` present + `gh` authed, record the new plan in `board-items.json` and emit its kickoff via the github-projects plugin's `project_sync.py post`; capture `## Out of scope` deferrals as board-backed `Backlog-item`/`Idea` entries in `board-items.json` (**never** a raw `gh project item-create` — an unbacked board issue is an orphan the `vault==board` gate flags as drift). Deterministic + idempotent → announce + proceed. Silent-skip (zero behavior change) if the plugin, `project.json`, or `gh` is absent.
 8. **Append one line to the resolved `progress.md`** (the resolver's second field: a task's own `progress.md` under `--name`, `--stage` and `--activate`; in a repo with no vault, the repo-local log agentm names).
@@ -127,6 +127,8 @@ Run the deterministic plan-grounding gate on the plan you just wrote:
 
 ### 5. Update `features.json` if appropriate
 
+`features.json` lives in the project's desk: `<desk>/features.json`, where `<desk>` is what `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/project_homes.py" home desk` prints. **Exit 3** means agentm names no desk — a repo with no vault, whose plans agentm keeps repo-local — and there `features.json` is the repo-local file beside the plan. Nothing else composes its path.
+
 A feature is a user-visible capability (changelog-worthy); a step is a unit of work — **not 1:1**. Scaffolding/refactors produce no feature entry. `passes: true` is set later by `/review`, never by `/plan`. Err toward fewer feature entries.
 
 ### 6. Declare future state in the wiki (graceful-skip)
@@ -137,7 +139,7 @@ Check availability: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" ca
 
 Check availability: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" capability board-sync`. On **exit 1** (unavailable, or no `CLAUDE_PLUGIN_ROOT`) skip silently — zero behavior change. On **exit 0** with `.harness/project.json` present and `gh` authed, mirror this `/plan` onto the board:
 
-- **Plan kickoff** — record the new plan in `board-items.json` (the agent-maintained item source beside `project.json`, kept current like `features.json`; `items_source` in the config may redirect it) as a `Plan` under its Feature/Sub-feature parent with its kickoff goal, then render+write it: `python3 "$(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sibling_plugin.py" github-projects scripts/project_sync.py)" post --config <project.json> --id <plan-id>` (full re-render — kickoff is template-driven, not a `--type` flag stage). Per **DC-1** a Plan posts only once it's the active plan; a staged/future plan is recorded but not posted.
+- **Plan kickoff** — record the new plan in `board-items.json` (the agent-maintained item source github-projects reads — the config's `items_source`, else github-projects' own default; kept current like `features.json`) as a `Plan` under its Feature/Sub-feature parent with its kickoff goal, then render+write it: `python3 "$(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sibling_plugin.py" github-projects scripts/project_sync.py)" post --config <project.json> --id <plan-id>` (full re-render — kickoff is template-driven, not a `--type` flag stage). Per **DC-1** a Plan posts only once it's the active plan; a staged/future plan is recorded but not posted.
 - **Deferred items** — capture each intentionally-deferred `## Out of scope` entry into `board-items.json` as a `Backlog-item` (or `Idea`) so the next sync materializes it. Add them to the vault source, **never** raw `gh project item-create` — an item not backed by `board-items.json` is an orphan the `vault==board` gate (the `github-projects` check-all gate) flags as drift.
 
 The render+write path is deterministic, one-way, and idempotent-by-stable-id (a re-run repairs, never duplicates) → recoverable, so **announce + proceed**; preview the exact `gh` argv with `--dry-run` first. Silent-skip if `project.json` or `gh` is absent.

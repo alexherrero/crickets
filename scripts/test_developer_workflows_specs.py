@@ -459,6 +459,20 @@ class TestNoFlatLayoutCrickets(unittest.TestCase):
                 self.assertNotIn("queued-plans", text)
                 self.assertNotRegex(text, r"(?<![A-Za-z0-9])" + self.RETIRED_DIR + r"(?![A-Za-z0-9_])")
 
+    def test_features_json_is_found_through_project_homes(self):
+        # Step 5: features.json is the desk's, asked of project_homes.py; no
+        # command composes a .harness/ path for it. /setup is rewritten in
+        # step 7 and joins then.
+        for cmd in sorted(_CMDS.glob("*.md")):
+            if cmd.name == "setup.md":
+                continue
+            with self.subTest(command=cmd.name):
+                self.assertNotIn(".harness/features.json", cmd.read_text(encoding="utf-8"))
+        for name in ("plan.md", "release.md"):
+            with self.subTest(command=name):
+                self.assertIn("project_homes.py\" home desk", _read(name))
+                self.assertIn("`<desk>/features.json`", _read(name))
+
     def test_a_bare_plan_handles_exit_4_and_a_repo_local_answer(self):
         bare = _read("plan.md").split("- **Bare `/plan`**", 1)[1].split("\n- **`--name", 1)[0]
         self.assertIn("exits **4**", bare)

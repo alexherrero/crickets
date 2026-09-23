@@ -86,6 +86,16 @@ class Writers(unittest.TestCase):
             self.assertEqual(self.run_py(sp, hook, ["--mode", "reset", *root]).returncode, 0)
             self.assertEqual(nhf.harness_dirs(sp.root), [])
 
+    def test_the_lifecycle_desk_answer(self):
+        """development-lifecycle (task 101 step 5): the desk features.json lives in."""
+        script = HERE.parent / "src" / "development-lifecycle" / "scripts" / "project_homes.py"
+        with nhf.ScratchProject() as sp:
+            r = self.run_py(sp, script, ["home", "desk", "--cwd", str(sp.repo)])
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertEqual(Path(r.stdout.strip()), sp.desk)
+            self.assertEqual(list(sp.desk.iterdir()), [])
+            self.assertEqual(nhf.harness_dirs(sp.root), [])
+
     def test_design_paths(self):
         """design (step 5): the designs home, a confidential design, a parts dir."""
         script = HERE.parent / "src" / "design" / "scripts" / "design_doc.py"

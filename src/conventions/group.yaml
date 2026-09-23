@@ -113,4 +113,6 @@ capabilities: [testing-conventions, releasing-conventions, conventions]
 #          records) and only a repo-local .harness/ plan archives; its
 #          archive-hygiene check is unchanged, since a repo with no vault
 #          still keeps its plans there. coalescence-gate.md 0.2.1 -> 0.2.2.
+#          agentic-engineering SKILL.md (0.1.0 -> 0.1.1) says features.json
+#          lives in the project's desk/, or beside a no-vault repo's plans.
 version: 0.12.0

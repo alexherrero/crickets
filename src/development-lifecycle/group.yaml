@@ -687,5 +687,10 @@ enhances:
 #          call follows agentm (exit 4 asks for a task, exit 0 is a repo with
 #          no vault and its repo-local singleton, exit 1 is no agentm), staging
 #          is task-only, and close-out archives only a repo-local plan.
+#          development-lifecycle ships its own byte-identical project_homes.py
+#          (the sixth copy); /plan and /release find features.json in the
+#          project's desk through it (exit 3, a repo with no vault: the
+#          repo-local file beside the plan), and /plan names the board ledger
+#          by github-projects' own items path.
 version: 0.49.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]
