@@ -54,6 +54,34 @@ def _resolve_vault_prose_audit() -> Path | None:
 
 _VAULT_PROSE_AUDIT = _resolve_vault_prose_audit() or Path("/nonexistent-prose-audit.json")
 
+# prose-audit.json is the operator's frozen record (taken 2026-07-02), so the
+# wiki pages it names drift away from it; the corpus is never edited to follow.
+# Pages moved with their prose intact map to their current path here.
+_CORPUS_MOVES = {
+    # #183 (CONS-3, 2026-07-10) moved these reference pages to explanation/,
+    # git-detected as 96-99% renames.
+    f"crickets wiki/reference/{name}.md": f"crickets wiki/explanation/{name}.md"
+    for name in (
+        "Design-Docs", "Developer-Safety", "GitHub-CI", "Obsidian-Vault-Backend",
+        "PII", "Releasing-Conventions", "Repo-Layout", "Status-Line-Meter",
+        "Testing-Conventions", "Token-Audit", "Wiki-Maintenance",
+    )
+}
+# Clean-corpus pages whose audited prose no longer exists anywhere. They drop
+# out of the scan; a page that is neither found nor listed here fails the test.
+_CORPUS_RETIRED = {
+    "crickets wiki/how-to/Integrate-A-Worker.md":
+        "619bad4e: the spawn/integrate-worker flow was retired",
+    "crickets wiki/reference/Developer-Workflows.md":
+        "#195: became reference/Development-Lifecycle.md, only 46% of lines kept",
+    "agentm wiki/how-to/Install-Into-Project.md":
+        "agentm #490: the per-project install was retired",
+    "agentm wiki/reference/Migration-Tool.md":
+        "agentm #490: the per-project install was retired",
+    "agentm wiki/how-to/Stand-Up-Memory-MCP-Server.md":
+        "agentm #583: the Python MCP server left the tree",
+}
+
 
 def _load(filename: str, mod_name: str):
     spec = importlib.util.spec_from_file_location(mod_name, _SCRIPTS / filename)
@@ -244,7 +272,7 @@ class TestCorpusCalibration(unittest.TestCase):
         cls.rules = rule_pack.load_shipped_pack()["rules"]
 
     def _resolve(self, page: str) -> Path | None:
-        repo, relpath = page.split(" ", 1)
+        repo, relpath = _CORPUS_MOVES.get(page, page).split(" ", 1)
         root = _REPO_ROOTS.get(repo)
         if root is None:
             return None
@@ -257,15 +285,21 @@ class TestCorpusCalibration(unittest.TestCase):
         error_findings = []
         warning_findings = []
         scanned = 0
+        unaccounted = []
         for page in clean_pages:
             path = self._resolve(page)
             if path is None:
+                if page not in _CORPUS_RETIRED:
+                    unaccounted.append(page)
                 continue
             scanned += 1
             findings = slop.scan_file(path, self.rules)
             total_findings += len(findings)
             error_findings.extend(f for f in findings if f.severity == "error")
             warning_findings.extend(f for f in findings if f.severity == "warning")
+        self.assertEqual(unaccounted, [],
+                         "clean-corpus pages missing on disk: map a moved page in "
+                         "_CORPUS_MOVES, or list a deleted one in _CORPUS_RETIRED")
         self.assertGreater(scanned, 60, "expected most of the 72 clean pages to resolve on disk")
         self.assertEqual(error_findings, [],
                           f"error-tier findings on clean corpus: {error_findings}")
