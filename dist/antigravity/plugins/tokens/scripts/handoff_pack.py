@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
-"""`/handoff-pack` backing logic (crickets-token-audit design, 2026-07-04 amendment).
+"""`/handoff` backing logic (crickets-token-audit design, 2026-07-04 amendment).
 
-Generalizes the Mythos `PROMPTS.md` pattern (`<vault>/projects/agentm/_harness/
-mythos-readiness-handoff/PROMPTS.md` / `PROMPTS-NEXT.md`): snapshots an
-expensive session's outputs into a handoff directory alongside paste-ready
-prompts for downstream cheap sessions. The load-bearing difference from the
+Generalizes the Mythos `PROMPTS.md` pattern (the Mythos readiness handoff's
+`PROMPTS.md` / `PROMPTS-NEXT.md`, now in the agentm vault project's
+`completed/`): snapshots an expensive session's outputs into a handoff
+directory alongside paste-ready prompts for downstream cheap sessions.
+
+Where a pack goes by default is the project's own `desk/`, as agentm names it
+(`default_destination`): `<desk>/<handoff-slug>/`. With no desk (agentm absent,
+or no vault for the project) there is no default and the operator names one. The load-bearing difference from the
 hand-authored Mythos pack: every prompt here carries a **structured**
 tier/model label (`LABEL_SCHEMA_KEYS`), not just a bold-markdown annotation
 a human has to parse — so a downstream consumer (including the `/work`
@@ -36,6 +40,27 @@ class HandoffEntry:
     def label(self) -> dict:
         """The machine-readable tier/model label — a structured dict, not prose."""
         return {"tier": self.tier, "model_id": self.model_id, "effort": self.effort}
+
+
+def _project_homes():
+    """This plugin's `project_homes.py` — the one pinned way crickets asks agentm
+    where a project's desk/ is — loaded by path from this plugin's scripts/."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "tokens_project_homes", Path(__file__).resolve().parent / "project_homes.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def default_destination(slug: str, cwd=None, *, homes=None) -> "Path | None":
+    """Where a pack named `slug` goes when the operator names no destination:
+    `<desk>/<slug>/`, in the project's own desk/ as agentm names it for the
+    project `cwd` is bound to. None when there is no desk — then the operator
+    names one. Creates nothing, and never composes a project path."""
+    homes = _project_homes() if homes is None else homes
+    desk = homes.home("desk", cwd=cwd)
+    return desk / slug if desk is not None else None
 
 
 def label_matches_schema(label: dict) -> bool:

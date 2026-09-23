@@ -120,5 +120,55 @@ class TestLabelMatchesSchema(unittest.TestCase):
         self.assertTrue(hp.label_matches_schema({"tier": "T1", "model_id": "x", "effort": "low"}))
 
 
+class TestDefaultDestination(unittest.TestCase):
+    """agentm-vault part 15: with no destination named, a pack goes to the
+    project's own desk/ as agentm names it; with no desk there is no default."""
+
+    def setUp(self):
+        import os
+        from unittest import mock
+        sys.path.insert(0, str(_ROOT / "scripts"))
+        import no_harness_fixture as nhf
+        self.nhf = nhf
+        self.sp = nhf.ScratchProject()
+        self.addCleanup(self.sp.cleanup)
+        self.env = lambda values: self._patch(os, mock, values)
+
+    def _patch(self, os, mock, values):
+        patcher = mock.patch.dict(os.environ, {"HOME": str(self.sp.root / "home"), **values})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def tearDown(self):
+        self.assertEqual(self.nhf.harness_dirs(self.sp.root), [])
+
+    def test_the_default_is_the_projects_desk(self):
+        self.env({"AGENTM_SCRIPTS_DIR": str(self.sp.agentm)})
+        dest = hp.default_destination("n1-handoff", self.sp.repo)
+        self.assertEqual(dest, self.sp.desk / "n1-handoff")
+        self.assertFalse(dest.exists())
+
+    def test_a_pack_lands_in_the_default(self):
+        self.env({"AGENTM_SCRIPTS_DIR": str(self.sp.agentm)})
+        dest = hp.default_destination("n1-handoff", self.sp.repo)
+        hp.build_handoff_pack(TestBuildHandoffPack.ENTRIES,
+                              TestBuildHandoffPack.SESSION_OUTPUTS, dest)
+        self.assertTrue((self.sp.desk / "n1-handoff" / "PROMPTS.md").is_file())
+        self.assertTrue((self.sp.desk / "n1-handoff" / "prompts.json").is_file())
+
+    def test_no_agentm_is_no_default(self):
+        self.env({"AGENTM_SCRIPTS_DIR": ""})
+        self.assertIsNone(hp.default_destination("n1-handoff", self.sp.repo))
+
+    def test_a_named_destination_still_wins(self):
+        # The default is only the default: a pack built into a named directory
+        # lands there, and nothing is written to the desk.
+        named = self.sp.root / "elsewhere"
+        hp.build_handoff_pack(TestBuildHandoffPack.ENTRIES,
+                              TestBuildHandoffPack.SESSION_OUTPUTS, named)
+        self.assertTrue((named / "PROMPTS.md").is_file())
+        self.assertEqual(list(self.sp.desk.iterdir()), [])
+
+
 if __name__ == "__main__":
     unittest.main()

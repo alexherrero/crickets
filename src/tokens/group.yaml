@@ -141,6 +141,9 @@ standalone: true
 # asks agentm where a project's tasks/, designs/ and desk/ are and which plans
 # it has (process_seam.py project-path, harness_memory.py list-plans), so no
 # plugin composes a project path.
+# /handoff defaults to <desk>/<handoff-slug>/ through
+# handoff_pack.default_destination; with no desk the operator names one. The
+# Mythos precedent is cited in the agentm project's completed/.
 version: 0.8.0
 capabilities: [status-line-meter, token-audit, tokens]
 renamed_from: [status-line-meter, token-audit]

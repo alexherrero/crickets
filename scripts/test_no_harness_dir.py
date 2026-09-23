@@ -165,6 +165,22 @@ class Writers(unittest.TestCase):
             self.assertFalse((sp.desk / "wiki-watch").exists())
             self.assertEqual(nhf.harness_dirs(sp.root), [])
 
+    def test_a_handoff_pack_in_the_default(self):
+        """tokens (step 8): a pack built into its default lands in the desk."""
+        import importlib.util
+        import os
+        from unittest import mock
+        spec = importlib.util.spec_from_file_location(
+            "hp_no_harness", HERE.parent / "src" / "tokens" / "scripts" / "handoff_pack.py")
+        hp = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = hp  # its dataclasses resolve their module by name
+        spec.loader.exec_module(hp)
+        with nhf.ScratchProject() as sp, mock.patch.dict(os.environ, sp.env()):
+            dest = hp.default_destination("n1-handoff", sp.repo)
+            hp.build_handoff_pack([hp.HandoffEntry("t", "p", "T0", "m", "low")], {"a.md": "x"}, dest)
+            self.assertTrue((sp.desk / "n1-handoff" / "PROMPTS.md").is_file())
+            self.assertEqual(nhf.harness_dirs(sp.root), [])
+
     def test_depth_maintenance(self):
         """github-projects (step 4): a dry-run cycle over agentm's plan list."""
         script = next((HERE.parent / "src").glob("*-projects/scripts/depth_maintain.py"))

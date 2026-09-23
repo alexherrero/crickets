@@ -7,13 +7,13 @@ version: 0.2.0
 argument-hint: "<dest-dir> [--title <entry title> --model <model-id> --tier <tier> --effort <effort> --prompt <text>]..."
 ---
 
-You are running `/handoff` — it generalizes the Mythos `PROMPTS.md` pattern (`<vault>/projects/agentm/_harness/mythos-readiness-handoff/PROMPTS.md`): when a session did expensive, hard-won work and the remaining steps are cheap and mechanical, snapshot the outputs and hand off to fresh, cheaper sessions instead of continuing in the expensive one.
+You are running `/handoff` — it generalizes the Mythos `PROMPTS.md` pattern (the Mythos readiness handoff, now in the agentm vault project's `completed/`): when a session did expensive, hard-won work and the remaining steps are cheap and mechanical, snapshot the outputs and hand off to fresh, cheaper sessions instead of continuing in the expensive one.
 
 **Arguments:** $ARGUMENTS
 
 ## What to do
 
-1. **Resolve the destination directory.** The first positional argument is the destination — normally a subdirectory under the vault's `_harness/` (resolve `<vault>` via `agentm_config --get vault_path` or the session-start hook), matching the Mythos precedent (`<vault>/projects/<repo>/_harness/<handoff-slug>/`).
+1. **Resolve the destination directory.** The first positional argument, when given, is the destination, and it wins. With none, pick a short `<handoff-slug>` and use the project's own `desk/`: `handoff_pack.default_destination("<handoff-slug>")` returns `<desk>/<handoff-slug>/`, with `<desk>` named by agentm (never compose a vault or project path yourself). When it returns `None` — agentm absent, or no vault for the project — there is no default: ask the operator where the pack should go.
 
 2. **Identify the session outputs to snapshot.** These are the files this session produced that a downstream session needs to read — findings, draft plans, research JSON, anything the paste-ready prompts below will reference. Read their current contents.
 
