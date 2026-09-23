@@ -1,6 +1,6 @@
 ---
 name: design
-description: Author → translate → sequence a design doc into a topo-ordered set of named plans. The upstream authoring step above /plan. Author runs the prose-pass skill (Gemini simplifies, Claude fact-checks and applies) before the operator reads the doc, with an announced Claude-only fallback.
+description: Author → translate → sequence a design doc into a topo-ordered set of queued tasks. The upstream authoring step above /plan. Author runs the prose-pass skill (Gemini simplifies, Claude fact-checks and applies) before the operator reads the doc, with an announced Claude-only fallback.
 kind: command
 supported_hosts: [claude-code, antigravity]
 version: 0.3.0
@@ -8,13 +8,13 @@ argument-hint: author <slug|brief> [--rung full|abbreviated|architecture] (defau
 opinions: [good, how-we-engineer]
 ---
 
-You are running the **design** command — the upstream authoring step of the development-lifecycle loop. `/design` sits *above* `/plan`: where `/plan` turns a brief into a task list, `/design` walks a human through a real design doc, gates on human approval, splits the approved design into structural parts, and emits one named plan per part for `/work` + `/review` to execute.
+You are running the **design** command — the upstream authoring step of the development-lifecycle loop. `/design` sits *above* `/plan`: where `/plan` turns a brief into a task list, `/design` walks a human through a real design doc, gates on human approval, splits the approved design into structural parts, and opens one queued task per part for `/work` + `/review` to execute.
 
 **Arguments:** $ARGUMENTS
 
 > **Recommended model for this phase:** Sonnet 5 (`claude-sonnet-5`) — lighter model for planning and authoring. Override with `/model` if needed.
 
-> **Four verbs, one pipeline.** `/design author` (write a design doc) → `/design translate` (split a final doc into structural `parts/`) → `/design sequence` (topo-order the parts into named plans); `/design finalize` is a standing maintenance verb, not part of that strict ordering — it auto-collapses a doc's amendment log and flags a stale `[PENDING-IMPL]` placeholder, replacing today's by-hand process. The author→translate→sequence pipeline is strictly ordered by a single hard gate — `Status: final` — which only a human approval can set. Each verb is documented in its own section below.
+> **Four verbs, one pipeline.** `/design author` (write a design doc) → `/design translate` (split a final doc into structural `parts/`) → `/design sequence` (topo-order the parts into queued tasks); `/design finalize` is a standing maintenance verb, not part of that strict ordering — it auto-collapses a doc's amendment log and flags a stale `[PENDING-IMPL]` placeholder, replacing today's by-hand process. The author→translate→sequence pipeline is strictly ordered by a single hard gate — `Status: final` — which only a human approval can set. Each verb is documented in its own section below.
 
 ## Dispatch
 
@@ -24,7 +24,7 @@ You are running the **design** command — the upstream authoring step of the de
 |---|---|---|
 | `/design author <slug\|brief>` (or bare) | **author** | Write a new design doc or resume/review an in-progress one. The **only** verb that transitions `Status`. |
 | `/design translate <slug>` | **translate** | Split a `Status: final` doc into structural `parts/<part-slug>.md`. Refuses on non-final. |
-| `/design sequence <slug>` | **sequence** | Topo-order `parts/` into named plans (first activated, rest queued). Refuses on non-final. |
+| `/design sequence <slug>` | **sequence** | Topo-order `parts/` into numbered tasks, each queued with a tracker. Refuses on non-final. |
 | `/design finalize <slug>` | **finalize** | Collapse same-day amendment-log entries; flag (never silently collapse over) a stale `[PENDING-IMPL]` placeholder. Any Status; not part of the author→translate→sequence ordering. |
 
 ## Shared conventions
@@ -55,7 +55,7 @@ Parts of any design, published or confidential, live in the project's `designs/`
 
 ### Tested helper vs. thin prompt
 
-Crickets diverges from agentm's no-Bash `Read/Write/Edit/Glob/Grep`-only skill on purpose: the **deterministic, falsifiable** pieces (the `Status: final` gate, frontmatter parsing, the designs-home resolution, the Kahn topo-sort, PLAN emission) live in unit-tested stdlib-only Python helpers — `scripts/design_doc.py` (gate + storage) and `scripts/design_sequence.py` (topo-sort) — invoked via `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/<helper>.py" …`. The **interactive, human-judgment** pieces (the section walk, the split proposal, approve/revise/skip) stay in this prompt body. Helpers never own interactive logic; the prompt never re-derives a gate or a sort.
+Crickets diverges from agentm's no-Bash `Read/Write/Edit/Glob/Grep`-only skill on purpose: the **deterministic, falsifiable** pieces (the `Status: final` gate, frontmatter parsing, the designs-home resolution, the Kahn topo-sort, task placement) live in unit-tested stdlib-only Python helpers — `scripts/design_doc.py` (gate + storage) and `scripts/design_sequence.py` (topo-sort + placement) — invoked via `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/<helper>.py" …`. The **interactive, human-judgment** pieces (the section walk, the split proposal, approve/revise/skip) stay in this prompt body. Helpers never own interactive logic; the prompt never re-derives a gate or a sort.
 
 ### External review is deferred (#5b)
 
@@ -300,11 +300,11 @@ After all part files are written, append one row to the parent's Document Histor
 
 The parent's `Status` **stays `final`** — translate never changes Status.
 
-## `/design sequence` — `parts/` → topo-ordered named plans
+## `/design sequence` — `parts/` → topo-ordered queued tasks
 
-`sequence` consumes the populated `<parts-dir>` (translate's output) and generates one **named** plan per part, in dependency order, via the shipped `stage_plan.py` writer. This is the bridge from the design phase to the execution phase: after `sequence`, the first part is the active named plan and the rest are queued, ready for `/work`. Like translate, `sequence` is read-mostly with respect to the parent (one Document-History row, bump `updated`) and **never changes Status**.
+`sequence` consumes the populated `<parts-dir>` (translate's output) and opens one **numbered task** per part, in dependency order, each with its own `plan.md` and a tracker at `queued`. This is the bridge from the design phase to the execution phase: after `sequence`, every part is a queued task in the project's `tasks/`, and none is started — `/plan --activate <name>` or `/work --name <name>` starts the first. Like translate, `sequence` is read-mostly with respect to the parent (one Document-History row, bump `updated`) and **never changes Status**.
 
-**The crickets divergence — named-plan tiers, never the singleton.** agentm's skill writes the first part to the singleton `.harness/PLAN.md`. crickets does **not**: it stages every part as a *named* plan via `stage_plan.py`, so an unrelated active `PLAN.md` is never clobbered. The first part (topo-order) is `activate`d → `PLAN-<doc-slug>-<part-slug>.md`; the rest are written to their staging `path` under `queued-plans/`. The singleton `PLAN.md` is **never** touched.
+**Where the tasks go is agentm's answer.** An arc's tasks are flat numbered tasks, `tasks/NNN-<name>/`, each naming the arc's design in its tracker's `design:` field (agentm-vault § Projects and tasks). agentm numbers each new task from the task directories that exist, and development-lifecycle's resolver and `plan_tracker.py` carry that answer; `sequence` composes no path, activates nothing, and never writes a flat staging directory. A project that keeps no tasks is refused before anything is written.
 
 **Inputs.** `<slug>` (or full path — same two-path lookup as translate).
 
@@ -321,22 +321,21 @@ Ordering is deterministic + falsifiable, so it lives in `design_sequence.py` —
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_sequence.py" order <parts-dir>
 ```
 
-It reads `parts/*.md`, builds the dependency DAG keyed by `part_slug`, and **Kahn topo-sorts with an alphabetical tie-break** (so the same parts always yield the same order — `queued-plans/` never churns across re-runs). Exit 0 prints the ordered slugs, one per line — the first line is the part to activate, the rest queue in order. Exit 2 halts with a concrete message on a **cycle** (`dependency cycle detected: a → b → a`) or a **missing dependency** (`part 'x' depends on 'y' which does not exist in parts/`). Surface stderr verbatim; never guess an order past a refusal.
+It reads `parts/*.md`, builds the dependency DAG keyed by `part_slug`, and **Kahn topo-sorts with an alphabetical tie-break** (so the same parts always yield the same order — the queued tasks come out in the same order on every run). Exit 0 prints the ordered slugs, one per line. Exit 2 halts with a concrete message on a **cycle** (`dependency cycle detected: a → b → a`) or a **missing dependency** (`part 'x' depends on 'y' which does not exist in parts/`). Surface stderr verbatim; never guess an order past a refusal.
 
 ### Step 3 — Map each part to a PLAN body
 
-For each part (in the helper's order), generate a `/plan`-shaped PLAN body from the part file + parent design. The mapping:
+For each part (in the helper's order), generate a `/plan`-shaped plan body from the part file + parent design. The mapping:
 
 | PLAN section | Source |
 |---|---|
 | `# Plan: <title>` | the part's h1 title + ` (from design <doc-slug>)` |
-| `**Status:** planning` | always `planning` — these are draft plans the human refines with `/plan` before `/work` |
 | `**Created:**` | today |
 | `**Brief:**` | the part's `## Scope` |
 | `## Goal` | the part's Verification criteria, rephrased as user-visible outcomes |
 | `## Constraints` | the parent's Quality-Attributes concerns that apply to this part |
-| `## Out of scope` | the other part slugs ("see `PLAN-<doc-slug>-<other-slug>.md`") + the parent's Out-of-scope items |
-| `## Tasks` | a **draft** decomposition from the part's Scope/Detailed-Design source — each `### N.` with a one-sentence What + Verification. Note in the body that the human runs `/plan` against this to refine before `/work`. |
+| `## Out of scope` | the other parts ("see task `<doc-slug>-<other-slug>`") + the parent's Out-of-scope items |
+| `## Steps` | a **draft** decomposition from the part's Scope/Detailed-Design source — each `### N.` with a one-sentence What + Verification. Note in the body that the human runs `/plan` against this to refine before `/work`. |
 | `## Risks / open questions` | the parent's Technical Debt & Risks + part-specific concerns |
 | `## Verification strategy` | the part's Verification criteria verbatim |
 | `## Locked design calls` | a pointer back to the parent design + the key decisions from its Alternatives Considered |
@@ -348,26 +347,36 @@ parent_design_doc: <relative path to the design doc>
 parent_part_slug: <the part's part_slug>
 ```
 
-### Step 4 — Write via `stage_plan.py` (first activated, rest queued — never the singleton)
+### Step 4 — Open each part as a queued task (never activated, never flat)
 
-The named-plan name for each part is `<doc-slug>-<part-slug>`. Use the shipped writer — cross-plugin, since `stage_plan.py` lives in **development-lifecycle** (a hard `requires:` dependency, always installed alongside this plugin); **never** write `PLAN.md` directly. Find it through this plugin's resolver — `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sibling_plugin.py" development-lifecycle scripts/stage_plan.py` prints its absolute path, `<stage_plan.py>` below. Claude Code installs each plugin in its own versioned directory, so a path that steps up out of this plugin's root names nothing.
+The task name for each part is `<doc-slug>-<part-slug>`. Placement is deterministic, so it lives in `design_sequence.py` — call it; never write a task's files by hand.
 
-- **First part (topo-order):**
-  1. Get the staging path: `python3 <stage_plan.py> path <doc-slug>-<first-part-slug>` → write the PLAN body there.
-  2. Activate it: `python3 <stage_plan.py> activate <doc-slug>-<first-part-slug>` → promotes it to the active `PLAN-<doc-slug>-<first-part-slug>.md`. `activate` is **guarded** — exit 2 if an active plan of that name already exists; surface it, never clobber.
-- **Each remaining part:** get its staging `path` (`stage_plan.py path <doc-slug>-<part-slug>`, same cross-plugin invocation) and write the PLAN body there — it stays inert in `queued-plans/`, invisible to `/work` until a coordinator activates it.
+1. **Confirm the names, then check them — before writing anything.** List every name for the operator to confirm or change (the names the migration gave agentm-vault's parts had this shape, `162-agentm-vault-01-hygiene`). Then run
 
-If a staged or active file already exists on a re-run, show the diff and ask **Overwrite / Keep existing / Cancel** per file — **never silent-clobber** (mirrors translate's Step 5).
+   ```
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_sequence.py" check-names <name>...
+   ```
+
+   Exit 0 → every name can become a new queued task. Exit 2 → **halt** and surface stderr: a name that agentm places outside a task (the project keeps no tasks), a name agentm names no tracker for, or a task by that name that already exists. Nothing has been written.
+2. **Place each part, one at a time, in topo order.** Write the part's plan body to a scratch file, then run
+
+   ```
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_sequence.py" place <doc-slug>-<part-slug> --body <file> --design <doc-slug> --part <part-slug>
+   ```
+
+   It asks agentm where the task goes (development-lifecycle's `resolve_plan.py`), writes `tasks/NNN-<name>/plan.md`, opens its tracker at `queued` with development-lifecycle's `plan_tracker.py` (the tracker's `design:` comes from the body's `parent_design_doc:`), logs the placement in the task's `progress.md`, and prints the plan's path. Place the next part only after this one exits 0: agentm numbers a new task from the directories that exist. A non-zero exit is a hard stop that surfaces stderr.
+
+No part is activated. The operator starts the first with `/plan --activate <name>` or `/work --name <name>`.
 
 ### Step 5 — Update the parent's Document History
 
 Append one row and bump `updated` to today; Status stays `final`:
 
 ```
-| <today> | Sequenced into N plans via /design sequence; first active (PLAN-<doc-slug>-<first-part-slug>.md), N-1 queued in queued-plans/. | final |
+| <today> | Sequenced into N queued tasks via /design sequence (NNN–MMM: <task names>). | final |
 ```
 
-After `sequence`, the design hand-off is complete — the rest is the normal `/work` → `/review` → `/release` loop on the generated named plans.
+After `sequence`, the design hand-off is complete — the rest is the normal `/work` → `/review` → `/release` loop on the queued tasks.
 
 ## `/design finalize` — collapse the amendment log + flag stale placeholders
 

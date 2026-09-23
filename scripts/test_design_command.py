@@ -166,11 +166,16 @@ class TestCommandBody(unittest.TestCase):
             "command must warn against hardcoding a path for confidential designs",
         )
 
-    def test_sequence_wires_onto_stage_plan_not_singleton(self):
-        self.assertIn("stage_plan.py", self.text)
+    def test_sequence_places_tasks_through_the_helper_never_flat(self):
+        # agentm-vault part 15: parts become queued tasks through the tested
+        # helper; nothing is activated and nothing is written to a flat
+        # staging directory (the old singleton/queued-plans wiring retired).
+        self.assertIn('design_sequence.py" place', self.text)
+        self.assertIn("check-names", self.text)
+        self.assertNotIn("queued-plans", self.text)
         self.assertTrue(
-            "never" in self.low and "singleton" in self.low,
-            "sequence must state it never touches the singleton PLAN.md",
+            "never" in self.low and "flat" in self.low,
+            "sequence must state it never writes a flat staging directory",
         )
 
 
@@ -318,9 +323,9 @@ class TestSequenceVerb(unittest.TestCase):
 
     Structural specs (the deterministic ordering lives in `design_sequence.py`):
     the final-gate precondition, the topo-sort routed through the helper, the
-    crickets divergence (named-plan tiers, never the singleton), the part→PLAN
-    mapping with traceability frontmatter, the `stage_plan.py` wiring (first
-    activated, rest queued), the never-silent-clobber prompt, and the
+    placement (every part a numbered task queued with a tracker, placed by
+    agentm, never activated, never flat), the part→plan mapping with
+    traceability frontmatter, the refusal of an existing task, and the
     Status-stays-final invariant.
     """
 
@@ -356,35 +361,31 @@ class TestSequenceVerb(unittest.TestCase):
             "sequence must refuse rather than guess an order past a graph failure",
         )
 
-    def test_crickets_divergence_never_the_singleton(self):
-        self.assertIn("crickets divergence", self.section_low)
-        self.assertTrue(
-            "never" in self.section_low and "singleton" in self.section_low,
-            "sequence must state it never touches the singleton PLAN.md",
-        )
-        # The divergence is explicitly contrasted with agentm's behaviour.
-        self.assertIn("agentm", self.section_low)
+    def test_tasks_are_placed_by_agentm_never_flat(self):
+        self.assertIn("agentm's answer", self.section)
+        self.assertIn("tasks/NNN-<name>/", self.section)
+        self.assertIn("never writes a flat staging directory", self.section)
+        self.assertIn("keeps no tasks", self.section)
 
-    def test_wires_through_stage_plan_first_activated_rest_queued(self):
-        self.assertIn("stage_plan.py", self.section)
-        self.assertIn("activate", self.section_low)
-        self.assertIn("queued-plans", self.section)
-        self.assertIn("PLAN-<doc-slug>-<first-part-slug>.md", self.section)
+    def test_every_part_is_a_queued_task_none_activated(self):
+        self.assertIn('design_sequence.py" place', self.section)
+        self.assertIn("plan_tracker.py", self.section)
+        self.assertIn("queued", self.section_low)
+        self.assertIn("No part is activated", self.section)
+        self.assertNotIn("queued-plans", self.section)
+        # One at a time: agentm numbers from the directories that exist.
+        self.assertIn("one at a time", self.section_low)
 
-    def test_activate_is_guarded_against_clobber(self):
-        self.assertTrue(
-            "guarded" in self.section_low,
-            "activate must be documented as guarded (no-clobber)",
-        )
-        self.assertIn("Overwrite / Keep existing / Cancel", self.section)
-        self.assertTrue(
-            "never silent" in self.section_low or "never silently" in self.section_low,
-            "sequence must state it never silently clobbers an existing plan",
-        )
+    def test_an_existing_task_is_refused_before_any_write(self):
+        # The old contract's no-clobber guard, on the new placement: a name
+        # that already names a task is refused, and nothing is written.
+        self.assertIn('design_sequence.py" check-names', self.section)
+        self.assertIn("already exists", self.section)
+        self.assertIn("Nothing has been written", self.section)
 
     def test_part_to_plan_mapping_is_documented(self):
         # The mapping table from a part file to a /plan-shaped body.
-        for marker in ("# Plan:", "## Goal", "## Tasks", "## Verification strategy"):
+        for marker in ("# Plan:", "## Goal", "## Steps", "## Verification strategy"):
             self.assertIn(marker, self.section, f"PLAN-body mapping omits: {marker}")
 
     def test_plan_traceability_frontmatter(self):
@@ -393,7 +394,9 @@ class TestSequenceVerb(unittest.TestCase):
 
     def test_generated_plans_start_in_planning_status(self):
         # Sequence emits draft plans the human refines with /plan before /work.
-        self.assertIn("planning", self.section_low)
+        # Since agentm-vault part 15 the draft state is the tracker's `queued`,
+        # not a plan's Status line.
+        self.assertIn("a tracker at `queued`", self.section)
         self.assertIn("/plan", self.section)
 
     def test_appends_one_document_history_row(self):

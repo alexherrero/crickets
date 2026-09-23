@@ -100,6 +100,27 @@ class Writers(unittest.TestCase):
             self.assertEqual(sorted(p.name for p in sp.designs.iterdir()), [])
             self.assertEqual(nhf.harness_dirs(sp.root), [])
 
+    def test_design_sequence_placement(self):
+        """design (step 6): a part placed as a queued task where agentm says."""
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "ds_no_harness", HERE.parent / "src" / "design" / "scripts" / "design_sequence.py")
+        ds = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(ds)
+        with nhf.ScratchProject() as sp:
+            task = sp.project / "tasks" / "043-arc-one"
+
+            def run(rel, args):
+                if rel.endswith("resolve_plan.py"):
+                    return (0, f"{task / 'plan.md'}\t{task / 'progress.md'}\t{task / 'tracker.md'}\n", "")
+                return (0, "", "")
+
+            rc, out = ds.place("arc-one", "# Plan: one\n", str(sp.repo), design="arc",
+                               part="one", today="2026-09-22", run=run)
+            self.assertEqual(rc, 0, out)
+            self.assertTrue((task / "plan.md").is_file())
+            self.assertEqual(nhf.harness_dirs(sp.root), [])
+
     def test_depth_maintenance(self):
         """github-projects (step 4): a dry-run cycle over agentm's plan list."""
         script = next((HERE.parent / "src").glob("*-projects/scripts/depth_maintain.py"))

@@ -197,7 +197,11 @@ class EmittedCallSitesResolveInTheVersionedCache(unittest.TestCase):
         # nothing cannot pass by checking nothing.
         for site in (("wiki", "design", "scripts/prose_pass.py"),
                      ("wiki", "design", "skills/prose-pass/SKILL.md"),
-                     ("design", "development-lifecycle", "scripts/stage_plan.py"),
+                     # /design sequence places queued tasks (task 100 step 6):
+                     # it reaches development-lifecycle's resolver and tracker
+                     # helper, not stage_plan.py's retired flat staging.
+                     ("design", "development-lifecycle", "scripts/resolve_plan.py"),
+                     ("design", "development-lifecycle", "scripts/plan_tracker.py"),
                      # design_doc.py's load of resolve_plan.py retired with
                      # agentm-vault part 15 (task 100): it asks agentm for the
                      # designs home through its own project_homes.py.

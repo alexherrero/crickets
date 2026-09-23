@@ -149,4 +149,9 @@ capabilities: [design-docs, design, architecture]
 # design-path <slug> and parts-dir <slug> replace harness-root, and it no longer
 # loads development-lifecycle's resolve_plan.py; /spec writes
 # <desk>/briefs/<slug>-spec.md.
+# /design sequence opens every part as a new numbered task with a queued
+# tracker (design_sequence.py check-names + place, through
+# development-lifecycle's resolve_plan.py and plan_tracker.py); none is
+# activated, nothing goes to queued-plans/, and a project that keeps no tasks
+# is refused before any write.
 version: 0.11.0

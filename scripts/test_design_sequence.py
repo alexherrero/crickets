@@ -3,29 +3,29 @@
 
 The deterministic ordering core behind `/design sequence`: dependency-list
 parsing (inline + block forms), part-frontmatter validation, the Kahn topo-sort
-with its alphabetical tie-break, and cycle / missing-dependency refusals. Plus an
-integration test that wires the helper's output through the *real* `stage_plan.py`
-exactly as the command body prescribes — proving the crickets contract: first
-part activated as a named plan, the rest queued, the singleton `PLAN.md`
-untouched. Hermetic — parts + harness roots are synthesized in throwaway temp
-dirs (never the real vault), `stage_plan` is driven with `resolver=None` (the
-`.harness/` fallback), mirroring `test_stage_plan.py` / `test_design_doc.py`.
+with its alphabetical tie-break, and cycle / missing-dependency refusals. Plus
+the placement of each part as a new queued task (agentm-vault part 15): stubbed
+cases for every refusal, and a real-agentm class that places three parts into a
+scratch vault in the task layout through development-lifecycle's resolver and
+plan_tracker.py. Hermetic — parts and vaults are synthesized in throwaway temp
+dirs (never the real vault).
 """
 from __future__ import annotations
 
 import importlib.util
+import json
+import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
 _SCRIPTS = _ROOT / "src" / "design" / "scripts"
-# stage_plan.py stays in development-lifecycle (it was never part of the
-# /design command family's task-4 re-home).
-_DW_SCRIPTS = _ROOT / "src" / "development-lifecycle" / "scripts"
 
 
 def _load(name: str, scripts_dir: Path = _SCRIPTS):
@@ -38,7 +38,6 @@ def _load(name: str, scripts_dir: Path = _SCRIPTS):
 
 
 ds = _load("design_sequence")
-stage_plan = _load("stage_plan", _DW_SCRIPTS)
 
 
 def _part(slug: str, deps: list[str], *, scope: str = "M") -> str:
@@ -256,60 +255,167 @@ class TestSequenceCLI(unittest.TestCase):
         self.assertLess(order.index("surface"), order.index("rollout"))
 
 
-class TestStagePlanWiring(unittest.TestCase):
-    """Integration: the helper's order wired through the real `stage_plan.py`.
+class _Answers:
+    """Stands in for development-lifecycle's scripts: resolve_plan.py answers
+    from a table, plan_tracker.py records its calls."""
 
-    Mirrors the command body's Step 4 — first part `activate`d → named active
-    plan, the rest staged to `queued-plans/`, the singleton `PLAN.md` never
-    touched. Proves the crickets divergence from agentm (which writes the first
-    part to the singleton).
-    """
+    def __init__(self, table, *, open_rc=0):
+        self.table, self.open_rc, self.calls = table, open_rc, []
+
+    def __call__(self, rel, args):
+        self.calls.append((rel, args))
+        if rel.endswith("resolve_plan.py"):
+            fields = self.table.get(args[0])
+            if fields is None:
+                return (2, "", f"no answer for {args[0]}")
+            return (0, "\t".join(str(f) for f in fields) + "\n", "")
+        return (self.open_rc, "", "" if self.open_rc == 0 else "tracker refused")
+
+
+class TestPlacingParts(unittest.TestCase):
+    """`check_names` and `place`, against stubbed answers."""
 
     def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp(prefix="ds-wire-"))
-        self.parts = self.tmp / "parts"
+        self.tmp = Path(tempfile.mkdtemp(prefix="ds-place-"))
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+        self.tasks = self.tmp / "vault" / "projects" / "demo" / "tasks"
+
+    def task(self, name):
+        d = self.tasks / name
+        return [d / "plan.md", d / "progress.md", d / "tracker.md"]
+
+    def test_a_new_task_is_written_and_its_tracker_opened(self):
+        run = _Answers({"arc-one": self.task("043-arc-one")})
+        rc, out = ds.place("arc-one", "# Plan: One\n", str(self.tmp), design="arc",
+                           part="one", today="2026-09-22", run=run)
+        plan = self.tasks / "043-arc-one" / "plan.md"
+        self.assertEqual((rc, out), (0, str(plan)))
+        self.assertEqual(plan.read_text(encoding="utf-8"), "# Plan: One\n")
+        opened = [a for r, a in run.calls if r.endswith("plan_tracker.py")]
+        self.assertEqual(opened, [["open", "--plan", str(plan), "--tracker",
+                                   str(plan.parent / "tracker.md"), "--root", str(self.tmp)]])
+        self.assertIn("/design sequence — queued task from design arc, part one",
+                      (plan.parent / "progress.md").read_text(encoding="utf-8"))
+
+    def test_a_flat_answer_is_refused_before_any_write(self):
+        flat = self.tmp / "vault" / "projects" / "demo"
+        run = _Answers({"arc-one": [flat / "PLAN-arc-one.md", flat / "progress-arc-one.md",
+                                    flat / "tracker-arc-one.md"]})
+        rc, reason = ds.check_names(["arc-one"], str(self.tmp), run=run)
+        self.assertEqual(rc, 2)
+        self.assertIn("keeps no tasks", reason)
+        rc, _ = ds.place("arc-one", "x", str(self.tmp), design="arc", part="one",
+                         today="2026-09-22", run=run)
+        self.assertEqual(rc, 2)
+        self.assertFalse(any(self.tmp.rglob("*.md")))
+
+    def test_an_existing_task_is_refused_by_name(self):
+        plan, _, _ = self.task("042-arc-one")
+        plan.parent.mkdir(parents=True)
+        plan.write_text("# Plan: kept\n", encoding="utf-8")
+        run = _Answers({"arc-one": self.task("042-arc-one")})
+        rc, reason = ds.check_names(["arc-one"], str(self.tmp), run=run)
+        self.assertEqual(rc, 2)
+        self.assertIn("already exists", reason)
+        self.assertEqual(plan.read_text(encoding="utf-8"), "# Plan: kept\n")
+
+    def test_no_tracker_is_refused(self):
+        plan, progress, _ = self.task("043-arc-one")
+        run = _Answers({"arc-one": [plan, progress, ""]})
+        rc, reason = ds.check_names(["arc-one"], str(self.tmp), run=run)
+        self.assertEqual(rc, 2)
+        self.assertIn("no tracker", reason)
+
+    def test_every_name_is_checked_before_the_first_write(self):
+        run = _Answers({"arc-one": self.task("043-arc-one")})
+        rc, reason = ds.check_names(["arc-one", "arc-two"], str(self.tmp), run=run)
+        self.assertEqual(rc, 2)
+        self.assertIn("'arc-two'", reason)
+        self.assertFalse(self.tasks.exists())
+
+    def test_a_tracker_that_does_not_open_is_reported(self):
+        run = _Answers({"arc-one": self.task("043-arc-one")}, open_rc=1)
+        rc, reason = ds.place("arc-one", "x", str(self.tmp), design="arc", part="one",
+                              today="2026-09-22", run=run)
+        self.assertEqual(rc, 1)
+        self.assertIn("did not open", reason)
+
+
+def _real_agentm():
+    scripts = Path.home() / "Antigravity" / "agentm" / "scripts"
+    seam, tracker = scripts / "process_seam.py", scripts / "tracker.py"
+    if not (seam.is_file() and tracker.is_file()):
+        return None
+    r = subprocess.run([sys.executable, str(seam), "project-path", "--help"],
+                       capture_output=True, text=True)
+    return scripts if r.returncode == 0 else None
+
+
+REAL = _real_agentm()
+
+
+@unittest.skipIf(REAL is None, "no agentm checkout with project-path and tracker.py")
+class TestSequencingIntoTheRealAgentm(unittest.TestCase):
+    """Three parts become three numbered queued tasks, in topo order, through
+    the real resolver and plan_tracker.py, in a scratch vault."""
+
+    def setUp(self):
+        sys.path.insert(0, str(_HERE))
+        import no_harness_fixture as nhf
+        self.nhf = nhf
+        self.sp = nhf.ScratchProject()
+        self.addCleanup(self.sp.cleanup)
+        (self.sp.root / "home").mkdir()
+        patcher = mock.patch.dict(os.environ, {
+            "AGENTM_SCRIPTS_DIR": str(REAL),
+            "MEMORY_ROOT": str(self.sp.vault),
+            "OBSIDIAN_VAULT_SCRIPTS": str(_ROOT / "src" / "obsidian-vault" / "scripts"),
+            "AGENTM_INSTALL_PREFIX": "",
+            "HOME": str(self.sp.root / "home"),
+            "XDG_CACHE_HOME": str(self.sp.root / "cache"),
+        })
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        os.environ.pop("MEMORY_VAULT_PATH", None)
+        self.parts = self.sp.root / "parts"
         self.parts.mkdir()
-
-    def tearDown(self):
-        shutil.rmtree(self.tmp, ignore_errors=True)
-
-    def test_first_activated_rest_queued_singleton_untouched(self):
         (self.parts / "f.md").write_text(_part("foundations", []), encoding="utf-8")
         (self.parts / "s.md").write_text(_part("surface", ["foundations"]), encoding="utf-8")
-        (self.parts / "r.md").write_text(
-            _part("rollout", ["foundations", "surface"]), encoding="utf-8")
+        (self.parts / "r.md").write_text(_part("rollout", ["foundations", "surface"]),
+                                         encoding="utf-8")
 
+    def tearDown(self):
+        self.assertEqual(self.nhf.harness_dirs(self.sp.root), [])
+
+    def body(self, slug):
+        return ("---\nparent_design_doc: wiki/designs/arc.md\nparent_part_slug: "
+                f"{slug}\n---\n\n# Plan: {slug}\n\n## Goal\n\n{slug} ships.\n\n"
+                f"## Steps\n\n### 1. Build {slug}\n- **What:** build it.\n"
+                "- **Verification:** it runs.\n- **Status:** [ ]\n")
+
+    def test_three_parts_become_three_queued_tasks(self):
         rc, out, err = ds.sequence(str(self.parts))
         self.assertEqual(rc, 0, err)
         order = out.split()
-        self.assertEqual(order, ["foundations", "surface", "rollout"])
-
-        doc_slug = "foo"
-        root = str(self.tmp)
-        # Stage every part as a NAMED plan; activate only the first (resolver=None
-        # → the .harness/ fallback under our temp root).
-        for i, slug in enumerate(order):
-            name = f"{doc_slug}-{slug}"
-            rc, staged, err = stage_plan.staging_path(name, root, resolver=None)
-            self.assertEqual(rc, 0, err)
-            sp = Path(staged.strip())
-            sp.parent.mkdir(parents=True, exist_ok=True)
-            sp.write_text(f"# Plan: {slug}\n\n**Status:** planning\n", encoding="utf-8")
-            if i == 0:
-                rc, active, err = stage_plan.activate(name, root, resolver=None)
-                self.assertEqual(rc, 0, err)
-
-        harness = self.tmp / ".harness"
-        # First part is the active named plan.
-        self.assertTrue((harness / "PLAN-foo-foundations.md").is_file())
-        # The rest stay queued.
-        self.assertTrue((harness / "queued-plans" / "PLAN-foo-surface.md").is_file())
-        self.assertTrue((harness / "queued-plans" / "PLAN-foo-rollout.md").is_file())
-        # The non-first parts are NOT activated.
-        self.assertFalse((harness / "PLAN-foo-surface.md").exists())
-        self.assertFalse((harness / "PLAN-foo-rollout.md").exists())
-        # The singleton is never touched.
-        self.assertFalse((harness / "PLAN.md").exists())
+        names = [f"arc-{s}" for s in order]
+        root = str(self.sp.repo)
+        self.assertEqual(ds.check_names(names, root), (0, ""))
+        placed = []
+        for slug, name in zip(order, names):
+            rc, plan = ds.place(name, self.body(slug), root, design="arc", part=slug,
+                                today="2026-09-22")
+            self.assertEqual(rc, 0, plan)
+            placed.append(Path(plan))
+        self.assertEqual([p.parent.name for p in placed],
+                         ["043-arc-foundations", "044-arc-surface", "045-arc-rollout"])
+        for plan in placed:
+            tracker = (plan.parent / "tracker.md").read_text(encoding="utf-8")
+            self.assertIn("status: queued", tracker)
+            self.assertIn("design: wiki/designs/arc.md", tracker)
+            self.assertIn(f"task: {plan.parent.name}", tracker)
+        rc, reason = ds.check_names(names[:1], root)
+        self.assertEqual(rc, 2)
+        self.assertIn("already exists", reason)
 
 
 if __name__ == "__main__":

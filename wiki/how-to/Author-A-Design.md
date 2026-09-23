@@ -1,7 +1,7 @@
 # How to author, translate, and sequence a design with `/design`
 
 > [!NOTE]
-> **Goal:** Take a problem from ambiguous brief to a sequenced set of named plans using the `/design` command's three sub-verbs — `author` (walk the 10-section design-doc template to `Status: final`), `translate` (split the final doc into structural parts), and `sequence` (emit one named plan per part, first activated and the rest staged).
+> **Goal:** Take a problem from ambiguous brief to a sequenced set of queued tasks using the `/design` command's three sub-verbs — `author` (walk the 10-section design-doc template to `Status: final`), `translate` (split the final doc into structural parts), and `sequence` (open one numbered task per part, each queued with a tracker).
 > **Prereqs:** the `development-lifecycle` plugin installed ([Install crickets plugins](Install-Crickets-Plugins)) at a version that ships `/design` (0.5.0 or later); a clean working tree; a problem worth a design (ambiguous, multi-stakeholder, or with cross-cutting Quality-Attributes / Operations concerns). For an already-settled design, skip `/design` and go straight to [`/plan`](Run-A-Named-Plan).
 
 `/design` is the **upstream authoring step** of the phase loop — it starts *earlier* than `/plan`. Use it when the problem is not yet tasks-shaped; use `/plan` once the design is settled. The three sub-verbs run in order: `author` → `translate` → `sequence`. The gate between them is a single hard `Status: final` check (run by the tested helper `design_doc.py`), so you cannot skip ahead — only the human approval inside `author` sets `final`.
@@ -12,13 +12,13 @@
 
    Walk the 10 sections in template order — Context → Design → Alternatives Considered → Dependencies → Migrations → Technical Debt & Risks → Quality Attributes → Project management → Operations → Document History. The Quality Attributes section drills all **11** sub-attrs (Security → Reliability → Data Integrity → Privacy → Scalability → Latency → Abuse → Accessibility → Testability → Internationalization & Localization → Compliance); answer each with a concern, or `N/A: <one-sentence reason>` — a bare `N/A` is pushed back. The command saves after every section, so an interrupted session resumes where you left off. When the draft is complete, pick **"Ready for review (Status → review)"** — the command first runs the **`prose-pass` skill** over the full document (Gemini simplifies it in your voice pack; Claude fact-checks the result and applies it; frontmatter, headings, tables, and Document History come through byte-identical, and the pass is recorded in that day's Document History row). The pass runs again when you re-run `/design author <slug>` to enter the inline review pass (Approve / Revise / Skip per section); answer **"Approve as final?"** to transition `review → final`. Only `author` moves Status, and it refuses to re-open a `final` doc. If the `agy` CLI is missing or misbehaves, the command tells you so (a `PROSE-PASS-DEGRADED` line), applies the Claude-only style conformance pass instead, and keeps going — the pass never blocks authoring.
 
-2. **Translate the final doc into parts (`/design translate`).** Run `/design translate <slug>`. The command runs two hard gates through the helper — `design_doc.py gate <path>` (must be `Status: final`) and `design_doc.py detailed-design <path>` (the `### Detailed Design` section must be non-empty). Both must pass or it halts with the helper's verbatim refusal. It then proposes a part split (one part per Detailed-Design subsection by default, soft-capped at ~6 with `--allow-large-design` to override) and presents it as a table for **Approve / Reshape / Cancel**. On Approve it writes one `<doc-dir>/parts/<part-slug>.md` per part (each carrying `parent_design`, `part_slug`, `dependencies`, `estimated_scope` frontmatter), then appends one Document-History row to the parent — the parent's `Status` stays `final`.
+2. **Translate the final doc into parts (`/design translate`).** Run `/design translate <slug>`. The command runs two hard gates through the helper — `design_doc.py gate <path>` (must be `Status: final`) and `design_doc.py detailed-design <path>` (the `### Detailed Design` section must be non-empty). Both must pass or it halts with the helper's verbatim refusal. It then proposes a part split (one part per Detailed-Design subsection by default, soft-capped at ~6 with `--allow-large-design` to override) and presents it as a table for **Approve / Reshape / Cancel**. On Approve it writes one `<designs>/<slug>/parts/<part-slug>.md` per part, in the project's `designs/` as agentm names it (`design_doc.py parts-dir <slug>`), (each carrying `parent_design`, `part_slug`, `dependencies`, `estimated_scope` frontmatter), then appends one Document-History row to the parent — the parent's `Status` stays `final`.
 
-3. **Review and fill the part files.** `translate` lifts each part's Scope, Dependencies, and Verification criteria from the parent's Detailed-Design subsections, so the part files arrive populated. Read each `parts/<part-slug>.md`, confirm its Scope and dependency rationale match your intent, and flesh out any Verification-criteria bullets that need more than the parent supplied — these become the sequenced plan's Goal and Verification strategy in the next step.
+3. **Review and fill the part files.** `translate` lifts each part's Scope, Dependencies, and Verification criteria from the parent's Detailed-Design subsections, so the part files arrive populated. Read each part file, confirm its Scope and dependency rationale match your intent, and flesh out any Verification-criteria bullets that need more than the parent supplied — these become the sequenced plan's Goal and Verification strategy in the next step.
 
-4. **Sequence the parts into plans (`/design sequence`).** Run `/design sequence <slug>`. The command re-checks the `Status: final` gate and that `parts/` is non-empty and valid, then topo-sorts the parts via `design_sequence.py order <doc-dir>/parts` (deterministic; alphabetical tie-break; halts on a dependency cycle or a missing dependency, surfacing the helper's message verbatim). It maps each part to a `/plan`-shaped PLAN body (`Status: planning`, with `parent_design_doc` + `parent_part_slug` traceability frontmatter) and writes them via the shipped `stage_plan.py`: the **first** part (topo order) is `activate`d as `PLAN-<doc-slug>-<first-part-slug>.md`, and the **rest** are staged into `queued-plans/`. The singleton `PLAN.md` is never touched.
+4. **Sequence the parts into queued tasks (`/design sequence`).** Run `/design sequence <slug>`. The command re-checks the `Status: final` gate and that the parts are non-empty and valid, then topo-sorts them via `design_sequence.py order <parts-dir>` (deterministic; alphabetical tie-break; halts on a dependency cycle or a missing dependency, surfacing the helper's message verbatim). It maps each part to a `/plan`-shaped plan body (with `parent_design_doc` + `parent_part_slug` traceability frontmatter), lists the task names — `<doc-slug>-<part-slug>` — for you to confirm, and checks them all with `design_sequence.py check-names` before writing anything. Then it places each part, one at a time, with `design_sequence.py place`: agentm puts it in a new numbered task, `tasks/NNN-<doc-slug>-<part-slug>/plan.md`, and its tracker opens at `queued`, naming the design. No part is started, and nothing is written to a flat staging directory — a project that keeps no tasks is refused up front.
 
-5. **Run the sequenced plans.** Pick up the activated plan with `/work --name <doc-slug>-<first-part-slug>` (or hand it to a worker — see [Run a coordinator-directed worker team](Run-A-Coordinator-Directed-Worker-Team)). Each emitted PLAN is `Status: planning`, a *draft* decomposition — run `/plan --name <doc-slug>-<part-slug>` against it to refine the tasks before `/work`. When a queued part's turn comes, activate it with `/plan --activate <doc-slug>-<part-slug>` (see [Run a named plan](Run-A-Named-Plan)).
+5. **Run the sequenced tasks.** Start the first with `/work --name <doc-slug>-<first-part-slug>` (or `/plan --activate` it first; see [Run a named plan](Run-A-Named-Plan)). Each task's plan is a *draft* decomposition — run `/plan --name <doc-slug>-<part-slug>` against it to refine the steps before `/work`. Later parts wait at `queued` until you start them.
 
 ## Worked scenarios
 
@@ -40,21 +40,21 @@ You walk the 10 sections and the 11 Quality-Attributes sub-attrs, mark it **Read
 /design sequence export-pipeline
 ```
 
-Resulting tree (the part split is illustrative — three Detailed-Design subsections → three parts, `command-surface` depending on `data-model`):
+Resulting tree (the part split is illustrative — three Detailed-Design subsections → three parts, `command-surface` depending on `data-model`; the task numbers are the next free ones in the project):
 
 ```
 wiki/designs/
   export-pipeline.md                 # Status: final
-  parts/
-    data-model.md                    # dependencies: []
-    command-surface.md               # dependencies: [data-model]
-    rollout.md                       # dependencies: [data-model, command-surface]
-<harness>/
-  PLAN-export-pipeline-data-model.md            # active (first in topo order)
-  queued-plans/
-    PLAN-export-pipeline-command-surface.md     # staged
-    PLAN-export-pipeline-rollout.md             # staged
-  PLAN.md                            # UNTOUCHED
+<vault>/projects/<slug>/
+  designs/
+    export-pipeline/parts/
+      data-model.md                  # dependencies: []
+      command-surface.md             # dependencies: [data-model]
+      rollout.md                     # dependencies: [data-model, command-surface]
+  tasks/
+    043-export-pipeline-data-model/        # plan.md + tracker.md (queued)
+    044-export-pipeline-command-surface/   # plan.md + tracker.md (queued)
+    045-export-pipeline-rollout/           # plan.md + tracker.md (queued)
 ```
 
 ### Scenario B — a confidential design (machine-local, not committed)
@@ -65,20 +65,17 @@ A design you don't want committed (sensitive, or just not wiki-worthy). Drop `--
 /design author export-pipeline      # confidential is the default
 ```
 
-The command asks agentm where the project's `designs/` is, through `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_doc.py" design-path export-pipeline` — it never composes a project path. The doc lands at `<designs>/export-pipeline.md`. With no agentm, or no vault for the project, the command writes nothing and offers `--visibility published`. Translate and sequence are identical to Scenario A; only the doc + `parts/` location differs:
+The command asks agentm where the project's `designs/` is, through `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_doc.py" design-path export-pipeline` — it never composes a project path. The doc lands at `<designs>/export-pipeline.md`. With no agentm, or no vault for the project, the command writes nothing and offers `--visibility published`. Translate and sequence are identical to Scenario A; only the doc's own location differs:
 
 ```
-<resolved-harness>/
+<vault>/projects/<slug>/
   designs/
-    export-pipeline.md
-    parts/
-      data-model.md
-      command-surface.md
-      rollout.md
-  PLAN-export-pipeline-data-model.md            # active
-  queued-plans/
-    PLAN-export-pipeline-command-surface.md     # staged
-    PLAN-export-pipeline-rollout.md             # staged
+    export-pipeline.md                     # confidential, Status: final
+    export-pipeline/parts/                 # as in Scenario A
+  tasks/
+    043-export-pipeline-data-model/        # queued
+    044-export-pipeline-command-surface/   # queued
+    045-export-pipeline-rollout/           # queued
 ```
 
 ### Scenario C — reshaping the part split before sequencing
@@ -104,15 +101,14 @@ After each verb, confirm the on-disk state (substitute your slug for `export-pip
 grep -m1 '^status:' wiki/designs/export-pipeline.md      # → status: final
 
 # After translate — one part file per proposed part
-ls wiki/designs/parts/                                    # → data-model.md  command-surface.md  rollout.md
+ls "$(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_doc.py" parts-dir export-pipeline)"
+                                                          # → data-model.md  command-surface.md  rollout.md
 
-# After sequence — first part active, rest queued, singleton untouched
-ls <resolved-harness>/PLAN-export-pipeline-*.md           # → PLAN-export-pipeline-data-model.md
-ls <resolved-harness>/queued-plans/                       # → the remaining parts
-test -f <resolved-harness>/PLAN.md && echo "singleton present and untouched"
+# After sequence — one queued task per part, none started
+grep -l '^status: queued' <tasks>/*-export-pipeline-*/tracker.md   # → all three
 ```
 
-(For a confidential design, the doc + `parts/` are under `<resolved-harness>/designs/` instead of `wiki/designs/`. Resolve `<resolved-harness>` with `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_doc.py" harness-root`.)
+(`<tasks>` is the project's `tasks/`: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/project_homes.py" home tasks`. For a confidential design, the doc itself is at `design_doc.py design-path export-pipeline` instead of `wiki/designs/`.)
 
 ## Troubleshooting
 
@@ -124,7 +120,7 @@ test -f <resolved-harness>/PLAN.md && echo "singleton present and untouched"
 ## See also
 
 - [Named plans](Named-Plans) — the reference for the phase-loop command surface `/design` joins, including the `/design` row.
-- [Run a named plan](Run-A-Named-Plan) — drive the named plans `/design sequence` emits.
-- [Run a coordinator-directed worker team](Run-A-Coordinator-Directed-Worker-Team) — hand the sequenced plans to workers; `tech-lead` forward-references the `/design` → `/plan` authoring arc.
+- [Run a named plan](Run-A-Named-Plan) — drive the queued tasks `/design sequence` opens.
+- [Run a coordinator-directed worker team](Run-A-Coordinator-Directed-Worker-Team) — hand the sequenced tasks to workers; `tech-lead` forward-references the `/design` → `/plan` authoring arc.
 - [Coordinator roles](Coordinator-Roles) — the `tech-lead` role whose authoring floor `/design` raises.
 - [Development lifecycle design — package /design as a command](crickets-development-lifecycle) — why `/design` ships as a command (tested Python helper + thin prompt), not a skill.
