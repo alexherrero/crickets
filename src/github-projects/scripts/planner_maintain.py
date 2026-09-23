@@ -28,7 +28,10 @@ real workflow-step gate that already exists in this repo (`/work` step 10 and
 board-sync gate) to also run it. When the agentm-side activation dispatcher
 ships, it calls this same script — no further crickets-side wiring needed.
 
-    planner_maintain.py --config <project.json> --harness-dir <dir> [--dry-run]
+    planner_maintain.py --config <project.json> [--project-root <repo>] [--dry-run]
+
+The plans it matches come from agentm (`project_homes.py plans`) for the
+project `--project-root` is bound to (default: cwd); it scans no directory.
 
 Exit codes: 0 clean (nothing materialized, nothing flagged); 1 something was
 flagged for operator judgment (a depth gap needing content this module can't
@@ -64,9 +67,9 @@ def _siblings():
     return pm, ps, cps, dm, dc
 
 
-def run(graph: dict, cfg: dict, config_path, harness_dir, templates_dir,
+def run(graph: dict, cfg: dict, config_path, project_root, templates_dir,
        board_bodies, items_path, *, pm, ps, dm, dc, active_plans=None,
-       public=True, runner=None, dry_run=True, out=None) -> dict:
+       public=True, runner=None, dry_run=True, out=None, plan_lister=None) -> dict:
     """The Planner's one composed cycle: depth-maintenance, then
     drift-correction, over the SAME in-memory graph (so a Plan/Task the
     depth pass just added is visible to the drift pass's own re-derivation).
@@ -84,7 +87,7 @@ def run(graph: dict, cfg: dict, config_path, harness_dir, templates_dir,
         {"depth_materialized": [Item, ...], "depth_flagged": [DepthGap, ...],
          "drift_corrected": [item_id, ...], "drift_flagged": [issue_num, ...]}
     """
-    depth_result = dm.run(graph, harness_dir, materialize=not dry_run)
+    depth_result = dm.run(graph, project_root, materialize=not dry_run, lister=plan_lister)
     if not dry_run and depth_result["materialized"]:
         pm.dump(graph, items_path)
     drift_result = dc.run(graph, cfg, config_path, templates_dir, board_bodies,
@@ -108,8 +111,9 @@ def main(argv=None, *, runner=None, fetch=None) -> int:
 
     p = argparse.ArgumentParser(prog="planner_maintain.py")
     p.add_argument("--config", help="path to project.json (default: .harness/project.json)")
-    p.add_argument("--harness-dir", help="the _harness/ dir to scan for active PLAN-<slug>.md "
-                                        "files (default: the config's own directory)")
+    p.add_argument("--project-root", default=None,
+                   help="a repo bound to the vault project whose plans agentm lists "
+                        "(default: cwd)")
     p.add_argument("--active-plan", action="append", default=[], dest="active_plans",
                   help="plan id to materialize (repeatable)")
     p.add_argument("--private", action="store_true",
@@ -132,10 +136,10 @@ def main(argv=None, *, runner=None, fetch=None) -> int:
     items_path = ps._items_path_from_cfg(cfg, cfg_path)
     graph = pm.load(items_path)
     templates_dir = _HERE.parent / "templates"
-    harness_dir = Path(args.harness_dir) if args.harness_dir else cfg_path.resolve().parent
+    project_root = Path(args.project_root) if args.project_root else Path.cwd()
 
     board = fetch(cfg) if fetch is not None else cps.fetch_board_bodies(cfg, runner=runner)
-    result = run(graph, cfg, cfg_path, harness_dir, templates_dir, board, items_path,
+    result = run(graph, cfg, cfg_path, project_root, templates_dir, board, items_path,
                 pm=pm, ps=ps, dm=dm, dc=dc, active_plans=set(args.active_plans),
                 public=not args.private, runner=runner, dry_run=args.dry_run)
 

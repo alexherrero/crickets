@@ -54,7 +54,7 @@ This plugin ships no slash commands or skills. It's a set of scripts plus a temp
 
 ### Configuration
 
-The plugin reads a per-project `project.json` that maps a vault project to its GitHub Project board. It lives in that project's gitignored `_harness/` directory — never in the public repo, and it carries no PII. Only two keys are required: `vault_project` (the vault project whose roadmap and progress drive the board) and `github` (which itself needs `owner` and `number`).
+The plugin reads a per-project `project.json` that maps a vault project to its GitHub Project board. It lives in the repo's gitignored `.harness/project.json` — never in the public repo, and it carries no PII. A vault-backed project keeps the board mirror it names (`items_source`) in its `desk/`. Only two keys are required: `vault_project` (the vault project whose roadmap and progress drive the board) and `github` (which itself needs `owner` and `number`).
 
 | Key | Type | Required | Role |
 |---|---|---|---|

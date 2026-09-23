@@ -71,7 +71,7 @@ Resolution shells out to agentm's repo registry. When agentm is unreachable, it 
 
 ## State
 
-Run state lives under a `wiki-watch/` leaf. In vault mode, this is `<vault>/projects/<slug>/_harness/wiki-watch/`. It falls back to `<repo>/.harness/wiki-watch/` when the vault is unavailable. You will find three files:
+Run state lives in the project's own `desk/`, under a `wiki-watch/` leaf: `<vault>/projects/<slug>/desk/wiki-watch/`, as agentm names it (`project_homes.py home desk`). With no desk — agentm absent, no vault for the project, or a desk that does not exist — a cycle skips the repo and writes nothing; there is no repo-local fallback. You will find three files:
 
 | File | Carries |
 |---|---|

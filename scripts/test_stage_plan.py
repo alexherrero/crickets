@@ -722,16 +722,10 @@ class TestRealBridge(unittest.TestCase):
     def status_of(self, path: Path) -> str:
         return json.loads(self.run_tracker("show", str(path)))["status"]
 
-    def test_a_flat_staged_plan_and_its_queued_tracker(self):
-        (self.harness / "queued-plans" / "PLAN-foo.md").write_text(
-            "# Plan: foo\n\n**Status:** planning\n", encoding="utf-8")
-        tracker = self.harness / "tracker-foo.md"
-        self.open_queued(tracker, "foo")
-        rc, out, err = sp.activate("foo", str(self.repo), resolver=self.seam)
-        self.assertEqual(rc, 0, err)
-        self.assertEqual(Path(out.strip()), self.harness / "PLAN-foo.md")
-        self.assertTrue((self.harness / "PLAN-foo.md").is_file())
-        self.assertEqual(self.status_of(tracker), "active")
+    # The flat staged plan's real-bridge case retired with agentm #680
+    # (agentm-vault part 15): agentm no longer answers a flat pair, so a staged
+    # `queued-plans/` copy has no active path to land on. Task 101 retires the
+    # flat branch stage_plan.py still carries.
 
     def test_a_queued_numbered_task(self):
         (self.task / "plan.md").write_text("# Plan: Build the brief\n\n**Status:** planning\n",

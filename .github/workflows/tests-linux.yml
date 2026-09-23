@@ -64,6 +64,11 @@ jobs:
         # documented graceful-skip fallback, only fails on the old bespoke
         # inline category+confidence judgment running unconditionally.
         run: python3 scripts/check-no-duplicate-diagnosis.py
+      - name: No plugin names the retired _harness/ (check-no-harness-paths)  # harness-deprecation: the gate's own name for what it refuses
+        # agentm-vault part 15: a project's homes are its own tasks/, designs/
+        # and desk/, and a plugin asks agentm for them. The gate's EXEMPT list
+        # names the files the in-flight landings still clear; it only shrinks.
+        run: python3 scripts/check-no-harness-paths.py
       - name: Conventions Phase-2 conformance gate (check_conventions_conformance)
         # PLAN-wave-c-design-and-conventions task 6 — a plugin marking
         # <!-- consults-conventions-domain: X --> in a command/skill must

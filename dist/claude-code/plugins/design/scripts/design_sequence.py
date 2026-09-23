@@ -2,18 +2,22 @@
 """Topo-order a design's `parts/` into a deterministic plan sequence (sibling #5).
 
 `design_sequence.py` is the deterministic ordering core behind `/design
-sequence`: read `<doc-dir>/parts/*.md`, validate each part's frontmatter, build
+sequence`: read `<parts-dir>/*.md`, validate each part's frontmatter, build
 the dependency DAG keyed by `part_slug`, and Kahn-topo-sort it with an
 **alphabetical tie-break** so the same parts always yield the same order. Cycles
 and dangling dependencies are loud refusals (exit 2) — never a guessed order.
 
-    design_sequence.py order <parts-dir>    # print the topo-ordered slugs, one per line
+    design_sequence.py order <parts-dir>             # the topo-ordered slugs, one per line
+    design_sequence.py check-names <name>...          # refuse, before any write
+    design_sequence.py place <name> --body <file> --design <slug> --part <slug>
 
-The command body (`commands/design.md`) owns the part→PLAN-body mapping and the
-`stage_plan.py` wiring (first slug `activate`d → `PLAN-<doc-slug>-<part-slug>.md`,
-the rest staged into `queued-plans/`) — the interactive / judgment work. This
-helper owns only the falsifiable ordering, unit-tested like its siblings
-(`resolve_plan.py` / `stage_plan.py` / `design_doc.py`).
+The command body (`commands/design.md`) owns the part→plan-body mapping — the
+interactive / judgment work. This helper owns the falsifiable pieces: the
+ordering, and placing each part as a new numbered task whose tracker says
+`queued`. Where a task goes is agentm's answer, through development-lifecycle's
+`resolve_plan.py`; its tracker is opened by development-lifecycle's
+`plan_tracker.py`. No part is activated, and nothing is ever written to a flat
+staging directory: a project that keeps no tasks is refused before any write.
 
 **Stdlib-only — no PyYAML** (same constraint as the sibling helpers: PyYAML is
 repo-CI-only, not on the plugin runtime). Scalar frontmatter is read through
@@ -23,8 +27,11 @@ form (`dependencies:` then indented `- a` lines) so a hand-edited part can't
 silently drop its edges.
 
 Exit codes (aligned with the sibling helpers so the surface is transparent):
-    0 — ok; the topo-ordered slugs, one per line, on stdout.
-    2 — loud: empty/missing dir, invalid part frontmatter, missing-dep, or a cycle.
+    0 — ok; the topo-ordered slugs, one per line, on stdout (`order`), or the
+        new task's plan path (`place`).
+    2 — loud: empty/missing dir, invalid part frontmatter, missing-dep, or a cycle;
+        or a name that cannot become a new queued task (`check-names`, `place`).
+    other — the resolver's or plan_tracker.py's own code, with its reason.
 """
 from __future__ import annotations
 
@@ -189,7 +196,7 @@ def topo_order(parts: list[dict]) -> tuple[list[str] | None, str]:
     (order, "") on success; (None, reason) on a missing dependency (a dep slug
     not present in parts/) or a cycle (with a concrete path). Determinism comes
     from a min-heap ready-set: re-running on the same parts/ yields an identical
-    order, so `queued-plans/` ordering never churns across runs.
+    order, so the queued tasks come out in the same order on every run.
     """
     slugs = {p["slug"] for p in parts}
     deps_by = {p["slug"]: list(p["deps"]) for p in parts}
@@ -243,21 +250,145 @@ def sequence(parts_dir: str) -> tuple[int, str, str]:
     return (0, "".join(f"{s}\n" for s in order), "")
 
 
+# ── placing parts as queued tasks ──────────────────────────────────────────────
+#
+# Every part becomes a numbered task whose tracker says `queued`. Where the task
+# goes is agentm's answer, through development-lifecycle's resolver; its tracker
+# is written by development-lifecycle's plan_tracker.py (agentm's tracker.py
+# underneath). Nothing here composes a project path.
+
+_TASK_PLAN = "plan.md"
+_DL = "development-lifecycle"
+
+
+def _dl_script(rel: str) -> "Path | None":
+    """A development-lifecycle script, found through this plugin's resolver
+    (design `requires:` development-lifecycle; Claude Code installs each plugin
+    in its own versioned directory)."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("design_sibling_plugin",
+                                                  _HERE / "sibling_plugin.py")
+    finder = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(finder)
+    # Spelled out, one call per script, so test_sibling_plugin.py sees each call
+    # site and proves it resolves inside Claude Code's versioned cache.
+    calls = {
+        "scripts/resolve_plan.py":
+            lambda: finder.resolve_sibling("development-lifecycle", "scripts/resolve_plan.py"),
+        "scripts/plan_tracker.py":
+            lambda: finder.resolve_sibling("development-lifecycle", "scripts/plan_tracker.py"),
+    }
+    return calls[rel]() if rel in calls else None
+
+
+def _run_dl(rel: str, args: "list[str]") -> "tuple[int, str, str]":
+    import subprocess
+    script = _dl_script(rel)
+    if script is None:
+        return (2, "", f"{rel} not found in the {_DL} plugin — design requires it\n")
+    r = subprocess.run([sys.executable, str(script), *args], capture_output=True, text=True)
+    return (r.returncode, r.stdout, r.stderr)
+
+
+def where_task(name: str, root: str, *, run=None) -> "tuple[int, list[str], str]":
+    """(rc, [plan, progress, tracker], reason): where agentm places the task
+    `name` for the project `root` is bound to."""
+    run = run or _run_dl
+    rc, out, err = run("scripts/resolve_plan.py", [name, "--project-root", root])
+    if rc != 0:
+        return (rc, [], err.strip() or f"resolve_plan exited {rc}")
+    fields = out.rstrip("\n").split("\t")
+    return (0, (fields + ["", "", ""])[:3], "")
+
+
+def check_names(names: "list[str]", root: str, *, run=None) -> "tuple[int, str]":
+    """(rc, reason): whether every name can become a new queued task. Refuses,
+    before anything is written, when agentm places a name outside a task (the
+    project keeps no tasks), names no tracker for it, or a task by that name
+    already exists."""
+    for name in names:
+        rc, fields, reason = where_task(name, root, run=run)
+        if rc != 0:
+            return (rc, f"'{name}': {reason}")
+        plan, _progress, tracker = fields
+        if Path(plan).name != _TASK_PLAN:
+            return (2, f"'{name}': agentm placed it at {plan}, not in a task — this project "
+                       "keeps no tasks, and /design sequence opens only queued tasks")
+        if not tracker:
+            return (2, f"'{name}': agentm names no tracker for it, and a queued task needs one")
+        if Path(plan).exists():
+            return (2, f"'{name}': a task by that name already exists ({Path(plan).parent}) "
+                       "— refusing to write over it")
+    return (0, "")
+
+
+def place(name: str, body: str, root: str, *, design: str, part: str,
+          today: str, run=None) -> "tuple[int, str]":
+    """Write one part's plan into the new task agentm places for `name`, open
+    its tracker at `queued`, and log the placement. (rc, plan path or reason).
+
+    One part at a time: agentm numbers a new task from the task directories
+    that exist, so the next part is placed only after this one is written.
+    """
+    run = run or _run_dl
+    rc, reason = check_names([name], root, run=run)
+    if rc != 0:
+        return (rc, reason)
+    _rc, (plan, progress, tracker), _ = where_task(name, root, run=run)
+    task = Path(plan).parent
+    task.mkdir(parents=True)  # the task directory agentm named; it is what makes the task exist
+    Path(plan).write_text(body, encoding="utf-8")
+    rc, _out, err = run("scripts/plan_tracker.py",
+                        ["open", "--plan", plan, "--tracker", tracker, "--root", root])
+    if rc != 0:
+        return (rc, f"'{name}': the plan is written at {plan}, but its tracker did not open: "
+                    f"{err.strip()}")
+    if progress:
+        with open(progress, "a", encoding="utf-8") as fh:
+            fh.write(f"{today} /design sequence — queued task from design {design}, "
+                     f"part {part}\n")
+    return (0, plan)
+
+
 # ── CLI ────────────────────────────────────────────────────────────────────────
 
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="design_sequence.py",
-        description="Topo-order a design's parts/ into a deterministic plan sequence.",
+        description="Topo-order a design's parts/ and open each as a queued task.",
     )
     sub = p.add_subparsers(dest="mode", required=True)
     o = sub.add_parser("order", help="print the topo-ordered part slugs, one per line")
     o.add_argument("parts_dir", help="path to the design's parts/ directory")
+    c = sub.add_parser("check-names", help="refuse, before any write, a name that cannot "
+                                           "become a new queued task")
+    c.add_argument("names", nargs="+")
+    c.add_argument("--project-root", default=None, help="project root (default: cwd)")
+    pl = sub.add_parser("place", help="write one part's plan as a new queued task")
+    pl.add_argument("name", help="the task name, <doc-slug>-<part-slug>")
+    pl.add_argument("--body", required=True, help="file holding the plan body")
+    pl.add_argument("--design", required=True, help="the design's slug")
+    pl.add_argument("--part", required=True, help="the part's part_slug")
+    pl.add_argument("--project-root", default=None, help="project root (default: cwd)")
     return p
 
 
 def main(argv: list[str]) -> int:
+    import datetime
+    import os
     ns = _build_parser().parse_args(argv[1:])
+    if ns.mode == "check-names":
+        rc, reason = check_names(ns.names, ns.project_root or os.getcwd())
+        if reason:
+            sys.stderr.write(f"[design_sequence] {reason}\n")
+        return rc
+    if ns.mode == "place":
+        body = Path(ns.body).read_text(encoding="utf-8")
+        rc, out = place(ns.name, body, ns.project_root or os.getcwd(), design=ns.design,
+                        part=ns.part, today=datetime.date.today().isoformat())
+        (sys.stdout if rc == 0 else sys.stderr).write(
+            f"{out}\n" if rc == 0 else f"[design_sequence] {out}\n")
+        return rc
     rc, out, err = sequence(ns.parts_dir)
     if out:
         sys.stdout.write(out)

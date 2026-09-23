@@ -26,4 +26,8 @@ capabilities: [storage-backend]
 # $MEMORY_ROOT first and $MEMORY_VAULT_PATH only as the deprecated alias --
 # agentm renamed the variable on 2026-09-11 and drops the alias export one
 # release later. hook.md + the vault-doctor skill name the new variable.
-version: 0.3.3
+# 0.3.4 = agentm-vault part 15 (crickets task 100): hook.md's conflict example
+# and storage_vault.py's locator example show the task layout
+# (projects/<slug>/tasks/042-build-the-brief/plan.md), not the retired vault
+# harness directory. Docs only.
+version: 0.3.4

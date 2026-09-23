@@ -43,6 +43,11 @@ _CFG = {
 }
 
 
+def _in(d):
+    """Stands in for agentm's plan list: the plan files in a scratch dir."""
+    return sorted(Path(d).glob("*.md"))
+
+
 class TestRunEndToEnd(unittest.TestCase):
     def test_explicit_invocation_runs_both_depth_and_drift_logic(self):
         """Explicit invocation of the Planner runs both task-2 and task-3
@@ -79,7 +84,7 @@ class TestRunEndToEnd(unittest.TestCase):
                 return ""
 
             result = plm.run(graph, _CFG, cfg_p, d, _TEMPLATES, board, items_path,
-                             pm=pm, ps=ps, dm=dm, dc=dc, runner=runner,
+                             pm=pm, plan_lister=_in, ps=ps, dm=dm, dc=dc, runner=runner,
                              dry_run=False)
 
             # The depth pass's materialization was persisted to disk BEFORE
@@ -110,7 +115,7 @@ class TestRunEndToEnd(unittest.TestCase):
             cfg_p = d / "project.json"
             items_path = d / "board-items.json"
             result = plm.run(graph, _CFG, cfg_p, d, _TEMPLATES, board, items_path,
-                             pm=pm, ps=ps, dm=dm, dc=dc,
+                             pm=pm, plan_lister=_in, ps=ps, dm=dm, dc=dc,
                              runner=lambda a: "", dry_run=True)
         self.assertEqual(result["depth_materialized"], [])
         self.assertEqual(result["depth_flagged"], [])
@@ -133,7 +138,7 @@ class TestRunEndToEnd(unittest.TestCase):
             calls = []
             runner = lambda argv: calls.append(argv) or ""
             result = plm.run(graph, _CFG, cfg_p, d, _TEMPLATES, board, items_path,
-                             pm=pm, ps=ps, dm=dm, dc=dc, runner=runner,
+                             pm=pm, plan_lister=_in, ps=ps, dm=dm, dc=dc, runner=runner,
                              dry_run=False)
         self.assertEqual(result["drift_flagged"], [999])
         self.assertEqual(calls, [])  # in-sync v5 -> no post call; orphan -> no call
@@ -172,6 +177,30 @@ class TestMainCLI(unittest.TestCase):
     def test_no_config_skips_green(self):
         rc = plm.main(["--config", "/nonexistent/project.json"])
         self.assertEqual(rc, 0)
+
+    def test_harness_dir_is_gone(self):
+        # agentm-vault part 15: the plans come from agentm for --project-root;
+        # there is no directory to scan.
+        import io
+        import contextlib
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            plm.main(["--config", "/nonexistent/project.json", "--harness-dir", "x"])
+        self.assertEqual(cm.exception.code, 2)
+
+    def test_project_root_reaches_the_depth_pass(self):
+        seen = []
+
+        def lister(root):
+            seen.append(Path(root))
+            return []
+
+        graph = pm.build_graph(pm.parse_items({"items": [
+            {"id": "v5", "type": "version", "title": "V5 arc", "about": "x"}]}))
+        plm.run(graph, _CFG, Path("/nonexistent/project.json"), Path("/some/repo"),
+                _TEMPLATES, {}, Path("/nonexistent/board-items.json"),
+                pm=pm, ps=ps, dm=dm, dc=dc, plan_lister=lister, dry_run=True,
+                runner=lambda argv: "", out=lambda *a, **k: None)
+        self.assertEqual(seen, [Path("/some/repo")])
 
 
 if __name__ == "__main__":

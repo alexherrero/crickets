@@ -7,13 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking
+
+- **Every plugin but development-lifecycle now reads a project's plans and homes only where agentm puts them** (agentm-vault part 15, crickets task 100). crickets serves other vaults from its installed copies. On a vault that never moved to the projects layout, whose plans still sit in a vault harness directory, these stop working until it migrates:
+  - the evidence tracker's gate on those plans;
+  - depth maintenance's plan index;
+  - confidential `/design` docs and parts, and `/design sequence`;
+  - wiki-watch's cycle;
+  - `/handoff`'s default destination.
+
+  Without agentm, each of these writes nothing and says why; none falls back to a directory of its own. Also gone: `depth_maintain.py` and `planner_maintain.py`'s `--harness-dir` (use `--project-root`), `design_doc.py harness-root` (use `designs-home`, `design-path` or `parts-dir`), and `wiki_watch_detect.py state-dir --local`.
+
 ### Changed
+
+- **One way to ask agentm where a project keeps things.** `scripts/project_homes.py` is new in code-review 0.4.0, design 0.11.0, github-projects 0.6.0, wiki 0.12.0 and tokens 0.8.0, byte-identical in each and pinned by a test. `home {tasks|designs|desk}` runs agentm's `process_seam.py project-path`, and `plans` runs `harness_memory.py list-plans`. It creates nothing and composes no path. It needs agentm with those verbs (agentm #681).
+- `code-review` 0.4.0 — the evidence tracker gates a task's `plan.md` again. No `[x]` flip in a task had been gated since the projects migration on 2026-09-16. A file is a plan when agentm lists it, or when it is a repo-local `.harness/PLAN(-slug).md`. agentm is asked only once an edit would flip a checkbox, and an installed agentm that gives no answer blocks the flip.
+- `github-projects` 0.6.0 — depth maintenance and the planner cycle match the plans agentm lists for `--project-root`, not a directory scan that had found nothing since the migration. A task matches a Feature by its full name or its verb-slug. The schema's `items_source` examples name the project's `desk/`; the default beside `project.json` is unchanged.
+- `design` 0.11.0 — confidential designs go to `<designs>/<slug>.md` and every design's parts to `<designs>/<slug>/parts/`, in the project's own `designs/`, where agentm names it. `/design sequence` opens each part as a new numbered task with a `queued` tracker (`design_sequence.py check-names` and `place`); none is activated and nothing goes to `queued-plans/`. `/spec` writes `<desk>/briefs/<slug>-spec.md`. `design_doc.py` no longer loads development-lifecycle's `resolve_plan.py` at import.
+- `wiki` 0.12.0 — wiki-watch keeps its cursors, pending set and audit log in `<desk>/wiki-watch/`. It had been falling back to the repo's `.harness/wiki-watch/`, because the agentm verb it asked (`vault-state-path`) was deleted in V5-3. With no desk, a cycle skips.
+- `tokens` 0.8.0 — `/handoff` puts a pack in `<desk>/<handoff-slug>/` when no destination is named (`handoff_pack.default_destination`); with no desk it asks.
+- `obsidian-vault` 0.3.4 — the conflict-merger hook's example and `storage_vault.py`'s locator example show a task's `plan.md`.
 
 - `tokens` 0.7.0 — `/handoff-pack` is now **`/handoff`**, and it hands each downstream step to a fresh session instead of leaving that to the operator. Where the host exposes a background-task chip surface (`mcp__ccd_session__spawn_task`, Claude Code's desktop app), the command spawns one chip per prompt in the manifest, so starting a handed-off step costs a click rather than opening a session and pasting into it. A host without that surface skips the step silently; `PROMPTS.md` is unchanged and remains the fallback everywhere. A chip carries no `model`/`effort` parameter, so each entry's label is also written into the chip's prompt body as a plain line and the close-out names the chips whose model needs switching on open — `prompts.json` stays the machine-readable source. Each chip's prompt carries agentm's handoff marker for the same reason `PROMPTS.md` does: a chip's prompt lands as the new session's first *user* turn, so without it the reflect miner would mine agent-authored text as the operator's own words.
 - `development-lifecycle` 0.48.1 — `work.md`'s escalation-tripwire paragraph and `escalation_tripwire.py`'s docstring name the renamed `/handoff` (and `tokens`, not the long-retired `token-audit`).
 
 ### Internal
 
+- `scripts/check-no-harness-paths.py` (new, in `check-all.sh` and `tests-linux.yml`): fails on any `_harness` literal in `src/`, `scripts/`, `templates/`, `.github/` or `bootstrap.sh`, tests included. It uses agentm's pattern and its `harness-deprecation:` marker. Its `EXEMPT` list names the 25 development-lifecycle files task 101 clears; a listed file with no hits left fails the gate.
+- `scripts/no_harness_fixture.py` + `scripts/test_no_harness_dir.py` (new): a task-layout scratch project with a stub agentm, and one case per writer this release moved, each asserting no harness directory appears.
+- `scripts/test_resolve_plan.py`, `test_stage_plan.py`: the two real-agentm cases for the flat pair are removed, since agentm #680 no longer answers one.
+- `scripts/test_sibling_plugin.py`: design's call sites are now development-lifecycle's `resolve_plan.py` and `plan_tracker.py`, not `stage_plan.py`.
+- Wiki: the code-review, github-projects, design, wiki and token-audit designs each carry an amendment entry. Author a design, Sync a project board, GitHub Projects, Wiki-watch config, Named plans (its `/design` rows) and CI gates are reconciled.
 - `scripts/test_obsidian_vault_{backend,conflicts,discovery,doctor}.py`: each one now puts agentm's `scripts/` first on `sys.path` in `setUpClass` through `agentm_isolation`, which takes it back in a class cleanup, instead of inserting it for the rest of the run. The unit suite is one process, so an entry left behind shadows every later test module whose bare name agentm's `scripts/` also carries — the leak that, at import time in the conformance suite, stopped a full local run at discovery before any test ran ([#254](https://github.com/alexherrero/crickets/pull/254)). The doctor suite also takes back what `doctor_vault._kernel_on_path` adds while the checks run, under whatever spelling it was handed.
 - `scripts/test_obsidian_vault_sys_path.py` (new): pins the run-time half of that hygiene the way `ImportLeavesTheKernelOffSysPath` pins the import-time half — runs the four suites in a fresh interpreter and asserts agentm's `scripts/` is off `sys.path` after **each** one (a later suite tidying up must not cover for an earlier one's leak), and that each suite really ran rather than skipping. Joins the conformance trio in the `obsidian-vault-conformance` job on both CI OSes.
 

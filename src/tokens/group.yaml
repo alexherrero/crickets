@@ -135,6 +135,15 @@ standalone: true
 #          and build_handoff_pack() keep their names: agentm's
 #          control_plane/handoff.py loads that module by filename and
 #          degrades silently when it is absent.
-version: 0.7.0
+# 0.8.0 = agentm-vault part 15 (crickets task 100-retire-harness-in-the-other-plugins):
+# scripts/project_homes.py (new, byte-identical in code-review, design,
+# github-projects, wiki and tokens; pinned by scripts/test_project_homes.py)
+# asks agentm where a project's tasks/, designs/ and desk/ are and which plans
+# it has (process_seam.py project-path, harness_memory.py list-plans), so no
+# plugin composes a project path.
+# /handoff defaults to <desk>/<handoff-slug>/ through
+# handoff_pack.default_destination; with no desk the operator names one. The
+# Mythos precedent is cited in the agentm project's completed/.
+version: 0.8.0
 capabilities: [status-line-meter, token-audit, tokens]
 renamed_from: [status-line-meter, token-audit]

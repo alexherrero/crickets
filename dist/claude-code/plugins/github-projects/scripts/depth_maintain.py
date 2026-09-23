@@ -21,10 +21,13 @@ matching, which would risk silently materializing the wrong Plan under the
 wrong Feature. It recognizes exactly two **explicit** signals, and flags for
 operator judgment when neither is present:
 
-1. **Slug-equals-feature-id** — a plan file `PLAN-<feature_id>.md` exists (the
-   plan file is named after the Feature's own board-item id). This is the
-   zero-config convention: name the plan file after the feature you're
-   breaking down and it materializes automatically.
+1. **Slug-equals-feature-id** — a plan agentm lists is named after the
+   Feature's own board-item id: a task `tasks/NNN-<feature_id>/plan.md`
+   (matched by its verb-slug, or by its full name) or a flat
+   `PLAN-<feature_id>.md`. This is the zero-config convention: name the plan
+   after the feature you're breaking down and it materializes automatically.
+   The plans come from agentm (`project_homes.py plans`); this module never
+   scans a directory of its own.
 2. **Explicit `fields.plan_slug`** — the Feature item's `fields` dict names the
    plan slug directly (`{"plan_slug": "some-other-slug"}`), for the case where
    the plan file's name legitimately differs from the feature id (e.g. an
@@ -83,6 +86,9 @@ _DEPTH_HOLDING_TYPES = frozenset({"feature", "sub-feature"})
 # Excludes the singleton "PLAN.md" (no slug) and "PLAN.archive.*" (the `PLAN-`
 # vs `PLAN.` distinction the existing listers already rely on).
 _PLAN_FILE_RE = re.compile(r"^PLAN-(?P<slug>.+)\.md$")
+# A task's plan is `tasks/<name>/plan.md`, and its name is `NNN-<verb-slug>`.
+_TASK_PLAN_NAME = "plan.md"
+_TASK_NAME_RE = re.compile(r"^\d{3}-(?P<verb>.+)$")
 
 _H1_RE = re.compile(r"^#\s+(.+?)\s*$", re.MULTILINE)
 
@@ -114,37 +120,71 @@ class DepthGap:
             else self.matched_slug
 
 
-def list_plan_slugs(harness_dir) -> dict:
-    """Every *active* plan slug -> its file path in `harness_dir`.
+def index_plans(paths) -> dict:
+    """A name -> path index over plan files, for depth_maintain's own matching.
 
-    Reuses the same `PLAN-<slug>.md` naming contract `resolve_plan.py` and
-    `queue_status.py` already enumerate against (never re-derives it) — this
-    is purely a slug->Path index for depth_maintain's own matching, not a
-    second lister.
+    A task's `tasks/<name>/plan.md` is indexed under its name
+    (`042-build-the-brief`) and under its verb-slug (`build-the-brief`), since
+    board Plan items predate numbered task names. A verb-slug two tasks share
+    is ambiguous: it is left out, with a note on stderr, and never guessed. A
+    flat `PLAN-<slug>.md` is indexed under its slug. Conflicted copies are
+    skipped.
     """
-    hd = Path(harness_dir)
     out: dict = {}
-    if not hd.is_dir():
-        return out
-    for p in hd.glob("PLAN-*.md"):
-        if not p.is_file() or "(conflicted copy" in p.name:
+    by_verb: dict = {}
+    for p in paths:
+        p = Path(p)
+        if "(conflicted copy" in p.name:
+            continue
+        if p.name == _TASK_PLAN_NAME:
+            name = p.parent.name
+            out[name] = p
+            m = _TASK_NAME_RE.match(name)
+            if m:
+                by_verb.setdefault(m.group("verb"), []).append(p)
             continue
         m = _PLAN_FILE_RE.match(p.name)
         if m:
             out[m.group("slug")] = p
+    for verb, found in by_verb.items():
+        if len(found) == 1:
+            out.setdefault(verb, found[0])
+        else:
+            names = ", ".join(sorted(f.parent.name for f in found))
+            print(f"depth_maintain: '{verb}' names more than one task ({names}) — "
+                  f"not matched by its verb-slug", file=sys.stderr)
     return out
 
 
+def _agentm_plans(project_root):
+    """The project's plans as agentm lists them (`project_homes.py plans`),
+    or None when agentm gave no answer."""
+    homes = sys.modules.get("github_projects_project_homes") or _load(
+        "github_projects_project_homes", _HERE / "project_homes.py")
+    return homes.plans(project_root)
+
+
+def list_plan_slugs(project_root, *, lister=None) -> dict:
+    """Every *active* plan -> its path, for the project `project_root` is
+    bound to. The plans come from agentm (`lister`, default
+    `project_homes.plans`); this module composes no project layout. No answer
+    from agentm is an empty index."""
+    plans = (lister or _agentm_plans)(project_root)
+    return index_plans(plans or [])
+
+
 def _plan_title(plan_path: Path) -> str:
-    """The plan file's own H1 heading text, or its slug-derived filename when
-    the file has no H1 (never raises — a materialized Plan always gets SOME
-    title rather than blocking on a formatting quirk)."""
+    """The plan file's own H1 heading text, or its name when the file has no
+    H1 — a task's directory name, a flat plan's stem (never raises — a
+    materialized Plan always gets SOME title rather than blocking on a
+    formatting quirk)."""
+    fallback = plan_path.parent.name if plan_path.name == _TASK_PLAN_NAME else plan_path.stem
     try:
         text = plan_path.read_text(encoding="utf-8")
     except OSError:
-        return plan_path.stem
+        return fallback
     m = _H1_RE.search(text)
-    return m.group(1).strip() if m else plan_path.stem
+    return m.group(1).strip() if m else fallback
 
 
 def find_depth_gaps(graph: dict, plan_slugs: dict) -> list:
@@ -278,7 +318,7 @@ def materialize_gap(gap: DepthGap, graph: dict) -> "object | None":
     return item
 
 
-def run(graph: dict, harness_dir, *, materialize=True) -> dict:
+def run(graph: dict, project_root, *, materialize=True, lister=None) -> dict:
     """The depth-maintainer's one entrypoint: find gaps at both levels
     (Feature->Plan, Plan->Task), optionally materialize the auto-resolvable
     ones in place. Returns a summary dict:
@@ -291,7 +331,7 @@ def run(graph: dict, harness_dir, *, materialize=True) -> dict:
     Plan->Task pass in the same cycle (its bound plan file's checklist is
     checked right away, not only on a later run).
     """
-    plan_slugs = list_plan_slugs(harness_dir)
+    plan_slugs = list_plan_slugs(project_root, lister=lister)
     materialized = []
     flagged = []
 
@@ -316,8 +356,9 @@ def _build_parser():
     import argparse
     p = argparse.ArgumentParser(prog="depth_maintain.py")
     p.add_argument("--config", required=True, help="path to project.json")
-    p.add_argument("--harness-dir", required=True,
-                   help="the _harness/ dir to scan for active PLAN-<slug>.md files")
+    p.add_argument("--project-root", default=None,
+                   help="a repo bound to the vault project whose plans agentm lists "
+                        "(default: cwd)")
     p.add_argument("--dry-run", action="store_true",
                    help="preview only — print gaps/materializations, write nothing")
     return p
@@ -333,7 +374,7 @@ def main(argv=None) -> int:
     items_path = ps._items_path_from_cfg(cfg, args.config)
     graph = pm.load(items_path)
 
-    result = run(graph, args.harness_dir, materialize=not args.dry_run)
+    result = run(graph, args.project_root or Path.cwd(), materialize=not args.dry_run)
     for item in result["materialized"]:
         print(f"materialized {item.type}:{item.id} under {item.parent}")
     for gap in result["flagged"]:

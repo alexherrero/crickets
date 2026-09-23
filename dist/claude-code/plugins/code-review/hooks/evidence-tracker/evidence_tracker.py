@@ -14,6 +14,13 @@ PreToolUse JSON input on stdin. Behavior by tool name:
   Edit   → same as Write
   other  → exit 0 (no-op)
 
+Which files are plans: a repo-local `.harness/PLAN.md` or `PLAN-<slug>.md`, by
+its shape; and any file agentm lists among the project's plans — a task's
+`tasks/<name>/plan.md` in the vault — asked through this plugin's
+`scripts/project_homes.py` only when an op would flip a checkbox. An installed
+agentm that gives no answer blocks the flip (default-FAIL); without agentm only
+the repo-local shape is gated.
+
 State lives at `<project-root>/.harness/.evidence-reads` (JSON, per-task
 file-path lists; gitignored; atomic write). Reset at each task boundary —
 the developer-workflows `/work` spec's step 9.5, graceful-skip if this
@@ -68,9 +75,14 @@ _STATE_REL = (".harness", ".evidence-reads")
 # no hard dependency on developer-workflows (standalone: true, requires: []),
 # so this mirrors the naming convention rather than importing the resolver.
 _PLAN_BASENAME_RE = re.compile(r"^PLAN(-[A-Za-z0-9][\w-]*)?\.md$")
-# The seam can redirect .harness/ to a vault-resident _harness/ (backend-
-# routed storage) — either dirname names a plan-holding directory.
-_HARNESS_DIRNAMES = frozenset({".harness", "_harness"})
+# A repo-local plan sits directly under the repo's .harness/ and is gated by
+# its shape alone. Every other plan — a task's `tasks/<name>/plan.md` in the
+# vault — is a plan because agentm lists it (`project_homes.plans`), never
+# because of where it sits: crickets composes no project layout.
+_REPO_PLAN_DIRNAME = ".harness"
+_TASK_PLAN_BASENAME = "plan.md"
+# How long a PreToolUse hook waits for agentm's plan list.
+_AGENTM_TIMEOUT = 10
 
 # Code-file extensions that count toward heuristic match. Markdown deliberately
 # excluded — tests/README.md should NOT satisfy evidence for a coding task.
@@ -424,34 +436,80 @@ def check_evidence_met(
 # would_flip_checkbox — detect Write/Edit ops that change [ ] to [x]
 # -----------------------------------------------------------------------------
 
-def _is_plan_target(target_norm: str) -> bool:
+def is_repo_plan(target_norm: str) -> bool:
     """True if `target_norm` (already `normalize_path()`-processed) names a
-    `PLAN.md` / `PLAN-<slug>.md` file directly under a `.harness/` (or a
-    seam-resolved `_harness/`) directory — the singleton OR any named plan,
-    not just the singleton (cricketsPluginsA#3)."""
+    `PLAN.md` / `PLAN-<slug>.md` file directly under the repo's `.harness/` —
+    the singleton OR any named plan (cricketsPluginsA#3). Gated by shape."""
     p = PurePosixPath(target_norm)
-    return p.parent.name in _HARNESS_DIRNAMES and bool(_PLAN_BASENAME_RE.match(p.name))
+    return p.parent.name == _REPO_PLAN_DIRNAME and bool(_PLAN_BASENAME_RE.match(p.name))
+
+
+def _could_be_plan(target_norm: str) -> bool:
+    """True if the target is named like a plan: a repo plan, a task's
+    `plan.md`, or a `PLAN(-slug).md` anywhere. Only a repo plan is a plan by
+    its name alone; the rest are plans when agentm lists them."""
+    name = PurePosixPath(target_norm).name
+    return (is_repo_plan(target_norm) or name == _TASK_PLAN_BASENAME
+            or bool(_PLAN_BASENAME_RE.match(name)))
 
 
 def resolve_plan_target(plan_path_hint: Path, tool_input: dict) -> Optional[Path]:
-    """Resolve the plan file a Write/Edit's `tool_input` actually targets, or
-    `None` if the target isn't a plan file at all.
+    """Resolve the file a Write/Edit's `tool_input` targets when it could be a
+    plan, or `None` when it cannot. A repo plan is a plan by its shape; any
+    other candidate still needs `is_listed_plan` before it is gated.
 
     `plan_path_hint` (the caller's singleton-convention path,
     `<project_root>/.harness/PLAN.md`) anchors a *relative* target's project
     root via its own `parent.parent` — it is never used as the file to read.
-    An *absolute* target (e.g. a vault-redirected `_harness/` path) resolves
-    on its own, so a named plan living outside the repo checkout still works.
+    An *absolute* target (a task's `plan.md` in the vault) resolves on its
+    own, so a plan living outside the repo checkout still works.
     """
     target = tool_input.get("file_path") or tool_input.get("path") or ""
     if not target:
         return None
     target_norm = normalize_path(target)
-    if not _is_plan_target(target_norm):
+    if not _could_be_plan(target_norm):
         return None
     if Path(target_norm).is_absolute():
         return Path(target_norm)
     return plan_path_hint.parent.parent / target_norm
+
+
+_AUTO = object()
+
+
+def _load_project_homes():
+    """This plugin's `scripts/project_homes.py`, loaded by path, or None."""
+    import importlib.util
+    path = Path(__file__).resolve().parents[2] / "scripts" / "project_homes.py"
+    if not path.is_file():
+        return None
+    spec = importlib.util.spec_from_file_location("code_review_project_homes", path)
+    if spec is None or spec.loader is None:
+        return None
+    mod = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(mod)
+    except Exception:
+        return None
+    return mod
+
+
+def is_listed_plan(path: Path, project_root: Path, *, homes=_AUTO) -> Optional[bool]:
+    """Whether agentm lists `path` among the project's plans.
+
+    True or False when agentm answers. False when agentm is not installed —
+    then only repo plans are gated, as before. None when agentm is installed
+    but gives no answer (a timeout, a refusal, an error): the caller fails
+    closed, because this gate is default-FAIL."""
+    homes = _load_project_homes() if homes is _AUTO else homes
+    if homes is None or homes._find(homes._HARNESS_MEMORY_NAME) is None:
+        return False
+    rc, plans, _ = homes.ask_plans(cwd=project_root, timeout=_AGENTM_TIMEOUT)
+    if rc != 0:
+        return None
+    want = path.resolve()
+    return any(p.resolve() == want for p in plans)
 
 
 def would_flip_checkbox(
@@ -460,8 +518,9 @@ def would_flip_checkbox(
     tool_input: dict,
 ) -> Optional[int]:
     """If the tool op would flip a plan task's `[ ]` → `[x]`, return the
-    task id. Else None. Recognizes the singleton `.harness/PLAN.md` AND any
-    named `.harness/PLAN-<slug>.md` (see `resolve_plan_target`).
+    task id. Else None. Reads the target file locally — no agentm call — for
+    any file named like a plan (see `resolve_plan_target`); whether that file
+    is a plan agentm lists is the caller's check, made only on a flip.
 
     Handles Write (full content replace) and Edit (old_string → new_string).
     """
@@ -592,6 +651,20 @@ def cli_check(stdin_text: str, project_root: Path) -> int:
         # Determine the task + its requirement — from the plan file actually
         # being written (named or singleton), same derivation as above.
         actual_plan_path = resolve_plan_target(plan_path, tool_input)
+        # A repo plan is a plan by its shape. Anything else named like one is
+        # a plan only when agentm lists it — asked here, on a flip, and never
+        # on an ordinary Write.
+        if not is_repo_plan(normalize_path(str(tool_input.get("file_path")
+                                               or tool_input.get("path") or ""))):
+            listed = is_listed_plan(actual_plan_path, project_root)
+            if listed is False:
+                return 0
+            if listed is None:
+                print("evidence-tracker: default-FAIL — refusing to flip a checkbox in "
+                      f"{actual_plan_path}: agentm could not confirm whether it is a plan "
+                      "(its plan list gave no answer). Retry once agentm answers.",
+                      file=sys.stderr)
+                return 2
         tasks = parse_plan(actual_plan_path)
         task = next((t for t in tasks if t.id == flipped_id), None)
         if task is None:

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/alexherrero/crickets/github-projects/project.schema.json",
   "title": "github-projects project.json",
-  "description": "Binds a vault project to a GitHub Project board for one-way, deterministic board-sync. This file lives in the gitignored vault _harness/ and may carry the real local vault path under env — NEVER commit a populated copy into a public repo. All examples here use placeholder tokens (<owner>, <repo>, <vault>) for exactly that reason.",
+  "description": "Binds a vault project to a GitHub Project board for one-way, deterministic board-sync. This file lives in the repo's gitignored .harness/ (or the vault project's desk/) and may carry the real local vault path under env — NEVER commit a populated copy into a public repo. All examples here use placeholder tokens (<owner>, <repo>, <vault>) for exactly that reason.",
   "type": "object",
   "required": ["vault_project", "github"],
   "additionalProperties": false,
@@ -49,8 +49,8 @@
     },
     "items_source": {
       "type": "string",
-      "description": "Path to the structured, agent-maintained board-items.json (the machine projection of the project's roadmap that project_model.py parses). Relative paths resolve against this project.json's directory; omit to use the sibling board-items.json. Real local paths live in the gitignored vault copy only — never in a committed file.",
-      "examples": ["board-items.json", "<vault>/_harness/board-items.json"]
+      "description": "Path to the structured, agent-maintained board-items.json (the machine projection of the project's roadmap that project_model.py parses). Relative paths resolve against this project.json's directory; omit to use the sibling board-items.json. A vault-backed project keeps its board mirror in its desk/, so point this at <vault>/projects/<slug>/desk/board-items.json. Real local paths live in the gitignored copy only — never in a committed file.",
+      "examples": ["board-items.json", "<vault>/projects/<slug>/desk/board-items.json"]
     },
     "fields": {
       "type": "object",

@@ -2,21 +2,24 @@
 """Tests for src/developer-workflows/scripts/design_doc.py (V5-10 sibling #5).
 
 The deterministic core behind the `/design` command: the `Status: final` hard
-gate (`require_final`), the minimal stdlib-only frontmatter parser, and
-harness-root resolution composed onto `resolve_plan`. Every test is hermetic —
-docs are synthesized in throwaway temp dirs (never the real vault), and the
-resolver is exercised through both backends (the `.harness/` fallback via
-`resolver=None`, and a planted stub for the delegate branch) exactly as
-`test_stage_plan.py` does, so no agentm clone is needed.
+gate (`require_final`), the minimal stdlib-only frontmatter parser, and the
+designs home — where confidential designs and parts live, asked of agentm
+through `project_homes.py`. Every test is hermetic: docs are synthesized in
+throwaway temp dirs (never the real vault), and agentm is the stub from
+`no_harness_fixture.ScratchProject`, so no agentm clone is needed.
 """
 from __future__ import annotations
 
 import importlib.util
+import io
+import os
 import shutil
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
@@ -148,58 +151,88 @@ class TestParseFrontmatter(unittest.TestCase):
         self.assertEqual(fm["status"], "final")
 
 
-class TestResolveHarnessRoot(unittest.TestCase):
-    """Harness-root resolution composes `resolve_plan` — both backends."""
+class TestDesignsHome(unittest.TestCase):
+    """Confidential designs and parts live in the project's own `designs/`, which
+    agentm names (`project_homes.py home designs`) — agentm-vault part 15."""
 
     def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp(prefix="dd-root-"))
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import no_harness_fixture as nhf
+        self.nhf = nhf
+        self.sp = nhf.ScratchProject()
+        self.addCleanup(self.sp.cleanup)
+        self.tmp = self.sp.root
+        self.env({"AGENTM_SCRIPTS_DIR": str(self.sp.agentm)})
 
     def tearDown(self):
-        shutil.rmtree(self.tmp, ignore_errors=True)
+        self.assertEqual(self.nhf.harness_dirs(self.sp.root), [])
 
-    def test_standalone_resolves_to_dot_harness(self):
-        # Fallback: singleton PLAN.md is <root>/.harness/PLAN.md → its parent is
-        # the harness root.
-        rc, out, err = dd.resolve_harness_root(str(self.tmp), resolver=None)
+    def env(self, values):
+        values = {"HOME": str(self.sp.root / "home"), **values}
+        patcher = mock.patch.dict(os.environ, values)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def stub(self, body):
+        d = self.sp.root / "other-agentm"
+        d.mkdir(exist_ok=True)
+        (d / "process_seam.py").write_text(body, encoding="utf-8")
+        self.env({"AGENTM_SCRIPTS_DIR": str(d)})
+
+    def test_the_designs_home_comes_from_agentm(self):
+        rc, out, err = dd.designs_home(str(self.sp.repo))
+        self.assertEqual((rc, err), (0, ""))
+        self.assertEqual(Path(out.strip()), self.sp.designs)
+
+    def test_a_confidential_design_sits_in_the_designs_home(self):
+        rc, out, err = dd.confidential_design_path("my-doc", str(self.sp.repo))
         self.assertEqual(rc, 0, err)
-        self.assertEqual(Path(out.strip()), self.tmp / ".harness")
+        self.assertEqual(Path(out.strip()), self.sp.designs / "my-doc.md")
 
-    def test_delegate_tracks_resolver_not_dot_harness(self):
-        # Agentm present: harness root is the parent of whatever PLAN.md the
-        # resolver names (here a vault path) — proving we never re-derive .harness.
-        stub = self.tmp / "stub_ok.py"
-        stub.write_text(
-            "import sys\n"
-            "sys.stdout.write('/v/_harness/PLAN.md\\t/v/_harness/progress.md\\n')\n"
-            "sys.exit(0)\n",
-            encoding="utf-8",
-        )
-        rc, out, err = dd.resolve_harness_root(str(self.tmp), resolver=stub)
+    def test_parts_sit_under_the_design_in_the_designs_home(self):
+        rc, out, err = dd.parts_dir("my-doc", str(self.sp.repo))
         self.assertEqual(rc, 0, err)
-        self.assertEqual(Path(out.strip()), Path("/v/_harness"))
-        self.assertNotIn(".harness", out)
+        self.assertEqual(Path(out.strip()), self.sp.designs / "my-doc" / "parts")
 
-    def test_resolver_refusal_propagates_no_root(self):
-        # A located seam that exits non-zero is authoritative — surface it,
-        # never a silent .harness fallback (Risk #7). The seam's stderr is
-        # captured by the bridge internally; we verify the non-zero exit and
-        # that no harness root is emitted (not the specific message text).
-        stub = self.tmp / "stub_bad.py"
-        stub.write_text(
-            "import sys\n"
-            "sys.stderr.write('dangling marker\\n')\n"
-            "sys.exit(2)\n",
-            encoding="utf-8",
-        )
-        rc, out, err = dd.resolve_harness_root(str(self.tmp), resolver=stub)
-        self.assertEqual(rc, 2)
-        self.assertEqual(out, "")
-        self.assertNotEqual(err, "")  # error surfaced (message is bridge-generated)
+    def test_nothing_is_created(self):
+        dd.parts_dir("my-doc", str(self.sp.repo))
+        self.assertFalse((self.sp.designs / "my-doc").exists())
 
-    def test_confidential_path_composes_designs_subdir(self):
-        rc, out, err = dd.confidential_design_path("my-doc", str(self.tmp), resolver=None)
-        self.assertEqual(rc, 0, err)
-        self.assertEqual(Path(out.strip()), self.tmp / ".harness" / "designs" / "my-doc.md")
+    def test_no_agentm_is_no_home(self):
+        self.env({"AGENTM_SCRIPTS_DIR": ""})
+        for call in (lambda: dd.designs_home(str(self.sp.repo)),
+                     lambda: dd.confidential_design_path("my-doc", str(self.sp.repo)),
+                     lambda: dd.parts_dir("my-doc", str(self.sp.repo))):
+            rc, out, err = call()
+            self.assertEqual((rc, out), (dd.NO_HOME, ""))
+            self.assertIn("no designs home", err)
+
+    def test_a_project_with_no_vault_home_is_no_home(self):
+        self.stub("import sys\nsys.stderr.write('no vault home')\nsys.exit(1)\n")
+        rc, out, err = dd.designs_home(str(self.sp.repo))
+        self.assertEqual((rc, out), (dd.NO_HOME, ""))
+        self.assertIn("no vault home", err)
+
+    def test_an_agentm_refusal_is_loud(self):
+        self.stub("import sys\nsys.stderr.write('unsafe slug')\nsys.exit(2)\n")
+        rc, out, err = dd.designs_home(str(self.sp.repo))
+        self.assertEqual((rc, out), (2, ""))
+        self.assertIn("unsafe slug", err)
+
+    def test_the_cli_path_verbs(self):
+        root = ["--project-root", str(self.sp.repo)]
+        for argv, want in ((["designs-home", *root], self.sp.designs),
+                           (["design-path", "my-doc", *root], self.sp.designs / "my-doc.md"),
+                           (["parts-dir", "my-doc", *root], self.sp.designs / "my-doc" / "parts")):
+            out = io.StringIO()
+            with redirect_stdout(out):
+                rc = dd.main(["design_doc.py", *argv])
+            self.assertEqual(rc, 0, argv)
+            self.assertEqual(Path(out.getvalue().strip()), want)
+
+    def test_harness_root_is_gone(self):
+        with self.assertRaises(SystemExit), redirect_stderr(io.StringIO()):
+            dd.main(["design_doc.py", "harness-root"])
 
     def test_published_path_is_wiki_designs_not_explanation(self):
         p = dd.published_design_path("my-doc", str(self.tmp))

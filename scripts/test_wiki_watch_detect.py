@@ -337,10 +337,47 @@ class TestContentToken(unittest.TestCase):
 
 
 class TestStateDirResolution(unittest.TestCase):
+    """agentm-vault part 15: the cursors live in the project's desk/, which
+    agentm names; with no desk there is no state dir and nothing is made."""
+
+    def setUp(self):
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import no_harness_fixture as nhf
+        self.nhf = nhf
+        self.sp = nhf.ScratchProject()
+        self.addCleanup(self.sp.cleanup)
+
+    def env(self, values):
+        import os
+        from unittest import mock
+        patcher = mock.patch.dict(os.environ, {"HOME": str(self.sp.root / "home"), **values})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def tearDown(self):
+        self.assertEqual(self.nhf.harness_dirs(self.sp.root), [])
+
+    def test_the_state_dir_is_in_the_projects_desk(self):
+        self.env({"AGENTM_SCRIPTS_DIR": str(self.sp.agentm)})
+        self.assertEqual(det.ask_state_dir(self.sp.repo), (self.sp.desk / "wiki-watch", ""))
+        self.assertFalse((self.sp.desk / "wiki-watch").exists())
+
     def test_local_mode_is_repo_harness(self):
-        with tempfile.TemporaryDirectory() as td:
-            sd = det.resolve_state_dir(td, prefer_vault=False)
-            self.assertEqual(sd, Path(td) / ".harness" / "wiki-watch")
+        # The old repo-local fallback is gone: without agentm there is no state
+        # dir, and the repo's .harness/ gains nothing.
+        self.env({"AGENTM_SCRIPTS_DIR": ""})
+        sd, reason = det.ask_state_dir(self.sp.repo)
+        self.assertIsNone(sd)
+        self.assertIn("not installed", reason)
+        self.assertFalse((self.sp.repo / ".harness" / "wiki-watch").exists())
+
+    def test_a_desk_that_does_not_exist_is_never_made(self):
+        self.env({"AGENTM_SCRIPTS_DIR": str(self.sp.agentm)})
+        self.sp.desk.rmdir()
+        sd, reason = det.ask_state_dir(self.sp.repo)
+        self.assertIsNone(sd)
+        self.assertIn("does not exist", reason)
+        self.assertFalse(self.sp.desk.exists())
 
 
 if __name__ == "__main__":

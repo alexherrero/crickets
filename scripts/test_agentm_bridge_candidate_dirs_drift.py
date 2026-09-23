@@ -161,5 +161,26 @@ class TestCandidateDirsBehaviorParity(unittest.TestCase):
             del os.environ["AGENTM_SCRIPTS_DIR"]
 
 
+class TestProjectHomesMatchesTheLifecycleBridge(unittest.TestCase):
+    """`project_homes.py` (task 100) reaches agentm's top-level scripts/ — the
+    directory development-lifecycle's bridge reaches, not the memory-scripts
+    directory the three bridges above reach — so its discovery is pinned to
+    `agentm_bridge._default_candidate_dirs`, source for source."""
+
+    def test_same_source_as_the_lifecycle_bridge(self):
+        lifecycle = _load("agentm_bridge_lifecycle",
+                          _ROOT / "src" / "development-lifecycle" / "scripts")
+        spec = importlib.util.spec_from_file_location(
+            "project_homes_drift", _ROOT / "src" / "code-review" / "scripts" / "project_homes.py")
+        homes = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(homes)
+        self.assertEqual(
+            inspect.getsource(homes._default_candidate_dirs),
+            inspect.getsource(lifecycle._default_candidate_dirs),
+            "project_homes.py's discovery drifted from development-lifecycle's "
+            "agentm_bridge._default_candidate_dirs -- reconcile them.",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

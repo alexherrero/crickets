@@ -57,6 +57,7 @@ run "lint_src"       python3 scripts/lint_src.py
 run "capability naming" python3 scripts/check-capability-naming.py
 run "no-dangling-name" python3 scripts/check-no-dangling-name.py
 run "no-duplicate-diagnosis" python3 scripts/check-no-duplicate-diagnosis.py
+run "no-harness-paths" python3 scripts/check-no-harness-paths.py
 run "conventions conformance" python3 scripts/check_conventions_conformance.py
 # AGENTM_INSTALL_PREFIX + MEMORY_ROOT (+ its deprecated alias MEMORY_VAULT_PATH,
 # which every reader falls back to): isolate resolve_plan.py's R2.5

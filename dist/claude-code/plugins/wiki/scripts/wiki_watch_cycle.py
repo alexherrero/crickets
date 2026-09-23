@@ -212,7 +212,9 @@ def run_cycle(
 
     # 3. State dir + cooldown gate.
     if state_dir is None:
-        state_dir = det.resolve_state_dir(repo_root)
+        state_dir, reason = det.ask_state_dir(repo_root)
+        if state_dir is None:
+            return _skip(repo_root, f"no desk to keep wiki-watch's cursors in: {reason}")
     state_dir = Path(state_dir)
     if respect_cooldown:
         ledger = load_fire_ledger(state_dir)

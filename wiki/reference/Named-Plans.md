@@ -23,7 +23,7 @@ This page explains what a name maps to, how we resolve that name, and the standa
 | `/work` (final task, auto-close) | — | plan's close-out summary becomes the PR body | pushes the branch, opens a PR via `finalize_unit.py`, arms `gh pr merge --auto --squash` ([Closing out a plan](#closing-out-a-plan)) |
 | `/design author [<slug>]` | the design doc (not a PLAN) | — | walks the 10-section template, drives `draft → review → final` ([The `/design` command](#the-design-command)) |
 | `/design translate` | `<doc-dir>/parts/<part-slug>.md` (writes parts, reads the doc) | — | gates on `Status: final`, splits the doc into structural parts |
-| `/design sequence` | `PLAN-<doc-slug>-<part-slug>.md` (active) + `queued-plans/PLAN-<doc-slug>-<part-slug>.md` (staged) | — | one named plan per part via `stage_plan.py`; never touches the singleton `PLAN.md` |
+| `/design sequence` | `tasks/NNN-<doc-slug>-<part-slug>/plan.md` + a `queued` `tracker.md`, per part | — | one queued task per part via `design_sequence.py place`; none activated; never a flat staging directory |
 
 > [!NOTE]
 > The table shows paths by basename. The actual directory is whatever the resolver returns. You will see `.harness/` in standalone mode, or a hosting memory layer's state directory when one is present. In a project that keeps its plans in tasks, the plan is `tasks/NNN-<verb-slug>/plan.md`, with `progress.md` and `tracker.md` beside it (see [Numbered tasks](#numbered-tasks)). See [Resolution](#resolution) for more details.
@@ -79,7 +79,7 @@ The `/design` command handles the upstream authoring step of the phase loop. It 
 |---|---|---|---|
 | `/design author [<slug>]` | the design doc (on re-invoke) | the design doc | refuses re-invocation once `Status: final`; only `author` transitions Status |
 | `/design translate` | a `Status: final` design doc | `<doc-dir>/parts/<part-slug>.md` | `design_doc.py gate` (`Status: final`) **and** `design_doc.py detailed-design` (non-empty `### Detailed Design`); both exit 2 + reason on failure |
-| `/design sequence` | the populated `<doc-dir>/parts/` | one named plan per part (see below) | `design_doc.py gate` + non-empty validated `parts/`; ordering via `design_sequence.py order` (exit 2 on cycle / missing-dep) |
+| `/design sequence` | the populated `<designs>/<slug>/parts/` | one queued task per part (see below) | `design_doc.py gate` + non-empty validated `parts/`; ordering via `design_sequence.py order` (exit 2 on cycle / missing-dep) |
 
 ### `/design author`
 
@@ -104,18 +104,17 @@ The `/design` command handles the upstream authoring step of the phase loop. It 
 
 | Property | Value |
 |---|---|
-| Input | the populated `<doc-dir>/parts/` |
+| Input | the populated `<designs>/<slug>/parts/` (`design_doc.py parts-dir <slug>`) |
 | Ordering | topo-sort, deterministic; alphabetical tie-break |
-| Writer | `stage_plan.py` — `/design` does not re-derive harness paths |
-| First part | **activated** as `PLAN-<doc-slug>-<part-slug>.md` |
-| Remaining parts | **staged** into `queued-plans/PLAN-<doc-slug>-<part-slug>.md` |
-| Singleton `PLAN.md` | **never touched** |
+| Writer | `design_sequence.py check-names` then `place`, one part at a time — agentm places each task (through development-lifecycle's `resolve_plan.py`) and `plan_tracker.py` opens its tracker |
+| Every part | a new task `tasks/NNN-<doc-slug>-<part-slug>/`, tracker `queued`, naming the design; **none activated** |
+| A project that keeps no tasks | **refused** before anything is written |
 
 ### Storage
 
 | Visibility | Design doc home |
 |---|---|
-| `confidential` | `<resolved-harness>/designs/<slug>.md` — harness root resolved via `design_doc.py harness-root` (composes onto the `resolve_plan.py` resolver; storage-agnostic); not committed |
+| `confidential` | `<designs>/<slug>.md` — the project's own `designs/`, which agentm names (`design_doc.py design-path <slug>`); not committed |
 | `published` | `wiki/designs/<slug>.md` — committed (the crickets path, **not** agentm's `wiki/explanation/designs/`) |
 
 ## Two-tier named-plan staging

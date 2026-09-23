@@ -59,7 +59,7 @@ The hands-off idle-chain hook (auto-fire on SessionStart) and always-on (W3) are
 - Within the cooldown window → skip.
 - Not a git repo / no commits → skip.
 - `gh` unavailable in PR-default mode → skip (never silently direct-commits).
-- agentm kernel unreachable (no `repo_registry.py` / `harness_memory.py`) → state falls back to repo-local `<repo>/.harness/wiki-watch/`; an unresolved wiki target skips the repo.
+- no desk for the project (agentm absent, no vault for the project, or a desk that does not exist) → the cycle skips the repo and writes nothing; state lives only in the project's `<desk>/wiki-watch/`, as agentm names it. An unresolved wiki target also skips the repo.
 
 ## Companion surfaces
 

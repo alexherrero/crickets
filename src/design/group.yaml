@@ -139,4 +139,19 @@ capabilities: [design-docs, design, architecture]
 #         and `../Projects` (agentm's root casing, agentm-vault plan 08); the
 #         witness reads the listing case-folded, and the overlay store's path
 #         comes back spelled as the disk lists it.
-version: 0.10.8
+# 0.11.0 = agentm-vault part 15 (crickets task 100-retire-harness-in-the-other-plugins):
+# scripts/project_homes.py (new, byte-identical in code-review, design,
+# github-projects, wiki and tokens; pinned by scripts/test_project_homes.py)
+# asks agentm where a project's tasks/, designs/ and desk/ are and which plans
+# it has (process_seam.py project-path, harness_memory.py list-plans), so no
+# plugin composes a project path.
+# design_doc.py asks agentm for the project's designs/: designs-home,
+# design-path <slug> and parts-dir <slug> replace harness-root, and it no longer
+# loads development-lifecycle's resolve_plan.py; /spec writes
+# <desk>/briefs/<slug>-spec.md.
+# /design sequence opens every part as a new numbered task with a queued
+# tracker (design_sequence.py check-names + place, through
+# development-lifecycle's resolve_plan.py and plan_tracker.py); none is
+# activated, nothing goes to queued-plans/, and a project that keeps no tasks
+# is refused before any write.
+version: 0.11.0

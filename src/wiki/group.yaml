@@ -198,7 +198,17 @@ standalone: true
 #         is admitted under a witness that reads the listing case-folded. A
 #         rung's path comes back spelled as the disk lists it, so a caller sees
 #         one spelling per vault on any disk.
-version: 0.11.7
+# 0.12.0 = agentm-vault part 15 (crickets task 100-retire-harness-in-the-other-plugins):
+# scripts/project_homes.py (new, byte-identical in code-review, design,
+# github-projects, wiki and tokens; pinned by scripts/test_project_homes.py)
+# asks agentm where a project's tasks/, designs/ and desk/ are and which plans
+# it has (process_seam.py project-path, harness_memory.py list-plans), so no
+# plugin composes a project path.
+# wiki-watch keeps its cursors and audit in the project's <desk>/wiki-watch/,
+# as agentm names it; the dead vault-state-path call (agentm deleted the verb
+# in V5-3) and the repo-local .harness/wiki-watch/ fallback are gone, and a
+# cycle with no desk skips. `state-dir --local` is gone.
+version: 0.12.0
 capabilities: [wiki-maintenance, wiki]
 renamed_from: [wiki-maintenance]
 enhances:

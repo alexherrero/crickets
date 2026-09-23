@@ -197,17 +197,25 @@ class EmittedCallSitesResolveInTheVersionedCache(unittest.TestCase):
         # nothing cannot pass by checking nothing.
         for site in (("wiki", "design", "scripts/prose_pass.py"),
                      ("wiki", "design", "skills/prose-pass/SKILL.md"),
-                     ("design", "development-lifecycle", "scripts/stage_plan.py"),
+                     # /design sequence places queued tasks (task 100 step 6):
+                     # it reaches development-lifecycle's resolver and tracker
+                     # helper, not stage_plan.py's retired flat staging.
                      ("design", "development-lifecycle", "scripts/resolve_plan.py"),
+                     ("design", "development-lifecycle", "scripts/plan_tracker.py"),
+                     # design_doc.py's load of resolve_plan.py retired with
+                     # agentm-vault part 15 (task 100): it asks agentm for the
+                     # designs home through its own project_homes.py.
                      ("development-lifecycle", "github-projects", "scripts/project_sync.py"),
                      ("development-lifecycle", "diagnostics", "scripts/diagnose.py"),
                      ("maintenance", "development-lifecycle", "scripts/agentm_bridge.py")):
             self.assertIn(site, checked)
 
     def test_design_helpers_import_their_plan_resolver_from_the_cache(self) -> None:
-        # design_doc.py loads development-lifecycle's resolve_plan.py at import
+        # design_doc.py loaded development-lifecycle's resolve_plan.py at import
         # time, and design_sequence.py imports design_doc; through the old
-        # sibling path, /design translate and sequence both halted here.
+        # sibling path, /design translate and sequence both halted here. Since
+        # task 100 it loads its own project_homes.py instead; both must still
+        # import cleanly from the versioned cache.
         for script in ("design_doc.py", "design_sequence.py"):
             with self.subTest(script=script):
                 res = subprocess.run(

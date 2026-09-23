@@ -11,7 +11,7 @@
 #      QA-Reliability loop the design calls out), keep code + PLAN/design/ROADMAP.
 #      This is the coarse gate; the fine doc-worthiness JUDGMENT is task 4.
 #
-#   2. Durable state (cursors + pending/dispatched) under _harness/wiki-watch/ —
+#   2. Durable state (cursors + pending/dispatched) under <desk>/wiki-watch/ —
 #      modeled on harness_memory's read_cursor/write_cursor/plan_done_promotion
 #      high-water-mark idempotency, extended to per-source cursors + a per-token
 #      dispatched-set + retry/backoff bookkeeping. The cursor only advances once a
@@ -19,8 +19,8 @@
 #      means a re-run / restart NEVER double-dispatches.
 #
 #   3. The git + content probes (IMPURE) that produce the raw deltas, and the
-#      state-dir resolver (vault in vault-mode via harness_memory vault-state-path,
-#      repo-local <repo>/.harness/wiki-watch/ otherwise — DC-W6).
+#      state-dir resolver (the project's desk/ as agentm names it, through
+#      project_homes.py; no desk, no state, and the cycle skips — DC-W6).
 #
 # The PURE core (significance + candidate computation + backoff + state I/O over an
 # explicit dir) is deterministically unit-tested (DC-W8). The git/vault probes are
@@ -367,37 +367,47 @@ def content_token(path: Path | str) -> str:
 
 
 # ----------------------------------------------------------------------------
-# 3b. State-dir resolution (IMPURE — vault via harness_memory, else repo-local)
+# 3b. State-dir resolution (IMPURE — the project's desk/, as agentm names it)
 # ----------------------------------------------------------------------------
 
 _STATE_LEAF = "wiki-watch"
 
 
-def resolve_state_dir(repo_root: Path | str, *, prefer_vault: bool = True) -> Path:
-    """Where cursors / pending / audit live (DC-W6).
+def _project_homes():
+    """This plugin's `project_homes.py` — the one pinned way crickets asks agentm
+    where a project's desk/ is — loaded by path from this plugin's scripts/."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "wiki_project_homes", Path(__file__).resolve().parent / "project_homes.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
-    Vault mode: shell out to agentm's `harness_memory.py vault-state-path
-    wiki-watch --project-root <repo>` -> <vault>/projects/<slug>/_harness/wiki-watch.
-    Falls back to the repo-local <repo>/.harness/wiki-watch/ when agentm is
-    unreachable, the vault is unavailable, or prefer_vault is False. Never raises.
+
+def ask_state_dir(repo_root: Path | str) -> "tuple[Optional[Path], str]":
+    """(state dir, reason): where cursors / pending / audit live (DC-W6).
+
+    The project's own `desk/`, as agentm names it for the project `repo_root` is
+    bound to (`project_homes.py home desk`), plus a `wiki-watch/` leaf. None,
+    with the reason, when agentm is absent, names no desk, or the desk it names
+    does not exist: the cycle then skips and writes nothing, and never falls
+    back to a directory of its own. Never raises.
     """
-    repo_root = Path(repo_root)
-    if prefer_vault:
-        script = cfg.find_agentm_script("harness_memory.py")
-        if script is not None:
-            try:
-                res = subprocess.run(
-                    [sys.executable, str(script), "vault-state-path", _STATE_LEAF,
-                     "--project-root", str(repo_root)],
-                    capture_output=True, text=True, timeout=30,
-                )
-            except (OSError, subprocess.SubprocessError):
-                res = None
-            if res is not None and res.returncode == 0:
-                out = (res.stdout or "").strip()
-                if out:
-                    return Path(out)
-    return repo_root / ".harness" / _STATE_LEAF
+    try:
+        rc, desk, reason = _project_homes().ask_home("desk", cwd=Path(repo_root))
+    except Exception as exc:  # a broken module must not take the cycle down
+        return (None, f"cannot ask agentm for the project's desk: {exc}")
+    if rc != 0 or desk is None:
+        return (None, reason or "agentm names no desk for this project")
+    if not desk.is_dir():
+        return (None, f"the project's desk ({desk}) does not exist; wiki-watch makes "
+                      "files inside it, never the desk itself")
+    return (desk / _STATE_LEAF, "")
+
+
+def resolve_state_dir(repo_root: Path | str) -> Optional[Path]:
+    """The state dir `ask_state_dir` names, or None."""
+    return ask_state_dir(repo_root)[0]
 
 
 # ----------------------------------------------------------------------------
@@ -421,7 +431,6 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     p_state = sub.add_parser("state-dir", help="print the resolved state dir for a repo")
     p_state.add_argument("repo_root")
-    p_state.add_argument("--local", action="store_true", help="force repo-local mode")
 
     p_changed = sub.add_parser("changed", help="git-changed files in a repo since a cursor")
     p_changed.add_argument("repo_root")
@@ -433,8 +442,9 @@ def main(argv: Optional[list[str]] = None) -> int:
         _emit({"significant": filter_significant(args.paths)})
         return 0
     if args.cmd == "state-dir":
-        _emit({"state_dir": str(resolve_state_dir(args.repo_root, prefer_vault=not args.local))})
-        return 0
+        state_dir, reason = ask_state_dir(args.repo_root)
+        _emit({"state_dir": str(state_dir) if state_dir else None, "reason": reason})
+        return 0 if state_dir else 3
     if args.cmd == "changed":
         _emit({"changed": git_changed_files(args.repo_root, args.since)})
         return 0

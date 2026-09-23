@@ -46,7 +46,7 @@ def _resolve_vault_prose_audit() -> Path | None:
     if result.returncode != 0 or not vault_path:
         return None
     candidate = (
-        Path(vault_path) / "projects" / "agentm" / "_harness"
+        Path(vault_path) / "projects" / "agentm" / "completed"
         / "mythos-readiness-handoff" / "prose-audit.json"
     )
     return candidate if candidate.is_file() else None
