@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v5.0.0] — 2026-09-23 — Major: development-lifecycle keeps its plans through agentm alone
+
 **MAJOR.** The second and last crickets landing of agentm-vault part 15. development-lifecycle now reads and writes plans only where agentm puts them. It composes no plan layout of its own, and the tracker is a plan's only status. After this release no crickets plugin names the retired vault harness directory, and `check-no-harness-paths` enforces that with no exemption list. It pairs with [crickets v4.0.0](https://github.com/alexherrero/crickets/releases/tag/v4.0.0), which moved every other plugin, and with agentm task 172, whose readers take the tracker first.
 
 ### Breaking

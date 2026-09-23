@@ -39,4 +39,4 @@ The [wiki](https://github.com/alexherrero/crickets/wiki) covers everything there
 ---
 
 > [!NOTE]
-> **Latest release: [v4.0.0](https://github.com/alexherrero/crickets/releases/tag/v4.0.0).** Every plugin but development-lifecycle now asks agentm where a project keeps its tasks, designs and machine files, so the evidence tracker gates a task's plan again, `/design sequence` opens queued tasks, and wiki-watch and `/handoff` keep their state in the project's `desk/`. Breaking for a vault that never moved to the projects layout.
+> **Latest release: [v5.0.0](https://github.com/alexherrero/crickets/releases/tag/v5.0.0).** development-lifecycle now keeps every plan where agentm puts it, a numbered task or a no-vault repo's own `.harness/`, with the tracker as a plan's only status; no crickets plugin names the retired vault harness directory any more.
