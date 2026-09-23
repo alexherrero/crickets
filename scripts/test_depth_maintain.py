@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Tests for src/github-projects/scripts/depth_maintain.py (AG Wave D, task 2).
 
-The Planner (TPM) persona's depth-floor maintainer: given a graph and a
-harness dir of active PLAN-<slug>.md files, detect a Feature/Sub-feature with
+The Planner (TPM) persona's depth-floor maintainer: given a graph and the
+plans agentm lists (a flat PLAN-<slug>.md, or a task's tasks/NNN-<slug>/plan.md;
+the tests stand agentm's list in with `_in(d)`), detect a Feature/Sub-feature with
 zero materialized Plan children while a real, un-nested plan file exists for
 it, and either materialize the missing Plan (idempotently, in-memory only —
 this module never calls `gh`) or flag it for operator judgment when neither
@@ -12,10 +13,14 @@ resolves. stdlib only — no pytest, no live `gh` calls, no network.
 from __future__ import annotations
 
 import importlib.util
+import io
+import os
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stderr
 from pathlib import Path
+from unittest import mock
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
@@ -38,6 +43,11 @@ def _graph(items):
     return pm.build_graph(pm.parse_items({"items": items}))
 
 
+def _in(d):
+    """Stands in for agentm's plan list: the plan files in a scratch dir."""
+    return sorted(Path(d).glob("*.md"))
+
+
 class TestListPlanSlugs(unittest.TestCase):
     def test_lists_named_plans_only(self):
         with tempfile.TemporaryDirectory() as t:
@@ -46,7 +56,7 @@ class TestListPlanSlugs(unittest.TestCase):
             (d / "PLAN-foo.md").write_text("# Foo Plan\n", encoding="utf-8")
             (d / "PLAN-bar.md").write_text("# Bar Plan\n", encoding="utf-8")
             (d / "PLAN.archive.20260101-foo.md").write_text("# old\n", encoding="utf-8")
-            slugs = dm.list_plan_slugs(d)
+            slugs = dm.index_plans(_in(d))
             self.assertEqual(set(slugs), {"foo", "bar"})
             self.assertEqual(slugs["foo"], d / "PLAN-foo.md")
 
@@ -55,11 +65,11 @@ class TestListPlanSlugs(unittest.TestCase):
             d = Path(t)
             (d / "PLAN-foo.md").write_text("# Foo\n", encoding="utf-8")
             (d / "PLAN-foo (conflicted copy 2026-07-06).md").write_text("x", encoding="utf-8")
-            slugs = dm.list_plan_slugs(d)
+            slugs = dm.index_plans(_in(d))
             self.assertEqual(set(slugs), {"foo"})
 
     def test_missing_dir_returns_empty(self):
-        self.assertEqual(dm.list_plan_slugs(Path("/does/not/exist")), {})
+        self.assertEqual(dm.list_plan_slugs(Path("/does/not/exist"), lister=lambda root: None), {})
 
 
 class TestFindDepthGaps(unittest.TestCase):
@@ -76,7 +86,7 @@ class TestFindDepthGaps(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             d = Path(t)
             (d / "PLAN-some-feature.md").write_text("# Ship Some Feature\n", encoding="utf-8")
-            slugs = dm.list_plan_slugs(d)
+            slugs = dm.index_plans(_in(d))
             gaps = dm.find_depth_gaps(graph, slugs)
         self.assertEqual(len(gaps), 1)
         gap = gaps[0]
@@ -97,7 +107,7 @@ class TestFindDepthGaps(unittest.TestCase):
             # Also drop a same-id plan file to prove the explicit field wins,
             # not the id-equality fallback.
             (d / "PLAN-some-feature.md").write_text("# Should Not Be Used\n", encoding="utf-8")
-            slugs = dm.list_plan_slugs(d)
+            slugs = dm.index_plans(_in(d))
             gaps = dm.find_depth_gaps(graph, slugs)
         self.assertEqual(len(gaps), 1)
         self.assertEqual(gaps[0].matched_slug, "renamed-plan")
@@ -132,7 +142,7 @@ class TestFindDepthGaps(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             d = Path(t)
             (d / "PLAN-f-bs.md").write_text("# Should be ignored\n", encoding="utf-8")
-            slugs = dm.list_plan_slugs(d)
+            slugs = dm.index_plans(_in(d))
             gaps = dm.find_depth_gaps(graph, slugs)
         self.assertEqual(gaps, [])
 
@@ -147,7 +157,7 @@ class TestFindDepthGaps(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             d = Path(t)
             (d / "PLAN-sf-render.md").write_text("# Render Path Plan\n", encoding="utf-8")
-            slugs = dm.list_plan_slugs(d)
+            slugs = dm.index_plans(_in(d))
             gaps = dm.find_depth_gaps(graph, slugs)
         # f-bs itself has no direct plan child (only a sub-feature child) but
         # also no matching plan file of its own id -> not flagged; sf-render
@@ -165,7 +175,7 @@ class TestMaterializeGap(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             d = Path(t)
             (d / "PLAN-some-feature.md").write_text("# Ship Some Feature\n", encoding="utf-8")
-            slugs = dm.list_plan_slugs(d)
+            slugs = dm.index_plans(_in(d))
             gaps = dm.find_depth_gaps(graph, slugs)
             item = dm.materialize_gap(gaps[0], graph)
         self.assertIsNotNone(item)
@@ -185,7 +195,7 @@ class TestMaterializeGap(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             d = Path(t)
             (d / "PLAN-some-feature.md").write_text("no heading here\n", encoding="utf-8")
-            slugs = dm.list_plan_slugs(d)
+            slugs = dm.index_plans(_in(d))
             gaps = dm.find_depth_gaps(graph, slugs)
             item = dm.materialize_gap(gaps[0], graph)
         self.assertEqual(item.title, "PLAN-some-feature")
@@ -199,7 +209,7 @@ class TestMaterializeGap(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             d = Path(t)
             (d / "PLAN-some-feature.md").write_text("# Ship\n", encoding="utf-8")
-            slugs = dm.list_plan_slugs(d)
+            slugs = dm.index_plans(_in(d))
             gaps = dm.find_depth_gaps(graph, slugs)
             first = dm.materialize_gap(gaps[0], graph)
             self.assertEqual(len(graph["some-feature"].children), 1)
@@ -248,7 +258,7 @@ class TestFindTaskGaps(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             d = Path(t)
             (d / "PLAN-p-bs.md").write_text(_PLAN_BODY, encoding="utf-8")
-            slugs = dm.list_plan_slugs(d)
+            slugs = dm.index_plans(_in(d))
             gaps = dm.find_task_gaps(graph, slugs)
         self.assertEqual(len(gaps), 1)
         self.assertEqual(gaps[0].plan_id, "p-bs")
@@ -267,7 +277,7 @@ class TestFindTaskGaps(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             d = Path(t)
             (d / "PLAN-p-bs.md").write_text(_PLAN_BODY, encoding="utf-8")
-            slugs = dm.list_plan_slugs(d)
+            slugs = dm.index_plans(_in(d))
             gaps = dm.find_task_gaps(graph, slugs)
         self.assertEqual(gaps, [])
 
@@ -284,7 +294,7 @@ class TestFindTaskGaps(unittest.TestCase):
             d = Path(t)
             (d / "PLAN-p-bs.md").write_text("# Ship It\n\nNo tasks yet.\n",
                                             encoding="utf-8")
-            slugs = dm.list_plan_slugs(d)
+            slugs = dm.index_plans(_in(d))
             gaps = dm.find_task_gaps(graph, slugs)
         self.assertEqual(gaps, [])
 
@@ -301,7 +311,7 @@ class TestMaterializeTaskGap(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             d = Path(t)
             (d / "PLAN-p-bs.md").write_text(_PLAN_BODY, encoding="utf-8")
-            slugs = dm.list_plan_slugs(d)
+            slugs = dm.index_plans(_in(d))
             gaps = dm.find_task_gaps(graph, slugs)
             added = dm.materialize_task_gap(gaps[0], graph)
         self.assertEqual(len(added), 2)
@@ -322,7 +332,7 @@ class TestMaterializeTaskGap(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             d = Path(t)
             (d / "PLAN-p-bs.md").write_text(_PLAN_BODY, encoding="utf-8")
-            slugs = dm.list_plan_slugs(d)
+            slugs = dm.index_plans(_in(d))
             gaps = dm.find_task_gaps(graph, slugs)
             first = dm.materialize_task_gap(gaps[0], graph)
             gaps2 = dm.find_task_gaps(graph, slugs)  # now has task children -> no gap
@@ -346,7 +356,7 @@ class TestRun(unittest.TestCase):
         ])
         before = {iid: list(it.children) for iid, it in graph.items()}
         with tempfile.TemporaryDirectory() as t:
-            result = dm.run(graph, Path(t))
+            result = dm.run(graph, Path(t), lister=_in)
         self.assertEqual(result, {"materialized": [], "flagged": []})
         after = {iid: list(it.children) for iid, it in graph.items()}
         self.assertEqual(before, after)
@@ -360,7 +370,7 @@ class TestRun(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             d = Path(t)
             (d / "PLAN-some-feature.md").write_text("# Ship Some Feature\n", encoding="utf-8")
-            result = dm.run(graph, d)
+            result = dm.run(graph, d, lister=_in)
         self.assertEqual(len(result["materialized"]), 1)
         self.assertEqual(result["flagged"], [])
         self.assertIn("plan-some-feature", graph)
@@ -382,7 +392,7 @@ class TestRun(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             d = Path(t)
             (d / "PLAN-p-bs.md").write_text(_PLAN_BODY, encoding="utf-8")
-            result = dm.run(graph, d)
+            result = dm.run(graph, d, lister=_in)
         self.assertEqual(len(result["materialized"]), 2)
         self.assertEqual(result["flagged"], [])
         self.assertEqual(set(graph["p-bs"].children[i].id for i in range(2)),
@@ -399,7 +409,7 @@ class TestRun(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             d = Path(t)
             (d / "PLAN-p-bs.md").write_text(_PLAN_BODY, encoding="utf-8")
-            result = dm.run(graph, d, materialize=False)
+            result = dm.run(graph, d, lister=_in, materialize=False)
         self.assertEqual(result["materialized"], [])
         self.assertEqual(graph["p-bs"].children, [])
 
@@ -412,10 +422,76 @@ class TestRun(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             d = Path(t)
             (d / "PLAN-some-feature.md").write_text("# Ship\n", encoding="utf-8")
-            result = dm.run(graph, d, materialize=False)
+            result = dm.run(graph, d, lister=_in, materialize=False)
         self.assertEqual(result["materialized"], [])
         self.assertNotIn("some-feature", [c.id for c in graph["some-feature"].children])
         self.assertEqual(graph["some-feature"].children, [])
+
+
+class TestTheTaskLayout(unittest.TestCase):
+    """agentm-vault part 15: plans come from agentm's list, and a task's
+    `tasks/NNN-<verb-slug>/plan.md` matches a board item by either name."""
+
+    def setUp(self):
+        sys.path.insert(0, str(_HERE))
+        import no_harness_fixture as nhf
+        self.nhf = nhf
+        self.sp = nhf.ScratchProject()
+        self.addCleanup(self.sp.cleanup)
+        patcher = mock.patch.dict(os.environ, {
+            "AGENTM_SCRIPTS_DIR": str(self.sp.agentm), "HOME": str(self.sp.root / "home")})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def tearDown(self):
+        self.assertEqual(self.nhf.harness_dirs(self.sp.root), [])
+
+    def test_a_task_is_indexed_by_its_name_and_its_verb_slug(self):
+        idx = dm.index_plans([self.sp.plan])
+        self.assertEqual(idx, {"042-build-the-brief": self.sp.plan,
+                               "build-the-brief": self.sp.plan})
+
+    def test_a_shared_verb_slug_is_left_out(self):
+        other = self.sp.project / "tasks" / "043-build-the-brief" / "plan.md"
+        other.parent.mkdir()
+        other.write_text("# Plan: again\n", encoding="utf-8")
+        err = io.StringIO()
+        with redirect_stderr(err):
+            idx = dm.index_plans([self.sp.plan, other])
+        self.assertEqual(set(idx), {"042-build-the-brief", "043-build-the-brief"})
+        self.assertIn("more than one task", err.getvalue())
+
+    def test_the_plans_come_from_agentm(self):
+        self.assertEqual(dm.list_plan_slugs(self.sp.repo),
+                         {"042-build-the-brief": self.sp.plan, "build-the-brief": self.sp.plan})
+
+    def test_no_agentm_is_an_empty_index(self):
+        os.environ["AGENTM_SCRIPTS_DIR"] = ""
+        self.assertEqual(dm.list_plan_slugs(self.sp.repo), {})
+
+    def _feature(self, fid):
+        return _graph([
+            {"id": "v5", "type": "version", "title": "V5 arc", "about": "x"},
+            {"id": fid, "type": "feature", "parent": "v5",
+             "title": "Brief", "goal": "g", "why_matters": "w"},
+        ])
+
+    def test_a_feature_keyed_by_the_verb_slug_materializes_the_task(self):
+        graph = self._feature("build-the-brief")
+        result = dm.run(graph, self.sp.repo)
+        self.assertEqual([(i.type, i.title) for i in result["materialized"]][0],
+                         ("plan", "Plan: Build the brief"))
+        self.assertEqual(result["flagged"], [])
+
+    def test_a_feature_keyed_by_the_full_name_materializes_the_task(self):
+        graph = self._feature("042-build-the-brief")
+        result = dm.run(graph, self.sp.repo, materialize=False)
+        self.assertEqual(result["flagged"], [])
+
+    def test_harness_dir_is_gone_from_both_clis(self):
+        for prog in (dm._build_parser(),):
+            with self.assertRaises(SystemExit), redirect_stderr(io.StringIO()):
+                prog.parse_args(["--config", "p.json", "--harness-dir", "x"])
 
 
 if __name__ == "__main__":

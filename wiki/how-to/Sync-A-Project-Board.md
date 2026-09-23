@@ -2,17 +2,17 @@
 
 > [!NOTE]
 > **Goal:** Render the current vault project state for a configured project and push it one-way to its GitHub Project board — idempotently, with a dry-run preview first.
-> **Prereqs:** the `github-projects` plugin installed (`requires: development-lifecycle`); a `project.json` (in the project's vault `_harness/`) wiring the vault project to its Project — at minimum `vault_project` + `github.{owner,number}`; the `gh` CLI authenticated.
+> **Prereqs:** the `github-projects` plugin installed (`requires: development-lifecycle`); a `project.json` (the repo's gitignored `.harness/project.json`) wiring the vault project to its Project — at minimum `vault_project` + `github.{owner,number}`; the `gh` CLI authenticated.
 
 ## Steps
 
-1. Confirm the `project.json` resolves. The loader needs `vault_project` + `github.owner` + `github.number`; `github.url` is derived from owner+number when omitted, and `items_source` defaults to the sibling `board-items.json`.
+1. Confirm the `project.json` resolves. The loader needs `vault_project` + `github.owner` + `github.number`; `github.url` is derived from owner+number when omitted, and `items_source` defaults to the sibling `board-items.json`. A vault-backed project keeps its board mirror in its `desk/`, so point `items_source` at `<vault>/projects/<slug>/desk/board-items.json`.
 
 2. Preview the render with the dry-run boundary — no write hits GitHub. Omit `--type` for a full template-driven re-render of one item:
 
    ```bash
    python3 "$CLAUDE_PLUGIN_ROOT/scripts/project_sync.py" post \
-     --config <vault>/_harness/project.json --id <item-id> --dry-run
+     --config .harness/project.json --id <item-id> --dry-run
    ```
 
 3. Push the one-way update via the single live write path — idempotent create-or-update by stable id, so re-running converges. For a progress stage use the `--type` shortcut; for a kickoff or closeout omit it (those re-render in full from `board-items.json`):
@@ -20,11 +20,11 @@
    ```bash
    # full re-render of one item
    python3 "$CLAUDE_PLUGIN_ROOT/scripts/project_sync.py" post \
-     --config <vault>/_harness/project.json --id <item-id>
+     --config .harness/project.json --id <item-id>
 
    # task progress stage shortcut
    python3 "$CLAUDE_PLUGIN_ROOT/scripts/project_sync.py" post \
-     --config <vault>/_harness/project.json --type task-progress \
+     --config .harness/project.json --type task-progress \
      --id <task-id> --commit <SHA> --summary "<one human sentence>"
    ```
 
@@ -34,7 +34,7 @@
 
 The inaugural backfill brings both boards (agentm Project #2, crickets Project #5) up to current state in one pass. It is the **one bulk write** and is **operator-gated** — it runs only on explicit approval, never automatically.
 
-Author the project's full state into `board-items.json`, in the vault `_harness/` — this is the renderer's source of truth; never create items with raw `gh project item-create`, which the drift gate flags as an orphan. Run the post with `--dry-run` first and inspect the render. Only on explicit operator approval, drop `--dry-run` to push. A re-fetch should report every item a `noop`. Both boards were backfilled this way: crickets #5 (18 open issues) and agentm #2 (16 items).
+Author the project's full state into `board-items.json`, the file `items_source` names (the project's `desk/`) — this is the renderer's source of truth; never create items with raw `gh project item-create`, which the drift gate flags as an orphan. Run the post with `--dry-run` first and inspect the render. Only on explicit operator approval, drop `--dry-run` to push. A re-fetch should report every item a `noop`. Both boards were backfilled this way: crickets #5 (18 open issues) and agentm #2 (16 items).
 
 > [!WARNING]
 > The backfill writes to live GitHub Projects. Always run the `--dry-run` render first and inspect it before approving the bulk push.

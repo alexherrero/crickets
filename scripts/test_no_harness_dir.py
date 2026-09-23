@@ -86,6 +86,25 @@ class Writers(unittest.TestCase):
             self.assertEqual(self.run_py(sp, hook, ["--mode", "reset", *root]).returncode, 0)
             self.assertEqual(nhf.harness_dirs(sp.root), [])
 
+    def test_depth_maintenance(self):
+        """github-projects (step 4): a dry-run cycle over agentm's plan list."""
+        script = next((HERE.parent / "src").glob("*-projects/scripts/depth_maintain.py"))
+        with nhf.ScratchProject() as sp:
+            items = sp.desk / "board-items.json"
+            items.write_text(json.dumps({"items": [
+                {"id": "v5", "type": "version", "title": "V5", "about": "x"},
+                {"id": "build-the-brief", "type": "feature", "parent": "v5",
+                 "title": "Brief", "goal": "g", "why_matters": "w"}]}), encoding="utf-8")
+            cfg = sp.repo / ".harness" / "project.json"
+            cfg.write_text(json.dumps({
+                "vault_project": "demo", "items_source": str(items),
+                "github": {"owner": "o", "number": 1, "repo": "o/r", "url": "u"}}),
+                encoding="utf-8")
+            r = self.run_py(sp, script, ["--config", str(cfg), "--project-root", str(sp.repo),
+                                         "--dry-run"])
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertEqual(nhf.harness_dirs(sp.root), [])
+
 
 if __name__ == "__main__":
     unittest.main()

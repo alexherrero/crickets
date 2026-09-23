@@ -170,5 +170,10 @@ standalone: false
 # asks agentm where a project's tasks/, designs/ and desk/ are and which plans
 # it has (process_seam.py project-path, harness_memory.py list-plans), so no
 # plugin composes a project path.
+# depth_maintain.py and planner_maintain.py match the plans agentm lists for
+# --project-root (default cwd) instead of scanning --harness-dir, which is
+# gone; a task matches by its full name or its verb-slug. The schema's
+# items_source examples name the project's desk/; the default stays beside
+# project.json.
 version: 0.6.0
 capabilities: [board-sync]
