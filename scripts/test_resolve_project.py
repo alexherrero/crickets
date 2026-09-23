@@ -92,9 +92,9 @@ class TestScanVaultProjects(unittest.TestCase):
 
     def test_lists_project_dirs_with_gloss(self):
         vault = self.tmp / "vault"
-        proj = vault / "projects" / "widgets" / "_harness"
+        proj = vault / "projects" / "widgets"
         proj.mkdir(parents=True)
-        (proj / "PLAN.md").write_text("**Brief:** The widgets project.\n", encoding="utf-8")
+        (proj / "charter.md").write_text("# widgets\n\n**What:** The widgets project.\n", encoding="utf-8")
         (vault / "projects" / ".hidden").mkdir(parents=True)
         result = rp.scan_vault_projects(vault=vault)
         self.assertEqual(len(result), 1)
@@ -107,12 +107,12 @@ class TestScanVaultProjects(unittest.TestCase):
         result = rp.scan_vault_projects(vault=vault)
         self.assertEqual(result, [{"slug": "bare", "vault_project_path": str(vault / "projects" / "bare"), "gloss": None}])
 
-    # ── PLAN-tracker-commands task 8: the charter's What line ────────────────
+    # ── the charter's What line, and nothing else (crickets task 101) ────────
     def _widgets_with_a_brief(self) -> Path:
-        project = self.tmp / "vault" / "projects" / "widgets"
-        (project / "_harness").mkdir(parents=True)
-        (project / "_harness" / "PLAN.md").write_text("**Brief:** The brief line.\n", encoding="utf-8")
-        return project
+        task = self.tmp / "vault" / "projects" / "widgets" / "tasks" / "042-build-the-brief"
+        task.mkdir(parents=True)
+        (task / "plan.md").write_text("**Brief:** The brief line.\n", encoding="utf-8")
+        return task.parent.parent
 
     def test_the_charter_what_line_wins_over_the_brief_line(self):
         project = self._widgets_with_a_brief()
@@ -123,19 +123,18 @@ class TestScanVaultProjects(unittest.TestCase):
         result = rp.scan_vault_projects(vault=self.tmp / "vault")
         self.assertEqual(result[0]["gloss"], "The charter's what line.")
 
-    def test_index_md_is_still_read_without_a_charter(self):
+    def test_no_charter_means_no_gloss_and_no_plan_is_read(self):
         project = self._widgets_with_a_brief()
-        (project / "_index.md").write_text(
-            "---\nkind: project-index\nslug: _index\n---\n\n# widgets\n\n"
-            "**What:** The index's what line.\n", encoding="utf-8")
+        (project / "_index.md").write_text("# widgets\n\n**What:** The old index's line.\n",
+                                           encoding="utf-8")
         result = rp.scan_vault_projects(vault=self.tmp / "vault")
-        self.assertEqual(result[0]["gloss"], "The index's what line.")
+        self.assertIsNone(result[0]["gloss"])
 
-    def test_a_charter_without_a_what_line_falls_back_to_the_brief(self):
+    def test_a_charter_without_a_what_line_gives_no_gloss(self):
         project = self._widgets_with_a_brief()
         (project / "charter.md").write_text("# widgets\n\nNo what line here.\n", encoding="utf-8")
         result = rp.scan_vault_projects(vault=self.tmp / "vault")
-        self.assertEqual(result[0]["gloss"], "The brief line.")
+        self.assertIsNone(result[0]["gloss"])
 
     # ── filing-v2 2b: the vault-root Projects/ generation ────────────────────
     # The memory root is `<vault>/Agent`; the newest project space is its
@@ -149,7 +148,7 @@ class TestScanVaultProjects(unittest.TestCase):
         (self.tmp / "Vault" / ".obsidian").mkdir(parents=True, exist_ok=True)
         (self.tmp / "Vault" / "Projects").mkdir(parents=True)
         (self.tmp / "Vault" / "Projects" / "index.md").write_text("# Projects\n", encoding="utf-8")
-        (vault / "desk" / "projects" / "agentm" / "_harness").mkdir(parents=True)
+        (vault / "desk" / "projects" / "agentm" / "tasks").mkdir(parents=True)
         (vault / "desk" / "projects" / "crickets").mkdir(parents=True)
         slugs = [r["slug"] for r in rp.scan_vault_projects(vault=vault)]
         self.assertEqual(slugs, ["agentm", "crickets"])
@@ -159,12 +158,12 @@ class TestScanVaultProjects(unittest.TestCase):
         under desk/projects must not shadow it — newest layout wins."""
         vault = self.tmp / "Vault" / "Agent"
         (self.tmp / "Vault" / ".obsidian").mkdir(parents=True, exist_ok=True)
-        root = self.tmp / "Vault" / "Projects" / "agentm" / "_harness"
+        root = self.tmp / "Vault" / "Projects" / "agentm"
         root.mkdir(parents=True)
-        (root / "PLAN.md").write_text("**Brief:** moved.\n", encoding="utf-8")
-        stale = vault / "desk" / "projects" / "agentm" / "_harness"
+        (root / "charter.md").write_text("**What:** moved.\n", encoding="utf-8")
+        stale = vault / "desk" / "projects" / "agentm"
         stale.mkdir(parents=True)
-        (stale / "PLAN.md").write_text("**Brief:** stale.\n", encoding="utf-8")
+        (stale / "charter.md").write_text("**What:** stale.\n", encoding="utf-8")
         (vault / "desk" / "projects" / "other").mkdir(parents=True)
         result = {r["slug"]: r for r in rp.scan_vault_projects(vault=vault)}
         self.assertEqual(sorted(result), ["agentm", "other"])
@@ -174,16 +173,10 @@ class TestScanVaultProjects(unittest.TestCase):
 
     def test_relpath_parse_accepts_root_relative_projects_paths(self):
         """Daemon hits arrive vault-root-relative: `Projects/<slug>/...`."""
-        self.assertEqual(rp._project_slug_from_vault_relpath("Projects/agentm/_harness/PLAN.md"), "agentm")
+        self.assertEqual(rp._project_slug_from_vault_relpath("Projects/agentm/tasks/042-x/plan.md"), "agentm")
         self.assertEqual(rp._project_slug_from_vault_relpath("desk/projects/agentm/x.md"), "agentm")
         self.assertIsNone(rp._project_slug_from_vault_relpath("memory/semantic/note.md"))
 
-    def test_extract_gloss_from_objective_heading(self):
-        text = "# Design\n\n## Objective\n\nDoes the widget thing.\n"
-        self.assertEqual(rp._extract_gloss(text), "Does the widget thing.")
-
-    def test_extract_gloss_none_when_absent(self):
-        self.assertIsNone(rp._extract_gloss("# Design\n\nJust prose, no markers.\n"))
 
 
 class TestRecallCandidates(unittest.TestCase):
@@ -333,7 +326,7 @@ class TestRootSpaceWitness(unittest.TestCase):
         vault = home / "Vault"
         (vault / ".obsidian").mkdir(parents=True)
         (vault / "desk" / "projects" / "mine").mkdir(parents=True)
-        (home / "Projects" / "agentm" / "_harness").mkdir(parents=True)  # the operator's own repos
+        (home / "Projects" / "agentm" / "tasks").mkdir(parents=True)  # the operator's own repos
         self.assertFalse(rp.root_sibling_witnessed(vault))
         self.assertEqual(rp.vault_projects_dirs(vault), [vault / "desk" / "projects"])
         self.assertEqual([r["slug"] for r in rp.scan_vault_projects(vault=vault)], ["mine"])
@@ -341,7 +334,7 @@ class TestRootSpaceWitness(unittest.TestCase):
     def test_a_flat_vaults_own_projects_dir_is_the_root_space(self):
         vault = self.tmp / "Vault"
         (vault / ".obsidian").mkdir(parents=True)
-        (vault / "Projects" / "agentm" / "_harness").mkdir(parents=True)
+        (vault / "Projects" / "agentm" / "tasks").mkdir(parents=True)
         self.assertEqual(rp.vault_projects_dirs(vault), [vault / "Projects"])
         result = rp.scan_vault_projects(vault=vault)
         self.assertEqual([r["slug"] for r in result], ["agentm"])

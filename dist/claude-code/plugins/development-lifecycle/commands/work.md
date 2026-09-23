@@ -31,7 +31,7 @@ Invoking this phase **is** the authorization to run it to completion. The stop-g
 
 **When uncertain, treat as unrecoverable** (conservative default). Pre-announcing a recoverable-but-destructive action — state what is about to happen; do not ask permission — carries over verbatim. Any summary this phase produces is a **record of what the autonomous run did**, not a stop-and-wait barrier.
 
-**Close-out autonomy.** Archiving a completed plan (`PLAN.md` → `archive/PLAN.archive.YYYYMMDD-<slug>.md` — the archive step writes into an `archive/` subdirectory, not a flat `.harness/`-root path, per the Consolidation arc's ruling 6) and the rest of close-out bookkeeping (append `progress.md`, move the ROADMAP item to Completed/SHIPPED, update staging notes) is **recoverable → autonomous** — never stop to ask approval to archive or to do close-out bookkeeping. The archive moves a flat plan only: its tracker stays at `_harness/tracker-<slug>.md`, at `done`, until agentm's migration pairs the two, because agentm's tracker gate refuses a tracker in `archive/`. A task directory (`tasks/<name>/`) never moves at close-out; agentm's nightly job moves its finished records.
+**Close-out autonomy.** Close-out bookkeeping (append `progress.md`, move the ROADMAP item to Completed/SHIPPED, update staging notes, archive a repo-local plan) is **recoverable → autonomous** — never stop to ask approval to archive or to do close-out bookkeeping. A task directory (`tasks/<name>/`) never moves at close-out: its `done` tracker says it is over, and agentm's nightly job moves its finished records. Only a repo-local plan archives: in a repo with no vault, a plan in `.harness/` moves to `.harness/archive/PLAN.archive.YYYYMMDD-<slug>.md` (an `archive/` subdirectory, not a flat `.harness/`-root path, per the Consolidation arc's ruling 6), and its tracker stays in `.harness/` at `done`.
 
 **Carve-outs — unchanged by this doctrine.** Worktree initiation requires operator authority — a durable `isolation.mode: worktree-per-plan` config opt-in (this command's own auto-spawn) or an explicit operator instruction to use a worktree; silent authority-free auto-spawn stays forbidden; integration lands via the plan's own PR + required-check gate, armed for auto-merge (`/spawn-worker` and `/integrate-worker` are retired — the auto-spawn-and-PR flow now covers both jobs end-to-end); the PII pre-push hook + `pii-scrubber` invocation stay mandatory; the no-`Co-Authored-By` commit rule is untouched.
 <!-- END recoverability-gate -->
@@ -56,20 +56,20 @@ Invoking this phase **is** the authorization to run it to completion. The stop-g
 
 ### 1. Read state
 
-**Resolve the active plan first.** A `/work` invocation may target a named plan or task with **`--name <slug>`** anywhere in `$ARGUMENTS`; the `task N` selector keeps its meaning, and `step N` is the same selector, so `/work --name <slug> step N` carries both. Absent `--name`, the singleton is used. Resolve the on-disk paths by **consuming** the agentm reader — never re-deriving the paths here (pass the `--name` value as `<slug>`; omit it for the singleton):
+**Resolve the active plan first.** A `/work` invocation may target a named plan or task with **`--name <slug>`** anywhere in `$ARGUMENTS`; the `task N` selector keeps its meaning, and `step N` is the same selector, so `/work --name <slug> step N` carries both. Absent `--name`, the worktree's `.harness/active-plan` marker binds the plan, else agentm answers a bare call. Resolve the on-disk paths by **consuming** the agentm reader — never re-deriving the paths here (pass the `--name` value as `<slug>`; omit it for a bare call):
 
 ```
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/resolve_plan.py" [<slug>]
 ```
 
-It emits one tab-separated line of three fields, `<plan_path>\t<progress_path>\t<tracker_path>` — the **resolved paths** every later step reads and writes. The tracker field is empty when agentm names no tracker; the tracker calls below then answer exit 3, and the plan runs on its Status line. Bare (no `--name`) resolves to the singleton `.harness/PLAN.md` / `.harness/progress.md`, **byte-identical** to the historic behavior. **Exit 4** means the project keeps its plans in numbered tasks and has no singleton: stop and ask which task, listing the project's queued and active tasks from `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" plans --project-root <root>` (one `<plan>\t<progress>\t<tracker>` row per plan; `plan_tracker.py status` gives each row's status), then continue as `--name <that task>`. Any other **non-zero exit is a hard stop** — surface its stderr and stop; never fall back to the singleton on a dangling binding (that would silently bind the worker to the wrong plan). If `CLAUDE_PLUGIN_ROOT` is unset, treat the pair as the singleton.
+It emits one tab-separated line of three fields, `<plan_path>\t<progress_path>\t<tracker_path>` — the **resolved paths** every later step reads and writes. The tracker field is empty when agentm names no tracker; the tracker calls below then answer exit 3, and the plan carries on without one, its progress log the record. A bare call exits **0** only in a repo with no vault, where agentm answers its repo-local singleton (`.harness/PLAN.md`, `progress.md`, `tracker.md`). **Exit 1** means no agentm: stop and say so — development-lifecycle keeps its plans through agentm. **Exit 4** means the project keeps its plans in numbered tasks and has no singleton: stop and ask which task, listing the project's queued and active tasks from `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" plans --project-root <root>` (one `<plan>\t<progress>\t<tracker>` row per plan; `plan_tracker.py status` gives each row's status), then continue as `--name <that task>`. Any other **non-zero exit is a hard stop** — surface its stderr and stop; never fall back to the singleton on a dangling binding (that would silently bind the worker to the wrong plan). If `CLAUDE_PLUGIN_ROOT` is unset the resolver can't be found: stop and say so.
 
 Then read the **resolved `PLAN.md`** (find the first unchecked `[ ]` step, or honor the `step N` / `task N` selector); the **resolved `progress.md`** (was a prior session interrupted — resume or restart?); `AGENTS.md` / `CLAUDE.md` (commit style, test runner, conventions).
 
 **Duplicate guard (run before anything else).** After reading PLAN.md, check two conditions and stop on either:
 
-1. **Status** — run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" status --plan <plan> --tracker <tracker>`. It prints `<status>\t<source>`: the tracker's status, else the plan's Status line in the same words, else `none`.
-   - **`done`** — check `progress.md` for a final completion line, in either spelling: `completed step N`, or the older `completed task N`. If found, stop immediately: *"DUPLICATE GUARD: the plan is done and close-out is complete — it was completed by another session. If the previous output is wrong, reset its tracker (or its Status line) and re-invoke."* If no completion line exists in `progress.md`, treat it as an interrupted close-out: proceed with a warning *"The plan is done but close-out appears incomplete — resuming close-out steps only (no re-implementation)."* and jump directly to step 7 (the plan, its tracker and `progress.md`) then steps 9–12.
+1. **Status** — run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" status --plan <plan> --tracker <tracker>`. It prints `<status>\t<source>`: the tracker's status, else `none` — a plan carries no Status line, and none is read.
+   - **`done`** — check `progress.md` for a final completion line, in either spelling: `completed step N`, or the older `completed task N`. If found, stop immediately: *"DUPLICATE GUARD: the plan is done and close-out is complete — it was completed by another session. If the previous output is wrong, reset its tracker and re-invoke."* If no completion line exists in `progress.md`, treat it as an interrupted close-out: proceed with a warning *"The plan is done but close-out appears incomplete — resuming close-out steps only (no re-implementation)."* and jump directly to step 7 (the plan, its tracker and `progress.md`) then steps 9–12.
    - **`dropped`** — stop: *"DUPLICATE GUARD: the plan was dropped; its Outcome says why."*
    - Anything else passes.
 2. **Live-worker branch (named plans only)** — if a plan slug is available (from `--name` or the worktree-local `.harness/active-plan` marker), run `git ls-remote --heads origin "worker/<slug>"`. If it returns a non-empty line, stop: *"DUPLICATE GUARD: branch `worker/<slug>` already exists on origin — another worker session is likely active on this plan. If that session was interrupted, run `git push origin --delete worker/<slug>` then re-invoke."*
@@ -118,7 +118,7 @@ Once step 1.5 has bound the session, on a first run or a resume, name the step a
 
 `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" step --plan <plan> --tracker <tracker> --state "<what is true now, and which step starts>" --next "Step N: <title>"`
 
-It opens a tracker the plan doesn't have yet (a plan written before trackers, or a part staged by `/design sequence`), moves a `queued` or `parked` one to `active`, and rewrites an `active` one in place; the plan's Status line follows. **Exit 3** — announce the reason and carry on: the plan runs on its Status line. **Exit 1** — a hard stop: surface stderr.
+It opens a tracker the plan doesn't have yet (a plan written before trackers, or a part staged by `/design sequence`), moves a `queued` or `parked` one to `active`, and rewrites an `active` one in place. It never writes the plan file. **Exit 3** — announce the reason and carry on without a tracker, logging the step to progress. **Exit 1** — a hard stop: surface stderr.
 
 ### 2. Safety pre-check (before each step)
 
@@ -183,14 +183,14 @@ Feed the **full error output** into the next pass (don't summarize). If a test i
 
 ### 7. Update state
 
-Once all gates are green: edit the **resolved `PLAN.md`** to mark the step `[x]`. Do **not** set `features.json` `passes: true` — that's `/review`'s job. Then bring the tracker up to date. `plan_tracker.py` sets the plan's Status line to match (`in-progress`, or `done` at close), so leave that line to it:
+Once all gates are green: edit the **resolved `PLAN.md`** to mark the step `[x]`. Do **not** set `features.json` `passes: true` — that's `/review`'s job. Then bring the tracker up to date — the tracker is the plan's only status, and the plan carries no Status line to edit:
 
 - **After any step but the last:** `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" step --plan <plan> --tracker <tracker> --state "<what is now true, in three to eight lines>" --next "Step N+1: <title>"`.
 - **After the last step:** `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" close --plan <plan> --tracker <tracker> --outcome "<the close-out recap>"`.
 
-**Exit 3** — announce the reason and carry on: the plan runs on its Status line. **Exit 1** — a hard stop: surface stderr and stop.
+**Exit 3** — announce the reason and carry on with no tracker and no Status line: the progress append below is the record, and the next `/work` opens a tracker at its first step. **Exit 1** — a hard stop: surface stderr and stop.
 
-Append to the **resolved `progress.md`** (the scoped `progress-<slug>.md` when a named plan is active, never the singleton):
+Append to the **resolved `progress.md`** (the resolver's second field — the task's own `progress.md`, or the repo-local log in a repo with no vault):
 
 ```
 <YYYY-MM-DD HH:MM> /work — completed step N: "<title>" (<filesChanged> files, <testsAdded> tests)

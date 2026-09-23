@@ -3,7 +3,7 @@ name: agentic-engineering
 description: The harness discipline every phase workflow and every persona operates under — phase-gated sessions, state-on-disk-not-conversation, single-threaded implementation with read-only sub-agent fan-out, the PLAN.md shape, wake-on-CI, no parallel implementers, and the single-cycle shape for background primitives. A re-home of standards that previously lived only in agentm's AGENTS.md / harness/principles.md and the operator's global ~/.claude/CLAUDE.md — this domain owns the standard now; those files keep a pointer.
 kind: skill
 supported_hosts: [claude-code, antigravity]
-version: 0.1.0
+version: 0.1.1
 ---
 
 # agentic-engineering
@@ -23,7 +23,7 @@ A single session should do exactly one of: scaffold, plan, implement, review, re
 Context is ephemeral. Files are durable, diffable, resumable. Four on-disk artifacts per project:
 
 - `.harness/PLAN.md` (or a named `PLAN-<name>.md`) — an active goal and its task decomposition with verification criteria. A solo session uses the unnamed `PLAN.md`; concurrent workers each own a distinct named plan.
-- `.harness/features.json` — structured feature list with `{ description, steps, passes: bool }` per feature.
+- `features.json` — structured feature list with `{ description, steps, passes: bool }` per feature. It lives in the project's `desk/`, which agentm names; a repo with no vault keeps it beside its repo-local plans.
 - `.harness/progress.md` — append-only log of completed work. Starts every new session by reading this.
 - `.harness/init.sh` — pre-written script to boot the dev environment.
 

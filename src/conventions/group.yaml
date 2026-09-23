@@ -106,4 +106,13 @@ capabilities: [testing-conventions, releasing-conventions, conventions]
 #          FOLLOWUPS item ("Amend /release phase spec + ship-release skill
 #          for HLD-update step", filed at Plan #18, still open as of
 #          2026-07-14). ship-release SKILL.md 0.3.0 -> 0.3.1.
-version: 0.11.1
+# 0.12.0 = agentm-vault part 15, crickets task 101-retire-the-flat-plan-layout:
+#          gate-inventory.md gains the no-harness-paths row (the gate landed
+#          in task 100). coalescence-gate.md item 5 says a task never moves at
+#          close-out (its done tracker ends it; agentm's nightly job moves its
+#          records) and only a repo-local .harness/ plan archives; its
+#          archive-hygiene check is unchanged, since a repo with no vault
+#          still keeps its plans there. coalescence-gate.md 0.2.1 -> 0.2.2.
+#          agentic-engineering SKILL.md (0.1.0 -> 0.1.1) says features.json
+#          lives in the project's desk/, or beside a no-vault repo's plans.
+version: 0.12.0

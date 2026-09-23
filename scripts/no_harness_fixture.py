@@ -14,12 +14,16 @@ The layout is the project skeleton since the projects migration:
         designs/
         desk/
     <root>/repo/.harness/project.json      {"vault_project": "demo"}
-    <root>/agentm/process_seam.py           project-path {tasks|designs|desk}
-    <root>/agentm/harness_memory.py         list-plans
+    <root>/agentm/process_seam.py           project-path, state-path (exit 4 bare)
+    <root>/agentm/harness_memory.py         list-plans, resolve-active-plan
+    <root>/agentm/tracker.py                new, show, transition
 
-The stubs answer the way agentm's verbs do (`process_seam.py project-path`,
-`harness_memory.py list-plans`), from this scratch vault. `no_home=True` makes
+The stubs answer the way agentm's verbs do (`process_seam.py project-path` and `state-path`,
+`harness_memory.py list-plans` and `resolve-active-plan --with-tracker`,
+`tracker.py new`, `show` and `transition`), from this scratch vault. `no_home=True` makes
 `project-path` exit 1, the answer for a project with no vault home.
+`resolve_by_slug=False` makes `resolve-active-plan` refuse `--project`, as an
+agentm from before crickets task 101's ruling 9 does.
 """
 from __future__ import annotations
 
@@ -83,6 +87,14 @@ import sys
 VAULT_PROJECTS = {vault_projects!r}
 NO_HOME = {no_home!r}
 args = sys.argv[1:]
+if args[:1] == ["state-path"] and len(args) > 1 and args[1] in ("plan", "progress", "tracker"):
+    # A project that keeps tasks: a bare call names no plan (exit 4).
+    if "--plan" not in args:
+        sys.stderr.write("process_seam: this project keeps tasks; name one\\n")
+        sys.exit(4)
+    name = args[args.index("--plan") + 1]
+    print(VAULT_PROJECTS + "/demo/tasks/" + name + "/" + {{"plan": "plan.md", "progress": "progress.md", "tracker": "tracker.md"}}[args[1]])
+    sys.exit(0)
 if not args or args[0] != "project-path" or len(args) < 2:
     sys.stderr.write("usage: process_seam project-path {{tasks,designs,desk}}\\n")
     sys.exit(2)
@@ -103,23 +115,72 @@ _HARNESS_MEMORY = '''#!/usr/bin/env python3
 import sys
 from pathlib import Path
 VAULT_PROJECTS = {vault_projects!r}
+RESOLVE_BY_SLUG = {resolve_by_slug!r}
 args = sys.argv[1:]
-if not args or args[0] != "list-plans":
-    sys.stderr.write("usage: harness_memory list-plans\\n")
+if not args or args[0] not in ("list-plans", "resolve-active-plan"):
+    sys.stderr.write("usage: harness_memory {{list-plans,resolve-active-plan}}\\n")
+    sys.exit(2)
+if "--project" in args and args[0] == "resolve-active-plan" and not RESOLVE_BY_SLUG:
+    sys.stderr.write("harness_memory: error: unrecognized arguments: --project\\n")
     sys.exit(2)
 project = "demo"
 if "--project" in args:
     project = args[args.index("--project") + 1]
 tasks = Path(VAULT_PROJECTS) / project / "tasks"
-for plan in sorted(tasks.glob("*/plan.md")):
-    print(plan)
+if args[0] == "list-plans":
+    for plan in sorted(tasks.glob("*/plan.md")):
+        print(plan)
+    sys.exit(0)
+task = tasks / args[args.index("--plan") + 1]
+if not (task / "plan.md").is_file():
+    sys.stderr.write("harness_memory: no such plan\\n")
+    sys.exit(2)
+fields = [task / "plan.md", task / "progress.md"]
+if "--with-tracker" in args:
+    fields.append(task / "tracker.md")
+print("\\t".join(str(f) for f in fields))
+'''
+
+_TRACKER_PY = '''#!/usr/bin/env python3
+import json, re, sys
+from pathlib import Path
+args = sys.argv[1:]
+
+def opt(flag):
+    return args[args.index(flag) + 1] if flag in args else None
+
+if args[:1] == ["new"]:
+    out = Path(opt("--out"))
+    if out.exists():
+        sys.stderr.write("tracker: exists\\n")
+        sys.exit(1)
+    out.write_text("---\\nkind: tracker\\ntitle: %s\\nproject: %s\\nstatus: queued\\n---\\n"
+                   % (opt("--title"), opt("--project")), encoding="utf-8")
+    print(out)
+    sys.exit(0)
+if len(args) < 2 or args[0] not in ("show", "transition") or not Path(args[1]).is_file():
+    sys.stderr.write("tracker: usage: {new|show|transition} PATH\\n")
+    sys.exit(2)
+path = Path(args[1])
+text = path.read_text(encoding="utf-8")
+if args[0] == "transition":
+    path.write_text(re.sub(r"(?m)^status: .*$", "status: " + opt("--to"), text, count=1),
+                    encoding="utf-8")
+    print("%s: -> %s" % (path, opt("--to")))
+    sys.exit(0)
+fields = {}
+lines = text.splitlines()
+for line in lines[1:lines.index("---", 1)]:
+    key, _, value = line.partition(":")
+    fields[key.strip()] = value.strip() or None
+print(json.dumps(fields))
 '''
 
 
 class ScratchProject:
     """A scratch vault project in the task layout, a repo bound to it, and a stub agentm."""
 
-    def __init__(self, *, no_home: bool = False):
+    def __init__(self, *, no_home: bool = False, resolve_by_slug: bool = True):
         self.root = Path(tempfile.mkdtemp(prefix="no-harness-")).resolve()
         self.vault = self.root / "vault"
         self.projects = self.vault / "projects"
@@ -146,7 +207,9 @@ class ScratchProject:
         fill = {"vault_projects": str(self.projects), "no_home": no_home}
         (self.agentm / "process_seam.py").write_text(_PROCESS_SEAM.format(**fill), encoding="utf-8")
         (self.agentm / "harness_memory.py").write_text(
-            _HARNESS_MEMORY.format(vault_projects=str(self.projects)), encoding="utf-8")
+            _HARNESS_MEMORY.format(vault_projects=str(self.projects), resolve_by_slug=resolve_by_slug),
+            encoding="utf-8")
+        (self.agentm / "tracker.py").write_text(_TRACKER_PY, encoding="utf-8")
 
     @property
     def plan(self) -> Path:

@@ -26,15 +26,15 @@ What is allowed:
 
   - a line carrying the marker `harness-deprecation:` with the reason where the
     literal sits: history that must keep the word, a test's negative assertion;
-  - a whole file whose opening lines carry `harness-deprecation: file`;
-  - a file on `EXEMPT` below, while the landing that owns it is in flight. The
-    list only shrinks: a listed file with no hits left fails the gate, so an
-    entry is removed in the same change that clears it.
+  - a whole file whose opening lines carry `harness-deprecation: file`.
+
+There is no exemption list: tasks 100 and 101 cleared every plugin, and the
+gate enforces everywhere it scans.
 
   --inventory   print every hit, allowed ones marked, with counts by plugin. Exit 0.
   (default)     print the unallowed hits and exit 1 on any; 0 when clean.
 
-Exit: 0 clean · 1 violations or a stale exemption · 2 setup error.
+Exit: 0 clean · 1 violations · 2 setup error.
 """
 from __future__ import annotations
 
@@ -55,41 +55,6 @@ _SCOPE_FILES = frozenset({"bootstrap.sh"})
 _EXTENSIONS = frozenset({".py", ".sh", ".ps1", ".md", ".txt", ".yml", ".yaml", ".json", ".toml"})
 # The gate names the pattern it looks for, and so does its test.
 _SKIP_NAMES = frozenset({Path(__file__).name, "test_check_no_harness_paths.py"})
-
-_T101 = "101-retire-the-flat-plan-layout"
-_T100 = "100-retire-harness-in-the-other-plugins"
-
-# Files that still name `_harness`, each with the landing that clears it.
-EXEMPT: dict[str, str] = {
-    # task 100 — the other plugins
-    # task 101 — development-lifecycle's leftovers
-    "src/development-lifecycle/commands/bugfix.md": _T101,
-    "src/development-lifecycle/commands/open.md": _T101,
-    "src/development-lifecycle/commands/orient.md": _T101,
-    "src/development-lifecycle/commands/plan.md": _T101,
-    "src/development-lifecycle/commands/queue-status-lite.md": _T101,
-    "src/development-lifecycle/commands/release.md": _T101,
-    "src/development-lifecycle/commands/work.md": _T101,
-    "src/development-lifecycle/group.yaml": _T101,
-    "src/development-lifecycle/scripts/check-plan-grounding.py": _T101,
-    "src/development-lifecycle/scripts/orient_render.py": _T101,
-    "src/development-lifecycle/scripts/plan_tracker.py": _T101,
-    "src/development-lifecycle/scripts/queue_status.py": _T101,
-    "src/development-lifecycle/scripts/resolve_plan.py": _T101,
-    "src/development-lifecycle/scripts/resolve_project.py": _T101,
-    "src/development-lifecycle/scripts/stage_plan.py": _T101,
-    "scripts/test_agentm_bridge_plans.py": _T101,
-    "scripts/test_developer_workflows_specs.py": _T101,
-    "scripts/test_find_process_seam.py": _T101,
-    "scripts/test_harness_root_drift.py": _T101,
-    "scripts/test_orient_render.py": _T101,
-    "scripts/test_plan_tracker.py": _T101,
-    "scripts/test_queue_status.py": _T101,
-    "scripts/test_resolve_plan.py": _T101,
-    "scripts/test_resolve_project.py": _T101,
-    "scripts/test_stage_plan.py": _T101,
-}
-
 
 def _in_scope(rel: str) -> bool:
     return rel in _SCOPE_FILES or rel.startswith(_SCOPE)
@@ -130,7 +95,7 @@ def plugin_of(rel: str) -> str:
     return "(repo)"
 
 
-def scan_file(path: Path, rel: str, exempt: dict[str, str]) -> list[dict]:
+def scan_file(path: Path, rel: str) -> list[dict]:
     """Every hit in one file: `{rel, line, text, allowed}`."""
     try:
         text = path.read_text(encoding="utf-8", errors="replace")
@@ -138,9 +103,7 @@ def scan_file(path: Path, rel: str, exempt: dict[str, str]) -> list[dict]:
         return []
     lines = text.splitlines()
     place = None
-    if rel in exempt:
-        place = f"exempt: {exempt[rel]}"
-    elif any(FILE_MARKER in line for line in lines[:_FILE_MARKER_LINES]):
+    if any(FILE_MARKER in line for line in lines[:_FILE_MARKER_LINES]):
         place = "marker (file)"
     out = []
     for lineno, line in enumerate(lines, 1):
@@ -151,21 +114,13 @@ def scan_file(path: Path, rel: str, exempt: dict[str, str]) -> list[dict]:
     return out
 
 
-def scan(root: Path, exempt: dict[str, str] | None = None) -> list[dict]:
-    exempt = EXEMPT if exempt is None else exempt
+def scan(root: Path) -> list[dict]:
     hits: list[dict] = []
     for rel in _candidates(root):
         p = root / rel
         if p.is_file():
-            hits.extend(scan_file(p, rel, exempt))
+            hits.extend(scan_file(p, rel))
     return hits
-
-
-def stale_exemptions(hits: list[dict], exempt: dict[str, str] | None = None) -> list[str]:
-    """Listed files with no hits left — each should have left the list."""
-    exempt = EXEMPT if exempt is None else exempt
-    hit_files = {h["rel"] for h in hits}
-    return sorted(rel for rel in exempt if rel not in hit_files)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -181,7 +136,6 @@ def main(argv: list[str] | None = None) -> int:
 
     hits = scan(root)
     open_hits = [h for h in hits if not h["allowed"]]
-    stale = stale_exemptions(hits)
 
     if args.inventory:
         by_plugin: dict[str, list[dict]] = {}
@@ -211,16 +165,9 @@ def main(argv: list[str] | None = None) -> int:
         for h in open_hits:
             print(f"  {h['rel']}:{h['line']}  {h['text']}", file=sys.stderr)
         rc = 1
-    if stale:
-        print("check-no-harness-paths: exempt file(s) with no hits left — remove them from "
-              "EXEMPT:", file=sys.stderr)
-        for rel in stale:
-            print(f"  {rel}", file=sys.stderr)
-        rc = 1
     if rc == 0:
         allowed = len(hits)
-        print(f"check-no-harness-paths: clean ({allowed} allowed literal(s), "
-              f"{len(EXEMPT)} exempt file(s))")
+        print(f"check-no-harness-paths: clean ({allowed} marked literal(s))")
     return rc
 
 

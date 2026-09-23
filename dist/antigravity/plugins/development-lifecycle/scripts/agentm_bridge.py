@@ -21,7 +21,7 @@ keeps every one of those four behaviors verbatim, under one dispatcher:
     agentm_bridge.py phase-dispatch {post-work|post-release} [--project-root DIR]
     agentm_bridge.py tracker {new|show|transition|check} ...
     agentm_bridge.py project-brief [--cwd DIR]
-    agentm_bridge.py plans [--project-root DIR]
+    agentm_bridge.py plans [--project-root DIR | --project SLUG]
 
 DC-2: siblings not layers. Every verb's discovery is best-effort via
 path-fallback; when agentm is absent (the target script undiscoverable) each
@@ -710,6 +710,11 @@ def _main_project_brief(rest: "list[str]") -> int:
 # plan (a slug with both a task and a flat pair, where the task wins), keeps its
 # own path with empty progress and tracker fields: still listed, and never
 # paired with another plan's files.
+#
+# `--project SLUG` asks the same two verbs about a project with no repo
+# checkout (crickets task 101, ruling 9): `list-plans --project`, then
+# `resolve-active-plan --project`. An agentm without the second refuses the
+# flag, and its rows stay partial the same way.
 
 PLANS_UNAVAILABLE = 3
 
@@ -721,10 +726,10 @@ def _resolver_name(plan: str) -> str:
 
 
 def _resolve_listed_plan(
-    harness_memory: Path, root: str, plan: str,
+    harness_memory: Path, where: "list[str]", plan: str,
 ) -> "tuple[str, str, str]":
     cmd = [sys.executable, str(harness_memory), "resolve-active-plan",
-           "--plan", _resolver_name(plan), "--project-root", root]
+           "--plan", _resolver_name(plan), *where]
     try:
         res = _run_utf8(cmd + ["--with-tracker"])
         if res.returncode == 2 and "--with-tracker" in res.stderr:
@@ -738,20 +743,25 @@ def _resolve_listed_plan(
 
 
 def run_list_plans(
-    root: "str | os.PathLike", *, harness_memory: "Path | None" = None,
+    root: "str | os.PathLike | None" = None, *, project: "str | None" = None,
+    harness_memory: "Path | None" = None,
 ) -> "tuple[int, list[tuple[str, str, str]]]":
-    """Every active plan under project root `root`, as (plan, progress, tracker)
-    rows in agentm's listing order. Returns (0, rows), or (3, []) when agentm is
-    absent or gives no listing. Injectable harness_memory path for tests.
+    """Every active plan of a project, as (plan, progress, tracker) rows in
+    agentm's listing order: the project bound to checkout `root` (default: the
+    cwd), or, with `project`, the one named by that slug. Returns (0, rows), or
+    (3, []) when agentm is absent or gives no listing. Injectable harness_memory
+    path for tests.
     """
     if harness_memory is None:
         harness_memory = find_harness_memory()
     if harness_memory is None or not Path(harness_memory).is_file():
         return (PLANS_UNAVAILABLE, [])
-    root = str(root)
+    if project is not None:
+        where = ["--project", str(project)]
+    else:
+        where = ["--project-root", str(root if root is not None else os.getcwd())]
     try:
-        listed = _run_utf8([sys.executable, str(harness_memory), "list-plans",
-                            "--project-root", root])
+        listed = _run_utf8([sys.executable, str(harness_memory), "list-plans", *where])
     except (OSError, subprocess.SubprocessError):
         return (PLANS_UNAVAILABLE, [])
     if listed.returncode != 0:
@@ -760,7 +770,7 @@ def run_list_plans(
     for line in listed.stdout.splitlines():
         plan = line.strip()
         if plan and not plan.startswith("active-binding="):
-            rows.append(_resolve_listed_plan(Path(harness_memory), root, plan))
+            rows.append(_resolve_listed_plan(Path(harness_memory), where, plan))
     return (0, rows)
 
 
@@ -771,8 +781,11 @@ def _build_plans_parser() -> argparse.ArgumentParser:
                     "(bridge to agentm's list-plans and resolve-active-plan).",
         add_help=True,
     )
-    ap.add_argument("--project-root", default=None,
-                    help="project root to list plans for (default: cwd)")
+    where = ap.add_mutually_exclusive_group()
+    where.add_argument("--project-root", default=None,
+                       help="project root to list plans for (default: cwd)")
+    where.add_argument("--project", default=None, metavar="SLUG",
+                       help="a project named by slug, for one with no repo checkout")
     return ap
 
 
@@ -782,7 +795,7 @@ def _main_plans(rest: "list[str]") -> int:
         args = ap.parse_args(rest)
     except SystemExit:
         return 2
-    code, rows = run_list_plans(args.project_root or os.getcwd())
+    code, rows = run_list_plans(args.project_root, project=args.project)
     for plan, progress, tracker in rows:
         print(f"{plan}\t{progress}\t{tracker}")
         if not progress:
@@ -816,7 +829,7 @@ _USAGE = (
     "  phase-dispatch {post-work|post-release} [--project-root DIR]\n"
     "  tracker {new|show|transition|check} ...\n"
     "  project-brief [--cwd DIR]\n"
-    "  plans [--project-root DIR]\n"
+    "  plans [--project-root DIR | --project SLUG]\n"
 )
 
 

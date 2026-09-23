@@ -1,24 +1,22 @@
 # Named plans
 
-The `development-lifecycle` phase commands `/work`, `/plan`, `/review` and `/release` accept an optional `--name <slug>` flag. When you provide a name, these commands operate on a named plan instead of the singleton `PLAN.md` and `progress.md`. In the flat layout, a named plan is `PLAN-<slug>.md` and `progress-<slug>.md`; once agentm keeps a project's plans in tasks, it is a numbered task directory. This lets you hold several concurrent plans in one project. A plan also has a tracker whenever agentm names one, and the commands read its status before the plan's `**Status:**` line (see [Trackers](#trackers)). Bare invocations still resolve to the singleton, except in a project that keeps tasks, which has none.
+The `development-lifecycle` phase commands `/work`, `/plan`, `/review` and `/release` accept an optional `--name <slug>` flag. A name selects a task: `tasks/NNN-<verb-slug>/` with its `plan.md`, `progress.md` and `tracker.md`, wherever agentm keeps the project's tasks. This lets you hold several concurrent plans in one project. A plan also has a tracker whenever agentm names one, and the commands read its status before the plan's `**Status:**` line (see [Trackers](#trackers)). A bare invocation in a project that keeps tasks asks which task. In a repo with no vault, agentm keeps a repo-local layout instead — a singleton `.harness/PLAN.md` or a flat `.harness/PLAN-<slug>.md` — and the commands follow it (see [A repo with no vault](#a-repo-with-no-vault)).
 
-This page explains what a name maps to, how we resolve that name, and the standalone fallback paths. It also covers the read-only `/queue-status-lite` command. You can find the task recipes in [Run a named plan](Run-A-Named-Plan) and [See every active plan](See-Every-Active-Plan). If you want the context behind this approach, read [Why phase-gating](Why-Phase-Gating).
+This page explains what a name maps to and how we resolve it. It also covers the read-only `/queue-status-lite` command. You can find the task recipes in [Run a named plan](Run-A-Named-Plan) and [See every active plan](See-Every-Active-Plan). If you want the context behind this approach, read [Why phase-gating](Why-Phase-Gating).
 
 ## ⚡ Quick Reference
 
 | Invocation | Plan file read/written | Progress file appended | Notes |
 |---|---|---|---|
-| `/work` | `PLAN.md` | `progress.md` | singleton |
-| `/work --name <slug>` | `PLAN-<slug>.md` | `progress-<slug>.md` | named pair |
-| `/work step N` (or `task N`) | `PLAN.md` | `progress.md` | singleton, step selector |
-| `/work --name <slug> step N` | `PLAN-<slug>.md` | `progress-<slug>.md` | named pair + step selector |
-| `/plan` | `PLAN.md` | `progress.md` | singleton |
-| `/plan --name <slug>` | `PLAN-<slug>.md` (authored, **active**) | `progress-<slug>.md` | named pair, active tier |
-| `/plan --stage <slug>` | `queued-plans/PLAN-<slug>.md` (authored, **staged/inert**) | — | staging tier ([Two-tier staging](#two-tier-named-plan-staging)) |
-| `/plan --activate <slug>` | `queued-plans/PLAN-<slug>.md` → `PLAN-<slug>.md` (promoted) | — | promotes staged → active |
-| `/review` | `PLAN.md` | — | singleton |
-| `/review --name <slug>` | `PLAN-<slug>.md` | — | named pair |
-| `/release --name <slug>` | `PLAN-<slug>.md` | — | named pair; the plan's status must be `done` |
+| `/work` | — | — | asks which task (a bare call in a project that keeps tasks) |
+| `/work --name <task>` | `tasks/<task>/plan.md` | `tasks/<task>/progress.md` | the named task |
+| `/work --name <task> step N` | `tasks/<task>/plan.md` | `tasks/<task>/progress.md` | the named task + step selector (`task N` works too) |
+| `/plan` | — | — | proposes a task name, then as `--name` |
+| `/plan --name <task>` | `tasks/NNN-<task>/plan.md` (authored, **active**) | its `progress.md` | a new numbered task; its tracker opens at `queued` |
+| `/plan --stage <task>` | `tasks/NNN-<task>/plan.md` (authored, **queued/inert**) | its `progress.md` | a queued task ([Staging](#staging-a-queued-task)) |
+| `/plan --activate <task>` | — | its `progress.md` | moves the task's tracker from `queued` to `active` |
+| `/review --name <task>` | `tasks/<task>/plan.md` | — | the named task |
+| `/release --name <task>` | `tasks/<task>/plan.md` | — | the named task; its status must be `done` |
 | `/work` (auto-spawn, `isolation.mode: worktree-per-plan`) | — (host creates a worktree; `worktree_marker.py` binds it to the plan) | — | host-native worktree at `.claude/worktrees/<name>` on branch `worktree-<name>` ([Spawning a worker worktree](#spawning-a-worker-worktree)) |
 | `/work` (final task, auto-close) | — | plan's close-out summary becomes the PR body | pushes the branch, opens a PR via `finalize_unit.py`, arms `gh pr merge --auto --squash` ([Closing out a plan](#closing-out-a-plan)) |
 | `/design author [<slug>]` | the design doc (not a PLAN) | — | walks the 10-section template, drives `draft → review → final` ([The `/design` command](#the-design-command)) |
@@ -26,18 +24,18 @@ This page explains what a name maps to, how we resolve that name, and the standa
 | `/design sequence` | `tasks/NNN-<doc-slug>-<part-slug>/plan.md` + a `queued` `tracker.md`, per part | — | one queued task per part via `design_sequence.py place`; none activated; never a flat staging directory |
 
 > [!NOTE]
-> The table shows paths by basename. The actual directory is whatever the resolver returns. You will see `.harness/` in standalone mode, or a hosting memory layer's state directory when one is present. In a project that keeps its plans in tasks, the plan is `tasks/NNN-<verb-slug>/plan.md`, with `progress.md` and `tracker.md` beside it (see [Numbered tasks](#numbered-tasks)). See [Resolution](#resolution) for more details.
+> The table shows paths inside the project agentm resolves; the directory is whatever it returns (see [Numbered tasks](#numbered-tasks) and [Resolution](#resolution)). In a repo with no vault the paths are the repo-local ones in [A repo with no vault](#a-repo-with-no-vault).
 
 ## Commands that accept a name
 
 | Command | Argument | Effect with a name |
 |---|---|---|
 | `/work` | optional `--name <slug>` (anywhere in args) | reads the named PLAN, appends the scoped progress, marks `[x]` in the named PLAN, keeps its tracker current |
-| `/plan` | optional `--name <slug>` (anywhere in args) | authors `PLAN-<slug>.md`, appends the scoped `progress-<slug>.md` line, opens `tracker-<slug>.md` |
+| `/plan` | optional `--name <slug>` (anywhere in args) | authors the task's `plan.md`, appends its `progress.md` line, opens its `tracker.md` at `queued` |
 | `/review` | optional `--name <slug>` (anywhere in args) | resolves + reads the named plan and its status for adversarial critique |
 | `/release` | optional `--name <slug>` (anywhere in args) | resolves the named plan and requires its status to be `done` |
 
-The `/setup` command does not accept a plan name. `/bugfix` resolves its plan without one: the singleton, or the plan the worktree's `.harness/active-plan` marker binds. In a project that keeps tasks, a bare `/work`, `/review` or `/release` asks which task, and a bare `/plan` or `/bugfix` proposes a task name for you to confirm.
+The `/setup` command does not accept a plan name. `/bugfix` resolves its plan without one: the plan the worktree's `.harness/active-plan` marker binds, or agentm's answer for a bare call. In a project that keeps tasks, a bare `/work`, `/review` or `/release` asks which task, and a bare `/plan` or `/bugfix` proposes a task name for you to confirm.
 
 ## Trackers
 
@@ -45,25 +43,24 @@ A tracker is a plan's living head: its status, what is true now, the next steps,
 
 | Layout | Plan | Tracker |
 |---|---|---|
-| singleton | `_harness/PLAN.md` | `_harness/tracker.md` |
-| flat named pair | `_harness/PLAN-<slug>.md` | `_harness/tracker-<slug>.md` |
 | numbered task | `tasks/NNN-<verb-slug>/plan.md` | `tasks/NNN-<verb-slug>/tracker.md` |
-| standalone (no agentm) | `.harness/PLAN.md` or `.harness/PLAN-<slug>.md` | none |
+| a repo with no vault, bare | `.harness/PLAN.md` | `.harness/tracker.md` |
+| a repo with no vault, named | `.harness/PLAN-<slug>.md` | `.harness/tracker-<slug>.md` |
 
 | Command | What it does with the tracker |
 |---|---|
-| `/plan` | opens it at `queued` after the board step (`plan_tracker.py open`): beside the plan under `--name`, and under `--stage` only for a task |
-| `/plan --activate` | moves a staged plan's tracker from `queued` to `active` |
+| `/plan` | opens it at `queued` after the board step (`plan_tracker.py open`), in the task under `--name` and `--stage`, or beside a repo-local plan |
+| `/plan --activate` | moves a queued task's tracker from `queued` to `active` |
 | `/work` | marks the start (`step`, which opens a missing tracker and moves it to `active`), rewrites State and Next after each step, records a safety stop's trigger, and writes the Outcome at close (`close`) |
 | `/review` | reads the status, and with no explicit scope stops on `queued` |
 | `/release` | requires the status to be `done` |
 | `/bugfix` | reads the status, and asks before writing into a plan that is `queued`, `active` or `parked` |
 
-`plan_tracker.py status` prints `<status>\t<source>`: the tracker's status when there is one, else the plan's `**Status:**` line in the same five words (`planning` reads as `queued`, `in-progress` as `active`), else `none`. After a `step` or a `close`, the helper rewrites the plan's existing Status line to match (`queued` → `planning`, `active` → `in-progress`, `done` → `done`). Readers that still read the line see the same answer. The helper never adds a line. When agentm names no tracker (a standalone project, or an agentm from before the tracker), the helper exits 3. The command says so, and the plan runs on its Status line.
+`plan_tracker.py status` prints `<status>\t<source>`: the tracker's status, else `none`. The tracker is a plan's only status: a plan carries no `**Status:**` line, and the helper never reads or writes the plan file. When agentm names no tracker (an agentm from before the tracker), the helper exits 3; the command says so and carries on, logging to progress, and the next `/work` opens a tracker at its first step.
 
 ## Numbered tasks
 
-Once agentm's migration moves a project (agentm-vault plan 10), each plan lives in a task directory, `projects/<slug>/tasks/NNN-<verb-slug>/`, with `plan.md`, `progress.md` and `tracker.md` side by side. A task's name is its directory name, number included. `--name`, the worktree marker and the tracker's `task:` field all carry it. A project that keeps tasks has no singleton, so the resolver answers a bare call with exit 4. The commands then ask for or propose a task name. crickets composes none of these paths. Every command follows the plan, progress and tracker paths agentm returns, and tells a task from a flat plan by its `plan.md` name.
+Once agentm's migration moves a project (agentm-vault plan 10), each plan lives in a task directory, `projects/<slug>/tasks/NNN-<verb-slug>/`, with `plan.md`, `progress.md` and `tracker.md` side by side. A task's name is its directory name, number included. `--name`, the worktree marker and the tracker's `task:` field all carry it. A project that keeps tasks has no singleton, so the resolver answers a bare call with exit 4. The commands then ask for or propose a task name. crickets composes none of these paths. Every command follows the plan, progress and tracker paths agentm returns, and tells a task from a repo-local flat plan by its `plan.md` name.
 
 ## The `/design` command
 
@@ -72,7 +69,7 @@ The `/design` command handles the upstream authoring step of the phase loop. It 
 | Surface | Location |
 |---|---|
 | Command prompt | [`commands/design.md`](https://github.com/alexherrero/crickets/blob/main/src/design/commands/design.md) — the three sub-verb flows (interactive, human-judgment) |
-| Gate + storage helper | [`scripts/design_doc.py`](https://github.com/alexherrero/crickets/blob/main/src/design/scripts/design_doc.py) — `require_final()` the `Status: final` gate, `detailed_design_nonempty()`, frontmatter parser, harness-root / published-path resolution |
+| Gate + storage helper | [`scripts/design_doc.py`](https://github.com/alexherrero/crickets/blob/main/src/design/scripts/design_doc.py) — `require_final()` the `Status: final` gate, `detailed_design_nonempty()`, frontmatter parser, designs-home / published-path resolution |
 | Topo-sort helper | [`scripts/design_sequence.py`](https://github.com/alexherrero/crickets/blob/main/src/design/scripts/design_sequence.py) — Kahn topo-sort with alphabetical tie-break, part-frontmatter validation |
 
 | Sub-verb | Reads | Writes | Gate (helper) |
@@ -117,85 +114,67 @@ The `/design` command handles the upstream authoring step of the phase loop. It 
 | `confidential` | `<designs>/<slug>.md` — the project's own `designs/`, which agentm names (`design_doc.py design-path <slug>`); not committed |
 | `published` | `wiki/designs/<slug>.md` — committed (the crickets path, **not** agentm's `wiki/explanation/designs/`) |
 
-## Two-tier named-plan staging
+## Staging a queued task
 
-The `/plan` command can write an active named plan directly using the `--name` flag. It can also stage a plan into an inactive tier. You then activate the plan later when a worker is ready to pick it up. Staged plans remain inert. They stay invisible to both `/work` and `/queue-status-lite` until you activate them.
+The `/plan` command can write an active task directly using `--name`. It can also stage a task: write it but leave it inert until a worker is ready to pick it up. A queued task is its own staging tier — its `plan.md` sits in its own directory, and its `queued` tracker is what keeps it inert. Activation moves the tracker to `active`; nothing is copied.
 
 ### The four `/plan` modes
 
-| Mode | Writes | Tier | Seen by `/work` & `/queue-status-lite`? |
+| Mode | Writes | Tier | Picked up by `/work`? |
 |---|---|---|---|
-| `/plan <brief>` | `PLAN.md` | singleton | yes |
-| `/plan --name <slug> <brief>` | `PLAN-<slug>.md` | active | yes |
-| `/plan --stage <slug> <brief>` | `queued-plans/PLAN-<slug>.md` | **staging (inert)** | **no** — until activated |
-| `/plan --activate <slug>` | promotes `queued-plans/PLAN-<slug>.md` → `PLAN-<slug>.md` | staging → active | yes, after promotion |
+| `/plan <brief>` | proposes a task name first | — | — |
+| `/plan --name <task> <brief>` | `tasks/NNN-<task>/plan.md` | active | yes |
+| `/plan --stage <task> <brief>` | `tasks/NNN-<task>/plan.md`, tracker `queued` | **queued (inert)** | **no** — until activated |
+| `/plan --activate <task>` | the tracker: `queued` → `active` | queued → active | yes, after activation |
 
-### Staging tier
-
-| Property | Value |
-|---|---|
-| Staging dir | `<harness>/queued-plans/` — **flat** (crickets flat-vault convention) |
-| Staged plan file | `queued-plans/PLAN-<slug>.md`; a numbered task is its own staging tier, its `plan.md` kept inert by a `queued` tracker |
-| Visibility | inert — not resolved by `/work --name`, not listed by `/queue-status-lite`, until activated |
-| Active path it activates into | `<harness>/PLAN-<slug>.md` (the path `/work --name <slug>` reads) |
-| Harness dir | whatever the resolver returns — vault-backed `_harness/` when a memory layer is present, `.harness/` standalone (see [Resolution](#resolution)) |
+Only a task stages. Where agentm answers a flat plan — a repo with no vault keeps its plans in its repo-local `.harness/` — `path` and `activate` refuse (exit 2) and write nothing; write that plan with `--name`. The retired `queued-plans/` tier was a layout crickets composed itself.
 
 ### `--activate` guard
 
-The `/plan --activate <slug>` command performs a guarded copy. It stops immediately with a non-zero exit code if promotion is unsafe. It never falls back silently.
-
 | Condition | Behavior |
 |---|---|
-| Active `PLAN-<slug>.md` already exists | refuse — would clobber an active plan |
-| Staged `queued-plans/PLAN-<slug>.md` missing | refuse — nothing to promote |
-| A tracker already at the plan's tracker path isn't `queued` | refuse, before anything is written |
-| All clear | copy `queued-plans/PLAN-<slug>.md` → `PLAN-<slug>.md`, then move a `queued` tracker to `active` |
-| A numbered task | nothing is copied: the task's tracker must say `queued`, and its move to `active` is the activation |
+| The task's `plan.md` is missing | refuse — nothing to activate |
+| The task has no tracker | refuse — a queued task is its `queued` tracker |
+| Its tracker isn't `queued` | refuse |
+| agentm answers a flat plan | refuse — staging needs the task layout |
+| The plan declares `expected_artifacts` that all exist | exit 3 — already shipped, nothing changed (LC-6) |
+| All clear | the tracker moves to `active`; that move is the activation |
 
 ### Implementation
 
-The `scripts/stage_plan.py` script owns both verbs. It relies on the standard library, acts as pure-core, and takes an injectable resolver to mirror `resolve_plan.py`. It calls `resolve_plan.resolve` instead of re-deriving the `_harness/` location or the vault redirect, and tells the layouts apart by the plan path it returns: a flat plan gets `queued-plans/` beside it, and a task's `plan.md` is its own staging tier.
+The `scripts/stage_plan.py` script owns both verbs. It relies on the standard library and takes an injectable resolver to mirror `resolve_plan.py`. It calls `resolve_plan.resolve` instead of deriving any path, and tells a task from a flat plan by the plan path agentm returns.
 
 | Component | Location | Role |
 |---|---|---|
-| `staging_path()` | [`stage_plan.py:135`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/scripts/stage_plan.py#L135) | A flat plan's `queued-plans/PLAN-<slug>.md`, composed beside the active path the resolver returns, or a numbered task's own `plan.md`. Read-only; emits the path. |
-| `activate()` | [`stage_plan.py:151`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/scripts/stage_plan.py#L151) | Dispatches on the layout the resolver returned: a flat plan to `_activate_flat()`, a task to `_activate_task()`. |
-| `_activate_flat()` | [`stage_plan.py:202`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/scripts/stage_plan.py#L202) | The guarded copy. Refuses (exit 2, writes nothing) on a missing staged file ([`:205`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/scripts/stage_plan.py#L205)), an active-plan collision ([`:218`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/scripts/stage_plan.py#L218), "refusing to clobber" — a path-occupancy guard at [`:223`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/scripts/stage_plan.py#L223), so a symlink or dangling symlink also counts as a collision and is refused), or a tracker already at the plan's tracker path that isn't `queued` ([`:235`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/scripts/stage_plan.py#L235)). Copies bytes verbatim and leaves the staged file in place (copy, not move), then moves a `queued` tracker to `active` ([`:262`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/scripts/stage_plan.py#L262)); a move that fails exits 2 and says the plan was activated ([`:264`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/scripts/stage_plan.py#L264)). |
-| `_activate_task()` | [`stage_plan.py:180`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/scripts/stage_plan.py#L180) | A numbered task's activation. Refuses a task with no tracker ([`:188`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/scripts/stage_plan.py#L188)) or a tracker that isn't `queued` ([`:194`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/scripts/stage_plan.py#L194)); otherwise the tracker's move to `active` ([`:196`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/scripts/stage_plan.py#L196)) is the activation, and nothing is copied. |
-| `_resolved()` | [`stage_plan.py:91`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/scripts/stage_plan.py#L91) | Resolves the plan and its tracker through the resolver. Named-only guard — refuses an empty/singleton name (exit 2, "staging requires a named plan") at [`:100`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/scripts/stage_plan.py#L100) *before* the resolver is consulted. The singleton `PLAN.md` is the active default; there is nothing to stage for it. |
-| `_QUEUED_DIR = "queued-plans"` | [`stage_plan.py:85`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/scripts/stage_plan.py#L85) | The flat staging-dir name (crickets flat-vault convention). |
-| CLI verbs `path` / `activate` | [`stage_plan.py:271`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/scripts/stage_plan.py#L271) (`_build_parser`) | Invoked as `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/stage_plan.py" path <slug>` and `... activate <slug>`. Exit codes align with `resolve_plan.py`: `0` ok, `1` graceful-skip propagated from the resolver, `2` loud refusal, `3` already shipped (LC-6), and a resolver's `4` passed on. |
-
-We wire the `--stage` and `--activate` modes in [`commands/plan.md`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/commands/plan.md). Staged plans stay invisible to `/queue-status-lite`. The `queue_status._list_plan_files` function globs `PLAN-*.md` non-recursively. This skips the `queued-plans/` subdirectory entirely.
-
-You can find executable tests locking this behavior in `scripts/test_stage_plan.py`.
+| `staging_path()` | [`stage_plan.py:122`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/scripts/stage_plan.py#L122) | The task's own `plan.md`, from the path the resolver returns. Read-only; emits the path. A flat answer is refused. |
+| `activate()` | [`stage_plan.py:134`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/scripts/stage_plan.py#L134) | Activates a queued task in place: plan present, tracker present and `queued`, then the tracker's move to `active`. |
+| `_resolved()` | [`stage_plan.py:72`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/scripts/stage_plan.py#L72) | Resolves the plan and its tracker through the resolver. Refuses an empty/singleton name (exit 2, "staging requires a named plan") *before* the resolver is consulted. |
+| `_not_a_task()` | [`stage_plan.py:116`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/scripts/stage_plan.py#L116) | The refusal for a flat answer: exit 2, nothing written. |
+| CLI verbs `path` / `activate` | [`stage_plan.py:173`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/scripts/stage_plan.py#L173) (`_build_parser`) | Invoked as `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/stage_plan.py" path <task>` and `... activate <task>`. Exit codes align with `resolve_plan.py`: `0` ok, `1` no agentm (passed on), `2` loud refusal, `3` already shipped (LC-6), and a resolver's `4` passed on. |
 
 ## Reading the queue — `/queue-status-lite`
 
-The `/queue-status-lite` command serves as the read complement to the `--name` writers. It lists every active plan in the harness directory. It shows each plan's name, its `Status:` line, and the most recent entry from the matching `progress*.md` file. It does not accept a `--name` flag. It enumerates the entire queue instead of examining one pair. We define it as read-only by contract. It claims nothing, leases nothing, and gates nothing. This leaves you as the final arbiter of who works on which plan. You can find the task recipe in [See every active plan](See-Every-Active-Plan).
+The `/queue-status-lite` command serves as the read complement to the `--name` writers. It lists every active task of the project the cwd is bound to — each one's name, its status from its tracker, and the most recent line of its progress log. It takes no arguments. We define it as read-only by contract. It claims nothing, leases nothing, and gates nothing. This leaves you as the final arbiter of who works on which task. You can find the task recipe in [See every active plan](See-Every-Active-Plan).
 
 | Property | Value |
 |---|---|
 | Command | `/queue-status-lite` |
-| Argument | optional `--harness-dir <path>` (default: resolve from cwd) |
-| Active plans listed | `PLAN.md` plus every `PLAN-<slug>.md` (archives + GDrive conflict copies skipped) |
-| Per-plan output | name · `Status:` line · last `progress*.md` line |
+| Argument | none — agentm resolves the project from the cwd |
+| Listed | every task whose tracker is not `done` or `dropped` (in a repo with no vault, its repo-local plans) |
+| Per-task output | name · tracker status · last progress line |
 | Mutates | nothing — reads and prints only |
-| Exit | `0` in normal use (a status read, never a gate) — `0` even when there is no harness dir to read |
+| Exit | `0` in normal use (a status read, never a gate) |
 
 ### Read bridge
-
-The `/queue-status-lite` command calls a bridge script. This script mirrors the resolver bridge's approach of two backends under one contract. See [Resolution](#resolution) for more details on that structure.
 
 | Property | Value |
 |---|---|
 | Script | `${CLAUDE_PLUGIN_ROOT}/scripts/queue_status.py` |
-| Args | optional `--harness-dir PATH` (default: resolve from cwd) |
-| Output | a deterministic, human-scannable dashboard block on stdout |
-| Delegate target | agentm's shipped `queue_status_lite.py` reader when an agentm clone is locatable |
-| Standalone fallback | a minimal local `.harness/` dashboard mirroring the reader's format |
+| Args | none |
+| Output | agentm's `queue_status_lite.py` render, passed through verbatim |
+| Without agentm | one line saying there is no plan list, exit 0 |
 
-If you have an agentm clone installed, the bridge delegates to agentm's `queue_status_lite.py` reader. It re-emits the standard output from that reader verbatim. That reader owns the naming contract, the GDrive-conflict skipping logic, and the vault redirection. If you do not have a clone installed, the bridge renders a minimal local dashboard itself. This functions as a graceful skip, not an error. The resolver bridge (`resolve_plan.py`) provides the agentm-clone lookup and the PLAN-to-progress naming helpers.
+The bridge finds agentm's reader the way every agentm script is found (`$AGENTM_SCRIPTS_DIR`, co-located, then `~/Antigravity/agentm/scripts/`), runs it from the cwd, and re-emits its output. The reader owns which plans a project has, where they live, and their status. crickets enumerates nothing itself.
 
 ## Spawning a worker worktree
 
@@ -294,8 +273,8 @@ The `--name <slug>` flag selects the plan. You can place it anywhere in the argu
 
 | Argument | Parsed as |
 |---|---|
-| _(none)_ | singleton, next unchecked step; a project that keeps tasks asks which task |
-| `step N` or `task N` | singleton, step N |
+| _(none)_ | the worktree's bound task, else agentm's answer for a bare call: a project that keeps tasks asks which task |
+| `step N` or `task N` | the same plan, step N |
 | `--name <slug>` | named plan `<slug>`, next unchecked step |
 | `--name <slug> step N` | named plan `<slug>`, step N |
 
@@ -304,17 +283,17 @@ The `--name <slug>` flag selects the plan. You can place it anywhere in the argu
 
 ## Resolution
 
-We do not reimplement named-plan resolution in `developer-workflows`. The commands call a thin bridge script instead. This script delegates to the hosting memory layer (agentm) if you have one installed. It falls back to plain files otherwise.
+We do not reimplement plan resolution in `development-lifecycle`. The commands call a thin bridge script that asks agentm, which keeps the project's plans. With no agentm there is no plan.
 
 | Concern | Owner |
 |---|---|
-| Precedence: explicit name → `.harness/active-plan` marker → singleton | agentm `resolve_active_plan` |
-| Slug-safety (reject traversal / unsafe names) | agentm `resolve_active_plan`; mirrored in the standalone fallback |
+| Precedence: explicit name → `.harness/active-plan` marker → bare call | agentm `resolve_active_plan` |
+| Where a task lives, and its number when it is new | agentm |
+| Slug-safety (reject traversal / unsafe names) | agentm `resolve_active_plan`; pre-checked by `stage_plan.py` and `worktree_marker.py` |
 | Dangling-marker loud error (present-but-unresolvable `active-plan`) | agentm `resolve_active_plan`, propagated through the bridge |
-| Standalone fallback to plain `.harness/` | the `developer-workflows` bridge |
 
 > [!IMPORTANT]
-> The commands **read** the `.harness/active-plan` marker via the resolver. They never write to it. The explicit `--name <slug>` flag provides the binding mechanism. If the resolver finds a present but unresolvable marker, it surfaces a **loud error and a non-zero exit code** up through the whole bridge. It never falls back silently to an existing `PLAN.md`. This prevents the common worker-to-plan mis-binding error.
+> The commands **read** the `.harness/active-plan` marker via the resolver. They never write to it. The explicit `--name <slug>` flag provides the binding mechanism. If the resolver finds a present but unresolvable marker, it surfaces a **loud error and a non-zero exit code** up through the whole bridge. It never falls back silently to another plan. This prevents the common worker-to-plan mis-binding error.
 
 ### Resolver bridge
 
@@ -323,23 +302,23 @@ We do not reimplement named-plan resolution in `developer-workflows`. The comman
 | Script | `${CLAUDE_PLUGIN_ROOT}/scripts/resolve_plan.py` |
 | Args | optional positional `name`; `--project-root PATH` (default cwd) |
 | Output | one line, tab-separated: `<plan_path>\t<progress_path>\t<tracker_path>`, the tracker field empty when agentm names none |
-| On dangling marker / unsafe slug | non-zero exit + stderr message (never a singleton fallback) |
+| Exit 1 | no agentm process seam was found (or the seam found no plan home): nothing on stdout, and stderr says so |
+| Exit 2 | a dangling marker or an unsafe slug: nothing on stdout |
 | Exit 4 | a bare call on a project that keeps tasks: nothing on stdout, and the command asks for a task name |
-| Delegate target | agentm `process_seam.py state-path` (via `agentm_bridge.py`'s `process-seam` verb) when the seam is discoverable; else the standalone fallback |
+| Delegate target | agentm `process_seam.py state-path` (via `agentm_bridge.py`'s `process-seam` verb) |
 
-The `--name <slug>` flag acts as a command-level convention. The `/work`, `/plan`, `/review` and `/release` commands parse the flag out of their arguments. They pass the extracted slug positionally to the bridge script. The bridge CLI accepts the name as a positional argument rather than a flag. The bridge locates agentm's process seam using the `process-seam` verb in `agentm_bridge.py`. It checks `$AGENTM_SCRIPTS_DIR`, then a co-located path, and finally `~/Antigravity/agentm/scripts/`. It issues three calls to `process_seam.py state-path`, for the plan, progress and tracker paths, and reassembles them into one tab-separated line. A seam from before the tracker refuses the third call; the tracker field is then empty, and the exit stays 0.
+The `--name <slug>` flag acts as a command-level convention. The `/work`, `/plan`, `/review` and `/release` commands parse the flag out of their arguments and pass the slug positionally to the bridge. The bridge locates agentm's process seam using the `process-seam` verb in `agentm_bridge.py`: `$AGENTM_SCRIPTS_DIR`, then a co-located path, then `~/Antigravity/agentm/scripts/`. It issues three calls to `process_seam.py state-path`, for the plan, progress and tracker paths, and reassembles them into one tab-separated line. A seam from before the tracker refuses the third call; the tracker field is then empty, and the exit stays 0.
 
-## Standalone fallback (no agentm installed)
+## A repo with no vault
 
-If the bridge cannot locate a hosting memory layer, it degrades to plain `.harness/` files. It writes flat files with no vault redirection, no marker, and no CAS.
+In a repo that isn't bound to a vault project, agentm keeps the repo's plans in its repo-local `.harness/`, and the commands follow its answers unchanged:
 
-| Resolver input (positional) | Resolves to |
+| Resolver input | agentm answers |
 |---|---|
-| bare (no slug) | `.harness/PLAN.md` + `.harness/progress.md`, with an empty tracker field |
-| `<slug>` | `.harness/PLAN-<slug>.md` + `.harness/progress-<slug>.md`, with an empty tracker field |
-| unsafe slug | rejected locally — non-zero exit, no path printed |
+| bare (no slug) | `.harness/PLAN.md` + `.harness/progress.md` + `.harness/tracker.md` |
+| `<slug>` | `.harness/PLAN-<slug>.md` + `.harness/progress-<slug>.md` + `.harness/tracker-<slug>.md` |
 
-The bare paths match the singleton literals exactly. An executable test locks this behavior in place.
+Such a plan can't be staged (staging needs the task layout), and it archives at close-out to `.harness/archive/PLAN.archive.YYYYMMDD-<slug>.md`, its tracker staying in `.harness/` at `done`. With no agentm at all there is no plan: the resolver exits 1, and the commands say so.
 
 ## Related
 

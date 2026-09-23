@@ -124,32 +124,32 @@ class TestRunStatePath(unittest.TestCase):
     def test_plan_path_propagated_exit_zero(self):
         seam = self._make_seam(
             "import sys\nwhich = sys.argv[2]\n"
-            "sys.stdout.write('/v/_harness/PLAN.md\\n' if which == 'plan' else '/v/_harness/progress.md\\n')\n"
+            "sys.stdout.write('/v/projects/demo/tasks/042-build-the-brief/plan.md\\n' if which == 'plan' else '/v/projects/demo/tasks/042-build-the-brief/progress.md\\n')\n"
             "sys.exit(0)\n"
         )
         out, rc = fps.run_state_path("plan", [], seam=seam)
         self.assertEqual(rc, 0)
-        self.assertEqual(out, "/v/_harness/PLAN.md")
+        self.assertEqual(out, "/v/projects/demo/tasks/042-build-the-brief/plan.md")
 
     def test_progress_path_propagated_exit_zero(self):
         seam = self._make_seam(
             "import sys\nwhich = sys.argv[2]\n"
-            "sys.stdout.write('/v/_harness/PLAN.md\\n' if which == 'plan' else '/v/_harness/progress.md\\n')\n"
+            "sys.stdout.write('/v/projects/demo/tasks/042-build-the-brief/plan.md\\n' if which == 'plan' else '/v/projects/demo/tasks/042-build-the-brief/progress.md\\n')\n"
             "sys.exit(0)\n"
         )
         out, rc = fps.run_state_path("progress", [], seam=seam)
         self.assertEqual(rc, 0)
-        self.assertEqual(out, "/v/_harness/progress.md")
+        self.assertEqual(out, "/v/projects/demo/tasks/042-build-the-brief/progress.md")
 
     def test_tracker_path_propagated_exit_zero(self):
         seam = self._make_seam(
             "import sys\n"
-            "sys.stdout.write('/v/_harness/tracker-foo.md\\n' if sys.argv[2] == 'tracker' else '')\n"
+            "sys.stdout.write('/v/projects/demo/tasks/042-build-the-brief/tracker.md\\n' if sys.argv[2] == 'tracker' else '')\n"
             "sys.exit(0)\n"
         )
         out, rc = fps.run_state_path("tracker", ["--plan", "foo"], seam=seam)
         self.assertEqual(rc, 0)
-        self.assertEqual(out, "/v/_harness/tracker-foo.md")
+        self.assertEqual(out, "/v/projects/demo/tasks/042-build-the-brief/tracker.md")
 
     def test_a_seam_from_before_the_tracker_refuses_it_with_exit_two(self):
         seam = self._make_seam(

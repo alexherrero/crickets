@@ -13,9 +13,13 @@ scratch task directory and is skipped when no agentm checkout is found (CI has
 none).
 
 Three fixture layouts, as agentm places them:
-  the singleton       projects/probe/_harness/PLAN.md       + tracker.md
-  a flat named pair   projects/probe/_harness/PLAN-foo.md   + tracker-foo.md
   a numbered task     projects/probe/tasks/042-build-the-brief/plan.md + tracker.md
+and, in a repo with no vault (crickets task 101, ruling 8), its repo-local
+  singleton           probe/.harness/PLAN.md       + tracker.md
+  flat named pair     probe/.harness/PLAN-foo.md   + tracker-foo.md
+
+A plan carries no `**Status:**` line: the tracker is its only status, and no
+verb writes the plan file (crickets task 101, step 8).
 """
 from __future__ import annotations
 
@@ -115,7 +119,6 @@ touches_architecture: true
 
 # Plan: Build the brief
 
-**Status:** planning
 **Created:** 2026-09-14
 **Brief:** The brief prints at session start.
 
@@ -139,7 +142,6 @@ A session opens with where its task stands.
 
 HEADING_PLAN = """# Plan: Build the brief
 
-**Status:** in-progress
 **Brief:** The brief prints at session start.
 
 ## Tasks
@@ -151,8 +153,9 @@ HEADING_PLAN = """# Plan: Build the brief
 
 
 class _Vault:
-    """A scratch projects space holding the three layouts, a stub tracker.py
-    under $AGENTM_SCRIPTS_DIR, and a repo root with no project.json."""
+    """A scratch vault project with a numbered task, a repo `probe` with no
+    project.json holding the repo-local pair, and a stub tracker.py under
+    $AGENTM_SCRIPTS_DIR."""
 
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="plan-tracker-"))
@@ -174,12 +177,11 @@ class _Vault:
             self.addCleanup(patcher.stop)
 
         project = self.tmp / "vault" / "projects" / "probe"
-        harness = project / "_harness"
-        harness.mkdir(parents=True)
         task = project / "tasks" / "042-build-the-brief"
         task.mkdir(parents=True)
-        self.repo = self.tmp / "repo"
-        self.repo.mkdir()
+        self.repo = self.tmp / "probe"
+        harness = self.repo / ".harness"
+        harness.mkdir(parents=True)
         self.layouts = {
             "singleton": (harness / "PLAN.md", harness / "tracker.md"),
             "flat": (harness / "PLAN-foo.md", harness / "tracker-foo.md"),
@@ -265,7 +267,6 @@ class TestOpen(_Vault, unittest.TestCase):
         self.assertNotIn("--task", self.new_call())
 
     def test_the_project_comes_from_vault_project_first(self):
-        (self.repo / ".harness").mkdir()
         (self.repo / ".harness" / "project.json").write_text(
             json.dumps({"vault_project": "crickets"}), encoding="utf-8")
         self.open("task")
@@ -278,7 +279,7 @@ class TestOpen(_Vault, unittest.TestCase):
         self.assertEqual(self.arg("--objective"), "The brief prints at session start.")
 
         plan, tracker = self.layouts["task"]
-        plan.write_text("# Plan: Build the brief\n\n**Status:** planning\n", encoding="utf-8")
+        plan.write_text("# Plan: Build the brief\n", encoding="utf-8")
         pt.open_tracker(plan, str(tracker), root=self.repo)
         self.assertEqual(self.arg("--objective"), "Build the brief")
 
@@ -322,24 +323,22 @@ class TestStatus(_Vault, unittest.TestCase):
         self.seed(tracker, "active")
         self.assertEqual(pt.plan_status(plan, str(tracker)), ("active", "tracker"))
 
-    def test_the_status_line_comes_second_in_the_five_statuses(self):
+    def test_a_status_line_is_never_read(self):
         plan, tracker = self.layouts["flat"]
-        for line, expected in (("planning", "queued"), ("in-progress", "active"),
-                               ("done", "done"), ("done (2026-09-13)", "done"),
-                               ("Parked", "parked"), ("dropped", "dropped"),
-                               ("Blocked on review", "blocked on review")):
+        for line in ("planning", "in-progress", "done", "done (2026-09-13)", "Parked"):
             with self.subTest(line=line):
                 plan.write_text(f"# Plan: x\n\n**Status:** {line}\n", encoding="utf-8")
-                self.assertEqual(pt.plan_status(plan, str(tracker)), (expected, "status-line"))
+                self.assertEqual(pt.plan_status(plan, str(tracker)), ("none", "none"))
 
     def test_none_when_there_is_neither(self):
         plan, tracker = self.layouts["singleton"]
         plan.write_text("# Plan: x\n\n### 1. a\n- **Status:** [ ]\n", encoding="utf-8")
         self.assertEqual(pt.plan_status(plan, str(tracker)), ("none", "none"))
 
-    def test_an_empty_tracker_path_reads_the_status_line(self):
+    def test_an_empty_tracker_path_is_none(self):
         plan, _tracker = self.layouts["task"]
-        self.assertEqual(pt.plan_status(plan, ""), ("queued", "status-line"))
+        plan.write_text("# Plan: x\n\n**Status:** planning\n", encoding="utf-8")
+        self.assertEqual(pt.plan_status(plan, ""), ("none", "none"))
 
     def test_the_cli_prints_status_and_source(self):
         plan, tracker = self.layouts["task"]
@@ -394,16 +393,22 @@ class TestStep(_Vault, unittest.TestCase):
         self.assertEqual(code, 3)
         self.assertIn("predates", message)
 
-    def test_the_status_line_follows_to_in_progress(self):
+    def test_a_step_leaves_the_plan_byte_identical(self):
         plan, _tracker = self.layouts["task"]
-        self.step("task")
-        self.assertIn("**Status:** in-progress\n", plan.read_text(encoding="utf-8"))
+        # Even a plan that still carries a Status line is not touched.
+        plan.write_text(BULLET_PLAN.replace("**Created:**", "**Status:** planning\n**Created:**"),
+                        encoding="utf-8")
+        before = plan.read_bytes()
+        self.assertEqual(self.step("task")[0], 0)
+        self.assertEqual(plan.read_bytes(), before)
 
-    def test_with_no_tracker_support_the_line_is_still_set(self):
+    def test_with_no_tracker_it_is_exit_3_and_the_plan_is_untouched(self):
         plan, _tracker = self.layouts["task"]
-        code, _message = pt.step(plan, "", state="s", next_steps="n", root=self.repo)
+        before = plan.read_bytes()
+        code, message = pt.step(plan, "", state="s", next_steps="n", root=self.repo)
         self.assertEqual(code, 3)
-        self.assertIn("**Status:** in-progress\n", plan.read_text(encoding="utf-8"))
+        self.assertIn("progress records the step", message)
+        self.assertEqual(plan.read_bytes(), before)
 
 
 class TestClose(_Vault, unittest.TestCase):
@@ -415,7 +420,7 @@ class TestClose(_Vault, unittest.TestCase):
                                   root=self.repo)[0], 0)
         t = self.tracker(tracker)
         self.assertEqual((t["status"], t["sections"]["Outcome"]), ("done", "The brief prints."))
-        self.assertIn("**Status:** done\n", plan.read_text(encoding="utf-8"))
+        self.assertEqual(plan.read_text(encoding="utf-8"), BULLET_PLAN)
 
     def test_a_queued_tracker_passes_through_active(self):
         plan, tracker = self.layouts["flat"]
@@ -439,46 +444,6 @@ class TestClose(_Vault, unittest.TestCase):
         plan, tracker = self.layouts["task"]
         self.seed(tracker, "dropped", outcome="withdrawn")
         self.assertEqual(pt.close(plan, str(tracker), outcome="o", root=self.repo)[0], 1)
-
-
-class TestStatusLineMirror(_Vault, unittest.TestCase):
-
-    def test_only_the_status_line_changes(self):
-        plan, _tracker = self.layouts["task"]
-        # Pin LF: a text-mode fixture is CRLF on Windows (the next test covers CRLF).
-        plan.write_bytes(plan.read_bytes().replace(b"\r\n", b"\n"))
-        before = plan.read_bytes()
-        expected = before.replace(b"**Status:** planning\n", b"**Status:** in-progress\n", 1)
-        self.assertNotEqual(expected, before)
-        self.assertTrue(pt.mirror_status_line(plan, "active"))
-        self.assertEqual(plan.read_bytes(), expected)
-
-    def test_windows_line_endings_survive(self):
-        plan, _tracker = self.layouts["flat"]
-        plan.write_bytes(BULLET_PLAN.replace("\n", "\r\n").encode("utf-8"))
-        before = plan.read_bytes()
-        self.assertTrue(pt.mirror_status_line(plan, "done"))
-        self.assertEqual(plan.read_bytes(), before.replace(
-            b"**Status:** planning\r\n", b"**Status:** done\r\n", 1))
-
-    def test_adds_no_line_to_a_plan_without_one(self):
-        plan, _tracker = self.layouts["task"]
-        plan.write_text("# Plan: x\n\n## Steps\n\n### 1. a\n- **Status:** [ ]\n", encoding="utf-8")
-        before = plan.read_bytes()
-        self.assertFalse(pt.mirror_status_line(plan, "active"))
-        self.assertEqual(plan.read_bytes(), before)
-
-    def test_each_tracker_status_maps_to_its_word(self):
-        plan, _tracker = self.layouts["task"]
-        for status, word in (("queued", "planning"), ("active", "in-progress"), ("done", "done")):
-            with self.subTest(status=status):
-                pt.mirror_status_line(plan, status)
-                self.assertIn(f"**Status:** {word}\n", plan.read_text(encoding="utf-8"))
-
-    def test_a_step_bullet_is_never_taken_for_the_status_line(self):
-        plan, _tracker = self.layouts["task"]
-        pt.mirror_status_line(plan, "done")
-        self.assertEqual(plan.read_text(encoding="utf-8").count("- **Status:** [ ]"), 2)
 
 
 class TestCLI(_Vault, unittest.TestCase):
@@ -539,9 +504,9 @@ class TestDuplicateGuardStatus(_Vault, unittest.TestCase):
                 self.seed(tracker, "active")
                 self.assertEqual(self.status(layout), "active\ttracker\n")
             tracker.unlink()
-            with self.subTest(layout=layout, case="done from a Status line, no tracker"):
+            with self.subTest(layout=layout, case="a done Status line, no tracker"):
                 plan.write_text("# Plan: x\n\n**Status:** done\n", encoding="utf-8")
-                self.assertEqual(self.status(layout), "done\tstatus-line\n")
+                self.assertEqual(self.status(layout), "none\tnone\n")
             with self.subTest(layout=layout, case="no status at all"):
                 plan.write_text("# Plan: x\n\n### 1. a\n- **Status:** [x]\n", encoding="utf-8")
                 self.assertEqual(self.status(layout), "none\tnone\n")
@@ -549,8 +514,8 @@ class TestDuplicateGuardStatus(_Vault, unittest.TestCase):
 
 class TestReleasePreconditionStatus(_Vault, unittest.TestCase):
     """/release's precondition (PLAN-tracker-commands task 7) is
-    `plan_tracker.py status` saying `done`: the tracker when there is one, the
-    Status line otherwise. Driven in all three layouts."""
+    `plan_tracker.py status` saying `done`, which only a tracker can say.
+    Driven in all three layouts."""
 
     def status(self, layout: str) -> str:
         plan, tracker = self.layouts[layout]
@@ -568,7 +533,7 @@ class TestReleasePreconditionStatus(_Vault, unittest.TestCase):
                 self.assertEqual(self.status(layout), "active")
             tracker.unlink()
             with self.subTest(layout=layout, case="a done Status line and no tracker"):
-                self.assertEqual(self.status(layout), "done")
+                self.assertEqual(self.status(layout), "none")
 
 
 def _real_tracker() -> "Path | None":
@@ -635,7 +600,7 @@ class TestRealTracker(unittest.TestCase):
         self.assertEqual((closed["status"], closed["sections"]["Outcome"]),
                          ("done", "The brief prints."))
         self.assertEqual(pt._bridge.run_tracker(["check", str(self.tracker)])[0], 0)
-        self.assertIn("**Status:** done\n", self.plan.read_text(encoding="utf-8"))
+        self.assertEqual(self.plan.read_text(encoding="utf-8"), BULLET_PLAN)
 
 
 if __name__ == "__main__":

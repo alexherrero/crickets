@@ -28,8 +28,8 @@ sys.path.insert(0, str(HERE))
 
 import no_harness_fixture as nhf  # noqa: E402
 
-# Every plugin that ships a copy. development-lifecycle joins in task 101.
-COPIES = ("code-review", "design", "github-projects", "wiki", "tokens")
+# Every plugin that ships a copy.
+COPIES = ("code-review", "design", "development-lifecycle", "github-projects", "wiki", "tokens")
 CANONICAL = ROOT / "src" / "code-review" / "scripts" / "project_homes.py"
 
 _spec = importlib.util.spec_from_file_location("project_homes_under_test", CANONICAL)
