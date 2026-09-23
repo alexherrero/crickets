@@ -64,8 +64,6 @@ EXEMPT: dict[str, str] = {
     # task 101 — development-lifecycle's leftovers
     "src/development-lifecycle/group.yaml": _T101,
     "src/development-lifecycle/scripts/check-plan-grounding.py": _T101,
-    "src/development-lifecycle/scripts/plan_tracker.py": _T101,
-    "scripts/test_plan_tracker.py": _T101,
 }
 
 

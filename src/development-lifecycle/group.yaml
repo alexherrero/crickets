@@ -702,5 +702,11 @@ enhances:
 #          /setup (setup.md 0.2.0) asks agentm first: exit 4 seeds no plan and
 #          puts features.json in the desk, exit 0 (a repo with no vault)
 #          seeds the repo-local plan with no Status line, exit 1 seeds none.
+#          The Status line goes (agentm task 172 step 3 reads the tracker
+#          first, re-probed before this landed): plan_tracker.py's mirror,
+#          status_from_line and the status-line source are gone, status reads
+#          the tracker else prints none, step and close never write the plan,
+#          and the plan template carries no Status line. orient_render's
+#          _extract_status fallback goes with it.
 version: 0.49.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

@@ -24,7 +24,7 @@ If the brief is underspecified, run `/interview-me` first. If it's a non-trivial
 ## Non-negotiable constraints
 
 1. **Do not write any application code.** Implementation is the `/work` phase.
-2. **Read the resolved `PLAN.md` and `progress.md` first** (the paths agentm gives: a task under `--name` and `--stage`, and for a bare call in a repo with no vault its repo-local singleton; `--activate` is promote-only and reads no plan). If a plan is in flight (`plan_tracker.py status` says `active`, from its tracker or, without one, its Status line) and the new brief is related, **ask** "continue or replace?" — never silently overwrite.
+2. **Read the resolved `PLAN.md` and `progress.md` first** (the paths agentm gives: a task under `--name` and `--stage`, and for a bare call in a repo with no vault its repo-local singleton; `--activate` is promote-only and reads no plan). If a plan is in flight (`plan_tracker.py status` says `active`, from its tracker) and the new brief is related, **ask** "continue or replace?" — never silently overwrite.
 3. **Interview only if the brief is ambiguous** (≤5 batched questions). Skip if it's clear or derivable from the codebase.
 4. **Write the plan using the PLAN.md shape** below.
 5. **Update `features.json`** (the project's desk copy — see step 5) only if this plan introduces net-new user-visible features.
@@ -33,13 +33,13 @@ If the brief is underspecified, run `/interview-me` first. If it's a non-trivial
 8. **Append one line to the resolved `progress.md`** (the resolver's second field: a task's own `progress.md` under `--name`, `--stage` and `--activate`; in a repo with no vault, the repo-local log agentm names).
 9. **End with a ≤5-bullet summary.** Next command is `/work`.
 10. **Ground the plan in its governing design (Hook 2, design-doc §6).** Before decomposing, resolve the living design that governs this work and read a **bounded** slice of it (frontmatter + `## Locked design calls`, ≈400-line cap — **never the whole arc**); cite it in the plan's `## Locked design calls` + `parent_design_doc:` frontmatter, or assert greenfield. Graceful-skip when agentm is absent. See step 1b.
-11. **Open the plan's tracker once the plan is written** (step 7b). Only agentm's `tracker.py` writes a tracker: `/plan` calls `plan_tracker.py open` and never writes tracker text itself. The plan keeps its `**Status:**` line, mirrored from the tracker, which is the authority.
+11. **Open the plan's tracker once the plan is written** (step 7b). Only agentm's `tracker.py` writes a tracker: `/plan` calls `plan_tracker.py open` and never writes tracker text itself. The tracker is the plan's only status: the plan carries no `**Status:**` line.
 
 ## Process
 
 ### 1. Triage existing state
 
-Read the plan's status first: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" status --plan <plan> --tracker <tracker>`, with the fields `resolve_plan.py` printed. It prints `<status>\t<source>`: the tracker's status when there is one, else the plan's Status line in the same five words (`queued`, `active`, `parked`, `done`, `dropped`), else `none`. Then read `PLAN.md` (in flight? continuing or replacing — ask, don't overwrite) and `progress.md` (what happened last). If the plan is `done`, `dropped` or absent, proceed to a fresh plan.
+Read the plan's status first: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" status --plan <plan> --tracker <tracker>`, with the fields `resolve_plan.py` printed. It prints `<status>\t<source>`: the tracker's status (`queued`, `active`, `parked`, `done`, `dropped`), else `none`. Then read `PLAN.md` (in flight? continuing or replacing — ask, don't overwrite) and `progress.md` (what happened last). If the plan is `done`, `dropped` or absent, proceed to a fresh plan.
 
 **Plan mode?** `$ARGUMENTS` selects one of **four** modes. For every *named* mode, consume the helper scripts (never re-derive paths) and treat any non-zero exit as a **hard stop** that surfaces stderr — never a singleton fallback on a dangling/unsafe binding:
 
@@ -83,7 +83,6 @@ touches_architecture: true | false
 
 # Plan: <short title>
 
-**Status:** planning
 **Created:** <YYYY-MM-DD>
 **Brief:** <1-3 sentence restatement>
 
@@ -116,7 +115,7 @@ touches_architecture: true | false
 <Which deterministic gates apply + project-specific extras.>
 ```
 
-**The Status line and the tracker.** Write `**Status:** planning`. From here on `plan_tracker.py` keeps the line in step with the plan's tracker (`queued` → `planning`, `active` → `in-progress`, `done` → `done`). The tracker is the authority; the line stays for the readers that still read it.
+**No Status line.** The plan carries no `**Status:**` line: its status is its tracker's, which step 7b opens at `queued`. Each step keeps its own `- **Status:** [ ]` checkbox.
 
 **Tier hints (routed-dispatch amendment, graceful-skip).** Check availability: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" capability token-audit`. On **exit 0**, for any step whose dispatch shape genuinely differs from the plan's own default (most steps don't need this — leave `Work-type` unset and skip the hint entirely), declare `Work-type` as a `routing_table.py` key and render `Tier hint` via `classify_work_type.render_tier_hint(work_type)` — never hand-type the tier/model/effort values. On **exit 1** (unavailable) omit both fields; this is optional annotation, not a plan-grounding requirement.
 
@@ -155,7 +154,7 @@ With the plan written and the board step run (so any issue number is known), ope
 - **`--name` and `--stage`:** `tracker.md` in the task, at `queued` — which is also what keeps a staged task inert.
 - **A repo with no vault:** beside the repo-local plan agentm answered (`tracker.md` beside the singleton, `tracker-<slug>.md` beside a flat pair).
 
-**Exit 0** includes "already open", which leaves an existing tracker alone. **Exit 3** (agentm named no tracker, its `tracker.py` is missing, or a tracker there is already final) — announce the reason and carry on: the plan runs on its Status line, as it always has. **Exit 1 or 2** — surface stderr and stop before step 8.
+**Exit 0** includes "already open", which leaves an existing tracker alone. **Exit 3** (agentm named no tracker, its `tracker.py` is missing, or a tracker there is already final) — announce the reason and carry on without a tracker; the first `/work` opens one at its first step. **Exit 1 or 2** — surface stderr and stop before step 8.
 
 ### 8. Stop
 

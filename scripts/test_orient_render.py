@@ -49,8 +49,6 @@ touches_architecture: false
 
 # Plan: Widgets
 
-**Status:** in-progress
-
 ## Tasks
 
 ### 1. First task
@@ -241,17 +239,22 @@ class _AgentmProject:
             log.write_text(progress, encoding="utf-8")
         self.rows.append((str(directory / "plan.md"), str(log), str(tracker)))
 
-    def flat(self, slug, status_line, progress=None):
-        # A repo with no vault: agentm keeps its plans repo-local (ruling 8).
+    def flat(self, slug, status, progress=None):
+        # A repo with no vault: agentm keeps its plans repo-local, each with a
+        # tracker beside it (ruling 8).
         harness = self.repo / ".harness"
         harness.mkdir(parents=True, exist_ok=True)
         plan = harness / f"PLAN-{slug}.md"
-        plan.write_text(_PLAN_TEXT.replace("**Status:** in-progress", f"**Status:** {status_line}"),
-                        encoding="utf-8")
+        plan.write_text(_PLAN_TEXT, encoding="utf-8")
+        tracker = harness / f"tracker-{slug}.md"
+        tracker.write_text("tracker\n", encoding="utf-8")
+        state = json.loads(self.state.read_text(encoding="utf-8"))
+        state[str(tracker)] = {"status": status, "importance": None}
+        self.state.write_text(json.dumps(state), encoding="utf-8")
         log = harness / f"progress-{slug}.md"
         if progress:
             log.write_text(progress, encoding="utf-8")
-        self.rows.append((str(plan), str(log), str(harness / f"tracker-{slug}.md")))
+        self.rows.append((str(plan), str(log), str(tracker)))
 
     def render(self, brief=(3, ""), **overrides):
         project = {"slug": "widgets", "gloss": "A widget project.",
@@ -301,7 +304,7 @@ class TestOrientationPlansThroughAgentm(_AgentmProject, unittest.TestCase):
                   progress="2026-09-14 /work — completed step 1\n")
         self.task("043-ship-it", "parked", importance=8)
         self.task("044-next-thing", "queued")
-        self.flat("alpha", "in-progress", progress="2026-09-13 /work — alpha moved\n")
+        self.flat("alpha", "active", progress="2026-09-13 /work — alpha moved\n")
         self.flat("old", "done", progress="2026-08-01 /work — the old flat plan closed\n")
 
     def test_in_flight_first_by_importance_then_name_finished_as_a_count(self):

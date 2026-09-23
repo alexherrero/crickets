@@ -228,12 +228,14 @@ class TestPlanSpec(_NamedPlanWriterContract, unittest.TestCase):
         self.assertIn("`--name` and `--stage`:** `tracker.md` in the task, at `queued`", step)
         self.assertNotIn("queued-plans", step)
 
-    def test_the_template_writes_steps_and_keeps_the_status_line(self):
+    def test_the_template_writes_steps_and_no_status_line(self):
+        # Crickets task 101 step 8: the tracker is the plan's only status, so
+        # the template keeps each step's checkbox and carries no Status line.
         template = self._section("```markdown", "## Risks / open questions")
         self.assertIn("## Steps", template)
         self.assertIn("### 1. <Step title>", template)
         self.assertIn("- **Status:** [ ]", template)
-        self.assertIn("**Status:** planning", template)
+        self.assertNotIn("**Status:** planning", template)
         self.assertNotIn("## Tasks", template)
 
 
@@ -476,6 +478,19 @@ class TestNoFlatLayoutCrickets(unittest.TestCase):
         self.assertIn("**Exit 1** — no agentm. **Seed no plan", first)
         seed = first.split("**The plan seed** (exit 0 only)", 1)[1].split("```", 2)[1]
         self.assertNotIn("**Status:**", seed.replace("- **Status:** [ ]", ""))
+
+    def test_no_command_writes_a_status_line(self):
+        # Step 8: the tracker is a plan's only status. No command or template
+        # writes a plan-level `**Status:**` line; the step-level
+        # `- **Status:** [ ]` checkboxes stay.
+        import re
+        plan_level = re.compile(r"^(?!\s*-\s)\*\*Status:\*\*", re.MULTILINE)
+        for cmd in sorted(_CMDS.glob("*.md")):
+            with self.subTest(command=cmd.name):
+                text = cmd.read_text(encoding="utf-8")
+                self.assertIsNone(plan_level.search(text), cmd.name)
+                self.assertNotIn("Write `**Status:**", text)
+                self.assertNotIn("its Status line", text)
 
     def test_a_bare_plan_handles_exit_4_and_a_repo_local_answer(self):
         bare = _read("plan.md").split("- **Bare `/plan`**", 1)[1].split("\n- **`--name", 1)[0]

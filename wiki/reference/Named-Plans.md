@@ -56,7 +56,7 @@ A tracker is a plan's living head: its status, what is true now, the next steps,
 | `/release` | requires the status to be `done` |
 | `/bugfix` | reads the status, and asks before writing into a plan that is `queued`, `active` or `parked` |
 
-`plan_tracker.py status` prints `<status>\t<source>`: the tracker's status when there is one, else the plan's `**Status:**` line in the same five words (`planning` reads as `queued`, `in-progress` as `active`), else `none`. After a `step` or a `close`, the helper rewrites the plan's existing Status line to match (`queued` → `planning`, `active` → `in-progress`, `done` → `done`). Readers that still read the line see the same answer. The helper never adds a line. When agentm names no tracker (a standalone project, or an agentm from before the tracker), the helper exits 3. The command says so, and the plan runs on its Status line.
+`plan_tracker.py status` prints `<status>\t<source>`: the tracker's status, else `none`. The tracker is a plan's only status: a plan carries no `**Status:**` line, and the helper never reads or writes the plan file. When agentm names no tracker (an agentm from before the tracker), the helper exits 3; the command says so and carries on, logging to progress, and the next `/work` opens a tracker at its first step.
 
 ## Numbered tasks
 

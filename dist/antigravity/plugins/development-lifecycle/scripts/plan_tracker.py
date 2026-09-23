@@ -17,22 +17,19 @@ parses or edits tracker text; what it knows of a tracker comes from
                            [--state TEXT] [--next TEXT] [--root DIR]
 
 `--plan` and `--tracker` are the first and third fields `resolve_plan.py`
-prints. An empty `--tracker` means agentm named no tracker (the standalone
-fallback, or an agentm from before the tracker): the verbs that write say so
-and exit 3, and the plan runs on its Status line as it always has.
+prints. An empty `--tracker` means agentm named no tracker (an agentm from
+before the tracker): the verbs that write say so and exit 3, and the plan
+carries on without one, its progress log the record.
 
 **Layout comes from the path agentm returned.** A task's plan is `plan.md` in
-its own directory (`tasks/042-build-the-brief/plan.md`), a flat named plan is
-`PLAN-<name>.md`, and the singleton is `PLAN.md`. Nothing here composes a path.
+its own directory (`tasks/042-build-the-brief/plan.md`); in a repo with no
+vault, agentm answers a repo-local `PLAN-<name>.md` or `PLAN.md`. Nothing here
+composes a path.
 
-**The Status-line mirror.** After a `step` or a `close`, the plan's first
-`**Status:**` line is rewritten to match the tracker: `queued` → `planning`,
-`active` → `in-progress`, `done` → `done`. Only an existing line changes; none is
-added, and the rest of the file stays byte-identical. The tracker is the
-authority, and the line stays for the readers that still read it (agentm's
-plan_graph.py) until the release that retires the `_harness` fallbacks. With no
-tracker support the line is still set, so a plan without agentm keeps today's
-behavior. The write is atomic and happens only after the tracker call succeeds.
+**The tracker is a plan's only status.** A plan carries no `**Status:**` line
+(crickets task 101): `status` reads the tracker, else prints `none`, and `step`
+and `close` never touch the plan file. agentm's own readers take the tracker
+first since agentm task 172.
 
 Exit codes:
     0 — done, or nothing to do
@@ -49,9 +46,7 @@ import importlib.util
 import json
 import os
 import re
-import stat
 import sys
-import tempfile
 from pathlib import Path
 
 REFUSED = 1
@@ -60,11 +55,7 @@ NO_TRACKER = 3
 
 _HERE = Path(__file__).resolve().parent
 _FINAL = ("done", "dropped")
-_STATUS_LINE_WORDS = {"queued": "planning", "active": "in-progress", "done": "done"}
-_FROM_STATUS_LINE = {"planning": "queued", "in-progress": "active",
-                     "done": "done", "parked": "parked", "dropped": "dropped"}
 
-_STATUS_LINE = re.compile(r"^(\*\*Status:\*\*[ \t]*)([^\r\n]*?)([ \t]*)(\r?)$", re.MULTILINE)
 _PLAN_TITLE = re.compile(r"^#[ \t]+Plan:[ \t]*([^\r\n]+?)[ \t]*\r?$", re.MULTILINE)
 _ANY_TITLE = re.compile(r"^#[ \t]+([^\r\n]+?)[ \t]*\r?$", re.MULTILINE)
 _BRIEF = re.compile(r"^\*\*Brief:\*\*[ \t]*([^\r\n]+?)[ \t]*\r?$", re.MULTILINE)
@@ -72,7 +63,6 @@ _FRONTMATTER = re.compile(r"\A---[ \t]*\r?\n(.*?)\r?\n---[ \t]*(?:\r?\n|\Z)", re
 _STEP_HEADING = re.compile(r"^###[ \t]+(\d+)\.[ \t]*(.*?)[ \t]*$")
 _HEADING_STATUS = re.compile(r"^(.*?)[ \t]*[—–-]+[ \t]*Status:[ \t]*\[([ xX])\][ \t]*$")
 _BULLET_STATUS = re.compile(r"^[ \t]*-[ \t]+\*\*Status:\*\*[ \t]*\[([ xX])\]")
-_LEADING_WORD = re.compile(r"[A-Za-z][A-Za-z-]*")
 
 
 def _load_sibling(name: str):
@@ -207,65 +197,9 @@ def _project(plan: Path, tracker: Path, root) -> str:
     if configured:
         return configured
     for place in (tracker, plan):
-        if place.parent.name == "_harness":
-            return place.parent.parent.name
         if place.parent.parent.name == "tasks":
             return place.parent.parent.parent.name
     return plan.parent.parent.name
-
-
-# ── the Status line ─────────────────────────────────────────────────────────────
-
-def _status_line_value(text: str) -> "str | None":
-    m = _STATUS_LINE.search(text)
-    return m.group(2).strip() if m else None
-
-
-def status_from_line(value: str) -> str:
-    """A Status-line value in the five-status vocabulary. The leading word
-    decides (`done (2026-09-13)` is `done`); any other value is lower-cased and
-    passed through."""
-    cleaned = value.strip().strip("*").strip()
-    word = _LEADING_WORD.match(cleaned)
-    if word and word.group(0).lower() in _FROM_STATUS_LINE:
-        return _FROM_STATUS_LINE[word.group(0).lower()]
-    return cleaned.lower()
-
-
-def _atomic_write(path: Path, text: str) -> None:
-    fd, tmp = tempfile.mkstemp(prefix=f".{path.name}.", dir=str(path.parent))
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8", newline="") as f:
-            f.write(text)
-            f.flush()
-            os.fsync(f.fileno())
-        try:
-            os.chmod(tmp, stat.S_IMODE(os.stat(path).st_mode))
-        except OSError:
-            pass
-        os.replace(tmp, path)
-    except BaseException:
-        try:
-            os.unlink(tmp)
-        except OSError:
-            pass
-        raise
-
-
-def mirror_status_line(plan: "str | os.PathLike", tracker_status: str) -> bool:
-    """Rewrite the plan's first `**Status:**` line to match `tracker_status`.
-    True when the file changed. A plan with no such line is left alone."""
-    word = _STATUS_LINE_WORDS.get(tracker_status)
-    if word is None:
-        return False
-    plan = Path(plan)
-    text = _read_plan(plan)
-    m = _STATUS_LINE.search(text)
-    if m is None or m.group(2) == word:
-        return False
-    lead = m.group(1) if m.group(1).endswith((" ", "\t")) else m.group(1) + " "
-    _atomic_write(plan, text[:m.start(1)] + lead + word + text[m.end(2):])
-    return True
 
 
 # ── the tracker, through the bridge ─────────────────────────────────────────────
@@ -295,19 +229,14 @@ def _failed(code: int, err: str, what: str) -> "tuple[int, str]":
 
 
 def plan_status(plan: Path, tracker: str) -> "tuple[str, str]":
-    """(status, source): the tracker's status, else the Status line's, else none."""
+    """(status, source): the tracker's status, else ("none", "none"). A plan's
+    own text is never read for a status."""
     if tracker and Path(tracker).is_file():
         code, shown, err = _show(Path(tracker))
         if shown is not None and shown.get("status"):
             return (str(shown["status"]), "tracker")
-        print(f"[plan_tracker] could not read the tracker at {tracker} ({err}); "
-              "reading the plan's Status line", file=sys.stderr)
-    try:
-        value = _status_line_value(_read_plan(plan))
-    except OSError:
-        value = None
-    if value:
-        return (status_from_line(value), "status-line")
+        print(f"[plan_tracker] could not read the tracker at {tracker} ({err})",
+              file=sys.stderr)
     return ("none", "none")
 
 
@@ -315,7 +244,7 @@ def open_tracker(plan: Path, tracker: str, *, issue: "int | None" = None,
                  root=None) -> "tuple[int, str]":
     """Open the plan's tracker at `queued`, unless one is already open."""
     if not tracker:
-        return (NO_TRACKER, "agentm named no tracker for this plan; it runs on its Status line")
+        return (NO_TRACKER, "agentm named no tracker for this plan; it runs without one")
     path = Path(tracker)
     if path.exists():
         code, shown, err = _show(path)
@@ -348,15 +277,8 @@ def step(plan: Path, tracker: str, *, state: str, next_steps: str,
          root=None) -> "tuple[int, str]":
     """Record a step: open a missing tracker, move `queued` or `parked` to
     `active`, rewrite an `active` one in place. A final tracker is refused."""
-    code, message = _step(plan, tracker, state=state, next_steps=next_steps, root=root)
-    if code in (0, NO_TRACKER):
-        mirror_status_line(plan, "active")
-    return (code, message)
-
-
-def _step(plan, tracker, *, state, next_steps, root):
     if not tracker:
-        return (NO_TRACKER, "agentm named no tracker for this plan; the Status line says in-progress")
+        return (NO_TRACKER, "agentm named no tracker for this plan; progress records the step")
     path = Path(tracker)
     if not path.exists():
         code, message = open_tracker(plan, tracker, root=root)
@@ -382,16 +304,8 @@ def close(plan: Path, tracker: str, *, outcome: str, state: "str | None" = None,
           next_steps: "str | None" = None, root=None) -> "tuple[int, str]":
     """Close the tracker at `done` with its Outcome. `queued` and `parked` pass
     through `active` first; a tracker already `done` is left as it is."""
-    code, message = _close(plan, tracker, outcome=outcome, state=state,
-                           next_steps=next_steps, root=root)
-    if code in (0, NO_TRACKER):
-        mirror_status_line(plan, "done")
-    return (code, message)
-
-
-def _close(plan, tracker, *, outcome, state, next_steps, root):
     if not tracker:
-        return (NO_TRACKER, "agentm named no tracker for this plan; the Status line says done")
+        return (NO_TRACKER, "agentm named no tracker for this plan; progress records the close")
     path = Path(tracker)
     if not path.exists():
         code, message = open_tracker(plan, tracker, root=root)

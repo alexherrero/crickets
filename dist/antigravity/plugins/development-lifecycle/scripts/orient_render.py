@@ -47,17 +47,6 @@ import sys  # noqa: E402
 if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 
-# Step 8 of crickets task 101 retires the Status line, and this fallback with it.
-def _extract_status(plan_text: str) -> str:
-    """The value of the first `Status:` line (markdown-bold tolerated), or "—"."""
-    for line in plan_text.splitlines():
-        stripped = line.strip().lstrip("*").strip()
-        if stripped.lower().startswith("status:"):
-            value = stripped[len("status:"):].strip().strip("*").strip()
-            return value or "—"
-    return "—"
-
-
 def _load_sibling(name: str):
     """A script from this directory, loaded by path under its own module name,
     so another plugin's `agentm_bridge` already in the process can't stand in
@@ -166,13 +155,10 @@ def _plan_label(plan: str) -> str:
 
 
 def _status(plan: str, tracker: str) -> str:
-    """`plan_tracker.py status`: the tracker, else the plan's Status line."""
-    if _plan_tracker is not None:
-        return _plan_tracker.plan_status(Path(plan), tracker)[0]
-    try:
-        return _extract_status(Path(plan).read_text(encoding="utf-8"))
-    except OSError:
+    """`plan_tracker.py status`: the tracker's status, else `none`."""
+    if _plan_tracker is None:
         return "none"
+    return _plan_tracker.plan_status(Path(plan), tracker)[0]
 
 
 def _importance(tracker: str) -> "int | None":
