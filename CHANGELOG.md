@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+**MAJOR.** The second and last crickets landing of agentm-vault part 15. development-lifecycle now reads and writes plans only where agentm puts them. It composes no plan layout of its own, and the tracker is a plan's only status. After this release no crickets plugin names the retired vault harness directory, and `check-no-harness-paths` enforces that with no exemption list. It pairs with [crickets v4.0.0](https://github.com/alexherrero/crickets/releases/tag/v4.0.0), which moved every other plugin, and with agentm task 172, whose readers take the tracker first.
+
+### Breaking
+
+- **development-lifecycle keeps its plans through agentm, and nowhere else** (crickets task 101).
+  - **Without agentm there is no plan.** `resolve_plan.py` exits 1, and `/plan`, `/work`, `/review`, `/release` and `/bugfix` say so. The standalone `.harness/` pair and the vault-reachability probe are gone. So is a vault that never moved to the projects layout: its plans in a vault harness directory are no longer found.
+  - **A repo with no vault still plans.** agentm answers it a repo-local `.harness/PLAN.md` or `.harness/PLAN-<slug>.md`, each with a tracker, and the commands follow that answer.
+- **`queued-plans/` is gone.** Only a task stages, and a queued task is its `queued` tracker; `/plan --activate` moves that tracker to `active` in place. `stage_plan.py` refuses a flat answer with exit 2.
+- **The Status line is gone.** A plan carries no `**Status:**` line.
+  - `plan_tracker.py status` reads the tracker, else prints `none`.
+  - `step` and `close` never write the plan file.
+  - `/release` needs a tracker at `done`: a plan that has never had a tracker waits until `/work` opens one.
+- **Flat archives are gone for tasks.** A task never moves at close-out. Only a repo-local plan archives, to `.harness/archive/`, and its tracker stays in `.harness/` at `done`.
+- **Removed flags.** `--harness-dir` is gone from `/queue-status-lite` (`queue_status.py`), which is now a pure bridge to agentm's reader. `coalescence_checks.py` keeps its `--harness-dir`, because the repo-local archive check still reads `.harness/`.
+
+### Changed
+
+- `development-lifecycle` 0.49.0:
+  - **Commands.** A bare `/plan`, `/work` or `/review` follows agentm's answer: exit 4 asks for a task, exit 0 is a repo with no vault, and exit 1 is no agentm. The close-out paragraph in `/work`, `/release` and `/bugfix` says a task never moves.
+  - **`features.json`** lives in the project's `desk/`, found through development-lifecycle's own `project_homes.py`, the sixth byte-identical copy. `/plan` names the board ledger by github-projects' own items path.
+  - **`/open` and `/orient`** list plans through agentm, by checkout, or by slug for a project with no checkout (`agentm_bridge.py plans --project`). `--note` writes `<desk>/orientation-note.md`, and the gloss is the charter's What line alone. The "no _harness/ found" line is gone, and one line says when agentm lists no plans. For a project with no checkout, each task's status waits on an agentm verb, `resolve-active-plan --project`; until it ships, those rows list the plan without a status.
+  - **`/setup`** asks agentm first. On exit 4 it seeds no plan and puts `features.json` in the desk. On exit 0 (a repo with no vault) it seeds the repo-local plan, with no Status line. On exit 1 it seeds nothing and says why.
+- `conventions` 0.12.0: the gate inventory lists `no-harness-paths`, and `coalescence-gate` item 5 says a task never moves at close-out. The `agentic-engineering` skill puts `features.json` in the desk.
+
+### Internal
+
+- Deleted: `harness_root_drift.py`, which nothing called, with its test and dist copies. Also gone: `orient_render.py`'s harness-directory reads, `resolve_project.py`'s `_extract_gloss`, and `plan_tracker.py`'s Status-line mirror.
+- `scripts/check-no-harness-paths.py` loses its `EXEMPT` list and stale-exemption check. Every remaining literal carries a `harness-deprecation:` marker.
+- `scripts/no_harness_fixture.py`:
+  - its stub `process_seam.py` answers `state-path`, exiting 4 on a bare call;
+  - its stub `harness_memory.py` answers `resolve-active-plan`, by checkout or by slug;
+  - a stub `tracker.py` is new, with `new`, `show` and `transition`.
+- `test_no_harness_dir.py` covers every development-lifecycle writer: the plan tracker, staging, setup and the features seed, the resolver, and the orientation note.
+- Tests rebuilt on the task layout, with repo-local pairs for a repo with no vault: `test_queue_status`, `test_resolve_plan`, `test_stage_plan`, `test_plan_tracker`, `test_orient_render`, `test_resolve_project`, `test_agentm_bridge_plans`, and `test_developer_workflows_specs` (new pins: no command names `queued-plans` or the vault harness directory, and none writes a Status line).
+- Wiki:
+  - rewritten for tasks: Named plans, Run a named plan, See every active plan and Open a project by name;
+  - the Development Lifecycle reference;
+  - the development-lifecycle design body, with a 2026-09-23 amendment entry.
+
 ## [v4.0.0] — 2026-09-23 — Major: the other plugins find a project's homes through agentm
 
 **MAJOR.** The first crickets landing of agentm-vault part 15, the retirement of the vault harness directory. Every plugin except development-lifecycle now asks agentm where a project keeps its tasks, designs and machine files, through one small module pinned identical in each (`project_homes.py`), and none composes, probes or creates a harness directory. Four things that had quietly stopped working since the projects migration of 2026-09-16 work again: the evidence tracker gates a task's `plan.md`, depth maintenance finds the project's plans, `/design` runs on a project that keeps tasks, and wiki-watch keeps real cursors. It is major because a vault that never moved to the projects layout loses these, and three script flags and verbs are gone. It needs agentm with `process_seam.py project-path` and `list-plans --project` ([agentm #681](https://github.com/alexherrero/agentm/pull/681)). The development-lifecycle half follows in the next release.
