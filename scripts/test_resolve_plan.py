@@ -566,11 +566,9 @@ class TestRealSeam(unittest.TestCase):
         self.addCleanup(patcher.stop)
         os.environ.pop("MEMORY_VAULT_PATH", None)
 
-    def test_a_flat_pair_and_its_tracker(self):
-        rc, out, err = rp.resolve("foo", str(self.repo), seam=REAL_SEAM)
-        self.assertEqual(rc, 0, err)
-        h = self.harness
-        self.assertEqual(out, f"{h / 'PLAN-foo.md'}\t{h / 'progress-foo.md'}\t{h / 'tracker-foo.md'}\n")
+    # The flat pair's real-seam case retired with agentm #680 (agentm-vault part
+    # 15): agentm places a named plan in a numbered task and no longer answers a
+    # flat pair. Task 101 retires the flat branch this bridge still carries.
 
     def test_a_numbered_task_by_its_full_name(self):
         rc, out, err = rp.resolve("042-build-the-brief", str(self.repo), seam=REAL_SEAM)
