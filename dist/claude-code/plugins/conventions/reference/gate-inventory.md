@@ -20,6 +20,7 @@ The `bash scripts/check-all.sh` battery this repo's own [`ci-battery`](../rules/
 | `voice-floor-parity` | the always-load voice floor stays a superset of the voice rule pack |
 | `check-syntax` | every shell/PowerShell script under `src/` parses cleanly |
 | `hook-parity` | every developer-safety hook's `.sh`/`.ps1` twins stay behaviorally paired |
+| `no-harness-paths` | no tracked file names the retired vault harness directory, outside a `harness-deprecation:` marker or a shrinking exemption list |
 | `check-no-pii` | no personal information (emails, personal paths, API keys, phone numbers) in the tracked tree |
 | `board sync` | the vault's `board-items.json` and the GitHub Project board agree |
 | `tag-reachability` | every release tag points at a commit reachable from `main` |

@@ -3,7 +3,7 @@ name: coalescence-gate
 description: Every arc ends with a required close-out checklist that fires when a release closes an arc — narrative rows, roadmap ids in the release body, boards reconciled, the prose gate green, archive moves done, the dark registry reconciled, and an orphan check. Mostly a session discipline `/release` enforces; a narrow slice of three items (narrative row, shipping-item board state, archive hygiene) is machine-checked by ship-release's own coalescence_checks.py on every release.
 kind: rule
 supported_hosts: [claude-code, antigravity]
-version: 0.2.1
+version: 0.2.2
 ---
 
 ## Rule: coalescence-gate
@@ -18,7 +18,7 @@ Migrated in (Consolidation arc, CONS-8) from the Consolidation-arc verdict's rul
 2. **Release cut with roadmap ids in the body.** The release notes name every roadmap item the release ships (`(#123)`-style or the project's own id shape) — not just a commit list. See the [`release-cadence`](release-cadence.md) rule.
 3. **Boards reconciled + a plain-English pass.** `gh project list` for every board this arc touched matches the expected canonical count (drift is a signal something wasn't closed); a plain-English pass confirms Feature/Version titles and `Track` glosses read clearly to a stranger, not just to the session that wrote them. **Machine-checked slice:** `coalescence_checks.py`'s `board-item-closed` check blocks the cut if the *specific shipping item* named by `--item-id` is still open — it does not reconcile the whole board or read titles for plain English.
 4. **Prose gate green.** `check-slop.py --strict` (or the project's equivalent anti-slop gate) exits clean on the full tree. Once the gate is wired to block at warning-tier-and-above in `check-all.sh` + CI (the Consolidation arc's ruling 2), this item is **automatic** — it's a check, not new work, at coalescence time.
-5. **Archive moves done, eyeline clean.** Every close-out's archive step actually ran — no flat, un-archived close-out artifacts sitting loose in a project's working directory. See the archive-step path change (`archive/`, not a flat path) in the [`agentic-engineering`](../skills/agentic-engineering/SKILL.md) skill's "The `.harness/PLAN.md` shape" section. **Machine-checked:** `coalescence_checks.py`'s `archive-hygiene` check blocks the cut if any `PLAN.archive.*` file sits flat in the harness directory.
+5. **Archive moves done, eyeline clean.** Every close-out's archive step actually ran — no flat, un-archived close-out artifacts sitting loose in a project's working directory. See the archive-step path change (`archive/`, not a flat path) in the [`agentic-engineering`](../skills/agentic-engineering/SKILL.md) skill's "The `.harness/PLAN.md` shape" section. A task never moves: a closing arc's tasks carry `done` trackers, and agentm's nightly job moves their finished records. Only a repo-local plan archives — in a repo with no vault, a plan in `.harness/` moves to `.harness/archive/`. **Machine-checked:** `coalescence_checks.py`'s `archive-hygiene` check blocks the cut if any `PLAN.archive.*` file sits flat in the repo-local `.harness/`.
 6. **Dark-registry reconciled, D4-style.** Walk every entry in the project's dark registry (see the [`dark-registry`](dark-registry.md) rule); for each, either its owning plan shipped (flip the entry to built/live) or it's still genuinely future work (leave it, with the owning plan reaffirmed) — nothing sits dark with a stale or absent owner.
 7. **Orphan check — no new zero-caller scripts.** Re-run the project's own orphan/dead-code census (whatever produced the arc's original zero-caller inventory). A script with no caller that entered the tree during the arc and wasn't dark-registered is a regression of the exact sprawl this discipline exists to stop.
 
@@ -38,7 +38,7 @@ Before tagging a release that closes an arc, confirm all seven:
 2. Release body names the roadmap ids it ships.
 3. `gh project list` matches the expected board count; titles/`Track` glosses read plainly.
 4. The prose gate exits clean on the full tree.
-5. Every close-out's archive step ran; the working directory eyeline is clean (no stray flat archive artifacts).
+5. Every close-out's archive step ran; the working directory eyeline is clean (no stray flat archive artifacts; a task's tracker is `done`).
 6. Every dark-registry entry's owning plan either shipped (flip it) or is reaffirmed as still-future (leave it, owner intact).
 7. The orphan/dead-code census shows no new zero-caller script introduced this arc without a dark-registry entry.
 
