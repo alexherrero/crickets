@@ -70,7 +70,13 @@ description: Standalone adversarial code review of any diff or PR — the advers
 # stdin carries the marker too. adversarial-reviewer-cross.md's Step 4,
 # /code-review and /doubt name the new reasons and say agy, not gemini (own
 # frontmatter versions 0.3.0 -> 0.3.1, 0.1.0 -> 0.1.1).
-version: 0.3.4
+# 0.4.0 = agentm-vault part 15 (crickets task 100-retire-harness-in-the-other-plugins):
+# scripts/project_homes.py (new, byte-identical in code-review, design,
+# github-projects, wiki and tokens; pinned by scripts/test_project_homes.py)
+# asks agentm where a project's tasks/, designs/ and desk/ are and which plans
+# it has (process_seam.py project-path, harness_memory.py list-plans), so no
+# plugin composes a project path.
+version: 0.4.0
 category: Coding
 requires: []
 standalone: true

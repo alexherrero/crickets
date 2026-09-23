@@ -132,7 +132,9 @@ class TestClaudeEmitter(unittest.TestCase):
         # 0.11.7 = vault_layout lists both spellings of the root space, lowercase
         # first (agentm's root casing, plan 08), with the witness case-folded and
         # a rung's path spelled as the disk lists it.
-        self.assertEqual(self._plugin_json("wiki")["version"], "0.11.7")
+        # 0.12.0 = scripts/project_homes.py asks agentm for a project's homes
+        # (agentm-vault part 15, crickets task 100).
+        self.assertEqual(self._plugin_json("wiki")["version"], "0.12.0")
         # 0.3.0 = check-no-pii.sh + templates/hooks/pre-push moved into src/pii/
         # so they actually ship inside the plugin payload (R2.4 task 7).
         # 0.3.1 = check-no-pii.sh scan collapsed to one grep per file (fixes a
