@@ -121,6 +121,50 @@ class Writers(unittest.TestCase):
             self.assertTrue((task / "plan.md").is_file())
             self.assertEqual(nhf.harness_dirs(sp.root), [])
 
+    def _wiki_watch(self):
+        import importlib.util
+        wiki = HERE.parent / "src" / "wiki" / "scripts"
+        sys.path.insert(0, str(wiki))
+        self.addCleanup(sys.path.remove, str(wiki))
+        spec = importlib.util.spec_from_file_location("ww_cycle_no_harness",
+                                                      wiki / "wiki_watch_cycle.py")
+        cyc = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = cyc  # its dataclasses resolve their module by name
+        spec.loader.exec_module(cyc)
+        return cyc
+
+    def _cycle(self, cyc, sp):
+        return cyc.run_cycle(sp.repo, enabled=True,
+                             run_config=cyc.cfg.RunConfig(watch_sources=["."], dispatch_mode="pr"),
+                             wiki_target=str(sp.repo / "wiki"), token="abc123",
+                             changed_paths=["src/w.py"], gh_available=False, now=1.0)
+
+    def test_a_wiki_watch_cycle(self):
+        """wiki (step 7): a cycle keeps its cursors and audit in the project's desk/."""
+        import os
+        from unittest import mock
+        cyc = self._wiki_watch()
+        with nhf.ScratchProject() as sp, mock.patch.dict(os.environ, sp.env()):
+            report = self._cycle(cyc, sp)
+            self.assertFalse(report.skipped, report.reason)
+            self.assertEqual(Path(report.state_dir), sp.desk / "wiki-watch")
+            self.assertTrue((sp.desk / "wiki-watch" / "audit.log").is_file())
+            self.assertFalse((sp.repo / ".harness" / "wiki-watch").exists())
+            self.assertEqual(nhf.harness_dirs(sp.root), [])
+
+    def test_a_wiki_watch_cycle_without_agentm_skips(self):
+        import os
+        from unittest import mock
+        cyc = self._wiki_watch()
+        with nhf.ScratchProject() as sp, mock.patch.dict(
+                os.environ, {"AGENTM_SCRIPTS_DIR": "", "HOME": str(sp.root / "home")}):
+            report = self._cycle(cyc, sp)
+            self.assertTrue(report.skipped)
+            self.assertIn("no desk", report.reason)
+            self.assertFalse((sp.repo / ".harness" / "wiki-watch").exists())
+            self.assertFalse((sp.desk / "wiki-watch").exists())
+            self.assertEqual(nhf.harness_dirs(sp.root), [])
+
     def test_depth_maintenance(self):
         """github-projects (step 4): a dry-run cycle over agentm's plan list."""
         script = next((HERE.parent / "src").glob("*-projects/scripts/depth_maintain.py"))

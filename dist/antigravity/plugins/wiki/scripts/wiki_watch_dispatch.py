@@ -39,7 +39,7 @@ if str(_SCRIPTS_DIR) not in sys.path:
 
 import wiki_watch_config as cfg  # sibling: find_agentm_script + RunConfig
 
-_AUDIT_FILE = "audit.log"  # JSONL; under _harness/wiki-watch/; LOCAL, never committed.
+_AUDIT_FILE = "audit.log"  # JSONL; under <desk>/wiki-watch/; LOCAL, never committed.
 
 
 # ----------------------------------------------------------------------------
@@ -260,7 +260,7 @@ def audit_record(
 def append_audit(state_dir: Path | str, record: dict) -> Path:
     """Append one JSONL record to <state_dir>/audit.log. Creates the dir. Returns
     the audit path. The log is LOCAL state — never committed (it lives under the
-    gitignored _harness/wiki-watch/ tree, or the watched repo's .harness/)."""
+    project's <desk>/wiki-watch/ tree, which agentm names)."""
     d = Path(state_dir)
     d.mkdir(parents=True, exist_ok=True)
     path = d / _AUDIT_FILE

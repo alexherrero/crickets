@@ -62,8 +62,6 @@ _T100 = "100-retire-harness-in-the-other-plugins"
 # Files that still name `_harness`, each with the landing that clears it.
 EXEMPT: dict[str, str] = {
     # task 100 — the other plugins
-    "src/wiki/scripts/wiki_watch_detect.py": f"{_T100} step 7",
-    "src/wiki/scripts/wiki_watch_dispatch.py": f"{_T100} step 7",
     "src/tokens/commands/handoff.md": f"{_T100} step 8",
     "src/tokens/scripts/handoff_pack.py": f"{_T100} step 8",
     "src/obsidian-vault/hooks/conflict-merger-session-start/hook.md": f"{_T100} step 9",
