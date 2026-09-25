@@ -811,7 +811,8 @@ class TestProsePassMemoryRoot(unittest.TestCase):
 # ── research plugin: the watchlist chain ────────────────────────────────────
 
 class TestResearchWatchlistDir(unittest.TestCase):
-    """codebase-improvement writes only to `projects/agentm/_watchlist`; a
+    """codebase-improvement writes to `resources/watchlist` (agentm task 176),
+    or to `projects/agentm/_watchlist` while that is where the watchlist is; a
     retired memory-space generation is passed over even when present."""
 
     def test_a_retired_generation_is_passed_over(self):
@@ -820,10 +821,16 @@ class TestResearchWatchlistDir(unittest.TestCase):
                 root = Path(td)
                 (root / space / "_watchlist").mkdir(parents=True)
                 self.assertEqual(_rel(codebase_improvement.watchlist_dir(root), root),
-                                 "projects/agentm/_watchlist")
+                                 "resources/watchlist")
 
-    def test_defaults_to_the_projects_watchlist(self):
+    def test_defaults_to_the_reference_library(self):
         with tempfile.TemporaryDirectory() as td:
+            self.assertEqual(_rel(codebase_improvement.watchlist_dir(Path(td)), Path(td)),
+                             "resources/watchlist")
+
+    def test_the_projects_watchlist_while_it_is_the_one_there(self):
+        with tempfile.TemporaryDirectory() as td:
+            (Path(td) / "projects" / "agentm" / "_watchlist").mkdir(parents=True)
             self.assertEqual(_rel(codebase_improvement.watchlist_dir(Path(td)), Path(td)),
                              "projects/agentm/_watchlist")
 
@@ -989,6 +996,16 @@ class TestMemoryRootTrims(unittest.TestCase):
             old.mkdir(parents=True)
             self.assertEqual(vl.watchlist_dir(mr), old)
             new = mr.parent / "Projects" / "agentm" / "_watchlist"
+            new.mkdir(parents=True)
+            self.assertEqual(vl.watchlist_dir(mr).resolve(), new.resolve())
+
+    def test_watchlist_is_the_reference_library_once_moved(self):
+        """agentm task 176 moved the watchlist to `resources/watchlist` at the
+        vault root; it wins over the project-space home once it exists."""
+        with tempfile.TemporaryDirectory() as td:
+            mr = self._nested(td)
+            (mr.parent / "projects" / "agentm" / "_watchlist").mkdir(parents=True)
+            new = mr.parent / "resources" / "watchlist"
             new.mkdir(parents=True)
             self.assertEqual(vl.watchlist_dir(mr).resolve(), new.resolve())
 

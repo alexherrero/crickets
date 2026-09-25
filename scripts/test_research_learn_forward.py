@@ -107,9 +107,10 @@ class LearnForwardTests(unittest.TestCase):
         self._engine_env.start()
         fl = learn_forward.agentm_bridge.load_forward_learning_module()
         # The whitelist goes where the current agentm keeps it, in its own
-        # project; the retired `standards/` spelling it still reads is agentm's
-        # to test, not a home this suite leans on.
-        sources_path = self.vault / "Projects" / "agentm" / "forward-learning-sources.json"
+        # project's `desk/` (agentm task 176 moved the config lists there and
+        # retired the project-root copy); the retired `standards/` spelling it
+        # still reads is agentm's to test, not a home this suite leans on.
+        sources_path = self.vault / "Projects" / "agentm" / "desk" / "forward-learning-sources.json"
         sources_path.parent.mkdir(parents=True, exist_ok=True)
         sources_path.write_text(
             json.dumps(
@@ -175,22 +176,25 @@ class LearnForwardTests(unittest.TestCase):
         learn_forward.learn(self.vault, fetcher=fetcher, now=1_700_000_000.0)
         post = _snapshot(self.vault)
 
-        # A scan writes ONLY into the watchlist, and only into its current home,
-        # `Projects/agentm/_watchlist`; the fetch cache sits in the engine state
+        # A scan writes ONLY into the watchlist, and only into one of its two
+        # current homes — `resources/watchlist`, the shared reference library
+        # since agentm task 176, or `Projects/agentm/_watchlist` on an agentm
+        # that predates that move; the fetch cache sits in the engine state
         # dir setUp points at the scratch directory, outside the vault. The
         # watchlist's retired memory-space homes (`memory/`, `personal/`,
         # `personal-private/`) and the old `_meta/` cache count as stray writes:
         # agentm must not write there any more. The home is named here rather
         # than asked of agentm's watchlist_root(), so a resolver that hands back
         # a retired home fails this check instead of vouching for itself.
-        watchlist = ("Projects", "agentm", "_watchlist")
+        homes = (("resources", "watchlist"), ("Projects", "agentm", "_watchlist"))
         new_or_changed = {p for p in pre.keys() | post.keys() if pre.get(p) != post.get(p)}
         self.assertTrue(new_or_changed, "the scan wrote nothing, so this check would prove nothing")
+        used = {h for rel in new_or_changed for h in homes if Path(rel).parts[: len(h)] == h}
+        self.assertEqual(len(used), 1, f"the scan wrote into {len(used)} watchlist homes: {sorted(new_or_changed)}")
         for rel in new_or_changed:
-            self.assertEqual(
-                Path(rel).parts[: len(watchlist)],
-                watchlist,
-                f"unexpected write outside Projects/agentm/_watchlist: {rel}",
+            self.assertTrue(
+                any(Path(rel).parts[: len(h)] == h for h in homes),
+                f"unexpected write outside the watchlist: {rel}",
             )
 
     def test_main_cli_smoke(self):

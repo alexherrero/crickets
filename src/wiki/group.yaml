@@ -208,7 +208,7 @@ standalone: true
 # as agentm names it; the dead vault-state-path call (agentm deleted the verb
 # in V5-3) and the repo-local .harness/wiki-watch/ fallback are gone, and a
 # cycle with no desk skips. `state-dir --local` is gone.
-version: 0.12.0
+version: 0.12.1
 capabilities: [wiki-maintenance, wiki]
 renamed_from: [wiki-maintenance]
 enhances:

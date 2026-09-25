@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The watchlist follows agentm's move to the reference library** (agentm task 176, the operator's rulings of 2026-09-24).
+  - `research` 0.2.7: `codebase_improvement.watchlist_dir()` reads and writes `resources/watchlist/` at the vault root first, and `projects/agentm/_watchlist/` only while that is where the watchlist still is. A vault with neither gets the new home.
+  - `wiki` 0.12.1: diataxis-author's `vault_layout.watchlist_dir()` takes the same first rung.
+  - The learn-forward test seeds agentm's source list in `projects/agentm/desk/`, where agentm reads it since its project roots were locked to five files, and accepts either watchlist home, provided a scan writes into only one.
+  - The issue template points at the roadmap's new home, `projects/agentm/docs/roadmap.md`.
+
 ## [v5.0.0] — 2026-09-23 — Major: development-lifecycle keeps its plans through agentm alone
 
 **MAJOR.** The second and last crickets landing of agentm-vault part 15. development-lifecycle now reads and writes plans only where agentm puts them. It composes no plan layout of its own, and the tracker is a plan's only status. After this release no crickets plugin names the retired vault harness directory, and `check-no-harness-paths` enforces that with no exemption list. It pairs with [crickets v4.0.0](https://github.com/alexherrero/crickets/releases/tag/v4.0.0), which moved every other plugin, and with agentm task 172, whose readers take the tracker first.
