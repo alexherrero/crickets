@@ -17,7 +17,7 @@ contact_links:
 
   - name: 📖 Read ROADMAP-MASTER (governance + bucket order)
     url: https://github.com/alexherrero/crickets/blob/main/wiki/Home.md
-    about: Master roadmap lives in the operator's vault (`<vault>/projects/agentm/roadmap.md`); the crickets wiki Home points at the published-side docs.
+    about: Master roadmap lives in the operator's vault (`<vault>/projects/agentm/docs/roadmap.md`); the crickets wiki Home points at the published-side docs.
 
   - name: 💬 General questions — open a Discussion
     url: https://github.com/alexherrero/crickets/discussions

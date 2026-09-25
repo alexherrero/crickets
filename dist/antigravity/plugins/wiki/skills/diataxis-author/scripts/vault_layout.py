@@ -317,8 +317,15 @@ FEATURE_PROJECT = "agentm"
 
 
 def watchlist_dir(root) -> Path:
-    """The forward-learning watchlist: `<projects-space>/agentm/_watchlist`
-    since the memory-root trims, `<memory-space>/_watchlist` before them."""
+    """The forward-learning watchlist: `resources/watchlist` at the vault root
+    since the AgentKV layout move (agentm task 176, 2026-09-24),
+    `<projects-space>/agentm/_watchlist` after the memory-root trims and
+    before the move, `<memory-space>/_watchlist` before them."""
+    v = Path(root)
+    for base in ([v.parent, v] if root_sibling_witnessed(v) else [v]):
+        cand = base / "resources" / "watchlist"
+        if cand.is_dir():
+            return cand
     found = resolve_existing_under_projects(root, FEATURE_PROJECT, "_watchlist")
     if found is not None:
         return found

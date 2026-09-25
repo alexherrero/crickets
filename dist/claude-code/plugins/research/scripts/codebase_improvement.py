@@ -61,6 +61,25 @@ FEATURE_PROJECT = "agentm"
 _PROJECTS_SPELLINGS = ("projects", "Projects")
 
 
+# The AgentKV layout (agentm task 176, the operator's ruling of 2026-09-24):
+# the watchlist moved again, to the vault's shared reference library,
+# `resources/watchlist/`, a vault-root space beside `projects/`. It is read
+# and written there first; the project-space home is the fallback while a
+# vault has not had the move.
+RESOURCES_WATCHLIST = ("resources", "watchlist")
+
+
+def _nested(vault: Path) -> bool:
+    parent = vault.parent
+    return not (vault / ".obsidian").is_dir() and (
+        (parent / ".obsidian").is_dir() or (parent / "standards").is_dir())
+
+
+def _resources_watchlist_candidates(vault: Path) -> list:
+    roots = [vault.parent, vault] if _nested(vault) else [vault]
+    return [r.joinpath(*RESOURCES_WATCHLIST) for r in roots]
+
+
 def _project_watchlist_candidates(vault: Path) -> list:
     out = []
     parent = vault.parent
@@ -71,14 +90,17 @@ def _project_watchlist_candidates(vault: Path) -> list:
 
 
 def watchlist_dir(vault: Path) -> Path:
-    """`projects/agentm/_watchlist`: the first candidate that exists, spelled
-    as the disk lists it, else the first candidate. Never a retired
-    memory-space home."""
-    cands = _project_watchlist_candidates(vault)
-    for c in cands:
+    """`resources/watchlist` at the vault root when it exists, else
+    `projects/agentm/_watchlist` spelled as the disk lists it when that
+    exists, else the new home. Never a retired memory-space home."""
+    resources = _resources_watchlist_candidates(vault)
+    for c in resources:
+        if c.is_dir():
+            return c
+    for c in _project_watchlist_candidates(vault):
         if c.is_dir():
             return _as_listed(c, vault.parent if c.parent.parent.parent == vault.parent else vault)
-    return cands[0]
+    return resources[0]
 
 
 def _as_listed(path: Path, base: Path) -> Path:

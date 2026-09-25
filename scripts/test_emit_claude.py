@@ -134,7 +134,7 @@ class TestClaudeEmitter(unittest.TestCase):
         # a rung's path spelled as the disk lists it.
         # 0.12.0 = scripts/project_homes.py asks agentm for a project's homes
         # (agentm-vault part 15, crickets task 100).
-        self.assertEqual(self._plugin_json("wiki")["version"], "0.12.0")
+        self.assertEqual(self._plugin_json("wiki")["version"], "0.12.1")
         # 0.3.0 = check-no-pii.sh + templates/hooks/pre-push moved into src/pii/
         # so they actually ship inside the plugin payload (R2.4 task 7).
         # 0.3.1 = check-no-pii.sh scan collapsed to one grep per file (fixes a
