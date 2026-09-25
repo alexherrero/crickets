@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The watchlist's older homes are no longer read** (agentm task 176 step 8). agentm moved the watchlist to `resources/watchlist/` on 2026-09-25, and its first forward-learning run wrote there.
+  - `research` 0.2.8: `codebase_improvement.watchlist_dir()` answers the reference library only.
+  - `wiki` 0.12.2: diataxis-author's `vault_layout.watchlist_dir()` does the same.
+  - A leftover `projects/agentm/_watchlist/` or memory-space copy is never chosen, so it cannot fork the watchlist; the tests say so.
+
+### Changed
+
 - **The watchlist follows agentm's move to the reference library** (agentm task 176, the operator's rulings of 2026-09-24).
   - `research` 0.2.7: `codebase_improvement.watchlist_dir()` reads and writes `resources/watchlist/` at the vault root first, and `projects/agentm/_watchlist/` only while that is where the watchlist still is. A vault with neither gets the new home.
   - `wiki` 0.12.1: diataxis-author's `vault_layout.watchlist_dir()` takes the same first rung.

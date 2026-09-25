@@ -64,8 +64,7 @@ _PROJECTS_SPELLINGS = ("projects", "Projects")
 # The AgentKV layout (agentm task 176, the operator's ruling of 2026-09-24):
 # the watchlist moved again, to the vault's shared reference library,
 # `resources/watchlist/`, a vault-root space beside `projects/`. It is read
-# and written there first; the project-space home is the fallback while a
-# vault has not had the move.
+# and written there only; the move ran on 2026-09-25.
 RESOURCES_WATCHLIST = ("resources", "watchlist")
 
 
@@ -90,16 +89,14 @@ def _project_watchlist_candidates(vault: Path) -> list:
 
 
 def watchlist_dir(vault: Path) -> Path:
-    """`resources/watchlist` at the vault root when it exists, else
-    `projects/agentm/_watchlist` spelled as the disk lists it when that
-    exists, else the new home. Never a retired memory-space home."""
+    """`resources/watchlist` at the vault root: the first spelling that exists,
+    else the vault root's. The project-space home the watchlist left on
+    2026-09-25 (agentm task 176) and the retired memory-space homes are never
+    chosen, so a leftover copy cannot fork the watchlist."""
     resources = _resources_watchlist_candidates(vault)
     for c in resources:
         if c.is_dir():
             return c
-    for c in _project_watchlist_candidates(vault):
-        if c.is_dir():
-            return _as_listed(c, vault.parent if c.parent.parent.parent == vault.parent else vault)
     return resources[0]
 
 

@@ -162,10 +162,9 @@ class RescanNeverResetsOperatorReviewTests(unittest.TestCase):
 
 class WatchlistHomeTests(unittest.TestCase):
     """The watchlist lives in the vault's reference library,
-    `resources/watchlist` (agentm task 176), and in the project space,
-    `Projects/agentm/_watchlist`, on a vault that has not had that move (plan
-    05). Its retired memory-space homes are never chosen, even on a vault that
-    still has them."""
+    `resources/watchlist` (agentm task 176). Its retired homes, the project
+    space (plan 05) and the memory spaces before it, are never chosen, even on
+    a vault that still has them."""
 
     def test_a_retired_memory_space_home_is_never_chosen(self):
         with tempfile.TemporaryDirectory() as td:
@@ -176,15 +175,14 @@ class WatchlistHomeTests(unittest.TestCase):
                 (mr / space / "_watchlist").mkdir(parents=True)
             self.assertEqual(codebase_improvement.watchlist_dir(mr), root / "resources" / "watchlist")
 
-    def test_the_projects_watchlist_is_used_once_it_exists(self):
+    def test_a_leftover_project_space_copy_is_never_chosen(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td) / "Vault"
             (root / ".obsidian").mkdir(parents=True)
             mr = root / "Agent"
             (mr / "memory" / "_watchlist").mkdir(parents=True)
-            new = root / "Projects" / "agentm" / "_watchlist"
-            new.mkdir(parents=True)
-            self.assertEqual(codebase_improvement.watchlist_dir(mr), new)
+            (root / "Projects" / "agentm" / "_watchlist").mkdir(parents=True)
+            self.assertEqual(codebase_improvement.watchlist_dir(mr), root / "resources" / "watchlist")
 
     def test_a_flat_vault_probes_inside_the_root_only(self):
         with tempfile.TemporaryDirectory() as td:
@@ -202,18 +200,17 @@ class WatchlistHomeTests(unittest.TestCase):
             mr.mkdir()
             self.assertEqual(codebase_improvement.watchlist_dir(mr), root / "resources" / "watchlist")
 
-    def test_the_reference_library_wins_once_it_exists(self):
-        """Before the move the project-space home is the answer; after it the
-        reference library is, even while an emptied project folder remains."""
+    def test_the_reference_library_is_the_only_home(self):
+        """The move ran on 2026-09-25: the reference library is the answer
+        whether or not it exists yet, and a project-space copy never is."""
         with tempfile.TemporaryDirectory() as td:
             root = Path(td) / "Vault"
             (root / ".obsidian").mkdir(parents=True)
             mr = root / "Agent"
             mr.mkdir()
-            old = root / "projects" / "agentm" / "_watchlist"
-            old.mkdir(parents=True)
-            self.assertEqual(codebase_improvement.watchlist_dir(mr), old)
+            (root / "projects" / "agentm" / "_watchlist").mkdir(parents=True)
             new = root / "resources" / "watchlist"
+            self.assertEqual(codebase_improvement.watchlist_dir(mr), new)
             new.mkdir(parents=True)
             self.assertEqual(codebase_improvement.watchlist_dir(mr), new)
 

@@ -176,17 +176,16 @@ class LearnForwardTests(unittest.TestCase):
         learn_forward.learn(self.vault, fetcher=fetcher, now=1_700_000_000.0)
         post = _snapshot(self.vault)
 
-        # A scan writes ONLY into the watchlist, and only into one of its two
-        # current homes — `resources/watchlist`, the shared reference library
-        # since agentm task 176, or `Projects/agentm/_watchlist` on an agentm
-        # that predates that move; the fetch cache sits in the engine state
+        # A scan writes ONLY into the watchlist, and only into its home,
+        # `resources/watchlist`, the shared reference library since agentm
+        # task 176; the fetch cache sits in the engine state
         # dir setUp points at the scratch directory, outside the vault. The
         # watchlist's retired memory-space homes (`memory/`, `personal/`,
         # `personal-private/`) and the old `_meta/` cache count as stray writes:
         # agentm must not write there any more. The home is named here rather
         # than asked of agentm's watchlist_root(), so a resolver that hands back
         # a retired home fails this check instead of vouching for itself.
-        homes = (("resources", "watchlist"), ("Projects", "agentm", "_watchlist"))
+        homes = (("resources", "watchlist"),)
         new_or_changed = {p for p in pre.keys() | post.keys() if pre.get(p) != post.get(p)}
         self.assertTrue(new_or_changed, "the scan wrote nothing, so this check would prove nothing")
         used = {h for rel in new_or_changed for h in homes if Path(rel).parts[: len(h)] == h}
