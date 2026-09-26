@@ -7,19 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v5.0.1] — 2026-09-26 — Patch: the watchlist lives in agentm's reference library
+
+**PATCH.** The crickets side of agentm's [v10.1.0](https://github.com/alexherrero/agentm/releases/tag/v10.1.0), Plan A of the AgentKV layout convergence. agentm moved its forward-learning watchlist out of `projects/agentm/_watchlist/` into the vault's new shared reference library, `resources/watchlist/`, and the two crickets readers of that folder follow it. They read the new home first while the move was pending, and the reference library only once agentm's first forward-learning run had written there. A vault that has not had agentm's move keeps its watchlist unread by these two readers until it does.
+
 ### Changed
 
-- **The watchlist's older homes are no longer read** (agentm task 176 step 8). agentm moved the watchlist to `resources/watchlist/` on 2026-09-25, and its first forward-learning run wrote there.
-  - `research` 0.2.8: `codebase_improvement.watchlist_dir()` answers the reference library only.
+- **The watchlist resolves to agentm's reference library** (agentm task 176 step 8, the operator's rulings of 2026-09-24).
+  - `research` 0.2.8: `codebase_improvement.watchlist_dir()` answers `resources/watchlist/` at the vault root. A leftover `projects/agentm/_watchlist/` or memory-space copy is never chosen, so it cannot fork the watchlist.
   - `wiki` 0.12.2: diataxis-author's `vault_layout.watchlist_dir()` does the same.
-  - A leftover `projects/agentm/_watchlist/` or memory-space copy is never chosen, so it cannot fork the watchlist; the tests say so.
-
-### Changed
-
-- **The watchlist follows agentm's move to the reference library** (agentm task 176, the operator's rulings of 2026-09-24).
-  - `research` 0.2.7: `codebase_improvement.watchlist_dir()` reads and writes `resources/watchlist/` at the vault root first, and `projects/agentm/_watchlist/` only while that is where the watchlist still is. A vault with neither gets the new home.
-  - `wiki` 0.12.1: diataxis-author's `vault_layout.watchlist_dir()` takes the same first rung.
-  - The learn-forward test seeds agentm's source list in `projects/agentm/desk/`, where agentm reads it since its project roots were locked to five files, and accepts either watchlist home, provided a scan writes into only one.
+  - The learn-forward test seeds agentm's source list in `projects/agentm/desk/`, where agentm reads it since its project roots were locked to five files; the test had been failing against agentm `main` since agentm retired the project-root copy.
   - The issue template points at the roadmap's new home, `projects/agentm/docs/roadmap.md`.
 
 ## [v5.0.0] — 2026-09-23 — Major: development-lifecycle keeps its plans through agentm alone

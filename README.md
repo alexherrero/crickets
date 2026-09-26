@@ -59,7 +59,7 @@ The [wiki](https://github.com/alexherrero/crickets/wiki) covers everything there
 - [Reference](https://github.com/alexherrero/crickets/wiki/Reference) — plugin anatomy, the manifest schema, and the install modes.
 
 > [!NOTE]
-> **Latest release: [v5.0.0](https://github.com/alexherrero/crickets/releases/tag/v5.0.0).** development-lifecycle now keeps every plan where agentm puts it, a numbered task or a no-vault repo's own `.harness/`, with the tracker as a plan's only status; no crickets plugin names the retired vault harness directory any more.
+> **Latest release: [v5.0.1](https://github.com/alexherrero/crickets/releases/tag/v5.0.1).** The research and wiki plugins find the forward-learning watchlist in agentm's new reference library, `resources/watchlist/`, paired with agentm v10.1.0's vault layout.
 
 ---
 
