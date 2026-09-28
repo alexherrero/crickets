@@ -11,11 +11,11 @@ _This plugin is the sole vault-backend implementation — the agentm kernel's bu
 
 How memory reaches the vault — the engine hands each save to the backend, which writes plain Markdown into the Drive-synced folder while watching for the conflict files sync leaves behind:
 
-![The obsidian-vault storage flow: the memory engine hands each save to the vault backend, which guards concurrent writers and writes plain Markdown into your Drive-synced Obsidian vault, while conflict detection spots the stray copies cloud sync leaves behind](diagrams/obsidian-vault-storage.svg)
+![The obsidian-vault storage flow: the memory engine hands each save to the vault backend, which guards concurrent writers and writes plain Markdown into your Drive-synced Obsidian vault, while conflict detection spots the stray copies cloud sync leaves behind](../reference/diagrams/obsidian-vault-storage.svg)
 
 How it composes — obsidian-vault requires and enhances nothing, standing alone on the AgentM memory engine that discovers and loads it:
 
-![obsidian-vault composition: the plugin has no couplings to other plugins — it stands alone, running one-way on the AgentM memory engine that discovers, selects, and loads it](diagrams/obsidian-vault-composition.svg)
+![obsidian-vault composition: the plugin has no couplings to other plugins — it stands alone, running one-way on the AgentM memory engine that discovers, selects, and loads it](../reference/diagrams/obsidian-vault-composition.svg)
 
 ### How it works
 

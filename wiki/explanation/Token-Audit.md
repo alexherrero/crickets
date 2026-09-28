@@ -9,11 +9,11 @@ Token Audit tells you what a Claude Code session actually cost, and where the mo
 
 How a session's record becomes a cost breakdown — read each turn, split cache-read vs cache-write vs fresh tokens, price every slice from the pinned table, then roll it up into windows and a floor:
 
-![Token Audit's metering flow: the operator runs the audit, which reads the session transcript turn by turn, splits each message into cache-read, cache-write, and fresh tokens, prices every slice from a pinned rate table, and rolls the result up into a cost breakdown of total, cache split, five-hour windows, floor, and per-message curve](diagrams/token-audit-metering.svg)
+![Token Audit's metering flow: the operator runs the audit, which reads the session transcript turn by turn, splits each message into cache-read, cache-write, and fresh tokens, prices every slice from a pinned rate table, and rolls the result up into a cost breakdown of total, cache split, five-hour windows, floor, and per-message curve](../reference/diagrams/token-audit-metering.svg)
 
 How it composes — Token Audit stands alone on the AgentM substrate, with Status-Line-Meter building on it for live metering:
 
-![How token-audit composes: it stands alone requiring nothing, rests one-way on the AgentM substrate of memory, opinions, and personas, and is enhanced (soft, optional) by status-line-meter, which reuses its pricing table for a live status-line badge](diagrams/token-audit-composition.svg)
+![How token-audit composes: it stands alone requiring nothing, rests one-way on the AgentM substrate of memory, opinions, and personas, and is enhanced (soft, optional) by status-line-meter, which reuses its pricing table for a live status-line badge](../reference/diagrams/token-audit-composition.svg)
 
 ### How it works
 

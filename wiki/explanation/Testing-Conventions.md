@@ -9,7 +9,7 @@ Testing Conventions gives your agent a steady stance on how to test — one it c
 
 How it composes — the plugin's two primitives, the development-lifecycle base it requires, and the AgentM substrate it rests on:
 
-![How testing-conventions composes: the testing-conventions skill and the no-skip-tests rule sit inside the plugin, which requires (solid slate, hard) the development-lifecycle phase loop — both must be enabled to load — and composes one-way onto the AgentM substrate of memory, opinions, and personas](diagrams/testing-conventions-composition.svg)
+![How testing-conventions composes: the testing-conventions skill and the no-skip-tests rule sit inside the plugin, which requires (solid slate, hard) the development-lifecycle phase loop — both must be enabled to load — and composes one-way onto the AgentM substrate of memory, opinions, and personas](../reference/diagrams/testing-conventions-composition.svg)
 
 ### How it works
 

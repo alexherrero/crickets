@@ -43,6 +43,7 @@ _RULE_COVERAGE_MANIFEST = {
     "o": "test_check_wiki_sections.py",
     "p": "test_check_wiki_shape.py",
     "q": "test_check_wiki_rules.py (RuleQTopnoteLengthTest)",
+    "r": "test_check_wiki_rules.py (RuleRImagesResolveTest)",
 }
 
 
@@ -343,6 +344,45 @@ class RuleQTopnoteLengthTest(unittest.TestCase):
         issues = []
         cw.rule_q_topnote_length(p, "explanation", lines, issues)
         self.assertEqual(issues, [])
+
+
+class RuleRImagesResolveTest(unittest.TestCase):
+    """An image path is resolved relative to the page, the way the publish
+    transform resolves it. Ten explanation pages kept `diagrams/...` after
+    they moved out of reference/, where their diagrams stayed, and published
+    seventeen broken images for months with every gate green."""
+
+    def _issues(self, page_rel: str, text: str, files: tuple = ()):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for f in files:
+                (root / f).parent.mkdir(parents=True, exist_ok=True)
+                (root / f).write_text("<svg/>", encoding="utf-8")
+            page = root / page_rel
+            page.parent.mkdir(parents=True, exist_ok=True)
+            issues = []
+            cw.rule_r_images_resolve(page, text, issues)
+            return issues
+
+    def test_an_image_beside_a_page_that_moved_away_from_it_fires(self):
+        issues = self._issues("explanation/Token-Audit.md",
+                              "![flow](diagrams/metering.svg)\n",
+                              files=("reference/diagrams/metering.svg",))
+        self.assertEqual([i.rule for i in issues], ["r"])
+        self.assertEqual(issues[0].line, 1)
+
+    def test_a_path_that_resolves_from_the_page_passes(self):
+        issues = self._issues("explanation/Token-Audit.md",
+                              "![flow](../reference/diagrams/metering.svg)\n",
+                              files=("reference/diagrams/metering.svg",))
+        self.assertEqual(issues, [])
+
+    def test_external_images_code_spans_and_fences_are_exempt(self):
+        text = ("![badge](https://img.shields.io/x.svg)\n"
+                "`![not an image](missing.svg)`\n"
+                "```\n![example](also-missing.svg)\n```\n")
+        self.assertEqual(self._issues("explanation/Page.md", text), [])
 
 
 if __name__ == "__main__":
