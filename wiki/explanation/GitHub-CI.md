@@ -9,11 +9,11 @@ GitHub CI takes the busywork out of dependency updates. When a bot opens a pull 
 
 The repair loop — how a red dependency-update PR is diagnosed, patched, and re-checked, and where it stops:
 
-![A bounded fix loop that reads a failing update PR's check logs and release notes, applies a patch and pushes it, re-runs the checks, and loops up to a capped number of attempts — green checks comment the residual risk and out-of-depth fixes hand back to the operator, and it never merges](diagrams/github-ci-fix-loop.svg)
+![A bounded fix loop that reads a failing update PR's check logs and release notes, applies a patch and pushes it, re-runs the checks, and loops up to a capped number of attempts — green checks comment the residual risk and out-of-depth fixes hand back to the operator, and it never merges](../reference/diagrams/github-ci-fix-loop.svg)
 
 How it composes — the base it requires and the substrate it rests on:
 
-![github-ci in the centre with a solid slate arrow up to development-lifecycle, the phase-loop base it requires, and a dashed purple arrow down onto the AgentM substrate it composes onto one-way](diagrams/github-ci-composition.svg)
+![github-ci in the centre with a solid slate arrow up to development-lifecycle, the phase-loop base it requires, and a dashed purple arrow down onto the AgentM substrate it composes onto one-way](../reference/diagrams/github-ci-composition.svg)
 
 ### How it works
 

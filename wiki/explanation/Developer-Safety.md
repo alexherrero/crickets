@@ -9,7 +9,7 @@ Developer Safety keeps you in control of an agent that works on its own. The lon
 
 How the hooks wrap the running workflow — every tool call passes the operator's live controls, guided by the recoverability doctrine, with a snapshot catching anything unsaved:
 
-![Developer Safety wrapping the workflow: the development-lifecycle phase loop (/plan, /work, /review, /release) sends every tool call through the kill-switch hook — fed by the operator's STOP trigger file — before it runs, while steer surfaces the operator's STEER.md note as additional context on their next submitted prompt; the recoverability doctrine guides each call, and commit-on-stop snapshots a dirty working tree to refs/auto-save at each turn's end](diagrams/developer-safety-hooks.svg)
+![Developer Safety wrapping the workflow: the development-lifecycle phase loop (/plan, /work, /review, /release) sends every tool call through the kill-switch hook — fed by the operator's STOP trigger file — before it runs, while steer surfaces the operator's STEER.md note as additional context on their next submitted prompt; the recoverability doctrine guides each call, and commit-on-stop snapshots a dirty working tree to refs/auto-save at each turn's end](../reference/diagrams/developer-safety-hooks.svg)
 
 ### How it works
 

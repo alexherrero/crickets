@@ -9,9 +9,9 @@ Design Docs gives your agent the two authoring disciplines that come before any 
 
 The authoring pipeline, then how the plugin composes:
 
-![The design pipeline: the operator approves at each gate as /design runs author (interview to a final design doc), then translate (the approved doc into structural parts), then sequence (those parts into named plans in build order), handing the finished plans to the /work loop](diagrams/design-docs-pipeline.svg)
+![The design pipeline: the operator approves at each gate as /design runs author (interview to a final design doc), then translate (the approved doc into structural parts), then sequence (those parts into named plans in build order), handing the finished plans to the /work loop](../reference/diagrams/design-docs-pipeline.svg)
 
-![How design-docs composes: it sits in the centre with a solid arrow requiring development-lifecycle to run the /design workflow, and rests one-way on the AgentM substrate of memory, opinions, and personas, with no soft enhancers](diagrams/design-docs-composition.svg)
+![How design-docs composes: it sits in the centre with a solid arrow requiring development-lifecycle to run the /design workflow, and rests one-way on the AgentM substrate of memory, opinions, and personas, with no soft enhancers](../reference/diagrams/design-docs-composition.svg)
 
 ### How it works
 

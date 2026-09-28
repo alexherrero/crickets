@@ -9,11 +9,11 @@ Wiki Maintenance keeps a repo's docs alive instead of letting them rot. It sets 
 
 How the authoring flow runs — from a request or a code change through page-choice to the documenter, with your edits teaching it your voice:
 
-![The wiki-maintenance authoring flow: an operator request or a watcher run feeds a page-and-mode choice, which hands off to the documenter to author, repair, or migrate a page into an updated page shipped as a pull request; your own edits feed a voice-learning loop that shapes the next write](diagrams/wiki-maintenance-authoring.svg)
+![The wiki-maintenance authoring flow: an operator request or a watcher run feeds a page-and-mode choice, which hands off to the documenter to author, repair, or migrate a page into an updated page shipped as a pull request; your own edits feed a voice-learning loop that shapes the next write](../reference/diagrams/wiki-maintenance-authoring.svg)
 
 How it composes — standalone, resting on the AgentM substrate, softly enhancing Development Lifecycle when both are installed:
 
-![How wiki-maintenance composes: it stands alone and rests on the AgentM substrate of memory, opinions, and personas, with a dashed-green soft-enhances arrow out to development-lifecycle, which it documents at phase boundaries only when both are installed](diagrams/wiki-maintenance-composition.svg)
+![How wiki-maintenance composes: it stands alone and rests on the AgentM substrate of memory, opinions, and personas, with a dashed-green soft-enhances arrow out to development-lifecycle, which it documents at phase boundaries only when both are installed](../reference/diagrams/wiki-maintenance-composition.svg)
 
 ### How it works
 

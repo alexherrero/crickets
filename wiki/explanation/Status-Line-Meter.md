@@ -9,7 +9,7 @@ Status Line Meter keeps a small live gauge in the corner of your Claude Code ses
 
 How it composes — it stands alone on the Claude Code status line and enhances Token-Audit when both are installed:
 
-![How status-line-meter composes: the plugin sits alone on the AgentM substrate reading the Claude Code status line, and reaches out with a soft enhances edge to token-audit, reusing its pricing for the live cost and floor-share badges](diagrams/status-line-meter-composition.svg)
+![How status-line-meter composes: the plugin sits alone on the AgentM substrate reading the Claude Code status line, and reaches out with a soft enhances edge to token-audit, reusing its pricing for the live cost and floor-share badges](../reference/diagrams/status-line-meter-composition.svg)
 
 ### How it works
 

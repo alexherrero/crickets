@@ -9,11 +9,11 @@ PII Guardrail keeps personal information out of your git history. Real emails, p
 
 The four-layer defense — each layer catches what the one before it missed:
 
-![The pii four-layer defense left to right: while writing, a stand-in rule nudges toward safe placeholders; before commit, an on-demand scan finds and fixes personal info; before push, a hard automatic block stops anything that slipped through; and in CI a final backstop keeps the history clean — the first two layers aim to keep the last two from ever firing](diagrams/pii-defense.svg)
+![The pii four-layer defense left to right: while writing, a stand-in rule nudges toward safe placeholders; before commit, an on-demand scan finds and fixes personal info; before push, a hard automatic block stops anything that slipped through; and in CI a final backstop keeps the history clean — the first two layers aim to keep the last two from ever firing](../reference/diagrams/pii-defense.svg)
 
 How it composes — pii requires nothing and enhances nothing, so it stands alone on the AgentM substrate:
 
-![The pii plugin sits alone above the AgentM substrate of memory, opinions, and personas, connected by a one-way dashed purple arrow, labelled as requiring nothing and standing alone with no couplings](diagrams/pii-composition.svg)
+![The pii plugin sits alone above the AgentM substrate of memory, opinions, and personas, connected by a one-way dashed purple arrow, labelled as requiring nothing and standing alone with no couplings](../reference/diagrams/pii-composition.svg)
 
 ### How it works
 

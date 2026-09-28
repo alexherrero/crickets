@@ -9,11 +9,11 @@ Releasing Conventions gives your releases one repeatable set of rules, so cuttin
 
 The release gate — every checklist item must pass before you tag and publish:
 
-![The releasing-conventions release gate: a /release intent enters the pre-tag checklist (CI green on every OS, version bumped, CHANGELOG authored, built files committed, no orphan PRs, full gate battery green), any failing item stops the release to be fixed, and only when all items pass does it tag and publish a clean release](diagrams/releasing-conventions-release-gate.svg)
+![The releasing-conventions release gate: a /release intent enters the pre-tag checklist (CI green on every OS, version bumped, CHANGELOG authored, built files committed, no orphan PRs, full gate battery green), any failing item stops the release to be fixed, and only when all items pass does it tag and publish a clean release](../reference/diagrams/releasing-conventions-release-gate.svg)
 
 How it composes — the base it requires and the substrate it rests on:
 
-![How releasing-conventions composes: the plugin requires development-lifecycle as its base (solid slate arrow), extending that plugin's /release phase, and composes one-way onto the AgentM substrate of memory, opinions, and personas](diagrams/releasing-conventions-composition.svg)
+![How releasing-conventions composes: the plugin requires development-lifecycle as its base (solid slate arrow), extending that plugin's /release phase, and composes one-way onto the AgentM substrate of memory, opinions, and personas](../reference/diagrams/releasing-conventions-composition.svg)
 
 ### How it works
 

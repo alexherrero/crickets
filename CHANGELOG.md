@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`check-wiki` rule (r): every image a page embeds resolves to a file** (`wiki` 0.13.0), relative to the page, the way the publish step resolves it. Hard under `--strict`; external images, code spans and fences are exempt. It would have caught the broken diagrams below on the day their pages moved.
+
+### Fixed
+
+- **Ten explanation pages show their diagrams again.** The pages moved from `reference/` to `explanation/` in the Consolidation arc (CONS-3, 2026-07-10) and kept linking `diagrams/…` beside themselves, while the diagrams stayed in `reference/diagrams/`. The publish step turned each broken path into a raw asset URL that answered 404: seventeen images were broken on the published wiki, and the "[W] Update Wiki" job's render check failed on every publish since 2026-09-23. The links now point at `../reference/diagrams/`, and each rewritten URL answers 200.
+
 ## [v5.0.1] — 2026-09-26 — Patch: the watchlist lives in agentm's reference library
 
 **PATCH.** The crickets side of agentm's [v10.1.0](https://github.com/alexherrero/agentm/releases/tag/v10.1.0), Plan A of the AgentKV layout convergence. agentm moved its forward-learning watchlist out of `projects/agentm/_watchlist/` into the vault's new shared reference library, `resources/watchlist/`, and the two crickets readers of that folder follow it. They read the new home first while the move was pending, and the reference library only once agentm's first forward-learning run had written there. A vault that has not had agentm's move keeps its watchlist unread by these two readers until it does.
