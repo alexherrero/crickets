@@ -36,6 +36,8 @@ You are running `/handoff` — it generalizes the Mythos `PROMPTS.md` pattern (t
 
    (Write the entries/outputs to a temp JSON file first, or call `build_handoff_pack` directly from a short inline script — either way, the write path is the one deterministic function, never hand-authored file-by-file.) This writes `<dest-dir>/prompts.json` (the structured manifest — every prompt's label is a `{tier, model_id, effort}` dict, not prose) and `<dest-dir>/PROMPTS.md` (the paste-ready human rendering, generated from the same data).
 
+   A snapshotted Markdown note whose frontmatter carries a `kind:` or `type:` lands as `kind: handoff-artifact`, and `prompts.json`'s `snapshot_kinds` records what it was. The copy is not the note: a task's `tracker.md` snapshotted with its `kind: tracker` is a second tracker outside a tracker's place, which agentm's tracker-schema gate fails. Snapshot the note anyway — only the copy's kind changes, never its body.
+
 5. **Offer each prompt as a background-task chip (graceful-skip).** The pack's whole cost to the operator is opening a session and pasting; a chip removes both. If the host exposes the `mcp__ccd_session__spawn_task` tool (Claude Code's desktop app), call it **once per entry in `manifest["prompts"]`, in the order they appear**, so each downstream step becomes a card the operator starts with one click. If the tool is absent (terminal Claude Code, Antigravity), **skip this step silently** — `PROMPTS.md` is the unchanged fallback, and step 6 still reports every prompt.
 
    Build each chip from the manifest entry, never from a re-derivation:

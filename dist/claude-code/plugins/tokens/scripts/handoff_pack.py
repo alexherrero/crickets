@@ -75,6 +75,67 @@ def label_matches_schema(label: dict) -> bool:
 HANDOFF_MARKER = "<!-- agentm:handoff — agent-authored; not the operator's own words -->"
 
 
+# What a snapshotted note is once it sits in a pack: a copy made for the next
+# sessions, not the note it was copied from. A pack that kept its originals'
+# kinds put a second `kind: tracker` beside the task's own (six in pixelcity's
+# desk/ by 2026-09-29, each still `status: active`), which agentm's
+# check-tracker-schema fails as a tracker outside a tracker's place, and it
+# carried unregistered values like `backlog` into the corpus. `handoff-artifact`
+# is the record kind agentm's storage rules register for exactly this; a record
+# carries `kind:` and never `type:`, so a snapshotted memory loses its type.
+SNAPSHOT_KIND = "handoff-artifact"
+_KIND_FIELDS = ("kind", "type")
+
+
+def _field_name(line: str) -> "str | None":
+    """The top-level frontmatter key `line` opens, or None when it opens none."""
+    if not line or line[0] in " \t-#":
+        return None
+    name, sep, _ = line.partition(":")
+    return name.strip() if sep else None
+
+
+def _continues(line: str) -> bool:
+    """Whether `line` belongs to the key above it: indented, or a `- ` item."""
+    return bool(line) and line[0] in " \t-"
+
+
+def as_snapshot(content: str) -> "tuple[str, dict]":
+    """`content` as the pack keeps it: a note whose frontmatter carries `kind:`
+    or `type:` gets `kind: handoff-artifact` in place of the first and loses the
+    rest, and every other byte is unchanged. Returns the text and the fields it
+    replaced (`{"kind": "tracker"}`), empty when nothing changed. A file with no
+    frontmatter, an unclosed one, or none of the two fields comes back as is."""
+    lines = content.splitlines(keepends=True)
+    if not lines or lines[0].rstrip("\r\n") != "---":
+        return content, {}
+    close = next((i for i in range(1, len(lines)) if lines[i].rstrip("\r\n") == "---"), None)
+    if close is None:
+        return content, {}
+
+    replaced: dict = {}
+    head: list = [lines[0]]
+    i = 1
+    while i < close:
+        name = _field_name(lines[i])
+        if name not in _KIND_FIELDS:
+            head.append(lines[i])
+            i += 1
+            continue
+        end = i + 1
+        while end < close and _continues(lines[end]):
+            end += 1
+        value = "".join(lines[i:end]).partition(":")[2].strip().strip("'\"")
+        replaced[name] = value
+        if len(replaced) == 1:
+            eol = lines[i][len(lines[i].rstrip("\r\n")):] or "\n"
+            head.append(f"kind: {SNAPSHOT_KIND}{eol}")
+        i = end
+    if not replaced or replaced == {"kind": SNAPSHOT_KIND}:
+        return content, {}
+    return "".join(head + lines[close:]), replaced
+
+
 def build_handoff_pack(
     entries: list[HandoffEntry],
     session_outputs: dict[str, str],
@@ -85,17 +146,27 @@ def build_handoff_pack(
     paste-ready human rendering, generated from the same structured data —
     never authored separately, so the two can't drift).
 
+    A Markdown output is snapshotted as `as_snapshot` rewrites it, and the
+    manifest's `snapshot_kinds` names what each one was (`{"tracker.md":
+    {"kind": "tracker"}}`); every other output is copied byte for byte.
+
     Creates `dest_dir` if absent. Returns the manifest dict that was written.
     """
     dest_dir.mkdir(parents=True, exist_ok=True)
 
     snapshotted: list[str] = []
+    snapshot_kinds: dict = {}
     for name, content in session_outputs.items():
+        if name.lower().endswith(".md"):
+            content, replaced = as_snapshot(content)
+            if replaced:
+                snapshot_kinds[name] = replaced
         (dest_dir / name).write_text(content, encoding="utf-8")
         snapshotted.append(name)
 
     manifest = {
         "snapshotted_files": sorted(snapshotted),
+        "snapshot_kinds": dict(sorted(snapshot_kinds.items())),
         "prompts": [
             {"title": e.title, "prompt_text": e.prompt_text, "label": e.label()}
             for e in entries

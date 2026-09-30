@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A `/handoff` pack's copies no longer pass as the notes they copy** (`tokens` 0.8.1). A snapshotted note whose frontmatter carries `kind:` or `type:` lands as `kind: handoff-artifact`, and `prompts.json`'s new `snapshot_kinds` records what each one was. pixelcity's packs had copied task 001's `kind: tracker` into its `desk/` six times, and agentm's tracker-schema gate failed each copy as a tracker outside a tracker's place; three copies also carried the unregistered `kind: backlog`. The bodies are copied unchanged.
 - **Ten explanation pages show their diagrams again.** The pages moved from `reference/` to `explanation/` in the Consolidation arc (CONS-3, 2026-07-10) and kept linking `diagrams/…` beside themselves, while the diagrams stayed in `reference/diagrams/`. The publish step turned each broken path into a raw asset URL that answered 404: seventeen images were broken on the published wiki, and the "[W] Update Wiki" job's render check failed on every publish since 2026-09-23. The links now point at `../reference/diagrams/`, and each rewritten URL answers 200.
 
 ## [v5.0.1] — 2026-09-26 — Patch: the watchlist lives in agentm's reference library

@@ -170,5 +170,67 @@ class TestDefaultDestination(unittest.TestCase):
         self.assertEqual(list(self.sp.desk.iterdir()), [])
 
 
+class TestSnapshotsAreHandoffArtifacts(unittest.TestCase):
+    """A snapshotted note is a copy for the next sessions, not the note itself.
+    pixelcity's packs kept task 001's `kind: tracker` six times over in desk/,
+    and agentm's tracker-schema gate failed each one (2026-09-29)."""
+
+    TRACKER = ("---\nkind: tracker\ntitle: Port Micropolis\nproject: pixelcity\n"
+               "task: 001-port-micropolis-poc\nstatus: active\n---\n\n"
+               "## State\n\nkind: tracker is quoted in the body and stays.\n")
+    BACKLOG = ("---\ntype: idea\nstatus: active\ntags: [pixelcity, qol]\n---\n\n"
+               "# QoL backlog\n")
+
+    def _pack(self, outputs: dict) -> tuple:
+        d = tempfile.TemporaryDirectory()
+        self.addCleanup(d.cleanup)
+        dest = Path(d.name) / "handoff"
+        manifest = hp.build_handoff_pack(TestBuildHandoffPack.ENTRIES, outputs, dest)
+        return dest, manifest
+
+    def test_a_tracker_snapshot_is_a_handoff_artifact(self):
+        dest, manifest = self._pack({"tracker.md": self.TRACKER})
+        self.assertEqual((dest / "tracker.md").read_text(encoding="utf-8"),
+                         self.TRACKER.replace("kind: tracker\ntitle",
+                                              "kind: handoff-artifact\ntitle", 1))
+        self.assertEqual(manifest["snapshot_kinds"], {"tracker.md": {"kind": "tracker"}})
+
+    def test_a_typed_memory_loses_its_type(self):
+        dest, manifest = self._pack({"qol-backlog.md": self.BACKLOG})
+        text = (dest / "qol-backlog.md").read_text(encoding="utf-8")
+        self.assertTrue(text.startswith("---\nkind: handoff-artifact\nstatus: active\n"))
+        self.assertNotIn("type:", text)
+        self.assertEqual(manifest["snapshot_kinds"], {"qol-backlog.md": {"type": "idea"}})
+
+    def test_a_note_with_both_fields_keeps_one_kind(self):
+        text, replaced = hp.as_snapshot("---\ntype: idea\ntitle: x\nkind: tracker\n---\nbody\n")
+        self.assertEqual(text, "---\nkind: handoff-artifact\ntitle: x\n---\nbody\n")
+        self.assertEqual(replaced, {"type": "idea", "kind": "tracker"})
+
+    def test_a_list_value_goes_with_its_key_and_a_comment_stays(self):
+        text, _ = hp.as_snapshot("---\ntype:\n  - idea\n# a comment\nslug: x\n---\n")
+        self.assertEqual(text, "---\nkind: handoff-artifact\n# a comment\nslug: x\n---\n")
+
+    def test_crlf_line_endings_survive(self):
+        text, _ = hp.as_snapshot("---\r\nkind: tracker\r\ntitle: x\r\n---\r\nbody\r\n")
+        self.assertEqual(text, "---\r\nkind: handoff-artifact\r\ntitle: x\r\n---\r\nbody\r\n")
+
+    def test_what_has_nothing_to_rewrite_is_copied_as_is(self):
+        for content in ("# no frontmatter\n\nkind: tracker\n",
+                        "---\ntitle: no kind or type\n---\nbody\n",
+                        "---\nkind: tracker\nunclosed frontmatter\n",
+                        "---\nkind: handoff-artifact\n---\nalready one\n",
+                        ""):
+            with self.subTest(content=content):
+                self.assertEqual(hp.as_snapshot(content), (content, {}))
+        dest, manifest = self._pack({"a.md": "---\ntitle: x\n---\n"})
+        self.assertEqual(manifest["snapshot_kinds"], {})
+
+    def test_only_markdown_is_rewritten(self):
+        dest, manifest = self._pack({"state.json": self.TRACKER})
+        self.assertEqual((dest / "state.json").read_text(encoding="utf-8"), self.TRACKER)
+        self.assertEqual(manifest["snapshot_kinds"], {})
+
+
 if __name__ == "__main__":
     unittest.main()
