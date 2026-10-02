@@ -58,14 +58,17 @@ class _IsolatedGit(unittest.TestCase):
             "[init]\n\tdefaultBranch = main\n",
             encoding="utf-8",
         )
-        self.env = {
-            "PATH": os.environ.get("PATH", ""),
+        # Inherit the real environment (Windows needs PATHEXT, SYSTEMROOT, … to
+        # resolve `git` at all) but drop every GIT_* variable, which could
+        # otherwise point git at another repo or inject config.
+        self.env = {k: v for k, v in os.environ.items() if not k.upper().startswith("GIT_")}
+        self.env.update({
             "HOME": str(self.home),
             "XDG_CONFIG_HOME": str(self.home / ".config"),
             "GIT_CONFIG_GLOBAL": str(self.global_config),
             "GIT_CONFIG_NOSYSTEM": "1",
             "LANG": "C",
-        }
+        })
         self.hooks_dir = self.home / ".config" / "crickets" / "git-hooks"
 
     def tearDown(self):
@@ -296,8 +299,10 @@ class InstallGlobalPwshTests(_IsolatedGit):
         self.pwsh()
         self.assertEqual(Path(self.global_hooks_path()), self.hooks_dir.resolve())
         self.assertEqual(self.pwsh("-Check").returncode, 0)
-        # The bash check agrees with what pwsh installed.
-        self.assertEqual(self.install("--check").returncode, 0)
+        # The bash check agrees with what pwsh installed (POSIX only: on Windows
+        # `bash` on PATH can be WSL's rather than Git for Windows').
+        if os.name != "nt":
+            self.assertEqual(self.install("--check").returncode, 0)
         repo = self.new_repo()
         self.git("commit", "-q", "-m", "feat: x", "-m", CLAUDE, cwd=repo)
         self.assertNotIn("anthropic", self.last_message(repo))
