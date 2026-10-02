@@ -42,6 +42,8 @@ HUMAN = "Co-authored-by: Jane Doe <jane@example.com>"
 # it strips every co-author, humans included.
 LEGACY_GUARD = (
     "#!/usr/bin/env bash\n"
+    "# coauthor-guard — prepare-commit-msg hook.\n"
+    "set -uo pipefail\n\n"
     'msg_file="${1:-}"\n'
     '[[ -n "$msg_file" && -f "$msg_file" ]] || exit 0\n'
     'tmp_file="${msg_file}.coauthor-guard.tmp"\n'
@@ -245,12 +247,94 @@ class InstallGlobalTests(_IsolatedGit):
         self.assertFalse(self.hooks_dir.exists())
         self.assertEqual(self.install("--check", check=False).returncode, 1)
 
-    def test_check_names_a_repo_local_override(self):
+    def test_check_fails_inside_a_repo_with_its_own_hooks_path(self):
         self.install()
         repo = self.new_repo()
         self.git("config", "core.hooksPath", ".husky", cwd=repo)
-        result = self.run_cmd(["bash", str(_INSTALL), "--check"], cwd=repo)
-        self.assertIn("overrides the global one", result.stdout)
+        result = self.run_cmd(["bash", str(_INSTALL), "--check"], cwd=repo, check=False)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("the guard does not run here", result.stderr)
+        # From outside any repo the machine-level install is still healthy.
+        self.assertEqual(self.install("--check").returncode, 0)
+
+    def _work_include(self, core_first: bool) -> Path:
+        corp = self.root / "corp-hooks"
+        corp.mkdir()
+        work_config = self.home / "work.gitconfig"
+        work_config.write_text(f"[core]\n\thooksPath = {corp}\n", encoding="utf-8")
+        text = self.global_config.read_text(encoding="utf-8")
+        include = f'[includeIf "gitdir:{self.root}/work/"]\n\tpath = {work_config}\n'
+        core = "[core]\n\teditor = vi\n"
+        self.global_config.write_text(core + text + include if core_first else text + include,
+                                      encoding="utf-8")
+        return corp
+
+    def test_install_refuses_a_hooks_path_set_through_include_if(self):
+        for core_first in (False, True):
+            with self.subTest(core_first=core_first):
+                self.setUp()
+                corp = self._work_include(core_first)
+                self.assertEqual(self.install(check=False).returncode, 2)
+                work = self.root / "work" / "repo"
+                work.parent.mkdir()
+                self.git("init", "-q", str(work), cwd=self.root)
+                self.assertEqual(self.git("config", "--get", "core.hooksPath", cwd=work).stdout.strip(),
+                                 str(corp))
+                self.tearDown()
+        self.setUp()
+
+    def test_check_fails_inside_a_repo_an_include_if_added_later_redirects(self):
+        self.install()
+        self._work_include(core_first=True)
+        work = self.root / "work" / "repo"
+        work.parent.mkdir()
+        self.git("init", "-q", str(work), cwd=self.root)
+        result = self.run_cmd(["bash", str(_INSTALL), "--check"], cwd=work, check=False)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("the guard does not run here", result.stderr)
+
+    def test_legacy_skip_keeps_a_repo_hook_that_only_shares_the_awk_line(self):
+        self.install()
+        repo = self.new_repo()
+        self.git("commit", "-q", "-m", "base", cwd=repo)
+        _executable(repo / ".git" / "hooks" / "prepare-commit-msg",
+                    "#!/bin/sh\n{ printf 'PROJ-42 '; cat \"$1\"; } > \"$1.t\" && mv \"$1.t\" \"$1\"\n"
+                    "awk 'tolower($0) !~ /^co-authored-by:/' \"$1\" > \"$1.t\" && mv \"$1.t\" \"$1\"\n")
+        self.git("commit", "-q", "--allow-empty", "-m", "fix", cwd=repo)
+        self.assertTrue(self.last_message(repo).startswith("PROJ-42 "))
+
+    def test_repo_hook_found_when_git_common_dir_is_exported(self):
+        self.install()
+        repo = self.new_repo()
+        self.git("commit", "-q", "-m", "base", cwd=repo)
+        _executable(repo / ".git" / "hooks" / "pre-commit", "#!/bin/sh\nexit 7\n")
+        private = self.root / "private"
+        private.mkdir()
+        shutil.copy(repo / ".git" / "HEAD", private / "HEAD")
+        env = dict(self.env, GIT_DIR=str(private), GIT_COMMON_DIR=str(repo / ".git"),
+                   GIT_WORK_TREE=str(repo))
+        rc = subprocess.run(["git", "commit", "-q", "--allow-empty", "-m", "x"], cwd=repo, env=env,
+                            stdin=subprocess.DEVNULL, capture_output=True).returncode
+        self.assertNotEqual(rc, 0, "the repo's blocking pre-commit was bypassed")
+
+    @unittest.skipIf(os.name == "nt", "symlinked ~/.config -- POSIX only")
+    def test_reinstall_after_the_directory_is_deleted_under_a_symlinked_config(self):
+        real_config = self.root / "dotfiles" / "config"
+        real_config.mkdir(parents=True)
+        (self.home / ".config").symlink_to(real_config)
+        self.install()
+        shutil.rmtree(real_config / "crickets")
+        self.assertIn("does not exist", self.run_cmd(["bash", str(_CHECK)]).stdout)
+        self.install()
+        self.assertEqual(self.install("--check").returncode, 0)
+
+    def test_check_global_from_an_older_copy_stays_silent_after_a_newer_install(self):
+        newer = self.root / "newer"
+        shutil.copytree(_GUARD_DIR, newer)
+        with (newer / "coauthor-guard.sh").open("a", encoding="utf-8") as fh:
+            fh.write("# a newer release\n")
+        self.run_cmd(["bash", str(newer / "install-global.sh")])
+        self.assertEqual(self.run_cmd(["bash", str(_CHECK)]).stdout, "")
 
     def test_refresh_removes_hooks_an_earlier_version_installed(self):
         self.install()
@@ -467,6 +551,16 @@ class InstallGlobalPwshTests(_IsolatedGit):
         self.assertTrue(hooks_path == "" or Path(hooks_path).is_dir(),
                         f"core.hooksPath={hooks_path} names a deleted directory")
         self.assertEqual(hooks_path, "")
+
+    def test_pwsh_refuses_a_hooks_path_set_through_include_if(self):
+        corp = self.root / "corp-hooks"
+        corp.mkdir()
+        work_config = self.home / "work.gitconfig"
+        work_config.write_text(f"[core]\n\thooksPath = {corp}\n", encoding="utf-8")
+        with self.global_config.open("a", encoding="utf-8") as fh:
+            fh.write(f'[includeIf "gitdir:{self.root}/work/"]\n\tpath = {work_config}\n')
+        self.assertEqual(self.pwsh(check=False).returncode, 2)
+        self.assertEqual(self.global_hooks_path(), "")
 
     def test_pwsh_refuses_a_foreign_global_hooks_path(self):
         foreign = self.root / "someone-elses-hooks"

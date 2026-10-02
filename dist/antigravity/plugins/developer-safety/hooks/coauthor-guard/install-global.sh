@@ -15,8 +15,9 @@
 # sets it (system, global, or a file either includes). Idempotent: re-running
 # refreshes the files in place. The directory is a copy, not a pointer into
 # the plugin cache, so `claude plugin update` can't leave git pointing at a
-# deleted path. --check compares every installed file with the copy shipped
-# beside this script, so a replaced or stale file reads as unhealthy.
+# deleted path. --check confirms git uses the directory and every hook in it
+# is an intact copy of the dispatcher kept there for reference; run inside a
+# repo, it also fails when that repo resolves core.hooksPath elsewhere.
 #
 # Mirrored by install-global.ps1 (same files, same config, same exit codes).
 
@@ -59,15 +60,47 @@ MARKER=.crickets-managed
 machine_hooks_paths() {
     (unset GIT_DIR GIT_WORK_TREE GIT_COMMON_DIR; cd / && git config --includes --get-all core.hooksPath) 2>/dev/null
 }
+# core.hooksPath values in files an [includeIf] pulls in. Git applies them only
+# in repos the condition matches (gitdir:, onbranch:, hasconfig:), so
+# machine_hooks_paths, read from /, never sees them.
+conditional_hooks_paths() {
+    local origin entry value file
+    (unset GIT_DIR GIT_WORK_TREE GIT_COMMON_DIR; cd / &&
+        git config --show-origin -z --get-regexp '^includeif\..*\.path$') 2>/dev/null |
+    while IFS= read -r -d '' origin && IFS= read -r -d '' entry; do
+        origin="${origin#file:}"
+        value="${entry#*$'\n'}"
+        value="${value/#\~/$HOME}"
+        case "$value" in
+            /* | [A-Za-z]:*) file="$value" ;;
+            *) file="$(dirname "$origin")/$value" ;;
+        esac
+        [[ -f "$file" ]] && git config --file "$file" --includes --get-all core.hooksPath 2>/dev/null
+    done
+    return 0
+}
 # The value in the global file itself, the one this script sets and unsets.
 global_file_hooks_path() {
     git config --global --get core.hooksPath 2>/dev/null || true
 }
 
-# Compare paths by their resolved form, so ~ and symlinks don't cause a mismatch.
+# Compare paths by their resolved form, so ~ and symlinks don't cause a
+# mismatch. Symlinks are resolved through the nearest existing parent, so a
+# deleted hooks directory under a symlinked ~/.config still compares equal to
+# the resolved path the install recorded.
 resolve() {
-    local p="${1/#\~/$HOME}"
-    if [[ -d "$p" ]]; then (cd "$p" && pwd -P); else printf '%s\n' "$p"; fi
+    local p="${1/#\~/$HOME}" rest="" real
+    p="${p%/}"
+    while [[ -n "$p" && ! -d "$p" ]]; do
+        rest="/${p##*/}$rest"
+        case "$p" in
+            */*) p="${p%/*}"; [[ -z "$p" ]] && p="/" ;;
+            *) p="" ;;
+        esac
+    done
+    if [[ -z "$p" ]]; then printf '%s\n' "${1/#\~/$HOME}"; return; fi
+    real=$(cd "$p" && pwd -P)
+    printf '%s%s\n' "${real%/}" "$rest"
 }
 is_ours() {
     [[ -n "$1" && "$(resolve "$1")" == "$(resolve "$dir")" ]]
@@ -78,7 +111,8 @@ current=$(printf '%s\n' "$all_paths" | sed -n '$p')
 foreign=""
 while IFS= read -r value; do
     [[ -n "$value" ]] && ! is_ours "$value" && foreign="$value"
-done <<< "$all_paths"
+done <<< "$all_paths
+$(conditional_hooks_paths)"
 
 check() {
     local problem="" name
@@ -88,12 +122,16 @@ check() {
         problem="git uses core.hooksPath $current, not $dir"
     elif [[ ! -f "$dir/$MARKER" ]]; then
         problem="$dir is missing or not crickets-managed"
-    elif ! cmp -s "$here/coauthor-guard.sh" "$dir/coauthor-guard.sh"; then
-        problem="$dir/coauthor-guard.sh is missing or differs from the shipped copy"
+    elif [[ ! -x "$dir/coauthor-guard.sh" ]]; then
+        problem="$dir/coauthor-guard.sh is missing or not executable"
+    elif [[ ! -f "$dir/git-hook-dispatch.sh" ]]; then
+        problem="$dir/git-hook-dispatch.sh (the reference copy) is missing"
     else
+        # Each hook must be an intact copy of the dispatcher installed with it,
+        # not of whichever (possibly older) copy of this script is running.
         for name in "${HOOK_NAMES[@]}"; do
-            if [[ ! -x "$dir/$name" ]] || ! cmp -s "$here/git-hook-dispatch.sh" "$dir/$name"; then
-                problem="$dir/$name is missing, not executable, or differs from the shipped dispatcher"
+            if [[ ! -x "$dir/$name" ]] || ! cmp -s "$dir/git-hook-dispatch.sh" "$dir/$name"; then
+                problem="$dir/$name is missing, not executable, or no longer the dispatcher"
                 break
             fi
         done
@@ -103,11 +141,15 @@ check() {
         return 1
     fi
     echo "coauthor-guard: global git hooks installed at $dir"
-    # A repo-local core.hooksPath overrides the global one; name it if we're in one.
-    local local_path
-    local_path=$(git config --local --get core.hooksPath 2>/dev/null || true)
-    if [[ -n "$local_path" ]]; then
-        echo "coauthor-guard: note — this repo sets its own core.hooksPath ($local_path), which overrides the global one here"
+    # Inside a repo, the core.hooksPath git uses there can still be another one:
+    # the repo's own local config, or a conditional include that matches it.
+    if git rev-parse --git-dir >/dev/null 2>&1; then
+        local here_path
+        here_path=$(git config --get core.hooksPath 2>/dev/null || true)
+        if [[ -n "$here_path" ]] && ! is_ours "$here_path"; then
+            echo "coauthor-guard: but this repo uses core.hooksPath $here_path (its own config or a conditional include), so the guard does not run here" >&2
+            return 1
+        fi
     fi
     return 0
 }
@@ -170,6 +212,8 @@ for name in reference-transaction post-index-change; do
     rm -f "$dir/$name"
 done
 cp "$here/coauthor-guard.sh" "$dir/coauthor-guard.sh" && chmod +x "$dir/coauthor-guard.sh" || exit 2
+# The reference --check compares every hook against.
+cp "$here/git-hook-dispatch.sh" "$dir/git-hook-dispatch.sh" || exit 2
 printf 'Managed by crickets developer-safety (coauthor-guard/install-global).\nInstalled from %s\n' \
     "$here" > "$dir/$MARKER"
 

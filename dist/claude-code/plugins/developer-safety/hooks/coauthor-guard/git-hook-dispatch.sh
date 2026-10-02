@@ -43,7 +43,10 @@ if [ -z "$git_dir" ]; then
     fi
 fi
 common_dir=
-if [ -n "$git_dir" ] && [ -d "$git_dir" ]; then
+if [ -n "${GIT_COMMON_DIR:-}" ] && [ -d "$GIT_COMMON_DIR" ]; then
+    # Git uses an exported GIT_COMMON_DIR over anything GIT_DIR implies.
+    common_dir=$GIT_COMMON_DIR
+elif [ -n "$git_dir" ] && [ -d "$git_dir" ]; then
     common_dir=$git_dir
     if [ -f "$git_dir/commondir" ]; then
         IFS= read -r common_rel < "$git_dir/commondir"
@@ -75,12 +78,20 @@ case $hook_name in
         ;;
 esac
 
-if [ -n "$repo_hook" ]; then
-    # A pre-0.6.0 coauthor-guard copy in .git/hooks strips every co-author,
-    # humans too. The strip below supersedes it, so it is skipped.
-    if ! grep -qF "awk 'tolower(\$0) !~ /^co-authored-by:/'" "$repo_hook" 2>/dev/null; then
-        "$repo_hook" "$@" || exit $?
-    fi
+# A pre-0.6.0 coauthor-guard copy in .git/hooks strips every co-author, humans
+# too. The strip below supersedes it, so an exact copy (its code lines, comments
+# aside) is skipped; a hook that merely contains the same awk line still runs.
+LEGACY_GUARD_CODE='set -uo pipefail
+msg_file="${1:-}"
+[[ -n "$msg_file" && -f "$msg_file" ]] || exit 0
+tmp_file="${msg_file}.coauthor-guard.tmp"
+awk '"'"'tolower($0) !~ /^co-authored-by:/'"'"' "$msg_file" > "$tmp_file" && mv "$tmp_file" "$msg_file"'
+is_legacy_guard() {
+    [ "$(grep -v -e '^[[:space:]]*#' -e '^[[:space:]]*$' "$1" 2>/dev/null)" = "$LEGACY_GUARD_CODE" ]
+}
+
+if [ -n "$repo_hook" ] && ! is_legacy_guard "$repo_hook"; then
+    "$repo_hook" "$@" || exit $?
 fi
 
 msg_file=${1:-}
