@@ -21,7 +21,8 @@ if ($expanded -and -not [System.IO.Path]::IsPathRooted($expanded)) { exit 0 }
 if ($current -and -not [System.IO.Directory]::Exists($expanded)) {
     Write-Output "[developer-safety] WARNING: global git core.hooksPath ($current) does not exist, so git runs no hooks in any repo. Re-run: $fix"
 } elseif ($current -and [System.IO.File]::Exists((Join-Path $expanded '.crickets-managed'))) {
-    & pwsh -NoProfile -File (Join-Path $here 'install-global.ps1') -Check -Dir $expanded *> $null
+    # From the filesystem root, so this is the machine-level check, not the session repo's.
+    & pwsh -NoProfile -WorkingDirectory $root -File (Join-Path $here 'install-global.ps1') -Check -Dir $expanded *> $null
     if ($LASTEXITCODE -ne 0) {
         Write-Output "[developer-safety] WARNING: the global coauthor-guard git hooks at $current are incomplete or out of date. Re-run: $fix"
     }

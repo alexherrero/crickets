@@ -97,4 +97,15 @@ capabilities: [recoverability]
 # symlinks when it compares paths). The strip matches `Key : value` and
 # bracketless emails, and checks product names against the name part only, so
 # a person at gemini.com stays. check-global ignores a relative core.hooksPath.
-version: 0.6.1
+# 0.6.2 = a second adversarial review, of 0.6.1's fixes, before release.
+# install-global refuses a core.hooksPath an [includeIf] file sets, and
+# --check fails inside a repo that resolves core.hooksPath elsewhere. --check
+# compares hooks with a reference dispatcher kept in the install, so an older
+# plugin copy no longer reads a newer install as stale. Symlinks resolve
+# through the nearest existing parent, so a deleted hooks dir under a
+# symlinked ~/.config can be reinstalled. The dispatcher honors
+# GIT_COMMON_DIR and skips only an exact legacy strip-all copy. The strip
+# finds the name in a bracketless trailer and judges a nameless one by its
+# email's local part. check-global treats a UNC path as absolute; pwsh -Check
+# tests the executable bit.
+version: 0.6.2

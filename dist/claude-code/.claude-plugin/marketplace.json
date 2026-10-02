@@ -63,7 +63,7 @@
       ],
       "name": "developer-safety",
       "source": "./plugins/developer-safety",
-      "version": "0.6.1"
+      "version": "0.6.2"
     },
     {
       "capabilities": [

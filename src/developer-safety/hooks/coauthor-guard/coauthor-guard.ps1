@@ -29,8 +29,19 @@ $filtered = @($lines | Where-Object {
     $line = $_.ToLowerInvariant()
     if ($line -notmatch $keyRe) { return $true }
     $value = $line -replace $keyRe, ''
-    $name = ' ' + $value.Split('<')[0]
-    -not ($value -match $domainRe -or $name -match $nameRe -or $value.Contains('[bot]'))
+    # The name: what precedes "<", or, with no brackets, the words that are not
+    # an email. A trailer with no name is judged by its email's local part.
+    $lt = $value.IndexOf('<')
+    if ($lt -ge 0) {
+        $name = $value.Substring(0, $lt)
+        $email = ($value.Substring($lt + 1) -split '>')[0]
+    } else {
+        $words = @($value -split '[ \t]+' | Where-Object { $_ })
+        $email = @($words | Where-Object { $_.Contains('@') })[0]
+        $name = (@($words | Where-Object { -not $_.Contains('@') }) -join ' ')
+    }
+    if ($name -notmatch '[a-z0-9]') { $name = ("$email" -split '@')[0] }
+    -not ($value -match $domainRe -or (' ' + $name) -match $nameRe -or $value.Contains('[bot]'))
 })
 # Leave the file untouched when nothing named an agent.
 if ($filtered.Count -ne $lines.Count) {

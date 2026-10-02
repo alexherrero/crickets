@@ -60,6 +60,28 @@ function Get-MachineHooksPaths {
     }
 }
 
+# core.hooksPath values in files an [includeIf] pulls in. Git applies them only
+# in repos the condition matches, so Get-MachineHooksPaths never sees them.
+function Get-ConditionalHooksPaths {
+    $root = [System.IO.Path]::GetPathRoot([System.IO.Path]::GetFullPath($HOME))
+    $raw = (@(git -C $root config --show-origin -z --get-regexp '^includeif\..*\.path$' 2>$null) -join "`n")
+    if ($LASTEXITCODE -ne 0 -or -not $raw) { return @() }
+    $fields = $raw.Split([char]0)
+    $found = @()
+    for ($i = 0; $i + 1 -lt $fields.Count; $i += 2) {
+        $origin = $fields[$i].TrimStart("`n")
+        if ($origin.StartsWith('file:')) { $origin = $origin.Substring(5) }
+        $entry = $fields[$i + 1]
+        $value = $entry.Substring($entry.IndexOf("`n") + 1)
+        if ($value.StartsWith('~')) { $value = $HOME + $value.Substring(1) }
+        $file = if ([System.IO.Path]::IsPathRooted($value)) { $value } else { Join-Path ([System.IO.Path]::GetDirectoryName($origin)) $value }
+        if ($IO::Exists($file)) {
+            $found += @(git config --file $file --includes --get-all core.hooksPath 2>$null | ForEach-Object { "$_".Trim() } | Where-Object { $_ })
+        }
+    }
+    return $found
+}
+
 # The value in the global file itself, the one this script sets and unsets.
 function Get-GlobalFileHooksPath {
     $value = git config --global --get core.hooksPath 2>$null
@@ -67,15 +89,23 @@ function Get-GlobalFileHooksPath {
     return "$value".Trim()
 }
 
-# Compare paths with symlinks resolved, as install-global.sh does. Not
-# Resolve-Path: it costs seconds per call under pwsh on macOS, and it does not
-# resolve symlinks anyway.
+# Compare paths with symlinks resolved through the nearest existing parent, as
+# install-global.sh does, so a deleted hooks directory under a symlinked
+# ~/.config still matches the path the install recorded. Not Resolve-Path: it
+# costs seconds per call under pwsh on macOS, and does not resolve symlinks.
 function Resolve-Comparable([string]$p) {
     if ($p.StartsWith('~')) { $p = $HOME + $p.Substring(1) }
-    $full = [System.IO.Path]::GetFullPath($p)
-    if (-not $IsWindows -and $DirIO::Exists($full)) {
-        $real = & /bin/sh -c 'cd -P -- "$1" 2>/dev/null && pwd -P' sh $full
-        if ($LASTEXITCODE -eq 0 -and $real) { $full = "$real".Trim() }
+    $full = [System.IO.Path]::GetFullPath($p).TrimEnd('/', '\')
+    if (-not $IsWindows) {
+        $existing = $full; $rest = ''
+        while ($existing -and -not $DirIO::Exists($existing)) {
+            $rest = '/' + [System.IO.Path]::GetFileName($existing) + $rest
+            $existing = [System.IO.Path]::GetDirectoryName($existing)
+        }
+        if ($existing) {
+            $real = & /bin/sh -c 'cd -P -- "$1" 2>/dev/null && pwd -P' sh $existing
+            if ($LASTEXITCODE -eq 0 -and $real) { $full = "$real".Trim().TrimEnd('/') + $rest }
+        }
     }
     return $full.TrimEnd('/', '\').Replace('\', '/')
 }
@@ -94,21 +124,33 @@ function Test-SameBytes([string]$a, [string]$b) {
 
 $allPaths = @(Get-MachineHooksPaths)
 $current = if ($allPaths.Count) { $allPaths[-1] } else { '' }
-$foreign = @($allPaths | Where-Object { -not (Test-Ours $_) }) | Select-Object -Last 1
+$foreign = @(@($allPaths) + @(Get-ConditionalHooksPaths) | Where-Object { -not (Test-Ours $_) }) | Select-Object -Last 1
+
+function Test-Executable([string]$p) {
+    if (-not $IO::Exists($p)) { return $false }
+    if ($IsWindows) { return $true }
+    return [bool]($IO::GetUnixFileMode($p) -band [System.IO.UnixFileMode]::UserExecute)
+}
 
 if ($Check) {
     $problem = ''
     if (-not $current) { $problem = 'no core.hooksPath is set' }
     elseif (-not (Test-Ours $current)) { $problem = "git uses core.hooksPath $current, not $Dir" }
     elseif (-not $IO::Exists((Join-Path $Dir $Marker))) { $problem = "$Dir is missing or not crickets-managed" }
-    elseif (-not (Test-SameBytes (Join-Path $here 'coauthor-guard.sh') (Join-Path $Dir 'coauthor-guard.sh'))) {
-        $problem = "$Dir/coauthor-guard.sh is missing or differs from the shipped copy"
+    elseif (-not (Test-Executable (Join-Path $Dir 'coauthor-guard.sh'))) {
+        $problem = "$Dir/coauthor-guard.sh is missing or not executable"
+    }
+    elseif (-not $IO::Exists((Join-Path $Dir 'git-hook-dispatch.sh'))) {
+        $problem = "$Dir/git-hook-dispatch.sh (the reference copy) is missing"
     }
     else {
-        $dispatch = Join-Path $here 'git-hook-dispatch.sh'
+        # Each hook must be an intact copy of the dispatcher installed with it,
+        # not of whichever (possibly older) copy of this script is running.
+        $reference = Join-Path $Dir 'git-hook-dispatch.sh'
         foreach ($name in $HookNames) {
-            if (-not (Test-SameBytes $dispatch (Join-Path $Dir $name))) {
-                $problem = "$Dir/$name is missing or differs from the shipped dispatcher"; break
+            $hook = Join-Path $Dir $name
+            if (-not (Test-Executable $hook) -or -not (Test-SameBytes $reference $hook)) {
+                $problem = "$Dir/$name is missing, not executable, or no longer the dispatcher"; break
             }
         }
     }
@@ -117,9 +159,15 @@ if ($Check) {
         exit 1
     }
     Write-Output "coauthor-guard: global git hooks installed at $Dir"
-    $localPath = git config --local --get core.hooksPath 2>$null
-    if ($LASTEXITCODE -eq 0 -and $localPath) {
-        Write-Output "coauthor-guard: note — this repo sets its own core.hooksPath ($localPath), which overrides the global one here"
+    # Inside a repo, the core.hooksPath git uses there can still be another one:
+    # the repo's own local config, or a conditional include that matches it.
+    git rev-parse --git-dir *> $null
+    if ($LASTEXITCODE -eq 0) {
+        $herePath = "$(git config --get core.hooksPath 2>$null)".Trim()
+        if ($herePath -and -not (Test-Ours $herePath)) {
+            [Console]::Error.WriteLine("coauthor-guard: but this repo uses core.hooksPath $herePath (its own config or a conditional include), so the guard does not run here")
+            exit 1
+        }
     }
     exit 0
 }
@@ -180,6 +228,8 @@ try {
     }
     $guard = Join-Path $Dir 'coauthor-guard.sh'
     $IO::Copy((Join-Path $here 'coauthor-guard.sh'), $guard, $true)
+    # The reference -Check compares every hook against.
+    $IO::Copy($dispatch, (Join-Path $Dir 'git-hook-dispatch.sh'), $true)
     # Git for Windows ignores the mode bits; everywhere else the hooks must be executable.
     if (-not $IsWindows) {
         chmod +x @($written) $guard

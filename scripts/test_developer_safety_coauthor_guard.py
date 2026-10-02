@@ -57,6 +57,8 @@ AGENT_TRAILERS = [
         "Co-authored-by\t: Claude <" + _at("noreply", "anthropic.com") + ">",
         "Co-Authored-By: Claude " + _at("noreply", "anthropic.com"),
         "Co-Authored-By: Claude <" + _at("noreply", "anthropic.com") + " >",
+        # No name at all: judged by the email's local part.
+        "Co-authored-by: <" + _at("gemini-cli", "google.com") + ">",
 ]
 
 # The operator's call: strip AI agents only. A person's trailer stays,
@@ -69,6 +71,7 @@ HUMAN_TRAILERS = [
         # A product name inside a person's email is not the name.
         "Co-authored-by: Jane Doe <" + _at("jane", "gemini.com") + ">",
         "Co-authored-by: Pat <" + _at("123+copilot-fan", "users.noreply.github.com") + ">",
+        "Co-authored-by: Jane Doe " + _at("jane", "gemini.com"),
 ]
 
 

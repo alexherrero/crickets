@@ -3,7 +3,7 @@ name: coauthor-guard
 description: Deterministic prepare-commit-msg git hook that strips every Co-Authored-By trailer naming an AI agent from a commit message, installed once for every repo on the machine through a global core.hooksPath. Additive enforcement on top of the existing commit-no-coauthor snippet + host includeCoAuthoredBy setting — not a replacement for that floor.
 kind: hook
 supported_hosts: [claude-code, antigravity]
-version: 0.2.1
+version: 0.2.2
 ---
 
 # coauthor-guard — deterministic agent Co-Authored-By strip
@@ -16,7 +16,7 @@ A native git `prepare-commit-msg` hook, not a Claude Code lifecycle hook — it 
 - **Check:** each trailer line whose key is `Co-Authored-By` (case-insensitive, with optional spaces or a tab before the colon, as git parses it) is tested against three agent markers:
   - an email at an agent vendor's domain, with or without the `<>`: `anthropic.com`, `openai.com`, `cursor.com`, `aider.chat`, `ampcode.com`, `all-hands.dev` (subdomains too). A person writing from one of those domains is treated as that vendor's agent;
   - a GitHub App identity, `[bot]` anywhere in the value (Copilot's coding agent, Jules, Devin and Gemini Code Assist commit or co-author as one);
-  - an agent product name as a whole word **in the name**, the part before `<`: Gemini, Copilot, Codex, ChatGPT, GPT-*n*, Antigravity, Aider, OpenHands, Cursor Agent, or Claude followed by a model or product name (Opus, Sonnet, Haiku, Fable, Code, Instant). A product name inside a person's email, such as an address at `gemini.com`, doesn't count.
+  - an agent product name as a whole word **in the name** (the part before `<`, or the words that aren't an email; a trailer with no name is judged by its email's local part): Gemini, Copilot, Codex, ChatGPT, GPT-*n*, Antigravity, Aider, OpenHands, Cursor Agent, or Claude followed by a model or product name (Opus, Sonnet, Haiku, Fable, Code, Instant). A product name inside a person's email, such as an address at `gemini.com`, doesn't count.
 - **If a line matches:** it is removed. Every other line is left byte-identical.
 - **A human co-author stays.** A trailer naming a person, including a person called Claude with their own email, is not touched.
 
@@ -43,12 +43,12 @@ pwsh -NoProfile -File src/developer-safety/hooks/coauthor-guard/install-global.p
 What it does:
 
 - Writes the hooks to `~/.config/crickets/git-hooks/` (`$XDG_CONFIG_HOME` is honoured; `--dir` / `-Dir` overrides it). These are copies, not a pointer into the plugin cache, so `claude plugin update` can't leave git pointing at a deleted directory. Re-run the installer to pick up a newer guard.
-- Puts `git-hook-dispatch.sh` there under each git hook name. Once a global `core.hooksPath` is set, git stops looking in a repo's own `.git/hooks`, so each copy hands off to the repo's hook of the same name, with its arguments, stdin and exit code intact. Repo hooks such as `privacy`'s `pre-push` keep running. For `prepare-commit-msg` and `applypatch-msg`, the repo's hook runs first and the strip runs last. A pre-0.6.0 `coauthor-guard` copy left in `.git/hooks` (it stripped every co-author, humans too) is skipped.
+- Puts `git-hook-dispatch.sh` there under each git hook name. Once a global `core.hooksPath` is set, git stops looking in a repo's own `.git/hooks`, so each copy hands off to the repo's hook of the same name, with its arguments, stdin and exit code intact. Repo hooks such as `privacy`'s `pre-push` keep running. For `prepare-commit-msg` and `applypatch-msg`, the repo's hook runs first and the strip runs last. An exact pre-0.6.0 `coauthor-guard` copy left in `.git/hooks` (it stripped every co-author, humans too) is skipped; any other hook runs, even one containing the same `awk` line.
 - Stays cheap: the dispatcher finds the repo's hooks with shell builtins rather than a `git` call, and starts `bash` only when the message has a co-author line.
 - Leaves three hook names out, so **a repo's own hook of that name stops running while the install is active**: `reference-transaction` and `post-index-change` (git fires them on every ref or index update; a shell per call made a 40-commit rebase take 8s instead of 0.2s), and `push-to-checkout` (its presence alone would replace git's built-in `updateInstead` behaviour).
 - The files are POSIX `sh`, which Git for Windows runs through its bundled shell, so one set serves every OS.
-- Refuses to replace a `core.hooksPath` it didn't set, wherever the machine's config sets one (system, global, or a file they `[include]`), or to write into a directory holding files it didn't put there.
-- `--check` / `-Check` passes only when git uses this directory and every file in it matches the copy shipped beside the installer. A replaced file, or one left behind by an older install after a plugin update, reads as unhealthy; re-run the installer to refresh.
+- Refuses to replace a `core.hooksPath` it didn't set, wherever the machine's config sets one (system, global, a file they `[include]`, or a file an `[includeIf]` pulls in for some repos), or to write into a directory holding files it didn't put there.
+- `--check` / `-Check` passes only when git uses this directory and every hook in it is an intact, executable copy of the dispatcher, which the install keeps there as `git-hook-dispatch.sh` for reference. A hook another tool replaced reads as unhealthy. Run inside a repo, it also fails when that repo resolves `core.hooksPath` elsewhere (its own config, or a conditional include). After a plugin update, re-run the installer to pick up the newer guard.
 
 `--uninstall` / `-Uninstall` unsets the global `core.hooksPath` and removes the directory, unless some other config still names it (a `core.hooksPath` pointing at a deleted directory would silence every repo's hooks). Repos' own `.git/hooks` then run natively again.
 

@@ -16,8 +16,9 @@
 #     one of those domains counts as that vendor's agent;
 #   - a GitHub App identity — `[bot]` anywhere in the value (Copilot's coding
 #     agent, Jules, Devin and Gemini Code Assist commit or co-author as one);
-#   - NAME_RE, matched against the name only (the part before `<`), so a
-#     person's address at gemini.com never trips it: Gemini, Copilot,
+#   - NAME_RE, matched against the name only (the part before `<`, or the
+#     words that aren't an email), so a person's address at gemini.com never
+#     trips it; a trailer with no name is judged by its email's local part: Gemini, Copilot,
 #     Codex, ChatGPT, GPT-<n>, Antigravity, Aider, OpenHands, Cursor Agent, or
 #     Claude followed by a model or product name (Opus, Sonnet, Haiku, Fable,
 #     Code, Instant).
@@ -50,9 +51,24 @@ awk -v domain_re="$DOMAIN_RE" -v name_re="$NAME_RE" '
     line ~ /^co-authored-by[ \t]*:/ {
         value = line
         sub(/^co-authored-by[ \t]*:/, "", value)
-        name = value
-        lt = index(name, "<")
-        if (lt > 0) name = substr(name, 1, lt - 1)
+        # The name: what precedes "<", or, with no brackets, the words that
+        # are not an email. A trailer with no name is judged by the local part
+        # of its email (<gemini-cli@...> names an agent). No apostrophes in
+        # this program: it sits inside a single-quoted shell string.
+        name = ""; email = ""
+        lt = index(value, "<")
+        if (lt > 0) {
+            name = substr(value, 1, lt - 1)
+            email = substr(value, lt + 1)
+            sub(/>.*/, "", email)
+        } else {
+            n = split(value, words, /[ \t]+/)
+            for (i = 1; i <= n; i++) {
+                if (index(words[i], "@") > 0) { if (email == "") email = words[i] }
+                else name = name " " words[i]
+            }
+        }
+        if (name !~ /[a-z0-9]/) { name = email; sub(/@.*/, "", name) }
         if (value ~ domain_re || (" " name) ~ name_re || index(value, "[bot]") > 0) next
     }
     { print }
