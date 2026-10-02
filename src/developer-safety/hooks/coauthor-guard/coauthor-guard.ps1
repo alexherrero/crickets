@@ -1,9 +1,10 @@
 # coauthor-guard — prepare-commit-msg hook (Windows / pwsh).
 # Mirrors coauthor-guard.sh: deterministically strips every `Co-Authored-By: …`
 # trailer that names an AI agent (vendor email domain, a `[bot]` identity, or
-# an agent product name — see coauthor-guard.sh for the full rule). A human
-# co-author's trailer is left alone. Regex/string-match only, never LLM-judged.
-# $agentRe is kept byte-identical to coauthor-guard.sh's AGENT_RE (a test pins it).
+# an agent product name in the name part — see coauthor-guard.sh for the full
+# rule). A human co-author's trailer is left alone. Regex/string-match only,
+# never LLM-judged. $domainRe and $nameRe are kept byte-identical to
+# coauthor-guard.sh's DOMAIN_RE and NAME_RE (a test pins them).
 #
 # The machine-wide install (install-global.sh / install-global.ps1) runs the
 # .sh twin through Git for Windows' bundled bash; this twin is for wiring the
@@ -19,12 +20,17 @@ if (-not $msgFile -or -not (Test-Path -LiteralPath $msgFile -PathType Leaf)) {
     exit 0
 }
 
-$agentRe = '@([a-z0-9-]+[.])*(anthropic[.]com|openai[.]com|cursor[.]com|aider[.]chat|ampcode[.]com|all-hands[.]dev)>|[^a-z0-9](gemini|copilot|codex|chatgpt|antigravity|aider|openhands|cursor ?agent|claude (opus|sonnet|haiku|fable|code|instant))([^a-z0-9]|$)|[^a-z0-9]gpt-[0-9]'
+$keyRe = '^co-authored-by[ \t]*:'
+$domainRe = '@([a-z0-9-]+[.])*(anthropic[.]com|openai[.]com|cursor[.]com|aider[.]chat|ampcode[.]com|all-hands[.]dev)([^a-z0-9.-]|$)'
+$nameRe = '[^a-z0-9](gemini|copilot|codex|chatgpt|antigravity|aider|openhands|cursor ?agent|claude (opus|sonnet|haiku|fable|code|instant))([^a-z0-9]|$)|[^a-z0-9]gpt-[0-9]'
 
 $lines = @(Get-Content -LiteralPath $msgFile)
 $filtered = @($lines | Where-Object {
     $line = $_.ToLowerInvariant()
-    -not ($line.StartsWith('co-authored-by:') -and ($line -match $agentRe -or $line.Contains('[bot]')))
+    if ($line -notmatch $keyRe) { return $true }
+    $value = $line -replace $keyRe, ''
+    $name = ' ' + $value.Split('<')[0]
+    -not ($value -match $domainRe -or $name -match $nameRe -or $value.Contains('[bot]'))
 })
 # Leave the file untouched when nothing named an agent.
 if ($filtered.Count -ne $lines.Count) {

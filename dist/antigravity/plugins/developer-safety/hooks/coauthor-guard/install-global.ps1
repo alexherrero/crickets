@@ -1,6 +1,7 @@
 # install-global — install coauthor-guard for every repo on this machine (pwsh).
 # Mirrors install-global.sh: same hook names, same files, same global config,
-# same exit codes (0 ok · 1 --check unhealthy · 2 refused/failed).
+# same refusals, same exit codes (0 ok · 1 --check unhealthy · 2 refused/failed).
+# See install-global.sh for why some hook names are left out.
 #
 #   pwsh -NoProfile -File install-global.ps1               install or refresh
 #   pwsh -NoProfile -File install-global.ps1 -Check        read-only health check
@@ -36,36 +37,79 @@ $HookNames = @(
     'pre-commit', 'pre-merge-commit', 'prepare-commit-msg', 'commit-msg', 'post-commit',
     'pre-rebase', 'post-checkout', 'post-merge', 'pre-push', 'post-rewrite',
     'pre-receive', 'update', 'proc-receive', 'post-receive', 'post-update',
-    'reference-transaction', 'pre-auto-gc', 'sendemail-validate', 'post-index-change',
+    'pre-auto-gc', 'sendemail-validate',
     'p4-changelist', 'p4-prepare-changelist', 'p4-post-changelist', 'p4-pre-submit'
 )
 $Marker = '.crickets-managed'
 
-function Get-GlobalHooksPath {
+# Every core.hooksPath the machine's config sets outside a repo: system,
+# global, and anything they [include]. The last one is the one git uses.
+function Get-MachineHooksPaths {
+    $saved = @{}
+    foreach ($name in 'GIT_DIR', 'GIT_WORK_TREE', 'GIT_COMMON_DIR') {
+        $saved[$name] = [Environment]::GetEnvironmentVariable($name)
+        [Environment]::SetEnvironmentVariable($name, $null)
+    }
+    try {
+        $root = [System.IO.Path]::GetPathRoot([System.IO.Path]::GetFullPath($HOME))
+        $values = @(git -C $root config --includes --get-all core.hooksPath 2>$null)
+        if ($LASTEXITCODE -ne 0) { return @() }
+        return @($values | ForEach-Object { "$_".Trim() } | Where-Object { $_ })
+    } finally {
+        foreach ($name in $saved.Keys) { [Environment]::SetEnvironmentVariable($name, $saved[$name]) }
+    }
+}
+
+# The value in the global file itself, the one this script sets and unsets.
+function Get-GlobalFileHooksPath {
     $value = git config --global --get core.hooksPath 2>$null
     if ($LASTEXITCODE -ne 0) { return '' }
     return "$value".Trim()
 }
 
-# Lexical comparison (GetFullPath, not Resolve-Path: the latter costs seconds
-# per call under pwsh on macOS). install-global.sh compares symlink-resolved paths.
+# Compare paths with symlinks resolved, as install-global.sh does. Not
+# Resolve-Path: it costs seconds per call under pwsh on macOS, and it does not
+# resolve symlinks anyway.
 function Resolve-Comparable([string]$p) {
     if ($p.StartsWith('~')) { $p = $HOME + $p.Substring(1) }
-    return [System.IO.Path]::GetFullPath($p).TrimEnd('/', '\').Replace('\', '/')
+    $full = [System.IO.Path]::GetFullPath($p)
+    if (-not $IsWindows -and $DirIO::Exists($full)) {
+        $real = & /bin/sh -c 'cd -P -- "$1" 2>/dev/null && pwd -P' sh $full
+        if ($LASTEXITCODE -eq 0 -and $real) { $full = "$real".Trim() }
+    }
+    return $full.TrimEnd('/', '\').Replace('\', '/')
+}
+$dirComparable = Resolve-Comparable $Dir
+function Test-Ours([string]$p) {
+    return [bool]($p -and ((Resolve-Comparable $p) -eq $dirComparable))
 }
 
-$current = Get-GlobalHooksPath
-$pointsHere = $current -and ((Resolve-Comparable $current) -eq (Resolve-Comparable $Dir))
+function Test-SameBytes([string]$a, [string]$b) {
+    if (-not ($IO::Exists($a) -and $IO::Exists($b))) { return $false }
+    $x = $IO::ReadAllBytes($a); $y = $IO::ReadAllBytes($b)
+    if ($x.Length -ne $y.Length) { return $false }
+    for ($i = 0; $i -lt $x.Length; $i++) { if ($x[$i] -ne $y[$i]) { return $false } }
+    return $true
+}
+
+$allPaths = @(Get-MachineHooksPaths)
+$current = if ($allPaths.Count) { $allPaths[-1] } else { '' }
+$foreign = @($allPaths | Where-Object { -not (Test-Ours $_) }) | Select-Object -Last 1
 
 if ($Check) {
     $problem = ''
-    if (-not $current) { $problem = 'global core.hooksPath is not set' }
-    elseif (-not $pointsHere) { $problem = "global core.hooksPath is $current, not $Dir" }
+    if (-not $current) { $problem = 'no core.hooksPath is set' }
+    elseif (-not (Test-Ours $current)) { $problem = "git uses core.hooksPath $current, not $Dir" }
     elseif (-not $IO::Exists((Join-Path $Dir $Marker))) { $problem = "$Dir is missing or not crickets-managed" }
-    elseif (-not $IO::Exists((Join-Path $Dir 'coauthor-guard.sh'))) { $problem = "$Dir/coauthor-guard.sh is missing" }
+    elseif (-not (Test-SameBytes (Join-Path $here 'coauthor-guard.sh') (Join-Path $Dir 'coauthor-guard.sh'))) {
+        $problem = "$Dir/coauthor-guard.sh is missing or differs from the shipped copy"
+    }
     else {
+        $dispatch = Join-Path $here 'git-hook-dispatch.sh'
         foreach ($name in $HookNames) {
-            if (-not $IO::Exists((Join-Path $Dir $name))) { $problem = "$Dir/$name is missing"; break }
+            if (-not (Test-SameBytes $dispatch (Join-Path $Dir $name))) {
+                $problem = "$Dir/$name is missing or differs from the shipped dispatcher"; break
+            }
         }
     }
     if ($problem) {
@@ -81,11 +125,19 @@ if ($Check) {
 }
 
 if ($Uninstall) {
-    if ($pointsHere) {
+    $globalValue = Get-GlobalFileHooksPath
+    if (Test-Ours $globalValue) {
         git config --global --unset core.hooksPath
-        Write-Output "coauthor-guard: unset global core.hooksPath ($current)"
-    } elseif ($current) {
-        Write-Output "coauthor-guard: global core.hooksPath is $current, not $Dir — left as is"
+        Write-Output "coauthor-guard: unset global core.hooksPath ($globalValue)"
+    } elseif ($globalValue) {
+        Write-Output "coauthor-guard: global core.hooksPath is $globalValue, not $Dir — left as is"
+    }
+    # Delete the directory only once no config still names it: a core.hooksPath
+    # pointing at a deleted directory silences every repo's hooks.
+    $stillNamed = @(Get-MachineHooksPaths | Where-Object { Test-Ours $_ }) | Select-Object -Last 1
+    if ($stillNamed) {
+        [Console]::Error.WriteLine("coauthor-guard: $Dir is still named by core.hooksPath ($stillNamed) — not removed")
+        exit 2
     }
     if ($IO::Exists((Join-Path $Dir $Marker))) {
         $DirIO::Delete($Dir, $true)
@@ -95,10 +147,10 @@ if ($Uninstall) {
 }
 
 # install
-if ($current -and -not $pointsHere) {
-    [Console]::Error.WriteLine("install-global: global core.hooksPath is already $current — not replacing it.")
-    [Console]::Error.WriteLine("  Unset it (git config --global --unset core.hooksPath) or pass -Dir $current")
-    [Console]::Error.WriteLine("  only if that directory is meant to become crickets-managed.")
+if ($foreign) {
+    [Console]::Error.WriteLine("install-global: core.hooksPath is already set to $foreign — not replacing it.")
+    [Console]::Error.WriteLine("  (git config --show-origin --get-all core.hooksPath shows where.) Remove it")
+    [Console]::Error.WriteLine("  first, or pass -Dir $foreign only if that directory is meant to become crickets-managed.")
     exit 2
 }
 if ($DirIO::Exists($Dir) -and -not $IO::Exists((Join-Path $Dir $Marker)) -and
@@ -120,6 +172,11 @@ try {
         $dest = Join-Path $Dir $name
         $IO::Copy($dispatch, $dest, $true)
         $dest
+    }
+    # Hooks an earlier version installed and this one leaves out.
+    foreach ($name in 'reference-transaction', 'post-index-change') {
+        $old = Join-Path $Dir $name
+        if ($IO::Exists($old)) { $IO::Delete($old) }
     }
     $guard = Join-Path $Dir 'coauthor-guard.sh'
     $IO::Copy((Join-Path $here 'coauthor-guard.sh'), $guard, $true)

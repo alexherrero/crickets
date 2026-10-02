@@ -84,4 +84,17 @@ capabilities: [recoverability]
 # agent (vendor email domain, [bot] identity, or agent product name); human
 # co-authors stay (operator's call, 2026-10-01). New SessionStart
 # check-global.{sh,ps1}, read-only, warns only when an install breaks.
-version: 0.6.0
+# 0.6.1 = adversarial-review fixes to 0.6.0's machine-wide coauthor-guard,
+# before it shipped in a release. The dispatcher no longer installs
+# reference-transaction / post-index-change (a shell per ref or index update
+# made a 40-commit rebase take 8s), finds the repo's hooks with shell builtins
+# and starts bash only for a message with a co-author line. It strips on
+# applypatch-msg too (git am, rebase --apply), skips a pre-0.6.0 strip-all
+# copy left in .git/hooks, and no longer needs git 2.31's --path-format.
+# install-global reads core.hooksPath through system/global/[include]
+# config, --check compares file contents with the shipped copies, and
+# uninstall never deletes a directory a config still names (pwsh now resolves
+# symlinks when it compares paths). The strip matches `Key : value` and
+# bracketless emails, and checks product names against the name part only, so
+# a person at gemini.com stays. check-global ignores a relative core.hooksPath.
+version: 0.6.1
