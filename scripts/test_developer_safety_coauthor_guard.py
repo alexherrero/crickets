@@ -51,6 +51,12 @@ AGENT_TRAILERS = [
         "Co-Authored-By: Antigravity <agent@example.com>",
         "Co-Authored-By: ChatGPT <bot@example.com>",
         "Co-Authored-By: GPT-5 <model@example.com>",
+        # git parses these as the same trailer: spaces or a tab before the colon,
+        # an email with no brackets, a space inside the brackets.
+        "Co-authored-by : Claude <" + _at("noreply", "anthropic.com") + ">",
+        "Co-authored-by\t: Claude <" + _at("noreply", "anthropic.com") + ">",
+        "Co-Authored-By: Claude " + _at("noreply", "anthropic.com"),
+        "Co-Authored-By: Claude <" + _at("noreply", "anthropic.com") + " >",
 ]
 
 # The operator's call: strip AI agents only. A person's trailer stays,
@@ -60,6 +66,9 @@ HUMAN_TRAILERS = [
         "Co-authored-by: Pat Lee <" + _at("12345+patlee", "users.noreply.github.com") + ">",
         "Co-authored-by: Claude Monet <" + _at("claude", "giverny.example") + ">",
         "Co-authored-by: Devin Smith <devin@example.org>",
+        # A product name inside a person's email is not the name.
+        "Co-authored-by: Jane Doe <" + _at("jane", "gemini.com") + ">",
+        "Co-authored-by: Pat <" + _at("123+copilot-fan", "users.noreply.github.com") + ">",
 ]
 
 
@@ -147,13 +156,17 @@ class CoauthorGuardHookTests(unittest.TestCase):
 
 
 class CoauthorGuardParityTests(unittest.TestCase):
-    def test_agent_pattern_is_identical_in_both_twins(self):
-        sh = re.search(r"^AGENT_RE='([^']*)'$", _HOOK.read_text(encoding="utf-8"), re.M)
-        ps1 = re.search(r"^\$agentRe = '([^']*)'$", _PS1.read_text(encoding="utf-8"), re.M)
-        self.assertIsNotNone(sh, "AGENT_RE not found in coauthor-guard.sh")
-        self.assertIsNotNone(ps1, "$agentRe not found in coauthor-guard.ps1")
-        self.assertEqual(sh.group(1), ps1.group(1))
-        self.assertNotIn("\\", sh.group(1), "awk -v would rewrite a backslash")
+    def test_agent_patterns_are_identical_in_both_twins(self):
+        sh_text = _HOOK.read_text(encoding="utf-8")
+        ps1_text = _PS1.read_text(encoding="utf-8")
+        for sh_name, ps1_name in (("DOMAIN_RE", "domainRe"), ("NAME_RE", "nameRe")):
+            with self.subTest(pattern=sh_name):
+                sh = re.search(rf"^{sh_name}='([^']*)'$", sh_text, re.M)
+                ps1 = re.search(rf"^\${ps1_name} = '([^']*)'$", ps1_text, re.M)
+                self.assertIsNotNone(sh, f"{sh_name} not found in coauthor-guard.sh")
+                self.assertIsNotNone(ps1, f"${ps1_name} not found in coauthor-guard.ps1")
+                self.assertEqual(sh.group(1), ps1.group(1))
+                self.assertNotIn("\\", sh.group(1), "awk -v would rewrite a backslash")
 
 
 @unittest.skipUnless(shutil.which("pwsh"), "pwsh not on PATH")

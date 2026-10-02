@@ -3,7 +3,7 @@ name: coauthor-guard
 description: Deterministic prepare-commit-msg git hook that strips every Co-Authored-By trailer naming an AI agent from a commit message, installed once for every repo on the machine through a global core.hooksPath. Additive enforcement on top of the existing commit-no-coauthor snippet + host includeCoAuthoredBy setting — not a replacement for that floor.
 kind: hook
 supported_hosts: [claude-code, antigravity]
-version: 0.2.0
+version: 0.2.1
 ---
 
 # coauthor-guard — deterministic agent Co-Authored-By strip
@@ -12,15 +12,15 @@ A native git `prepare-commit-msg` hook, not a Claude Code lifecycle hook — it 
 
 ## How it works
 
-- **Trigger:** git's native `prepare-commit-msg` hook, called as `prepare-commit-msg <msg-file> <source> [<sha1>]`. Git runs it for `commit -m`, `--amend`, `--trailer`, merges, cherry-picks and rebases, and `--no-verify` does not skip it (it does skip `commit-msg`, which is why this hook uses the earlier slot).
-- **Check:** each line that starts `Co-Authored-By:` (case-insensitive) is tested against three agent markers:
-  - an email at an agent vendor's domain: `anthropic.com`, `openai.com`, `cursor.com`, `aider.chat`, `ampcode.com`, `all-hands.dev` (subdomains too);
-  - a GitHub App identity, `[bot]` anywhere on the line (Copilot's coding agent, Jules, Devin and Gemini Code Assist commit or co-author as one);
-  - an agent product name as a whole word: Gemini, Copilot, Codex, ChatGPT, GPT-*n*, Antigravity, Aider, OpenHands, Cursor Agent, or Claude followed by a model or product name (Opus, Sonnet, Haiku, Fable, Code, Instant).
+- **Trigger:** git's native `prepare-commit-msg` hook, called as `prepare-commit-msg <msg-file> <source> [<sha1>]`. Git runs it for `commit -m`, `--amend`, `--trailer`, merges, cherry-picks and rebases, and `--no-verify` does not skip it (it does skip `commit-msg`, which is why this hook uses the earlier slot). The machine-wide install also runs the strip on `applypatch-msg`, which covers `git am` and `git rebase --apply`.
+- **Check:** each trailer line whose key is `Co-Authored-By` (case-insensitive, with optional spaces or a tab before the colon, as git parses it) is tested against three agent markers:
+  - an email at an agent vendor's domain, with or without the `<>`: `anthropic.com`, `openai.com`, `cursor.com`, `aider.chat`, `ampcode.com`, `all-hands.dev` (subdomains too). A person writing from one of those domains is treated as that vendor's agent;
+  - a GitHub App identity, `[bot]` anywhere in the value (Copilot's coding agent, Jules, Devin and Gemini Code Assist commit or co-author as one);
+  - an agent product name as a whole word **in the name**, the part before `<`: Gemini, Copilot, Codex, ChatGPT, GPT-*n*, Antigravity, Aider, OpenHands, Cursor Agent, or Claude followed by a model or product name (Opus, Sonnet, Haiku, Fable, Code, Instant). A product name inside a person's email, such as an address at `gemini.com`, doesn't count.
 - **If a line matches:** it is removed. Every other line is left byte-identical.
 - **A human co-author stays.** A trailer naming a person, including a person called Claude with their own email, is not touched.
 
-Deterministic regex/string-match only, never LLM-judged — mirrors `content-refresh`'s mechanical-vs-judgment-bound split and the diagnostics privacy scrub's determinism discipline. The pattern lives in `coauthor-guard.sh` and `coauthor-guard.ps1`, and a test keeps the two byte-identical. To cover a new agent, add its domain or name to both and a trailer for it to the test.
+Deterministic regex/string-match only, never LLM-judged — mirrors `content-refresh`'s mechanical-vs-judgment-bound split and the diagnostics privacy scrub's determinism discipline. The patterns (`DOMAIN_RE`, `NAME_RE`) live in `coauthor-guard.sh` and `coauthor-guard.ps1`, and a test keeps the two byte-identical. To cover a new agent, add its domain or name to both and a trailer for it to the test.
 
 ## Installing
 
@@ -43,11 +43,14 @@ pwsh -NoProfile -File src/developer-safety/hooks/coauthor-guard/install-global.p
 What it does:
 
 - Writes the hooks to `~/.config/crickets/git-hooks/` (`$XDG_CONFIG_HOME` is honoured; `--dir` / `-Dir` overrides it). These are copies, not a pointer into the plugin cache, so `claude plugin update` can't leave git pointing at a deleted directory. Re-run the installer to pick up a newer guard.
-- Puts `git-hook-dispatch.sh` there under every git hook name. Once a global `core.hooksPath` is set, git stops looking in a repo's own `.git/hooks`, so each copy hands off to the repo's hook of the same name, with its arguments, stdin and exit code intact. Repo hooks such as `privacy`'s `pre-push` keep working. For `prepare-commit-msg`, the repo's hook runs first and the strip runs last.
-- The files are POSIX `sh`, which Git for Windows runs through its bundled shell, so one set serves every OS. Left out: `push-to-checkout` (its presence alone would replace git's built-in `updateInstead` behaviour).
-- Refuses to replace a global `core.hooksPath` it didn't set, or to write into a directory holding files it didn't put there.
+- Puts `git-hook-dispatch.sh` there under each git hook name. Once a global `core.hooksPath` is set, git stops looking in a repo's own `.git/hooks`, so each copy hands off to the repo's hook of the same name, with its arguments, stdin and exit code intact. Repo hooks such as `privacy`'s `pre-push` keep running. For `prepare-commit-msg` and `applypatch-msg`, the repo's hook runs first and the strip runs last. A pre-0.6.0 `coauthor-guard` copy left in `.git/hooks` (it stripped every co-author, humans too) is skipped.
+- Stays cheap: the dispatcher finds the repo's hooks with shell builtins rather than a `git` call, and starts `bash` only when the message has a co-author line.
+- Leaves three hook names out, so **a repo's own hook of that name stops running while the install is active**: `reference-transaction` and `post-index-change` (git fires them on every ref or index update; a shell per call made a 40-commit rebase take 8s instead of 0.2s), and `push-to-checkout` (its presence alone would replace git's built-in `updateInstead` behaviour).
+- The files are POSIX `sh`, which Git for Windows runs through its bundled shell, so one set serves every OS.
+- Refuses to replace a `core.hooksPath` it didn't set, wherever the machine's config sets one (system, global, or a file they `[include]`), or to write into a directory holding files it didn't put there.
+- `--check` / `-Check` passes only when git uses this directory and every file in it matches the copy shipped beside the installer. A replaced file, or one left behind by an older install after a plugin update, reads as unhealthy; re-run the installer to refresh.
 
-`--uninstall` / `-Uninstall` unsets the global `core.hooksPath` and removes the directory. Repos' own `.git/hooks` then run natively again.
+`--uninstall` / `-Uninstall` unsets the global `core.hooksPath` and removes the directory, unless some other config still names it (a `core.hooksPath` pointing at a deleted directory would silence every repo's hooks). Repos' own `.git/hooks` then run natively again.
 
 **What a global install does not reach:**
 
@@ -57,7 +60,7 @@ What it does:
 
 **One repo only:** copy `coauthor-guard.sh` to that repo's `.git/hooks/prepare-commit-msg` and `chmod +x` it.
 
-**Keeping it installed.** On Claude Code a SessionStart check (`check-global.sh`) prints one warning line if the install breaks: the global `core.hooksPath` names a directory that no longer exists (git then runs no hooks at all), the installed files are incomplete, or the directory is there but the config was unset. It is read-only and says nothing on a healthy machine or one that never installed. Antigravity has no SessionStart event, so run `--check` by hand there.
+**Keeping it installed.** On Claude Code a SessionStart check (`check-global.sh`) prints one warning line if the install breaks: the global `core.hooksPath` names a directory that no longer exists (git then runs no hooks at all), the installed files are incomplete, or the directory is there but the config was unset. It is read-only and says nothing on a healthy machine, one that never installed, or one whose `core.hooksPath` is relative. Antigravity has no SessionStart event, so run `--check` by hand there.
 
 ## Relationship to the existing floor
 
