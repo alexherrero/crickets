@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -File .claude/hooks/coauthor-guard/check-global.ps1",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

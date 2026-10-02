@@ -75,4 +75,13 @@ capabilities: [recoverability]
 # body is never scanned. Same install posture as coauthor-guard -- no
 # automated installer yet, see hooks/commit-msg-gate/hook.md for manual
 # install steps on both hosts.
-version: 0.5.2
+# 0.6.0 = coauthor-guard installs machine-wide and strips agents only. New
+# install-global.{sh,ps1} copy git-hook-dispatch.sh into
+# ~/.config/crickets/git-hooks under every git hook name and point git's
+# global core.hooksPath at it, so the strip runs in every repo on the machine
+# while each repo's own .git/hooks keep running (the dispatcher hands every
+# hook on). The strip now removes only Co-Authored-By trailers naming an AI
+# agent (vendor email domain, [bot] identity, or agent product name); human
+# co-authors stay (operator's call, 2026-10-01). New SessionStart
+# check-global.{sh,ps1}, read-only, warns only when an install breaks.
+version: 0.6.0
