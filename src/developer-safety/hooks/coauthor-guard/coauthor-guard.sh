@@ -68,7 +68,7 @@ awk -v domain_re="$DOMAIN_RE" -v name_re="$NAME_RE" '
                 else name = name " " words[i]
             }
         }
-        if (name !~ /[a-z0-9]/) { name = email; sub(/@.*/, "", name) }
+        if (name !~ /[^ \t]/) { name = email; sub(/@.*/, "", name) }
         if (value ~ domain_re || (" " name) ~ name_re || index(value, "[bot]") > 0) next
     }
     { print }

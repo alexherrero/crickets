@@ -31,7 +31,8 @@ if [[ -n "$current" && ! -d "$current_expanded" ]]; then
     echo "[developer-safety] WARNING: global git core.hooksPath ($current) does not exist, so git runs no hooks in any repo. Re-run: $fix"
 elif [[ -n "$current" && -f "$current_expanded/.crickets-managed" ]]; then
     # From /, so this is the machine-level check, not the session repo's.
-    if ! (cd / && bash "$here/install-global.sh" --check --dir "$current_expanded") >/dev/null 2>&1; then
+    if ! (unset GIT_DIR GIT_WORK_TREE GIT_COMMON_DIR; cd / &&
+            bash "$here/install-global.sh" --check --dir "$current_expanded") >/dev/null 2>&1; then
         echo "[developer-safety] WARNING: the global coauthor-guard git hooks at $current are incomplete or out of date. Re-run: $fix"
     fi
 elif [[ -z "$current" && -f "$dir/.crickets-managed" ]]; then

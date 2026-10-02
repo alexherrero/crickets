@@ -60,23 +60,37 @@ MARKER=.crickets-managed
 machine_hooks_paths() {
     (unset GIT_DIR GIT_WORK_TREE GIT_COMMON_DIR; cd / && git config --includes --get-all core.hooksPath) 2>/dev/null
 }
-# core.hooksPath values in files an [includeIf] pulls in. Git applies them only
-# in repos the condition matches (gitdir:, onbranch:, hasconfig:), so
-# machine_hooks_paths, read from /, never sees them.
-conditional_hooks_paths() {
-    local origin entry value file
-    (unset GIT_DIR GIT_WORK_TREE GIT_COMMON_DIR; cd / &&
-        git config --show-origin -z --get-regexp '^includeif\..*\.path$') 2>/dev/null |
+# core.hooksPath values in every file an [include] or [includeIf] pulls in, at
+# any depth, with no condition evaluated. A conditional include applies only in
+# the repos it matches, so reading config from / can't see it, and `git config
+# --includes` would judge a nested condition against this script's own cwd.
+# Depth stops at 10, git's own include limit.
+include_target() {  # $1 = the file holding the include, $2 = its path value
+    local value="${2/#\~/$HOME}"
+    case "$value" in
+        /* | [A-Za-z]:*) printf '%s\n' "$value" ;;
+        *) printf '%s\n' "$(dirname "$1")/$value" ;;
+    esac
+}
+scanned_includes=$'\n'
+scan_include_file() {  # $1 = file, $2 = depth
+    local file="$1" depth="$2" entry key
+    [[ "$depth" -le 10 && -f "$file" ]] || return 0
+    # Each file once: an include cycle would otherwise grow exponentially.
+    key="$(cd "$(dirname "$file")" && pwd -P)/${file##*/}"
+    [[ "$scanned_includes" == *$'\n'"$key"$'\n'* ]] && return 0
+    scanned_includes+="$key"$'\n'
+    git config --file "$file" --get-all core.hooksPath 2>/dev/null
+    while IFS= read -r -d '' entry; do
+        scan_include_file "$(include_target "$file" "${entry#*$'\n'}")" $((depth + 1))
+    done < <(git config --file "$file" -z --get-regexp '^include(if\..*)?\.path$' 2>/dev/null)
+}
+included_hooks_paths() {
+    local origin entry
     while IFS= read -r -d '' origin && IFS= read -r -d '' entry; do
-        origin="${origin#file:}"
-        value="${entry#*$'\n'}"
-        value="${value/#\~/$HOME}"
-        case "$value" in
-            /* | [A-Za-z]:*) file="$value" ;;
-            *) file="$(dirname "$origin")/$value" ;;
-        esac
-        [[ -f "$file" ]] && git config --file "$file" --includes --get-all core.hooksPath 2>/dev/null
-    done
+        scan_include_file "$(include_target "${origin#file:}" "${entry#*$'\n'}")" 1
+    done < <( (unset GIT_DIR GIT_WORK_TREE GIT_COMMON_DIR; cd / &&
+        git config --show-origin -z --get-regexp '^include(if\..*)?\.path$') 2>/dev/null )
     return 0
 }
 # The value in the global file itself, the one this script sets and unsets.
@@ -107,12 +121,13 @@ is_ours() {
 }
 
 all_paths=$(machine_hooks_paths)
+included_paths=$(included_hooks_paths)
 current=$(printf '%s\n' "$all_paths" | sed -n '$p')
 foreign=""
 while IFS= read -r value; do
     [[ -n "$value" ]] && ! is_ours "$value" && foreign="$value"
 done <<< "$all_paths
-$(conditional_hooks_paths)"
+$included_paths"
 
 check() {
     local problem="" name
@@ -172,7 +187,8 @@ case "$mode" in
         still_named=""
         while IFS= read -r value; do
             is_ours "$value" && still_named="$value"
-        done <<< "$(machine_hooks_paths)"
+        done <<< "$(machine_hooks_paths)
+$included_paths"
         if [[ -n "$still_named" ]]; then
             echo "coauthor-guard: $dir is still named by core.hooksPath ($still_named) — not removed" >&2
             exit 2
@@ -185,8 +201,10 @@ case "$mode" in
         ;;
 esac
 
-# install
-if [[ -n "$foreign" ]]; then
+# install. A refresh (the global file names this directory and git uses it
+# outside any repo) rewrites that same value and replaces nothing, so it is not
+# refused for a value a conditional include sets for some repos.
+if [[ -n "$foreign" ]] && ! { is_ours "$(global_file_hooks_path)" && is_ours "$current"; }; then
     echo "install-global: core.hooksPath is already set to $foreign — not replacing it." >&2
     echo "  (git config --show-origin --get-all core.hooksPath shows where.) Remove it" >&2
     echo "  first, or pass --dir $foreign only if that directory is meant to become crickets-managed." >&2
