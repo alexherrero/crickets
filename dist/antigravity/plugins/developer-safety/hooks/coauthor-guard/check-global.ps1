@@ -11,7 +11,8 @@ $dir = Join-Path (Join-Path $configHome 'crickets') 'git-hooks'
 $fix = "pwsh -NoProfile -File `"$(Join-Path $here 'install-global.ps1')`""
 
 # The core.hooksPath git uses outside a repo: system, global, and their includes.
-foreach ($name in 'GIT_DIR', 'GIT_WORK_TREE', 'GIT_COMMON_DIR') { [Environment]::SetEnvironmentVariable($name, $null) }
+# [NullString]::Value, not $null: pwsh would pass $null on as "", and GIT_DIR="" breaks git.
+foreach ($name in 'GIT_DIR', 'GIT_WORK_TREE', 'GIT_COMMON_DIR') { [Environment]::SetEnvironmentVariable($name, [NullString]::Value) }
 $root = [System.IO.Path]::GetPathRoot([System.IO.Path]::GetFullPath($HOME))
 $current = "$(git -C $root config --includes --get core.hooksPath 2>$null)".Trim()
 $expanded = if ($current.StartsWith('~')) { $HOME + $current.Substring(1) } else { $current }

@@ -72,6 +72,7 @@ HUMAN_TRAILERS = [
         "Co-authored-by: Jane Doe <" + _at("jane", "gemini.com") + ">",
         "Co-authored-by: Pat <" + _at("123+copilot-fan", "users.noreply.github.com") + ">",
         "Co-authored-by: Jane Doe " + _at("jane", "gemini.com"),
+        "Co-authored-by: \u674e\u660e <" + _at("li.gemini", "example.com") + ">",
 ]
 
 

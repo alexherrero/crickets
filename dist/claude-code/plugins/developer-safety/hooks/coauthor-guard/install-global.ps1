@@ -44,40 +44,73 @@ $Marker = '.crickets-managed'
 
 # Every core.hooksPath the machine's config sets outside a repo: system,
 # global, and anything they [include]. The last one is the one git uses.
-function Get-MachineHooksPaths {
+# Run git with GIT_DIR / GIT_WORK_TREE / GIT_COMMON_DIR removed, then put them
+# back exactly. [NullString]::Value, not $null: pwsh turns $null into "" when it
+# passes it to a .NET string parameter, and GIT_DIR="" breaks every git call.
+function Invoke-GitOutsideRepo([scriptblock]$body) {
     $saved = @{}
     foreach ($name in 'GIT_DIR', 'GIT_WORK_TREE', 'GIT_COMMON_DIR') {
         $saved[$name] = [Environment]::GetEnvironmentVariable($name)
-        [Environment]::SetEnvironmentVariable($name, $null)
+        [Environment]::SetEnvironmentVariable($name, [NullString]::Value)
     }
-    try {
-        $root = [System.IO.Path]::GetPathRoot([System.IO.Path]::GetFullPath($HOME))
-        $values = @(git -C $root config --includes --get-all core.hooksPath 2>$null)
+    try { & $body }
+    finally {
+        foreach ($name in $saved.Keys) {
+            $value = if ($null -eq $saved[$name]) { [NullString]::Value } else { $saved[$name] }
+            [Environment]::SetEnvironmentVariable($name, $value)
+        }
+    }
+}
+$fsRoot = [System.IO.Path]::GetPathRoot([System.IO.Path]::GetFullPath($HOME))
+
+function Get-MachineHooksPaths {
+    Invoke-GitOutsideRepo {
+        $values = @(git -C $fsRoot config --includes --get-all core.hooksPath 2>$null)
         if ($LASTEXITCODE -ne 0) { return @() }
-        return @($values | ForEach-Object { "$_".Trim() } | Where-Object { $_ })
-    } finally {
-        foreach ($name in $saved.Keys) { [Environment]::SetEnvironmentVariable($name, $saved[$name]) }
+        @($values | ForEach-Object { "$_".Trim() } | Where-Object { $_ })
     }
 }
 
-# core.hooksPath values in files an [includeIf] pulls in. Git applies them only
-# in repos the condition matches, so Get-MachineHooksPaths never sees them.
-function Get-ConditionalHooksPaths {
-    $root = [System.IO.Path]::GetPathRoot([System.IO.Path]::GetFullPath($HOME))
-    $raw = (@(git -C $root config --show-origin -z --get-regexp '^includeif\..*\.path$' 2>$null) -join "`n")
-    if ($LASTEXITCODE -ne 0 -or -not $raw) { return @() }
-    $fields = $raw.Split([char]0)
+# core.hooksPath values in every file an [include] or [includeIf] pulls in, at
+# any depth, with no condition evaluated (see install-global.sh). Depth stops
+# at 10, git's own include limit.
+function Get-IncludeTarget([string]$holder, [string]$value) {
+    if ($value.StartsWith('~')) { $value = $HOME + $value.Substring(1) }
+    if ([System.IO.Path]::IsPathRooted($value)) { return $value }
+    # An include from the command line (origin "command line:") has no directory.
+    $base = [System.IO.Path]::GetDirectoryName($holder)
+    if (-not $base) { $base = $fsRoot }
+    return Join-Path $base $value
+}
+function Split-NulEntries([string[]]$lines) {
+    return @((@($lines) -join "`n").Split([char]0) | ForEach-Object { $_.TrimStart("`n") } | Where-Object { $_ })
+}
+$script:scannedIncludes = @{}
+function Get-IncludeFileHooksPaths([string]$file, [int]$depth) {
+    if ($depth -gt 10 -or -not $IO::Exists($file)) { return @() }
+    # Each file once: an include cycle would otherwise grow exponentially.
+    $key = Resolve-Comparable $file
+    if ($script:scannedIncludes.ContainsKey($key)) { return @() }
+    $script:scannedIncludes[$key] = $true
+    $found = @(git config --file $file --get-all core.hooksPath 2>$null | ForEach-Object { "$_".Trim() } | Where-Object { $_ })
+    foreach ($entry in Split-NulEntries @(git config --file $file -z --get-regexp '^include(if\..*)?\.path$' 2>$null)) {
+        $value = $entry.Substring($entry.IndexOf("`n") + 1)
+        $found += @(Get-IncludeFileHooksPaths (Get-IncludeTarget $file $value) ($depth + 1))
+    }
+    return $found
+}
+function Get-IncludedHooksPaths {
+    $fields = Invoke-GitOutsideRepo {
+        Split-NulEntries @(git -C $fsRoot config --show-origin -z --get-regexp '^include(if\..*)?\.path$' 2>$null)
+    }
+    $fields = @($fields)
     $found = @()
     for ($i = 0; $i + 1 -lt $fields.Count; $i += 2) {
-        $origin = $fields[$i].TrimStart("`n")
+        $origin = $fields[$i]
         if ($origin.StartsWith('file:')) { $origin = $origin.Substring(5) }
         $entry = $fields[$i + 1]
         $value = $entry.Substring($entry.IndexOf("`n") + 1)
-        if ($value.StartsWith('~')) { $value = $HOME + $value.Substring(1) }
-        $file = if ([System.IO.Path]::IsPathRooted($value)) { $value } else { Join-Path ([System.IO.Path]::GetDirectoryName($origin)) $value }
-        if ($IO::Exists($file)) {
-            $found += @(git config --file $file --includes --get-all core.hooksPath 2>$null | ForEach-Object { "$_".Trim() } | Where-Object { $_ })
-        }
+        $found += @(Get-IncludeFileHooksPaths (Get-IncludeTarget $origin $value) 1)
     }
     return $found
 }
@@ -124,7 +157,8 @@ function Test-SameBytes([string]$a, [string]$b) {
 
 $allPaths = @(Get-MachineHooksPaths)
 $current = if ($allPaths.Count) { $allPaths[-1] } else { '' }
-$foreign = @(@($allPaths) + @(Get-ConditionalHooksPaths) | Where-Object { -not (Test-Ours $_) }) | Select-Object -Last 1
+$includedPaths = @(Get-IncludedHooksPaths)
+$foreign = @(@($allPaths) + $includedPaths | Where-Object { -not (Test-Ours $_) }) | Select-Object -Last 1
 
 function Test-Executable([string]$p) {
     if (-not $IO::Exists($p)) { return $false }
@@ -182,7 +216,7 @@ if ($Uninstall) {
     }
     # Delete the directory only once no config still names it: a core.hooksPath
     # pointing at a deleted directory silences every repo's hooks.
-    $stillNamed = @(Get-MachineHooksPaths | Where-Object { Test-Ours $_ }) | Select-Object -Last 1
+    $stillNamed = @(@(Get-MachineHooksPaths) + $includedPaths | Where-Object { Test-Ours $_ }) | Select-Object -Last 1
     if ($stillNamed) {
         [Console]::Error.WriteLine("coauthor-guard: $Dir is still named by core.hooksPath ($stillNamed) — not removed")
         exit 2
@@ -195,7 +229,10 @@ if ($Uninstall) {
 }
 
 # install
-if ($foreign) {
+# A refresh (the global file names this directory and git uses it outside any
+# repo) rewrites that same value and replaces nothing, so it is not refused for
+# a value a conditional include sets for some repos.
+if ($foreign -and -not ((Test-Ours (Get-GlobalFileHooksPath)) -and (Test-Ours $current))) {
     [Console]::Error.WriteLine("install-global: core.hooksPath is already set to $foreign — not replacing it.")
     [Console]::Error.WriteLine("  (git config --show-origin --get-all core.hooksPath shows where.) Remove it")
     [Console]::Error.WriteLine("  first, or pass -Dir $foreign only if that directory is meant to become crickets-managed.")

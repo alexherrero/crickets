@@ -40,7 +40,7 @@ $filtered = @($lines | Where-Object {
         $email = @($words | Where-Object { $_.Contains('@') })[0]
         $name = (@($words | Where-Object { -not $_.Contains('@') }) -join ' ')
     }
-    if ($name -notmatch '[a-z0-9]') { $name = ("$email" -split '@')[0] }
+    if ($name -notmatch '[^ \t]') { $name = ("$email" -split '@')[0] }
     -not ($value -match $domainRe -or (' ' + $name) -match $nameRe -or $value.Contains('[bot]'))
 })
 # Leave the file untouched when nothing named an agent.

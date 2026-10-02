@@ -3,7 +3,7 @@ name: coauthor-guard
 description: Deterministic prepare-commit-msg git hook that strips every Co-Authored-By trailer naming an AI agent from a commit message, installed once for every repo on the machine through a global core.hooksPath. Additive enforcement on top of the existing commit-no-coauthor snippet + host includeCoAuthoredBy setting — not a replacement for that floor.
 kind: hook
 supported_hosts: [claude-code, antigravity]
-version: 0.2.2
+version: 0.2.3
 ---
 
 # coauthor-guard — deterministic agent Co-Authored-By strip
@@ -47,7 +47,7 @@ What it does:
 - Stays cheap: the dispatcher finds the repo's hooks with shell builtins rather than a `git` call, and starts `bash` only when the message has a co-author line.
 - Leaves three hook names out, so **a repo's own hook of that name stops running while the install is active**: `reference-transaction` and `post-index-change` (git fires them on every ref or index update; a shell per call made a 40-commit rebase take 8s instead of 0.2s), and `push-to-checkout` (its presence alone would replace git's built-in `updateInstead` behaviour).
 - The files are POSIX `sh`, which Git for Windows runs through its bundled shell, so one set serves every OS.
-- Refuses to replace a `core.hooksPath` it didn't set, wherever the machine's config sets one (system, global, a file they `[include]`, or a file an `[includeIf]` pulls in for some repos), or to write into a directory holding files it didn't put there.
+- Refuses to replace a `core.hooksPath` it didn't set, wherever the machine's config sets one (system, global, or any file an `[include]` or `[includeIf]` pulls in, at any depth, whatever its condition), or to write into a directory holding files it didn't put there. A refresh of its own install is never refused: it rewrites the same value.
 - `--check` / `-Check` passes only when git uses this directory and every hook in it is an intact, executable copy of the dispatcher, which the install keeps there as `git-hook-dispatch.sh` for reference. A hook another tool replaced reads as unhealthy. Run inside a repo, it also fails when that repo resolves `core.hooksPath` elsewhere (its own config, or a conditional include). After a plugin update, re-run the installer to pick up the newer guard.
 
 `--uninstall` / `-Uninstall` unsets the global `core.hooksPath` and removes the directory, unless some other config still names it (a `core.hooksPath` pointing at a deleted directory would silence every repo's hooks). Repos' own `.git/hooks` then run natively again.

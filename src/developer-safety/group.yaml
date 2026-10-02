@@ -108,4 +108,13 @@ capabilities: [recoverability]
 # finds the name in a bracketless trailer and judges a nameless one by its
 # email's local part. check-global treats a UNC path as absolute; pwsh -Check
 # tests the executable bit.
-version: 0.6.2
+# 0.6.3 = a third review round, of 0.6.2. The pwsh installer passed $null
+# to SetEnvironmentVariable, which pwsh turns into "", so GIT_DIR="" broke
+# every later git call (and any machine with an [includeIf "gitdir:"]); it
+# now uses [NullString]::Value. Include files are scanned recursively without
+# evaluating conditions, a refresh of an existing install is never refused,
+# and uninstall keeps a directory an included file still names. A non-Latin
+# name counts as a name, and check-global's bash --check unsets GIT_DIR.
+# The include scan matches plain include.path keys too, visits each file
+# once, and a refresh is refused when git no longer uses this directory.
+version: 0.6.3
