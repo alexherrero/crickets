@@ -12,6 +12,18 @@
         "matcher": ".*"
       }
     ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/coauthor-guard/check-global.sh",
+            "timeout": 5,
+            "type": "command"
+          }
+        ],
+        "matcher": ".*"
+      }
+    ],
     "Stop": [
       {
         "hooks": [

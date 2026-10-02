@@ -271,7 +271,7 @@ class NoConflictWithCoauthorGuardTests(unittest.TestCase):
         original = (
             "AA5 C7: fake test commit\n"
             "\n"
-            "Co-Authored-By: Claude <noreply@example.com>\n"
+            "Co-Authored-By: Claude <noreply" "@anthropic.com>\n"
         )
         self.msg_file.write_text(original, encoding="utf-8")
         result = self._run(_COAUTHOR_GUARD_SH)
@@ -301,7 +301,7 @@ class NoConflictWithCoauthorGuardTests(unittest.TestCase):
         original = (
             "fix: correct off-by-one in the loader\n"
             "\n"
-            "Co-Authored-By: Claude <noreply@example.com>\n"
+            "Co-Authored-By: Claude <noreply" "@anthropic.com>\n"
         )
         self.msg_file.write_text(original, encoding="utf-8")
         prepare_result = self._run(_COAUTHOR_GUARD_SH)

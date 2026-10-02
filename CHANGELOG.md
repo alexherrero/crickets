@@ -9,7 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The agent co-author strip now covers every repo on the machine** (`developer-safety` 0.6.0). `coauthor-guard` only ever ran in a repo where someone had copied it into `.git/hooks` by hand, which on the operator's machine meant two repos out of sixteen. The new `install-global.sh` (and its pwsh twin) points git's global `core.hooksPath` at `~/.config/crickets/git-hooks/`, so the strip runs on every commit in every repo, from Claude Code, Antigravity, an IDE or a terminal. A dispatcher there hands each git hook on to the repo's own `.git/hooks`, so repo hooks such as `privacy`'s `pre-push` keep running. `--check` and `--uninstall` come with it, and a read-only SessionStart check warns when an install breaks. It cannot reach commits made elsewhere (cloud sessions, collaborators), or a repo that sets its own `core.hooksPath`.
 - **`check-wiki` rule (r): every image a page embeds resolves to a file** (`wiki` 0.13.0), relative to the page, the way the publish step resolves it. Hard under `--strict`; external images, code spans and fences are exempt. It would have caught the broken diagrams below on the day their pages moved.
+
+### Changed
+
+- **`coauthor-guard` strips AI agents only.** A `Co-Authored-By` trailer is removed when it names an agent by vendor email domain (`anthropic.com`, `openai.com`, `cursor.com`, …), a `[bot]` identity, or an agent product name (Gemini, Copilot, Codex, Claude Opus/Sonnet/…). A human co-author's trailer now survives; before, every `Co-Authored-By` line was removed. The pattern is kept identical in the `.sh` and `.ps1` twins by a test.
 
 ### Fixed
 

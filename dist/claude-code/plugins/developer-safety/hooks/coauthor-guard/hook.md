@@ -1,44 +1,63 @@
 ---
 name: coauthor-guard
-description: Deterministic prepare-commit-msg git hook that strips any Co-Authored-By trailer from a commit message before it reaches the human. Additive enforcement on top of the existing commit-no-coauthor snippet + host includeCoAuthoredBy setting — not a replacement for that floor.
+description: Deterministic prepare-commit-msg git hook that strips every Co-Authored-By trailer naming an AI agent from a commit message, installed once for every repo on the machine through a global core.hooksPath. Additive enforcement on top of the existing commit-no-coauthor snippet + host includeCoAuthoredBy setting — not a replacement for that floor.
 kind: hook
 supported_hosts: [claude-code, antigravity]
-version: 0.1.0
+version: 0.2.0
 ---
 
-# coauthor-guard — deterministic Co-Authored-By strip
+# coauthor-guard — deterministic agent Co-Authored-By strip
 
 A native git `prepare-commit-msg` hook, not a Claude Code lifecycle hook — it fires on every `git commit` regardless of which host or agent produced it, closing the gap the prose-only floor (the `commit-no-coauthor` snippet + a host's `includeCoAuthoredBy` setting) leaves when either is forgotten or the host ignores the setting.
 
 ## How it works
 
-- **Trigger:** git's native `prepare-commit-msg` hook, called as `prepare-commit-msg <msg-file> <source> [<sha1>]`.
-- **Check:** does the message at `<msg-file>` contain a line matching `Co-Authored-By:` (case-insensitive)?
-- **If yes:** the matching line(s) are removed; every other line is left byte-identical.
-- **If no:** the file is left byte-identical — no false-positive edits.
+- **Trigger:** git's native `prepare-commit-msg` hook, called as `prepare-commit-msg <msg-file> <source> [<sha1>]`. Git runs it for `commit -m`, `--amend`, `--trailer`, merges, cherry-picks and rebases, and `--no-verify` does not skip it (it does skip `commit-msg`, which is why this hook uses the earlier slot).
+- **Check:** each line that starts `Co-Authored-By:` (case-insensitive) is tested against three agent markers:
+  - an email at an agent vendor's domain: `anthropic.com`, `openai.com`, `cursor.com`, `aider.chat`, `ampcode.com`, `all-hands.dev` (subdomains too);
+  - a GitHub App identity, `[bot]` anywhere on the line (Copilot's coding agent, Jules, Devin and Gemini Code Assist commit or co-author as one);
+  - an agent product name as a whole word: Gemini, Copilot, Codex, ChatGPT, GPT-*n*, Antigravity, Aider, OpenHands, Cursor Agent, or Claude followed by a model or product name (Opus, Sonnet, Haiku, Fable, Code, Instant).
+- **If a line matches:** it is removed. Every other line is left byte-identical.
+- **A human co-author stays.** A trailer naming a person, including a person called Claude with their own email, is not touched.
 
-Deterministic regex/string-match only, never LLM-judged — mirrors `content-refresh`'s mechanical-vs-judgment-bound split and the diagnostics privacy scrub's determinism discipline. Not hardcoded to any one agent's name (`Claude`, `Gemini`, or anyone else's trailer strips the same way).
+Deterministic regex/string-match only, never LLM-judged — mirrors `content-refresh`'s mechanical-vs-judgment-bound split and the diagnostics privacy scrub's determinism discipline. The pattern lives in `coauthor-guard.sh` and `coauthor-guard.ps1`, and a test keeps the two byte-identical. To cover a new agent, add its domain or name to both and a trailer for it to the test.
 
 ## Installing
 
-No automated installer copies this in yet (mirrors `privacy`'s `pre-push` hook — see its own `hook.md`/template for the same convention). An operator installs it once per repo:
+Once per machine. `install-global.sh` (or its pwsh twin) sets git's **global** `core.hooksPath`, so the guard runs in every repo — the ones already cloned and every future clone — for every tool that commits through git: Claude Code, Antigravity, an IDE, or you by hand.
 
-**Unix / macOS:**
+**Unix / macOS** (from a crickets checkout, or from the installed plugin's `hooks/coauthor-guard/`):
 
 ```bash
-cp src/developer-safety/hooks/coauthor-guard/coauthor-guard.sh .git/hooks/prepare-commit-msg
-chmod +x .git/hooks/prepare-commit-msg
+bash src/developer-safety/hooks/coauthor-guard/install-global.sh
+bash src/developer-safety/hooks/coauthor-guard/install-global.sh --check
 ```
 
-**Windows / pwsh** (via a `core.hooksPath` directory whose `prepare-commit-msg` shim invokes the script):
+**Windows / pwsh:**
 
 ```powershell
-git config core.hooksPath .githooks
-# .githooks/prepare-commit-msg (no extension) then invokes:
-#   pwsh -NoProfile -File src/developer-safety/hooks/coauthor-guard/coauthor-guard.ps1 $args
+pwsh -NoProfile -File src/developer-safety/hooks/coauthor-guard/install-global.ps1
+pwsh -NoProfile -File src/developer-safety/hooks/coauthor-guard/install-global.ps1 -Check
 ```
 
-Or point `core.hooksPath` at a directory containing either twin directly, per your git-for-Windows setup.
+What it does:
+
+- Writes the hooks to `~/.config/crickets/git-hooks/` (`$XDG_CONFIG_HOME` is honoured; `--dir` / `-Dir` overrides it). These are copies, not a pointer into the plugin cache, so `claude plugin update` can't leave git pointing at a deleted directory. Re-run the installer to pick up a newer guard.
+- Puts `git-hook-dispatch.sh` there under every git hook name. Once a global `core.hooksPath` is set, git stops looking in a repo's own `.git/hooks`, so each copy hands off to the repo's hook of the same name, with its arguments, stdin and exit code intact. Repo hooks such as `privacy`'s `pre-push` keep working. For `prepare-commit-msg`, the repo's hook runs first and the strip runs last.
+- The files are POSIX `sh`, which Git for Windows runs through its bundled shell, so one set serves every OS. Left out: `push-to-checkout` (its presence alone would replace git's built-in `updateInstead` behaviour).
+- Refuses to replace a global `core.hooksPath` it didn't set, or to write into a directory holding files it didn't put there.
+
+`--uninstall` / `-Uninstall` unsets the global `core.hooksPath` and removes the directory. Repos' own `.git/hooks` then run natively again.
+
+**What a global install does not reach:**
+
+- A repo that sets its own local `core.hooksPath` (husky does this) overrides the global one. `--check` names the override when run inside such a repo; put the guard in that repo's hooks directory instead.
+- Commits made somewhere other than this machine: a claude.ai/code cloud session's VM, a collaborator's laptop, or a merge GitHub assembles on the server. A repo-committed `.claude/settings.json` (or a CI check) is the place for those.
+- Tools that manage `.git/hooks` themselves don't cooperate with a global `core.hooksPath`: `pre-commit install` refuses to run, and `git lfs install` would try to write into the global directory.
+
+**One repo only:** copy `coauthor-guard.sh` to that repo's `.git/hooks/prepare-commit-msg` and `chmod +x` it.
+
+**Keeping it installed.** On Claude Code a SessionStart check (`check-global.sh`) prints one warning line if the install breaks: the global `core.hooksPath` names a directory that no longer exists (git then runs no hooks at all), the installed files are incomplete, or the directory is there but the config was unset. It is read-only and says nothing on a healthy machine or one that never installed. Antigravity has no SessionStart event, so run `--check` by hand there.
 
 ## Relationship to the existing floor
 
@@ -51,9 +70,11 @@ Removing the snippet or the host setting because this hook exists would be a reg
 
 ## Failure modes
 
-- **Hook not installed:** no effect — the floor above is all that's protecting the commit. `check-all.sh` does not verify installation (it's a per-operator manual step, like `pre-push`).
+- **Hook not installed:** no effect — the floor above is all that's protecting the commit. `check-all.sh` does not verify installation; `install-global.sh --check` and the SessionStart check do.
+- **The global hooks directory deleted while the config still points at it:** git runs no hooks in any repo, the repos' own included. The SessionStart check reports exactly this; re-run the installer.
 - **`<msg-file>` missing or unreadable:** the hook exits 0 (no-op) rather than blocking the commit — a guard that can fail a commit outright would be worse than one that occasionally misses a strip.
-- **A message with no trailer:** left byte-identical — never a spurious edit.
+- **A message with no agent trailer:** left byte-identical — never a spurious edit.
+- **An agent the pattern doesn't know yet:** its trailer survives until its domain or name is added (see How it works).
 
 ## Host support — effective on both
 
