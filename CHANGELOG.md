@@ -7,9 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v5.1.0] — 2026-10-02 — Minor: the agent co-author strip covers every repo on the machine
+
+**MINOR.** One install now keeps AI agents' `Co-Authored-By` trailers out of every repo on the machine. `developer-safety`'s `coauthor-guard` sets a global git hook that strips them on every commit, from any tool that commits through git, while each repo's own hooks keep running; a human co-author's trailer stays. Run `install-global.sh` once (or `install-global.ps1` on Windows) from the plugin's `hooks/coauthor-guard/`. The release also makes `check-wiki` fail a broken image, restores ten explanation pages' diagrams, and keeps `/handoff` copies as handoff-artifact records.
+
 ### Added
 
-- **The agent co-author strip now covers every repo on the machine** (`developer-safety` 0.6.0). `coauthor-guard` only ever ran in a repo where someone had copied it into `.git/hooks` by hand, which on the operator's machine meant two repos out of sixteen. The new `install-global.sh` (and its pwsh twin) points git's global `core.hooksPath` at `~/.config/crickets/git-hooks/`, so the strip runs on every commit in every repo, from Claude Code, Antigravity, an IDE or a terminal. A dispatcher there hands each git hook on to the repo's own `.git/hooks`, so repo hooks such as `privacy`'s `pre-push` keep running. The strip also runs on `applypatch-msg`, so `git am` and `git rebase --apply` are covered. The dispatcher finds a repo's hooks with shell builtins and leaves out the per-ref `reference-transaction` and per-index `post-index-change` hooks, so git stays fast. `--check` compares every installed file with the shipped copy, `--uninstall` never deletes a directory a config still names, and a read-only SessionStart check warns when an install breaks. It cannot reach commits made elsewhere (cloud sessions, collaborators), or a repo that sets its own `core.hooksPath`. It refuses to override a `core.hooksPath` that any config sets, `[includeIf]` files included. (`developer-safety` 0.6.1–0.6.3 carry three rounds of adversarial-review fixes made before release.)
+- **The agent co-author strip now covers every repo on the machine** (`developer-safety` 0.6.3). `coauthor-guard` only ever ran in a repo where someone had copied it into `.git/hooks` by hand, which on the operator's machine meant two repos out of sixteen. The new `install-global.sh` (and its pwsh twin) points git's global `core.hooksPath` at `~/.config/crickets/git-hooks/`, so the strip runs on every commit in every repo, from Claude Code, Antigravity, an IDE or a terminal. A dispatcher there hands each git hook on to the repo's own `.git/hooks`, so repo hooks such as `privacy`'s `pre-push` keep running. The strip also runs on `applypatch-msg`, so `git am` and `git rebase --apply` are covered. The dispatcher finds a repo's hooks with shell builtins and leaves out the per-ref `reference-transaction` and per-index `post-index-change` hooks, so git stays fast. `--check` compares every installed file with the shipped copy, `--uninstall` never deletes a directory a config still names, and a read-only SessionStart check warns when an install breaks. It cannot reach commits made elsewhere (cloud sessions, collaborators), or a repo that sets its own `core.hooksPath`. It refuses to override a `core.hooksPath` that any config sets, `[includeIf]` files included. (`developer-safety` 0.6.1–0.6.3 carry three rounds of adversarial-review fixes made before release.)
 - **`check-wiki` rule (r): every image a page embeds resolves to a file** (`wiki` 0.13.0), relative to the page, the way the publish step resolves it. Hard under `--strict`; external images, code spans and fences are exempt. It would have caught the broken diagrams below on the day their pages moved.
 
 ### Changed
@@ -20,6 +24,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **A `/handoff` pack's copies no longer pass as the notes they copy** (`tokens` 0.8.1). A snapshotted note whose frontmatter carries `kind:` or `type:` lands as `kind: handoff-artifact`, and `prompts.json`'s new `snapshot_kinds` records what each one was. pixelcity's packs had copied task 001's `kind: tracker` into its `desk/` six times, and agentm's tracker-schema gate failed each copy as a tracker outside a tracker's place; three copies also carried the unregistered `kind: backlog`. The bodies are copied unchanged.
 - **Ten explanation pages show their diagrams again.** The pages moved from `reference/` to `explanation/` in the Consolidation arc (CONS-3, 2026-07-10) and kept linking `diagrams/…` beside themselves, while the diagrams stayed in `reference/diagrams/`. The publish step turned each broken path into a raw asset URL that answered 404: seventeen images were broken on the published wiki, and the "[W] Update Wiki" job's render check failed on every publish since 2026-09-23. The links now point at `../reference/diagrams/`, and each rewritten URL answers 200.
+
+### Known issues
+
+- The guard runs only on this machine. A commit made in a claude.ai/code cloud session or on a collaborator's machine, or text GitHub adds to a squash merge, is out of its reach.
+- A person writing from an agent vendor's own domain (for example `anthropic.com`) is treated as that vendor's agent, and their trailer is stripped.
+- A trailer whose name is only punctuation counts as named, so it isn't judged by its email.
+- An include path written `~user/…` is read from the current user's home, not that user's.
+
 
 ## [v5.0.1] — 2026-09-26 — Patch: the watchlist lives in agentm's reference library
 

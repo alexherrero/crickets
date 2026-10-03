@@ -39,4 +39,4 @@ The [wiki](https://github.com/alexherrero/crickets/wiki) covers everything there
 ---
 
 > [!NOTE]
-> **Latest release: [v5.0.1](https://github.com/alexherrero/crickets/releases/tag/v5.0.1).** The research and wiki plugins find the forward-learning watchlist in agentm's new reference library, `resources/watchlist/`, paired with agentm v10.1.0's vault layout.
+> **Latest release: [v5.1.0](https://github.com/alexherrero/crickets/releases/tag/v5.1.0).** One install keeps AI agents' `Co-Authored-By` trailers out of every repo on the machine: `developer-safety`'s `coauthor-guard` sets a global git hook that strips them on every commit, from any tool, while each repo's own hooks keep running.
