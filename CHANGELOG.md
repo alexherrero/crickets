@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **A push from a Git LFS repo uploads its objects again** (`developer-safety` 0.6.4). git-lfs installs its hooks into the directory `core.hooksPath` names. With `coauthor-guard`'s machine-wide install active it found the dispatcher there and wrote nothing, so a repo cloned or created on the machine had no LFS `pre-push` hook: `git push` sent the pointer files, left the objects in the local clone, and exited 0. The dispatcher now runs git-lfs's four hooks (`pre-push`, `post-checkout`, `post-commit`, `post-merge`) itself, for a repo that uses LFS and has no hook of its own under that name.
+  - A repo uses LFS when its LFS store holds an object. A read-only query such as `git lfs env` stores none, so it does not count. A repo without LFS pays one shell glob per commit and never starts git-lfs. Its push also reads the root `.gitattributes` and makes one `git config` call.
+  - A repo whose own `pre-push` never calls git-lfs gets a warning on each push instead of leaving its objects silently.
+  - Re-run `install-global.sh` to pick it up: the installed hooks are copies. From now on the SessionStart check warns when the install is older than the plugin.
+  - Never run `git lfs update --force` or `git lfs install --force` inside a repo while the global hooks path is set. Either overwrites the dispatcher for every repo on the machine. The dispatcher's first lines, which git-lfs prints when it refuses, now say so; if it happened, re-run the installer.
+  - A repo that pushed while the hook was missing needs `git lfs push --all <remote>` once. Later pushes do not go back for the objects an earlier push left behind.
+  - `--uninstall` now says that an LFS repo cloned or created under the install needs `git lfs install` before its next push.
+
 ## [v5.1.0] — 2026-10-02 — Minor: the agent co-author strip covers every repo on the machine
 
 **MINOR.** One install now keeps AI agents' `Co-Authored-By` trailers out of every repo on the machine. `developer-safety`'s `coauthor-guard` sets a global git hook that strips them on every commit, from any tool that commits through git, while each repo's own hooks keep running; a human co-author's trailer stays. Run `install-global.sh` once (or `install-global.ps1` on Windows) from the plugin's `hooks/coauthor-guard/`. The release also makes `check-wiki` fail a broken image, restores ten explanation pages' diagrams, and keeps `/handoff` copies as handoff-artifact records.

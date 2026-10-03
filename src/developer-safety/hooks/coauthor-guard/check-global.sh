@@ -7,6 +7,7 @@
 #   - the global core.hooksPath names a directory that doesn't exist (git
 #     then runs no hooks at all, the repo's own included), or
 #   - it names the crickets-managed directory and that install is broken, or
+#     older than this plugin (its dispatcher-version is lower than ours), or
 #   - the crickets-managed directory exists but the global core.hooksPath no
 #     longer points at it.
 # A machine that never ran install-global.sh hears nothing, and so does one
@@ -17,6 +18,10 @@
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
 dir="${XDG_CONFIG_HOME:-$HOME/.config}/crickets/git-hooks"
 fix="bash \"$here/install-global.sh\""
+# A dispatcher from before the number existed counts as 1.
+dispatcher_version() {
+    sed -n 's/^# dispatcher-version: \([0-9][0-9]*\)$/\1/p' "$1" 2>/dev/null | head -n 1
+}
 
 # The core.hooksPath git uses outside a repo: system, global, and their includes.
 current=$( (unset GIT_DIR GIT_WORK_TREE GIT_COMMON_DIR; cd / && git config --includes --get core.hooksPath) 2>/dev/null || true)
@@ -33,7 +38,15 @@ elif [[ -n "$current" && -f "$current_expanded/.crickets-managed" ]]; then
     # From /, so this is the machine-level check, not the session repo's.
     if ! (unset GIT_DIR GIT_WORK_TREE GIT_COMMON_DIR; cd / &&
             bash "$here/install-global.sh" --check --dir "$current_expanded") >/dev/null 2>&1; then
-        echo "[developer-safety] WARNING: the global coauthor-guard git hooks at $current are incomplete or out of date. Re-run: $fix"
+        echo "[developer-safety] WARNING: the global coauthor-guard git hooks at $current are incomplete or damaged. Re-run: $fix"
+    else
+        # An install this plugin's dispatcher supersedes. Only an older one:
+        # an older plugin copy must stay quiet about a newer install.
+        installed=$(dispatcher_version "$current_expanded/git-hook-dispatch.sh")
+        ours=$(dispatcher_version "$here/git-hook-dispatch.sh")
+        if (( ${installed:-1} < ${ours:-1} )); then
+            echo "[developer-safety] WARNING: the global coauthor-guard git hooks at $current are older than this plugin's (dispatcher-version ${installed:-1} < ${ours:-1}). Re-run: $fix"
+        fi
     fi
 elif [[ -z "$current" && -f "$dir/.crickets-managed" ]]; then
     echo "[developer-safety] WARNING: coauthor-guard is installed at $dir but the global core.hooksPath is unset, so agent Co-Authored-By trailers are not being stripped. Re-run: $fix"

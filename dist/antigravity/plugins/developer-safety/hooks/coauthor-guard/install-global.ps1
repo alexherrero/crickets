@@ -211,6 +211,10 @@ if ($Uninstall) {
     if (Test-Ours $globalValue) {
         git config --global --unset core.hooksPath
         Write-Output "coauthor-guard: unset global core.hooksPath ($globalValue)"
+        # The dispatcher ran git-lfs's hooks; a repo that relied on it has none of its own.
+        if (Get-Command git-lfs -ErrorAction SilentlyContinue) {
+            Write-Output "coauthor-guard: a Git LFS repo cloned or created while this was installed has no LFS hooks of its own. Run 'git lfs install' in it before its next push, or the push leaves its LFS objects behind."
+        }
     } elseif ($globalValue) {
         Write-Output "coauthor-guard: global core.hooksPath is $globalValue, not $Dir — left as is"
     }

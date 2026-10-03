@@ -10,7 +10,9 @@
 # Writes git-hook-dispatch.sh into the directory once per git hook name, plus
 # coauthor-guard.sh and a .crickets-managed marker, then sets
 # `git config --global core.hooksPath` to it. The dispatcher hands every hook
-# on to the repo's own .git/hooks/<name>, so repo hooks keep running. Refuses
+# on to the repo's own .git/hooks/<name>, so repo hooks keep running, and runs
+# git-lfs's hooks for a repo that uses LFS (git-lfs cannot install them past a
+# global core.hooksPath; never run `git lfs update --force` here). Refuses
 # to replace a core.hooksPath it didn't set, wherever the machine's config
 # sets it (system, global, or a file either includes). Idempotent: re-running
 # refreshes the files in place. The directory is a copy, not a pointer into
@@ -179,6 +181,10 @@ case "$mode" in
         if is_ours "$global_value"; then
             git config --global --unset core.hooksPath
             echo "coauthor-guard: unset global core.hooksPath ($global_value)"
+            # The dispatcher ran git-lfs's hooks; a repo that relied on it has none of its own.
+            if command -v git-lfs >/dev/null 2>&1; then
+                echo "coauthor-guard: a Git LFS repo cloned or created while this was installed has no LFS hooks of its own. Run 'git lfs install' in it before its next push, or the push leaves its LFS objects behind."
+            fi
         elif [[ -n "$global_value" ]]; then
             echo "coauthor-guard: global core.hooksPath is $global_value, not $dir — left as is"
         fi
