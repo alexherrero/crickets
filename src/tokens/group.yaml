@@ -149,6 +149,10 @@ standalone: true
 # prompts.json's `snapshot_kinds` records what it was. pixelcity's packs had
 # copied task 001's `kind: tracker` into desk/ six times, each failing agentm's
 # check-tracker-schema, and carried the unregistered `backlog` with them.
-version: 0.8.1
+# 0.8.2 = bug fix: a snapshot also drops `aliases:` and `slug:`, recorded in
+# `snapshot_kinds` with the kind it replaced. pixelton's charter copies kept
+# `slug: _index` and the project's aliases, so they answered to the charter's
+# names (agentm's vault growth audit, 2026-10-03).
+version: 0.8.2
 capabilities: [status-line-meter, token-audit, tokens]
 renamed_from: [status-line-meter, token-audit]

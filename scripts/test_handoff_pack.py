@@ -208,8 +208,26 @@ class TestSnapshotsAreHandoffArtifacts(unittest.TestCase):
         self.assertEqual(replaced, {"type": "idea", "kind": "tracker"})
 
     def test_a_list_value_goes_with_its_key_and_a_comment_stays(self):
-        text, _ = hp.as_snapshot("---\ntype:\n  - idea\n# a comment\nslug: x\n---\n")
-        self.assertEqual(text, "---\nkind: handoff-artifact\n# a comment\nslug: x\n---\n")
+        text, _ = hp.as_snapshot("---\ntype:\n  - idea\n# a comment\ntitle: x\n---\n")
+        self.assertEqual(text, "---\nkind: handoff-artifact\n# a comment\ntitle: x\n---\n")
+
+    def test_a_copy_drops_the_names_its_note_answers_to(self):
+        # agentm's vault growth audit, 2026-10-03: pixelton's charter copies
+        # kept `slug: _index` and the project's aliases, so a question naming
+        # the project could find a stale copy as readily as the charter.
+        charter = ("---\nkind: project-charter\ntitle: Pixelton\nslug: _index\n"
+                   "aliases:\n  - Pixelton\n  - pixelcity\nstatus: active\n---\n# Pixelton\n")
+        dest, manifest = self._pack({"charter.md": charter})
+        self.assertEqual((dest / "charter.md").read_text(encoding="utf-8"),
+                         "---\nkind: handoff-artifact\ntitle: Pixelton\nstatus: active\n---\n# Pixelton\n")
+        self.assertEqual(manifest["snapshot_kinds"]["charter.md"]["kind"], "project-charter")
+        self.assertEqual(manifest["snapshot_kinds"]["charter.md"]["slug"], "_index")
+        self.assertIn("pixelcity", manifest["snapshot_kinds"]["charter.md"]["aliases"])
+
+    def test_a_copy_already_a_handoff_artifact_still_drops_its_aliases(self):
+        text, changes = hp.as_snapshot("---\nkind: handoff-artifact\naliases: [x, y]\r\n---\nbody\n")
+        self.assertEqual(text, "---\nkind: handoff-artifact\n---\nbody\n")
+        self.assertEqual(changes, {"aliases": "[x, y]"})
 
     def test_crlf_line_endings_survive(self):
         text, _ = hp.as_snapshot("---\r\nkind: tracker\r\ntitle: x\r\n---\r\nbody\r\n")
