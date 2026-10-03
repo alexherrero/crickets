@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A `/handoff` pack's copies no longer answer to their notes' names** (`tokens` 0.8.2). A snapshotted note drops `aliases:` and `slug:` as well as its kind, and `prompts.json`'s `snapshot_kinds` records them. agentm's vault growth audit of 2026-10-03 found pixelton's four charter copies in `desk/` each carrying `slug: _index` and the project's aliases, so a question naming the project could find a stale copy as readily as the charter.
 - **A push from a Git LFS repo uploads its objects again** (`developer-safety` 0.6.4). git-lfs installs its hooks into the directory `core.hooksPath` names. With `coauthor-guard`'s machine-wide install active it found the dispatcher there and wrote nothing, so a repo cloned or created on the machine had no LFS `pre-push` hook: `git push` sent the pointer files, left the objects in the local clone, and exited 0. The dispatcher now runs git-lfs's four hooks (`pre-push`, `post-checkout`, `post-commit`, `post-merge`) itself, for a repo that uses LFS and has no hook of its own under that name.
   - A repo uses LFS when its LFS store holds an object. A read-only query such as `git lfs env` stores none, so it does not count. A repo without LFS pays one shell glob per commit and never starts git-lfs. Its push also reads the root `.gitattributes` and makes one `git config` call.
   - A repo whose own `pre-push` never calls git-lfs gets a warning on each push instead of leaving its objects silently.

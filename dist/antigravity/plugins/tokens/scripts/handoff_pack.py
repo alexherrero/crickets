@@ -86,6 +86,14 @@ HANDOFF_MARKER = "<!-- agentm:handoff — agent-authored; not the operator's own
 SNAPSHOT_KIND = "handoff-artifact"
 _KIND_FIELDS = ("kind", "type")
 
+# The names a note answers to. A copy that kept them answered to the same
+# names as the note: agentm's search puts an entity page or a note named in a
+# query first, and pixelton's four charter copies each carried `slug: _index`
+# and the project's aliases, so a question naming the project could find a
+# stale copy as readily as the charter (agentm's vault growth audit,
+# 2026-10-03). The copy keeps its title and body; it drops its identity.
+_IDENTITY_FIELDS = ("aliases", "slug")
+
 
 def _field_name(line: str) -> "str | None":
     """The top-level frontmatter key `line` opens, or None when it opens none."""
@@ -103,9 +111,10 @@ def _continues(line: str) -> bool:
 def as_snapshot(content: str) -> "tuple[str, dict]":
     """`content` as the pack keeps it: a note whose frontmatter carries `kind:`
     or `type:` gets `kind: handoff-artifact` in place of the first and loses the
-    rest, and every other byte is unchanged. Returns the text and the fields it
-    replaced (`{"kind": "tracker"}`), empty when nothing changed. A file with no
-    frontmatter, an unclosed one, or none of the two fields comes back as is."""
+    rest; `aliases:` and `slug:` are dropped; every other byte is unchanged.
+    Returns the text and the fields it replaced or dropped (`{"kind":
+    "tracker", "slug": "_index"}`), empty when nothing changed. A file with no
+    frontmatter, an unclosed one, or none of those fields comes back as is."""
     lines = content.splitlines(keepends=True)
     if not lines or lines[0].rstrip("\r\n") != "---":
         return content, {}
@@ -114,11 +123,12 @@ def as_snapshot(content: str) -> "tuple[str, dict]":
         return content, {}
 
     replaced: dict = {}
+    dropped: dict = {}
     head: list = [lines[0]]
     i = 1
     while i < close:
         name = _field_name(lines[i])
-        if name not in _KIND_FIELDS:
+        if name not in _KIND_FIELDS and name not in _IDENTITY_FIELDS:
             head.append(lines[i])
             i += 1
             continue
@@ -126,14 +136,21 @@ def as_snapshot(content: str) -> "tuple[str, dict]":
         while end < close and _continues(lines[end]):
             end += 1
         value = "".join(lines[i:end]).partition(":")[2].strip().strip("'\"")
+        if name in _IDENTITY_FIELDS:
+            dropped[name] = value
+            i = end
+            continue
         replaced[name] = value
         if len(replaced) == 1:
             eol = lines[i][len(lines[i].rstrip("\r\n")):] or "\n"
             head.append(f"kind: {SNAPSHOT_KIND}{eol}")
         i = end
-    if not replaced or replaced == {"kind": SNAPSHOT_KIND}:
+    if replaced == {"kind": SNAPSHOT_KIND}:
+        replaced = {}
+    changes = {**replaced, **dropped}
+    if not changes:
         return content, {}
-    return "".join(head + lines[close:]), replaced
+    return "".join(head + lines[close:]), changes
 
 
 def build_handoff_pack(
