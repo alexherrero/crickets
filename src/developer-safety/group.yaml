@@ -117,4 +117,15 @@ capabilities: [recoverability]
 # name counts as a name, and check-global's bash --check unsets GIT_DIR.
 # The include scan matches plain include.path keys too, visits each file
 # once, and a refresh is refused when git no longer uses this directory.
-version: 0.6.3
+# 0.6.4 = the dispatcher runs Git LFS's hooks. git-lfs installs its hooks
+# into the directory core.hooksPath names, found the dispatcher there and
+# wrote nothing, so an LFS repo pushed its pointer files and left the objects
+# behind. For pre-push, post-checkout, post-commit and post-merge, a repo with
+# no hook of its own whose LFS store holds an object (pre-push: or whose root
+# .gitattributes names filter=lfs, or with lfs.storage set) now gets
+# `git lfs <hook>` from the dispatcher; an own pre-push that never calls
+# git-lfs is warned about. Its first lines, which git-lfs prints when it
+# refuses, warn against `git lfs update --force` / `git lfs install --force`.
+# check-global warns when the install's dispatcher-version is older than the
+# plugin's, and --uninstall names the LFS repos' missing hooks.
+version: 0.6.4

@@ -9,6 +9,14 @@ $here = $PSScriptRoot
 $configHome = if ($env:XDG_CONFIG_HOME) { $env:XDG_CONFIG_HOME } else { Join-Path $HOME '.config' }
 $dir = Join-Path (Join-Path $configHome 'crickets') 'git-hooks'
 $fix = "pwsh -NoProfile -File `"$(Join-Path $here 'install-global.ps1')`""
+# A dispatcher from before the number existed counts as 1.
+function Get-DispatcherVersion([string]$path) {
+    if (-not [System.IO.File]::Exists($path)) { return 1 }
+    foreach ($line in [System.IO.File]::ReadLines($path)) {
+        if ($line -match '^# dispatcher-version: ([0-9]+)$') { return [int]$Matches[1] }
+    }
+    return 1
+}
 
 # The core.hooksPath git uses outside a repo: system, global, and their includes.
 # [NullString]::Value, not $null: pwsh would pass $null on as "", and GIT_DIR="" breaks git.
@@ -25,7 +33,15 @@ if ($current -and -not [System.IO.Directory]::Exists($expanded)) {
     # From the filesystem root, so this is the machine-level check, not the session repo's.
     & pwsh -NoProfile -WorkingDirectory $root -File (Join-Path $here 'install-global.ps1') -Check -Dir $expanded *> $null
     if ($LASTEXITCODE -ne 0) {
-        Write-Output "[developer-safety] WARNING: the global coauthor-guard git hooks at $current are incomplete or out of date. Re-run: $fix"
+        Write-Output "[developer-safety] WARNING: the global coauthor-guard git hooks at $current are incomplete or damaged. Re-run: $fix"
+    } else {
+        # An install this plugin's dispatcher supersedes. Only an older one:
+        # an older plugin copy must stay quiet about a newer install.
+        $installed = Get-DispatcherVersion (Join-Path $expanded 'git-hook-dispatch.sh')
+        $ours = Get-DispatcherVersion (Join-Path $here 'git-hook-dispatch.sh')
+        if ($installed -lt $ours) {
+            Write-Output "[developer-safety] WARNING: the global coauthor-guard git hooks at $current are older than this plugin's (dispatcher-version $installed < $ours). Re-run: $fix"
+        }
     }
 } elseif (-not $current -and [System.IO.File]::Exists((Join-Path $dir '.crickets-managed'))) {
     Write-Output "[developer-safety] WARNING: coauthor-guard is installed at $dir but the global core.hooksPath is unset, so agent Co-Authored-By trailers are not being stripped. Re-run: $fix"
