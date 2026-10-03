@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - A repo that pushed while the hook was missing needs `git lfs push --all <remote>` once. Later pushes do not go back for the objects an earlier push left behind.
   - `--uninstall` now says that an LFS repo cloned or created under the install needs `git lfs install` before its next push.
 
+### Internal
+
+- `scripts/test_developer_safety_global_git_hooks.py`: the pwsh tests run `install-global.ps1` from the filesystem root, not from the checkout. Inside a repo `-Check` also reads that repo's `core.hooksPath`, and the Claude desktop app writes one into every worktree it creates, so two tests failed in those worktrees and passed in CI and in the primary clone. The root is outside any repo, and pwsh starts as fast there. A new test fails when the helper's directory is inside a repo, so CI catches a move back.
+
 ## [v5.1.0] — 2026-10-02 — Minor: the agent co-author strip covers every repo on the machine
 
 **MINOR.** One install now keeps AI agents' `Co-Authored-By` trailers out of every repo on the machine. `developer-safety`'s `coauthor-guard` sets a global git hook that strips them on every commit, from any tool that commits through git, while each repo's own hooks keep running; a human co-author's trailer stays. Run `install-global.sh` once (or `install-global.ps1` on Windows) from the plugin's `hooks/coauthor-guard/`. The release also makes `check-wiki` fail a broken image, restores ten explanation pages' diagrams, and keeps `/handoff` copies as handoff-artifact records.

@@ -1002,18 +1002,35 @@ class CheckGlobalTests(_IsolatedGit):
 
 @unittest.skipUnless(shutil.which("pwsh"), "pwsh not on PATH")
 class InstallGlobalPwshTests(_IsolatedGit):
+    # Where pwsh() runs the installer: the filesystem root, which is where the
+    # installer itself runs git to stay outside any repo, and where
+    # check-global.ps1 runs its -Check. Not the checkout: inside a repo -Check
+    # also reads that repo's core.hooksPath, and a checkout can set its own (the
+    # Claude desktop app writes one into every worktree it creates), which
+    # fails a check that is healthy machine-wide.
+    pwsh_cwd = REPO_ROOT.anchor
+
     def setUp(self):
         super().setUp()
-        # pwsh can take 10-20s to start under an empty HOME or with its working
-        # directory in the system temp dir (0.3s otherwise), so these tests keep
-        # the real HOME and run pwsh from the repo root. Git stays isolated
-        # regardless: GIT_CONFIG_GLOBAL is the only global config git reads or
-        # writes, and the hooks directory comes from the temp XDG_CONFIG_HOME.
+        # pwsh is slow to start when its HOME or its working directory is inside
+        # a system temp dir that holds very many entries: 18-45s with 1.8 million
+        # of them, 0.3s otherwise. So these tests keep the real HOME, and start
+        # pwsh outside the temp dir unless they need a repo of their own. Git
+        # stays isolated regardless: GIT_CONFIG_GLOBAL is the only global config
+        # git reads or writes, and the hooks directory comes from the temp
+        # XDG_CONFIG_HOME.
         self.env["HOME"] = os.environ.get("HOME", str(self.home))
 
     def pwsh(self, *extra, check=True):
         return self.run_cmd(["pwsh", "-NoProfile", "-File", str(_INSTALL_PS1), *extra],
-                            cwd=REPO_ROOT, check=check, timeout=120)
+                            cwd=self.pwsh_cwd, check=check, timeout=120)
+
+    def test_pwsh_helper_runs_outside_any_repo(self):
+        # From inside a checkout these tests pass in CI and fail wherever the
+        # checkout sets a core.hooksPath, so CI has to catch a move back there.
+        result = self.git("rev-parse", "--git-dir", cwd=self.pwsh_cwd, check=False)
+        self.assertNotEqual(result.returncode, 0,
+                            f"{self.pwsh_cwd} is inside a git repo ({result.stdout.strip()})")
 
     def test_pwsh_install_check_and_uninstall(self):
         self.assertEqual(self.pwsh("-Check", check=False).returncode, 1)
