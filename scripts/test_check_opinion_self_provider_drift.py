@@ -13,6 +13,7 @@ opinions/how-we-engineer.md, PLAN-wave-d-personas task 3) are clean today.
 from __future__ import annotations
 
 import importlib.util
+import shutil
 import sys
 import tempfile
 import unittest
@@ -60,6 +61,7 @@ class TestMainRedThenGreenViaMonkeypatchedBinding(unittest.TestCase):
 
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="opinion-drift-"))
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.agentm_dir = _write(self.tmp / "agentm-opinions" / "good.md",
                                   "---\nname: good\n---\nfailing test, or no issues found.\n").parent
         self.caller = _write(self.tmp / "caller.md", "a failing test, or no issues found.\n")
@@ -119,6 +121,7 @@ class TestMainRedThenGreenForDoneBinding(unittest.TestCase):
 
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="opinion-drift-done-"))
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.agentm_dir = _write(
             self.tmp / "agentm-opinions" / "done.md",
             "---\nname: done\n---\nthe task marked `[x]`, progress.md updated.\n").parent
@@ -155,6 +158,7 @@ class TestMainRedThenGreenForHowWeEngineerBinding(unittest.TestCase):
 
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="opinion-drift-hwe-"))
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.agentm_dir = _write(
             self.tmp / "agentm-opinions" / "how-we-engineer.md",
             "---\nname: how-we-engineer\n---\na Report → Analyze → Fix → Verify pass.\n").parent

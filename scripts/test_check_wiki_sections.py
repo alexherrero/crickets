@@ -131,8 +131,9 @@ class DetectionTest(unittest.TestCase):
 
     def test_path_outside_wiki_root_excluded(self):
         root = self._wiki()
-        outside = Path(tempfile.mkdtemp()) / "architecture" / "x" / "X.md"
-        self.addCleanup(shutil.rmtree, outside.parent.parent, ignore_errors=True)
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
+        outside = tmp / "architecture" / "x" / "X.md"
         self.assertFalse(cw._is_component_overview(outside, root))
 
 
