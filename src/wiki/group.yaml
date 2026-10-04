@@ -208,7 +208,12 @@ standalone: true
 # as agentm names it; the dead vault-state-path call (agentm deleted the verb
 # in V5-3) and the repo-local .harness/wiki-watch/ fallback are gone, and a
 # cycle with no desk skips. `state-dir --local` is gone.
-version: 0.13.0
+# 0.13.1: diataxis-author's vault_layout.py drops watchlist_dir() and
+#         FEATURE_PROJECT. agentm retired forward learning and archived
+#         resources/watchlist/ (agentm task 185, #841), and nothing in the
+#         plugin called either. repair.py's header stops citing agentm's
+#         deleted watchlist_review.py.
+version: 0.13.1
 capabilities: [wiki-maintenance, wiki]
 renamed_from: [wiki-maintenance]
 enhances:

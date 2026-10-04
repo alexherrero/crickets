@@ -310,25 +310,6 @@ def always_load_dir(root) -> Path:
     return resolve_under_memory(root, "_always-load")
 
 
-# The project every feature's working state files under since plan 05: the
-# watchlists are agentm's feature state, not memory, and you edit them in
-# Obsidian, so they live in the vault's project space.
-FEATURE_PROJECT = "agentm"
-
-
-def watchlist_dir(root) -> Path:
-    """The forward-learning watchlist: `resources/watchlist` at the vault root
-    since the AgentKV layout move (agentm task 176, run 2026-09-25). The
-    project-space and memory-space homes it had before are no longer read."""
-    v = Path(root)
-    bases = [v.parent, v] if root_sibling_witnessed(v) else [v]
-    for base in bases:
-        cand = base / "resources" / "watchlist"
-        if cand.is_dir():
-            return cand
-    return bases[0] / "resources" / "watchlist"
-
-
 def find_memory_entry(root, filename: str):
     """Locate a curated memory entry by filename anywhere in the memory space.
 

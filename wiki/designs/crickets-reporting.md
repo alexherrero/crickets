@@ -16,7 +16,7 @@ approved: 2026-06-26
 
 ## Objective
 
-`reporting` is the capability that tells the operator what happened while they were away. Background jobs run unattended — forward-learning, dreaming, health checks, curated-content edits — and the operator needs one place that says what ran, what changed (and how to undo it), whether anything is unhealthy, and what needs their attention. The first primitive is the **digest**; the capability is built to grow into operator-facing **dashboards**.
+`reporting` is the capability that tells the operator what happened while they were away. Background jobs run unattended — the weekly field brief, dreaming, health checks, curated-content edits — and the operator needs one place that says what ran, what changed (and how to undo it), whether anything is unhealthy, and what needs their attention. The first primitive is the **digest**; the capability is built to grow into operator-facing **dashboards**.
 
 ## Overview
 
@@ -98,6 +98,8 @@ The digest is push (a report arrives); dashboards are pull (the operator looks).
 ## Amendment log
 
 *Newest first. Collapses to one ≤2-paragraph entry at finalization; git holds the granular history.*
+
+- **2026-10-03 — the weekly field brief replaces forward-learning among the example jobs.** agentm retired forward learning ([#841](https://github.com/alexherrero/agentm/pull/841), task 185), and its weekly field brief is the background job that took its place. *Why not just drop the example:* the brief is a real unattended job whose output the operator reads, which is what the list illustrates. *Re-audit trigger:* the brief retiring or moving off a schedule.
 
 - **2026-06-28 — lock-down sweep (operator review).** Confirmed the report surface — the digest now (what ran · changed · health · alerts), dashboards later; the [runner](https://github.com/alexherrero/agentm/wiki/agentm-runner) runs its digest job. Standing fixes clean (SVG already sized; no mermaid; newest-first log). Designed-not-built (`governs: []`). Locked as a v5–v8 guidepost.
 

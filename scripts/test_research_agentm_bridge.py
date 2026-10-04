@@ -11,7 +11,7 @@ module it already held.
 
 Hermetic: a stand-in agentm scripts dir in a temp directory, reached through
 AGENTM_SCRIPTS_DIR, so these run without an agentm checkout, CI included. The
-real-bridge tests in test_research_learn_forward.py skip there.
+real-bridge tests in test_research_idea_search.py skip there.
 
 stdlib only -- no pytest.
 """
@@ -31,7 +31,7 @@ _SRC = _HERE.parent / "src" / "research" / "scripts"
 
 # The sys.modules names a load or call can leave behind; each test puts back
 # whatever the suite held under them.
-_TOUCHED_MODULES = ("vault_layout", "research_forward_learning_bridge", "research_recall_bridge")
+_TOUCHED_MODULES = ("vault_layout", "research_recall_bridge")
 
 
 def _load(name, path):
@@ -43,13 +43,13 @@ def _load(name, path):
 
 
 # Under a name of its own: loading it as `research_agentm_bridge` would replace
-# the entry learn_forward.py and idea_search.py registered.
+# the entry idea_search.py registered.
 agentm_bridge = _load("research_agentm_bridge_under_test", _SRC / "agentm_bridge.py")
 
-# The shape of agentm's forward_learning.py header: put its own dir on
-# sys.path, bare-import a sibling at module level, use it later. The scan
-# imports the sibling again inside the function, as some agentm scripts do.
-_FORWARD_LEARNING = textwrap.dedent(
+# The shape of an agentm script: put its own dir on sys.path, bare-import a
+# sibling at module level, use it later. The query imports the sibling again
+# inside the function, as recall.py does.
+_RECALL = textwrap.dedent(
     """\
     import sys
     from pathlib import Path
@@ -64,18 +64,9 @@ _FORWARD_LEARNING = textwrap.dedent(
         return vault_layout.OWNER
 
 
-    def run_forward_learning(vault, **kwargs):
-        import vault_layout as layout_at_call_time
-        return layout_at_call_time
-    """
-)
-
-# The shape of recall.py's query path: the sibling is imported inside the call.
-_RECALL = textwrap.dedent(
-    """\
     def query(vault, query_text, filter_expr=None, k=5):
-        import vault_layout
-        return [vault_layout.OWNER]
+        import vault_layout as layout_at_call_time
+        return [layout_at_call_time]
     """
 )
 
@@ -92,7 +83,6 @@ class AgentmSiblingTests(unittest.TestCase):
         root = Path(tmp.name).resolve()
         self.agentm_dir = root / "agentm" / "harness" / "skills" / "memory" / "scripts"
         _write(self.agentm_dir / "recall.py", _RECALL)
-        _write(self.agentm_dir / "forward_learning.py", _FORWARD_LEARNING)
         _write(self.agentm_dir / "vault_layout.py", 'OWNER = "agentm"\n')
         self.wiki_dir = root / "wiki" / "scripts"
         _write(self.wiki_dir / "vault_layout.py", 'OWNER = "wiki"\n')
@@ -116,9 +106,9 @@ class AgentmSiblingTests(unittest.TestCase):
     def test_a_module_already_cached_under_the_name_does_not_reach_agentm(self):
         cached = _load("vault_layout", self.wiki_dir / "vault_layout.py")
 
-        fl = agentm_bridge.load_forward_learning_module()
+        recall = agentm_bridge.load_recall_module()
 
-        self.assertEqual(fl.layout_owner(), "agentm")
+        self.assertEqual(recall.layout_owner(), "agentm")
         self.assertIs(sys.modules["vault_layout"], cached,
                       "the module cached before the load was not put back")
 
@@ -127,33 +117,39 @@ class AgentmSiblingTests(unittest.TestCase):
         sys.path[:0] = [str(self.wiki_dir), str(self.agentm_dir)]
         path_before = list(sys.path)
 
-        fl = agentm_bridge.load_forward_learning_module()
+        recall = agentm_bridge.load_recall_module()
 
-        self.assertEqual(fl.layout_owner(), "agentm")
+        self.assertEqual(recall.layout_owner(), "agentm")
         self.assertEqual(sys.path, path_before, "the load left sys.path changed")
 
     def test_agentm_s_dir_stays_on_sys_path_for_the_imports_it_makes_later(self):
-        agentm_bridge.load_forward_learning_module()
+        agentm_bridge.load_recall_module()
 
         self.assertIn(str(self.agentm_dir), sys.path)
 
     def test_a_call_hands_agentm_its_sibling_for_an_import_inside_the_function(self):
         cached = _load("vault_layout", self.wiki_dir / "vault_layout.py")
 
-        owners = agentm_bridge.query_semantic(self.agentm_dir, "anything")
+        (layout,) = agentm_bridge.query_semantic(self.agentm_dir, "anything")
 
-        self.assertEqual(owners, ["agentm"])
+        self.assertEqual(layout.OWNER, "agentm")
         self.assertIs(sys.modules["vault_layout"], cached,
                       "the module cached before the call was not put back")
 
     def test_a_call_gets_the_same_sibling_its_load_bound(self):
         _load("vault_layout", self.wiki_dir / "vault_layout.py")
-        fl = agentm_bridge.load_forward_learning_module()
+        recall = agentm_bridge.load_recall_module()
 
-        layout = agentm_bridge.run_forward_learning(self.agentm_dir)
+        (layout,) = agentm_bridge.query_semantic(self.agentm_dir, "anything")
 
-        self.assertIs(layout, fl.vault_layout)
+        self.assertIs(layout, recall.vault_layout)
 
+    def test_no_agentm_checkout_means_no_results_not_an_error(self):
+        empty = self.agentm_dir.parent / "empty"
+        empty.mkdir()
+        with mock.patch.object(agentm_bridge, "_candidate_dirs", return_value=[empty]):
+            self.assertIsNone(agentm_bridge.load_recall_module())
+            self.assertEqual(agentm_bridge.query_semantic(empty, "anything"), [])
 
 if __name__ == "__main__":
     unittest.main()

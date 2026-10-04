@@ -17,18 +17,15 @@ approved: 2026-06-23
 
 ## Objective
 
-`research` is the capability that **brings in what the agent hasn't seen** — codebase fan-out, bounded web lookups, and (later) scheduled outward learning, synthesized into something the work can use. It is the Researcher persona's composition, and the Architect and Designer personas compose it too. The on-demand half is two read-only agents; the deeper multi-source work is **forward-referenced** to an operator-personal agent, by name and contract. This design defines the capability and its on-demand first slice, and names the scheduled half that waits on agentm.
+`research` is the capability that **brings in what the agent hasn't seen** — codebase fan-out and bounded web lookups, synthesized into something the work can use. It is the Researcher persona's composition, and the Architect and Designer personas compose it too. It is two read-only agents and a read-only vault scan; the deeper multi-source work is **forward-referenced** to an operator-personal agent, by name and contract.
 
 ## Overview
 
-Research runs in two modes:
+Research runs on demand: it answers a question now. `explorer` *(delivered)*, `researcher` *(delivered)* and `idea-search` *(delivered)* find what's already in the vault and the codebase before reaching outward. Keeping up with the field on a schedule is agentm's weekly field brief, not part of this capability.
 
-- **On-demand** — answer a question now: `explorer` *(delivered)*, `researcher` *(delivered)*, and a new `idea-search` *(greenfield)* — find what's already in the vault before reaching outward.
-- **Scheduled forward-learning** *(delivered)* — reach approved sources on a cadence, bring back what's worth knowing, surface it; leans by name on agentm's scheduler + approved-source pipeline.
+![The research capability: on-demand (explorer · researcher · idea-search) enhances /plan and forward-refs the operator-personal deep-research agent](diagrams/crickets-research.svg)
 
-![The research capability: on-demand (explorer · researcher · idea-search) enhances /plan and forward-refs the operator-personal deep-research agent; scheduled forward-learning (learn-forward · codebase-improvement) leans by name on agentm's forward-experience engine (scheduler + approved sources)](diagrams/crickets-research.svg)
-
-*Two modes — on-demand and scheduled forward-learning both ship; scheduled forward-learning leans by name on agentm's forward-experience substrate (built 2026-07-07); deep multi-source work is forward-referenced to an operator-personal agent; the on-demand half enhances `/plan`.*
+*On demand only — deep multi-source work is forward-referenced to an operator-personal agent, and the capability enhances `/plan`.*
 
 ## Design
 
@@ -55,24 +52,17 @@ Research runs in two modes:
 
 Delivered — `src/research/scripts/idea_search.py`, covered by `scripts/test_research_idea_search.py`.
 
-### Scheduled forward-learning — `learn-forward` + `codebase-improvement` *(delivered)*
+### Retired: scheduled forward-learning
 
-- *Entry:* a scheduled trigger (the agentm scheduler, via a job manifest's `command:`).
-- *Exit:* surfaced findings — `learn-forward`: ideas mined from approved sources; `codebase-improvement`: stale-pattern findings in the operator's own repos — **surfaced, never adopted silently**.
-- *Automated:* `learn-forward` (`src/research/scripts/learn_forward.py`) is a thin wrapper that calls agentm's real `run_forward_learning()` in-process via `agentm_bridge.py`'s `load_forward_learning_module()`; `codebase-improvement` (`src/research/scripts/codebase_improvement.py`) is self-contained — it scans a target repo for a stale pattern via plain substring match (stdlib-only, no AST) and never edits the repo.
-- *Artifacts:* `learn-forward` surfaces via agentm's own forward-learning output path; `codebase-improvement` writes exactly one watchlist finding per stale pattern found, in the same entry shape `forward_learning.py` uses (`<watchlist>/codebase-improvement/<slug>.md`, where `<watchlist>` is `Projects/agentm/_watchlist/`, never a retired memory-space home, even on a vault that still has one; `status: pending-review` frontmatter), so agentm's `watchlist_review.py` picks it up as part of the same merged review surface — **surfaced, never adopted silently**.
-
-Both lean **by name** on agentm's **forward-experience substrate** — the scheduler + approved-source pipeline — built 2026-07-07 as `PLAN-wave-e-experience` task 1 on agentm (`harness/skills/memory/scripts/forward_learning.py`, config at `Projects/agentm/forward-learning-sources.json` as its `sources_config_path()` resolves it, job registration via `templates/jobs/forward-learning.yaml` against `scripts/runner/manifest.py`). `research` names the interface and uses it; it does not absorb the substrate (the one-way rule) — `codebase_improvement.py` calls no private agentm function, only writing the shared watchlist entry shape.
-
-Shipped as `PLAN-wave-c-research-forward-learning` (all 3 tasks: `learn-forward`, `codebase-improvement`, plugin wiring — `src/research/group.yaml` bumped 0.1.1 → 0.2.0). Covered by `scripts/test_research_learn_forward.py` and `scripts/test_research_codebase_improvement.py`. The learn-forward tests drive a real agentm checkout and skip without one, so CI does not run them.
+`learn-forward` and `codebase-improvement` retired on 2026-10-03 with agentm's forward learning, which agentm's weekly field brief replaces (research 0.3.0; see the amendment log).
 
 ### The adapt-don't-import boundary
 
-`research` borders the skill-discovery seam (agentm's `adapt_skills.py` + `adapt-evaluator`, which surface candidates to the operator's watchlist). Research may feed the same vault discovery corpus, but the direction stays **discovery → watchlist → operator-gate** — research creates no reverse coupling; it cannot consume the watchlist to auto-adopt. The operator gate is the sole sink.
+`research` borders the skill-discovery seam (agentm's `adapt_skills.py` + `adapt-evaluator`, which surface candidates to the operator's skill watchlist). Research writes nothing to that watchlist, and it creates no reverse coupling: it cannot consume the watchlist to auto-adopt. The direction stays **discovery → watchlist → operator-gate**, and the operator gate is the sole sink.
 
 ### First slice
 
-`explorer` + `researcher` + a new `idea-search`. Scheduled forward-learning (`learn-forward` + `codebase-improvement`) followed once the agentm forward-experience substrate shipped (`PLAN-wave-e-experience` task 1, 2026-07-07) — landed via `PLAN-wave-c-research-forward-learning`. This ships a real research capability without touching unbuilt infrastructure at each step.
+`explorer` + `researcher` + a new `idea-search`, which shipped a real research capability without touching unbuilt infrastructure. The scheduled half that followed it in 2026-07 has since retired.
 
 ### Opinions it consumes
 
@@ -81,7 +71,6 @@ research leans on **`how-we-engineer`** — it feeds the plan → design → arc
 ## Dependencies
 
 - **enhances `development-lifecycle`'s `plan`** (soft) — research informs the brief before planning; `researcher` sits at the front of the loop. It works standalone, so it enhances rather than requires the loop (matching the composition map).
-- **leans by name on the agentm forward-experience substrate** (scheduler + approved-source pipeline — built 2026-07-07, `PLAN-wave-e-experience` task 1) for the scheduled half ([Experience design](https://github.com/alexherrero/agentm/wiki/agentm-experience-and-dreaming)); it rests on the agentm substrate, one-way.
 - **leans on the recall engine** for `idea-search` ([agentm Memory System](https://github.com/alexherrero/agentm/wiki/agentm-memory-system)).
 - **composes with an operator-personal deep-research agent by forward-reference** when present — by name and contract.
 - **borders the adapt-don't-import seam** (one-way: discovery → watchlist → operator-gate).
@@ -90,19 +79,19 @@ research leans on **`how-we-engineer`** — it feeds the plan → design → arc
 ## Risks & open questions
 
 - **Deep multi-source research is forward-referenced.** `researcher` references an operator-personal deep-research agent by name + contract when one is installed, degrading to `explorer` + bounded `WebFetch` otherwise. Revisit if the forward-reference proves insufficient in real use.
-- **The scheduled half shipped** (`PLAN-wave-c-research-forward-learning`, 2026-07-07) once the agentm scheduler + approved-source pipeline landed (`PLAN-wave-e-experience` task 1, same date). It stays in this design (one capability, not a split — operator-decided).
 - **`idea-search`'s relevance bar** — a vault scan that surfaces stale or tangential ideas wastes the "find what's known first" step; calibrate the recall threshold so it returns genuinely-bearing entries, not everything adjacent.
-- **Re-audit triggers:** revisit the forward-reference approach only if it proves insufficient in real use; re-verify `learn-forward` / `codebase-improvement` against agentm's forward-learning shapes (the `watchlist_root()` and `sources_config_path()` resolvers, `templates/jobs/forward-learning.yaml`) if agentm changes them, since this design's own build re-confirmed those shapes had drifted from the original guess (JSON config, not YAML; a real job-manifest schema, not a mockable `Scheduler` object) before consuming them.
+- **Re-audit triggers:** revisit the forward-reference approach only if it proves insufficient in real use; re-verify `idea-search` against agentm's `recall.query` if agentm changes its signature.
 
 ## References
 
 - **The agents:** `researcher` + `explorer` (read-only; `researcher` forward-references an operator-personal deep-research agent when present)
-- **The forward-experience substrate it leans on (built 2026-07-07):** [agentm Experience design](https://github.com/alexherrero/agentm/wiki/agentm-experience-and-dreaming) (the scheduler + approved-source learning — `harness/skills/memory/scripts/forward_learning.py`)
 - **The recall engine `idea-search` leans on:** agentm `harness/skills/memory/scripts/recall.py` ([agentm Memory System](https://github.com/alexherrero/agentm/wiki/agentm-memory-system))
 - **The adapt-don't-import seam it borders:** agentm `harness/skills/memory/scripts/adapt_skills.py` · `harness/agents/adapt-evaluator.md` (discovery → watchlist → operator-gate)
-- **Siblings:** [crickets HLD](crickets-hld.md) · [composition](crickets-composition.md) · [agentm Personas](https://github.com/alexherrero/agentm/wiki/agentm-personas) (Researcher) · [agentm Experience](https://github.com/alexherrero/agentm/wiki/agentm-experience-and-dreaming)
+- **Siblings:** [crickets HLD](crickets-hld.md) · [composition](crickets-composition.md) · [agentm Personas](https://github.com/alexherrero/agentm/wiki/agentm-personas) (Researcher) · [agentm Experience](https://github.com/alexherrero/agentm/wiki/agentm-experience-and-dreaming) (its weekly field brief replaced forward learning)
 
 ## Amendment log
+
+**2026-10-03 — scheduled forward-learning retires with agentm's forward learning (research 0.3.0).** The operator scrapped forward learning on 2026-10-02 (agentm task 185), and agentm [#841](https://github.com/alexherrero/agentm/pull/841) deleted `forward_learning.py`, its review CLI `watchlist_review.py` and the job template, and archived `resources/watchlist/` under `projects/agentm/completed/forward-learning-2026-10/`. A weekly field brief replaces it. `learn-forward` had no engine left: `agentm_bridge.load_forward_learning_module()` found agentm's scripts dir by `recall.py` and then raised `FileNotFoundError` on the missing file, which turned `check-all`'s unit-test gate red on any machine with a current agentm checkout. `codebase-improvement` would have recreated the archived folder, and its findings had no reader once `watchlist_review.py` went. Both primitives, their tests and the bridge's forward-learning loaders are gone, and so is the wiki plugin's `vault_layout.watchlist_dir()` (wiki 0.13.1). The bridge's sibling-swap tests now run against a stand-in `recall.py`, so the swap stays covered in CI. Research is on-demand only. The body sheds the scheduled half, the diagram drops it, and the forward-experience dependency is gone. *Why not keep learn-forward and return `None` when the file is missing:* the feature's engine is scrapped, not absent, and agentm says the field brief replaces it, so a primitive that silently does nothing would still be documented as delivered. *Re-audit trigger:* agentm reviving a scheduled-learning engine that crickets is meant to drive, or a research primitive needing to write to the vault again.
 
 **2026-09-13 — nothing in research writes to a retired memory-space home, and the bridge gives agentm its own siblings for calls too (research 0.2.5).** `codebase_improvement.py` fell back to an existing `memory/`, `personal/` or `personal-private/` `_watchlist` whenever `Projects/agentm/_watchlist` did not exist yet, and chose `memory/_watchlist` on a vault with neither. It now always writes to `Projects/agentm/_watchlist`, and counts a `standards/` dir beside the root as the vault-root witness, as agentm's `vault_layout` does. The learn-forward no-writes test allows only that home, and its fixture writes the sources whitelist to `Projects/agentm/`. The research 0.2.4 entry allowed the retired homes so an older agentm could still run the test; that trade is reversed, because a scan writing to a retired home is the failure to catch. The entry below isolates the real-bridge suites' imports for a whole test class; the bridge now also runs every call, not only the load, inside `_agentm_names`, so a bare import agentm makes inside a function gets agentm's module in any process; `learn_forward.py` runs its scan through the bridge's new `run_forward_learning()`. *Why not stop at the load:* `recall.query` imports `lifecycle` inside the call, and `lifecycle` imports `vault_layout`. *Re-audit trigger:* a caller reaching an agentm function without going through the bridge, which gets no swap.
 
