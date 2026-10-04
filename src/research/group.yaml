@@ -1,14 +1,9 @@
 name: Research
 description: >-
-  Discovery-to-watchlist research primitives. idea-search is a read-only
-  scan over the agentm recall engine surfacing existing vault/codebase
-  entries relevant to a question. learn-forward leans by name on agentm's
-  approved-source forward-learning pipeline to mine operator-configured
-  sources onto the watchlist. codebase-improvement applies a research
-  insight's stale pattern against the operator's own repo, surfacing
-  exactly one watchlist finding per match -- never auto-editing. All three
-  are strictly discovery-surfacing: findings land in the watchlist for
-  operator review, nothing is ever auto-adopted.
+  Discovery research primitive. idea-search is a read-only scan over the
+  agentm recall engine surfacing existing vault/codebase entries relevant
+  to a question. It only surfaces what is already there: nothing is
+  written, nothing is auto-adopted.
 category: Coding
 requires: [development-lifecycle]
 standalone: false
@@ -59,5 +54,12 @@ standalone: false
 #        (agentm's root casing, agentm-vault plan 08), hands the first that
 #        exists back spelled as the disk lists it, and defaults new state to
 #        the lowercase space.
-version: 0.2.8
+# 0.3.0: learn-forward and codebase-improvement retire with agentm's forward
+#        learning (agentm task 185, the operator's ruling of 2026-10-02; agentm
+#        #841). learn_forward.py, codebase_improvement.py and their tests go,
+#        and agentm_bridge.py keeps only the recall load. learn-forward had
+#        raised FileNotFoundError since agentm deleted forward_learning.py,
+#        and codebase-improvement's watchlist lost its only reader with
+#        agentm's watchlist_review.py. Minor: two primitives removed.
+version: 0.3.0
 capabilities: [research]

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- **`learn-forward` and `codebase-improvement` retire with agentm's forward learning** (`research` 0.3.0, `wiki` 0.13.1; closes [#268](https://github.com/alexherrero/crickets/issues/268)). The operator scrapped forward learning on 2026-10-02, and agentm [#841](https://github.com/alexherrero/agentm/pull/841) deleted `forward_learning.py` and `watchlist_review.py` and archived `resources/watchlist/`. A weekly field brief replaces it. `learn-forward` had no engine left: the bridge found agentm's scripts dir and then raised `FileNotFoundError` on the missing file, so `check-all`'s unit-test gate failed on any machine with a current agentm checkout (CI has none, so it skipped and stayed green). `codebase-improvement` would have recreated the archived folder, and nothing read its findings once `watchlist_review.py` went.
+  - `research`: `learn_forward.py`, `codebase_improvement.py` and their tests are gone. `agentm_bridge.py` loses `load_forward_learning_module()`, `run_forward_learning()` and their cache, and keeps only the recall load behind `idea-search`.
+  - `wiki`: diataxis-author's `vault_layout.py` drops `watchlist_dir()` and `FEATURE_PROJECT`, which nothing called.
+  - The research and reporting designs and the Plugins page drop the scheduled half. The research design's diagram is redrawn without it.
+
+### Internal
+
+- `scripts/test_research_agentm_bridge.py`: the sibling-swap tests load and call a stand-in `recall.py` instead of a stand-in `forward_learning.py`, so the swap stays covered without an agentm checkout. A new test checks that without agentm, recall comes back `None` and a query returns no results, without raising an error.
+
 ### Fixed
 
 - **A `/handoff` pack's copies no longer answer to their notes' names** (`tokens` 0.8.2). A snapshotted note drops `aliases:` and `slug:` as well as its kind, and `prompts.json`'s `snapshot_kinds` records them. agentm's vault growth audit of 2026-10-03 found pixelton's four charter copies in `desk/` each carrying `slug: _index` and the project's aliases, so a question naming the project could find a stale copy as readily as the charter.

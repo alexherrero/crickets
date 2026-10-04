@@ -20,8 +20,7 @@
 #     heuristic in check.py becomes operational in part 5).
 #
 # Non-TTY stdin defaults all interactive prompts to skip (never silent
-# action — matches `ideas_promote.py gc` + `watchlist_review.py review`
-# contract).
+# action — matches the `ideas_promote.py gc` contract).
 
 from __future__ import annotations
 
