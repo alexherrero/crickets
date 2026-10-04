@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Internal
 
 - `scripts/test_developer_safety_global_git_hooks.py`: the pwsh tests run `install-global.ps1` from the filesystem root, not from the checkout. Inside a repo `-Check` also reads that repo's `core.hooksPath`, and the Claude desktop app writes one into every worktree it creates, so two tests failed in those worktrees and passed in CI and in the primary clone. The root is outside any repo, and pwsh starts as fast there. A new test fails when the helper's directory is inside a repo, so CI catches a move back.
+- A run of the unit suite leaves nothing in the temporary directory. Five test files made a directory or file there and never removed it, 42 entries a run: `opinion-drift-*` from `test_check_opinion_self_provider_drift.py`'s three red-then-green classes, a `tmp*.md` per plan `test_task_isolation.py` wrote, and anonymous `tmp*` directories from `test_evidence_tracker_tasks.py`, `test_privacy_scrub_text.py` and `test_check_wiki_sections.py`. The last one did register a cleanup, but on a path one level inside the directory it made. Each now removes what it makes; no assertion changed. agentm's half was [agentm#858](https://github.com/alexherrero/agentm/pull/858).
 
 ## [v5.1.0] — 2026-10-02 — Minor: the agent co-author strip covers every repo on the machine
 

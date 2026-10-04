@@ -13,6 +13,7 @@ import importlib.util
 import io
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -52,6 +53,7 @@ class _Case(unittest.TestCase):
         self.sp = nhf.ScratchProject()
         self.addCleanup(self.sp.cleanup)
         self.home = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.home, ignore_errors=True)
         self.agentm(self.sp.agentm)
 
     def tearDown(self):

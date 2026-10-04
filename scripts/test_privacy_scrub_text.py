@@ -16,7 +16,9 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import shutil
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -59,7 +61,8 @@ class ScrubTextGracefulSkipTests(unittest.TestCase):
     """Hermetic: no real agentm checkout needed."""
 
     def test_returns_text_unchanged_when_agentm_unresolvable(self):
-        empty_home = Path(__import__("tempfile").mkdtemp())
+        empty_home = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, empty_home, ignore_errors=True)
         with mock.patch.dict(os.environ, {"AGENTM_SCRIPTS_DIR": ""}, clear=False):
             with mock.patch.object(Path, "home", return_value=empty_home):
                 scrub_text_mod._reset_cache_for_tests()
@@ -70,7 +73,8 @@ class ScrubTextGracefulSkipTests(unittest.TestCase):
         self.assertFalse(available)
 
     def test_never_raises_on_empty_string(self):
-        empty_home = Path(__import__("tempfile").mkdtemp())
+        empty_home = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, empty_home, ignore_errors=True)
         with mock.patch.dict(os.environ, {"AGENTM_SCRIPTS_DIR": ""}, clear=False):
             with mock.patch.object(Path, "home", return_value=empty_home):
                 scrub_text_mod._reset_cache_for_tests()
