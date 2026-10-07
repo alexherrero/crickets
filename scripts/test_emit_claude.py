@@ -156,7 +156,10 @@ class TestClaudeEmitter(unittest.TestCase):
         # records. A false-positive fix. Patch.
         # 0.6.4 = also a Git LFS pointer's `oid sha256:` line, as a clone without
         # the LFS objects holds it. The same false-positive fix. Patch.
-        self.assertEqual(self._plugin_json("privacy")["version"], "0.6.4")
+        # 0.6.5 = check-no-pii.sh's phone-us counts a match only when it stands
+        # alone, so a digit run inside a hash, a decimal or a longer number no
+        # longer trips it. A false-positive fix. Patch.
+        self.assertEqual(self._plugin_json("privacy")["version"], "0.6.5")
 
     def test_dependencies_from_requires(self):
         # post-seed-retirement: maintenance (ex-github-ci) depends on

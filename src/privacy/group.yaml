@@ -71,5 +71,14 @@ standalone: true
 #          which a clone without the LFS objects holds in place of each LFS
 #          file (four of pixelton's art files tripped phone-us that way).
 #          Anchored to the whole line, as is 0.6.3's entry.
-version: 0.6.4
+# 0.6.5 = check-no-pii.sh's phone-us counts a match only when it stands alone:
+#          not inside a run of hex digits (a sha256 digest, a Cargo.lock
+#          checksum), not after a decimal point, and not as part of a longer
+#          number. grep -E has no look-around, so the scan checks the
+#          characters on either side of each phone-shaped match. The pattern
+#          also stops taking a lone dot as a separator, an eleven-digit run
+#          that starts with 1 as a number, and any punctuation from space to
+#          dot as a separator. Pixelton's townsfolk spike drops from 1,215
+#          findings to one, a ten-digit seed written alone.
+version: 0.6.5
 capabilities: [pii, privacy]
