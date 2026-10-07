@@ -67,5 +67,9 @@ standalone: true
 #          matches; every pixelton art record carries a digest, and one was
 #          flagged on 2026-10-06. Anchored to the whole line, so it hides
 #          nothing else.
-version: 0.6.3
+# 0.6.4 = the same allowlist passes a Git LFS pointer's `oid sha256:` line,
+#          which a clone without the LFS objects holds in place of each LFS
+#          file (four of pixelton's art files tripped phone-us that way).
+#          Anchored to the whole line, as is 0.6.3's entry.
+version: 0.6.4
 capabilities: [pii, privacy]

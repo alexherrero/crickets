@@ -154,7 +154,9 @@ class TestClaudeEmitter(unittest.TestCase):
         # 0.6.3 = check-no-pii.sh passes a line holding only a sha256 key and its
         # 64-hex digest, whose digit runs tripped phone-us on pixelton's art
         # records. A false-positive fix. Patch.
-        self.assertEqual(self._plugin_json("privacy")["version"], "0.6.3")
+        # 0.6.4 = also a Git LFS pointer's `oid sha256:` line, as a clone without
+        # the LFS objects holds it. The same false-positive fix. Patch.
+        self.assertEqual(self._plugin_json("privacy")["version"], "0.6.4")
 
     def test_dependencies_from_requires(self):
         # post-seed-retirement: maintenance (ex-github-ci) depends on
