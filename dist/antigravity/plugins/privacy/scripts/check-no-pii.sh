@@ -100,6 +100,10 @@ LINE_ALLOWLIST_PATTERNS=(
     # key = value form (about one random digest in six has a phone-shaped run).
     # Anchored at both ends, so nothing else can share the line it passes.
     '^[[:space:]]*(-[[:space:]]+)?"?sha256"?[[:space:]]*[:=][[:space:]]*"?[0-9a-f]{64}"?,?[[:space:]]*$'
+    # A Git LFS pointer's oid line, as the LFS spec writes it (a trailing CR
+    # allowed): a clone without the LFS objects holds the pointer in place of
+    # the file. Anchored likewise.
+    '^oid sha256:[0-9a-f]{64}[[:space:]]*$'
 )
 
 # ── file collection ───────────────────────────────────────────────────────

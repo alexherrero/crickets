@@ -90,8 +90,9 @@ COMMIT_SHA = "3f9a1c7e0b2d4f6a8c1e3b5d7f9a0c2e4b6d8f1a"  # 40 hex, no long digit
 PHONE = PLANTED["phone-us"]
 
 # Lines holding only a sha256 key and its digest, in each form the line
-# allowlist passes. crlf.json's lines end in a carriage return; on Windows
-# every fixture file's do, since write_text turns each \n into \r\n.
+# allowlist passes, and a Git LFS pointer, whose oid line is one more such
+# form. crlf.json's lines end in a carriage return; on Windows every fixture
+# file's do, since write_text turns each \n into \r\n.
 SHA256_LINES: dict[str, str] = {
     "art/anchors/street-night.json": "\n".join([
         "{",
@@ -110,10 +111,17 @@ SHA256_LINES: dict[str, str] = {
         "",
     ]),
     "record.toml": f'sha256 = "{SHA256_DIGEST}"\n',
+    # What a clone without the LFS objects holds in place of the image.
+    "art/anchors/street-night.jpg": "\n".join([
+        "version https://git-lfs.github.com/spec/v1",
+        f"oid sha256:{SHA256_DIGEST}",
+        "size 735812",
+        "",
+    ]),
 }
 
-# What the sha256 entry must not pass: a phone number on another line, beside
-# other hex, or beside the digest itself, and a digest outside that exact form.
+# What the sha256 entries must not pass: a phone number on another line, beside
+# other hex, or beside the digest itself, and a digest outside their exact forms.
 SHA256_NEAR_MISSES: dict[str, str] = {
     "phone-below-digest.json": "\n".join([
         "{",
@@ -128,6 +136,11 @@ SHA256_NEAR_MISSES: dict[str, str] = {
     "not-64-lowercase.yaml": "\n".join([
         f"sha256: {SHA256_DIGEST}0",
         f"sha256: {SHA256_DIGEST.upper()}",
+        "",
+    ]),
+    "pointer-near-miss.txt": "\n".join([
+        f"oid sha256:{SHA256_DIGEST}0",
+        f"oid sha256:{SHA256_DIGEST} {PHONE}",
         "",
     ]),
 }
@@ -205,8 +218,9 @@ class TestCleanControlZeroFalsePositives(unittest.TestCase):
 
 
 class TestSha256DigestLinesPass(unittest.TestCase):
-    """A line holding only a sha256 key and its digest passes, though the
-    digest's ten-digit run matches phone-us (LINE_ALLOWLIST_PATTERNS)."""
+    """A line holding only a sha256 key and its digest, or a Git LFS pointer's
+    oid line, passes, though the digest's ten-digit run matches phone-us
+    (LINE_ALLOWLIST_PATTERNS)."""
 
     @classmethod
     def setUpClass(cls):
@@ -227,8 +241,8 @@ class TestSha256DigestLinesPass(unittest.TestCase):
 
 
 class TestSha256AllowlistStaysNarrow(unittest.TestCase):
-    """The sha256 entry is anchored to the whole line, so it passes the digest
-    and nothing else: every other finding near it still fails."""
+    """The sha256 entries are anchored to the whole line, so they pass the
+    digest and nothing else: every other finding near it still fails."""
 
     @classmethod
     def setUpClass(cls):
@@ -266,6 +280,11 @@ class TestSha256AllowlistStaysNarrow(unittest.TestCase):
     def test_a_digest_not_64_lowercase_hex_fails(self):
         self.assertPhoneFinding("not-64-lowercase.yaml:1", DIGIT_RUN)
         self.assertPhoneFinding("not-64-lowercase.yaml:2", DIGIT_RUN)
+
+    def test_an_oid_line_holding_more_than_the_digest_fails(self):
+        # A 65-hex oid, and a phone number after a 64-hex one.
+        self.assertPhoneFinding("pointer-near-miss.txt:1", DIGIT_RUN)
+        self.assertPhoneFinding("pointer-near-miss.txt:2", PHONE)
 
 
 class TestPluginPayloadCopyCatchRate(unittest.TestCase):
