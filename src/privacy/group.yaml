@@ -59,5 +59,13 @@ standalone: true
 #          -> `cp src/privacy/templates/hooks/pre-push …`) left over from the
 #          pii -> privacy rename (AG Wave A rename 2). Doc-only; the hook's
 #          runtime behavior is unchanged.
-version: 0.6.2
+# 0.6.2 = the inert `install_scope:` frontmatter field retired from every
+#          primitive. Metadata-only; nothing read it.
+# 0.6.3 = check-no-pii.sh's line-level allowlist passes a line holding only a
+#          sha256 key and its 64-hex digest (JSON, YAML or key = value). About
+#          one random digest in six holds a ten-digit run that phone-us
+#          matches; every pixelton art record carries a digest, and one was
+#          flagged on 2026-10-06. Anchored to the whole line, so it hides
+#          nothing else.
+version: 0.6.3
 capabilities: [pii, privacy]

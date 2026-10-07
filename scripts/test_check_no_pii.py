@@ -79,6 +79,59 @@ CLEAN_CONTROL = "\n".join([
     "",
 ])
 
+# A 64-character lowercase-hex sha256 digest holding a ten-digit run that
+# phone-us matches, the shape that tripped a pixelton art record
+# (art/anchors/street-night.json line 7, 2026-10-06). About one random digest
+# in six holds such a run. The run is split in two so this file's own source
+# never holds it whole.
+DIGIT_RUN = _join("59574", "54926")
+SHA256_DIGEST = _join("1ca78c05be3f", DIGIT_RUN, "af0e7d3c9b1e4a6f2d8c0b7e5a3f1d9c4e2b6a8f0d")
+COMMIT_SHA = "3f9a1c7e0b2d4f6a8c1e3b5d7f9a0c2e4b6d8f1a"  # 40 hex, no long digit run
+PHONE = PLANTED["phone-us"]
+
+# Lines holding only a sha256 key and its digest, in each form the line
+# allowlist passes. crlf.json's lines end in a carriage return; on Windows
+# every fixture file's do, since write_text turns each \n into \r\n.
+SHA256_LINES: dict[str, str] = {
+    "art/anchors/street-night.json": "\n".join([
+        "{",
+        '  "id": "street-night",',
+        f'  "sha256": "{SHA256_DIGEST}",',
+        '  "width": 320',
+        "}",
+        "",
+    ]),
+    "crlf.json": "\r\n".join(["{", f'  "sha256": "{SHA256_DIGEST}"', "}", ""]),
+    "record.yaml": "\n".join([
+        f"sha256: {SHA256_DIGEST}",
+        "stand_ins:",
+        f'  - sha256: "{SHA256_DIGEST}"',
+        "    path: art/stand-ins/lamp.png",
+        "",
+    ]),
+    "record.toml": f'sha256 = "{SHA256_DIGEST}"\n',
+}
+
+# What the sha256 entry must not pass: a phone number on another line, beside
+# other hex, or beside the digest itself, and a digest outside that exact form.
+SHA256_NEAR_MISSES: dict[str, str] = {
+    "phone-below-digest.json": "\n".join([
+        "{",
+        f'  "sha256": "{SHA256_DIGEST}",',
+        f'  "phone": "{PHONE}"',
+        "}",
+        "",
+    ]),
+    "commit-note.txt": f"Fixed in {COMMIT_SHA}; questions to {PHONE}.\n",
+    "one-line.json": f'{{"sha256": "{SHA256_DIGEST}", "phone": "{PHONE}"}}\n',
+    "checksum.json": "\n".join(["{", f'  "checksum": "{SHA256_DIGEST}"', "}", ""]),
+    "not-64-lowercase.yaml": "\n".join([
+        f"sha256: {SHA256_DIGEST}0",
+        f"sha256: {SHA256_DIGEST.upper()}",
+        "",
+    ]),
+}
+
 
 def _run_git(args, cwd):
     subprocess.run(["git", *args], cwd=cwd, check=True,
@@ -149,6 +202,70 @@ class TestCleanControlZeroFalsePositives(unittest.TestCase):
     def test_no_findings_reported(self):
         self.assertIn("clean (all mode)", self.result.stdout)
         self.assertNotIn("finding(s)", self.result.stderr)
+
+
+class TestSha256DigestLinesPass(unittest.TestCase):
+    """A line holding only a sha256 key and its digest passes, though the
+    digest's ten-digit run matches phone-us (LINE_ALLOWLIST_PATTERNS)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.repo = _make_fixture_repo(SHA256_LINES)
+        cls.result = _run_scanner(cls.repo)
+
+    @classmethod
+    def tearDownClass(cls):
+        import shutil
+        shutil.rmtree(cls.repo, ignore_errors=True)
+
+    def test_fixture_digest_is_a_sha256(self):
+        self.assertRegex(SHA256_DIGEST, r"\A[0-9a-f]{64}\Z")
+
+    def test_sha256_lines_pass(self):
+        self.assertEqual(self.result.returncode, 0, f"stderr={self.result.stderr!r}")
+        self.assertIn("clean (all mode)", self.result.stdout)
+
+
+class TestSha256AllowlistStaysNarrow(unittest.TestCase):
+    """The sha256 entry is anchored to the whole line, so it passes the digest
+    and nothing else: every other finding near it still fails."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.repo = _make_fixture_repo(SHA256_NEAR_MISSES)
+        cls.result = _run_scanner(cls.repo)
+
+    @classmethod
+    def tearDownClass(cls):
+        import shutil
+        shutil.rmtree(cls.repo, ignore_errors=True)
+
+    def assertPhoneFinding(self, where: str, match: str):
+        self.assertIn(f"{where}: phone-us match: {match}", self.result.stderr)
+
+    def test_scanner_exits_nonzero(self):
+        self.assertEqual(self.result.returncode, 1, f"stdout={self.result.stdout!r}")
+
+    def test_a_phone_number_on_a_non_sha256_line_fails(self):
+        self.assertPhoneFinding("phone-below-digest.json:3", PHONE)
+        # The sha256 line above it still passes: the entry is per line.
+        self.assertNotIn("phone-below-digest.json:2:", self.result.stderr)
+
+    def test_a_phone_number_beside_other_hex_fails(self):
+        self.assertPhoneFinding("commit-note.txt:1", PHONE)
+
+    def test_a_phone_number_beside_the_digest_fails(self):
+        # One-line JSON: the line holds more than the key and its digest.
+        self.assertPhoneFinding("one-line.json:1", PHONE)
+
+    def test_the_digest_under_another_key_fails(self):
+        # Also proves the fixture digest trips phone-us, so the passing class
+        # above can't pass for want of a match.
+        self.assertPhoneFinding("checksum.json:2", DIGIT_RUN)
+
+    def test_a_digest_not_64_lowercase_hex_fails(self):
+        self.assertPhoneFinding("not-64-lowercase.yaml:1", DIGIT_RUN)
+        self.assertPhoneFinding("not-64-lowercase.yaml:2", DIGIT_RUN)
 
 
 class TestPluginPayloadCopyCatchRate(unittest.TestCase):

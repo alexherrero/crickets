@@ -151,7 +151,10 @@ class TestClaudeEmitter(unittest.TestCase):
         # path in templates/hooks/pre-push fixed to src/privacy/. Doc-only.
         # 0.6.2 = the inert `install_scope:` frontmatter field retired from every
         # primitive. Metadata-only; nothing read it. Patch.
-        self.assertEqual(self._plugin_json("privacy")["version"], "0.6.2")
+        # 0.6.3 = check-no-pii.sh passes a line holding only a sha256 key and its
+        # 64-hex digest, whose digit runs tripped phone-us on pixelton's art
+        # records. A false-positive fix. Patch.
+        self.assertEqual(self._plugin_json("privacy")["version"], "0.6.3")
 
     def test_dependencies_from_requires(self):
         # post-seed-retirement: maintenance (ex-github-ci) depends on
