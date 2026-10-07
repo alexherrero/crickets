@@ -96,6 +96,10 @@ ALLOWLIST_PATTERNS=(
 # finding that merely shares a line with allowlisted text.
 LINE_ALLOWLIST_PATTERNS=(
     'uses: [A-Za-z0-9_./-]+@[0-9a-f]{40}'  # SHA-pinned GitHub Actions (public refs; digit runs inside a SHA can mimic a phone number)
+    # A line holding only a sha256 key and its 64-hex digest, in JSON, YAML or
+    # key = value form (about one random digest in six has a phone-shaped run).
+    # Anchored at both ends, so nothing else can share the line it passes.
+    '^[[:space:]]*(-[[:space:]]+)?"?sha256"?[[:space:]]*[:=][[:space:]]*"?[0-9a-f]{64}"?,?[[:space:]]*$'
 )
 
 # ── file collection ───────────────────────────────────────────────────────
