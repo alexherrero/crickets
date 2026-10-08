@@ -15,6 +15,8 @@
 # Patterns caught: emails, personal paths (mac/linux/windows), API key shapes
 # (OpenAI, GitHub, GitLab, AWS), US phone numbers. See ALLOWLIST_PATTERNS below
 # for known-safe substrings (the public handle, RFC 2606 reserved domains, etc.).
+# A phone number counts only when it stands alone, not as a run of digits inside
+# a hash, a decimal or a longer number (see stands_alone below).
 #
 # See CONTRIBUTING.md § PII guardrails for the full pattern list and override
 # protocol.
@@ -76,7 +78,16 @@ PATTERNS=(
     'github-token|gh[psuro]_[a-zA-Z0-9_-]{20,}'
     'gitlab-token|glpat-[a-zA-Z0-9_-]{20,}'
     'aws-access-key|AKIA[A-Z0-9]{16}'
-    'phone-us|(\+?1[ -.]?)?\(?[2-9][0-9]{2}\)?[ -.]?[0-9]{3}[ -.]?[0-9]{4}'
+    # phone-us: a US number in one of four shapes, written here in N for digits.
+    #   (NNN) NNN-NNNN   a bracketed area code; the separators are optional
+    #   NNN-NNN-NNNN     separated by spaces, dots or hyphens; NNN-NNNNNNN and
+    #                    NNNNNN-NNNN count too, but not with a lone dot, which
+    #                    makes a decimal
+    #   1.NNN.NNN.NNNN   dotted, after the country code
+    #   NNNNNNNNNN       ten bare digits, or +1 and ten
+    # The first two may open with +1. A match also has to stand alone; see
+    # stands_alone below.
+    'phone-us|(\+1[ .-]?)?\([2-9][0-9]{2}\)[ .-]?[0-9]{3}[ .-]?[0-9]{4}|(\+1[ .-]?)?[2-9][0-9]{2}([ .-][0-9]{3}[ .-]|[ -][0-9]{3}|[0-9]{3}[ -])[0-9]{4}|1\.[2-9][0-9]{2}\.[0-9]{3}\.[0-9]{4}|(\+1)?[2-9][0-9]{9}'
 )
 
 # Substrings that are known-safe in this repo. If a match contains any of
@@ -189,6 +200,58 @@ classify_kind() {
     printf 'unknown'
 }
 
+# ── stand-alone check (phone-us) ──────────────────────────────────────────
+# A phone-shaped run of digits is often part of something longer: a sha256
+# digest or a Cargo.lock checksum (hex), the digits after a decimal point, or
+# a longer integer. grep -E has no look-around, so a phone-us match is checked
+# in a second step, by the characters on either side of it on its line:
+#   - a match that starts with a digit can't follow a hex digit or a dot;
+#   - no match can be followed by a hex digit, or by a dot and a digit.
+# A match that opens with "(" or "+" may follow anything. A dot after a number
+# with no digit after it ends a sentence, so it doesn't count.
+#
+# phone-us is the only pattern whose matches hold nothing but digits, spaces,
+# dots, hyphens, brackets and a plus sign. That is how the scan below tells its
+# matches apart without running classify_kind.
+PHONE_MATCH_RE='^[-0-9 .()+]+$'
+
+# stands_alone MATCH BEFORE AFTER: BEFORE is the character in front of MATCH
+# (empty at the start of a line), AFTER the two characters after it.
+stands_alone() {
+    case "$1" in
+        [0123456789]*)
+            case "$2" in [0123456789abcdefABCDEF.]) return 1 ;; esac
+            ;;
+    esac
+    case "$3" in
+        [0123456789abcdefABCDEF]*|.[0123456789]*) return 1 ;;
+    esac
+    return 0
+}
+
+# grep -o reports a line's matches left to right without overlap, so each one
+# is the first occurrence of its text after the match before it. locate_match
+# moves along the line past MATCH and sets $before and $after for it. $rest is
+# the line after the last match placed, and $prev the character before $rest.
+# If MATCH isn't there, it fails and changes nothing.
+locate_match() {
+    local head="${rest%%"$1"*}"
+    [[ ${#head} -lt ${#rest} ]] || return 1
+    [[ -n "$head" ]] && prev="${head:${#head}-1:1}"
+    before="$prev"
+    rest="${rest:${#head}+${#1}}"
+    after="${rest:0:2}"
+    prev="${1:${#1}-1:1}"
+}
+
+# Reads the current match's line into $line, once, when a check needs it.
+load_line() {
+    if [[ $have_line -eq 0 ]]; then
+        line="$(sed -n "${lineno}p" "$file")"
+        have_line=1
+    fi
+}
+
 # ── scan ──────────────────────────────────────────────────────────────────
 findings=0
 
@@ -197,10 +260,33 @@ while IFS= read -r file; do
     [[ ! -f "$file" ]] && continue
     is_self_skip "$file" && continue
 
+    cur_lineno=""
     while IFS=: read -r lineno match; do
         [[ -z "$lineno" ]] && continue
+        if [[ "$lineno" != "$cur_lineno" ]]; then
+            cur_lineno="$lineno"; have_line=0; placing=0; earlier=""
+        fi
+        # A line is read only once a phone-us match on it needs checking. The
+        # matches before that one are kept in $earlier, then placed first.
+        if [[ "$match" =~ $PHONE_MATCH_RE ]]; then
+            if [[ $placing -eq 0 ]]; then
+                load_line
+                rest="$line"; prev=""; placing=1
+                while IFS= read -r m; do
+                    [[ -n "$m" ]] && locate_match "$m"
+                done <<<"$earlier"
+            fi
+            if locate_match "$match" && ! stands_alone "$match" "$before" "$after"; then
+                continue
+            fi
+        elif [[ $placing -eq 1 ]]; then
+            locate_match "$match"
+        else
+            earlier="$earlier$match"$'\n'
+        fi
         is_allowed "$match" && continue
-        is_line_allowed "$(sed -n "${lineno}p" "$file")" && continue
+        load_line
+        is_line_allowed "$line" && continue
         kind="$(classify_kind "$match")"
         echo "$file:$lineno: $kind match: $match" >&2
         findings=$((findings + 1))
