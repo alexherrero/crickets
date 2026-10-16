@@ -19,10 +19,17 @@ Covers:
       part of an answer; a failed call; empty stdin; material over the size
       ceiling. A broken, absent or slow agy CLI can never silently downgrade
       a "cross-model" review into a same-model one without a trace.
+  (d) the model agy is asked for: by default one agy 1.4.0 serves,
+      CROSS_REVIEW_MODEL names another, and a name agy no longer serves
+      degrades with the marker.
 
 The 2026-09-13 regression: agy ran into its 180s print timeout and exited 0
 with nothing on stdout, and the script wrote only "agy call failed (exit
 0)" to stderr. NoOutputTests reproduces that shape; it fails against 0.3.3.
+
+The 2026-10-16 regression: agy 1.4.0 no longer served "Gemini 3.1 Pro
+(High)", so every review degraded. ModelTests' passing cases fail against
+0.4.0.
 
 stdlib only.
 """
@@ -271,6 +278,88 @@ class CutOffOrFailedReplyTests(unittest.TestCase):
             line = _degraded_line(self, result, 1)
             self.assertIn("agy failed (exit 2 after ", line)
             self.assertIn("NO ISSUES FOUND", result.stderr)
+
+
+# What `agy models` served on 2026-10-16 (agy 1.4.0), as display strings.
+_AGY_1_4_0_MODELS = (
+    "Gemini 4 Argon (Medium)", "Gemini 4 Argon (High)", "Gemini 4 Argon (Low)",
+    "Gemini 3.8 Flash (High)", "Gemini 3.8 Flash (Medium)", "Gemini 3.8 Flash (Low)",
+    "Claude Opus 5.5 (Low)", "Claude Opus 5.5 (Medium)", "Claude Opus 5.5 (High)",
+    "Claude Sonnet 5.5 (Low)", "Claude Sonnet 5.5 (Medium)", "Claude Sonnet 5.5 (High)",
+    "GPT-OSS 120B (Medium)",
+)
+
+
+def _write_model_checking_agy(bin_dir: Path, log: Path) -> None:
+    """A fake agy 1.4.0 that serves only _AGY_1_4_0_MODELS. It logs each
+    --model it is given, answers a served one, and rejects any other the way
+    the real one did on 2026-10-16: its error on stderr, nothing on stdout,
+    exit 1."""
+    cases = " | ".join(f'"{name}"' for name in _AGY_1_4_0_MODELS)
+    listing = "".join(f'  {name}\\n' for name in _AGY_1_4_0_MODELS)
+    _write_fake_agy(bin_dir, (
+        'model=""\n'
+        'while (( $# )); do\n'
+        '  case "$1" in\n'
+        '    --model) model="$2"; shift 2 ;;\n'
+        '    *) shift ;;\n'
+        '  esac\n'
+        'done\n'
+        f'printf \'%s\\n\' "$model" >> "{log}"\n'
+        'case "$model" in\n'
+        f'  {cases}) echo "NO ISSUES FOUND"; echo "Reviewed: src/foo.py" ;;\n'
+        '  *)\n'
+        '    echo "error: invalid model selection (--model \\"$model\\" --effort \\"\\"): '
+        'model $model is not recognized as a known model or custom model in settings" >&2\n'
+        f'    printf \'Available models:\\n{listing}\' >&2\n'
+        '    exit 1 ;;\n'
+        'esac\n'
+    ))
+
+
+class ModelTests(unittest.TestCase):
+    """The model cross-review.sh asks agy for. agy 1.4.0 rejects a name it no
+    longer serves, so on 2026-10-16 the old "Gemini 3.1 Pro (High)" pin sent
+    every review to the same-model fallback."""
+
+    def _run(self, env_extra: "dict | None" = None):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        bin_dir = Path(tmp.name)
+        log = bin_dir / "agy_models.log"
+        _write_model_checking_agy(bin_dir, log)
+        saved = os.environ.pop("CROSS_REVIEW_MODEL", None)
+        if saved is not None:
+            self.addCleanup(os.environ.__setitem__, "CROSS_REVIEW_MODEL", saved)
+        result = _run_cross_review("=== DIFF ===\nsome diff\n", path_prefix=bin_dir,
+                                   env_extra=env_extra)
+        asked = log.read_text(encoding="utf-8").splitlines() if log.exists() else []
+        return result, asked
+
+    def test_default_model_is_one_agy_serves(self):
+        result, asked = self._run()
+        self.assertEqual(result.returncode, 0, f"stdout={result.stdout!r} stderr={result.stderr!r}")
+        self.assertIn("NO ISSUES FOUND", result.stdout)
+        self.assertEqual(asked, ["Gemini 4 Argon (High)"])
+
+    def test_override_names_another_model(self):
+        result, asked = self._run({"CROSS_REVIEW_MODEL": "Gemini 3.8 Flash (High)"})
+        self.assertEqual(result.returncode, 0, f"stderr={result.stderr!r}")
+        self.assertEqual(asked, ["Gemini 3.8 Flash (High)"])
+
+    def test_empty_override_keeps_the_default(self):
+        result, asked = self._run({"CROSS_REVIEW_MODEL": ""})
+        self.assertEqual(result.returncode, 0, f"stderr={result.stderr!r}")
+        self.assertEqual(asked, ["Gemini 4 Argon (High)"])
+
+    def test_a_model_agy_no_longer_serves_degrades_visibly(self):
+        # The 2026-10-16 shape, from agentm task 191's /bugfix.
+        result, asked = self._run({"CROSS_REVIEW_MODEL": "Gemini 3.1 Pro (High)"})
+        line = _degraded_line(self, result, 1)
+        self.assertIn("agy returned no output (exit 1 after ", line)
+        self.assertIn("before its 180s print timeout", line)
+        # No output is not a format miss, so there is no retry.
+        self.assertEqual(asked, ["Gemini 3.1 Pro (High)"])
 
 
 class NoMaterialTests(unittest.TestCase):

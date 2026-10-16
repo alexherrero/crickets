@@ -63,12 +63,15 @@
 
 set -uo pipefail
 
-# Closest available match to the retired `gemini-3.1-pro-preview` pin, from
-# the exact display strings `agy models` serves on this machine (confirmed
-# live 2026-07-13: Gemini 3.5 Flash Low/Medium/High, Gemini 3.1 Pro Low/High,
-# Claude Sonnet 4.6 (Thinking), Claude Opus 4.6 (Thinking), GPT-OSS 120B
-# Medium) -- `--model` takes this string verbatim, not a short id.
-MODEL="Gemini 3.1 Pro (High)"
+# The strongest Gemini that `agy models` serves, as its exact display string
+# -- `--model` takes it verbatim. Confirmed live 2026-10-16 on agy 1.4.0:
+# Gemini 4 Argon Low/Medium/High, Gemini 3.8 Flash Low/Medium/High, Claude
+# Opus 5.5 and Sonnet 5.5 Low/Medium/High, GPT-OSS 120B (Medium). agy 1.4.0
+# rejects a name it no longer serves with "is not recognized as a known
+# model" on stderr and exit 1 in about 3s, so a retired pin degrades every
+# review: "Gemini 3.1 Pro (High)" did from 2026-10-16. When `agy models`
+# changes, CROSS_REVIEW_MODEL names another model without editing this file.
+MODEL="${CROSS_REVIEW_MODEL:-Gemini 4 Argon (High)}"
 
 # How long agy's print mode waits for the answer, in seconds.
 PRINT_TIMEOUT_SECS=180
