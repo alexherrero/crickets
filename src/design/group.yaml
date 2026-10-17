@@ -154,4 +154,9 @@ capabilities: [design-docs, design, architecture]
 # development-lifecycle's resolve_plan.py and plan_tracker.py); none is
 # activated, nothing goes to queued-plans/, and a project that keeps no tasks
 # is refused before any write.
-version: 0.11.0
+# 0.11.1 = prose_pass.py asks agy for "Gemini 4 Argon (High)". agy 1.4.0
+# stopped serving "Gemini 3.1 Pro (High)" and rejects it with exit 1, so
+# every prose pass since 2026-10-16 took the Claude-only fallback.
+# PROSE_PASS_MODEL names another model without editing the script, and a
+# failed call's stderr line now quotes agy's own reason.
+version: 0.11.1

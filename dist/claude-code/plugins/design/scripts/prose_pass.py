@@ -75,7 +75,8 @@ Options:
   --vault-path <path>        memory-root override (else $MEMORY_ROOT, else
                              .agentm-config.json vault_path + memory_root;
                              $MEMORY_VAULT_PATH is the deprecated alias)
-  --model <name>             agy display-string model (default: Gemini 3.1 Pro (High))
+  --model <name>             agy display-string model, as `agy models` prints it
+                             (default: $PROSE_PASS_MODEL, else Gemini 4 Argon (High))
   --timeout <dur>            agy --print-timeout value: a Go duration (90s, 5m,
                              1h30m) or bare seconds (300 -> 300s); anything
                              else is a usage error (default: 480s)
@@ -83,8 +84,9 @@ Options:
 
 Exit codes (cross-review.sh parity):
   0 — revised document produced; structural contract holds
-  1 — agy missing/unauthenticated, or the voice pack unresolvable — caller
-      should fall back to a Claude-only prose pass
+  1 — agy missing/unauthenticated, agy failing (a model it no longer serves
+      lands here, its reason on stderr), or the voice pack unresolvable —
+      caller should fall back to a Claude-only prose pass
   2 — usage error, or agy ran but violated the structural contract twice —
       caller decides
 
@@ -117,7 +119,16 @@ import subprocess
 import sys
 from pathlib import Path
 
-MODEL_DEFAULT = "Gemini 3.1 Pro (High)"
+# The strongest Gemini that `agy models` serves, as its exact display string
+# — `--model` takes it verbatim. Confirmed live 2026-10-16 on agy 1.4.0:
+# Gemini 4 Argon Low/Medium/High, Gemini 3.8 Flash Low/Medium/High. agy 1.4.0
+# rejects a name it no longer serves in about 3s, exit 1, nothing on stdout
+# and "is not recognized as a known model" on stderr, so a retired pin
+# degrades every pass: "Gemini 3.1 Pro (High)" did from 2026-10-16.
+# $PROSE_PASS_MODEL names another model without editing this file; --model
+# beats both. Same shape as cross-review.sh's CROSS_REVIEW_MODEL.
+MODEL_DEFAULT = "Gemini 4 Argon (High)"
+MODEL_ENV = "PROSE_PASS_MODEL"
 TIMEOUT_DEFAULT = "480s"
 
 # agy parses --print-timeout with Go's time.ParseDuration: an optional sign,
@@ -701,7 +712,7 @@ def _degraded(reason: str, diag: str) -> None:
     print(f"prose-pass: {diag}", file=sys.stderr)
 
 
-def _call_agy(agy_cmd: list[str], prompt: str, model: str, timeout: str) -> tuple[int, str]:
+def _call_agy(agy_cmd: list[str], prompt: str, model: str, timeout: str) -> tuple[int, str, str]:
     # Hard wall-clock backstop: agy's own --print-timeout plus a grace period,
     # so a wedged CLI can never hang the caller indefinitely. `timeout` is
     # already normalized by main(), so every unit counts ("5m" is 300s here).
@@ -712,8 +723,18 @@ def _call_agy(agy_cmd: list[str], prompt: str, model: str, timeout: str) -> tupl
             stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=wall,
         )
     except subprocess.TimeoutExpired:
-        return 124, ""
-    return r.returncode, r.stdout
+        return 124, "", ""
+    return r.returncode, r.stdout, r.stderr
+
+
+def _agy_said(stderr: str) -> str:
+    """agy's own reason for a failed call, for the diagnostic line: the
+    first non-empty stderr line ("error: invalid model selection ..." on a
+    retired model; the model list it prints after that is noise here)."""
+    for ln in stderr.splitlines():
+        if ln.strip():
+            return f" — agy said: {ln.strip()[:300]}"
+    return ""
 
 
 _CLEAN_ENDERS = set(".!?\"')]}`|")
@@ -780,7 +801,7 @@ def _run_sectioned_pass(agy_cmd: list[str], header: str, guards: list[str], voic
     notes: list[str] = []
     for i, section in enumerate(split_sections(original)):
         prompt = assemble_prompt(header, guards, voice_pack, escape_risky_tags(section))
-        rc, out = _call_agy(agy_cmd, prompt, model, timeout)
+        rc, out, _ = _call_agy(agy_cmd, prompt, model, timeout)
         if rc != 0 or not out.strip():
             revised_parts.append(section)
             notes.append(f"section {i}: agy call failed (exit {rc}) — kept original")
@@ -809,7 +830,8 @@ def main(argv=None) -> int:
     ap.add_argument("--overlay", default=OVERLAY_DEFAULT)
     ap.add_argument("--voice-kernel")
     ap.add_argument("--vault-path")
-    ap.add_argument("--model", default=MODEL_DEFAULT)
+    # An empty $PROSE_PASS_MODEL keeps the default, as an unset one does.
+    ap.add_argument("--model", default=os.environ.get(MODEL_ENV, "").strip() or MODEL_DEFAULT)
     # A bad value exits 2 here (argparse's usage error), before any agy call,
     # so a typo never prints PROSE-PASS-DEGRADED or sends the caller to the
     # Claude-only fallback.
@@ -864,10 +886,11 @@ def main(argv=None) -> int:
     original = doc_path.read_text(encoding="utf-8")
     prompt = assemble_prompt(TASK_HEADER, guards, voice_pack, escape_risky_tags(original))
 
-    rc, out = _call_agy(agy_cmd, prompt, args.model, args.timeout)
+    rc, out, err = _call_agy(agy_cmd, prompt, args.model, args.timeout)
     if rc != 0 or not out.strip():
         _degraded("agy call failed", f"agy exited {rc} with "
-                  f"{'empty' if not out.strip() else 'nonzero'} result")
+                  f"{'empty' if not out.strip() else 'nonzero'} result "
+                  f"(model {args.model!r}){_agy_said(err)}")
         return 1
 
     revised = restore_risky_tags(unwrap_outer_fence(out))
@@ -897,12 +920,12 @@ def main(argv=None) -> int:
                        "and Document History must be byte-identical to the input. The "
                        "FACT-GUARD list is verification context only — do not insert "
                        "its lines into the document.")
-            rc, out = _call_agy(agy_cmd,
-                                assemble_prompt(TASK_HEADER + nudge, guards, voice_pack,
-                                                escape_risky_tags(original)),
-                                args.model, args.timeout)
+            rc, out, err = _call_agy(agy_cmd,
+                                     assemble_prompt(TASK_HEADER + nudge, guards, voice_pack,
+                                                     escape_risky_tags(original)),
+                                     args.model, args.timeout)
             if rc != 0 or not out.strip():
-                _degraded("agy retry failed", f"agy retry exited {rc}")
+                _degraded("agy retry failed", f"agy retry exited {rc}{_agy_said(err)}")
                 return 1
             revised = restore_risky_tags(unwrap_outer_fence(out))
             violations = validate_output(original, revised) + guard_leakage(original, revised, guards)

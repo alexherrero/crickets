@@ -37,10 +37,12 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/prose_pass.py" path/to/doc.md \
 
 The script assembles a four-block prompt — task header, your fact-guard list, the operator's voice pack (the voice kernel plus the genre overlay, inlined verbatim from the vault), the document — and sends it to `agy` in one shot. The kernel is the `## Voice` section of `<vault>/standards/user-preferences.md`, and the script inlines that whole file; on a vault from before the memory-root trims it finds the older `voice-kernel.md` in the memory space instead. For a genre other than design docs, point `--overlay` at the matching file in the vault's voice library (`<vault>/standards/voice/` on the current vault layout — the vault-root sibling of the memory root — with `Projects/_global/wiki-style/` and older project-space rungs probed as fallbacks). The vault resolves at runtime; never pass a remembered absolute path.
 
+The script asks `agy` for Gemini 4 Argon (High). To use another model, set `PROSE_PASS_MODEL` or pass `--model`, with the name exactly as `agy models` prints it; `--model` wins over the variable.
+
 | Exit | Meaning | What you do |
 |---|---|---|
 | 0 | revised document produced; structure verified | proceed to Step 2 |
-| 1 | `agy` missing/unauthenticated, or voice pack unreachable | fall back to a Claude-only pass (below) |
+| 1 | `agy` missing/unauthenticated or failing (a model it no longer serves lands here, and stderr quotes `agy`'s reason), or voice pack unreachable | fall back to a Claude-only pass (below) |
 | 2 | usage error, or structural contract violated twice | read stderr; fix the invocation or fall back |
 
 On exit 1 or 2 the script prints a `PROSE-PASS-DEGRADED: ...` marker on stdout. Relay it verbatim — never paraphrase a degraded pass into a clean-sounding one.
