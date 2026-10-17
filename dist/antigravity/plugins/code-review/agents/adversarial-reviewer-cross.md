@@ -3,7 +3,7 @@ name: adversarial-reviewer-cross
 description: Cross-model adversarial reviewer. Shells out to `agy` (the Antigravity CLI, serving Gemini) via the bundled cross-review.sh for a second opinion from a different model. Same contract as adversarial-reviewer (failing test, DEFECT file:line, or NO ISSUES FOUND — no prose). Falls back to the in-process adversarial-reviewer whenever the script returns no cross-model review (agy missing, failing or out of time, or material over its size ceiling), visibly — relays the script's CROSS-REVIEW-DEGRADED marker rather than degrading silently.
 kind: agent
 supported_hosts: [claude-code, antigravity]
-version: 0.3.1
+version: 0.3.2
 tools: Read, Glob, Grep, Bash
 ---
 
@@ -53,6 +53,7 @@ Capture stdout and the exit code.
 - **Exit 0:** return the stdout **unchanged** as your findings. The output matches the three-form contract; pass it through.
 - **Exit 1:** no cross-model review this time. Stdout is one `CROSS-REVIEW-DEGRADED: <reason>, using same-model reviewer` line, and the reason names the case:
   - `agy CLI unavailable` — agy is not installed.
+  - `agy does not serve model '<MODEL>' (see agy models; CROSS_REVIEW_MODEL names another)` — agy rejected the model the script asked for; agy's error line and the models it does serve follow on the script's stderr. Tell the caller that `CROSS_REVIEW_MODEL` set to a name from that list (or from `agy models`) restores cross-model review.
   - `agy returned no output (...)`, `agy returned partial output (...)` or `agy failed (...)` — agy ran and gave no finished answer. The parenthesis carries agy's exit code, the seconds it ran, and whether its print timeout fired; agy's own stderr follows on the script's stderr.
   - `review material is N bytes, over the M-byte ceiling ...` — agy was not called: material that size outruns agy's print timeout. You may split the material at file boundaries into parts under M bytes and run the script once per part, handling each part's exit code by these rules.
 
