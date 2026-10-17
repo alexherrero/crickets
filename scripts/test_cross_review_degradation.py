@@ -21,7 +21,8 @@ Covers:
       a "cross-model" review into a same-model one without a trace.
   (d) the model agy is asked for: by default one agy 1.4.0 serves,
       CROSS_REVIEW_MODEL names another, and a name agy no longer serves
-      degrades with the marker.
+      degrades with a marker that names the model, with agy's error line
+      and its model list on stderr.
 
 The 2026-09-13 regression: agy ran into its 180s print timeout and exited 0
 with nothing on stdout, and the script wrote only "agy call failed (exit
@@ -29,7 +30,9 @@ with nothing on stdout, and the script wrote only "agy call failed (exit
 
 The 2026-10-16 regression: agy 1.4.0 no longer served "Gemini 3.1 Pro
 (High)", so every review degraded. ModelTests' passing cases fail against
-0.4.0.
+0.4.0. The marker said only "agy returned no output (exit 1 after 3s, ...)",
+and agy's error line sat above the five stderr lines the script kept, so
+nothing named the model. The retired-model test fails against 0.4.1.
 
 stdlib only.
 """
@@ -352,14 +355,39 @@ class ModelTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, f"stderr={result.stderr!r}")
         self.assertEqual(asked, ["Gemini 4 Argon (High)"])
 
-    def test_a_model_agy_no_longer_serves_degrades_visibly(self):
+    def test_a_model_agy_no_longer_serves_degrades_naming_the_model(self):
         # The 2026-10-16 shape, from agentm task 191's /bugfix.
         result, asked = self._run({"CROSS_REVIEW_MODEL": "Gemini 3.1 Pro (High)"})
-        line = _degraded_line(self, result, 1)
-        self.assertIn("agy returned no output (exit 1 after ", line)
-        self.assertIn("before its 180s print timeout", line)
-        # No output is not a format miss, so there is no retry.
+        self.assertEqual(
+            _degraded_line(self, result, 1),
+            "CROSS-REVIEW-DEGRADED: agy does not serve model 'Gemini 3.1 Pro (High)' "
+            "(see agy models; CROSS_REVIEW_MODEL names another), using same-model reviewer",
+        )
+        # agy's error line, above a model list longer than five lines.
+        self.assertIn(
+            'error: invalid model selection (--model "Gemini 3.1 Pro (High)" --effort ""): '
+            "model Gemini 3.1 Pro (High) is not recognized as a known model or custom "
+            "model in settings",
+            result.stderr.splitlines(),
+        )
+        self.assertIn("Available models:", result.stderr)
+        for name in _AGY_1_4_0_MODELS:
+            self.assertIn(name, result.stderr)
+        # A rejected model is not a format miss, so there is no retry.
         self.assertEqual(asked, ["Gemini 3.1 Pro (High)"])
+
+    def test_other_failures_keep_their_reasons(self):
+        # Only agy's model rejection names the model; a sign-in failure that
+        # mentions the model is still "no output".
+        with tempfile.TemporaryDirectory() as tmp:
+            bin_dir = Path(tmp)
+            _write_fake_agy(bin_dir, (
+                'echo "agy: not signed in; cannot load model settings" >&2\nexit 1'
+            ))
+            result = _run_cross_review("=== DIFF ===\nsome diff\n", path_prefix=bin_dir)
+            line = _degraded_line(self, result, 1)
+            self.assertIn("agy returned no output (exit 1 after ", line)
+            self.assertNotIn("does not serve model", line)
 
 
 class NoMaterialTests(unittest.TestCase):

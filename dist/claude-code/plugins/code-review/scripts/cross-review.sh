@@ -69,8 +69,11 @@ set -uo pipefail
 # Opus 5.5 and Sonnet 5.5 Low/Medium/High, GPT-OSS 120B (Medium). agy 1.4.0
 # rejects a name it no longer serves with "is not recognized as a known
 # model" on stderr and exit 1 in about 3s, so a retired pin degrades every
-# review: "Gemini 3.1 Pro (High)" did from 2026-10-16. When `agy models`
-# changes, CROSS_REVIEW_MODEL names another model without editing this file.
+# review: "Gemini 3.1 Pro (High)" did from 2026-10-16. The marker then says
+# agy does not serve the model; until 0.4.2 it said only "agy returned no
+# output", and agy's error line fell outside the five stderr lines kept. When
+# `agy models` changes, CROSS_REVIEW_MODEL names another model without
+# editing this file.
 MODEL="${CROSS_REVIEW_MODEL:-Gemini 4 Argon (High)}"
 
 # How long agy's print mode waits for the answer, in seconds.
@@ -163,11 +166,16 @@ degrade() {
 # timeout; every other ending degrades with exit 1. <label> goes into the
 # reason (" on retry").
 ask_agy() {
-  local label="$2" started=$SECONDS rc elapsed when said timed_out=""
+  local label="$2" started=$SECONDS rc elapsed when said timed_out="" rejected listing
   output=$(call_agy "$1")
   rc=$?
   elapsed=$((SECONDS - started))
   said=$(tail -n 5 "$agy_stderr")
+  # agy 1.4.0, on a model it does not serve: "error: invalid model selection
+  # (--model "X" --effort ""): model X is not recognized as a known model or
+  # custom model in settings", then an "Available models:" list of about 13
+  # lines, which pushes the error line out of $said.
+  rejected=$(grep -m 1 -iE 'invalid model selection|not recognized as a known model' "$agy_stderr")
   # agy 1.2.2: "[agy] print timeout after ..."; agy 1.1.26: "Print mode:
   # timed out after ...". A looser "timed out" could be retry chatter under a
   # finished answer.
@@ -181,6 +189,12 @@ ask_agy() {
     when="exit $rc after ${elapsed}s, before its ${PRINT_TIMEOUT_SECS}s print timeout"
   fi
 
+  if [[ -n "$rejected" ]] && { [[ -z "$output" ]] || (( rc != 0 )); }; then
+    listing=$(sed -n '/^Available models:/,$p' "$agy_stderr")
+    degrade 1 "agy does not serve model '${MODEL}' (see agy models; CROSS_REVIEW_MODEL names another)" \
+      "cross-review: agy rejected --model '${MODEL}'${label} (exit $rc after ${elapsed}s)" \
+      "$rejected" ${listing:+"$listing"}
+  fi
   if [[ -z "$output" ]]; then
     degrade 1 "agy returned no output${label} (${when})" \
       "cross-review: agy call${label} ended without a review (${when})" ${said:+"$said"}

@@ -84,7 +84,10 @@ description: Standalone adversarial code review of any diff or PR — the advers
 # stopped serving "Gemini 3.1 Pro (High)" and rejects it with exit 1, so
 # every review since 2026-10-16 took the same-model fallback.
 # CROSS_REVIEW_MODEL names another model without editing the script.
-version: 0.4.1
+# 0.4.2 = a model agy rejects degrades with "agy does not serve model '<MODEL>'"
+# instead of "agy returned no output", and agy's error line reaches stderr
+# (the five-line stderr tail held only its model list); agent 0.3.2 lists it.
+version: 0.4.2
 category: Coding
 requires: []
 standalone: true
