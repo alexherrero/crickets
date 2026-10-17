@@ -362,11 +362,11 @@ class PromptAssemblyTests(unittest.TestCase):
         self.assertIn(SAMPLE_DOC, prompt)
 
     def test_argv_prompt_first_flags_after(self):
-        argv = prose_pass.build_agy_argv("THE PROMPT", "Gemini 3.1 Pro (High)", "480s")
+        argv = prose_pass.build_agy_argv("THE PROMPT", "Gemini 4 Argon (High)", "480s")
         # -p <prompt> must come before any flag: flags placed before the
         # prompt silently drop it (cross-review.sh's hard-won lesson).
         self.assertEqual(argv[:3], ["agy", "-p", "THE PROMPT"])
-        self.assertEqual(argv[3:], ["--model", "Gemini 3.1 Pro (High)",
+        self.assertEqual(argv[3:], ["--model", "Gemini 4 Argon (High)",
                                     "--print-timeout", "480s"])
 
 
@@ -556,6 +556,7 @@ def _run_pass(tmp: Path, *extra_args: str, fake_impl: Path | None = None,
         doc.write_text(SAMPLE_DOC, encoding="utf-8")
     env = dict(os.environ)
     env.pop("PROSE_PASS_TEST_AGY_CMD", None)
+    env.pop("PROSE_PASS_MODEL", None)
     if fake_impl is not None:
         # Point resolve_agy_cmd() straight at [python, fake_impl.py] — no
         # PATH lookup, no OS shim, so cmd.exe never gets a look at the
@@ -728,6 +729,86 @@ class EndToEndTests(unittest.TestCase):
             self.assertIn("--timeout", r.stderr)
             # Rejected before agy was ever called.
             self.assertFalse((tmp / "args.json").exists())
+
+
+# agy 1.4.0 as it stood on 2026-10-16: it serves only the models `agy models`
+# listed that day and rejects any other name in its own words, exit 1,
+# nothing on stdout. Each call appends the model it was asked for.
+_AGY_1_4_0_IMPL = """\
+import sys
+from pathlib import Path
+SERVED = ["Gemini 4 Argon (Medium)", "Gemini 4 Argon (High)", "Gemini 4 Argon (Low)",
+          "Gemini 3.8 Flash (High)", "Gemini 3.8 Flash (Medium)", "Gemini 3.8 Flash (Low)",
+          "Claude Opus 5.5 (Low)", "Claude Opus 5.5 (Medium)", "Claude Opus 5.5 (High)",
+          "Claude Sonnet 5.5 (Low)", "Claude Sonnet 5.5 (Medium)", "Claude Sonnet 5.5 (High)",
+          "GPT-OSS 120B (Medium)"]
+model = sys.argv[sys.argv.index("--model") + 1]
+with open(Path(__file__).resolve().parent / "models.log", "a", encoding="utf-8") as f:
+    f.write(model + "\\n")
+if model not in SERVED:
+    sys.stderr.write(f'error: invalid model selection (--model "{model}" --effort ""): '
+                     f"model {model} is not recognized as a known model or custom model "
+                     "in settings\\nAvailable models:\\n"
+                     + "".join(f"  {m}\\n" for m in SERVED))
+    sys.exit(1)
+prompt = sys.argv[sys.argv.index("-p") + 1]
+sys.stdout.write(prompt.split("=== DOCUMENT ===\\n", 1)[1])
+"""
+
+
+class ModelTests(unittest.TestCase):
+    """The model prose_pass.py asks agy for. agy 1.4.0 rejects a name it no
+    longer serves, so on 2026-10-16 the old "Gemini 3.1 Pro (High)" default
+    sent every prose pass to the Claude-only fallback."""
+
+    def _run(self, *extra_args: str, env_extra: dict | None = None):
+        tmp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp_dir.cleanup)
+        tmp = Path(tmp_dir.name)
+        _make_vault(tmp)
+        impl = _write_fake_agy(tmp, _AGY_1_4_0_IMPL)
+        r = _run_pass(tmp, "--fact-guard-text", "a truth", *extra_args,
+                      fake_impl=impl, env_extra=env_extra)
+        log = tmp / "models.log"
+        asked = log.read_text(encoding="utf-8").splitlines() if log.exists() else []
+        return r, asked
+
+    def test_default_model_is_one_agy_serves(self):
+        r, asked = self._run()
+        self.assertEqual(r.returncode, 0, f"stdout={r.stdout!r} stderr={r.stderr!r}")
+        self.assertEqual(r.stdout, SAMPLE_DOC)
+        self.assertEqual(asked, ["Gemini 4 Argon (High)"])
+
+    def test_env_names_another_model(self):
+        r, asked = self._run(env_extra={"PROSE_PASS_MODEL": "Gemini 3.8 Flash (High)"})
+        self.assertEqual(r.returncode, 0, f"stderr={r.stderr!r}")
+        self.assertEqual(asked, ["Gemini 3.8 Flash (High)"])
+
+    def test_empty_env_keeps_the_default(self):
+        r, asked = self._run(env_extra={"PROSE_PASS_MODEL": ""})
+        self.assertEqual(r.returncode, 0, f"stderr={r.stderr!r}")
+        self.assertEqual(asked, ["Gemini 4 Argon (High)"])
+
+    def test_flag_beats_env(self):
+        r, asked = self._run("--model", "Gemini 4 Argon (Medium)",
+                             env_extra={"PROSE_PASS_MODEL": "Gemini 3.8 Flash (High)"})
+        self.assertEqual(r.returncode, 0, f"stderr={r.stderr!r}")
+        self.assertEqual(asked, ["Gemini 4 Argon (Medium)"])
+
+    def test_a_model_agy_no_longer_serves_degrades_visibly(self):
+        # The 2026-10-16 shape. The marker is what the documenter and /design
+        # relay before their Claude-only pass; stderr carries agy's reason.
+        r, asked = self._run(env_extra={"PROSE_PASS_MODEL": "Gemini 3.1 Pro (High)"})
+        self.assertEqual(r.returncode, 1, f"stderr={r.stderr!r}")
+        self.assertEqual(r.stdout, "PROSE-PASS-DEGRADED: agy call failed — fall back "
+                                   "to a Claude-only prose pass\n")
+        self.assertIn("model 'Gemini 3.1 Pro (High)'", r.stderr)
+        self.assertIn("agy said: error: invalid model selection", r.stderr)
+        self.assertIn("is not recognized as a known model", r.stderr)
+        # The model list agy prints after its error stays out of the line.
+        self.assertNotIn("Available models", r.stderr)
+        # No output is not a contract miss, so there is no retry.
+        self.assertEqual(asked, ["Gemini 3.1 Pro (High)"])
 
 
 
