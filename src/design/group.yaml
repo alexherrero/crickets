@@ -162,4 +162,6 @@ capabilities: [design-docs, design, architecture]
 # 0.11.2 = Antigravity: the four commands ship as skills. design.md is over
 # agy's 24 KB skill limit, so its full text sits in references/design.md
 # behind a short SKILL.md.
-version: 0.11.2
+# 0.11.3 = prose_pass.py runs agy with AGENTM_AGY_RECALL=off, so agentm's agy
+# recall plugin does not hand the simplifier the operator's memory vault.
+version: 0.11.3

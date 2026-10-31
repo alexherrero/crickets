@@ -872,5 +872,21 @@ class TestMemoryRootTrimsResolution(unittest.TestCase):
                              (root / "standards" / "voice").resolve())
 
 
+class AgentmRecallTests(unittest.TestCase):
+    def test_agy_is_run_with_the_recall_switch_off(self):
+        # agentm's agy plugin runs recall hooks on every agy call; the simplifier
+        # must not be handed the operator's memory vault.
+        seen = {}
+
+        def fake_run(argv, **kw):
+            seen["env"] = kw.get("env")
+            return subprocess.CompletedProcess(argv, 0, stdout="text", stderr="")
+
+        with mock.patch.object(prose_pass.subprocess, "run", fake_run):
+            with mock.patch.dict(os.environ, {"AGENTM_AGY_RECALL": "on"}):
+                prose_pass._call_agy(["agy"], "prompt", "a-model", "90s")
+        self.assertEqual((seen["env"] or {}).get("AGENTM_AGY_RECALL"), "off")
+
+
 if __name__ == "__main__":
     unittest.main()

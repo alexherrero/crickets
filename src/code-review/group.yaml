@@ -90,7 +90,9 @@ description: Standalone adversarial code review of any diff or PR — the advers
 # 0.4.3 = Antigravity: the four agents lose the tools: and model: lines agy
 # 1.4 cannot read (it was skipping them), and the three commands ship as
 # skills, which is how an agy plugin gets a /name.
-version: 0.4.3
+# 0.4.4 = cross-review.sh runs agy with AGENTM_AGY_RECALL=off, so agentm's agy
+# recall plugin does not put the operator's memory vault in front of the reviewer.
+version: 0.4.4
 category: Coding
 requires: []
 standalone: true

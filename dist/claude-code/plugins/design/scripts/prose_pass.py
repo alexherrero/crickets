@@ -717,10 +717,15 @@ def _call_agy(agy_cmd: list[str], prompt: str, model: str, timeout: str) -> tupl
     # so a wedged CLI can never hang the caller indefinitely. `timeout` is
     # already normalized by main(), so every unit counts ("5m" is 300s here).
     wall = go_duration_seconds(timeout) + 120
+    # AGENTM_AGY_RECALL=off: agentm's agy plugin (when installed) otherwise runs its
+    # recall hooks for this call and hands the simplifier the operator's memory
+    # vault, which is not what it is asked to rewrite. Harmless when it is absent.
+    env = {**os.environ, "AGENTM_AGY_RECALL": "off"}
     try:
         r = subprocess.run(
             build_agy_argv(prompt, model, timeout, agy_cmd),
             stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=wall,
+            env=env,
         )
     except subprocess.TimeoutExpired:
         return 124, "", ""
