@@ -4,6 +4,7 @@ description: Every capability that is built-but-dark (works, tested, no on-switc
 kind: rule
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
+trigger: model_decision
 ---
 
 ## Rule: dark-registry

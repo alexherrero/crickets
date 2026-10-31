@@ -361,9 +361,12 @@ class TestQueueStatusLiteSpec(unittest.TestCase):
     def test_lands_in_both_host_command_surfaces(self):
         # (c) The command ships into both generated plugin trees. `generate.py
         # check` (in check-all) separately proves they are byte-identical to src.
-        for host in ("antigravity", "claude-code"):
-            p = (_ROOT / "dist" / host / "plugins" / "development-lifecycle"
-                 / "commands" / "queue-status-lite.md")
+        # Claude Code loads commands/<name>.md; an agy plugin has no commands, so
+        # there the same command is skills/<name>/SKILL.md.
+        plugin = lambda host: _ROOT / "dist" / host / "plugins" / "development-lifecycle"
+        for host, rel in (("antigravity", "skills/queue-status-lite/SKILL.md"),
+                          ("claude-code", "commands/queue-status-lite.md")):
+            p = plugin(host) / rel
             self.assertTrue(p.is_file(), f"missing dist command for {host}: {p}")
 
 

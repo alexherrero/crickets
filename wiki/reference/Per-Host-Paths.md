@@ -10,8 +10,8 @@ Paths are relative to the plugin root, `dist/<host>/plugins/<group>/`.
 |---|---|---|
 | `skill` | `skills/<name>/SKILL.md` | `skills/<name>/SKILL.md` |
 | `agent` | `agents/<name>.md` | `agents/<name>.md` |
-| `command` | `commands/<name>.md` | `commands/<name>.md` |
-| `hook` | `hooks/hooks.json` + `hooks/<name>/` | `hooks.json` (plugin root) + `hooks/<name>/` |
+| `command` | `commands/<name>.md` | `skills/<name>/SKILL.md` — `agy` plugins load no commands; a body over 24 KB sits in `skills/<name>/references/<name>.md` |
+| `hook` | `hooks/hooks.json` + `hooks/<name>/` | `hooks.json` (plugin root) + `hooks/<name>/` + `hooks/_agy_hook_adapter.py` |
 | `snippet` | — dropped (no instruction-file primitive) | `rules/<name>.md` |
 | plugin manifest | `.claude-plugin/plugin.json` | `plugin.json` (plugin root) |
 | `scripts/` (group asset) | `scripts/<name>` | `scripts/<name>` |
@@ -21,7 +21,8 @@ See [Hooks](Hooks) for what each `hooks/<name>/` dir contains. It also shows how
 ## Where the hosts differ
 
 - **Plugin manifest.** Claude Code reads `.claude-plugin/plugin.json`. Antigravity reads `plugin.json` at the plugin root.
-- **Hook manifest.** Claude wraps the hook records in `hooks/hooks.json`. Antigravity keys them in `hooks.json` at the plugin root. Antigravity runs plugin hooks observe-only. See [Compatibility](Compatibility) for details.
+- **Hook manifest.** Claude wraps the hook records in `hooks/hooks.json`. Antigravity keys them in `hooks.json` at the plugin root. In it, `PreToolUse` and `PostToolUse` take matcher groups, while `SessionStart`, `PreInvocation` and `Stop` take a flat list of handlers. See [Compatibility](Compatibility) for details.
+- **Commands, agents and rules.** A command becomes a skill on Antigravity. An agent loses its `tools:` and `model:` lines. A rule, snippet or output style gains a `trigger:`. [Compatibility](Compatibility#what-differs-on-antigravity) says why.
 - **Snippets.** Antigravity ships instruction files. A `snippet` emits to `rules/<name>.md`. Claude Code has no instruction-file primitive in the plugin surface. You will see snippets dropped. The generator logs each drop.
 - **Marketplace pointer** (repo root, for `<host> plugin marketplace add`): Claude uses `.claude-plugin/marketplace.json`. Antigravity uses `.agents/plugins/marketplace.json`.
 - **MCP servers.** No `mcp-server` primitive ships today. It is reserved-unused. The host shapes differ when one lands. Claude Code reads `.mcp.json` (or inline config). Antigravity reads `mcp_config.json`. Antigravity requires a `serverUrl` and strict JSON. It has **no `timeout`** field.

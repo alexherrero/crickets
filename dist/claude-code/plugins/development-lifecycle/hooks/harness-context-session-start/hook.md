@@ -2,8 +2,8 @@
 name: harness-context-session-start
 description: On SessionStart, inject the project's .harness/PLAN.md + progress.md paths into session context so the agent reads the plan before plan-status questions or phase commands. Silent no-op when no .harness/ state is present.
 kind: hook
-supported_hosts: [claude-code]
-version: 0.1.0
+supported_hosts: [claude-code, antigravity]
+version: 0.2.0
 ---
 
 # harness-context-session-start — surface the harness state at session boot
@@ -24,7 +24,7 @@ This checks plain `.harness/` state in the repo — the standalone default. If a
 
 ## Host support
 
-**Claude-only.** `SessionStart` has no Antigravity equivalent, so this hook is declared `supported_hosts: [claude-code]` — the Antigravity plugin does not carry it. (This mirrors the documented SessionStart gap: hooks bound to events Antigravity lacks don't ship to that host.)
+**Claude Code and Antigravity.** agy 1.4 has a `SessionStart` event, so the Antigravity plugin carries this hook too. It runs through `hooks/_agy_hook_adapter.py`, which passes the workspace as `cwd`, runs the script from the project root, and hands its stdout to agy as a system message at session start.
 
 ## Failure modes
 

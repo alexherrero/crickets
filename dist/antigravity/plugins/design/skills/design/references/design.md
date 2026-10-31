@@ -1,0 +1,396 @@
+**Usage:** `/design author <slug|brief> [--rung full|abbreviated|architecture] (default)  |  translate <slug>  |  sequence <slug>`
+
+You are running the **design** command — the upstream authoring step of the development-lifecycle loop. `/design` sits *above* `/plan`: where `/plan` turns a brief into a task list, `/design` walks a human through a real design doc, gates on human approval, splits the approved design into structural parts, and opens one queued task per part for `/work` + `/review` to execute.
+
+**Arguments:** <what the user typed after /design>
+
+> **Recommended model for this phase:** Sonnet 5 (`claude-sonnet-5`) — lighter model for planning and authoring. Override with `/model` if needed.
+
+> **Four verbs, one pipeline.** `/design author` (write a design doc) → `/design translate` (split a final doc into structural `parts/`) → `/design sequence` (topo-order the parts into queued tasks); `/design finalize` is a standing maintenance verb, not part of that strict ordering — it auto-collapses a doc's amendment log and flags a stale `[PENDING-IMPL]` placeholder, replacing today's by-hand process. The author→translate→sequence pipeline is strictly ordered by a single hard gate — `Status: final` — which only a human approval can set. Each verb is documented in its own section below.
+
+## Dispatch
+
+`<what the user typed after /design>` selects the sub-verb. The first token is the verb; the rest is its argument (a slug, or — for `author` on a new doc — a brief). Bare `/design <slug-or-brief>` with no recognized verb defaults to **`author`** (the common case).
+
+| Invocation | Verb | What it does |
+|---|---|---|
+| `/design author <slug\|brief>` (or bare) | **author** | Write a new design doc or resume/review an in-progress one. The **only** verb that transitions `Status`. |
+| `/design translate <slug>` | **translate** | Split a `Status: final` doc into structural `parts/<part-slug>.md`. Refuses on non-final. |
+| `/design sequence <slug>` | **sequence** | Topo-order `parts/` into numbered tasks, each queued with a tracker. Refuses on non-final. |
+| `/design finalize <slug>` | **finalize** | Collapse same-day amendment-log entries; flag (never silently collapse over) a stale `[PENDING-IMPL]` placeholder. Any Status; not part of the author→translate→sequence ordering. |
+
+## Shared conventions
+
+These hold across all four verbs.
+
+### Status lifecycle (the hard gate)
+
+A design doc carries a `status:` field in its frontmatter with exactly four states:
+
+| Status | Meaning | Set by |
+|---|---|---|
+| `draft` | Authoring in progress; not yet submitted for review. | `/design author` |
+| `review` | Author signaled readiness; awaiting human approval. | `/design author` |
+| `final` | **Human-approved. HARD GATE** — `translate` + `sequence` only run here. | `/design author` |
+| `launched` | All queued parts have shipped via `/work` + `/release`. | harness `/release` (manual today — auto-promotion deferred) |
+
+`/design author` is the **only** verb that transitions `Status` (`draft → review → final`); it never advances past `final`. `translate` and `sequence` **never** change Status — they call the shared gate `design_doc.py gate <path>` (or `require_final()`), which exits non-zero with a state-specific message on any non-`final` doc and **never auto-repairs**. A refusal points the operator back to `/design author` to finish the review pass. This gate is what makes the downstream pipeline trustworthy: it preserves the human-approval signal.
+
+### Storage resolution (agentm names the project's `designs/`)
+
+Designs live in one of two places, by the doc's `visibility:` field:
+
+- **confidential** → `<designs>/<slug>.md`, in the project's own `designs/`, which agentm names. Get the path with `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_doc.py" design-path <slug>` (`designs-home` prints the directory) — **never hardcode or compose a project path**. Exit 3 means no designs home (agentm absent, or no vault for the project): write nothing, say so, and offer `--visibility published`. Exit 2 is agentm refusing: a hard stop that surfaces stderr.
+- **published** → `wiki/designs/<slug>.md` — committed; the crickets path (**not** agentm's `wiki/explanation/` tree). Surfaces in `wiki/Home.md` + `_Sidebar.md`.
+
+Parts of any design, published or confidential, live in the project's `designs/`: `<parts-dir>/<part-slug>.md`, where `<parts-dir>` is what `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_doc.py" parts-dir <slug>` prints (`<designs>/<slug>/parts/`). The published doc itself stays in `wiki/designs/`. Exit 3 means no designs home: translate and sequence stop and write nothing.
+
+### Tested helper vs. thin prompt
+
+Crickets diverges from agentm's no-Bash `Read/Write/Edit/Glob/Grep`-only skill on purpose: the **deterministic, falsifiable** pieces (the `Status: final` gate, frontmatter parsing, the designs-home resolution, the Kahn topo-sort, task placement) live in unit-tested stdlib-only Python helpers — `scripts/design_doc.py` (gate + storage) and `scripts/design_sequence.py` (topo-sort + placement) — invoked via `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/<helper>.py" …`. The **interactive, human-judgment** pieces (the section walk, the split proposal, approve/revise/skip) stay in this prompt body. Helpers never own interactive logic; the prompt never re-derives a gate or a sort.
+
+### External review is deferred (#5b)
+
+The host-specific external-review handoff (the Antigravity/Gemini transfer-context + pre-handoff snapshot + `--resume-external-review` resume flow) is **deferred** to follow-on #5b. This command ships the **inline** author/review flow only. Where agentm offers a "Hand off for external review" branch, crickets shows a one-line "deferred to #5b" pointer — not a live flow.
+
+### No PII
+
+This is a public repo. Never write the vault path or any PII token into a committed file; the helpers resolve confidential paths at runtime so nothing host-specific is baked in.
+
+### The prose pass — now the default at author Step 5 + review-pass entry
+
+The **`prose-pass` skill** (`skills/prose-pass/SKILL.md` — *Gemini simplifies via `scripts/prose_pass.py`, Claude fact-checks and applies*) runs automatically over the full document at the two points where the operator is about to read it end to end: **Step 5** (author signals ready) and **review-pass entry** (Step 6). This section names when and how; the skill itself owns the mechanics — do not re-derive them here.
+
+1. **Author the fact-guard list first (the Claude half, before Gemini)** — per the skill's Step 1: the technical claims in the doc that must not drift (component names, gate semantics, exit codes, the decisions the doc records), grounded against the code/design the doc describes. Write it to a temp file, one truth per line.
+2. **Run the script**, the doc's own resolved path (the file already exists on disk by Step 5 — the section walk writes as it goes) with the fact-guard file and an output path for the revision:
+   ```bash
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/prose_pass.py" <doc-path> \
+     --fact-guard <temp-guards.txt> -o <temp-revised.md>
+   ```
+   No `--overlay` override needed — the script's default (`design-doc-prose`) is already the right genre for a design doc. Frontmatter, every heading, every table structure, and the entire Document History section stay byte-identical (mechanically validated, one retry).
+3. **Verify and apply — Step 2 of the skill:** diff the revision against the original; confirm every fact-guard held, spot-check technical claims against the code, restore operator-authored lines verbatim, banned-vocabulary scan. Deploy the verified text over the doc, then **record the pass in that day's consolidated Document History row** (fold "prose pass applied" into the day's entry — never a separate row per pass, per the skill's own convention).
+
+**Fallback (graceful AND announced — never silent, never blocking):** on exit 1 (agy missing/unauthenticated, or the voice pack unreachable) or exit 2 (output contract violated twice), the script prints a `PROSE-PASS-DEGRADED: ...` marker on stdout. Then: (a) **announce** — relay the marker verbatim to the operator and state plainly that the cross-model pass is unavailable and why; (b) **fall back** — run the skill's own Claude-only pass (read the voice kernel + overlay from the vault, hold the fact-guards, make one simplification edit pass, structure untouched); (c) **continue** the flow — the fallback never blocks authoring. Mirrors cross-review.sh's callers falling back to the in-process reviewer.
+
+Host note: this wiring is Claude-Code-first. On Antigravity the host model is already Gemini, so the cross-model roles invert — a forward reference recorded in the governing design, not built here.
+
+### Behavioral contract (development-lifecycle commands)
+
+When a design covers a development-lifecycle command or agent lifecycle step, verify these two checklist items before finalizing:
+
+1. **Recoverability-gate compliance** — does the command treat invocation as authorization to run to completion? Recoverable actions (push, tag, gh release, create) must proceed announced; only genuinely unrecoverable ones stop. A design step that inserts "summarize and wait" after each recoverable action is a contract defect.
+2. **Close-out autonomy** — are close-out and bookkeeping steps (plan archiving, `progress.md` appends, ROADMAP moves) autonomous — never gated on explicit approval? If a step pauses for confirmation before archiving a completed artifact or writing a log entry, that is a defect.
+
+These items are derived from `corrections.md` seeds via the upstream-guardrail mechanism (developer-workflows-autonomy part 3).
+
+## `/design author` — write + finalize a design doc
+
+`author` is the **only** verb that transitions `Status` (`draft → review → final`); it never advances past `final`. It runs in one of three modes by the target doc's existing Status: **bootstrap** (no doc yet), **authoring** (`draft`), **review pass** (`review`). Save after every section so a partial draft survives an interrupted session.
+
+**Inputs.** `<slug>` (filename identifier — required for a new doc, inferred from the path on resume), `--visibility {confidential|published}` (defaults to `confidential`), and `--rung {full|abbreviated|architecture}` (defaults to `full` — new-doc only; ignored on resume, where the existing doc's own section set already fixed the rung). Visibility routes the output path per *Storage resolution* above: `confidential` → the path `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_doc.py" design-path <slug>` prints (`<designs>/<slug>.md`); `published` → `wiki/designs/<slug>.md`. To resume, locate the doc through the same two-path lookup (if both exist, ask which); never hardcode the confidential root.
+
+**Rungs (v0.2.0, PLAN-wave-c-design-and-conventions).** Three templates, one command:
+
+| `--rung` | Template | Shape | When |
+|---|---|---|---|
+| `full` (default) | `templates/design-doc.md` | 10 sections + Document History table | the default — a feature/capability design that warrants the full walk (Alternatives Considered, Migrations, Project management, Operations) |
+| `abbreviated` | `templates/abbreviated-design.md` | 7 sections (Objective/Overview/Design/Dependencies/Risks & open questions/References) + Amendment log | today's AG shape-spec — a single-system child design or capability smaller than the full rung warrants |
+| `architecture` | `templates/architecture-hld.md` | Objective/Composition/Architecture review/Dependencies/Risks & open questions/References + Amendment log, plus `children:`/`governs:` frontmatter | a parent-of-children HLD or a cross-system design — generalized from agentm's real `agentm-hld.md`/`agentm-foundations-hld.md` |
+
+Picking the rung is the sizing call the standard below governs — match the template to the work's actual scope, not a reflexive default to `full`:
+
+<!-- opinion:how-we-engineer -->
+How we engineer means the phase discipline: plan before code, one task at a
+time gated on real verification, bugs get a Report → Analyze → Fix → Verify
+pass instead of a patch-and-hope, and sizing matches the actual scope
+instead of over- or under-building it.
+<!-- /opinion:how-we-engineer -->
+
+### Step 1 — Bootstrap (new doc only)
+
+If the target path doesn't exist:
+
+1. Confirm the title (default: derive from the slug → title case).
+2. Copy the rung's template — `${CLAUDE_PLUGIN_ROOT}/templates/design-doc.md` (`full`), `abbreviated-design.md` (`abbreviated`), or `architecture-hld.md` (`architecture`) — to the target path.
+3. Prefill frontmatter: `title` ← confirmed title; `status: draft`; `visibility` ← caller's choice (the `full` template only — `abbreviated`/`architecture` route by the resolver the same way, but their frontmatter has no `visibility:` field of its own, matching the real AG living-design corpus); `author` ← read from `.git/config`'s `[user] name = …` (if unreadable/absent, **prompt** the human — never leave `author` blank, `full` rung only — `abbreviated`/`architecture` don't carry `author`/`contributors`, matching their real precedent); `created`/`updated`/`last_major_revision` ← today (`YYYY-MM-DD`, `full` rung) or `seeded` ← today (`abbreviated`/`architecture`).
+4. Seed the closing log with the initial entry — the Document History table row `| <today> | Initial draft created via /design author. | draft |` (`full`), or the Amendment log's first bullet `**<today>** — Initial draft created via /design author --rung <rung>.` (`abbreviated`/`architecture`).
+5. Confirm the path + Status: draft, then start the section walk — in the rung's own template order (Step 2 below spells out the `full` walk in detail; `abbreviated`/`architecture` walk their own template's sections top to bottom, the same way, just a shorter list).
+
+If the path already exists, skip bootstrap — the doc's existing Status picks the mode (authoring on `draft`, review pass on `review`).
+
+### Step 2 — Walk sections (authoring)
+
+For each top-level section in template order — **Context → Design → Alternatives Considered → Dependencies → Migrations → Technical Debt & Risks → Quality Attributes → Project management → Operations**:
+
+1. Read the section's current state.
+2. If empty (only the italic prompt + HTML comments): present the prompt, ask *"What goes in this section?"*, accept a multi-line response.
+3. If it already has content (resume): present it, ask *"Keep / Edit / Replace?"*.
+4. Write the response in, replacing the scaffolding prompt + comments (author-facing only — they don't render once filled).
+5. Update the `updated` frontmatter field after each save.
+
+Sub-sections inside **Design** (Overview / Infrastructure / Detailed Design), **Project management** (Work estimates / Documentation Plan / Launch Plans), and **Operations** (SLAs / Monitoring and Alerting / Logging Plan / Rollback Strategy) are walked as individual children, in template order.
+
+### Step 3 — Quality Attributes drill-down (strictest discipline)
+
+Walk all **11** sub-attrs in template order: **Security → Reliability → Data Integrity → Privacy → Scalability → Latency → Abuse → Accessibility → Testability → Internationalization & Localization → Compliance**. For each:
+
+> *"<attr>: Does this design have <attr> concerns? Describe them, or 'N/A' with one sentence on why."*
+
+- **Substantive content** → write it in as-is.
+- **N/A** → must take the form `N/A: <one-sentence rationale>`. If the human answers bare `"N/A"`, **push back**: *"N/A needs a one-sentence reason. Why doesn't this design have <attr> concerns?"* The **N/A-rationale rule** is non-negotiable — forcing a conscious N/A catches blind spots early. If N/A piles up across attrs, flag it: *"Most designs have at least one concern in Reliability / Security / Testability — want to revisit?"*
+
+### Step 4 — Alternatives Considered
+
+> *"What other approaches did you consider? Why did you reject each?"*
+
+Push for at least one alternative. Only accept `N/A: only one viable approach (<justify>)` after one explicit push-back.
+
+### Step 5 — Save + Status lifecycle
+
+After all sections are filled, present a summary (sections filled, sub-attrs described vs. N/A, length), then ask the human to pick one:
+
+- **"Ready for review (Status → review)"** — first run the **`prose-pass` skill** over the full document (see *The prose pass* under Shared conventions — the operator is about to read it; the pass runs before they do, and its fallback is announced, never silent). Then transition `draft → review`; append `| <date> | Author signaled ready for review. | review |` to Document History (the pass folds into that day's consolidated row); tell the human the next `/design author <slug>` runs the review pass.
+- **"Keep drafting"** — stay `draft`; return to the section walk.
+- **"Stop and resume later"** — save state; resume on the next `/design author <slug>`.
+
+> **External review is deferred (#5b).** Where agentm offers a "Hand off for external review" branch here, crickets ships the **inline** flow only — see *External review is deferred* above. This is a one-line pointer, **not** a live handoff flow.
+
+### Step 6 — Review pass (invoked on a `Status: review` doc)
+
+Announce review-pass mode. **On entry, run the `prose-pass` skill over the full document** (see *The prose pass* under Shared conventions) so the operator reviews the simplified, fact-checked text — record it in that day's consolidated Document History row; on degradation, announce the fallback and continue. Then walk each section (Context → … → Operations) and each Quality-Attributes sub-attr, prompting **Approve / Revise / Skip**, holding each section to the standard below:
+
+<!-- opinion:good -->
+Good means it survives an adversarial pass primed to assume bugs exist, not
+a friendly skim. The standard is a failing test, a specific file:line
+defect, or an explicit "no issues found" after genuinely looking — prose
+critique without one of those three is not a review.
+<!-- /opinion:good -->
+
+Applied to a design doc: an **Approve** means the section survives a hostile read, not that it looks plausible on a skim; a vague or unverifiable claim gets **Revise**, not a pass.
+
+- **Approve** — passes unchanged (track the count).
+- **Revise** — reopen the section via the Step-2 walk (accept new content, replace).
+- **Skip** — move on (track the count).
+
+After the walk, summarize. If anything was Skipped or Revised, ask *"Some sections still need attention. Continue review pass? Or transition to final anyway?"* To finalize, ask explicitly *"Approve as final? This locks the doc and unblocks /design translate."* On `yes`: transition `review → final`; append `| <date> | Approved as final via /design author review pass. | final |`; set `last_major_revision` to today.
+
+### After `final` — refuse re-invocation
+
+Once `Status: final`, `/design author` **refuses** further invocations on that doc (it would re-open an approved design). The refusal points to the downstream verbs (`/design translate`). The only way back is the manual escape hatch: a human edits the Status field directly (`final → review`) — `author` never moves Status backwards itself, and never silently transitions in any direction.
+
+## `/design translate` — final doc → structural `parts/`
+
+`translate` consumes a `Status: final` design doc and produces N structural-part files at `<parts-dir>/<part-slug>.md` — each a focused implementation slice small enough for one `/design sequence` → `/work` cycle. translate is **read-mostly** with respect to the parent: it appends one Document-History row and bumps `updated`, but **never changes Status** (only `/design author` and the harness `/release` do).
+
+**Inputs.** `<slug>` (or full path — resolve via the two-path lookup in *Storage resolution*; if both exist, ask which) and `--allow-large-design` (optional — bypasses the cap-of-6 soft warning; if you reach for it twice running, split the *design* upstream instead).
+
+### Step 1 — Preconditions (two hard gates, both via the tested helper)
+
+Both gates are deterministic, so they live in `design_doc.py` — call them; never re-derive a gate in this prompt.
+
+1. **`Status: final`** — run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_doc.py" gate <path>`. Exit 0 → final, continue. Exit 2 → **halt** and surface stderr verbatim (it carries the state-specific refusal — draft/review/launched/malformed — pointing back to `/design author <slug>`). Never auto-repair.
+2. **Detailed Design non-empty** — run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_doc.py" detailed-design <path>`. Exit 0 → the section has substantive content (prose or a `####` subsection), continue. Exit 2 → **halt** and surface stderr (`Detailed Design has no content; design too sparse to translate. Author at least one Detailed Design subsection before re-running.`). This gate exists because the `### Detailed Design` subsections drive the Step-3 split heuristic — a scaffold-only section has nothing to split.
+
+These two refusals are the contract layer between `/design author` (produces the parent) and `/design sequence` (consumes `parts/`). Bypassing either loses the traceability from human-approved design to executed plans.
+
+### Step 2 — Read the design
+
+Read the full parent. Parse the 10 sections and hold for Step 3:
+
+- `## Design / ### Detailed Design` subsections — drive the part-split heuristic.
+- `## Dependencies` — each part may inherit a subset.
+- `## Quality Attributes` sub-attrs — extract the part-specific concerns into each part's Verification.
+- `## Operations` sub-sections — extract part-specific ops concerns.
+- `## Project management / ### Work estimates` — informs each part's `estimated_scope`.
+
+### Step 3 — Propose a part split
+
+Heuristics:
+
+- **Default:** one part per top-level subsection of Detailed Design.
+- **Group** tightly-coupled subsections into one part when the downstream one only makes sense given the upstream (e.g. a Security model conditional on an Infrastructure choice), or they share one deployable unit (one migration + one API surface + one runbook = one part).
+- **Split** a single subsection into multiple parts only if its scope is genuinely larger than one PLAN cycle can absorb.
+- **Cap ~6.** More than 6 → soft warning: *"This design proposes \<N\> parts (>6). Consider splitting the design itself into multiple documents — usually a clearer story than a megadesign. Re-run with `--allow-large-design` to override."* Soft only; `--allow-large-design` overrides.
+
+For each proposed part populate: **slug** (kebab-case, the filename), **title** (the part h1), **scope** (1–2 paragraphs lifted from the source subsection(s)), **dependencies** (other part slugs; empty for foundational parts), **verification criteria** (falsifiable claims from the parent's Quality Attributes / Operations / Documentation Plan rows that apply), **estimated_scope** (`S` one short `/work` session · `M` multiple sessions, single PLAN · `L` large — consider splitting).
+
+### Step 4 — Human review of the split
+
+Present the split as a table, then ask **Approve / Reshape / Cancel**:
+
+```
+Proposed split for <parent-slug> (Status: final):
+
+| # | Slug | Title | Dependencies | Est. | Source sections |
+|---|------|-------|--------------|------|-----------------|
+| 1 | foundations | Foundations: data model + access layer | (none) | M | Detailed Design §1, §2 |
+| 2 | command-surface | Command surface + status display | depends on #1 | S | Detailed Design §3 |
+| 3 | rollout | Rollout: feature flag + telemetry | depends on #1, #2 | S | Detailed Design §4 + Operations §Monitoring |
+
+Total: 3 parts. Approve / Reshape / Cancel?
+```
+
+- **Approve** → Step 5.
+- **Reshape** → enter the reshape sub-loop; re-present the table after each op; loop until Approve:
+  - `merge <slug-a> <slug-b>` — combine two parts; propose merged title/scope/verification; re-confirm.
+  - `split <slug>` — split one part into two; propose the split lines; re-confirm.
+  - `rename <old-slug> <new-slug>` — rename without changing structure.
+  - `reorder <slug-list>` — change ordering (a numbering hint for Step 5; doesn't affect dependencies).
+- **Cancel** → halt without writing anything; parent unmodified.
+
+The reshape loop is the human's primary lever — the proposed split is a starting point, not the answer.
+
+> **External review is deferred (#5b).** agentm offers a "Hand off for external review" branch here (a `proposed-split-<slug>.md` transfer file → Antigravity/Gemini reshape → resume diff-review). crickets ships the **inline** reshape loop only; this is a one-line pointer, **not** a live handoff — see *External review is deferred* above.
+
+### Step 5 — Write the part files
+
+For each approved part, write `<parts-dir>/<part-slug>.md` — that is, `<designs>/<slug>/parts/<part-slug>.md`, in the directory `design_doc.py parts-dir <slug>` printed, created if absent (never the `designs/` home itself):
+
+```yaml
+---
+# Inherited from parent design
+title: <part-specific title>
+status: draft
+visibility: <inherited>
+author: <inherited>
+contributors: <inherited>
+created: <today>
+updated: <today>
+last_major_revision: <today>
+
+# New part-specific fields
+parent_design: ../<parent-slug>.md
+part_slug: <slug>
+dependencies: [<other-part-slugs>]
+estimated_scope: S|M|L
+---
+
+# <Title>
+
+## Scope
+
+<1-2 paragraphs lifted from the parent's Detailed Design subsection(s).>
+
+## Dependencies
+
+<List with rationale, e.g. "depends on foundations: needs the data model + access layer before the command surface can wire up.">
+
+## Verification criteria
+
+<Bulleted falsifiable claims from the parent's Quality Attributes / Operations / Documentation Plan rows that apply to this part.>
+
+## Parent design
+
+This part implements one slice of [<parent-title>](../../../<parent-slug>.md) (`Status: final`). See the parent for Context, Alternatives Considered, the Quality Attributes overview, and the Operations strategy. Mid-execution scope changes to this part are appended to the parent's Document History.
+```
+
+**Never silent-clobber.** If a part file already exists (re-running translate), show the diff and ask **Overwrite / Keep existing / Cancel** per file.
+
+### Step 6 — Update the parent's Document History
+
+After all part files are written, append one row to the parent's Document History table and bump `updated` to today:
+
+```
+| <today> | Translated to N parts via /design translate: <comma-separated part slugs>. | final |
+```
+
+The parent's `Status` **stays `final`** — translate never changes Status.
+
+## `/design sequence` — `parts/` → topo-ordered queued tasks
+
+`sequence` consumes the populated `<parts-dir>` (translate's output) and opens one **numbered task** per part, in dependency order, each with its own `plan.md` and a tracker at `queued`. This is the bridge from the design phase to the execution phase: after `sequence`, every part is a queued task in the project's `tasks/`, and none is started — `/plan --activate <name>` or `/work --name <name>` starts the first. Like translate, `sequence` is read-mostly with respect to the parent (one Document-History row, bump `updated`) and **never changes Status**.
+
+**Where the tasks go is agentm's answer.** An arc's tasks are flat numbered tasks, `tasks/NNN-<name>/`, each naming the arc's design in its tracker's `design:` field (agentm-vault § Projects and tasks). agentm numbers each new task from the task directories that exist, and development-lifecycle's resolver and `plan_tracker.py` carry that answer; `sequence` composes no path, activates nothing, and never writes a flat staging directory. A project that keeps no tasks is refused before anything is written.
+
+**Inputs.** `<slug>` (or full path — same two-path lookup as translate).
+
+### Step 1 — Preconditions (the same final gate + a non-empty `parts/`)
+
+1. **`Status: final`** — run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_doc.py" gate <path>`. Exit 0 → continue; exit 2 → **halt** and surface stderr (the state-specific refusal pointing back to `/design author <slug>`). Never auto-repair.
+2. **`parts/` exists and validates** — the topo-sort helper (Step 2) is the gate: it refuses (exit 2) on a missing/empty `parts/` directory or any part with invalid frontmatter (missing `part_slug`, missing `dependencies` key, an `estimated_scope` not in `S|M|L`, or a duplicate slug). Surface its stderr verbatim — a refusal means *run `/design translate` first* (or fix the named part).
+
+### Step 2 — Topological sort (the tested helper)
+
+Ordering is deterministic + falsifiable, so it lives in `design_sequence.py` — call it; never hand-order parts in this prompt:
+
+```
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_sequence.py" order <parts-dir>
+```
+
+It reads `parts/*.md`, builds the dependency DAG keyed by `part_slug`, and **Kahn topo-sorts with an alphabetical tie-break** (so the same parts always yield the same order — the queued tasks come out in the same order on every run). Exit 0 prints the ordered slugs, one per line. Exit 2 halts with a concrete message on a **cycle** (`dependency cycle detected: a → b → a`) or a **missing dependency** (`part 'x' depends on 'y' which does not exist in parts/`). Surface stderr verbatim; never guess an order past a refusal.
+
+### Step 3 — Map each part to a PLAN body
+
+For each part (in the helper's order), generate a `/plan`-shaped plan body from the part file + parent design. The mapping:
+
+| PLAN section | Source |
+|---|---|
+| `# Plan: <title>` | the part's h1 title + ` (from design <doc-slug>)` |
+| `**Created:**` | today |
+| `**Brief:**` | the part's `## Scope` |
+| `## Goal` | the part's Verification criteria, rephrased as user-visible outcomes |
+| `## Constraints` | the parent's Quality-Attributes concerns that apply to this part |
+| `## Out of scope` | the other parts ("see task `<doc-slug>-<other-slug>`") + the parent's Out-of-scope items |
+| `## Steps` | a **draft** decomposition from the part's Scope/Detailed-Design source — each `### N.` with a one-sentence What + Verification. Note in the body that the human runs `/plan` against this to refine before `/work`. |
+| `## Risks / open questions` | the parent's Technical Debt & Risks + part-specific concerns |
+| `## Verification strategy` | the part's Verification criteria verbatim |
+| `## Locked design calls` | a pointer back to the parent design + the key decisions from its Alternatives Considered |
+
+Carry two traceability fields in the PLAN frontmatter so a later `/release` can match a finished plan back to its source part:
+
+```yaml
+parent_design_doc: <relative path to the design doc>
+parent_part_slug: <the part's part_slug>
+```
+
+### Step 4 — Open each part as a queued task (never activated, never flat)
+
+The task name for each part is `<doc-slug>-<part-slug>`. Placement is deterministic, so it lives in `design_sequence.py` — call it; never write a task's files by hand.
+
+1. **Confirm the names, then check them — before writing anything.** List every name for the operator to confirm or change (the names the migration gave agentm-vault's parts had this shape, `162-agentm-vault-01-hygiene`). Then run
+
+   ```
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_sequence.py" check-names <name>...
+   ```
+
+   Exit 0 → every name can become a new queued task. Exit 2 → **halt** and surface stderr: a name that agentm places outside a task (the project keeps no tasks), a name agentm names no tracker for, or a task by that name that already exists. Nothing has been written.
+2. **Place each part, one at a time, in topo order.** Write the part's plan body to a scratch file, then run
+
+   ```
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_sequence.py" place <doc-slug>-<part-slug> --body <file> --design <doc-slug> --part <part-slug>
+   ```
+
+   It asks agentm where the task goes (development-lifecycle's `resolve_plan.py`), writes `tasks/NNN-<name>/plan.md`, opens its tracker at `queued` with development-lifecycle's `plan_tracker.py` (the tracker's `design:` comes from the body's `parent_design_doc:`), logs the placement in the task's `progress.md`, and prints the plan's path. Place the next part only after this one exits 0: agentm numbers a new task from the directories that exist. A non-zero exit is a hard stop that surfaces stderr.
+
+No part is activated. The operator starts the first with `/plan --activate <name>` or `/work --name <name>`.
+
+### Step 5 — Update the parent's Document History
+
+Append one row and bump `updated` to today; Status stays `final`:
+
+```
+| <today> | Sequenced into N queued tasks via /design sequence (NNN–MMM: <task names>). | final |
+```
+
+After `sequence`, the design hand-off is complete — the rest is the normal `/work` → `/review` → `/release` loop on the queued tasks.
+
+## `/design finalize` — collapse the amendment log + flag stale placeholders
+
+A standing maintenance verb (v0.1.0, PLAN-wave-c-design-and-conventions task 3), not part of the author→translate→sequence pipeline — runnable on a doc at any `Status`, replacing today's by-hand amendment-log tidy-up + `[PENDING-IMPL]` re-audit.
+
+**Inputs.** `<slug>` (or full path — same two-path lookup as `translate`).
+
+### Step 1 — Stale-placeholder check (never silently collapse over one)
+
+Run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/design_finalize.py" <path> --repo-root <repo-root>`.
+
+- **Exit 0** → no stale placeholder; the tool's stdout is the doc with its amendment log collapsed. Present the diff, then ask **Write / Cancel**.
+- **Exit 2** → a `[PENDING-IMPL]` marker is stale (the doc's own `governs:` target already exists on disk, but the doc still claims it's unbuilt) — **halt**, surface stderr verbatim (it names the `governs:` glob that already resolved), and point the human at the marker to resolve by hand (either the primitive genuinely shipped — flip the marker to as-built prose — or `governs:` is stale itself and needs narrowing). Never auto-collapse past this; a stale placeholder is a real doc/reality mismatch, not a formatting nit.
+
+Design call (documented, not silently decided — no per-marker staleness convention exists to build against): staleness is doc-level (the whole doc's `governs:` target exists), not per-marker — mirrors both `scripts/health/designed_vs_built.py`'s own built/designed-not-built signal and the real "flip `[PENDING-IMPL]` markers now the engine shipped" commits already in this repo's history, which flip every marker in a doc together once its governed target ships.
+
+### Step 2 — Write
+
+On **Write**: overwrite `<path>` with the collapsed text (`--write`), matching the full design-doc template's own "consolidate before the doc is presented/committed" convention for Document History, generalized to the Amendment-log rung's bulleted shape. On **Cancel**: halt, write nothing.
+
+`finalize` never changes `Status` and never touches any section other than the amendment log.

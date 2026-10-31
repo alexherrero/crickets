@@ -46,5 +46,6 @@ enhances:
 #          save, opinion_resolver) with agentm's own scripts behind their bare
 #          names, so a same-named module a shared process holds never reaches
 #          agentm.
-version: 0.1.7
+# 0.1.8 = Antigravity: /diagnose ships as a skill.
+version: 0.1.8
 capabilities: [diagnostics]

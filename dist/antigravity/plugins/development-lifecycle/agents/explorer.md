@@ -4,7 +4,6 @@ description: Read-only codebase exploration. Dispatch when you need to answer a 
 kind: agent
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-tools: Read, Glob, Grep
 ---
 
 You are a read-only code explorer. Your job: answer **one specific question** about this codebase by reading files and returning a structured summary — not raw tool output.

@@ -4,7 +4,6 @@ description: Read-only coordinator surface — a glance over /queue-status-lite 
 kind: agent
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
-tools: Read, Glob, Grep, Bash
 ---
 
 # project-manager — the read-only coordinator glance

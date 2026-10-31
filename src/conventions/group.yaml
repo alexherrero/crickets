@@ -115,4 +115,6 @@ capabilities: [testing-conventions, releasing-conventions, conventions]
 #          still keeps its plans there. coalescence-gate.md 0.2.1 -> 0.2.2.
 #          agentic-engineering SKILL.md (0.1.0 -> 0.1.1) says features.json
 #          lives in the project's desk/, or beside a no-vault repo's plans.
-version: 0.12.0
+# 0.12.1 = Antigravity: the eight rules carry the trigger: agy 1.4 requires
+# (model_decision); without one agy never applied them.
+version: 0.12.1

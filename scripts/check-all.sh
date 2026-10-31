@@ -14,6 +14,9 @@
 # contract, named- and singleton-plan aware) · generate drift ·
 # dist-references (every emitted plugin's relative links + ${CLAUDE_PLUGIN_ROOT}
 # paths resolve inside the emitted tree; grandfathers known pre-existing gaps) ·
+# agy plugin shape (the Antigravity plugins have the shape `agy` loads: skills
+# not commands, rules with a trigger, list-style agent tools, well-formed
+# hooks.json — the checkable half of `agy plugin validate`) ·
 # version bump · check-wiki --strict · check-slop --strict (CONS-3, flipped
 # from report-only 2026-07-10 — blocks on warning-tier+; suggestion-tier
 # never fails, by the gate's own design) · check-syntax · hook-parity ·
@@ -77,6 +80,7 @@ run "vault-content tests" python3 scripts/test_voice_kernel.py
 run "evidence-tracker self-test" python3 src/code-review/hooks/evidence-tracker/evidence_tracker.py --mode self-test
 run "generate drift" python3 scripts/generate.py check
 run "dist-references" python3 scripts/check-dist-references.py
+run "agy plugin shape" python3 scripts/check-agy-plugin-shape.py
 run "version bump"   python3 scripts/check-version-bump.py
 run "check-wiki"     python3 src/wiki/scripts/check-wiki.py --strict
 run "check-slop"     python3 scripts/check-slop.py --strict wiki

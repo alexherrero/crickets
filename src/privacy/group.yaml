@@ -80,5 +80,7 @@ standalone: true
 #          that starts with 1 as a number, and any punctuation from space to
 #          dot as a separator. Pixelton's townsfolk spike drops from 1,215
 #          findings to one, a ten-digit seed written alone.
-version: 0.6.5
+# 0.6.6 = Antigravity: pii-patterns carries the trigger: agy 1.4 requires;
+# without one agy never applied the rule.
+version: 0.6.6
 capabilities: [pii, privacy]

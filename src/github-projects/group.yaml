@@ -175,5 +175,7 @@ standalone: false
 # gone; a task matches by its full name or its verb-slug. The schema's
 # items_source examples name the project's desk/; the default stays beside
 # project.json.
-version: 0.6.0
+# 0.6.1 = Antigravity: /planner-maintain and /report-board-drift ship as
+# skills.
+version: 0.6.1
 capabilities: [board-sync]

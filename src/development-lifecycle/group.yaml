@@ -710,5 +710,11 @@ enhances:
 #          _extract_status fallback goes with it. check-no-harness-paths
 #          enforces with no exemption list; the older log lines above that
 #          name the retired directory carry the harness-deprecation marker.
-version: 0.49.0
+# 0.50.0 = Antigravity: the 13 commands (/plan, /work, /review, /release,
+# /bugfix, ...) ship as skills; work.md is over agy's 24 KB skill limit and
+# sits in references/. Five agents load again (tools: and model: dropped), the
+# two rules carry a trigger, and harness-context-session-start now runs on
+# agy's SessionStart. On agy a bare /plan is its own planning mode: type
+# /development-lifecycle:plan.
+version: 0.50.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

@@ -9,8 +9,8 @@
 # If a memory/storage layer (e.g. agentm's MemoryVault) is hosting the loop, that
 # layer ships its own context hook that redirects to wherever it keeps state.
 #
-# Claude-only-effective: SessionStart has no Antigravity equivalent (this hook is
-# declared claude-code-only, so the AG plugin never carries it).
+# Runs on Antigravity too (agy 1.4 SessionStart), through the plugin's
+# hooks/_agy_hook_adapter.py, which supplies `cwd` and CLAUDE_PLUGIN_ROOT.
 
 set -uo pipefail   # NOTE: no -e — must never block session boot (graceful-skip).
 

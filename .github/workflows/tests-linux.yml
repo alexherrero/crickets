@@ -112,6 +112,14 @@ jobs:
         # known pre-existing gaps (documenter.md's ../documentation.md, the
         # hook docs' unreachable wiki/ links) until their owning plans land.
         run: python3 scripts/check-dist-references.py
+      - name: Antigravity plugins have the shape agy loads (check-agy-plugin-shape)
+        # `agy plugin validate` can't run in CI (agy is not npm-distributed), so
+        # this checks the rules it enforces: no commands/ folder, a trigger on
+        # every rule, list-style agent tools, a command on every hook handler,
+        # skill bodies under agy's 24 KB load limit. agy 1.4.x started skipping
+        # commands, rules, agents and whole hooks.json files the 1.0.2-era
+        # emitter still wrote, and nothing here noticed.
+        run: python3 scripts/check-agy-plugin-shape.py
       - name: Per-plugin version bumped when its src/ content changed
         # Anti-recurrence guard for the per-plugin-semver fix: a plugin whose
         # src/<slug>/** changed must bump its group.yaml `version:`, else

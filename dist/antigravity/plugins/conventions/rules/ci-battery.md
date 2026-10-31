@@ -4,6 +4,7 @@ description: Always set up a gate battery on a new project, run it before every 
 kind: rule
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
+trigger: model_decision
 ---
 
 ## Rule: ci-battery

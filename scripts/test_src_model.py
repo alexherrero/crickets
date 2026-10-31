@@ -62,7 +62,8 @@ class TestSrcModel(unittest.TestCase):
                          {("conflict-merger-session-start", "hook"),
                           ("vault-doctor", "skill")})
         cm = {p.name: p for p in ov.primitives}["conflict-merger-session-start"]
-        self.assertEqual(cm.supported_hosts, ["claude-code"])
+        # agy 1.4 has SessionStart, so the hook ships there too (obsidian-vault 0.4.0).
+        self.assertEqual(cm.supported_hosts, ["claude-code", "antigravity"])
         doctor = {p.name: p for p in ov.primitives}["vault-doctor"]
         self.assertEqual(sorted(doctor.supported_hosts), ["antigravity", "claude-code"])
         self.assertTrue(ov.has_group_assets())

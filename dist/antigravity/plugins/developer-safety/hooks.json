@@ -1,15 +1,20 @@
 {
+  "coauthor-guard": {
+    "SessionStart": [
+      {
+        "command": "python3 ./hooks/_agy_hook_adapter.py SessionStart bash ./hooks/coauthor-guard/check-global.sh",
+        "timeout": 5,
+        "type": "command"
+      }
+    ],
+    "enabled": true
+  },
   "commit-on-stop": {
     "Stop": [
       {
-        "hooks": [
-          {
-            "command": "bash ./hooks/commit-on-stop/commit-on-stop.sh",
-            "timeout": 30,
-            "type": "command"
-          }
-        ],
-        "matcher": ".*"
+        "command": "python3 ./hooks/_agy_hook_adapter.py Stop bash ./hooks/commit-on-stop/commit-on-stop.sh",
+        "timeout": 30,
+        "type": "command"
       }
     ],
     "enabled": true
@@ -19,12 +24,22 @@
       {
         "hooks": [
           {
-            "command": "bash ./hooks/kill-switch/kill-switch.sh",
+            "command": "python3 ./hooks/_agy_hook_adapter.py PreToolUse bash ./hooks/kill-switch/kill-switch.sh",
             "timeout": 5,
             "type": "command"
           }
         ],
-        "matcher": ".*"
+        "matcher": "*"
+      }
+    ],
+    "enabled": true
+  },
+  "steer": {
+    "PreInvocation": [
+      {
+        "command": "python3 ./hooks/_agy_hook_adapter.py UserPromptSubmit bash ./hooks/steer/steer.sh",
+        "timeout": 5,
+        "type": "command"
       }
     ],
     "enabled": true

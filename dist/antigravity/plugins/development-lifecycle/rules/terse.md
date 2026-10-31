@@ -4,6 +4,7 @@ description: Silence inter-tool chatter; preserve the full end-of-task status re
 kind: output-style
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
+trigger: always_on
 ---
 
 ## Inter-tool silence

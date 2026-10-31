@@ -61,6 +61,9 @@ _KNOWN_VIOLATIONS: frozenset[tuple[str, str]] = frozenset({
     ("wiki/commands/wiki-watch.md", "../../../wiki/reference/Antigravity-Limitations.md"),
     ("wiki/commands/wiki-watch.md", "../../../wiki/reference/Wiki-Watch-Config.md"),
     ("wiki/skills/diataxis-author/SKILL.md", "../memory/SKILL.md"),
+    # Same link, one folder deeper: on Antigravity the 50 KB skill body lives in
+    # references/SKILL.full.md (agy loads only the first 24 KB of a SKILL.md).
+    ("wiki/skills/diataxis-author/references/SKILL.full.md", "../../memory/SKILL.md"),
     ("wiki/skills/wiki-watch/SKILL.md", "../../../wiki/how-to/Run-The-Wiki-Watcher.md"),
     ("wiki/skills/wiki-watch/SKILL.md", "../../../wiki/reference/Antigravity-Limitations.md"),
     ("wiki/skills/wiki-watch/SKILL.md", "../../../wiki/reference/Wiki-Watch-Config.md"),

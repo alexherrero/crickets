@@ -159,4 +159,7 @@ capabilities: [design-docs, design, architecture]
 # every prose pass since 2026-10-16 took the Claude-only fallback.
 # PROSE_PASS_MODEL names another model without editing the script, and a
 # failed call's stderr line now quotes agy's own reason.
-version: 0.11.1
+# 0.11.2 = Antigravity: the four commands ship as skills. design.md is over
+# agy's 24 KB skill limit, so its full text sits in references/design.md
+# behind a short SKILL.md.
+version: 0.11.2

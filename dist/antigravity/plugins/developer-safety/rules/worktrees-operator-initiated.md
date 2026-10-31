@@ -4,6 +4,7 @@ description: Git worktrees are a first-class workflow, but always operator-initi
 kind: snippet
 supported_hosts: [antigravity]
 version: 0.2.0
+trigger: always_on
 ---
 
 ## Worktrees — operator-initiated, never autonomous

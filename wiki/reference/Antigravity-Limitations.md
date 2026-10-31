@@ -1,4 +1,4 @@
-<!-- Status: implemented. You use this register to track Antigravity (agy) host gaps. These gaps constrain crickets primitives. You will see four rows today (scheduling · hooks · multi-agent orchestration · scheduled-task durability). You must append a row when a new agy gap blocks or degrades a crickets customization. You must strike the row and append "resolved YYYY-MM-DD" when the host ships the missing surface. Compatibility summarizes these gaps. It links here for the detail. -->
+<!-- Status: implemented. You use this register to track Antigravity (agy) host gaps. These gaps constrain crickets primitives. You will see seven rows today (scheduling · hooks, resolved · multi-agent orchestration · scheduled-task durability · agent tool allowlists · built-in name clashes · the 24 KB skill limit). You must append a row when a new agy gap blocks or degrades a crickets customization. You must strike the row and append "resolved YYYY-MM-DD" when the host ships the missing surface. Compatibility summarizes these gaps. It links here for the detail. -->
 
 # Antigravity Limitations
 
@@ -9,9 +9,12 @@ Antigravity (`agy`) lacks a few host surfaces. Your crickets primitives depend o
 | # | Gap | Affected surface | Mitigation | Re-assess when | Status |
 |---|---|---|---|---|---|
 | 1 | **Scheduling / triggers** — no installable trigger path for a shipped plugin | wiki-watcher scheduling | Claude-first scheduling (`/loop` / cron); the watcher *engine* is cross-host | `agy` ships a file-based or plugin-installable scheduled-task surface | 🟡 mitigated |
-| 2 | **Hooks** — no file-based hook surface (Python decorators only) | the six crickets hooks | run Claude-effective; observe-only on Antigravity ([Hooks](Hooks)) | `agy` ships a file-based / plugin-installable hook surface | 🟡 mitigated |
+| ~~2~~ | ~~**Hooks** — no file-based hook surface (Python decorators only)~~ | ~~the crickets hooks~~ | `agy` 1.4 reads `hooks.json`; crickets ships its hooks through an adapter ([Hooks](Hooks)) | ~~`agy` ships a file-based / plugin-installable hook surface~~ | ✅ resolved 2026-10-30 |
 | 3 | **Multi-agent orchestration** — no plugin-author spawn-policy surface | orchestration policy | the sub-agent-as-skill pattern (ship agents the parent can spawn) | `agy` exposes a plugin-author orchestration surface | 🟡 mitigated |
 | 4 | **Scheduled-task durability** — an in-flight scheduled task does not survive an app restart/sleep; it silently transitions to `CANCELED` instead of firing late or catching up | wiki-watcher scheduling · the agentm runner | rely on OS cron/launchd, not Antigravity's native Scheduled Tasks, for anything that must survive the app being closed | `agy` ships a persistence/catch-up guarantee for its scheduled-task primitive | 🟡 mitigated |
+| 5 | **Agent tool allowlists** — `agy` wants `tools:` as a list of its own tool names, and rejects a Claude model tier | every crickets agent | the emitter drops `tools:` and `model:`; the agent uses the session's tools and model | `agy` documents its agent tool names, or a Claude name maps to one | 🟡 mitigated |
+| 6 | **Built-in name clashes** — `agy`'s own `/plan` wins over a skill called `plan` | `/plan` from `development-lifecycle` | type `/development-lifecycle:plan` | `agy` namespaces plugin skills by default, or stops reserving the name | 🟡 mitigated |
+| 7 | **24 KB skill limit** — `agy` loads only the first 24 KB of a `SKILL.md` | `/work`, `/design`, `diataxis-author` | a long body moves to `references/`, behind a short `SKILL.md` that says to read it first | `agy` lifts the limit | 🟡 mitigated |
 
 ## 1 — Scheduling / triggers
 
@@ -23,21 +26,15 @@ Antigravity (`agy`) lacks a few host surfaces. Your crickets primitives depend o
 
 **Re-assess when** `agy` ships a file-based or plugin-installable scheduled-task surface. You can also accept a SessionStart-equivalent hook. You close this gap once the watcher can self-schedule on Antigravity without a Python SDK environment.
 
-## 2 — Hooks
+## ~~2 — Hooks~~ — resolved 2026-10-30
 
-**The gap.** Antigravity hooks are **Python decorators**. You register them at agent creation via `LocalAgentConfig(hooks=[...])`. The host provides nine hook events. These are `on_session_start`, `on_session_end`, `pre_turn`, `post_turn`, `pre_tool_call_decide`, `post_tool_call`, `on_tool_error`, `on_compaction`, and `on_interaction`. They cover most of what Claude Code's file-based hooks do. However, you need Python SDK integration to register them. You cannot ship an `.agents/hooks/` directory. You cannot ship a `hooks.json`.
+**The gap (history).** Under `agy` 1.0.2, hooks were Python decorators registered at agent creation, with no `hooks.json` and no `SessionStart` or pre-prompt event. crickets shipped its hooks anyway, and `agy` ran them observe-only: it ignored exit codes and never read stdout. That left `kill-switch` advisory, `steer` unregistered, and the `SessionStart` hooks Claude-only.
 
-**Why it matters.** You ship six file-based hooks in crickets. See [Hooks](Hooks). Antigravity runs plugin hooks **observe / side-effect-only**. A veto (exit code) hook is inert there. An inject (stdout) hook is inert there. The `evidence-tracker` and `harness-context` hooks require the Claude-only contract. Therefore, they are Claude-only.
+**What changed.** `agy` 1.4 loads a `hooks.json` from the plugin root, with six events (`SessionStart`, `PreToolUse`, `PostToolUse`, `PreInvocation`, `PostInvocation`, `Stop`) and a JSON answer contract. `PreInvocation` receives the user's last message, which is the pre-prompt event the old gap waited for.
 
-**Mitigation.** You ship the hooks Claude-effective. You run them observe-only on Antigravity. A future Python sidecar (`crickets-hooks-py`?) can translate the file-based hook scripts. It handles SDK decorator registration at agent-author boot.
+**What crickets does.** Every hook runs through `hooks/_agy_hook_adapter.py`, which runs the Claude-style script unchanged and translates its answer ([Hooks](Hooks) has the table). The old emitter wrote the 1.0.2-era shape, so `agy` 1.4 skipped the whole `hooks.json` of two plugins for want of a `command` on a mis-shaped `Stop` entry; the plugin shape gate (`check-agy-plugin-shape`) now fails CI on that.
 
-The `obsidian-vault` plugin's `conflict-merger-session-start` hook provides a concrete instance. It fires its GDrive/DriveFS conflict-file nudge at session boot on Claude Code only. Antigravity lacks a `SessionStart` event. The automatic nudge never fires there. You do **not lose** detection. You only lose the automatic nudge. You provide the plugin's `vault-doctor` skill (`supported_hosts: [claude-code, antigravity]`) as a substitute. You also provide the read-only `doctor_vault.py` `conflicts` check. You run this substitute on demand. See [Obsidian vault backend → Host coverage](Obsidian-Vault-Backend#host-coverage).
-
-The `developer-safety` plugin's `steer` hook is a second concrete instance, and a sharper one. It binds to Claude Code's `UserPromptSubmit`, and Antigravity has no equivalent event at all — `generate.py` reports `hook 'steer' event 'UserPromptSubmit' has no Antigravity equivalent — skipped` on every build. This is not the observe-only degradation the rest of this section describes. The hook is not emitted to the Antigravity payload in any form, because there is no event to bind it to. The other five hooks port with their `settings-fragment-*.json` surfaces; `steer` alone has nowhere to land.
-
-Recorded here 2026-08-02 when the porting work that would have chased it (crickets #18) was cancelled. The ADR→living-design half of that issue had already shipped, and the hook half is substantially done; this residual is what remained, and it is host-blocked rather than unfinished. **Re-assess when** `agy` ships a pre-prompt event.
-
-**Re-assess when** `agy` ships a file-based or plugin-installable hook surface.
+**What is still Claude-only.** `evidence-tracker` and `compact-nudge-resume`, for reasons that are about Claude's payloads and session file, not about `agy`'s events. The PowerShell twins are not wired for `agy`.
 
 ## 3 — Multi-agent orchestration
 
@@ -58,6 +55,32 @@ Recorded here 2026-08-02 when the porting work that would have chased it (cricke
 **Mitigation.** You use OS cron/launchd for anything that must survive the device sleeping or the app closing. It runs independent of Antigravity's app lifecycle. You use Antigravity Scheduled Tasks for same-session, app-stays-open workloads. You cannot use it as a durable heartbeat.
 
 **Re-assess when** `agy` ships a persistence or catch-up guarantee for its scheduled-task primitive. For example, a due-but-missed task fires on next app open instead of canceling.
+
+## 5 — Agent tool allowlists
+
+**The gap.** A crickets agent lists `tools: Read, Glob, Grep, Bash` (Claude's names) and some name a Claude `model:`. `agy` wants `tools:` as a YAML list of its own tool names (`view_file`, `run_command`, ...) and rejects a Claude model tier. Either mismatch makes `agy` skip the whole agent; `agy plugin validate` reported nine agents skipped this way on 2026-10-30.
+
+**Why it matters.** A read-only agent such as `adversarial-reviewer` lost its tool restriction on the way to `agy`, so on `agy` it is read-only by its instructions alone.
+
+**Mitigation.** The emitter drops `tools:` and `model:` for Antigravity. The agent inherits the session's tools and model.
+
+**Re-assess when** `agy` documents its agent tool names, so a Claude name can be mapped to one.
+
+## 6 — Built-in name clashes
+
+**The gap.** `agy` has built-in slash commands, and a built-in wins a name clash with a plugin skill. `/plan` is one: it starts `agy`'s planning mode, not the crickets plan phase. Watched on 2026-10-30, and the same run showed the crickets skill was still listed.
+
+**Mitigation.** Type `/development-lifecycle:plan`. The prefixed form ran the crickets skill. Other names may clash too; `/help` in an interactive session lists the built-ins.
+
+**Re-assess when** `agy` namespaces plugin skills by default or stops reserving the name.
+
+## 7 — 24 KB skill limit
+
+**The gap.** `agy` loads only the first 24 KB of a `SKILL.md` body and warns on the rest. `/work` (38 KB), `/design` (35 KB) and the wiki plugin's `diataxis-author` (50 KB) are over it; `/plan` (21 KB) and `/release` (19 KB) fit.
+
+**Mitigation.** The emitter keeps the whole body in `references/` and writes a short `SKILL.md` that tells the agent to read it first. Relative links in the moved body get the extra `../` they need.
+
+**Re-assess when** `agy` lifts the limit.
 
 ## Resolving a gap
 

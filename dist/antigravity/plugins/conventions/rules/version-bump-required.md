@@ -4,6 +4,7 @@ description: Any PR that adds, changes, or removes user-visible primitives requi
 kind: rule
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
+trigger: model_decision
 ---
 
 ## Rule: version-bump-required
