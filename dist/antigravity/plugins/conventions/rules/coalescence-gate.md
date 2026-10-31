@@ -4,6 +4,7 @@ description: Every arc ends with a required close-out checklist that fires when 
 kind: rule
 supported_hosts: [claude-code, antigravity]
 version: 0.2.2
+trigger: model_decision
 ---
 
 ## Rule: coalescence-gate

@@ -4,6 +4,7 @@ description: A finished plan that changes behavior cuts a release — no more bu
 kind: rule
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
+trigger: model_decision
 ---
 
 ## Rule: release-cadence

@@ -30,4 +30,7 @@ capabilities: [storage-backend]
 # and storage_vault.py's locator example show the task layout
 # (projects/<slug>/tasks/042-build-the-brief/plan.md), not the retired vault
 # harness directory. Docs only.
-version: 0.3.4
+# 0.4.0 = Antigravity: conflict-merger-session-start runs on agy's
+# SessionStart, so the Drive conflict-file notice fires at session start there
+# too, not only on Claude Code.
+version: 0.4.0

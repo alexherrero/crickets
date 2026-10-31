@@ -213,7 +213,10 @@ standalone: true
 #         resources/watchlist/ (agentm task 185, #841), and nothing in the
 #         plugin called either. repair.py's header stops citing agentm's
 #         deleted watchlist_review.py.
-version: 0.13.1
+# 0.13.2 = Antigravity: /wiki-init ships as a skill, and diataxis-author (50
+# KB) keeps its whole text in references/SKILL.full.md because agy loads only
+# the first 24 KB of a SKILL.md.
+version: 0.13.2
 capabilities: [wiki-maintenance, wiki]
 renamed_from: [wiki-maintenance]
 enhances:

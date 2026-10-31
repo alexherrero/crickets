@@ -87,7 +87,10 @@ description: Standalone adversarial code review of any diff or PR — the advers
 # 0.4.2 = a model agy rejects degrades with "agy does not serve model '<MODEL>'"
 # instead of "agy returned no output", and agy's error line reaches stderr
 # (the five-line stderr tail held only its model list); agent 0.3.2 lists it.
-version: 0.4.2
+# 0.4.3 = Antigravity: the four agents lose the tools: and model: lines agy
+# 1.4 cannot read (it was skipping them), and the three commands ship as
+# skills, which is how an agy plugin gets a /name.
+version: 0.4.3
 category: Coding
 requires: []
 standalone: true

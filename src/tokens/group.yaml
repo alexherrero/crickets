@@ -153,6 +153,9 @@ standalone: true
 # `snapshot_kinds` with the kind it replaced. pixelton's charter copies kept
 # `slug: _index` and the project's aliases, so they answered to the charter's
 # names (agentm's vault growth audit, 2026-10-03).
-version: 0.8.2
+# 0.8.3 = Antigravity: hooks.json loads again (agy skipped the file because
+# Stop was written as a matcher group), so session-cost-capture runs on agy
+# through the hook adapter. The two commands ship as skills.
+version: 0.8.3
 capabilities: [status-line-meter, token-audit, tokens]
 renamed_from: [status-line-meter, token-audit]

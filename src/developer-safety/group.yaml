@@ -128,4 +128,10 @@ capabilities: [recoverability]
 # refuses, warn against `git lfs update --force` / `git lfs install --force`.
 # check-global warns when the install's dispatcher-version is older than the
 # plugin's, and --uninstall names the LFS repos' missing hooks.
-version: 0.6.4
+# 0.6.5 = Antigravity: hooks.json loads again (agy skipped the whole file
+# because Stop was written as a matcher group; it is a flat list). Every hook
+# now runs through hooks/_agy_hook_adapter.py, which turns exit code 2 into
+# agy's deny and stdout into injected context, so kill-switch blocks, steer
+# delivers on agy's PreInvocation and coauthor-guard runs on SessionStart. The
+# two rules carry trigger: always_on.
+version: 0.6.5

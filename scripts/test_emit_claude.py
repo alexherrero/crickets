@@ -136,7 +136,9 @@ class TestClaudeEmitter(unittest.TestCase):
         # (agentm-vault part 15, crickets task 100).
         # 0.13.1 = vault_layout drops watchlist_dir() with agentm's forward
         # learning (agentm task 185).
-        self.assertEqual(self._plugin_json("wiki")["version"], "0.13.1")
+        # 0.13.2 = Antigravity build only: /wiki-init ships as a skill and the
+        # 50 KB diataxis-author keeps its whole text in references/.
+        self.assertEqual(self._plugin_json("wiki")["version"], "0.13.2")
         # 0.3.0 = check-no-pii.sh + templates/hooks/pre-push moved into src/pii/
         # so they actually ship inside the plugin payload (R2.4 task 7).
         # 0.3.1 = check-no-pii.sh scan collapsed to one grep per file (fixes a
@@ -159,7 +161,8 @@ class TestClaudeEmitter(unittest.TestCase):
         # 0.6.5 = check-no-pii.sh's phone-us counts a match only when it stands
         # alone, so a digit run inside a hash, a decimal or a longer number no
         # longer trips it. A false-positive fix. Patch.
-        self.assertEqual(self._plugin_json("privacy")["version"], "0.6.5")
+        # 0.6.6 = Antigravity build only: pii-patterns carries a rule trigger.
+        self.assertEqual(self._plugin_json("privacy")["version"], "0.6.6")
 
     def test_dependencies_from_requires(self):
         # post-seed-retirement: maintenance (ex-github-ci) depends on

@@ -4,6 +4,7 @@ description: Every wiki page is exactly one Diátaxis mode, single-mode-per-page
 kind: rule
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
+trigger: model_decision
 ---
 
 ## Rule: documentation

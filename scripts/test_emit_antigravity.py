@@ -122,30 +122,42 @@ class TestAntigravityEmitter(unittest.TestCase):
         self.assertNotIn("renames", mk)
 
     def test_ag_hooks_named_with_relative_paths(self):
-        # the control hooks live in developer-safety post-seed-retirement.
-        # `steer` fires on UserPromptSubmit (R2.2 task 5 migration off the
-        # falsified PreToolUse-stdout-injection premise), which has no
-        # Antigravity equivalent — its script is still bundled but it gets no
-        # event registration, so it's absent from this dict entirely.
-        hj = json.loads((self.agdist / "plugins" / "developer-safety" / "hooks.json").read_text(encoding="utf-8"))
-        self.assertEqual(set(hj), {"commit-on-stop", "kill-switch"})
+        # The control hooks live in developer-safety. agy 1.4.x has every event
+        # they use, so all four are registered: steer's UserPromptSubmit rides
+        # agy's PreInvocation, coauthor-guard's SessionStart is SessionStart.
+        pd = self.agdist / "plugins" / "developer-safety"
+        hj = json.loads((pd / "hooks.json").read_text(encoding="utf-8"))
+        self.assertEqual(set(hj), {"coauthor-guard", "commit-on-stop", "kill-switch", "steer"})
         self.assertTrue(hj["commit-on-stop"]["enabled"])
-        self.assertIn("Stop", hj["commit-on-stop"])
-        self.assertIn("PreToolUse", hj["kill-switch"])
-        self.assertTrue((self.agdist / "plugins" / "developer-safety" / "hooks" / "steer" / "steer.sh").exists(),
-                        "steer's script must still be bundled even without an AG event registration")
+        # agy's Stop / SessionStart / PreInvocation are FLAT handler lists...
+        for hook, event in (("commit-on-stop", "Stop"), ("coauthor-guard", "SessionStart"),
+                            ("steer", "PreInvocation")):
+            self.assertEqual([h["type"] for h in hj[hook][event]], ["command"], (hook, event))
+        # ...and PreToolUse is a list of {matcher, hooks} groups.
+        group = hj["kill-switch"]["PreToolUse"][0]
+        self.assertEqual(group["matcher"], "*")
+        self.assertEqual(group["hooks"][0]["type"], "command")
         cmds = []
         for h in hj.values():
             for ev, entries in h.items():
                 if ev == "enabled":
                     continue
                 for e in entries:
-                    cmds += [x["command"] for x in e.get("hooks", [])]
-        self.assertTrue(all(c.startswith("bash ./hooks/") for c in cmds), cmds)
+                    cmds += [x["command"] for x in e.get("hooks", [e])]
+        # every command runs the original script through the adapter, by relative path
+        self.assertTrue(all(c.startswith("python3 ./hooks/_agy_hook_adapter.py ") and " bash ./hooks/" in c
+                            for c in cmds), cmds)
         self.assertFalse(any("CLAUDE_PLUGIN_ROOT" in c or ".claude/hooks" in c for c in cmds))
-        self.assertTrue((self.agdist / "plugins" / "developer-safety" / "hooks" / "kill-switch" / "kill-switch.sh").exists())
+        self.assertTrue((pd / "hooks" / "_agy_hook_adapter.py").exists())
+        self.assertTrue((pd / "hooks" / "kill-switch" / "kill-switch.sh").exists())
+        self.assertTrue((pd / "hooks" / "steer" / "steer.sh").exists())
 
-    def test_synthetic_sessionstart_gap_snippet_mcp(self):
+    def test_adapter_is_bundled_only_where_there_are_hooks(self):
+        plugins = self.agdist / "plugins"
+        self.assertTrue((plugins / "tokens" / "hooks" / "_agy_hook_adapter.py").exists())
+        self.assertFalse((plugins / "privacy" / "hooks").exists())
+
+    def test_synthetic_event_gap_snippet_mcp(self):
         Primitive = emit_antigravity.Primitive
         Group = emit_antigravity.Group
         with tempfile.TemporaryDirectory() as t:
@@ -155,7 +167,7 @@ class TestAntigravityEmitter(unittest.TestCase):
             (hook_dir / "boot.sh").write_text("#!/bin/bash\n", encoding="utf-8")
             (hook_dir / "settings-fragment-bash.json").write_text(json.dumps({
                 "hooks": {
-                    "SessionStart": [{"matcher": ".*", "hooks": [{"type": "command", "command": "bash .claude/hooks/boot.sh"}]}],
+                    "PreCompact": [{"matcher": ".*", "hooks": [{"type": "command", "command": "bash .claude/hooks/boot.sh"}]}],
                     "PreToolUse": [{"matcher": ".*", "hooks": [{"type": "command", "command": "bash .claude/hooks/boot.sh"}]}],
                 }
             }), encoding="utf-8")
@@ -174,9 +186,9 @@ class TestAntigravityEmitter(unittest.TestCase):
             emit_antigravity.AntigravityEmitter().emit_group(group, dist)
             pd = dist / "plugins" / "extras"
             hj = json.loads((pd / "hooks.json").read_text(encoding="utf-8"))
-            # SessionStart has no AG equivalent → skipped; PreToolUse kept
+            # PreCompact has no AG equivalent → skipped; PreToolUse kept
             self.assertIn("PreToolUse", hj["boot"])
-            self.assertNotIn("SessionStart", hj["boot"])
+            self.assertNotIn("PreCompact", hj["boot"])
             # snippet → rules/ (AG ships instruction files)
             self.assertTrue((pd / "rules" / "note.md").exists())
             # mcp → mcp_config.json
@@ -235,9 +247,9 @@ class TestAntigravityEmitter(unittest.TestCase):
             # no capabilities/enhances → no sidecar emitted
             self.assertFalse((dist / "plugins" / "bare" / "capabilities.json").exists())
 
-    def test_command_emitted(self):
-        # a discovered `command` primitive lands in the native commands/ subdir
-        # on Antigravity too; host-filtered (claude-only commands are skipped).
+    def test_command_emitted_as_a_skill(self):
+        # agy plugins load no commands/ folder, so a command ships as
+        # skills/<name>/SKILL.md; claude-only commands are still skipped.
         src_model = sys.modules["src_model"]
         with tempfile.TemporaryDirectory() as t:
             src = Path(t) / "src"
@@ -246,23 +258,68 @@ class TestAntigravityEmitter(unittest.TestCase):
                 "name: WF\ndescription: d\nstandalone: true\nrequires: []\n", encoding="utf-8")
             (src / "wf" / "commands" / "plan.md").write_text(
                 "---\nname: plan\nkind: command\nsupported_hosts: [antigravity]\n"
-                "description: d\n---\n# plan\n", encoding="utf-8")
-            # a claude-only command must NOT reach the Antigravity plugin
+                "description: Turn a brief into a plan\nargument-hint: <brief>\n---\n"
+                "# plan\nBrief: $ARGUMENTS\n", encoding="utf-8")
             (src / "wf" / "commands" / "ccionly.md").write_text(
                 "---\nname: ccionly\nkind: command\nsupported_hosts: [claude-code]\n"
                 "description: d\n---\n# ccionly\n", encoding="utf-8")
             group = src_model.load_groups(src)[0]
             dist = Path(t) / "dist"
             emit_antigravity.AntigravityEmitter().emit_group(group, dist)
-            cmds = dist / "plugins" / "wf" / "commands"
-            self.assertTrue((cmds / "plan.md").exists())
-            self.assertFalse((cmds / "ccionly.md").exists())
+            pd = dist / "plugins" / "wf"
+            self.assertFalse((pd / "commands").exists())
+            self.assertFalse((pd / "skills" / "ccionly").exists())
+            text = (pd / "skills" / "plan" / "SKILL.md").read_text(encoding="utf-8")
+            self.assertTrue(text.startswith('---\nname: plan\ndescription: "Turn a brief into a plan"\n---'))
+            self.assertIn("**Usage:** `/plan <brief>`", text)
+            self.assertNotIn("$ARGUMENTS", text)
+            self.assertIn("Brief: <what the user typed after /plan>", text)
+
+    def test_long_command_keeps_its_whole_body_in_a_reference_file(self):
+        src_model = sys.modules["src_model"]
+        with tempfile.TemporaryDirectory() as t:
+            src = Path(t) / "src"
+            (src / "wf" / "commands").mkdir(parents=True)
+            (src / "wf" / "group.yaml").write_text(
+                "name: WF\ndescription: d\nstandalone: true\nrequires: []\n", encoding="utf-8")
+            body = "step\n" * 6000  # 30 KB, over agy's 24 KB skill limit
+            (src / "wf" / "commands" / "big.md").write_text(
+                "---\nname: big\nkind: command\nsupported_hosts: [antigravity]\n"
+                f"description: d\n---\n{body}", encoding="utf-8")
+            group = src_model.load_groups(src)[0]
+            dist = Path(t) / "dist"
+            emit_antigravity.AntigravityEmitter().emit_group(group, dist)
+            sk = dist / "plugins" / "wf" / "skills" / "big"
+            self.assertLess(len((sk / "SKILL.md").read_bytes()), 1000)
+            self.assertIn("references/big.md", (sk / "SKILL.md").read_text(encoding="utf-8"))
+            self.assertEqual((sk / "references" / "big.md").read_text(encoding="utf-8"), body)
+
+    def test_command_never_overwrites_a_skill_of_the_same_name(self):
+        src_model = sys.modules["src_model"]
+        with tempfile.TemporaryDirectory() as t:
+            src = Path(t) / "src"
+            (src / "wf" / "commands").mkdir(parents=True)
+            (src / "wf" / "skills" / "go").mkdir(parents=True)
+            (src / "wf" / "group.yaml").write_text(
+                "name: WF\ndescription: d\nstandalone: true\nrequires: []\n", encoding="utf-8")
+            (src / "wf" / "skills" / "go" / "SKILL.md").write_text(
+                "---\nname: go\nkind: skill\nsupported_hosts: [antigravity]\n"
+                "description: the real skill\n---\nreal\n", encoding="utf-8")
+            (src / "wf" / "commands" / "go.md").write_text(
+                "---\nname: go\nkind: command\nsupported_hosts: [antigravity]\n"
+                "description: thin entry\n---\nthin\n", encoding="utf-8")
+            group = src_model.load_groups(src)[0]
+            dist = Path(t) / "dist"
+            emit_antigravity.AntigravityEmitter().emit_group(group, dist)
+            self.assertIn("real", (dist / "plugins" / "wf" / "skills" / "go" / "SKILL.md").read_text(encoding="utf-8"))
 
     def test_opinions_good_interpolated_into_design_command(self):
         # PLAN-opinion-consumer-grammar task 2: the same committed snapshot the
         # Claude emitter bakes in must land identically on Antigravity (real
         # src/ tree, via setUp's real build).
-        design_md = (self.agdist / "plugins" / "design" / "commands" / "design.md").read_text(encoding="utf-8")
+        # design is over agy's 24 KB skill limit, so its full text is the reference file.
+        design_md = (self.agdist / "plugins" / "design" / "skills" / "design" / "references"
+                     / "design.md").read_text(encoding="utf-8")
         snapshot_body = (_ROOT / "scripts" / "opinion-snapshots" / "good.md").read_text(encoding="utf-8")
         snapshot_body = snapshot_body.split("---", 2)[2].strip()
         self.assertIn(snapshot_body, design_md)
@@ -299,6 +356,103 @@ class TestAntigravityEmitter(unittest.TestCase):
             dist = Path(t) / "dist"
             emit_antigravity.AntigravityEmitter().emit_group(group, dist)
             self.assertTrue((dist / "plugins" / "sf" / "rules" / "no-coauthor.md").exists())
+
+    def test_rules_get_the_trigger_agy_requires(self):
+        src_model = sys.modules["src_model"]
+        with tempfile.TemporaryDirectory() as t:
+            src = Path(t) / "src"
+            (src / "rf" / "snippets").mkdir(parents=True)
+            (src / "rf" / "rules").mkdir(parents=True)
+            (src / "rf" / "group.yaml").write_text(
+                "name: RF\ndescription: d\nstandalone: true\nrequires: []\n", encoding="utf-8")
+            (src / "rf" / "snippets" / "always.md").write_text(
+                "---\nname: always\nkind: snippet\nsupported_hosts: [antigravity]\n"
+                "description: d\n---\nbody\n", encoding="utf-8")
+            (src / "rf" / "rules" / "situational.md").write_text(
+                "---\nname: situational\nkind: rule\nsupported_hosts: [antigravity]\n"
+                "description: when to apply\n---\nbody\n", encoding="utf-8")
+            (src / "rf" / "rules" / "chosen.md").write_text(
+                "---\nname: chosen\nkind: rule\nsupported_hosts: [antigravity]\n"
+                "description: d\ntrigger: manual\n---\nbody\n", encoding="utf-8")
+            group = src_model.load_groups(src)[0]
+            dist = Path(t) / "dist"
+            emit_antigravity.AntigravityEmitter().emit_group(group, dist)
+            rules = dist / "plugins" / "rf" / "rules"
+            self.assertIn("\ntrigger: always_on\n", (rules / "always.md").read_text(encoding="utf-8"))
+            self.assertIn("\ntrigger: model_decision\n", (rules / "situational.md").read_text(encoding="utf-8"))
+            # a trigger the source already names is kept, not doubled
+            chosen = (rules / "chosen.md").read_text(encoding="utf-8")
+            self.assertEqual(chosen.count("trigger:"), 1)
+            self.assertIn("trigger: manual", chosen)
+
+    def test_agents_lose_the_lines_agy_cannot_read(self):
+        src_model = sys.modules["src_model"]
+        with tempfile.TemporaryDirectory() as t:
+            src = Path(t) / "src"
+            (src / "af" / "agents").mkdir(parents=True)
+            (src / "af" / "group.yaml").write_text(
+                "name: AF\ndescription: d\nstandalone: true\nrequires: []\n", encoding="utf-8")
+            (src / "af" / "agents" / "scout.md").write_text(
+                "---\nname: scout\ndescription: finds things\nkind: agent\n"
+                "supported_hosts: [antigravity]\ntools: Read, Glob, Grep\nmodel: claude-sonnet-5\n"
+                "version: 0.1.0\n---\nYou find things.\n", encoding="utf-8")
+            group = src_model.load_groups(src)[0]
+            dist = Path(t) / "dist"
+            emit_antigravity.AntigravityEmitter().emit_group(group, dist)
+            text = (dist / "plugins" / "af" / "agents" / "scout.md").read_text(encoding="utf-8")
+            self.assertNotIn("tools:", text)
+            self.assertNotIn("model:", text)
+            self.assertIn("name: scout", text)
+            self.assertIn("version: 0.1.0", text)
+            self.assertIn("You find things.", text)
+
+    def test_a_folder_the_emitter_no_longer_writes_does_not_linger(self):
+        src_model = sys.modules["src_model"]
+        with tempfile.TemporaryDirectory() as t:
+            src = Path(t) / "src"
+            (src / "cf").mkdir(parents=True)
+            (src / "cf" / "group.yaml").write_text(
+                "name: CF\ndescription: d\nstandalone: true\nrequires: []\n", encoding="utf-8")
+            group = src_model.load_groups(src)[0]
+            dist = Path(t) / "dist"
+            stale = dist / "plugins" / "cf" / "commands"
+            stale.mkdir(parents=True)
+            (stale / "old.md").write_text("old", encoding="utf-8")
+            emit_antigravity.AntigravityEmitter().emit_group(group, dist)
+            self.assertFalse(stale.exists())
+
+    def test_long_skill_keeps_its_whole_body_reachable(self):
+        # wiki's diataxis-author is ~50 KB; agy would load only the first 24 KB.
+        sk = self.agdist / "plugins" / "wiki" / "skills" / "diataxis-author"
+        self.assertLess(len((sk / "SKILL.md").read_bytes()), 2000)
+        full = (sk / "references" / "SKILL.full.md").read_text(encoding="utf-8")
+        source = (_ROOT / "src" / "wiki" / "skills" / "diataxis-author" / "SKILL.md").read_text(encoding="utf-8")
+        # the body is unchanged except that its relative links go one folder deeper
+        body = source.split("\n---\n", 1)[1]
+        self.assertEqual(full.strip(), emit_antigravity._deepen_links(body, 1).strip())
+
+    def test_real_dist_has_the_shape_agy_loads(self):
+        # The same structural gate CI runs, over this test's own real build.
+        spec = importlib.util.spec_from_file_location("check_agy_plugin_shape", _HERE / "check-agy-plugin-shape.py")
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        self.assertEqual(m.check_dist(self.agdist / "plugins"), [])
+
+    def test_relative_links_follow_a_body_that_moves_deeper(self):
+        deepen = emit_antigravity._deepen_links
+        body = ("[a](../skills/x/SKILL.md) [b](templates/t.md#top) [c](https://e.com/x) "
+                "[d](#here) [e](other.md) [f](other.md#part) [g](${CLAUDE_PLUGIN_ROOT}/x)")
+        out = deepen(body, 1, frozenset({"other"}))
+        self.assertIn("[a](../../skills/x/SKILL.md)", out)
+        self.assertIn("[b](../templates/t.md#top)", out)           # anchor kept
+        self.assertIn("[c](https://e.com/x)", out)                  # URLs untouched
+        self.assertIn("[d](#here)", out)                            # in-page anchors untouched
+        self.assertIn("[e](../other/SKILL.md)", out)                # sibling command -> its skill
+        self.assertIn("[f](../other/SKILL.md#part)", out)
+        self.assertIn("[g](${CLAUDE_PLUGIN_ROOT}/x)", out)          # plugin-root paths untouched
+        # a long body goes one level deeper again (references/<name>.md)
+        self.assertIn("[a](../../skills/x/SKILL.md)", deepen("[a](../skills/x/SKILL.md)", 1))
+        self.assertIn("[a](../../../skills/x/SKILL.md)", deepen("[a](../skills/x/SKILL.md)", 2))
 
     def test_group_scripts_bundled(self):
         # a group-level scripts/ asset dir is copied verbatim into the AG plugin

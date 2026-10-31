@@ -4,6 +4,7 @@ description: Any multi-session job is authored as one coordinator dispatch — a
 kind: rule
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
+trigger: model_decision
 ---
 
 ## Rule: coordinator-dispatch

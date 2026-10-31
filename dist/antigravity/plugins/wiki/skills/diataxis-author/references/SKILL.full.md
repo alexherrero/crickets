@@ -1,0 +1,561 @@
+# diataxis-author — author + maintain a Diátaxis wiki for any repo
+
+The second major skill in `crickets` (after `memory`). Encodes the operator's Diátaxis discipline from the [crickets-conventions design — documentation domain](https://github.com/alexherrero/crickets/wiki/crickets-conventions) into proactive authoring guidance + ongoing drift detection + repair + one-shot migration, with per-repo overrides via `wiki/.diataxis-conventions.md` and global conventions stored in the vault (`<vault>/standards/diataxis-*.md`, or the retired `_always-load/` pen on a vault from before the memory-root trims). Designed via [crickets's design skill](https://github.com/alexherrero/crickets/wiki/crickets-wiki) — second real dogfood of plan #6's `/design author` after MemoryVault closed.
+
+**Position vs. `check-wiki.py` strict validator**: validators catch violations after-the-fact; diataxis-author provides **proactive** guidance at write time (template selection, mode classification, filename style). Both layers complement: skill prevents drift at write time; `check-wiki.py` catches drift at commit time + during `/diataxis check`.
+
+**Position vs. harness's `documenter` sub-agent**: documenter is the **mechanical write worker** (Diátaxis-aware writes per the crickets-conventions design's documentation domain); diataxis-author is the **operator-facing orchestration + guidance surface**. Skill dispatches documenter for splits + heavy writes — same separation as `/memory adapt-skills` (orchestration) vs. `adapt-evaluator` (sub-agent worker).
+
+**Position vs. predecessor `migrate-to-diataxis` (harness-side)**: subsumed (plan #13 part 4). v1 ships the predecessor with a deprecation notice; follow-up harness release removes the file entirely after dogfood confirms diataxis-author is the better surface.
+
+## Operator convention read path (V4 #35)
+
+The global Diátaxis conventions this skill honors (`diataxis-*.md` in `<vault>/standards/`, or the retired `_always-load/` pen: filename style, mode-classification thresholds, page-length norms) are read through the **shared `documenter-context` resolver**, NOT by globbing the vault directly:
+
+```bash
+python3 scripts/harness_memory.py documenter-context --slug "<slug>" --format json
+# → parse `.operator_conventions[]` for the diataxis-* entries
+```
+
+This keeps the read pattern uniform across all three doc-touching primitives (this skill, `wiki-author`, and the `documenter` sub-agent): one resolver is the single source of truth, so a future move to per-project conventions (`<projects-space>/<slug>/wiki-style/*.md`, already surfaced by the resolver) needs no skill-side change.
+
+**Graceful-skip (same contract as the other two primitives):** on **rc 1** (vault unreachable) proceed with the built-in defaults + per-repo `wiki/.diataxis-conventions.md` only — emit `[diataxis-author] vault unreachable; using built-in + per-repo conventions` on stderr; never hard-fail. On **rc 2** (slug unregistered) the operator-global conventions in `<vault>/standards/` (the retired `_always-load/` pen on an unmigrated vault) still resolve.
+
+The full read-side wiring lands with part 5 (`agentmemory-docs-release`); this section locks the *path* (through the resolver) so part 5 doesn't reintroduce a direct vault glob.
+
+### Genre — which lessons a draft actually loads
+
+The global overlay store holds both small universal voice rules and heavy genre conventions: a docs register, an email register, a letter-of-recommendation register, a design-doc register. Loading all of them into a wiki page cost about 18k tokens of overlay, two thirds of it addressed to surfaces that page is not.
+
+A lesson opts into being narrow by declaring `genres:` in its frontmatter:
+
+```yaml
+---
+trigger: personal-comms-style
+genres: [comms]
+---
+```
+
+`--genre` names what the draft is; `--genre all` turns the filter off. Authoring defaults to `docs`, because that is what this command writes.
+
+Two rules make the filter safe to leave on:
+
+- **A lesson with no `genres:` is universal.** Narrowing is opt-in, never inferred, so every lesson written before this existed keeps applying everywhere — and a typo in the field name widens a lesson rather than deleting it from every draft.
+- **An excluded lesson is named, not silently gone.** The composed block ends with a `NOT LOADED — genre filter asked for [docs]: …` line listing each held-back trigger and the genres it declares. A wrong exclusion is visible in the draft that suffered it; re-run with `--genre all` to recover it.
+
+On the operator's own store this takes a wiki draft from ~18,200 tokens of overlay to ~7,700, and the five universal lessons are untouched.
+
+## When to reach for which sub-command
+
+| You want to... | Reach for |
+|---|---|
+| Author a new wiki page with template + mode selection + filename style | `/diataxis author <slug>` |
+| Detect drift across the wiki (mode-mixed pages, stale cross-refs, template-shape drift, convention drift) | `/diataxis check [--strict]` |
+| Apply suggested fixes for detected drift, interactively | `/diataxis repair` |
+| One-shot migrate a legacy audience-based wiki to the six-section documentation layout | `/diataxis migrate` |
+| Classify a single page's mode (operator-debug; sub-agent dispatches here for ambiguous cases) | `/diataxis classify <file>` |
+| Capture a generalizable voice lesson from your own edits to an authored draft | `/diataxis capture <draft> <edited>` |
+| Relocate global wiki conventions out of the always-load tier into the on-demand global voice store (one-time, operator-run; on a migrated vault both are inside your `standards/`) | `/diataxis relocate --preview` |
+| Promote a proven overlay voice lesson into the committed base style-guide (maintainer; `src/`-only, operator-gated) | `/diataxis promote --preview` |
+
+> **Six-section layout.** The target taxonomy is the crickets six-section documentation layout — `how-to` · `reference` · `architecture` · `designs` · `explanation` · `operational`. Four are always present (how-to · reference · designs · explanation); `architecture` is gated on a `wiki/architecture.yml` manifest and `operational` on a non-public wiki. Onboarding "tutorials" fold into `how-to/` with a `<!-- mode: tutorial -->` hint — there is **no** `tutorials/` folder. `migrate.py` targets this layout. (Reconciliation pending: `author.py` / `classify.py` / `check.py` / `repair.py` still carry the legacy four-mode `tutorial → tutorials/` dir map — tracked follow-up.)
+
+## Sub-commands
+
+### `/diataxis author <slug>`
+
+Live authoring guidance — operator invokes when starting a new wiki page. Skill resolves the mode (explicit `--mode` flag, or inferred from `--intent <sentence>` via `classify.py`, or operator prompt), loads the right Diátaxis template from `templates/<mode>.md`, applies the operator's filename style, computes target path `<wiki-root>/<mode-dir>/<filename>.md`, refuses if target exists (operator picks a different slug), and writes the skeleton. Operator edits in their editor; skill doesn't write further content after the skeleton.
+
+> **Prose pass:** any drafted page that reaches the operator through the `documenter` sub-agent runs the design plugin's `prose-pass` skill before its preview — Gemini simplifies with the resolved voice pack (this skill's base style floor ⊕ the `docs-prose-style` genre overlay) inlined **verbatim**; Claude generates the fact-guard list first, then fact-checks and applies (the skill's own Step 2 checklist). Degradation falls back — **announced, never silent** — to the Claude-only conformance path this skill already owns (style-floor compose + the `style/voice-rules.json` banned-vocabulary scan) and never blocks authoring. The mechanical execution rides the documenter ([agents/documenter.md § Prose cross-pass](../../../agents/documenter.md)) and the design plugin's `scripts/prose_pass.py`; this skill documents the step and supplies the style stores — it does not re-run the pass itself.
+
+> **Structural + voice standard:** the house wiki conventions (curated landings, scenarios-as-table, long lists behind an index link, user/contributor split, plain prose) and the **section-composition model** for landing pages (page = ordered, reusable sections) are specified authoritatively in [`templates/README.md`](../templates/README.md). Honor it when authoring or restructuring; the section composer is forthcoming (pass-2 codification). Per-plugin pages follow the **combined-page standard** — [`templates/plugin-reference.md`](../templates/plugin-reference.md), a `## Architecture` + `## Reference` two-parent page whose two prose sections (the opener and How it works) stay plain-spoken rather than in the weeds, and which carries at least a composition diagram in the house SVG style ([`style/diagram-style.md`](../style/diagram-style.md)).
+
+#### Invocation shape
+
+```
+/diataxis author <slug> [--mode <tutorial|how-to|reference|explanation>]
+                        [--intent "<one sentence>"]
+                        [--filename-style <CamelCase-With-Dashes|kebab-case|snake_case>]
+                        [--wiki-root <path>]
+                        [--overwrite]
+```
+
+| Arg | Required | Default | Meaning |
+|---|---|---|---|
+| `<slug>` | yes | — | Page slug (e.g. "Install foo into a project"). Words extracted via alphanumeric splitting; filename style applied. |
+| `--mode <m>` | yes¹ | — | Diátaxis mode. ¹Required unless `--intent` provided (then `classify.py` infers); halts with operator-prompt if neither given. |
+| `--intent "<text>"` | no | — | One-sentence intent statement. Passed to `classify.py` as classification input; mode inferred if heuristic confidence ≥0.7. Sub-agent dispatch triggered if below threshold. |
+| `--filename-style <s>` | no | `CamelCase-With-Dashes` | Filename style. Three options: `CamelCase-With-Dashes` (default) / `kebab-case` / `snake_case`. AgentMemory always-load entry override planned for part 5. |
+| `--wiki-root <path>` | no | `./wiki` | Wiki root directory. Auto-detected as `<cwd>/wiki`; override for cross-repo invocations. |
+| `--overwrite` | no | off | Allow overwriting an existing target. Default: refuse + ask operator to pick a different slug. |
+
+#### Step-by-step flow
+
+**Step 1 — Resolve mode.** If `--mode` set, use it directly. If `--intent` set, call `classify.py` on the intent text + check `needs_subagent` flag; halt + prompt operator for explicit `--mode` if classifier confidence is below threshold. Otherwise halt with "ERROR: --mode or --intent required".
+
+**Step 2 — Validate inputs.** Mode in `{tutorial, how-to, reference, explanation}`; filename style in valid set; wiki root exists + is a directory.
+
+**Step 3 — Compute target path.** Apply filename style to slug → base name. Section-to-directory mapping: `how-to → how-to/`, `reference → reference/`, `explanation → explanation/`. Onboarding **tutorial** content folds into `how-to/` with a `<!-- mode: tutorial -->` hint — there is no `tutorials/` folder. (The remaining six-section folders — `architecture/<slug>/`, `designs/`, `operational/` — are authored via their own page types, the design pipeline, or by hand.) Target = `<wiki-root>/<section-dir>/<base>.md`.
+
+**Step 4 — Collision check.** If target exists + `--overwrite` not set, halt with `"target already exists: <path>; pick a different slug or pass --overwrite"`.
+
+**Step 5 — Load template.** Read `templates/<mode>.md` (ships in this part). Halt if missing (shouldn't happen post-install; indicates broken install).
+
+**Step 6 — Create parent dirs + write.** `mkdir -p` for the mode-dir; write template content via `write_bytes` (LF-only line endings — Windows portability per `save.py` + `adapt_skills.py` convention).
+
+**Step 7 — Return confirmation.** JSON: `{action: "authored", target: <path>, mode: <mode>, template: <path>, filename_style: <style>, filename: <base.md>}`. Operator opens the target file in their editor + fills in placeholders.
+
+#### Examples
+
+```bash
+# Explicit mode
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/author.py \
+  "Install crickets into a project" --mode how-to
+# → wiki/how-to/Install-Agent-Toolkit-Into-A-Project.md
+
+# Infer mode from intent
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/author.py \
+  "CLI reference for the installer" --intent "lookup table for all install.sh flags"
+# → wiki/reference/Cli-Reference-For-The-Installer.md  (inferred: reference)
+
+# Kebab-case filename style
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/author.py \
+  "Tutorial 3 — Advanced things" --mode tutorial --filename-style kebab-case
+# → wiki/how-to/tutorial-3-advanced-things.md  (onboarding page, marked <!-- mode: tutorial -->)
+```
+
+#### Failure modes (graceful)
+
+- **Missing wiki root** → exit 1 with `"wiki root not found: <path>; pass --wiki-root or cd into a project with a wiki/ dir"`.
+- **Target collision** (page exists) → exit 1 with operator next-step.
+- **Mode + intent both missing** → exit 1 with `"--mode or --intent required"`.
+- **Intent classification ambiguous** (confidence < threshold) → exit 1 with classifier output + prompt to disambiguate via explicit `--mode`.
+- **Template missing** → exit 1 with broken-install indication.
+- **Invalid mode** → exit 1 with valid options listed.
+
+#### Anti-patterns
+
+- **Don't pass `--overwrite` casually.** The collision refusal is intentional — re-using a slug across modes (e.g. how-to + explanation with the same name) is usually a sign you meant to split a mode-mixed page. Use `/diataxis classify` to verify.
+- **Don't write skill body content beyond the skeleton.** The skill emits the template + lets the operator fill in. Auto-writing body content would defeat the "live authoring guidance" promise.
+- **Don't bypass `--filename-style`.** The default `CamelCase-With-Dashes` matches the operator's convention from the canonical wikis (agentm + crickets + dev-setup). AgentMemory override (planned part 5) lets you tune per-repo.
+
+### `/diataxis check [--strict]`
+
+Drift detection — wraps `scripts/check-wiki.py` (harness-side) as a subprocess + adds 4 operational skill-side heuristics: mode-mixed + ambiguous-mode page detection / stale cross-references / template-shape drift / **convention drift** (VOICE drift against the style overlay — see below). Outputs a structured JSON report grouped by rule. Exit non-zero on `warning`/`error` findings; convention-drift findings are `info` (surfaced, non-failing) unless `--strict` escalates them to `error`. Graceful-skip when check-wiki.py absent → in-skill heuristic-only mode + clear stderr warning.
+
+#### Invocation shape
+
+```
+/diataxis check [--strict] [--wiki-root <path>] [--check-wiki-py <path>]
+```
+
+| Arg | Required | Default | Meaning |
+|---|---|---|---|
+| `--wiki-root <path>` | no | `./wiki` | Wiki root directory. |
+| `--strict` | no | off | Pass `--strict` to check-wiki.py + escalate skill-side warnings to errors. |
+| `--check-wiki-py <path>` | no | auto-detect sibling clone | Explicit path to check-wiki.py for non-standard layouts. |
+
+#### Step-by-step flow
+
+**Step 1 — Resolve wiki root + check-wiki.py path.** Auto-detect check-wiki.py at `<toolkit>/../agentm/scripts/check-wiki.py` or `~/Antigravity/agentm/scripts/check-wiki.py`.
+
+**Step 2 — Run check-wiki.py subprocess** (if found). Parse `<path>:<line>: <rule>: <msg>` line format from stdout into Finding objects with `rule: check-wiki/<rule>`. Status: `ran` on success; `skipped-absent` if not found; `skipped-error` on subprocess failure (timeout, non-zero exit not from clean run, OSError).
+
+**Step 3 — Walk wiki pages** under each mode-dir, skipping structural pages (Home.md, _Sidebar.md, README.md).
+
+**Step 4 — Apply 4 skill-side heuristics per page**:
+
+- `diataxis/mode-mixed` — calls `classify.py`; flags when `mode_mixed: true` OR `needs_subagent: true` (latter catches the penalty-masked case where how-to score drops below 0.5 due to rationale-section penalty but the page is still mode-mixed semantically).
+- `diataxis/stale-xref` — extracts wiki-style markdown links; resolves target stem; flags when no matching page exists.
+- `diataxis/template-drift` — page lives in mode-dir X but classify.py says it's mode Y with confidence ≥0.7. Suggested fix: move file or rewrite body.
+- `diataxis/convention-drift` — **live** (part 3 task 5): flags **voice** drift, not just structure. Resolves the style overlay (`base style-guide ⊕ on-demand lessons`, via the part-1 resolver) and scans each page for the machine-checkable terms declared on a `banned:` directive (in the committed base style-guide and/or overlay lessons — `banned: term, "phrase", …`). Each banned term a page uses → a finding. Findings are `info` (non-failing) by default and `error` under `--strict` (non-breaking per parent Migration 4). Graceful-skip (no finding) when the overlay can't resolve. Pass `--vault-path` / `--project-slug` to include the vault overlay scopes.
+
+**Step 5 — Aggregate + emit report.** Findings grouped by rule with counts. JSON output to stdout; non-zero exit on findings.
+
+#### Examples
+
+```bash
+# Run against the toolkit's own wiki
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/check.py \
+  --wiki-root ~/Antigravity/crickets/wiki
+# Strict mode (escalate warnings)
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/check.py \
+  --wiki-root ~/Antigravity/crickets/wiki --strict
+# Custom check-wiki.py path
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/check.py \
+  --wiki-root /path/to/project/wiki \
+  --check-wiki-py /path/to/check-wiki.py
+```
+
+#### Failure modes (graceful)
+
+- **No wiki root** → exit 1 with actionable error.
+- **check-wiki.py absent** → `check_wiki_status: skipped-absent`; skill heuristics still run; warning on stderr.
+- **check-wiki.py subprocess error** (timeout / OS error) → `check_wiki_status: skipped-error`; warning + heuristics-only fallback.
+- **Empty wiki** → 0 findings; exit 0.
+- **No mode-dir pages found** → skill heuristics emit 0 findings; exit 0 if check-wiki also clean.
+
+#### Anti-patterns
+
+- **Don't rely on `/diataxis check` to catch every Diátaxis violation.** check-wiki.py is the strict validator; the skill heuristics catch additional drift signals (mode-mixed, template-drift). For pre-commit gating, run `check-wiki.py --strict` directly (it's the canonical CI gate). `/diataxis check` is for **interactive audit + drift surfacing**, not the gate.
+- **Don't pipe `/diataxis check` output to `/memory save`.** The JSON report is an interactive surface; persistence belongs in the wiki itself (operator decides what to act on via `/diataxis repair`).
+- **Don't tune the skill-side heuristic thresholds per-invocation.** Defaults are tuned to v1 fixtures; operator-level tuning belongs in `classify.py` constants + future AgentMemory always-load entries (part 5).
+
+### `/diataxis repair`
+
+Interactive fix-application for drift detected by `/diataxis check`. Per finding: presents the suggested fix + operator approves (`a`) / edits (`e`) / rejects (`r`) / skips (default). Preview-first; never silent. Mode-mixed splits dispatch `documenter` sub-agent for the mechanical write work (the first consumer of `documenter` as worker per locked design call Q3). Same pattern as `/memory watchlist review` + `ideas_promote.py gc`'s never-silent-action contract.
+
+#### Invocation shape
+
+```
+/diataxis repair [--wiki-root <path>] [--findings <json-path>] [--limit N] [--stub]
+```
+
+| Arg | Required | Default | Meaning |
+|---|---|---|---|
+| `--wiki-root <path>` | no | `./wiki` | Wiki root directory. |
+| `--findings <path>` | no | inline check.py run | JSON file with findings (output of check.py). If omitted, runs check.py inline. |
+| `--limit N` | no | unlimited | Cap on findings to review per invocation. Useful for batched repair: do N today, more tomorrow. |
+| `--stub` | no | off | `documenter` sub-agent dispatches return no-op marker instead of invoking. Used by CI smoke tests to avoid live LLM calls. |
+
+#### Step-by-step flow
+
+**Step 1 — Resolve wiki root + load findings.** If `--findings <path>` set, parse JSON. Otherwise run `check.run_check()` inline.
+
+**Step 2 — TTY check.** If stdin is not a TTY, default ALL prompts to skip + emit warning. Same never-silent-action contract as `ideas_promote.py gc`.
+
+**Step 3 — Per-finding loop** (capped by `--limit N` if set):
+
+1. Display finding (`──`-separated card with rule + file + severity + msg + suggested fix).
+2. Prompt `Action: [a]pply / [e]dit / [r]eject / (default: skip)`.
+3. Operator chooses; default = skip on non-TTY or empty input.
+
+**Step 4 — Apply repair per rule** (when action == `apply`):
+
+- `diataxis/template-drift` → preview a `git mv` from current path to the suggested mode-dir path. v1 emits the preview ONLY (operator runs git mv manually); v2 may add an `--auto-apply` flag.
+- `diataxis/mode-mixed` → dispatch `documenter` sub-agent for the actual split. CLI emits the dispatch marker; the calling skill body (or operator interactive context) handles the dispatch. In `--stub` mode, returns canned marker without invoking.
+- `diataxis/stale-xref` → record finding only; operator manually rewrites the link target (right target is judgment; no auto-fix in v1).
+- `diataxis/convention-drift` → operator removes/replaces the banned term per the house style overlay (or, if the term is legitimately needed, tunes the overlay's `banned:` directive). Findings, not failures, unless `--strict`.
+- `check-wiki/*` → record finding only; operator manually addresses each (check-wiki rules surface known violations from the validator).
+
+**Step 5 — Emit summary.** Per-action counts (applied / edited / rejected / skipped / errors) + per-finding results array. JSON to stdout.
+
+#### Examples
+
+```bash
+# Interactive review against ./wiki
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/repair.py
+# Use a pre-recorded findings file (replay analysis)
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/check.py --wiki-root wiki > findings.json
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/repair.py --findings findings.json
+# CI smoke-safe with sub-agent stub + small limit
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/repair.py --stub --limit 3
+```
+
+#### Failure modes (graceful)
+
+- **Non-TTY stdin** → defaults all prompts to skip; emits warning; exit 0 with all findings marked skipped.
+- **No findings** → emits `no findings to repair`; exit 0.
+- **Findings JSON malformed** → exit 1 with parse error.
+- **`--limit N` reached mid-walk** → prints `reached --limit N; X findings unreviewed`; exit 0.
+
+#### Anti-patterns
+
+- **Don't apply mode-mixed splits without operator review of the proposed split.** The sub-agent suggests; the operator decides. `--stub` mode in CI exists precisely to avoid silent sub-agent dispatch.
+- **Don't run `/diataxis repair` in batch mode (non-TTY).** The never-silent-action contract makes it a no-op; use specific-rule sub-commands or operator-driven scripting if you need batch action.
+- **Don't auto-apply template-drift moves** without verifying the operator's intent. A page that "looks like" a tutorial but lives in `reference/` may be intentionally cross-cutting (especially for ADRs that reference how-tos). v1 emits preview only; v2 may add auto-apply behind explicit flag.
+
+> [!NOTE]
+> **Sub-agent budget**: `--limit N` (no hard default) caps how many findings each interactive pass processes. For batched contexts (future idle-hook auto-repair, out of scope for v1), default would land at 3-5 to bound sub-agent dispatches.
+
+### `/diataxis migrate`
+
+One-shot migration of legacy audience-based wikis (`development/` + `operational/` + `design/` + `architecture/`) to the six-section documentation layout. Subsumes the harness's predecessor [`migrate-to-diataxis`](https://github.com/alexherrero/agentm/blob/main/harness/skills/migrate-to-diataxis.md) skill — same contract: preview-first, deterministic classification by heading shape per the crickets-conventions design's documentation domain, `git mv` for blame preservation, mode-mixed pages flagged for human split (delegates to `/diataxis repair` for the actual split work). Auto-seeds `wiki/.diataxis` marker + `wiki/.diataxis-conventions.md` (per-repo overrides) post-migration. **Never commits** — operator stages + commits manually after reviewing diff (single-commit safety net via operator-driven commit boundary).
+
+#### Invocation shape
+
+```
+/diataxis migrate [--wiki-root <path>] [--preview | --execute | --yes] [--skip-precheck]
+```
+
+| Arg | Required | Default | Meaning |
+|---|---|---|---|
+| `--wiki-root <path>` | no | `./wiki` | Wiki root directory. |
+| `--preview` | no | default behavior (no flag = preview + hint) | Emit preview only; never touch filesystem. Exit 0. |
+| `--execute` | no | off | Apply migration. |
+| `--yes` | no | off | Synonym for `--execute` (matches predecessor convention). |
+| `--skip-precheck` | no | off | Skip clean-tree + already-migrated preconditions. **Testing-fixture only**; operators should never use this. |
+
+#### Preconditions (matches predecessor)
+
+Before any filesystem change, all of these must be true:
+
+1. **Clean working tree** — `git status --porcelain` must be empty. Abort with clear error otherwise.
+2. **`wiki/` directory exists** at the repo root.
+3. **`wiki/.diataxis` marker does NOT exist** — if present, migration already ran; abort with "already migrated".
+4. **At least one legacy mode-dir exists** — one of `development/`, `operational/`, `design/`, `architecture/` must be present. If none, this is already a non-audience layout; abort with "nothing to migrate".
+
+#### Classification rules
+
+Applied in order; first match wins:
+
+| Rule | Pattern | Target |
+|---|---|---|
+| **ADR** | H1 matches `# ADR \d{4}:` OR path under `decisions/` with `NNNN-*.md` | `explanation/decisions/<basename>` |
+| **Status page** | NOTE block in first 25 lines with `**Status:**` + `**Plan:**` | `explanation/<basename>` |
+| **Tutorial** | `## Step N —` heading + `## What you learned` + `## Next` | `how-to/<basename>` + injected `<!-- mode: tutorial -->` hint (no `tutorials/` folder) |
+| **How-to** | `## Steps` H2 OR ≥3 numbered imperative steps in first 40 lines, AND no `## Rationale\|Why\|Background\|Context` | `how-to/<basename>` |
+| **Reference** | `## ⚡ Quick Reference` or `## Quick Reference` in first 20 lines OR ≥60% table lines | `reference/<basename>` |
+| **Mode-mixed (flag)** | ≥2 of {how-to, reference, explanation} fire with competing strength | **Flag for human split** — page stays at old path; preview emits `NEEDS HUMAN SPLIT`. Operator runs `/diataxis repair` after migration for the split. |
+| **Explanation (default)** | Anything else | `explanation/<basename>` |
+
+Classification is deterministic (no LLM, no random sampling, no wall-clock).
+
+#### Step-by-step flow
+
+**Step 1 — Precondition check** (skipped under `--skip-precheck`). Abort with clear error on any failure.
+
+**Step 2 — Walk wiki/** for all `.md` files, excluding structural pages (`Home.md`, `_Sidebar.md`, `README.md`).
+
+**Step 3 — Classify each page** by applying the rules above; collect mode-mixed pages for human-split flagging.
+
+**Step 4 — Compute new paths** preserving basename. ADRs stay under `explanation/decisions/`. Mode-mixed pages get `new_path = None` (no move).
+
+**Step 5 — Emit preview** to stdout. `MOVES` + `NEEDS HUMAN SPLIT` + `POST-MIGRATION` sections.
+
+**Step 6 — Apply (if `--execute` or `--yes`)**:
+
+1. `git mv` each page from old to new path. Using `git mv` is what lets git detect the rename so `git log --follow` preserves blame.
+2. Create `wiki/.diataxis` marker (empty file).
+3. Auto-seed `wiki/.diataxis-conventions.md` with detected conventions.
+4. **Do not commit.** Operator stages + commits manually after reviewing diff.
+
+**Step 7 — Final summary** with per-stat counts + NEXT-steps for operator (git status review + blame spot-check + manual split via `/diataxis repair` + check-wiki strict run + commit).
+
+#### Examples
+
+```bash
+# Default: preview only (no flag) + hint
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/migrate.py
+# Explicit preview-only (preview-first contract)
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/migrate.py --preview
+# Apply the migration
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/migrate.py --execute
+# Skip prompts (synonym)
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/migrate.py --yes
+```
+
+#### Failure modes (graceful)
+
+- **Dirty working tree** → exit 1 with "git status --porcelain non-empty; commit or stash first".
+- **Already migrated** (`.diataxis` exists) → exit 1 with "already migrated; remove marker to re-run".
+- **No legacy dirs** → exit 1 with "nothing to migrate; use /diataxis author for fresh projects".
+- **Missing wiki root** → exit 1 with operator next-step.
+- **`git mv` fails** (file moved already, permission denied) → error logged per-file; migration continues with other files; final summary reports `errors: N`; exit 2 if any errors.
+
+#### Anti-patterns
+
+- **Don't run `--skip-precheck` outside CI smoke tests.** It bypasses critical safety checks (clean tree + already-migrated guard); production use without these has caused real losses during the predecessor's dogfood era.
+- **Don't `git commit` immediately after migration.** Review the diff first; spot-check `git log --follow` on a couple of moved pages to verify blame preserved; only then commit. The single-commit safety net (entire migration in one commit) only works if you actually examine the migration before committing.
+- **Don't hand-edit `.diataxis-conventions.md` immediately**. Let the auto-seeded version run for a session or two so you can spot which conventions actually need overriding vs. which the defaults handle well. Premature editing here defeats the convention-evolution learning loop.
+
+> [!NOTE]
+> **Predecessor relationship**: harness's [`migrate-to-diataxis.md`](https://github.com/alexherrero/agentm/blob/main/harness/skills/migrate-to-diataxis.md) is being deprecated alongside this part's ship (plan #13 part 4). Predecessor stays in the harness through v1 dogfood window (operators with mid-flight installs can keep using it if needed); follow-up harness PATCH release removes the predecessor file entirely once `/diataxis migrate` proves out.
+
+### `/diataxis classify <file>`
+
+Single-page mode classification — operator-debug surface + the `diataxis-evaluator` sub-agent's primary invocation surface for ambiguous cases. Takes a file path; returns mode + confidence + per-mode scores + rationale + `needs_subagent` flag. Tier-1 (deterministic Python heuristic in `classify.py`) handles clear cases via regex + heading-shape rules from the crickets-conventions design's documentation domain. Tier-2 (`diataxis-evaluator` sub-agent) handles ambiguous mode-mixed pages where heuristic scoring is tight (default confidence threshold 0.7).
+
+#### Invocation shape
+
+```
+/diataxis classify <file> [--threshold N] [--no-subagent] [--stub]
+```
+
+| Arg | Required | Default | Meaning |
+|---|---|---|---|
+| `<file>` | yes | — | Path to the wiki page to classify. |
+| `--threshold N` | no | `0.7` | Confidence threshold below which Tier-1 emits `needs_subagent: true`. |
+| `--no-subagent` | no | off | Never set `needs_subagent: true`; return Tier-1 result even if ambiguous. Operator-debug + scripting. |
+| `--stub` | no | off | When sub-agent dispatch would fire, emit `needs_subagent: true` marker without actually invoking sub-agent. Used by CI smoke tests to avoid live LLM calls. |
+
+#### Step-by-step flow
+
+**Step 1 — Read file.** Halt with `"ERROR: page not found"` if missing.
+
+**Step 2 — Strip frontmatter.** If file starts with `---`, parse YAML frontmatter (best-effort tolerant); else treat whole file as body.
+
+**Step 3 — Score 4 modes** via the heuristic engine in `classify.py`:
+
+- **Tutorial**: `## Step N — ...` heading + `## What you learned` + `## Next` → 0.95; partial signals 0.5-0.75.
+- **How-to**: `## Steps` section → 0.85; ≥3 numbered imperative steps in first 40 lines → 0.65; penalty 50% if `## Rationale|Why|Background|Context` sections detected (mode-mixed signal).
+- **Reference**: `## ⚡ Quick Reference` heading near top → 0.8; ≥60% table lines → 0.9.
+- **Explanation**: default mode; `1.0 - max(other 3)`; bumped to 0.85 if ADR-shape (`> [!NOTE]` block with `Status:` line) detected.
+
+**Step 4 — Pick winning mode** (highest score). Mode-mixed flag = true if ≥1 other mode within 0.2 of winner AND above 0.5.
+
+**Step 5 — Decide on sub-agent dispatch.** `needs_subagent: true` when (a) winning score < `--threshold`, OR (b) `mode_mixed: true`. Default threshold 0.7.
+
+**Step 6 — Return classification.** JSON: `{mode, confidence, rationale, mode_mixed, needs_subagent, scores: {tutorial, how-to, reference, explanation}}` + (when caller dispatches) `suggested_split: [{mode, body_section_ranges}]`.
+
+#### Sub-agent dispatch (Tier 2)
+
+When `needs_subagent: true`, the caller (typically `/diataxis author --intent` or future `/diataxis check` / `/diataxis repair` from part 3) dispatches the `diataxis-evaluator` sub-agent with the caller-supplies-inline-rubric pattern documented in [`agents/diataxis-evaluator.md`](../../../agents/diataxis-evaluator.md). Sub-agent has **zero filesystem write scope** (allowlist Read/Glob/Grep/WebFetch only) — returns classification decision; caller acts on it.
+
+The CLI itself doesn't dispatch sub-agents directly — it returns the marker + lets the calling skill body handle dispatch. Same pattern as `adapt_skills.py` from plan #7b task 4.
+
+#### Examples
+
+```bash
+# Clear tutorial page → mode: tutorial, confidence: 0.95
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/classify.py \
+  wiki/how-to/01-Getting-Started.md
+
+# Ambiguous mode-mixed page → needs_subagent: true
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/classify.py \
+  wiki/some/ambiguous.md
+# → {mode: "explanation", confidence: 0.575, mode_mixed: true, needs_subagent: true, ...}
+
+# Force Tier-1-only via --no-subagent (operator-debug)
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/classify.py \
+  wiki/some/ambiguous.md --no-subagent
+# → {needs_subagent: false, ...} (Tier-1 verdict regardless of confidence)
+
+# CI smoke-safe: --stub avoids actual sub-agent dispatch
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/classify.py \
+  wiki/some/ambiguous.md --stub
+# → {needs_subagent: true, dispatched_subagent: false, ...}
+```
+
+#### Failure modes (graceful)
+
+- **File not found** → exit 1 with the actual path checked.
+- **File empty** → emit `{mode: "explanation", confidence: 0.3, rationale: "empty page; default to explanation"}` (stub-style page; reasonable default).
+- **Frontmatter malformed** → ignore frontmatter; classify body only.
+- **All 4 modes score 0** → emit `explanation` with confidence based on `1.0 - max(others) = 1.0` (perfect default — no positive signal for any other mode).
+
+#### Anti-patterns
+
+- **Don't use `--no-subagent` in automation.** The `needs_subagent` flag is the signal to escalate; bypassing it loses information. `--no-subagent` is operator-debug only.
+- **Don't tune `--threshold` per-invocation.** The default 0.7 is tuned to v1 fixtures; operator-level threshold should be set globally via AgentMemory always-load entry (part 5 wires this).
+- **Don't dispatch the sub-agent without passing classify.py's Tier-1 output as rubric context.** The sub-agent's caller-supplies-inline-rubric contract expects the heuristic verdict + per-mode scores so it can validate or override. Bare dispatch wastes the deterministic signal.
+
+### `/diataxis capture <draft> <edited>`
+
+The **edit-driven** half of the style-learning loop. `/diataxis author` writes a draft composed as `template ⊕ base style-guide ⊕ overlay` (part 3 task 1). You then edit that draft in your own voice. This sub-command diffs your edits back into **generalizable voice lessons** and — after two operator gates — stores them so the *next* draft is composed with what you taught it. Where the decision-driven path (the AgentMemory convention read/write below) captures key:value judgment calls, this captures **prose voice**.
+
+It composes the deterministic engine ([`scripts/capture.py`](../scripts/capture.py)) with two operator gates and the read-only [`style-scope-evaluator`](https://github.com/alexherrero/crickets/blob/main/agents/style-scope-evaluator.md) sub-agent. **Nothing auto-commits** — both gates are operator-confirmed.
+
+```bash
+# `<draft>` is the originally-authored page (e.g. `git show HEAD:wiki/how-to/Foo.md`
+# saved to a temp file); `<edited>` is your edited version.
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/capture.py \
+    propose --draft /tmp/foo.draft.md --edited wiki/how-to/Foo.md
+```
+
+**Step 1 — Propose (deterministic; writes nothing).** `capture.py propose` diffs draft↔edited and clusters the changes by kind — **word-choice · rhythm · structure · cuts** (slop/jargon) **· additions** — emitting one draft lesson proposal `{trigger, guidance, before→after}` per non-empty bucket as JSON. The trigger defaults to the kind and the guidance is a scaffold; both are placeholders for you to generalize.
+
+**Step 2 — Gate 1: generality (operator).** For each proposal, read the `before→after` and decide whether it generalizes. Rewrite the scaffold `guidance` into the real lesson ("in any how-to, cut hedging adverbs") and give it a semantic `trigger` ("hedging-adverbs"). Reject one-offs — a lesson that's true only for this one page is not worth storing. Nothing is captured without your confirmation.
+
+**Step 3 — Gate 2: scope (evaluator recommends, operator confirms).** Dispatch the [`style-scope-evaluator`](https://github.com/alexherrero/crickets/blob/main/agents/style-scope-evaluator.md) sub-agent with the confirmed lesson + the existing overlay stores (its caller-supplies-inline-rubric contract). It recommends exactly **one** scope — `global | per-project | per-repo` — and you confirm or override. When torn, it recommends the narrower (reversible) scope.
+
+**Step 4 — Write.** `capture.py save` writes the confirmed lesson to that scope's **on-demand** store via [`agentmemory_conventions.confirm_save_lesson()`](../scripts/agentmemory_conventions.py) — **never** the always-load tier (the session-start loader skips `standards/voice/`):
+
+```bash
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/capture.py save \
+    --trigger hedging-adverbs --scope per-project --project-slug crickets \
+    --guidance "In any how-to, cut hedging adverbs (just, simply, easily)." \
+    --vault-path "$MEMORY_ROOT"
+```
+
+The store routing mirrors the resolver's read model (part 3 task 1): global → `<vault>/standards/voice/<date>-<trigger>.md` (the retired `<projects-space>/_global/wiki-style/` on a vault without `standards/voice/`) · per-project → `<projects-space>/<slug>/wiki-style/<date>-<trigger>.md` · per-repo → `<wiki-root>/.diataxis-conventions.md`. Project-keyed stores live in the vault's project space (see agentm ADR 0010), not under `personal-private/`. The next `/diataxis author` draft reads it back automatically.
+
+`<projects-space>` is the vault-root `Projects/` (a sibling of the memory root) on the current vault layout, `<memory-root>/desk/projects/` on the one before it, and `<memory-root>/projects/` before that. Both the read and the write side resolve it through [`scripts/vault_layout.py`](../scripts/vault_layout.py), which probes newest-first and takes the first that exists — so a lesson captured today lands exactly where the resolver reads it back, whichever layout this vault sits on. Pinning either literal is what silently emptied the overlay after the stage-2 migration.
+
+**A global lesson is written into `<vault>/standards/voice/`.** Since the memory-root trims (agentm-vault plan 05, 2026-09-11) the global store is part of `<vault>/standards/`, your own rule tree beside the memory root, and [`vault_layout.global_wiki_style_dir()`](../scripts/vault_layout.py) gives the read and the write side that same directory. Inside `capture.py save` the confirm prompt is the only check before that write: the cross-boundary confirm runs for per-repo writes alone, and `MEMORY_REVIEW_MODE=silent` in the environment skips the prompt.
+
+**Graceful-degrade (DC-3).** Per-repo writes land *outside* the MemoryVault, so they route through agentm's `permeable_boundary` cross-boundary confirm when the kernel is importable; absent it (crickets-local), the write degrades to the local confirm only and **announces** the degraded mode on stderr (`permeable_boundary unavailable …`) — never silent. The capture still works.
+
+#### Anti-patterns
+
+- **Don't skip gate 1.** The cluster bucketing is mechanical; the *generalization* is the judgment. Saving a raw before→after as a "lesson" stores a one-off, not voice.
+- **Don't default everything to `global`.** Global re-voices every wiki you author. The evaluator starts narrow for a reason — promote later via the `/diataxis promote` sub-command (below) once a lesson proves itself across many drafts.
+- **Don't run `save` in non-TTY/batch.** The operator-confirm gate denies non-interactive writes by default (no surprise saves); use `--mode silent` only in tests/automation you control.
+
+### `/diataxis relocate [--preview | --cleanup --yes | --rollback]`
+
+A **one-time, operator-run** migration that moves the global wiki/Diátaxis conventions out of the always-load tier (`diataxis-*.md` at the top of `<vault>/standards/`, injected into **every** session's context; the retired `<memory-space>/_always-load/` pen on an unmigrated vault) into the on-demand global store the resolver reads (`<vault>/standards/voice/*.md`; the retired `<projects-space>/_global/wiki-style/*.md` on a vault without `standards/voice/`) — so they load only when authoring. It touches your **live vault**, so it mirrors the [`migrate-harness-to-vault`](https://github.com/alexherrero/agentm/blob/main/scripts/migrate-harness-to-vault.sh) discipline: **preview-first, reversible, conflict-safe, never auto.**
+
+```bash
+# 1. ALWAYS preview first — prints WOULD: lines, mutates nothing:
+python3 src/wiki-maintenance/skills/diataxis-author/scripts/relocate.py \
+    --preview --vault-path "$MEMORY_ROOT"
+# 2. Relocate (copies; leaves the source in place; records a rollback manifest):
+python3 …/relocate.py --vault-path "$MEMORY_ROOT"
+# 3. (optional) Remove the now-redundant always-load sources, after a byte-identical verify:
+python3 …/relocate.py --cleanup --yes --vault-path "$MEMORY_ROOT"
+# Reverse a relocation at any point (restores cleaned-up sources from the copies):
+python3 …/relocate.py --rollback --vault-path "$MEMORY_ROOT"
+```
+
+- **Conflict-safe:** a byte-differing dest is never overwritten (`CONFLICT`, exit 2); a byte-identical dest is a no-op (`SKIP-IDENTICAL`). Idempotent.
+- **Reversible:** relocated filenames are recorded in a manifest (`<dest>/.relocated-from-always-load`); `--rollback` reverses *only* those, restoring any cleaned-up source from its copy and leaving lessons captured directly into `_global` untouched.
+- **On a migrated vault both ends are inside `<vault>/standards/`**, your own rule tree: the copy and its manifest land in `standards/voice/`, and `--cleanup --yes` deletes the source from `standards/`. Before the memory-root trims the destination was `_global`, a pseudo-project in the project space (see agentm ADR 0010), never `personal-private/`.
+
+Today this is typically a **no-op** — no `diataxis-*.md` exist in the always-load tier yet (the capture loop is what creates global voice lessons, and it writes straight to the global voice store). The script ships the mechanism for when they do; whether your `docs-prose-style` entry itself relocates is an operator call you make by widening `--source-glob` after reviewing the preview.
+
+#### Anti-patterns
+
+- **Don't skip `--preview`.** It's the whole point — see exactly what moves before touching the live vault.
+- **Don't `--cleanup` without first confirming the copy round-trips.** Cleanup only deletes a source whose dest is byte-identical, but verify the preview first.
+
+### `/diataxis promote [--preview | --section Voice|Banned|Structure | --no-bullet]`
+
+The **operator-gated** path that graduates a *proven* overlay voice lesson into the committed repo base. Once a lesson has earned its place across many drafts (you've stopped re-confirming it), promote it into `style/base-style-guide.md` so every fresh draft inherits it from the committed floor — no overlay needed. This is a **maintainer** operation: it edits the **`src/`** base (never `dist/`), found by walking up to the crickets source tree; an installed plugin with no `src/` tree is refused (exit `2`) — installed consumers get base + local overlay only, never a write path to the shipped base.
+
+```bash
+# 1. ALWAYS preview first — prints the unified diff against the base, writes nothing:
+python3 …/skills/diataxis-author/scripts/promote.py \
+    --lesson "<vault>/standards/voice/<date>-<trigger>.md" --preview
+# 2. Apply — writes ONLY the src/ base, leaving it UNCOMMITTED for you to review:
+python3 …/promote.py --lesson "<…>.md"
+# 3. (maintainer) review the diff, commit, then regenerate dist/ so it ships:
+git add src/wiki-maintenance/skills/diataxis-author/style/base-style-guide.md
+git commit -m "style(base): promote <trigger>" && python3 scripts/generate.py build
+```
+
+- **Preview-first, never auto-commits.** `--preview` writes nothing; apply writes only the `src/` base and never runs `git` — you review + commit + `generate.py build` yourself. The non-TTY apply gate denies surprise writes (use `--mode silent` only in tests/automation you control).
+- **What it promotes:** the lesson's `banned:` terms merge into the base `banned:` directive (deduped, case-insensitive); the guidance becomes a bullet under `## Voice` (or `--section Banned`/`Structure`; `--no-bullet` merges banned terms only).
+- **Idempotent:** a lesson already present in the base is a clean no-op — re-running never duplicates a bullet or a banned term.
+
+#### Anti-patterns
+
+- **Don't promote a lesson that hasn't proven out.** The base re-voices *every* wiki you author; promote only what's earned global scope. An over-eager promote is harder to walk back than an overlay tweak — keep it in the overlay until it's stable.
+- **Don't skip `--preview`.** See exactly which bullet and banned terms land before editing the committed floor.
+
+## Tool allowlist
+
+**`Read, Write, Edit, Glob, Grep, Bash`** — `Bash` is required for the `check-wiki.py` subprocess invocation in `/diataxis check` (part 3) + `git mv` invocations in `/diataxis migrate` (part 4). Python scripts under `skills/diataxis-author/scripts/` (added in parts 2-5) handle the deterministic heavy lifting (mode classification heuristics, link rewriting, template loading). Sub-agent dispatch happens via the agent's standard task delegation; the skill body itself doesn't shell out to other agents.
+
+Python-side scripts can use whatever they need (network for the crickets-conventions design's documentation-domain cross-reference via WebFetch if any; subprocess for git + check-wiki.py; filesystem for everything else) — the allowlist restriction is on the SKILL.md body itself, not the dispatched scripts.
+
+## Host scope
+
+`supported_hosts: [claude-code, antigravity]` — `gemini-cli` excluded per [ROADMAP item #15](https://github.com/alexherrero/agentm/blob/main/.harness/ROADMAP.md) (Gemini-CLI host removal, shipped in toolkit v0.9.0; rationale in the [crickets-hld design](https://github.com/alexherrero/crickets/wiki/crickets-hld)). Same scope as the sibling `memory` skill.
+
+## Cross-references
+
+- **Parent design**: [diataxis-author](https://github.com/alexherrero/crickets/wiki/crickets-wiki) — the canonical "Why we built this" entry point per the locked design call from plan #6.
+- **Diátaxis spec source**: [crickets-conventions design — documentation domain](https://github.com/alexherrero/crickets/wiki/crickets-conventions) — the canonical convention this skill enforces.
+- **Predecessor (being subsumed)**: [agentm `migrate-to-diataxis` skill](https://github.com/alexherrero/agentm/blob/main/harness/skills/migrate-to-diataxis.md) — one-shot migration skill that `/diataxis migrate` ports + extends. Ships deprecation notice in plan #13 part 4.
+- **Sibling sub-agent**: [`diataxis-evaluator`](https://github.com/alexherrero/crickets/blob/main/agents/diataxis-evaluator.md) — read-only sub-agent for ambiguous mode classification. Dispatched from `/diataxis classify` (operational from part 2) + `/diataxis repair` mode-mixed splits (operational from part 3).
+- **Sibling sub-agent (style-learning)**: [`style-scope-evaluator`](https://github.com/alexherrero/crickets/blob/main/agents/style-scope-evaluator.md) — read-only sub-agent for voice-lesson scope placement. Dispatched from `/diataxis capture` as gate 2 (recommends one of global / per-project / per-repo; the operator confirms).
+- **Sibling skill (orchestration pattern)**: [`memory`](../../memory/SKILL.md) — `/memory adapt-skills` + `adapt-evaluator` is the orchestration-skill + worker-sub-agent pattern this skill mirrors.
+- **External worker**: [`documenter` sub-agent (harness-side)](https://github.com/alexherrero/agentm/blob/main/harness/agents/documenter.md) — Diátaxis-aware mechanical-write worker. Repurposed: dispatched from `/diataxis repair` mode-mixed splits (part 3) + existing harness `/release` direct dispatch (part 5 transitions via skill-presence check).
+- **Validator complement**: [`scripts/check-wiki.py`](https://github.com/alexherrero/agentm/blob/main/scripts/check-wiki.py) — strict-mode validator the skill wraps for `/diataxis check`.
+
+## Status
+
+This skill is **fully built**, not a stub — all 8 sub-commands (`author`, `check`, `repair`, `migrate`, `classify`, `capture`, `relocate`, `promote`) are implemented across 12 scripts under `scripts/`, with 8 dedicated test files (`scripts/test_diataxis_*.py` in the repo's top-level `scripts/`). Plan #13's original 5-part staged build (author-classify, check-repair, migrate-subsume, agentmemory-docs-release) has landed in full.
+
+Re-audit triggers (per design doc Tech Debt + Risks — still standing regardless of build status): mode-classification false-positive rate (parent §1); convention drift across operator's three Diátaxis wikis (parent §2); `documenter` dispatch transition correctness (parent §3); AgentMemory write-back fatigue (parent §4).

@@ -2,8 +2,8 @@
 name: conflict-merger-session-start
 description: SessionStart hook that detects GDrive/DriveFS-induced conflict + duplicate files (`<file> (conflicted copy YYYY-MM-DD).md`, `[Conflict]`, `Copy of …`, ` (N)`) anywhere under the Obsidian vault, plus the DriveFS `lost_and_found/` dump, and surfaces an operator-facing notice per pair. Detection is heuristic; safe to graceful-skip when no vault resolves or the present engine is absent (nothing to scan).
 kind: hook
-supported_hosts: [claude-code]
-version: 0.1.0
+supported_hosts: [claude-code, antigravity]
+version: 0.2.0
 ---
 
 # conflict-merger-session-start — GDrive conflict-file detection at SessionStart
@@ -51,7 +51,7 @@ Conflict-file accumulation correlates with operator-active multi-device work. Se
 
 ## Host support
 
-**Claude-only.** `SessionStart` has no Antigravity equivalent, so this hook is declared `supported_hosts: [claude-code]` — the Antigravity plugin carries the vault backend scripts but not this hook. (This mirrors the documented SessionStart gap: hooks bound to events Antigravity lacks don't ship to that host.)
+**Claude Code and Antigravity.** agy 1.4 has a `SessionStart` event, so the Antigravity plugin carries this hook too. It runs through `hooks/_agy_hook_adapter.py`, which runs the script from the project root and hands its stdout to agy as a system message at session start. On a version of agy older than 1.4 there is no such event, and the `vault-doctor` skill is the on-demand substitute.
 
 ## Settings fragment
 

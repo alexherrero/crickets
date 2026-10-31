@@ -1,0 +1,12 @@
+{
+  "harness-context-session-start": {
+    "SessionStart": [
+      {
+        "command": "python3 ./hooks/_agy_hook_adapter.py SessionStart bash ./hooks/harness-context-session-start/harness-context-session-start.sh",
+        "timeout": 5,
+        "type": "command"
+      }
+    ],
+    "enabled": true
+  }
+}

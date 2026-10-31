@@ -4,6 +4,7 @@ description: Prefer Edit to Write for existing files; Write only for new files o
 kind: rule
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
+trigger: model_decision
 ---
 
 ## Edit-over-Write
