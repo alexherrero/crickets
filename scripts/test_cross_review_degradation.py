@@ -320,6 +320,24 @@ def _write_model_checking_agy(bin_dir: Path, log: Path) -> None:
     ))
 
 
+class AgentmRecallTests(unittest.TestCase):
+    """agentm's agy plugin runs recall hooks on every agy call. A review judges
+    the material cold, so cross-review.sh switches that off for its own call."""
+
+    def test_agy_is_run_with_the_recall_switch_off(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bin_dir = Path(tmp)
+            log = bin_dir / "recall_switch.log"
+            _write_fake_agy(bin_dir, (
+                f'printf \'%s\\n\' "${{AGENTM_AGY_RECALL-unset}}" >> "{log}"\n'
+                'echo "NO ISSUES FOUND"\n'
+            ))
+            result = _run_cross_review("=== DIFF ===\nsome diff\n", path_prefix=bin_dir,
+                                       env_extra={"AGENTM_AGY_RECALL": "on"})
+            self.assertEqual(result.returncode, 0, f"stderr={result.stderr!r}")
+            self.assertEqual(log.read_text(encoding="utf-8").split(), ["off"])
+
+
 class ModelTests(unittest.TestCase):
     """The model cross-review.sh asks agy for. agy 1.4.0 rejects a name it no
     longer serves, so on 2026-10-16 the old "Gemini 3.1 Pro (High)" pin sent

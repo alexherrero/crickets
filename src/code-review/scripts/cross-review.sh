@@ -146,7 +146,11 @@ call_agy() {
   # explicitly closed (a connected-but-unread pipe was observed to
   # intermittently hang until --print-timeout fired).
   local full_prompt="${prompt}"$'\n\n=== REVIEW MATERIAL ==='$'\n'"${material}"
-  agy -p "$full_prompt" --model "$MODEL" --print-timeout "${PRINT_TIMEOUT_SECS}s" \
+  # AGENTM_AGY_RECALL=off: agentm's agy plugin (when installed) otherwise runs its
+  # recall hooks for this call, putting the operator's memory vault in front of
+  # the reviewer. A review is meant to judge the material cold, and the recall
+  # would also spend plan quota on every call. Harmless when the plugin is absent.
+  AGENTM_AGY_RECALL=off agy -p "$full_prompt" --model "$MODEL" --print-timeout "${PRINT_TIMEOUT_SECS}s" \
     < /dev/null 2>"$agy_stderr"
 }
 
