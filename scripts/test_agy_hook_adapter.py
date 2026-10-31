@@ -112,6 +112,8 @@ class PayloadTests(unittest.TestCase):
         self.assertTrue(adapter.claude_payload("Stop", {"executionNum": 2}, "/w")["stop_hook_active"])
 
 
+@unittest.skipIf(os.name == "nt", "the hooks are bash scripts run through python3; "
+                 "they are wired for agy on macOS and Linux only (Antigravity-Limitations)")
 class EndToEndTests(unittest.TestCase):
     """Run the adapter as agy does: a process, JSON on stdin, JSON on stdout."""
 
