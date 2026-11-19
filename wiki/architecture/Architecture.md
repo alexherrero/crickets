@@ -34,7 +34,7 @@ The capabilities crickets ships — built, generated, and composed by the system
 - [Diagnostics](crickets-diagnostics) — analyzing failures and suggesting what went wrong; it diagnoses, it doesn't fix *(designed, not yet built)*.
 - [Reporting](crickets-reporting) — the operator-facing digest of what autonomous work did *(designed, not yet built)*.
 - [Obsidian vault](crickets-obsidian-vault) — keeps the vault in a synced folder.
-- [vault-git](crickets-vault-git) — git-backed vault storage: history and off-device backup *(forthcoming)*.
+- [vault-git](crickets-vault-git) — how the vault's history and off-device backup run today, outside crickets *(plugin closed, not needed)*.
 
 ## Recent changes
 

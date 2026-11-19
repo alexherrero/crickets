@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The `vault-git` design now records what runs, and the plugin it proposed is closed as not needed** (operator ruling of 2026-11-03). [`crickets-vault-git`](wiki/designs/crickets-vault-git.md) proposed a plugin that made a private GitHub repo the vault's transport; it was never built. The page now describes the setup in use: the AgentM daemon commits `~/Vault` to its own git repository, a launchd job pushes it to a private Gitea remote on the home NAS every four hours and verifies each push, and Google Drive mirrors the folder as files. `status: proposed` → `launched` with `governs: []`. The Designs index, Architecture page and Obsidian vault backend page now describe it the same way. Docs only, no plugin version change.
+
 ### Removed
 
 - **`learn-forward` and `codebase-improvement` retire with agentm's forward learning** (`research` 0.3.0, `wiki` 0.13.1; closes [#268](https://github.com/alexherrero/crickets/issues/268)). The operator scrapped forward learning on 2026-10-02, and agentm [#841](https://github.com/alexherrero/agentm/pull/841) deleted `forward_learning.py` and `watchlist_review.py` and archived `resources/watchlist/`. A weekly field brief replaces it. `learn-forward` had no engine left: the bridge found agentm's scripts dir and then raised `FileNotFoundError` on the missing file, so `check-all`'s unit-test gate failed on any machine with a current agentm checkout (CI has none, so it skipped and stayed green). `codebase-improvement` would have recreated the archived folder, and nothing read its findings once `watchlist_review.py` went.

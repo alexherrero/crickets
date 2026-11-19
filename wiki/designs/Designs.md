@@ -39,7 +39,7 @@ Each capability is its own plugin with its own design, standing apart from the a
 | [Token audit](crickets-token-audit) | Measuring what a session costs, with a live meter | Final |
 | [Privacy](crickets-privacy) | Keeping secrets and personal data out of what gets committed or shared | Final |
 | [Obsidian vault](crickets-obsidian-vault) | Keeps the vault in a synced folder | Final |
-| [vault-git](crickets-vault-git) | Git-backed vault storage — version history and off-device backup | Planned |
+| [vault-git](crickets-vault-git) | How the vault's history and off-device backup run today; the planned plugin was closed as not needed | Closed |
 
 ## See also
 

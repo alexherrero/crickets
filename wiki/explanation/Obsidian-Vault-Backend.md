@@ -95,6 +95,6 @@ The vault location is resolved at runtime, not baked into the plugin. The engine
 - [CI gates](CI-Gates) — the gate battery this backend's conformance suite runs in.
 - [Plugin anatomy](Plugin-Anatomy) — what a crickets plugin's `scripts/` payload is.
 - [Antigravity limitations](Antigravity-Limitations) — why the automatic session-start nudge is Claude-only, and the host-gap register it belongs to.
-- [obsidian-vault design](crickets-obsidian-vault) · [vault-git design](crickets-vault-git) — the deeper design.
+- [obsidian-vault design](crickets-obsidian-vault) — the deeper design. [vault-git](crickets-vault-git) — how the vault's history and backup run outside this plugin.
 
 [Reference](Reference) · [Architecture](Architecture) · [Home](Home)
