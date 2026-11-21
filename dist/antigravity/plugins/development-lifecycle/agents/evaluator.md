@@ -3,7 +3,7 @@ name: evaluator
 description: Read-only grader returning PASS/NEEDS_WORK against an explicit rubric. Called from a fresh context that never saw the build. Caller supplies the artifact reference and the rubric inline in the dispatch prompt.
 kind: agent
 supported_hosts: [claude-code, antigravity]
-version: 0.1.0
+version: 0.1.1
 ---
 
 # evaluator — fresh-context grader

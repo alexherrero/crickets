@@ -3,7 +3,8 @@ name: style-scope-evaluator
 description: Read-only sub-agent for the diataxis-author style-learning loop. Dispatched by the edit-driven capture flow (wiki-maintenance part 3, task 3) once the operator has confirmed a voice lesson is generalizable. Given the confirmed lesson plus the existing overlay stores, it recommends exactly ONE storage scope — global | per-project | per-repo — for the operator to confirm before the write. Caller-supplies-inline-rubric pattern; tool allowlist is Read/Glob/Grep with no write access — it recommends a scope, it never writes the lesson. Mirrors the read-only diataxis-evaluator sibling (DC-4).
 kind: agent
 supported_hosts: [claude-code, antigravity]
-version: 0.1.0
+version: 0.1.1
+tools: Read, Glob, Grep
 ---
 
 # style-scope-evaluator — read-only sub-agent for voice-lesson scope placement

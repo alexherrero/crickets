@@ -15,7 +15,7 @@ bash scripts/check-all.sh
 
 | Gate | What it checks |
 |---|---|
-| `lint_src` | `src/` source of truth — `group.yaml` + every primitive's frontmatter (incl. the `standalone ⟺ requires: []` invariant and `enhances:` cross-references) |
+| `lint_src` | `src/` source of truth — `group.yaml` + every primitive's frontmatter (incl. the `standalone ⟺ requires: []` invariant and `enhances:` cross-references, and each agent's `tools:` allowlist against what the agent says it may do) |
 | `capability naming` | `check-capability-naming.py` — plugin and capability names obey the AG naming rule |
 | `no-dangling-name` | `check-no-dangling-name.py` — repo-wide gate against dangling references to a retired/renamed plugin or capability name |
 | `no-duplicate-diagnosis` | `check-no-duplicate-diagnosis.py` — the "no two diagnosis engines" regression net; bespoke failure-classification logic must delegate to `diagnose.py`, never re-grow its own inline category/confidence judgment |

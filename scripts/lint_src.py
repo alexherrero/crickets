@@ -29,12 +29,22 @@ primitive frontmatter:
     (`KIND_HOST_EXPRESSIBLE` in `src_model.py`) — catches a primitive
     overstating support for a host whose emitter silently drops its kind.
   - `name` matches the primitive's dir (skill/hook) or file stem (agent).
+agent tool allowlists (`kind: agent` only):
+  - every agent carries a `tools:` line, unless its `description` says
+    "Full tool access" — Claude Code grants a tools-less agent EVERY tool, so a
+    missing line is never a neutral default; it has to be a stated choice.
+  - an agent that says it is read-only (in its `description`, or in its body
+    as "read-only by contract" / "a read-only <agent|sub-agent|grader|…>")
+    must carry a `tools:` line naming none of Edit, Write, NotebookEdit,
+    MultiEdit, and not `*`. A read-only contract held only in prose is the
+    failure this guards: the host enforces the allowlist, not the body.
 
 Run: `python3 scripts/lint_src.py`
 Requires PyYAML (CI installs it).
 """
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -55,10 +65,78 @@ from src_model import (  # noqa: E402  (after the yaml guard by design)
     KNOWN_KIND_DIRS,
     PRIMITIVE_KINDS,
     read_frontmatter,
+    strip_frontmatter,
 )
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "src"
+
+
+# Claude Code tools that change files. A read-only agent's allowlist names none
+# of them (`*` grants all of them).
+WRITE_TOOLS = frozenset({"Edit", "Write", "NotebookEdit", "MultiEdit"})
+_FULL_ACCESS_RE = re.compile(r"\bfull tool access\b", re.I)
+_READ_ONLY_RE = re.compile(r"\bread-only\b", re.I)
+# A body's self-declaration of read-only status. Deliberately narrow: an agent
+# that writes may still describe one tool as "read-only" (documenter's
+# "Bash (read-only: `git diff`, ...)"), which is not a claim about the agent.
+_READ_ONLY_BODY_RE = re.compile(
+    r"read-only by contract"
+    r"|\b(?:a|an|is|are)\s+\**read-only\**\s+(?:[\w-]+\s+)?"
+    r"(?:sub-agent|subagent|agent|grader|explorer|coordinator|role|reviewer|evaluator)\b",
+    re.I,
+)
+
+
+def _parse_tools(value) -> list[str] | None:
+    """`tools:` as Claude Code reads it — a comma string or a YAML list.
+    None when the value has neither shape or names nothing."""
+    if isinstance(value, str):
+        items = [t.strip() for t in value.split(",")]
+    elif isinstance(value, list) and all(isinstance(t, str) for t in value):
+        items = [t.strip() for t in value]
+    else:
+        return None
+    items = [t for t in items if t]
+    return items or None
+
+
+def claims_read_only(fm: dict, body: str) -> bool:
+    """True when the agent says it is read-only — in its description, or in
+    its body as a self-declaration (see `_READ_ONLY_BODY_RE`)."""
+    return bool(_READ_ONLY_RE.search(str(fm.get("description") or ""))
+                or _READ_ONLY_BODY_RE.search(body))
+
+
+def lint_agent_tools(path: Path, fm: dict, body: str) -> list[tuple[str, str]]:
+    """Agent tool-allowlist rules. Returns `(key, reason)` pairs; `key` is the
+    frontmatter field to anchor the line number to."""
+    out: list[tuple[str, str]] = []
+    desc = str(fm.get("description") or "")
+    read_only = claims_read_only(fm, body)
+    if "tools" not in fm:
+        if read_only:
+            out.append(("description",
+                        "agent says it is read-only but has no 'tools:' line — Claude Code "
+                        "grants a tools-less agent every tool, Edit and Write included; add "
+                        "an allowlist without " + "/".join(sorted(WRITE_TOOLS))))
+        elif not _FULL_ACCESS_RE.search(desc):
+            out.append(("description",
+                        "agent has no 'tools:' line, so Claude Code grants it every tool — "
+                        "add an allowlist, or say 'Full tool access' in its description "
+                        "if that is the intent"))
+        return out
+    tools = _parse_tools(fm["tools"])
+    if tools is None:
+        out.append(("tools", f"'tools' must be a comma-separated string or a list of tool "
+                             f"names (got {fm['tools']!r})"))
+        return out
+    if read_only:
+        wide = sorted(t for t in tools if t in WRITE_TOOLS or t == "*")
+        if wide:
+            out.append(("tools", f"agent says it is read-only but its 'tools:' line grants "
+                                 f"{', '.join(wide)}"))
+    return out
 
 
 def _line_of(path: Path, key: str) -> int:
@@ -208,6 +286,10 @@ def lint_tree(src: Path) -> list[str]:
             expected = name_of(path)
             if fm.get("name") and fm["name"] != expected:
                 err(path, f"'name' is {fm['name']!r} but the primitive is named {expected!r}", _line_of(path, "name"))
+            if kind == "agent":
+                body = strip_frontmatter(path.read_text(encoding="utf-8"))
+                for key, reason in lint_agent_tools(path, fm, body):
+                    err(path, reason, _line_of(path, key))
 
     return errors
 
