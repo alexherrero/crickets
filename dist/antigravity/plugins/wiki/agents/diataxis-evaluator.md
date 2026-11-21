@@ -3,7 +3,7 @@ name: diataxis-evaluator
 description: Read-only sub-agent for ambiguous Diátaxis mode-classification cases. Dispatched by `diataxis-author` skill's `/diataxis classify <file>` and `/diataxis repair`'s mode-mixed split branch. Reads a candidate page + the operator's per-repo conventions + the crickets-conventions design's documentation-domain machine-enforceable rules; returns classification + confidence + rationale + (if mode-mixed) suggested split. Caller-supplies-inline-rubric pattern; tool allowlist is Read/Glob/Grep/WebFetch with no write access — adapt-don't-import-style architectural enforcement.
 kind: agent
 supported_hosts: [claude-code, antigravity]
-version: 0.1.0
+version: 0.1.1
 ---
 
 # diataxis-evaluator — read-only sub-agent for Diátaxis mode-classification ambiguity

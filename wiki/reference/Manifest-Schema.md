@@ -13,6 +13,7 @@ You use these fields in the primitive frontmatter atop a manifest file:
 | `kind` | yes | enum | `skill` · `agent` · `hook` · `command` · `mcp-server` · `status-line` · `output-style` · `workflow` · `rule` · `snippet` · `settings-fragment` |
 | `supported_hosts` | yes | list | non-empty subset of `[claude-code, antigravity]` |
 | `version` | no | string | semver `MAJOR.MINOR.PATCH` (optional `-prerelease`) |
+| `tools` | agents | string or list | Claude Code tool allowlist. Required unless the `description` says "Full tool access"; a read-only agent names no `Edit` · `Write` · `NotebookEdit` · `MultiEdit` · `*` |
 
 The primitive's **group is the folder it lives in**. You do not use a `group:` field.
 

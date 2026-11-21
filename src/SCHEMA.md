@@ -85,6 +85,7 @@ YAML frontmatter atop each primitive (`SKILL.md`, agent `.md`, hook `hook.md`, â
 | `kind` | **yes** | enum | `skill` \| `agent` \| `hook` \| `command` \| `mcp-server` \| `status-line` \| `output-style` \| `workflow` \| `rule` \| `snippet` \| `settings-fragment`. |
 | `supported_hosts` | **yes** | list | Subset of `[claude-code, antigravity]`. |
 | `version` | no | string | Semver. |
+| `tools` | agents | string or list | Claude Code tool allowlist (`Read, Glob, Grep` or a YAML list). An agent without it gets **every** tool, so `lint_src` requires it unless the `description` says "Full tool access". An agent that says it is read-only must name none of `Edit`, `Write`, `NotebookEdit`, `MultiEdit` or `*`. The Antigravity emitter drops the line (see Antigravity-Limitations #5). |
 
 **Note:** the primitive's **group is its folder**, not a frontmatter field â€” there is no `group:` key. A primitive belongs to exactly one group; cross-plugin reuse is via the group's `requires:`, not multi-group membership.
 

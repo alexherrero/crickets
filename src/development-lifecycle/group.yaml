@@ -716,5 +716,5 @@ enhances:
 # two rules carry a trigger, and harness-context-session-start now runs on
 # agy's SessionStart. On agy a bare /plan is its own planning mode: type
 # /development-lifecycle:plan.
-version: 0.50.0
+version: 0.50.1
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

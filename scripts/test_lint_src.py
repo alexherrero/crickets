@@ -59,6 +59,16 @@ class TestLintSrc(unittest.TestCase):
         (d / f"{name}.md").write_text(f"---\n{fm}\n---\n# {name}\n", encoding="utf-8")
         return d
 
+    def _agent(self, group, name, *, description="d", tools=None, body=""):
+        d = self.src / group / "agents"
+        d.mkdir(parents=True, exist_ok=True)
+        fm = (f"name: {name}\ndescription: {description}\nkind: agent\n"
+              f"supported_hosts: [claude-code]\n")
+        if tools is not None:
+            fm += f"tools: {tools}\n"
+        (d / f"{name}.md").write_text(f"---\n{fm}---\n# {name}\n{body}\n", encoding="utf-8")
+        return d
+
     def test_valid_tree_passes(self):
         self._group("developer", standalone=True, requires=[])
         self._skill("developer", "foo")
@@ -120,6 +130,69 @@ class TestLintSrc(unittest.TestCase):
         )
         errs = lint_src.lint_tree(self.src)
         self.assertTrue(any("is named 'foo'" in e for e in errs), errs)
+
+    # --- agent tool allowlists ---
+
+    def _agent_errs(self, **kw):
+        self._group("developer")
+        self._agent("developer", "grader", **kw)
+        return lint_src.lint_tree(self.src)
+
+    def test_read_only_agent_with_read_tools_passes(self):
+        self.assertEqual(self._agent_errs(description="Read-only grader.", tools="Read, Glob, Grep"), [])
+
+    def test_read_only_agent_with_webfetch_passes(self):
+        self.assertEqual(
+            self._agent_errs(description="Read-only classifier.", tools="Read, Glob, Grep, WebFetch"), [])
+
+    def test_read_only_agent_without_tools_line_fails(self):
+        # The shipped evaluator's shape before the fix: the claim lived in prose only.
+        errs = self._agent_errs(description="Read-only grader.")
+        self.assertTrue(any("read-only but has no 'tools:' line" in e for e in errs), errs)
+
+    def test_read_only_agent_granting_edit_fails(self):
+        errs = self._agent_errs(description="Read-only grader.", tools="Read, Grep, Edit")
+        self.assertTrue(any("grants Edit" in e for e in errs), errs)
+
+    def test_read_only_agent_granting_write_as_yaml_list_fails(self):
+        errs = self._agent_errs(description="Read-only grader.", tools="[Read, Write]")
+        self.assertTrue(any("grants Write" in e for e in errs), errs)
+
+    def test_read_only_agent_granting_notebookedit_fails(self):
+        errs = self._agent_errs(description="Read-only grader.", tools="Read, NotebookEdit")
+        self.assertTrue(any("grants NotebookEdit" in e for e in errs), errs)
+
+    def test_read_only_agent_granting_wildcard_fails(self):
+        errs = self._agent_errs(description="Read-only grader.", tools="'*'")
+        self.assertTrue(any("grants *" in e for e in errs), errs)
+
+    def test_read_only_claim_in_body_counts(self):
+        errs = self._agent_errs(description="A coordinator.", tools="Read, Write",
+                                body="## Read-only by contract\nIt mutates nothing.")
+        self.assertTrue(any("grants Write" in e for e in errs), errs)
+
+    def test_read_only_self_declaration_in_body_counts(self):
+        errs = self._agent_errs(description="Grades things.",
+                                body="A **read-only** sub-agent that grades an artifact.")
+        self.assertTrue(any("read-only but has no 'tools:' line" in e for e in errs), errs)
+
+    def test_read_only_tool_note_in_a_writer_body_is_not_a_claim(self):
+        # documenter's shape: it writes, and calls one of its tools read-only.
+        self.assertEqual(self._agent_errs(
+            description="Structural maintainer of the wiki.",
+            tools="Read, Write, Edit, Glob, Grep, Bash",
+            body="**Tools:** Read, Write, Edit, Glob, Grep, Bash (read-only: `git diff`)."), [])
+
+    def test_agent_without_tools_line_fails(self):
+        errs = self._agent_errs(description="Structural maintainer of the wiki.")
+        self.assertTrue(any("grants it every tool" in e for e in errs), errs)
+
+    def test_agent_declaring_full_tool_access_may_omit_tools(self):
+        self.assertEqual(self._agent_errs(description="Active executor role. Full tool access."), [])
+
+    def test_malformed_tools_value_fails(self):
+        errs = self._agent_errs(description="A role.", tools="{a: 1}")
+        self.assertTrue(any("'tools' must be" in e for e in errs), errs)
 
     # --- enhances / capabilities (soft composition) ---
 

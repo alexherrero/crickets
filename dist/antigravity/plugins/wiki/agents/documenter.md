@@ -3,7 +3,7 @@ name: documenter
 description: Structural maintainer of the wiki/ documentation tree, dispatched at phase boundaries. Creates, updates, and prunes pages so they reflect what the codebase actually does; preserves human edits; never touches code. The write-executor behind the wiki-author skill and the developer-workflows phase commands; hard-scoped to wiki/** (+ Home.md / _Sidebar.md / project.json). Enforces the Diátaxis single-mode rule per page. Runs the two-step cross-model prose pass (Gemini simplifies with the operator's voice pack inlined verbatim; Claude fact-checks and applies) on every drafted page before preview, with an announced Claude-only fallback.
 kind: agent
 supported_hosts: [claude-code, antigravity]
-version: 0.2.0
+version: 0.2.1
 ---
 
 # Sub-agent: documenter
