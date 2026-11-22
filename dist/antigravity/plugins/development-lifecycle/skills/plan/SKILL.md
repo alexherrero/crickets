@@ -11,8 +11,6 @@ You are running the **plan** phase of the developer-workflows loop. Turn a brief
 
 > **Recommended model for this phase:** Sonnet 5 (`claude-sonnet-5`) — lighter model for planning and authoring. Override with `/model` if needed.
 
-> **Workflow-step persona (advisory, graceful-skip).** `/plan` wears the **Tech-Lead** persona for this phase — the phase spec is the source of truth for this adoption (`agentm-persona-activation.md`'s workflow-step path; a persona's `triggers:` field feeds only sub-agent routing, never this lookup). Check: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" workflow-persona plan-phase`. **Exit 0** → read the printed persona's manifest (`<agentm-root>/personas/<name>.md`) and hold its stance + `opinions:` for this session. **Exit 1** (agentm absent, or no persona declared for this step) → proceed with this phase's own prose, unchanged — a clean graceful-skip. An operator who already put on a different persona this session keeps it — pass `--explicit <that-name>` so the resolved answer reflects the override (explicit invocation always wins over the workflow-step default).
-
 > **Standalone + storage-agnostic.** State is plain `.harness/<file>` unless a hosting memory layer redirects it. A plan exists so a later `/work` session has a shared contract (not a verbal understanding that evaporates with context), scope is fixed before you're deep in code, and verification is pre-negotiated — the single biggest lever on review quality.
 
 ## When to use
@@ -25,9 +23,9 @@ Every task is graded against a spec. If the task has none, run `/spec` first: it
 2. **Read the resolved `PLAN.md` and `progress.md` first** (the paths agentm gives: a task under `--name` and `--stage`, and for a bare call in a repo with no vault its repo-local singleton; `--activate` is promote-only and reads no plan). If a plan is in flight (`plan_tracker.py status` says `active`, from its tracker) and the new brief is related, **ask** "continue or replace?" — never silently overwrite.
 3. **Every task has a spec.** If it has none, run `/spec` (step 2): at most 5 batched questions, only when the brief is ambiguous. The plan's steps point to the spec; they do not restate it.
 4. **Write the plan using the PLAN.md shape** below.
-5. **Update `features.json`** (the project's desk copy — see step 5) only if this plan introduces net-new user-visible features.
-6. **Dispatch the `documenter` sub-agent** (via the `wiki-maintenance` capability probe — exit 0 dispatch, exit 1 skip) once `PLAN.md` is written, to create `pending` pages for steps affecting user-visible behavior or architecture.
-7. **Sync the plan to the GitHub Project board** (optional, graceful-skip) — when `github-projects` is installed (capability probe) + `.harness/project.json` present + `gh` authed, record the new plan in `board-items.json` and emit its kickoff via the github-projects plugin's `project_sync.py post`; capture `## Out of scope` deferrals as board-backed `Backlog-item`/`Idea` entries in `board-items.json` (**never** a raw `gh project item-create` — an unbacked board issue is an orphan the `vault==board` gate flags as drift). Deterministic + idempotent → announce + proceed. Silent-skip (zero behavior change) if the plugin, `project.json`, or `gh` is absent.
+5. **No feature list.** The plan's tracker records what is done.
+6. **Docs are not part of planning.** `/plan` writes no wiki pages: run `wiki-author` when a page should change; a repo that keeps a wiki can let `wiki-watch` catch up on a schedule.
+7. **The board is not part of planning.** `/plan` posts nothing to a project board: a project that keeps one runs the `report-board-drift` cycle (on a loop or cron) to see what the board is missing, and `planner-maintain` to fix it.
 8. **Append one line to the resolved `progress.md`** (the resolver's second field: a task's own `progress.md` under `--name`, `--stage` and `--activate`; in a repo with no vault, the repo-local log agentm names).
 9. **End with a ≤5-bullet summary.** Next command is `/work`.
 10. **Ground the plan in its governing design (Hook 2, design-doc §6).** Before decomposing, resolve the living design that governs this work and read a **bounded** slice of it (frontmatter + `## Locked design calls`, ≈400-line cap — **never the whole arc**); cite it in the plan's `## Locked design calls` + `parent_design_doc:` frontmatter, or assert greenfield. Graceful-skip when agentm is absent. See step 1b.
@@ -53,7 +51,7 @@ Before decomposing, resolve the **living design that governs this work** and rea
 
 1. **Resolve.** Pick the plan's primary target (a representative repo-relative path the work will touch, or a known `area:` name) and run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" governing-design <target>`. **Exit 0** → it prints the governing design's repo-relative path. **Exit 1** → no `wiki/designs/` page governs this, or agentm is absent: look in the vault next. (The bridge passes `--root` = cwd so it resolves *this* repo's `wiki/designs/`.) **Then the vault.** `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/vault_designs.py" find <target> --cwd .` prints the path of the project's living design note that governs the target. **Exit 0** → read it as step 2 says. **Exit 1** (no note governs it) or **exit 3** (no vault, or agentm absent) → greenfield; proceed as greenfield. Deterministic; any failure resolves to greenfield, never a hang.
 2. **Bounded read — never the whole arc.** On exit 0, read **only** the design's YAML frontmatter **and** its `## Locked design calls` section — cap ≈400 lines. A folded arc can be tens of thousands of tokens; reading it whole on every `/plan` blows the token floor the operator just trimmed. If the design has no `## Locked design calls` section, read the frontmatter + at most the first ≈400 lines.
-3. **Cite or assert greenfield.** Set the plan's `parent_design_doc:` frontmatter to the resolved path (omit when greenfield), and in `## Locked design calls` either record the locked calls this plan must honor (cite the design) or write `Greenfield — no governing design.` Set `touches_architecture: true` when the work changes architecture the design governs, else `false` (the Hook 3 gate keys off it).
+3. **Cite or assert greenfield.** Set the plan's `parent_design_doc:` frontmatter to the resolved path (omit when greenfield), and in `## Locked design calls` either record the locked calls this plan must honor (cite the design) or write `Greenfield — no governing design.`
 
 ### 2. Anchor: the spec
 
@@ -70,7 +68,6 @@ Author to the **resolved PLAN path** — the task's `plan.md` under `--name` or 
 ```markdown
 ---
 parent_design_doc: <repo-relative path to the governing design — omit if greenfield>
-touches_architecture: true | false
 ---
 
 # Plan: <short title>
@@ -97,8 +94,6 @@ touches_architecture: true | false
 - **Anchor:** <path to the spec this step is graded against>
 - **Profile:** build | create | both
 - **Size:** small | medium | large
-- **Work-type (optional):** <a token-audit routing_table.py work-type key, e.g. `mechanical-log-scraping` — only when the step's own dispatch shape is distinct from the plan's default `worker-build`>
-- **Tier hint (auto, only present when Work-type is set):** <rendered via `classify_work_type.render_tier_hint(work_type)` — never hand-typed>
 - **Verification:** <executable if possible>
 - **Status:** [ ]
 
@@ -114,35 +109,21 @@ touches_architecture: true | false
 
 **No Status line.** The plan carries no `**Status:**` line: its status is its tracker's, which step 7b opens at `queued`. Each step keeps its own `- **Status:** [ ]` checkbox.
 
-**Tier hints (routed-dispatch amendment, graceful-skip).** Check availability: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" capability token-audit`. On **exit 0**, for any step whose dispatch shape genuinely differs from the plan's own default (most steps don't need this — leave `Work-type` unset and skip the hint entirely), declare `Work-type` as a `routing_table.py` key and render `Tier hint` via `classify_work_type.render_tier_hint(work_type)` — never hand-type the tier/model/effort values. On **exit 1** (unavailable) omit both fields; this is optional annotation, not a plan-grounding requirement.
+### 5. Features
 
-### 4b. Self-check grounding (Hook 3 · design-doc §6.3)
+Nothing happens here (constraint 5).
 
-Run the deterministic plan-grounding gate on the plan you just wrote:
-`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/check-plan-grounding.py" <resolved-plan-path>`. **Exit 1** means the plan set `touches_architecture: true` but carries neither a `parent_design_doc:` nor a non-empty `## Locked design calls` — fix it (revisit step 1b) before `/work`. **Exit 0** = grounded, or the plan isn't architecture-touching (nothing to enforce). The gate is keyed off the explicit flag, never an inference.
+### 6. Docs
 
-### 5. Update `features.json` if appropriate
+Nothing happens here (constraint 6).
 
-`features.json` lives in the project's desk: `<desk>/features.json`, where `<desk>` is what `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/project_homes.py" home desk` prints. **Exit 3** means agentm names no desk — a repo with no vault, whose plans agentm keeps repo-local — and there `features.json` is the repo-local file beside the plan. Nothing else composes its path.
+### 7. Board
 
-A feature is a user-visible capability (changelog-worthy); a step is a unit of work — **not 1:1**. Scaffolding/refactors produce no feature entry. `passes: true` is set later by `/review`, never by `/plan`. Err toward fewer feature entries.
-
-### 6. Declare future state in the wiki (graceful-skip)
-
-Check availability: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" capability wiki-maintenance`. On **exit 0** dispatch its `documenter` with the new `PLAN.md` to create/update `pending` pages for steps affecting user-visible behavior or architecture (Feature/Subsystem pages, how-to skeletons, reference rows). It does not touch `Home.md` / `_Sidebar.md` (release-time concerns). Resolve any `OPEN QUESTIONS` before `/work`. On **exit 1** (unavailable, or no `CLAUDE_PLUGIN_ROOT`) skip silently. **Routed dispatch (separate graceful-skip):** additionally check `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" capability token-audit`; on exit 0, resolve `classify_work_type('documenter')` + `agent_tool_alias(...)` and pass as the dispatch's `model` param; on exit 1, no `model` override — unchanged. **Mandatory fan-out announcement (unconditional):** print `fanout_announcement.py`'s `render_announcement()` line before dispatching regardless of the probe's result; an `INHERITED` source at a frontier-tier (T3/T4) session triggers `needs_inheritance_pause()` — stop for confirmation, never proceed silently. At `agent_count >= 4`, `announce_dispatch()` also runs the fleet cost gate (`token-audit`'s `fanout_cost_gate.py`, capability-gated) — a blocked result raises the same `pause_required` flag, stop for confirmation the same way.
-
-### 7. Sync the plan to the GitHub Project board (graceful-skip)
-
-Check availability: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" capability board-sync`. On **exit 1** (unavailable, or no `CLAUDE_PLUGIN_ROOT`) skip silently — zero behavior change. On **exit 0** with `.harness/project.json` present and `gh` authed, mirror this `/plan` onto the board:
-
-- **Plan kickoff** — record the new plan in `board-items.json` (the agent-maintained item source github-projects reads — the config's `items_source`, else github-projects' own default; kept current like `features.json`) as a `Plan` under its Feature/Sub-feature parent with its kickoff goal, then render+write it: `python3 "$(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sibling_plugin.py" github-projects scripts/project_sync.py)" post --config <project.json> --id <plan-id>` (full re-render — kickoff is template-driven, not a `--type` flag stage). Per **DC-1** a Plan posts only once it's the active plan; a staged/future plan is recorded but not posted.
-- **Deferred items** — capture each intentionally-deferred `## Out of scope` entry into `board-items.json` as a `Backlog-item` (or `Idea`) so the next sync materializes it. Add them to the vault source, **never** raw `gh project item-create` — an item not backed by `board-items.json` is an orphan the `vault==board` gate (the `github-projects` check-all gate) flags as drift.
-
-The render+write path is deterministic, one-way, and idempotent-by-stable-id (a re-run repairs, never duplicates) → recoverable, so **announce + proceed**; preview the exact `gh` argv with `--dry-run` first. Silent-skip if `project.json` or `gh` is absent.
+Nothing happens here (constraint 7).
 
 ### 7b. Open the plan's tracker (graceful-skip)
 
-With the plan written and the board step run (so any issue number is known), open the plan's tracker at `queued`, using the fields step 1 resolved:
+With the plan written, open the plan's tracker at `queued`, using the fields step 1 resolved:
 
 `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" open --plan <plan> --tracker <tracker> [--issue <N>]`
 

@@ -55,7 +55,7 @@ try {
         Write-Output "[developer-workflows] This project uses the phase-gated loop. Its state:"
         Write-Output "  PLAN.md:     $plan"
         Write-Output "  progress.md: $progress"
-        Write-Output "Read PLAN.md before answering plan-status questions or running /work, /review, /release."
+        Write-Output "Read PLAN.md before answering plan-status questions or running /work or /release."
         [Console]::Error.WriteLine("[harness-context] injected .harness/ paths for $cwd")
     } else {
         [Console]::Error.WriteLine("[harness-context] no .harness/PLAN.md + progress.md at $cwd - skipped")
@@ -69,7 +69,7 @@ try {
             Where-Object { (Get-Content -LiteralPath $_.FullName -TotalCount 20 -ErrorAction SilentlyContinue) -match '^status:\s*launched' } |
             Select-Object -First 4
         if ($designs) {
-            Write-Output "[developer-workflows] Governing designs (launched) - /plan + /review resolve the governing one:"
+            Write-Output "[developer-workflows] Governing designs (launched) - /plan resolves the governing one:"
             foreach ($d in $designs) { Write-Output ("  design: " + $d.FullName) }
         }
     }

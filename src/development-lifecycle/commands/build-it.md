@@ -77,6 +77,7 @@ For one pass, a round is:
 2. Build the material: `review_material.py --worktree --contract-file <spec> --anchor <spec> --tier <tier>` (use `--range <base>..HEAD` once the work is committed). The tier is the one `passes` gave: `high` for correctness on a large task, `default` otherwise. The material is the change, what it was for and the rules it is held to; never your reasoning, and never your guess at the bug.
 3. Pipe it into `cross-review.sh --tier <tier>`. The answer is a failing test, a `DEFECT file:line`, or `NO ISSUES FOUND`.
 4. Sort every finding and record it with its cited line: `loop_record.py add --record <record> --pass <name> --class <class> --line <path:LINE> --text "<finding>"`. **real** is a defect you can show with a case that fails; **tradeoff** is a real cost the spec accepts (its Rules or Not doing say so); **misread** is a reviewer that misunderstood the code or the rule (check the line before saying so); **noise** is true and not worth acting on. A finding you cannot tie to a line is not recorded as real.
+   In the correctness pass, a behaviour change with no test that would catch its regression is a real finding, whether or not the reviewer named it.
 5. Fix every real finding, re-run the free checks, and note what you did: `loop_record.py dispose ...`.
 6. `loop_record.py stop --record <record> --pass <name>`: **done** moves to the next pass; **continue** opens another round; **escalate** (exit 3, a real finding still standing in round 3) stops everything and hands the operator the open findings to decide.
 
@@ -94,7 +95,7 @@ Show the operator the report and the verdict. State plainly what was not checked
 
 ## Check mode: `--check <PR number | A..B | diff file>`
 
-Reviews a change someone already made. It never edits the code and never fixes: it reports, like `/review`. Skip steps 3 and 4; there is no direction check and no make.
+Reviews a change someone already made. It never edits the code and never fixes: it only reports. Skip steps 3 and 4; there is no direction check and no make.
 
 1. **Anchor.** A spec beside the plan if one exists; else the PR description or commit messages are the contract and the anchor is the repo's own `AGENTS.md` rules. Say which. A missing anchor gives an empty RULES block with the reason, and that is stated in the report.
 2. **Size** from the diff, as in step 2, then `loop_record.py init`.

@@ -8,9 +8,9 @@ version: 0.1.0
 
 # wiki-watch — run the wiki-watcher (W1)
 
-The continuous-mode surface of `wiki-maintenance`: instead of running the `documenter` one-shot at a phase boundary, run it on a **watch loop** so a wiki stays in sync with a repo's doc-worthy changes. Ships as **W1** — an **idempotent single-cycle engine the operator drives** (DC-W3), *not* a daemon: one invocation runs one `poll → detect → significance → dispatch → audit` cycle and exits. Cooldown-gated + cursor-backed, so re-running it on the host's loop (`/loop` or cron) never drops a change or double-dispatches.
+The continuous-mode surface of `wiki-maintenance`: instead of running the `documenter` one-shot on request (`wiki-author`), run it on a **watch loop** so a wiki stays in sync with a repo's doc-worthy changes. Ships as **W1** — an **idempotent single-cycle engine the operator drives** (DC-W3), *not* a daemon: one invocation runs one `poll → detect → significance → dispatch → audit` cycle and exits. Cooldown-gated + cursor-backed, so re-running it on the host's loop (`/loop` or cron) never drops a change or double-dispatches.
 
-**Position vs. the phase-boundary documenter.** `developer-workflows`' phase commands dispatch the `documenter` once, at `/work`/`/release` boundaries. `wiki-watch` dispatches the *same* `documenter` (reused as-is — never a second writer) repeatedly, off a change feed, between boundaries. Same write-executor; different trigger.
+**Position vs. `wiki-author`.** The phase commands no longer dispatch the `documenter`. `wiki-author` dispatches it when you ask for a page; `wiki-watch` dispatches the *same* `documenter` (reused as-is — never a second writer) repeatedly, off a change feed. Same write-executor; different trigger.
 
 ## Opt-in (two gates) + safety
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Resolve the active plan's (PLAN, progress, tracker) paths for the phase loop.
 
-The development-lifecycle phase specs (`/work`, `/plan`, `/review`, `/release`,
+The development-lifecycle phase specs (`/work`, `/plan`, `/release`,
 `/bugfix`) call this to learn *which* plan a session owns:
 
     resolve_plan.py [<name>] [--project-root <path>]

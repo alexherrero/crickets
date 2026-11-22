@@ -54,11 +54,12 @@ class TestRenderTierHint(unittest.TestCase):
             self.assertTrue(cwt.render_tier_hint(work_type))
 
 
-class TestPlanTemplateDocumentsTheField(unittest.TestCase):
-    def test_plan_md_template_shows_the_optional_tier_hint_field(self):
+class TestPlanTemplateNoLongerDocumentsTheField(unittest.TestCase):
+    # Plan 104 step 4. Legacy plans with these fields still parse: see test_plan_steps_heading_parity.
+    def test_plan_md_template_drops_work_type_and_tier_hint(self):
         text = _PLAN_MD.read_text(encoding="utf-8")
-        self.assertIn("Tier hint", text)
-        self.assertIn("render_tier_hint", text)
+        self.assertNotIn("Tier hint", text)
+        self.assertNotIn("Work-type", text)
 
 
 if __name__ == "__main__":

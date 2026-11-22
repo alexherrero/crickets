@@ -6,8 +6,6 @@ You are running the **work** phase of the developer-workflows loop. Work through
 
 > **Recommended model for this phase:** `opusplan` — Opus 4.8 plans, Sonnet 5 executes the long autonomous stretch. Override with `/model` if needed.
 
-> **Workflow-step persona (advisory, graceful-skip).** `/work` wears the **Engineer** persona for this phase — the phase spec is the source of truth for this adoption (`agentm-persona-activation.md`'s workflow-step path; a persona's `triggers:` field feeds only sub-agent routing, never this lookup). Check: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" workflow-persona work-phase`. **Exit 0** → read the printed persona's manifest (`<agentm-root>/personas/<name>.md`) and hold its stance + `opinions:` for this session. **Exit 1** (agentm absent, or no persona declared for this step) → proceed with this phase's own prose, unchanged — a clean graceful-skip. An operator who already put on a different persona this session keeps it — pass `--explicit <that-name>` so the resolved answer reflects the override (explicit invocation always wins over the workflow-step default).
-
 > The session works the **whole step list autonomously** — the unit is the plan, not a single step. What keeps that safe is the **per-step safety pre-check**: before each step, decide whether it can be done safely and autonomously, and stop to ask if it can't (or if a clarification is needed). Single-threaded execution is the load-bearing constraint — never fan out parallel implementers; the autonomy boundary is the safety check, not the step count.
 
 <!-- BEGIN recoverability-gate · canonical · byte-identical across work.md · bugfix.md · release.md (scripts/ drift test enforces) -->
@@ -34,13 +32,12 @@ Invoking this phase **is** the authorization to run it to completion. The stop-g
 2. **Gates must be green before the step is marked `[x]`.** No "I'll fix this next session" on failed gates.
 3. **Never edit or delete a failing test to make it pass.** If a test is wrong, surface it and stop.
 4. **Feed full error output back** on gate failures — do not summarize. The exact error is the signal.
-5. **The escalation tripwire fires at 3 consecutive failures on the same gate for the same step** (`escalation_tripwire.py`, capability-gated on token-audit — see step 6). This supersedes the old flat 5-iteration cap: no session reaches a 4th attempt on an unresolved gate. If token-audit is absent, the tripwire still fires (degraded: loud stop, no handoff pack) — the cap is never silently longer just because the capability is missing.
+5. **The escalation tripwire fires at 3 consecutive failures on the same gate for the same step** (`escalation_tripwire.py`, step 6): no session reaches a 4th attempt on an unresolved gate. Only the handoff pack needs the `tokens` plugin; the stop does not.
 6. **Do not silently expand step scope.** If it turns out bigger than planned, stop and ask.
-7. **Do not touch `wiki/` during implementation.** Documentation updates are phase-boundary-only.
-8. **After gates are green (before committing), dispatch the `documenter` sub-agent** with the step spec + the diff (via the `wiki-maintenance` capability probe — exit 0 dispatch, exit 1 skip). It flips matching `pending → implemented` pages and adds operational pages if the task introduced one. Resolve `OPEN QUESTIONS` before committing.
+7. **Docs are not part of the loop.** Edit `wiki/` only when the step's **What** names the page.
+8. **Docs are an opt-in pass, later:** run `wiki-author` when a page should change; a repo that keeps a wiki can let `wiki-watch` catch up on a schedule.
 9. **End by updating the resolved `PLAN.md` (mark `[x]`), the plan's tracker (`plan_tracker.py step`, or `close` after the last step), the resolved `progress.md` (append line), and committing.**
-10. **Sync the step to the GitHub Project board** (optional, graceful-skip). When `github-projects` is installed (capability probe) + `.harness/project.json` present + `gh` authed, emit a **Task progress** update for the just-completed step via the github-projects plugin's `project_sync.py post --type task-progress`; capture any out-of-scope findings (adjacent bug, refactor, stale doc elsewhere — not follow-ups to the current step) into `board-items.json` as board-backed `Backlog-item`s (**never** raw `gh project item-create` — an unbacked board issue is an orphan the `vault==board` gate flags as drift). Deterministic + idempotent → announce + proceed. Silent-skip (zero behavior change) if the plugin, `project.json`, or `gh` is absent. Then stop.
-11. **Design-divergence is a NOTE, never a halt (Hook 4, design-doc §6).** If the implementation appears to diverge from the plan's `parent_design_doc:` governing design, record it as a `NOTE:` line in `progress.md` — a surfaced observation, **not** a safety-stop trigger and **not** a gate. Conformance is an un-mechanizable judgment; its adjudication is `/review`'s fresh-context design-conformance dimension (Hook 1), never the worker's self-interested call (routing it into the autonomy gate would over- or under-stop).
+10. **The board is not part of the loop.** `/work` posts nothing to a project board: a project that keeps one runs the `report-board-drift` cycle (on a loop or cron) to see what the board is missing, and `planner-maintain` to fix it. An out-of-scope finding (an adjacent bug, a refactor, a stale doc elsewhere) goes into `progress.md` as a `FOLLOW-UP:` line.
 11. **Do not create tags.** Tag creation is reserved for `/release` — the sole tag writer that tags `main` HEAD after CI-green. Creating a tag during `/work` would point to a branch tip, not a main commit, violating the tag-reachability guarantee and the concurrent-release serialization model.
 12. **Fire agentm's post-work reflection after each commit** (step 9.6, graceful-skip). Always exit 0 by contract — nothing to react to, but the call itself must not be skipped; it's the only session-completion reflect on a host with no Stop hook.
 
@@ -148,18 +145,14 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/task_isolation.py" check <plan_path> <tas
 
 ### 3. Gather context (optional)
 
-If the step touches unfamiliar code, dispatch the `explorer` sub-agent for read-only fan-out ("Where is X handled? What tests exist for Y? Return file:line references."). Fan out only for multiple independent questions — for one question, just read.
-
-**Routed dispatch (graceful-skip).** Check availability: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" capability token-audit`. On **exit 0**, resolve `classify_work_type('explorer')` then `agent_tool_alias(...)` (both in token-audit's `scripts/classify_work_type.py`) and pass the result as the Agent tool's `model` param. On **exit 1** (unavailable) dispatch exactly as above with no `model` override — today's behavior, unchanged.
-
-**Mandatory fan-out announcement (unconditional, not gated on the probe above).** Before dispatching, print one line via `fanout_announcement.py`'s `render_announcement()` — role · agent count · model · tier source (`table row` / `agent frontmatter` / `UNCLASSIFIED-DEFAULT` / `INHERITED` — `INHERITED` when no `model` param and no agent-def frontmatter resolved anything at all). If the source is `INHERITED` and the current session's own tier is frontier (T3/T4 — see `agentm_bridge.py capability token-audit` + your own launch-time model), call `needs_inheritance_pause()`; if it returns true, print `inheritance_warning()`'s text and **stop for confirmation** — never proceed silently. At `agent_count >= 4`, `announce_dispatch()` also runs the fleet cost gate (`token-audit`'s `fanout_cost_gate.py`, capability-gated, graceful-skip if `token-audit` isn't installed) — a blocked result raises the same `pause_required` flag; print its `cost_gate_warning` and stop for confirmation the same way. This prints regardless of whether the routed-dispatch probe above succeeded.
+If the step touches unfamiliar code, dispatch the `explorer` sub-agent on model `sonnet` for read-only fan-out ("Where is X handled? What tests exist for Y? Return file:line references."). Fan out only for multiple independent questions — for one question, just read.
 
 ### 4. Implement
 
 - **Run the step's loop.** Read the step's `**Anchor:**`, `**Profile:**` and `**Size:**`. `build` follows `/build-it --spec <Anchor> --size <Size>`; `create` follows `/create-it` the same way; `both` runs each for its own files. Do not copy them here: their steps are the loop. The direction check comes first, before any code (a `small` step has none). Making is this step's work, the loop's free checks are step 5's gates (run them once), and its review passes run once those are green. A step with none of the three tags is a legacy step: `build`, `medium`, anchored to the plan.
 - Write code that satisfies the step's **What**. Write the tests that satisfy its **Verification** in the **same session** — tests-after is an anti-pattern; verification lands with the implementation.
 - Follow project conventions (formatters, naming, layout). If the step implies a deviation, flag it and ask.
-- **Do not touch `wiki/`** — documentation is the step-8 phase boundary, not inline.
+- **Leave `wiki/` alone** unless the step's **What** names the page (constraint 7).
 - If mid-implementation the step turns out bigger than planned, **stop**: *"Step N is bigger than planned because [reason]. Options: (a) finish narrow, (b) expand + re-plan, (c) split. Your call."* Then wait.
 
 ### 5. Run deterministic gates
@@ -176,7 +169,7 @@ Feed the **full error output** into the next pass (don't summarize). If a test i
 
 ### 7. Update state
 
-Once all gates are green: edit the **resolved `PLAN.md`** to mark the step `[x]`. Do **not** set `features.json` `passes: true` — that's `/review`'s job. Then bring the tracker up to date — the tracker is the plan's only status, and the plan carries no Status line to edit:
+Once all gates are green: edit the **resolved `PLAN.md`** to mark the step `[x]`. Then bring the tracker up to date — the tracker is the plan's only status, and the plan carries no Status line to edit:
 
 - **After any step but the last:** `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" step --plan <plan> --tracker <tracker> --state "<what is now true, in three to eight lines>" --next "Step N+1: <title>"`.
 - **After the last step:** `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" close --plan <plan> --tracker <tracker> --outcome "<the close-out recap>"`.
@@ -191,9 +184,9 @@ Append to the **resolved `progress.md`** (the resolver's second field — the ta
 
 When the step ran a loop at `medium` or `large`, paste its done-report (`loop_record.py report`) under that line, so the next session sees what was checked and what was not.
 
-### 8. Update the wiki (post-gates, graceful-skip)
+### 8. Docs
 
-Check availability: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" capability wiki-maintenance`. On **exit 0** dispatch its `documenter` with the step's title + What + Verification and the diff — it flips `pending → implemented` **only if the diff proves it** (speculative flips are worse than missed ones), fills `## Implementation` with real `file:line` refs, and adds how-to pages for new operational concerns. Resolve `OPEN QUESTIONS` before committing; `NO CHANGES` is fine. On **exit 1** (unavailable, or no `CLAUDE_PLUGIN_ROOT`) skip silently. Not invoked during step 4. **Routed dispatch (separate graceful-skip):** additionally check `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" capability token-audit`; on exit 0, resolve `classify_work_type('documenter')` + `agent_tool_alias(...)` and pass as the dispatch's `model` param; on exit 1, no `model` override — unchanged. **Mandatory fan-out announcement (unconditional):** print `fanout_announcement.py`'s `render_announcement()` line before dispatching regardless of the probe's result; an `INHERITED` source at a frontier-tier (T3/T4) session triggers `needs_inheritance_pause()` — stop for confirmation, never proceed silently.
+Nothing happens here (constraint 8).
 
 ### 9. Commit
 
@@ -207,21 +200,13 @@ If `code-review`'s evidence-tracker is installed (`python3 "${CLAUDE_PLUGIN_ROOT
 
 `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" phase-dispatch post-work --project-root <root>`. Fires agentm's V5-5 orchestration bridge to reflect the just-finished session — dedup-guarded and cooldown-gated entirely on agentm's own side (a `.harness/session-id-*.start`/`.reflected` marker keeps this from double-reflecting against the Stop hook), so it's safe to call after every step's commit, not just once at plan-end. Always exit 0 (agentm's `phase_dispatch()` is non-blocking by contract) — nothing to branch on. On a host with no Stop hook (Antigravity), this is the only session-completion reflect; on Claude Code it's a safety-net that no-ops once the Stop hook has already reflected.
 
-### 10. Sync the step to the GitHub Project board (graceful-skip)
+### 10. Board
 
-Check availability: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" capability board-sync`. On **exit 1** (unavailable, or no `CLAUDE_PLUGIN_ROOT`) skip silently — zero behavior change. On **exit 0** with `.harness/project.json` present and `gh` authed, after the commit:
-
-- **Task progress** — emit the just-completed step's progress line to its board item: `python3 "$(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sibling_plugin.py" github-projects scripts/project_sync.py)" post --config <project.json> --type task-progress --id <task-id> --commit <SHA> --summary "<one human sentence>"`. The `--type task-progress` shortcut folds the `②Progress` line into `board-items.json` and re-renders; the renderer owns the date/SHA→link, you supply only the sentence. Per **DC-1** Tasks materialize only under the active plan.
-- **Out-of-scope findings** — anything surfaced this session that's *not* a follow-up to the current step (an adjacent bug, a refactor, missing coverage elsewhere, a stale doc) → record in `board-items.json` as a `Backlog-item` so the next sync materializes it; **never** raw `gh project item-create` (an unbacked board issue is an orphan the `vault==board` gate flags as drift).
-- **Planner maintenance cycle** — at the same gate, also run `python3 "$(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sibling_plugin.py" github-projects scripts/planner_maintain.py)" --config <project.json>`: materializes a collapsed Feature→Plan/Plan→Task depth gap where the match is unambiguous, and corrects any `update` drift the same idempotent way a manual `post` would. Never auto-closes an orphan — a non-zero exit here is informational (something was flagged for operator judgment), not a task failure.
-
-The write path is deterministic, one-way, idempotent-by-stable-id → recoverable; **announce + proceed** (preview with `--dry-run`). Silent-skip if `project.json` or `gh` is absent.
+Nothing happens here (constraint 10).
 
 ### 11. Loop or stop
 
-After the commit, **loop back to step 2** for the next unchecked step — same session, same context — running the plan autonomously. Stop only when the plan is done (no `[ ]` left) or a safety pre-check fires / a clarification is needed (stop mid-plan and ask). Run an inline `/review` first when a just-finished step was high-risk. Return a ≤5-bullet summary: steps completed this session; why it stopped (plan done / safety stop); files changed; gates (green per task, or N iterations + why); next.
-
-When to `/review` rather than straight to the next `/work`: the step touched security/auth/payments/persistence; it was the last step in the plan; the plan's Risks flagged this area; or the change feels brittle. Skip review for routine changes (new tests, pure refactors, docs, scaffolding) — the next `/work` runs gates anyway.
+After the commit, **loop back to step 2** for the next unchecked step — same session, same context — running the plan autonomously. Stop only when the plan is done (no `[ ]` left) or a safety pre-check fires / a clarification is needed (stop mid-plan and ask). Return a ≤5-bullet summary: steps completed this session; why it stopped (plan done / safety stop); files changed; gates (green per task, or N iterations + why); next.
 
 ### 12. Finalize the unit (when plan is done, isolation mode only)
 

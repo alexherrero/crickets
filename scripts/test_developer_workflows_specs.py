@@ -159,16 +159,17 @@ class TestWorkSpec(_NamedPlanWriterContract, unittest.TestCase):
         self.assertIn("hard stop", low)
         self.assertIn("never fall back to the singleton", low)
 
-    def test_board_sync_probe_degrades_to_silent_skip(self):
-        # board-write-path task 3: the per-commit comment surface rides the
-        # SAME step-10 call site (project_sync.py post --type task-progress) —
-        # no new probe, no new call site. This locks that the exit-1 skip
-        # semantics stay unchanged when github-projects/gh is unavailable.
-        self.assertIn(
-            'python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" capability board-sync',
-            self.text)
-        self.assertIn("On **exit 1** (unavailable, or no `CLAUDE_PLUGIN_ROOT`) "
-                      "skip silently", self.text)
+    def test_the_loop_posts_nothing_to_the_board(self):
+        # Plan 104 step 3: board sync left the pipeline. Step 10 keeps its
+        # number as a note, the board runs on report-board-drift, and an
+        # out-of-scope finding is logged rather than posted.
+        self.assertNotIn("capability board-sync", self.text)
+        self.assertNotIn("project_sync.py", self.text)
+        self.assertNotIn("planner_maintain.py", self.text)
+        self.assertIn("10. **The board is not part of the loop.**", self.text)
+        self.assertIn("`report-board-drift`", self.text)
+        self.assertIn("`FOLLOW-UP:` line", self.text)
+        self.assertIn("### 10. Board\n\nNothing happens here (constraint 10).", self.text)
 
     def test_evidence_tracker_reset_wired_at_task_boundary(self):
         # cricketsPluginsA#3 (R2.2): the reset call the hook's own docstring
@@ -203,11 +204,16 @@ class TestPlanSpec(_NamedPlanWriterContract, unittest.TestCase):
         self.assertIn('python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" status', triage)
         self.assertLess(triage.index("plan_tracker.py"), triage.index("Then read `PLAN.md`"))
 
-    def test_opens_the_tracker_after_the_board_step(self):
-        # After the board step, so any issue number is known; before the stop.
-        board = self.text.index("### 7. Sync the plan to the GitHub Project board")
+    def test_opens_the_tracker_once_the_plan_is_written(self):
+        # Plan 104 step 3: /plan posts nothing to a board, so the tracker opens
+        # right after the plan is written; still before the stop.
+        self.assertNotIn("capability board-sync", self.text)
+        self.assertNotIn("project_sync.py", self.text)
+        self.assertIn("7. **The board is not part of planning.**", self.text)
+        self.assertIn("### 7. Board\n\nNothing happens here (constraint 7).", self.text)
+        written = self.text.index("With the plan written, open the plan's tracker")
         opening = self.text.index('python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" open')
-        self.assertLess(board, opening)
+        self.assertLess(written, opening)
         self.assertLess(opening, self.text.index("### 8. Stop"))
 
     def test_describes_the_resolver_output_as_three_fields(self):
@@ -248,27 +254,30 @@ class TestSetupTemplateSpec(unittest.TestCase):
         self.assertNotIn("### 1. <Task title>", text)
 
 
-class TestReviewSpec(_NamedPlanWriterContract, unittest.TestCase):
-    """`/review` reads the named pair by consuming resolve_plan.py (T4)."""
+class TestReviewRetired(unittest.TestCase):
+    """The `/review` phase is retired (plan 104 step 1): review runs inside
+    `/work`'s loop, and `/build-it --check` reviews an existing change."""
 
-    cmd = "review.md"
+    def test_review_command_is_gone_from_src_and_both_hosts(self):
+        self.assertFalse((_CMDS / "review.md").exists())
+        dist = _ROOT / "dist"
+        self.assertFalse((dist / "claude-code" / "plugins" / "development-lifecycle"
+                          / "commands" / "review.md").exists())
+        self.assertFalse((dist / "antigravity" / "plugins" / "development-lifecycle"
+                          / "skills" / "review").exists())
 
-    def test_reads_resolved_named_plan_for_task_context(self):
-        # Review reads the resolved PLAN-<slug>.md for the task it's grading and
-        # logs to the resolved progress.md.
-        self.assertIn("resolved `PLAN-<slug>.md`", self.text)
-        self.assertIn("resolved `progress.md`", self.text)
+    def test_bugfix_verify_runs_build_it_check(self):
+        text = _read("bugfix.md")
+        verify = text[text.index("### 4. Verify"):text.index("## Output")]
+        self.assertIn("/build-it --check", verify)
+        self.assertNotIn("/review", text)
 
-    def test_reads_the_status_and_stops_on_queued_without_scope(self):
-        # PLAN-tracker-commands task 7: with no explicit scope, a queued plan
-        # has nothing worked yet to review, and the log carries the status.
-        self.assertIn('python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" status', self.text)
-        self.assertIn("`queued` means nothing has been worked yet: say so and stop", self.text)
-        self.assertIn("(plan status: <status>)", self.text)
-
-    def test_a_bare_call_that_exits_4_asks_which_task(self):
-        self.assertIn("exits **4**", self.text)
-        self.assertIn("asks which task", self.text)
+    def test_release_preconditions_no_longer_ask_for_review(self):
+        text = _read("release.md")
+        start = text.index("1. **Preconditions**")
+        preconditions = text[start:text.index("\n2. ", start)]
+        self.assertNotIn("/review", preconditions)
+        self.assertIn("every step is `[x]`", preconditions)
 
 
 class TestReleaseSpec(unittest.TestCase):
@@ -459,16 +468,17 @@ class TestNoFlatLayoutCrickets(unittest.TestCase):
                 self.assertNotIn("queued-plans", text)
                 self.assertNotRegex(text, r"(?<![A-Za-z0-9])" + self.RETIRED_DIR + r"(?![A-Za-z0-9_])")
 
-    def test_features_json_is_found_through_project_homes(self):
-        # Step 5: features.json is the desk's, asked of project_homes.py; no
-        # command composes a .harness/ path for it.
+    def test_no_phase_command_writes_features_json(self):
+        # Plan 104 step 5: features.json retired in favour of the plan's
+        # tracker; no command composes a path for it, in .harness/ or the desk.
         for cmd in sorted(_CMDS.glob("*.md")):
             with self.subTest(command=cmd.name):
                 self.assertNotIn(".harness/features.json", cmd.read_text(encoding="utf-8"))
-        for name in ("plan.md", "release.md"):
+        for name in ("plan.md", "work.md", "release.md", "bugfix.md", "setup.md"):
             with self.subTest(command=name):
-                self.assertIn("project_homes.py\" home desk", _read(name))
-                self.assertIn("`<desk>/features.json`", _read(name))
+                self.assertNotIn("features.json", _read(name))
+        self.assertIn("5. **No feature list.** The plan's tracker records what is done.", _read("plan.md"))
+        self.assertIn("4. **Features** — nothing happens here (constraint 3).", _read("release.md"))
 
     def test_setup_seeds_a_plan_only_on_agentms_exit_0(self):
         # Step 7: /setup asks agentm first; only a repo with no vault (exit 0)

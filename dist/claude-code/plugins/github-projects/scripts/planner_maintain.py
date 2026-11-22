@@ -22,10 +22,9 @@ persona's `triggers:` to an invocation of anything. That plumbing, and the
 worktree's authority per this plan's own guardrail (stop rather than reach
 across repos). So this task cannot wire "the Planner activates and this runs"
 end-to-end today; what it CAN do, entirely within crickets, is give the
-Planner's future activation something concrete to call, and wire the one
-real workflow-step gate that already exists in this repo (`/work` step 10 and
-`/release` step 7/8 already call `project_sync.py post` at a graceful-skip
-board-sync gate) to also run it. When the agentm-side activation dispatcher
+Planner's future activation something concrete to call. It runs on its own or
+on the report-board-drift loop: the phase commands no longer post to the board
+or call it (crickets plan 104). When the agentm-side activation dispatcher
 ships, it calls this same script — no further crickets-side wiring needed.
 
     planner_maintain.py --config <project.json> [--project-root <repo>] [--dry-run]

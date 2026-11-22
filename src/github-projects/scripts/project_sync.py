@@ -805,7 +805,7 @@ def apply_update(item, update_type, *, date, commit=None, summary=None):
 
     ``update_type`` is ``'<type>-<stage>'`` (e.g. ``task-progress``). Only the
     stages the flags can fully supply are first-class — a Task progress line
-    (``--commit`` + ``--summary``, one line per commit: the dominant /work hook),
+    (``--commit`` + ``--summary``, one line per commit),
     a Plan progress line (``--summary``, one line per task), and a Task closeout
     (``--summary`` + ``--commit``). A stage that needs template values the flags
     can't carry (a Feature's per-plan progress, a Plan/Feature release closeout)

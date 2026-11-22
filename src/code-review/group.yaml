@@ -1,5 +1,5 @@
 name: Code Review
-description: Standalone adversarial code review of any diff or PR — the adversarial-reviewer (+ cross-model Gemini) agents, the evidence-tracker hook, a /code-review command, a /simplify command, and security-review + testing-strategy skills. Enhances developer-workflows' review capability when both are installed.
+description: Standalone adversarial code review of any diff or PR — the adversarial-reviewer (+ cross-model Gemini) agents, the evidence-tracker hook, and security-review + testing-strategy skills. Its reviewers and cross-review.sh run /build-it's review passes when development-lifecycle is installed.
 # 0.2.0 = skill enrichment batch: /simplify command (Chesterton's Fence + Rule of 500),
 # security-review skill (three-tier boundary: LLM API / persistence / system execution),
 # testing-strategy skill (DAMP over DRY + Beyonce Rule + Prove-It pattern),
@@ -113,7 +113,12 @@ description: Standalone adversarial code review of any diff or PR — the advers
 # lists them, so a new module reached its reviewers as an empty artifact), and
 # an empty artifact from --worktree, --range or --pr exits 2 ("nothing to
 # review"); cross-review.sh ignores CROSS_REVIEW_TIMEOUT_SECS=00 as it does 0.
-version: 0.6.1
+# 1.0.0 = /doubt, /code-review and /simplify retire, and the test-engineer
+# agent goes (plan 104 step 6): /build-it --check reviews an existing change,
+# its simplicity pass replaces /simplify, and the missing-test lens is now a
+# category in cross-review.sh's prompt and adversarial-reviewer's checklist.
+# Major because commands go away.
+version: 1.0.0
 category: Coding
 requires: []
 standalone: true
@@ -121,4 +126,4 @@ capabilities: [adversarial-review]
 enhances:
   - group: development-lifecycle
     capability: review
-    effect: "/review dispatches the adversarial reviewers (failing test / DEFECT: file:line / NO ISSUES FOUND)"
+    effect: "/build-it's review passes dispatch the adversarial reviewers (failing test / DEFECT: file:line / NO ISSUES FOUND)"

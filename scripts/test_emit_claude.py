@@ -142,7 +142,9 @@ class TestClaudeEmitter(unittest.TestCase):
         # carry the tools: allowlist their bodies state (AgentM task 206).
         # 0.13.4 = sibling_plugin.py's docstring and diataxis-author's dogfood note
         # stop naming the retired /design verbs (plan 103, step 12).
-        self.assertEqual(self._plugin_json("wiki")["version"], "0.13.4")
+        # 0.13.5 = documenter drops its /review section (plan 104 step 1).
+        # 0.13.6 = the documentation enhance names wiki-author / wiki-watch (plan 104 step 2).
+        self.assertEqual(self._plugin_json("wiki")["version"], "0.13.6")
         # 0.3.0 = check-no-pii.sh + templates/hooks/pre-push moved into src/pii/
         # so they actually ship inside the plugin payload (R2.4 task 7).
         # 0.3.1 = check-no-pii.sh scan collapsed to one grep per file (fixes a

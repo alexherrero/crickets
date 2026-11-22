@@ -2,7 +2,7 @@
 # harness-context-session-start — on SessionStart, if this repo uses the
 # developer-workflows loop (`.harness/PLAN.md` + `.harness/progress.md` present),
 # inject their paths into session context so the agent reads PLAN.md before
-# answering plan-status questions or running /work, /review, /release. Silent
+# answering plan-status questions or running /work or /release. Silent
 # no-op otherwise.
 #
 # Standalone + storage-agnostic: this checks plain `.harness/` state in the repo.
@@ -77,7 +77,7 @@ if [[ -f "$PLAN" && -f "$PROGRESS" ]]; then
 [developer-workflows] This project uses the phase-gated loop. Its state:
   PLAN.md:     $PLAN
   progress.md: $PROGRESS
-Read PLAN.md before answering plan-status questions or running /work, /review, /release.
+Read PLAN.md before answering plan-status questions or running /work or /release.
 EOF
     echo "[harness-context] injected .harness/ paths for $EVENT_CWD" >&2
 else
@@ -87,12 +87,12 @@ fi
 # ── Surface launched design paths (Hook 6 — paths only, bounded, ≤4) ────────────
 # Inject the *paths* of governing designs (status: launched) the way PLAN.md is
 # injected above — never their body (that would regress the per-call floor). /plan
-# + /review resolve the specific governing design via agentm_bridge.py governing-design.
+# resolves the specific governing design via agentm_bridge.py governing-design.
 DESIGNS_DIR="$EVENT_CWD/wiki/designs"
 if [[ -d "$DESIGNS_DIR" ]]; then
     DESIGNS="$(grep -lE '^status:[[:space:]]*launched' "$DESIGNS_DIR"/*.md 2>/dev/null | head -4)"
     if [[ -n "$DESIGNS" ]]; then
-        echo "[developer-workflows] Governing designs (launched) — /plan + /review resolve the governing one:"
+        echo "[developer-workflows] Governing designs (launched) — /plan resolves the governing one:"
         while IFS= read -r d; do
             [[ -n "$d" ]] && echo "  design: $d"
         done <<< "$DESIGNS"

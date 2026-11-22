@@ -3,7 +3,7 @@
     "name": "alexherrero",
     "url": "https://github.com/alexherrero/crickets"
   },
-  "description": "The phase-gated developer loop — /setup /plan /work /review /release /bugfix — extracted from agentm as a standalone native plugin. The base other dev plugins enhance.",
+  "description": "The phase-gated developer loop — /setup /plan /work /release /bugfix — extracted from agentm as a standalone native plugin. The base other dev plugins enhance.",
   "name": "development-lifecycle",
-  "version": "0.58.1"
+  "version": "1.5.0"
 }

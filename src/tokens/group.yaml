@@ -156,6 +156,8 @@ standalone: true
 # 0.8.3 = Antigravity: hooks.json loads again (agy skipped the file because
 # Stop was written as a matcher group), so session-cost-capture runs on agy
 # through the hook adapter. The two commands ship as skills.
-version: 0.8.3
+# 0.8.4 = /token-audit's routing section notes that the phase commands no
+# longer print a fan-out announcement line (plan 104 step 4).
+version: 0.8.4
 capabilities: [status-line-meter, token-audit, tokens]
 renamed_from: [status-line-meter, token-audit]

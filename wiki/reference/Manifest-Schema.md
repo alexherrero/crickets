@@ -43,7 +43,7 @@ standalone: true
 enhances:
   - group: development-lifecycle
     capability: review
-    effect: "/review dispatches the adversarial reviewers"
+    effect: "/build-it's review passes dispatch the adversarial reviewers (failing test / DEFECT: file:line / NO ISSUES FOUND)"
 ```
 
 You can read [Plugin anatomy](Plugin-Anatomy) to learn how you compose these into a plugin.

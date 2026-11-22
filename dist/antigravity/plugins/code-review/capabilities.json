@@ -5,9 +5,9 @@
   "enhances": [
     {
       "capability": "review",
-      "effect": "/review dispatches the adversarial reviewers (failing test / DEFECT: file:line / NO ISSUES FOUND)",
+      "effect": "/build-it's review passes dispatch the adversarial reviewers (failing test / DEFECT: file:line / NO ISSUES FOUND)",
       "group": "development-lifecycle"
     }
   ],
-  "version": "0.6.1"
+  "version": "1.0.0"
 }

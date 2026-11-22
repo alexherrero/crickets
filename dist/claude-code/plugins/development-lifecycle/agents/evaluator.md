@@ -29,7 +29,7 @@ If your rubric is vague ("is this code well-structured?") or you want defect-fin
 | **Input** | the artifact | the artifact + an explicit rubric |
 | **Best when** | rubric is loose; you want defect surfacing | rubric is precise; you want binary judgment |
 
-Dispatch both in the same `/review` session when both add signal.
+Dispatch both in the same `/build-it` run when both add signal.
 
 ## Tool allowlist
 
@@ -169,7 +169,7 @@ Verdict: NEEDS_WORK — caller must supply readable artifact paths.
 The evaluator must not:
 
 - **Produce prose-only critique.** Every observation maps to a rubric item with PASS/FAIL.
-- **Invent rubric items the caller didn't ask for.** Out-of-scope observations belong in a separate `/review` pass with `adversarial-reviewer`, not here.
+- **Invent rubric items the caller didn't ask for.** Out-of-scope observations belong in a separate `/build-it` pass with `adversarial-reviewer`, not here.
 - **Modify the artifact.** Read-only. Period.
 - **Replay tests via Bash.** Bash is not in the allowlist. If the rubric depends on test results, the caller runs tests and supplies the output file.
 - **Skip items.** Every rubric item appears in the output, even if the verdict is "cannot verify."

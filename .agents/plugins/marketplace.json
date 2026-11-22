@@ -12,7 +12,7 @@
       "enhances": [
         {
           "capability": "review",
-          "effect": "/review dispatches the adversarial reviewers (failing test / DEFECT: file:line / NO ISSUES FOUND)",
+          "effect": "/build-it's review passes dispatch the adversarial reviewers (failing test / DEFECT: file:line / NO ISSUES FOUND)",
           "group": "development-lifecycle"
         }
       ],
@@ -99,13 +99,6 @@
         "documentation"
       ],
       "category": "Coding",
-      "enhances": [
-        {
-          "capability": "board-sync",
-          "effect": "/work's task close-out (step 10) posts a per-commit progress comment + a task-close comment (SHA-keyed dedupe, list-and-match — never --search) alongside the existing board-item body-fold, when github-projects is installed and gh is authenticated",
-          "group": "github-projects"
-        }
-      ],
       "name": "development-lifecycle",
       "policy": {
         "authentication": "ON_INSTALL",
@@ -254,7 +247,7 @@
       "enhances": [
         {
           "capability": "documentation",
-          "effect": "phase commands dispatch the documenter to author/repair wiki pages at phase boundaries",
+          "effect": "wiki-author and wiki-watch keep a project's wiki current, on request or on a schedule",
           "group": "development-lifecycle"
         }
       ],

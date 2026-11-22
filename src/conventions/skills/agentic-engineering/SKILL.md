@@ -23,7 +23,7 @@ A single session should do exactly one of: scaffold, plan, implement, review, re
 Context is ephemeral. Files are durable, diffable, resumable. Four on-disk artifacts per project:
 
 - `.harness/PLAN.md` (or a named `PLAN-<name>.md`) — an active goal and its task decomposition with verification criteria. A solo session uses the unnamed `PLAN.md`; concurrent workers each own a distinct named plan.
-- `features.json` — structured feature list with `{ description, steps, passes: bool }` per feature. It lives in the project's `desk/`, which agentm names; a repo with no vault keeps it beside its repo-local plans.
+- `features.json` — no longer written by the phase commands (crickets plan 104); the plan's tracker records what is done. A project that still keeps one holds `{ description, steps, passes: bool }` per feature in its `desk/`.
 - `.harness/progress.md` — append-only log of completed work. Starts every new session by reading this.
 - `.harness/init.sh` — pre-written script to boot the dev environment.
 

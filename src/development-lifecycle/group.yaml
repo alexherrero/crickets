@@ -1,12 +1,8 @@
 name: Development Lifecycle
-description: The phase-gated developer loop — /setup /plan /work /review /release /bugfix — extracted from agentm as a standalone native plugin. The base other dev plugins enhance.
+description: The phase-gated developer loop — /setup /plan /work /release /bugfix — extracted from agentm as a standalone native plugin. The base other dev plugins enhance.
 category: Coding
 requires: []
 standalone: true
-enhances:
-  - group: github-projects
-    capability: board-sync
-    effect: "/work's task close-out (step 10) posts a per-commit progress comment + a task-close comment (SHA-keyed dedupe, list-and-match — never --search) alongside the existing board-item body-fold, when github-projects is installed and gh is authenticated"
 # Per-plugin marketplace version. Bump on every release that ships new/changed
 # primitives so `claude plugin update developer-workflows@crickets` actually
 # pulls them (the marketplace entry compares this value; a static version no-ops
@@ -777,5 +773,30 @@ enhances:
 # 0.58.1 = vault_designs.py orders a same-day timestamp above a bare date
 # (#287, from plan 103's /review): the per-character negated sort key reversed
 # order only for strings of one length.
-version: 0.58.1
+# 1.0.0 = the /review phase retires (plan 104 step 1): review now runs inside
+# /work through each step's loop, and /build-it --check reviews an existing
+# change. /bugfix's Verify runs /build-it --check; /release's preconditions
+# drop "/review resolved". Major because a command goes away.
+# 1.1.0 = wiki updates leave the pipeline (plan 104 step 2): /plan, /work,
+# /release, /bugfix and /setup dispatch no documenter and probe no
+# wiki-maintenance; docs are an opt-in pass (wiki-author on request,
+# wiki-watch on a schedule). Numbered constraints and steps keep their numbers.
+# 1.2.0 = board sync leaves the pipeline (plan 104 step 3): /plan, /work,
+# /release and /bugfix post nothing to a project board and probe no
+# board-sync; a project with a board runs report-board-drift and
+# planner-maintain on their own. The enhances edge onto github-projects'
+# board-sync is gone. /work logs out-of-scope findings as FOLLOW-UP lines.
+# 1.3.0 = personas, token-audit routed dispatch and fan-out announcements
+# retire (plan 104 step 4): no Workflow-step persona block in /work, /plan or
+# /bugfix; the explorer dispatch names sonnet instead of probing token-audit
+# and printing an announcement; /plan's step template drops Work-type and
+# Tier hint. The 3-failure escalation stop stays.
+# 1.4.0 = features.json and the design-divergence hooks retire (plan 104
+# step 5): /plan, /release and /setup write no features.json; Hook 3 (/plan
+# 4b), Hook 4 (/work's design-divergence NOTE), Hook 5 (/release 4b) and
+# Hook 7 (/release constraint 10, 4c) are gone, and the plan template drops
+# touches_architecture. /plan 1b and parent_design_doc stay.
+# 1.5.0 = /build-it's correctness pass counts a behaviour change with no test
+# that would catch its regression as a real finding (plan 104 step 6).
+version: 1.5.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

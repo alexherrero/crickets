@@ -8,9 +8,9 @@ crickets ships as **native host plugins** generated from one source; the old `in
 
 | Plugin | Standalone? | What it adds |
 |---|---|---|
-| `development-lifecycle` | yes (base) | the six phase commands (`/setup` `/plan` `/work` `/review` `/release` `/bugfix`) + the explorer/evaluator agents + the `harness-context` SessionStart hook (Claude-only). |
+| `development-lifecycle` | yes (base) | the five phase commands (`/setup` `/plan` `/work` `/release` `/bugfix`) + the explorer/evaluator agents + the `harness-context` SessionStart hook (Claude-only). |
 | `developer-safety` | enhances `development-lifecycle` | the kill-switch / steer / commit-on-stop hooks + the commit-no-coauthor / worktrees-operator-initiated conventions. |
-| `code-review` | enhances `development-lifecycle`'s `review` | the adversarial-reviewer + cross-model adversarial-reviewer-cross agents, the `evidence-tracker` hook, and the standalone `/code-review` command. |
+| `code-review` | enhances `development-lifecycle`'s `review` | the adversarial-reviewer + cross-model adversarial-reviewer-cross agents, the security-auditor, `cross-review.sh` and the `evidence-tracker` hook; they run `/build-it`'s review passes. No commands. |
 | `maintenance` | requires `development-lifecycle` | CI workflows + dependabot-fixer. |
 | `privacy` | standalone | the PII guardrail — scrubber skill + pre-push detector. |
 | `wiki` | enhances `development-lifecycle`'s `documentation` | Diátaxis wiki authoring + maintenance. |
@@ -75,6 +75,6 @@ Some plugins have limited compatibility on Antigravity — see [Compatibility](C
 
 ## See also
 
-- [Using code review](01-First-Code-Review) — a hands-on first run of one plugin.
+- [Using code review](01-First-Code-Review) — a hands-on first run of a review.
 - [Modify a crickets plugin](Modify-A-Plugin) — the source → generate → dogfood loop.
 - [Compatibility](Compatibility) — the per-host component + hook matrix.

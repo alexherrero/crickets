@@ -13,6 +13,9 @@ approved: 2026-06-23
 > [!NOTE]
 > **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-23) · locked 2026-06-28 (final AG design sweep).** child-design — **the `maintenance` capability** (keep an already-shipped codebase healthy: dependency repair + currency, security patching, tech-debt inventory). `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). Points *up* at the [crickets HLD](crickets-hld.md).
 
+> [!WARNING]
+> **Partly out of date (2026-11-22):** crickets plan 104 retired pieces this page still describes as current; see the amendment log. The later wiki migration reconciles the body.
+
 # maintenance
 
 ## Objective
@@ -179,3 +182,7 @@ The rename is **in place**: the plugin directory `github-ci` → `maintenance`, 
 `maintenance` keeps an already-shipped codebase healthy — the renamed-in-place, broadened `github-ci`, the executing arm of the Maintainer persona. Four primitives, one delivered (`dependabot-fixer`) + three greenfield (`deps-currency`, `cve-security-patch`, `tech-debt-inventory`). The key line: **the repair lives here, the analysis in [diagnostics](crickets-diagnostics.md)** — `dependabot-fixer` is recast as a *caller* of the diagnose engine, and every repairer acts under the named **repair guarantees** (bounded · never-merge · never-disable · never-pin-older · residual-risk-honest). `cve-security-patch` is [privacy](crickets-privacy.md)'s reactive advisory-driven sibling; `tech-debt-inventory` turns the episodic `/simplify` pass into a standing memory-backed backlog (a `debt` memory-kind convention). `/ci-cd` stays in development-lifecycle (pipeline authoring).
 
 Operator decisions (2026-06-23): rename **in place** first (zero behavior change, gates green), recast `dependabot-fixer` after diagnostics ships; `deps-currency` surfaces a **passive report** (not a PR); `cve-security-patch` is **advisory-as-input** (a skill, no polling); the `debt` kind is a **memory convention** (taxonomy + optional CI gate maintenance's); the plugin declares an umbrella **`[maintenance]`** capability (drop `[ci-repair]`, `dependabot-fixer` a primitive within); the github binding is a **permanent property** of the flagship primitive under a host-neutral concern. **Built-vs-designed:** `dependabot-fixer` delivered; the three greenfield primitives + the recast designed. **Re-audit triggers:** rename first; recast on the diagnose engine when diagnostics ships; flip `[PENDING-IMPL]` as each primitive lands; reconcile the composition map + HLD + chart at this approval.
+
+**2026-11-22 — pieces retired by plan 104; body not yet reconciled.**
+
+crickets plan 104 (development-lifecycle 1.0.0–1.5.0, code-review 1.0.0) retired the `/review` phase and crickets' `/doubt`, `/code-review` and `/simplify` (with the `test-engineer` agent) in favour of `/build-it`'s passes and `/build-it --check`; took wiki updates and board sync out of `/plan`, `/work`, `/release` and `/bugfix` (`wiki-author`, `wiki-watch` and `report-board-drift` run them on request or on a schedule); and dropped the workflow-step personas, token-audit routed dispatch and fan-out announcements, `features.json`, and design Hooks 3, 4, 5 and 7. Where the body above says otherwise, the CHANGELOG's plan 104 entries are current. Why not reconcile the body now: these pages wait for the planned wiki migration, which rewrites them whole. Re-audit trigger: that migration.

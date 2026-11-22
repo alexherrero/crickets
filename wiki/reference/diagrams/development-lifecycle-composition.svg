@@ -13,9 +13,9 @@
   <!-- enhancers (left, dashed-green enhances -> center) -->
   <text x="40" y="86" font-size="10.5" font-weight="700" fill="#3A9D5D">ENHANCES (soft)</text>
   <g fill="#27613f">
-    <rect x="40" y="100" width="210" height="46" rx="9" fill="#E9F6EE" stroke="#3A9D5D" stroke-width="1.6"/><text x="145" y="122" text-anchor="middle" font-size="12" font-weight="600">code-review</text><text x="145" y="138" text-anchor="middle" font-size="9" font-style="italic" fill="#3A9D5D">sharpens /review</text>
+    <rect x="40" y="100" width="210" height="46" rx="9" fill="#E9F6EE" stroke="#3A9D5D" stroke-width="1.6"/><text x="145" y="122" text-anchor="middle" font-size="12" font-weight="600">code-review</text><text x="145" y="138" text-anchor="middle" font-size="9" font-style="italic" fill="#3A9D5D">runs /build-it's review passes</text>
     <rect x="40" y="228" width="210" height="46" rx="9" fill="#E9F6EE" stroke="#3A9D5D" stroke-width="1.6"/><text x="145" y="250" text-anchor="middle" font-size="12" font-weight="600">developer-safety</text><text x="145" y="266" text-anchor="middle" font-size="9" font-style="italic" fill="#3A9D5D">recoverability control</text>
-    <rect x="40" y="356" width="210" height="46" rx="9" fill="#E9F6EE" stroke="#3A9D5D" stroke-width="1.6"/><text x="145" y="378" text-anchor="middle" font-size="12" font-weight="600">wiki-maintenance</text><text x="145" y="394" text-anchor="middle" font-size="9" font-style="italic" fill="#3A9D5D">documents at phase boundaries</text>
+    <rect x="40" y="356" width="210" height="46" rx="9" fill="#E9F6EE" stroke="#3A9D5D" stroke-width="1.6"/><text x="145" y="378" text-anchor="middle" font-size="12" font-weight="600">wiki-maintenance</text><text x="145" y="394" text-anchor="middle" font-size="9" font-style="italic" fill="#3A9D5D">keeps the wiki current, on request</text>
   </g>
   <g stroke="#3A9D5D" stroke-width="1.6" stroke-dasharray="5 4" fill="none" marker-end="url(#enh)">
     <path d="M250,123 C300,140 300,210 328,232"/>

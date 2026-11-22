@@ -13,21 +13,21 @@ How the sync flows — the vault drives the board one way, and a drift check kee
 
 How it composes — github-projects both needs the phase loop and adds to it, resting on the AgentM substrate:
 
-![How github-projects composes: github-projects on the left connects to development-lifecycle on the right by two arrows — a solid requires arrow (won't install without it) and a dashed-green enhances arrow (the phases emit board updates) — and development-lifecycle rests on the AgentM substrate of memory, opinions and personas](diagrams/github-projects-composition.svg)
+![How github-projects composes: github-projects on the left connects to development-lifecycle on the right by a solid requires arrow (won't install without it); the phase commands post nothing to the board; development-lifecycle rests on the AgentM substrate of memory, opinions and personas](diagrams/github-projects-composition.svg)
 
 ### How it works
 
 A small config file tells the plugin which vault project maps to which GitHub board. From there it reads the vault's roadmap and progress and builds a picture of the work — versions, features, plans, tasks, and the things still in the backlog. It doesn't mirror all of that onto the board. Features and everything above them always appear, so the board reads as a stable roadmap, but the finer-grained plans and tasks only show up for the plan you're actively working, so the board never fills with breakdowns for work that hasn't started.
 
-Each item gets a short, dated summary from a fixed set of templates, and every write goes through one path that either creates the matching issue or updates the one that's already there — keyed by a stable id, so running the sync again just brings the board back into agreement rather than posting duplicates. A drift check confirms the vault and the board still match and flags it if they've diverged. When Development Lifecycle is installed, the plan, work, release, and bugfix phases each push the matching board update as they run; if this plugin isn't present, those steps simply do nothing.
+Each item gets a short, dated summary from a fixed set of templates, and every write goes through one path that either creates the matching issue or updates the one that's already there — keyed by a stable id, so running the sync again just brings the board back into agreement rather than posting duplicates. A drift check confirms the vault and the board still match and flags it if they've diverged. The phase commands (`/plan`, `/work`, `/release`, `/bugfix`) post nothing to the board. A project that keeps one runs `/report-board-drift` on a loop or cron to see what the board is missing, and `/planner-maintain` to fix it.
 
 ### Composition
 
 | Direction | Plugin | How |
 |---|---|---|
-| Enhances (soft) | [Development Lifecycle](Development-Lifecycle) | Its `/plan`, `/work`, `/release`, and `/bugfix` phases emit board updates as they run — gated on the `board-sync` capability, and a no-op when this plugin is absent. |
+| Enhances (soft) | — | None. The phase commands post nothing to a board; you run the board cycle yourself. |
 | Enhanced by (soft) | — | None. |
-| Requires (hard) | [Development Lifecycle](Development-Lifecycle) | Declared in `group.yaml` (`requires: [development-lifecycle]`); the phases the board sync hangs off live there. |
+| Requires (hard) | [Development Lifecycle](Development-Lifecycle) | Declared in `group.yaml` (`requires: [development-lifecycle]`). |
 | Required by (hard) | — | None. |
 
 ### Why not
@@ -42,10 +42,12 @@ GitHub Projects is an opinionated, one-way sync, and it will not fit every workf
 
 ### Commands & skills
 
-This plugin ships no slash commands or skills. It's a set of scripts plus a template library that the `development-lifecycle` phases drive. Each primitive links to the source that implements it.
+This plugin ships two commands, a set of scripts and a template library. The phase commands do not drive it; you run the commands yourself. Each primitive links to the source that implements it.
 
 | Primitive | Kind | What it does |
 |---|---|---|
+| [`/report-board-drift`](https://github.com/alexherrero/crickets/blob/main/src/github-projects/commands/report-board-drift.md) | command | One report-only drift cycle: finds where the board and the vault differ and posts one summary comment on the Version issue (or logs it). Put it in `/loop` or a cron line. Never corrects drift. |
+| [`/planner-maintain`](https://github.com/alexherrero/crickets/blob/main/src/github-projects/commands/planner-maintain.md) | command | One maintenance cycle: fills a missing Feature → Plan or Plan → Task level where it can tell safely, corrects update drift through `project_sync.py`, and lists orphans and gaps for you to decide. Never closes an orphan. |
 | [`project_sync.py`](https://github.com/alexherrero/crickets/blob/main/src/github-projects/scripts/project_sync.py) | script | The only path that writes to GitHub — renders an item and creates or updates its issue, keyed by a stable id so re-runs never duplicate. |
 | [`project_model.py`](https://github.com/alexherrero/crickets/blob/main/src/github-projects/scripts/project_model.py) | script | Builds the typed graph of the work, enforces the parent-chain, and applies the materialization rule (features and up always; plans and tasks only for the active plan). |
 | [`check_project_sync.py`](https://github.com/alexherrero/crickets/blob/main/src/github-projects/scripts/check_project_sync.py) | script | The drift gate — checks the board still matches the vault, and skips cleanly when there's no config or no `gh`. |
@@ -69,7 +71,7 @@ The plugin reads a per-project `project.json` that maps a vault project to its G
 | `isolation` | object | no | how worktrees and integration are handled, read by the development-lifecycle loop |
 | `env` | object | no | environment-variable path overrides |
 
-With no `project.json` and no `gh` on the PATH, the drift gate and the phase updates skip cleanly rather than failing.
+With no `project.json` and no `gh` on the PATH, the drift gate skips cleanly rather than failing.
 
 ### The type taxonomy
 
@@ -142,7 +144,7 @@ The render is deterministic: the same item always renders the same body, with a 
 
 ### The write path
 
-`project_sync.py` is the only path that writes to GitHub, and it's idempotent: for each item it creates the issue if there's none, updates it if the body changed, and does nothing if it already matches — so re-running just brings the board back into agreement. A `--dry-run` renders without writing, as the preview boundary. Most stages re-render in full from the board-items data; a few progress and closeout stages accept flag values (a commit, a summary, a date) so a phase can push a quick update as it runs.
+`project_sync.py` is the only path that writes to GitHub, and it's idempotent: for each item it creates the issue if there's none, updates it if the body changed, and does nothing if it already matches — so re-running just brings the board back into agreement. A `--dry-run` renders without writing, as the preview boundary. Most stages re-render in full from the board-items data; a few progress and closeout stages accept flag values (a commit, a summary, a date) for a quick update.
 
 ### The drift gate
 
@@ -150,7 +152,7 @@ The render is deterministic: the same item always renders the same body, with a 
 |---|---|
 | Drift gate | `check_project_sync.py` checks the board still matches the vault; it runs in the local gate battery and in CI |
 | Graceful-skip | no `project.json` or no `gh` → the gate skips cleanly, never an error |
-| Phase updates | the `development-lifecycle` `/plan` · `/work` · `/release` · `/bugfix` phases push the matching board update when the plugin is installed, and skip quietly when it isn't |
+| Phase commands | the `development-lifecycle` `/plan` · `/work` · `/release` · `/bugfix` commands post nothing to the board; `/report-board-drift` (on a loop or cron) and `/planner-maintain` keep it current |
 
 The gate surfaces four kinds of drift: an item with no issue yet, an issue missing from the board, a body that no longer matches, and an orphan issue no item claims. Closed issues for done features are left as history. It exits clean on a match or a graceful-skip, and non-zero when it finds drift.
 
@@ -158,7 +160,7 @@ The gate surfaces four kinds of drift: an item with no issue yet, an issue missi
 
 - [One-way vault-to-board synthesis](One-Way-Vault-To-Board-Synthesis) — the *why*: one-way deterministic synthesis, the vault-as-source-of-truth, and the meta-loop.
 - [Sync a project board](Sync-A-Project-Board) — the operator recipe for a board sync + the inaugural backfill.
-- [Development Lifecycle](Development-Lifecycle) — the base plugin `github-projects` requires; the phase commands that emit board updates.
+- [Development Lifecycle](Development-Lifecycle) — the base plugin `github-projects` requires.
 - [CI gates](CI-Gates) — the gate battery `check_project_sync.py` joins.
 - [Plugin anatomy](Plugin-Anatomy) — what a crickets plugin's `scripts/` payload is.
 - [GitHub Projects design](crickets-github-projects) — the locked design calls (the taxonomy, materialization, field schema, silent-source, and surface) and the why-not-the-alternative for each.

@@ -258,12 +258,14 @@ class TestSrcModel(unittest.TestCase):
         groups = src_model.load_groups(_ROOT / "src")
         by = {g.slug: g for g in groups}
         cmd_groups = {g.slug for g in groups for p in g.primitives if p.kind == "command"}
-        self.assertEqual(cmd_groups, {"development-lifecycle", "code-review", "design",
+        # code-review ships no commands since plan 104 step 6 retired
+        # /code-review, /doubt and /simplify (/build-it --check replaces them).
+        self.assertEqual(cmd_groups, {"development-lifecycle", "design",
                                       "wiki", "tokens", "github-projects", "diagnostics"})
         dw_cmds = {p.name for p in by["development-lifecycle"].primitives if p.kind == "command"}
         self.assertIn("plan", dw_cmds)
         cr_cmds = {p.name for p in by["code-review"].primitives if p.kind == "command"}
-        self.assertEqual(cr_cmds, {"code-review", "doubt", "simplify"})
+        self.assertEqual(cr_cmds, set())
         wm_cmds = {p.name for p in by["wiki"].primitives if p.kind == "command"}
         self.assertEqual(wm_cmds, {"recent-wiki-changes", "wiki-watch", "wiki-init"})
 

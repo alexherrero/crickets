@@ -11,17 +11,17 @@
       "capabilities": [
         "adversarial-review"
       ],
-      "description": "Standalone adversarial code review of any diff or PR — the adversarial-reviewer (+ cross-model Gemini) agents, the evidence-tracker hook, a /code-review command, a /simplify command, and security-review + testing-strategy skills. Enhances developer-workflows' review capability when both are installed.",
+      "description": "Standalone adversarial code review of any diff or PR — the adversarial-reviewer (+ cross-model Gemini) agents, the evidence-tracker hook, and security-review + testing-strategy skills. Its reviewers and cross-review.sh run /build-it's review passes when development-lifecycle is installed.",
       "enhances": [
         {
           "capability": "review",
-          "effect": "/review dispatches the adversarial reviewers (failing test / DEFECT: file:line / NO ISSUES FOUND)",
+          "effect": "/build-it's review passes dispatch the adversarial reviewers (failing test / DEFECT: file:line / NO ISSUES FOUND)",
           "group": "development-lifecycle"
         }
       ],
       "name": "code-review",
       "source": "./plugins/code-review",
-      "version": "0.6.1"
+      "version": "1.0.0"
     },
     {
       "capabilities": [
@@ -35,7 +35,7 @@
       "description": "Day-to-day testing + release discipline in one plugin — tests-are-sacred, verification-first, the 3-layer pyramid, the pre-release checklist, changelog-shape, and paired-release coordination for cross-repo releases.",
       "name": "conventions",
       "source": "./plugins/conventions",
-      "version": "0.12.1"
+      "version": "0.12.4"
     },
     {
       "capabilities": [
@@ -77,17 +77,10 @@
         "bugfix",
         "documentation"
       ],
-      "description": "The phase-gated developer loop — /setup /plan /work /review /release /bugfix — extracted from agentm as a standalone native plugin. The base other dev plugins enhance.",
-      "enhances": [
-        {
-          "capability": "board-sync",
-          "effect": "/work's task close-out (step 10) posts a per-commit progress comment + a task-close comment (SHA-keyed dedupe, list-and-match — never --search) alongside the existing board-item body-fold, when github-projects is installed and gh is authenticated",
-          "group": "github-projects"
-        }
-      ],
+      "description": "The phase-gated developer loop — /setup /plan /work /release /bugfix — extracted from agentm as a standalone native plugin. The base other dev plugins enhance.",
       "name": "development-lifecycle",
       "source": "./plugins/development-lifecycle",
-      "version": "0.58.1"
+      "version": "1.5.0"
     },
     {
       "capabilities": [
@@ -118,7 +111,7 @@
       "description": "One-way, deterministic board-sync — synthesizes a vault project's roadmap/plan/progress state onto a GitHub Project board via six locked per-type templates, a single idempotent project_sync.py write path, and a vault==board drift gate. The vault stays the agent's source of truth; the board is the generated human source.",
       "name": "github-projects",
       "source": "./plugins/github-projects",
-      "version": "0.6.1"
+      "version": "0.6.2"
     },
     {
       "capabilities": [
@@ -174,24 +167,24 @@
       "description": "Deterministic transcript-JSONL cost analyzer — per-message cost curve, 5h rolling window, floor breakdown, and cache-read vs cache-write vs fresh-input split. Prerequisite for Part C (status-line meter) and Part G (heat-based floor).",
       "name": "tokens",
       "source": "./plugins/tokens",
-      "version": "0.8.3"
+      "version": "0.8.4"
     },
     {
       "capabilities": [
         "wiki-maintenance",
         "wiki"
       ],
-      "description": "Opinionated, template-driven wiki maintenance — the wiki-author authoring/learning skill, the documenter agent, the diataxis-evaluator, recent-wiki-changes, and the check-wiki.py linter. Maintains a wiki in the operator's voice; enhances developer-workflows' phase-boundary documentation when both are installed.",
+      "description": "Opinionated, template-driven wiki maintenance — the wiki-author authoring/learning skill, the documenter agent, the diataxis-evaluator, recent-wiki-changes, and the check-wiki.py linter. Maintains a wiki in the operator's voice; keeps a project's wiki current on request (wiki-author) or on a schedule (wiki-watch).",
       "enhances": [
         {
           "capability": "documentation",
-          "effect": "phase commands dispatch the documenter to author/repair wiki pages at phase boundaries",
+          "effect": "wiki-author and wiki-watch keep a project's wiki current, on request or on a schedule",
           "group": "development-lifecycle"
         }
       ],
       "name": "wiki",
       "source": "./plugins/wiki",
-      "version": "0.13.4"
+      "version": "0.13.6"
     }
   ],
   "renames": {

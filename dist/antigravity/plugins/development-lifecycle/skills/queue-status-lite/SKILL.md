@@ -21,7 +21,7 @@ You are running **queue-status-lite** — the coordinator's read-only glance at 
 
 1. **Run the bridge.** Invoke `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/queue_status.py"` from the project's repo. It is a status read and exits 0 in normal use.
 2. **Present the dashboard verbatim** (constraint 2). Show the operator the block as-is: one entry per active task — name, status, and last progress line.
-3. **Stop.** Add nothing beyond an optional one-line framing ("N active tasks"). Do not recommend, assign, or act — queue-status-lite only shows. Any follow-on — picking a task to `/work`, a `/review`, a release — is the operator's call.
+3. **Stop.** Add nothing beyond an optional one-line framing ("N active tasks"). Do not recommend, assign, or act — queue-status-lite only shows. Any follow-on — picking a task to `/work`, a `/build-it --check`, a release — is the operator's call.
 
 ## When there is no agentm
 

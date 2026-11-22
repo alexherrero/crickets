@@ -52,6 +52,6 @@ The pass is two steps: **Gemini simplifies, Claude verifies.** A simplification 
 ## See also
 
 - [Author a design](Author-A-Design) — write the design note this pass can polish
-- [Review a change — code review](Use-Code-Review) — the code sibling of this pass
+- [Review an existing change](Use-Code-Review) — the code sibling of this pass
 - [Record an architectural decision](Record-An-Architectural-Decision) — where meaning changes go (never through this pass)
 - [Manifest schema](Manifest-Schema) — skill primitive frontmatter reference

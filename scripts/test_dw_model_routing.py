@@ -49,7 +49,6 @@ _COMMAND_ROUTING = {
     "work": "opusplan",
     "bugfix": "opusplan",
     "plan": "claude-sonnet-5",
-    "review": "claude-sonnet-5",
     "design": "claude-sonnet-5",
 }
 
@@ -117,9 +116,6 @@ class TestCommandRoutingNudge(unittest.TestCase):
 
     def test_plan_nudge_is_sonnet(self):
         self._assert_nudge("plan", "claude-sonnet-5")
-
-    def test_review_nudge_is_sonnet(self):
-        self._assert_nudge("review", "claude-sonnet-5")
 
     def test_design_nudge_is_sonnet(self):
         self._assert_nudge("design", "claude-sonnet-5")

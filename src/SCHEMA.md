@@ -71,7 +71,7 @@ capabilities: [adversarial-review]
 enhances:
   - group: developer-workflows
     capability: review
-    effect: "/review dispatches the adversarial reviewers"
+    effect: "/build-it's review passes dispatch the adversarial reviewers"
 ```
 
 ## Primitive frontmatter

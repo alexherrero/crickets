@@ -177,5 +177,8 @@ standalone: false
 # project.json.
 # 0.6.1 = Antigravity: /planner-maintain and /report-board-drift ship as
 # skills.
-version: 0.6.1
+# 0.6.2 = planner-maintain's command and script no longer say /work and
+# /release call it: it runs on its own or on the report-board-drift loop
+# (crickets plan 104 step 3).
+version: 0.6.2
 capabilities: [board-sync]

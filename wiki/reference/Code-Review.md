@@ -7,19 +7,19 @@ Code Review gives your agent a skeptical second pair of eyes on any change. It d
 
 ### Diagram
 
-![How code-review plugs into development-lifecycle — at /review it dispatches the adversarial reviewers, and the evidence-tracker hook guards /work's checkbox flips](diagrams/code-review-composition.svg)
+![How code-review plugs into development-lifecycle — its adversarial reviewers run /build-it's review passes (and /build-it --check), and the evidence-tracker hook guards /work's checkbox flips](diagrams/code-review-composition.svg)
 
 ### How it works
 
-You point it at a diff or a PR. It runs an adversarial review. A reviewer reads the change. It assumes the change contains a bug. When Gemini is available, a second reviewer does the same from a different model. The two reviewers do not share one model's blind spots. Each reviewer returns an actionable result. It returns a failing test, a `DEFECT: file:line`, or `NO ISSUES FOUND`. It never returns loose prose.
+It reviews a diff or a PR adversarially. A reviewer reads the change. It assumes the change contains a bug. When Gemini is available, a second reviewer does the same from a different model. The two reviewers do not share one model's blind spots. Each reviewer returns an actionable result. It returns a failing test, a `DEFECT: file:line`, or `NO ISSUES FOUND`. It never returns loose prose.
 
-When you install `development-lifecycle`, these reviewers run automatically at the `/review` phase. An `evidence-tracker` hook stops a task from being ticked off. The agent must read the spec and test files first.
+When you install `development-lifecycle`, these reviewers run `/build-it`'s review passes: in each `/work` step's loop, and in `/build-it --check <PR number | A..B | diff file>` on a change someone already made. The correctness pass also flags a behaviour change with no test that would catch its regression. `security-auditor` is the extra pass when a change touches auth, secrets, shell execution or network input. The plugin ships no commands of its own. An `evidence-tracker` hook stops a task from being ticked off. The agent must read the spec and test files first.
 
 ### Composition
 
 | Direction | Plugin | How |
 |---|---|---|
-| Enhances (soft) | [Development Lifecycle](Development-Lifecycle) | Runs the adversarial reviewers at `/review` and guards `/work`'s checkbox flips — only when both are installed. |
+| Enhances (soft) | [Development Lifecycle](Development-Lifecycle) | Its reviewers and `cross-review.sh` run `/build-it`'s review passes, and its hook guards `/work`'s checkbox flips — only when both are installed. |
 | Enhanced by (soft) | — | None. |
 | Requires (hard) | — | None. Code Review is fully standalone. |
 | Required by (hard) | — | None. |
@@ -40,15 +40,12 @@ Each primitive links to the source that implements it.
 
 | Primitive | Kind | What it does |
 |---|---|---|
-| [`/code-review`](https://github.com/alexherrero/crickets/blob/main/src/code-review/commands/code-review.md) | command | Adversarial review of a diff or PR. |
-| [`/doubt`](https://github.com/alexherrero/crickets/blob/main/src/code-review/commands/doubt.md) | command | Fresh-context review of a decision before it stands. |
-| [`/simplify`](https://github.com/alexherrero/crickets/blob/main/src/code-review/commands/simplify.md) | command | Cut accidental complexity from a change. |
 | [`security-review`](https://github.com/alexherrero/crickets/blob/main/src/code-review/skills/security-review/SKILL.md) | skill | Three-tier boundary security review. |
 | [`testing-strategy`](https://github.com/alexherrero/crickets/blob/main/src/code-review/skills/testing-strategy/SKILL.md) | skill | Coverage audit — the Beyoncé Rule, DAMP, Prove-It. |
-| [`adversarial-reviewer`](https://github.com/alexherrero/crickets/blob/main/src/code-review/agents/adversarial-reviewer.md) | sub-agent | Assume-bugs critic; returns a failing test or a `DEFECT`. |
+| [`adversarial-reviewer`](https://github.com/alexherrero/crickets/blob/main/src/code-review/agents/adversarial-reviewer.md) | sub-agent | Assume-bugs critic; returns a failing test or a `DEFECT`. Its checklist includes a behaviour change with no test that would catch its regression. |
 | [`adversarial-reviewer-cross`](https://github.com/alexherrero/crickets/blob/main/src/code-review/agents/adversarial-reviewer-cross.md) | sub-agent | The same, cross-model via Gemini; degrades visibly — a `CROSS-REVIEW-DEGRADED: <reason>` line, never a silent same-model swap, whenever `cross-review.sh` cannot return a review (an unknown `--tier` or argument exits 2 first, with no marker): `agy` missing or failing, its print timeout running out, material over the size ceiling, or a reply that breaks the output contract twice. |
-| [`security-auditor`](https://github.com/alexherrero/crickets/blob/main/src/code-review/agents/security-auditor.md) | sub-agent | Finds the unvalidated boundary crossing. |
-| [`test-engineer`](https://github.com/alexherrero/crickets/blob/main/src/code-review/agents/test-engineer.md) | sub-agent | Finds the behavior with no test. |
+| [`security-auditor`](https://github.com/alexherrero/crickets/blob/main/src/code-review/agents/security-auditor.md) | sub-agent | Finds the unvalidated boundary crossing. `/build-it` runs it as the security pass when a change touches auth, secrets, shell execution or network input. |
+| [`cross-review.sh`](https://github.com/alexherrero/crickets/blob/main/src/code-review/scripts/cross-review.sh) | script | The cross-model review itself: material in, a failing test, a `DEFECT` or `NO ISSUES FOUND` out. Picks its model by tier (below). |
 | [`evidence-tracker`](https://github.com/alexherrero/crickets/blob/main/src/code-review/hooks/evidence-tracker/hook.md) | hook | Blocks a `[ ] → [x]` flip until specs and tests are read (Claude-only). |
 | [`review_material.py`](https://github.com/alexherrero/crickets/blob/main/src/code-review/scripts/review_material.py) | script | Builds the text a reviewer sees: `ARTIFACT`, `CONTRACT`, `RULES`. Pipe it into `cross-review.sh`. |
 
@@ -96,7 +93,7 @@ Each override applies on top of the chosen tier.
 ## See also
 
 - [First code review](01-First-Code-Review) — the tutorial.
-- [Review a change](Use-Code-Review) · [Simplify a diff](Simplify-A-Diff) · [In-flight decision review](Use-Doubt-Review) — the how-tos.
+- [Review an existing change](Use-Code-Review) — the how-to.
 - [Why adversarial review](Why-Adversarial-Review) — why the assume-bugs framing works.
 - [Code-review design](crickets-code-review) · [Composition design](crickets-composition) — the deeper design.
 

@@ -197,7 +197,9 @@ class EmittedCallSitesResolveInTheVersionedCache(unittest.TestCase):
         # nothing cannot pass by checking nothing.
         for site in (("wiki", "design", "scripts/prose_pass.py"),
                      ("wiki", "design", "skills/prose-pass/SKILL.md"),
-                     ("development-lifecycle", "github-projects", "scripts/project_sync.py"),
+                     # (plan 104 step 3 removed /work's project_sync.py call;
+                     # /build-it's review_material.py call takes its place)
+                     ("development-lifecycle", "code-review", "scripts/review_material.py"),
                      ("development-lifecycle", "diagnostics", "scripts/diagnose.py"),
                      ("maintenance", "development-lifecycle", "scripts/agentm_bridge.py")):
             self.assertIn(site, checked)

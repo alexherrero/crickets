@@ -165,7 +165,7 @@ def _main_capability(rest: "list[str]") -> int:
 # wiki/reference/Design-Governance.md in agentm). The resolver scans
 # `<root>/wiki/designs/` and **defaults root to agentm's own repo**, so this
 # verb passes `--root` = the repo being worked in (default: cwd) — that is how
-# /plan and /review resolve THIS repo's governing designs rather than agentm's.
+# /plan resolves THIS repo's governing designs rather than agentm's.
 
 _GOVERNS_RESOLVER_NAME = "governs_resolver.py"
 

@@ -117,4 +117,10 @@ capabilities: [testing-conventions, releasing-conventions, conventions]
 #          lives in the project's desk/, or beside a no-vault repo's plans.
 # 0.12.1 = Antigravity: the eight rules carry the trigger: agy 1.4 requires
 # (model_decision); without one agy never applied them.
-version: 0.12.1
+# 0.12.2 = ci-battery names /build-it, not the retired /review phase (plan 104 step 1).
+# 0.12.3 = coordinator-dispatch says the phase commands no longer call
+# announce_dispatch() (plan 104 step 4).
+# 0.12.4 = ship-release, coalescence-gate, agentic-engineering and the
+# features.json reference stop saying /release reads touches_architecture or
+# that the phase commands write features.json (plan 104 step 5).
+version: 0.12.4

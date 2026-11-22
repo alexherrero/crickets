@@ -1,8 +1,8 @@
 name: Wiki
 description: Opinionated, template-driven wiki maintenance — the wiki-author authoring/learning
   skill, the documenter agent, the diataxis-evaluator, recent-wiki-changes, and the check-wiki.py
-  linter. Maintains a wiki in the operator's voice; enhances developer-workflows' phase-boundary
-  documentation when both are installed.
+  linter. Maintains a wiki in the operator's voice; keeps a project's wiki current on request
+  (wiki-author) or on a schedule (wiki-watch).
 category: documentation
 requires: []
 standalone: true
@@ -219,10 +219,15 @@ standalone: true
 # 0.13.4 = sibling_plugin.py's docstring no longer names the retired /design
 # translate, and diataxis-author's dogfood note no longer names /design author
 # (plan 103, step 12).
-version: 0.13.4
+# 0.13.5 = documenter drops its "/review — NOT invoked" section: the /review
+# phase is retired (plan 104 step 1).
+# 0.13.6 = the enhance on development-lifecycle's documentation capability now
+# says wiki-author and wiki-watch keep a wiki current; the phase commands no
+# longer dispatch the documenter (plan 104 step 2).
+version: 0.13.6
 capabilities: [wiki-maintenance, wiki]
 renamed_from: [wiki-maintenance]
 enhances:
   - group: development-lifecycle
     capability: documentation
-    effect: "phase commands dispatch the documenter to author/repair wiki pages at phase boundaries"
+    effect: "wiki-author and wiki-watch keep a project's wiki current, on request or on a schedule"

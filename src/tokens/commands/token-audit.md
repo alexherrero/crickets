@@ -81,9 +81,9 @@ You are running `/token-audit` — a deterministic cost analyzer for Claude Code
 
    ### Routing conformance (only with `--routing`)
 
-   Model-used vs. work-type, cross-referenced against `routing_table.py` and counting no-announcement dispatches as violations.
+   Model-used vs. work-type, cross-referenced against `routing_table.py` and counting no-announcement dispatches in older transcripts as violations.
 
-   **NOTE — provisional pending `PLAN-efficiency-dispatch`:** the mandatory fan-out announcement line this section reads is `[PENDING-IMPL]` (that plan's scope). Until it ships, extract dispatch records manually from whatever announcement-shaped text the transcript actually contains (role · agent count · model · tier source), or pass `--routing-fixture <path>` to a JSON file of `{role, agent_count, model_id, tier_source}` objects (`tier_source: null` and `model_id: null` together mean "no announcement at all" — the violation case). Call:
+   **NOTE:** the phase commands no longer print a fan-out announcement (crickets plan 104), so only older transcripts or a fixture carry one: extract records from those (role · agent count · model · tier source), or pass `--routing-fixture <path>` to a JSON file of `{role, agent_count, model_id, tier_source}` objects (`tier_source: null` and `model_id: null` together mean "no announcement at all" — the violation case). Call:
 
    ```bash
    python3 -c "

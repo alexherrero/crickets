@@ -1,6 +1,6 @@
 # `features.json` schema
 
-Objective house facts, cited by `conventions` rules and by `/plan` when it decides whether a task warrants a feature entry — not gated itself.
+Objective house facts for a project that still keeps a `features.json`. The development-lifecycle phase commands no longer read or write one (crickets plan 104): a plan's tracker records what is done — not gated itself.
 
 ## Shape
 
@@ -35,4 +35,4 @@ A feature may only be marked `passes: true` after:
 2. Where relevant, an end-to-end test (a real user flow, not code inspection) confirms the feature works.
 3. The adversarial reviewer either cleared it or its findings were addressed in a follow-up commit.
 
-`passes: true` is set by `/review`, never by `/plan` — a feature is a changelog-worthy, user-visible capability (not 1:1 with a task); scaffolding and refactors don't produce a feature entry at all.
+`passes: true` is set by hand once a feature is verified — a feature is a changelog-worthy, user-visible capability (not 1:1 with a task); scaffolding and refactors don't produce a feature entry at all.
