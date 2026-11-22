@@ -96,7 +96,7 @@ class TestPrimitiveEnumeration(unittest.TestCase):
     def test_plugin_primitives_includes_skills_and_agents(self):
         wm = rp.plugin_primitives(rp.PLUGINS_ROOT / "wiki")
         self.assertIn(("agent", "documenter"), wm)
-        self.assertIn(("skill", "diataxis-author"), wm)
+        self.assertIn(("skill", "wiki-author"), wm)
 
     def test_offered_map_none_installed_is_empty(self):
         # host CLI unavailable -> can't confirm installs -> nothing eligible

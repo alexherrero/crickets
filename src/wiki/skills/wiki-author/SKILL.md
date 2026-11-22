@@ -1,89 +1,67 @@
 ---
 name: wiki-author
-description: "Update or create a Diátaxis wiki page for the current repo (or another registered repo). Triggers when the operator says 'update the wiki', 'document this in the wiki', 'add this to the wiki', 'create a wiki page for X', or 'update <repo>'s wiki'. Resolves target repo via cwd (default) or explicit repo name (cross-repo via repo_registry from V4 #30 plan 1). Dispatches the documenter sub-agent for the structural edit with preview-before-write. Defers to diataxis-author skill for mode selection when needed. Honors per-repo .diataxis-conventions.md override. Does NOT auto-generate content — agent gathers context from the conversation; the skill handles dispatch + write contract."
+description: "Update or create a page in a repo's six-section wiki (how-to · reference · architecture · designs · explanation · operational). Triggers when the operator says 'update the wiki', 'document this in the wiki', 'add this to the wiki', 'create a wiki page for X', or 'update <repo>'s wiki'. Resolves the target repo (cwd, or a registered slug), picks the page and its mode, and dispatches the documenter sub-agent, which drafts from the bundled templates, runs the prose pass, previews the diff and writes only on approval. check-wiki --strict is the gate. Does not invent content: the agent gathers it from the conversation."
 kind: skill
-supported_hosts: [claude-code]
-version: 0.1.1
+supported_hosts: [claude-code, antigravity]
+version: 0.2.0
 ---
 
-# wiki-author — operator-facing dispatcher for wiki edits
+# wiki-author — the wiki skill
 
-Auto-fires on operator phrases like *"update the wiki with what we just shipped"* or *"add this to the wiki"*. Resolves which Diátaxis mode page to update or create, then dispatches the **`documenter` sub-agent** (the write-executor, hard-boundary-scoped to `wiki/**` per the [crickets-conventions design — documentation domain](https://github.com/alexherrero/crickets/wiki/crickets-conventions)). Operator confirms every write via preview-before-write gate.
+Updates or creates one wiki page at the operator's request. The **`documenter` sub-agent** writes; it is scoped to `wiki/**`, and every write waits on the operator's approval of a previewed diff. The other wiki surfaces are commands: `/wiki-watch` (the same documenter on a change feed), `/wiki-init` (scaffold a wiki), `/recent-wiki-changes` (read-only).
 
-## Triggers and non-triggers
+## When it fires
 
-This skill auto-activates on **imperative wiki-write phrases**. The trigger set is intentionally narrow to avoid false-positives in unrelated conversation.
+Imperative wiki-write phrases only:
 
-### Trigger phrases (5/5 expected to fire)
-
-| Phrase pattern | Resolution |
+| Phrase | Resolution |
 |---|---|
-| *"update the wiki"* / *"update the wiki for this repo"* | cwd-relative; documenter picks the most-relevant page from the conversation diff |
-| *"document this in the wiki"* / *"add this to the wiki"* | cwd-relative; mode picked from content kind (refactor → explanation; new command → reference; bugfix walkthrough → how-to) |
-| *"create a wiki page for X"* / *"add a wiki page about X"* | cwd-relative; ask operator for mode if not derivable from X |
-| *"update {repo-slug}'s wiki"* — explicit cross-repo | resolves target via `python3 scripts/repo_registry.py list`; writes to `<root>/wiki/` |
-| *"what's the latest in {repo-slug}'s wiki"* — read-only query | redirects operator to `/recent-wiki-changes --repo {slug}` slash command (separate surface) |
+| "update the wiki" | cwd repo; the documenter picks the page the conversation's change touches |
+| "document this in the wiki" / "add this to the wiki" | cwd repo; mode from the content (a new command → reference, a procedure → how-to, a why → explanation) |
+| "create a wiki page for X" | cwd repo; ask for the mode if X doesn't settle it |
+| "update {slug}'s wiki" | the registered repo: `python3 scripts/repo_registry.py list`, then its `root_path`/`wiki` |
+| "what's new in {slug}'s wiki" | read-only: point to `/recent-wiki-changes --repo {slug}` |
 
-### Non-triggers (5/5 expected NOT to fire)
+Not on descriptive mentions ("the wiki page says…", "the wiki/ tree", Wikipedia). If the ask is vague ("put this somewhere"), ask.
 
-| Phrase | Why not |
-|---|---|
-| *"the wiki page mentions..."* | descriptive, not imperative |
-| *"I saw it on Wikipedia"* | unrelated topic |
-| *"the wiki/ tree"* | descriptive code reference |
-| *"wiki articles vs documentation"* | discussion, not write request |
-| *"docs in wiki/explanation"* | path reference, not a write request |
+**Target.** Default is `<cwd-root>/wiki/`. A named slug resolves through the repo registry. Outside a registered repo with no slug, refuse: "Register first (`python3 scripts/repo_registry.py register <slug> --root <path>`) or name the target." With no vault or an empty registry, work in the cwd only.
 
-If operator's phrasing is ambiguous (e.g. *"add this somewhere"*), do NOT fire — ask the operator to clarify or use an explicit phrase.
+## The six sections
 
-## Resolution: cwd vs cross-repo
+One page, one mode. Each folder is a mode; a page that mixes them fails `check-wiki.py --strict` and is split, not stretched.
 
-1. **Default = cwd-relative.** If operator says *"update the wiki"* from inside a registered repo, target is `<cwd-root>/wiki/`.
-2. **Explicit cross-repo via slug.** If phrase names another slug (*"update sherwood's wiki"*), resolve via `repo_registry.list_repos()`:
-   ```bash
-   python3 scripts/repo_registry.py list | python3 -c "
-   import json, sys
-   d = json.load(sys.stdin)
-   for r in d.get('repos', []):
-       if r.get('slug') == 'sherwood':
-           print(r.get('root_path'))
-           break
-   "
-   ```
-3. **Cwd outside any registered repo + no explicit slug.** Refuse with actionable error:
-   > "Current directory isn't a registered repo. Register first: `python3 scripts/repo_registry.py register <slug> --root <path>`. Or specify the target: *update {slug}'s wiki*."
-4. **`MEMORY_ROOT` unset (`MEMORY_VAULT_PATH`, the deprecated alias, is read as a fallback) OR registry empty.** Falls back to cwd-only mode. Cross-repo phrases refuse with: "Cross-repo writes need a vault-backed repo registry (V4 #30 plan 1). Run `bash install.sh --scope user` to set up, OR work in cwd."
+| Folder | Mode | Holds |
+|---|---|---|
+| `how-to/` | task | steps to get one thing done (a first-run walkthrough lives here too, marked as a tutorial) |
+| `reference/` | lookup | facts: commands, flags, schemas, configuration |
+| `architecture/` | how it fits | components and how they connect; per-plugin pages use `templates/plugin-reference.md` |
+| `designs/` | decisions | living design pages, changed with an amendment-log entry |
+| `explanation/` | why | background and the reasoning behind a choice |
+| `operational/` | running it | runbooks, troubleshooting, recovery |
 
-## Dispatch contract
+- **Filenames** are `CamelCase-With-Dashes.md`: letters, digits and dashes only, which `check-wiki`'s rule (g) enforces.
+- **Updating** keeps the page's mode. **Creating** takes the mode from the ask, or asks.
+- **Templates** are in [`templates/`](templates/) — one per mode plus `sections/` for composed landing pages. [`templates/README.md`](templates/README.md) is the authoritative house standard: curated landings, scenarios as a table, long lists behind an index link, the user/contributor split, plain prose.
+- **Diagrams** follow [`style/diagram-style.md`](style/diagram-style.md).
 
-After resolution, this skill ALWAYS:
+## Dispatch
 
-1. **Loads the per-repo `.diataxis-conventions.md` override** if present in the target repo root. Operator-locked conventions take precedence over global defaults.
-2. **Loads the doc-write-time context bundle (V4 #35)** for the resolved target repo:
-   ```bash
-   python3 scripts/harness_memory.py documenter-context --slug "<resolved-target-slug>" --format text
-   ```
-   `<resolved-target-slug>` is the cwd project's slug in cwd mode (`python3 scripts/vault_project.py read .`) or the explicitly-named slug in cross-repo mode. The bundle carries *operator conventions to honor + project decisions to respect + locked design calls to NOT re-litigate*. **Graceful-skip:** on **rc 1** (vault unreachable) emit `[wiki-author] vault unreachable; proceeding without vault context` and continue with pre-v4.6.0 behavior. On **rc 2** (target not registered) the bundle still carries operator-global conventions from the always-load tier (`<vault>/standards/`, or the retired `_always-load/` pen on a vault from before the memory-root trims) — use them. This routes through the same resolver the documenter sub-agent uses, so the operator's settled calls surface uniformly across both surfaces.
-3. **Determines Diátaxis mode** for the write target:
-   - **Update existing page**: preserves the page's existing mode (don't cross-mode mix; that fails `check-wiki.py --strict`).
-   - **Create new page**: derives mode from the phrase ("how-to for X" → how-to dir; "reference for X" → reference dir); if ambiguous, asks the operator interactively. Defers to the `diataxis-author` skill if available for richer mode selection.
-4. **Drafts the structural edit + emits a unified diff preview** to the operator before writing — **and surfaces the step-2 context bundle alongside the diff** so the operator sees *here's what's locked + what we've decided before* next to the proposed change. Per-write gate (every cross-repo edit gates on approval). Before the preview is emitted, the draft runs the `prose-pass` skill — Gemini simplifies with the `docs-prose-style` voice pack inlined verbatim, Claude fact-checks and applies, with an **announced** graceful fallback to the Claude-only conformance path. The machinery rides the documenter ([agents/documenter.md § Prose cross-pass](../../agents/documenter.md)) — this skill documents the step, it does not duplicate the pass. The previewed diff is the post-pass, fact-checked text.
-5. **On operator approval**: dispatches the `documenter` sub-agent with the resolved target + draft content. Documenter performs the actual file write under its hard-boundary scope (per [documenter spec](../../agents/documenter.md#cross-repo-write-contract-v4-30-plan-2--2026-05-27)).
-6. **Cross-references**: the [crickets-conventions design](https://github.com/alexherrero/crickets/wiki/crickets-conventions) documentation domain (preview-before-write + .diataxis-conventions override + repo_registry resolution); documenter sub-agent spec (write-scope hard boundary + V4 #35 pre-flight); diataxis-author skill (mode selection + per-repo conventions, when applicable).
+1. **Conventions.** Load the target repo's `.diataxis-conventions.md` if present; it overrides the defaults.
+2. **Context.** `python3 scripts/harness_memory.py documenter-context --slug <slug> --format text` returns the operator's conventions, the project's decisions and its locked design calls. On rc 1 (no vault) say "[wiki-author] vault unreachable; proceeding without vault context" and carry on; on rc 2 (unregistered) use the operator-global conventions it still returns.
+3. **Draft.** The documenter drafts from the template for the page's mode, then runs the design plugin's **`prose-pass` skill**: Gemini simplifies with the base style floor (`style/base-style-guide.md`) and the vault's `docs-prose-style` overlay inlined verbatim; Claude lists the facts first, then checks the result against them and the code, and scans for `style/voice-rules.json`'s banned vocabulary. If Gemini is unavailable the pass falls back to Claude alone, and says so.
+4. **Preview.** Show the unified diff with the context bundle beside it. One approval per write, even when one conversation touches several pages.
+5. **Write.** On approval the documenter writes within its `wiki/**` scope ([documenter spec](../../agents/documenter.md)).
+6. **Gate.** `python3 scripts/check-wiki.py --strict` stays green. It enforces single mode per page, length ceilings, naming, links, and the component-overview section model (built from `templates/sections/` by `scripts/composer.py` and `scripts/section_schema.py`).
 
-## What this skill does NOT do
+## The voice files
 
-- **Does NOT auto-generate content** — the agent invoking this skill gathers context from the conversation (the diff just landed, the design call locked, the bug-fix narrative); the skill's job is dispatch + write contract, not content generation. Content generation is V5 / V6 territory.
-- **Does NOT write outside `wiki/**`** — documenter's hard-boundary scope is `wiki/**` + a few specific files; this skill never relaxes that.
-- **Does NOT batch writes without per-write approval** — even when multiple pages need updates from the same conversation, each cross-repo write gates on operator confirmation.
-- **Does NOT trigger on read-only wiki queries** — those route to the `/recent-wiki-changes` slash command (added V4 #30 plan 2 task 7).
+`style/voice-rules.json` is the one banned-vocabulary rule pack. `scripts/rule_pack.py` loads it, with the vault's overlay, for `check-slop`, the `commit-msg-gate` hook and the prose pass's scan. `style/base-style-guide.md`'s `banned:` line must agree with it (`check-voice-floor-parity`). `scripts/style_resolver.py` and `scripts/vault_layout.py` find the operator's voice lessons in the vault on demand; they are never always-loaded.
 
-## When NOT to invoke this skill
+## Not this skill's job
 
-- Operator is reading the wiki (descriptive language, not imperative).
-- Operator is asking about wiki structure or conventions (route to the [crickets-conventions design](https://github.com/alexherrero/crickets/wiki/crickets-conventions) / Diátaxis docs instead).
-- Operator wants to write to a NON-wiki file (PLAN.md, progress.md, AGENTS.md, source code) — those are off-limits for documenter; refuse + route the operator to the appropriate surface (the harness `/work` phase, manual edit, etc.).
+- Writing content nobody gave it: the invoking agent brings the facts (the diff that landed, the call that was made).
+- Writing outside `wiki/**`: plans, progress logs, AGENTS.md and code are off limits; say which surface owns them.
+- Batching writes past the per-write approval.
+- Read-only questions: `/recent-wiki-changes`.
 
-## Per-host adapter
-
-This skill is `supported_hosts: [claude-code]` for v0.1.0. The trigger semantics rely on Claude Code's skill-description matching; other hosts (e.g. Antigravity) would need their own trigger mechanism (slash commands, explicit invocation, etc.). Future versions may extend to `supported_hosts: [claude-code, antigravity]` once Antigravity's skill-triggering semantics stabilize.
+Retired in crickets plan 105 and not coming back: `/diataxis` migrate, classify, relocate, repair, capture and promote, and the `diataxis-evaluator` and `style-scope-evaluator` agents. Mode is picked from the ask or by asking; voice lessons are edited in the vault by hand.

@@ -1,0 +1,204 @@
+#!/usr/bin/env python3
+# rule_pack.py — loader for the versioned voice rule pack (PLAN-r3-voice-mechanism
+# task 1). One JSON pack collapses the five drifting banned-vocabulary stores
+# voice.json found; check-slop.py (task 2) and the voice kernel / style_resolver.py
+# (task 3) both read this loader — never a second copy of the term list.
+#
+# Stdlib-only; mirrors the style_resolver.py scope-precedence convention (global
+# → per-project → per-repo, narrower wins) for the vault-side overlay hook.
+
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+
+_SCRIPTS_DIR = Path(__file__).resolve().parent
+if str(_SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS_DIR))
+
+import vault_layout  # noqa: E402  (needs the sys.path insert above)
+
+_SKILL_ROOT = _SCRIPTS_DIR.parent
+_RULE_PACK_PATH = _SKILL_ROOT / "style" / "voice-rules.json"
+
+_REQUIRED_RULE_FIELDS = ("id", "severity", "kind", "pattern", "hint", "weight", "source-url")
+_VALID_SEVERITIES = ("error", "warning", "suggestion")
+_VALID_KINDS = ("word", "phrase", "template", "metric")
+
+_OVERLAY_SCOPE_ORDER = ("global", "per-project", "per-repo")
+_PER_REPO_OVERLAY_FILE = ".diataxis-voice-rules.json"
+# The vault-side overlay filename in the global voice store and the per-project
+# wiki-style stores.
+_OVERLAY_FILE = "voice-rules-overlay.json"
+
+
+class RulePackError(ValueError):
+    """Raised when a rule pack (shipped or overlay) fails schema validation."""
+
+
+def validate_rule_pack(pack: dict) -> None:
+    """Raise RulePackError on any schema violation. Empty pack is valid (no rules)."""
+    if not isinstance(pack, dict):
+        raise RulePackError("rule pack must be a JSON object")
+    if "schema_version" not in pack:
+        raise RulePackError("rule pack missing top-level 'schema_version'")
+    if "era" not in pack:
+        raise RulePackError("rule pack missing top-level 'era'")
+    rules = pack.get("rules", [])
+    if not isinstance(rules, list):
+        raise RulePackError("'rules' must be a list")
+    seen_ids: set[str] = set()
+    for i, rule in enumerate(rules):
+        if not isinstance(rule, dict):
+            raise RulePackError(f"rule[{i}] must be an object")
+        missing = [f for f in _REQUIRED_RULE_FIELDS if f not in rule]
+        if missing:
+            raise RulePackError(f"rule[{i}] ({rule.get('id', '?')}) missing fields: {missing}")
+        if rule["severity"] not in _VALID_SEVERITIES:
+            raise RulePackError(f"rule[{i}] ({rule['id']}) invalid severity: {rule['severity']!r}")
+        if rule["kind"] not in _VALID_KINDS:
+            raise RulePackError(f"rule[{i}] ({rule['id']}) invalid kind: {rule['kind']!r}")
+        if rule["id"] in seen_ids:
+            raise RulePackError(f"duplicate rule id: {rule['id']!r}")
+        seen_ids.add(rule["id"])
+
+
+def load_shipped_pack(path: Path | None = None) -> dict:
+    """Read + validate the committed pack. Raises RulePackError on malformed JSON/schema."""
+    p = path or _RULE_PACK_PATH
+    with open(p, encoding="utf-8") as f:
+        pack = json.load(f)
+    validate_rule_pack(pack)
+    return pack
+
+
+def _read_overlay(path: Path) -> dict:
+    if not path.is_file():
+        return {}
+    try:
+        with open(path, encoding="utf-8") as f:
+            overlay = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return {}
+    validate_rule_pack(overlay)
+    return overlay
+
+
+def _global_overlay_file(vault: Path) -> Path:
+    """The global overlay: `<vault>/standards/voice/` when the file is there,
+    else `<projects-space>/_global/wiki-style/`, the store the memory-root trims
+    retired.
+
+    Probes the file, not the directory. `vault_layout.global_wiki_style_dir`
+    answers `standards/voice/` as soon as that directory exists, which would
+    leave an overlay still on a retired rung unread, and an unread overlay
+    composes exactly like an absent one.
+    """
+    voice = vault_layout.voice_library_dir_if_present(vault)
+    if voice is not None and (voice / _OVERLAY_FILE).is_file():
+        return voice / _OVERLAY_FILE
+    return vault_layout.resolve_under_projects(
+        vault, "_global", "wiki-style", _OVERLAY_FILE)
+
+
+def load_rule_pack(
+    *,
+    vault_path: Path | None = None,
+    project_slug: str | None = None,
+    wiki_root: Path | None = None,
+    shipped_path: Path | None = None,
+) -> dict:
+    """Compose the shipped pack ⊕ vault-side overlays (narrower wins by id).
+
+    Precedence (lowest → highest): global → per-project → per-repo, matching
+    style_resolver.resolve_style's scope order. Each scope is independently
+    graceful-skipped when its overlay file is absent or unreadable — with no
+    vault and no overlay, the result is the shipped pack alone.
+    """
+    pack = load_shipped_pack(shipped_path)
+    merged: dict[str, dict] = {r["id"]: r for r in pack.get("rules", [])}
+
+    if vault_path is not None:
+        vp = Path(vault_path)
+        for r in _read_overlay(_global_overlay_file(vp)).get("rules", []):
+            merged[r["id"]] = r
+        if project_slug:
+            pdir = vault_layout.resolve_under_projects(
+                vp, project_slug, "wiki-style", _OVERLAY_FILE)
+            for r in _read_overlay(pdir).get("rules", []):
+                merged[r["id"]] = r
+    if wiki_root is not None:
+        rfile = Path(wiki_root) / _PER_REPO_OVERLAY_FILE
+        for r in _read_overlay(rfile).get("rules", []):
+            merged[r["id"]] = r
+
+    composed = dict(pack)
+    composed["rules"] = list(merged.values())
+    return composed
+
+
+def render_base_style_banned_line(pack: dict | None = None) -> str:
+    """Render the comma-joined `banned:` line base-style-guide.md#L54 promotes from.
+
+    Only `floor_eligible: true` word/phrase-kind rules render — the blanket,
+    cross-context subset appropriate for the committed floor every draft
+    inherits (check.py's convention-drift scanner is untiered, so a genre-
+    scoped marketing phrase or an ordinary word like "vibrant" would trip on
+    ordinary prose if it were included here; those stay rule-pack/gate-only).
+    Templates and metrics never render (check.py's scanner is a literal
+    comma-list matcher). Deterministic: pack order in, same order out. A term
+    containing a comma is double-quoted (matches check.py's _TERM_RE quoting).
+    """
+    pack = pack if pack is not None else load_shipped_pack()
+    terms = [
+        r["pattern"] for r in pack.get("rules", [])
+        if r["kind"] in ("word", "phrase") and r.get("floor_eligible")
+    ]
+    rendered = [f'"{t}"' if "," in t else t for t in terms]
+    return "banned: " + ", ".join(rendered)
+
+
+def _main(argv: list[str]) -> int:
+    if len(argv) > 1 and argv[1] == "render-base-banned-line":
+        print(render_base_style_banned_line())
+        return 0
+    pack = load_shipped_pack()
+    print(f"OK: {len(pack.get('rules', []))} rules, schema_version={pack['schema_version']}, era={pack['era']}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(_main(sys.argv))
+
+# ── banned-term extraction (moved from the retired check.py, plan 105 step 5) ──
+import re  # noqa: E402
+
+_BANNED_RE = re.compile(r"(?im)^\s*banned:\s*(.+?)\s*$")
+# Fenced code blocks are stripped before directive extraction, so a `banned:`
+# line that merely *documents* the format inside a ``` fence isn't read as live.
+_FENCE_RE = re.compile(r"```.*?```", re.DOTALL)
+# One term, anchored to its segment: optional whitespace, then a double/single-
+# quoted span (commas inside it are kept) OR an unquoted segment, then trailing
+# whitespace and a comma-or-end terminator. Quoting is the grouping delimiter,
+# not the comma — so `"ready, set, go"` is one term, in ANY list position.
+_TERM_RE = re.compile(r'''\s*(?:"([^"]*)"|'([^']*)'|([^,]+?))\s*(?:,|$)''')
+
+
+def _extract_banned_terms(overlay_text: str) -> list[str]:
+    """Collect banned terms from every `banned:` directive in the overlay text.
+
+    Quote-aware comma split (a quoted phrase may contain commas, in any list
+    position); whitespace stripped; lowercased; de-duplicated (order-preserving).
+    Empty entries dropped. `banned:` lines inside ``` fences are ignored
+    (documentation, not directives)."""
+    terms: list[str] = []
+    seen: set[str] = set()
+    for m in _BANNED_RE.finditer(_FENCE_RE.sub("", overlay_text)):
+        for tm in _TERM_RE.finditer(m.group(1)):
+            raw = next((g for g in tm.groups() if g is not None), "")
+            t = raw.strip().lower()
+            if t and t not in seen:
+                seen.add(t)
+                terms.append(t)
+    return terms

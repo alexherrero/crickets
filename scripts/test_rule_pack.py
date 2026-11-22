@@ -18,7 +18,7 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 _RULE_PACK_SCRIPTS = (
-    _HERE.parent / "src" / "wiki" / "skills" / "diataxis-author" / "scripts"
+    _HERE.parent / "src" / "wiki" / "skills" / "wiki-author" / "scripts"
 )
 sys.path.insert(0, str(_RULE_PACK_SCRIPTS))
 
@@ -209,11 +209,56 @@ class TestRoleNounCarveOutIsWritten(unittest.TestCase):
     written rule in the shared store, not a private-memory-only reference."""
 
     def test_base_style_guide_carries_the_carve_out_clause(self):
-        text = _HERE.parent / "src" / "wiki" / "skills" / "diataxis-author" / "style" / "base-style-guide.md"
+        text = _HERE.parent / "src" / "wiki" / "skills" / "wiki-author" / "style" / "base-style-guide.md"
         content = text.read_text(encoding="utf-8")
         self.assertIn("Role-noun carve-out", content)
         self.assertIn("legitimate role noun", content)
 
+
+class TestExtractBannedTerms(unittest.TestCase):
+    # Moved from the retired test_diataxis_check.py with the helper itself
+    # (plan 105 step 5); check-voice-floor-parity reads it.
+
+    def test_parses_comma_list(self):
+        self.assertEqual(rule_pack._extract_banned_terms("banned: alpha, beta, gamma"),
+                         ["alpha", "beta", "gamma"])
+
+    def test_strips_quotes_and_keeps_phrases(self):
+        self.assertEqual(
+            rule_pack._extract_banned_terms('banned: "this journey", essentially'),
+            ["this journey", "essentially"])
+
+    def test_dedupes_case_insensitively_order_preserving(self):
+        self.assertEqual(rule_pack._extract_banned_terms("banned: Foo, foo, BAR, foo"),
+                         ["foo", "bar"])
+
+    def test_accumulates_multiple_directives(self):
+        text = "intro\nbanned: a, b\nmore text\n  banned: c\n"
+        self.assertEqual(rule_pack._extract_banned_terms(text), ["a", "b", "c"])
+
+    def test_no_directive_yields_empty(self):
+        self.assertEqual(rule_pack._extract_banned_terms("# A page\nno banned line here.\n"), [])
+
+    def test_quoted_phrase_with_internal_commas_is_one_term(self):
+        # Quoting is the grouping delimiter, not the comma (regression) — and it
+        # must hold in ANY list position, not just the first segment.
+        self.assertEqual(
+            rule_pack._extract_banned_terms('banned: "ready, set, go", essentially'),
+            ["ready, set, go", "essentially"])
+        self.assertEqual(
+            rule_pack._extract_banned_terms('banned: essentially, "ready, set, go"'),
+            ["essentially", "ready, set, go"])
+
+    def test_single_quoted_non_leading_term_strips_its_quotes(self):
+        self.assertEqual(rule_pack._extract_banned_terms("banned: a, 'b c', d"),
+                         ["a", "b c", "d"])
+
+    def test_empty_quotes_dropped(self):
+        self.assertEqual(rule_pack._extract_banned_terms('banned: "", foo'), ["foo"])
+
+    def test_banned_line_inside_a_code_fence_is_ignored(self):
+        overlay = "Example:\n```\nbanned: notreal\n```\nbanned: actual\n"
+        self.assertEqual(rule_pack._extract_banned_terms(overlay), ["actual"])
 
 if __name__ == "__main__":
     unittest.main()

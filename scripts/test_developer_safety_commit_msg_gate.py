@@ -346,15 +346,15 @@ class RulePackResolutionTests(unittest.TestCase):
         # A fake crickets checkout carrying the REAL rule pack + loader, so the
         # test exercises resolution rather than a stubbed vocabulary.
         real_scripts = (
-            REPO_ROOT / "src" / "wiki" / "skills" / "diataxis-author" / "scripts"
+            REPO_ROOT / "src" / "wiki" / "skills" / "wiki-author" / "scripts"
         )
         real_style = (
-            REPO_ROOT / "src" / "wiki" / "skills" / "diataxis-author" / "style"
+            REPO_ROOT / "src" / "wiki" / "skills" / "wiki-author" / "style"
         )
         if not (real_scripts / "rule_pack.py").is_file():
             self.skipTest("real rule pack not present in this checkout")
         self.crickets = self.root / "crickets"
-        dest = self.crickets / "src" / "wiki" / "skills" / "diataxis-author"
+        dest = self.crickets / "src" / "wiki" / "skills" / "wiki-author"
         dest.mkdir(parents=True)
         shutil.copytree(real_scripts, dest / "scripts")
         shutil.copytree(real_style, dest / "style")

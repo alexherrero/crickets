@@ -36,6 +36,10 @@ RETIRED = [
     ("code-review", "skill", "testing-strategy"),
     ("code-review", "skill", "security-review"),
     ("privacy", "skill", "privacy-review"),
+    # Step 5: the wiki group collapses to wiki-author plus its commands.
+    ("wiki", "skill", "diataxis-author"),
+    ("wiki", "agent", "diataxis-evaluator"),
+    ("wiki", "agent", "style-scope-evaluator"),
 ]
 
 RETIRED_SCRIPTS = [
@@ -101,6 +105,26 @@ class TestRetiredPrimitivesAreGone(unittest.TestCase):
                          "ICO data-protection-by-design", "NIST Privacy Framework"):
             self.assertIn(practice, text)
         self.assertIn("privacy-taint-pack.yml", text)
+
+    def test_the_wiki_group_is_one_skill_and_its_commands(self):
+        wiki = _SRC / "wiki"
+        self.assertEqual({p.name for p in (wiki / "skills").iterdir() if p.is_dir()}, {"wiki-author"})
+        self.assertEqual({p.stem for p in (wiki / "agents").glob("*.md")}, {"documenter"})
+        self.assertEqual({p.stem for p in (wiki / "commands").glob("*.md")},
+                         {"wiki-watch", "wiki-init", "recent-wiki-changes"})
+        skill = (wiki / "skills" / "wiki-author" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertLessEqual(len(skill.split()), 1500)
+        # the files the gates and the documenter read moved with it
+        for rel in ("scripts/rule_pack.py", "scripts/vault_layout.py", "scripts/section_schema.py",
+                    "scripts/composer.py", "scripts/style_resolver.py", "style/voice-rules.json",
+                    "style/base-style-guide.md", "templates/README.md"):
+            self.assertTrue((wiki / "skills" / "wiki-author" / rel).is_file(), rel)
+        # the wiki-watch skill folded into the command, which now ships on both hosts
+        self.assertFalse((_CC / "wiki" / "skills" / "wiki-watch").exists())
+        self.assertTrue((_AG / "wiki" / "skills" / "wiki-watch" / "SKILL.md").is_file())
+        cmd = (wiki / "commands" / "wiki-watch.md").read_text(encoding="utf-8")
+        self.assertIn("wiki_watch_cycle.py run", cmd)
+        self.assertIn("finalize_cycle", cmd)
 
     def test_worker_is_the_one_coordinator_role_left(self):
         agents = {p.stem for p in (_SRC / "development-lifecycle" / "agents").glob("*.md")}

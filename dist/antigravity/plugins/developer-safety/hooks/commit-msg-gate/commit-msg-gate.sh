@@ -9,7 +9,7 @@
 # "(V6-15)") are unaffected.
 #
 # Thin dispatch shim only — all matching logic lives in the co-located
-# commit_msg_gate.py (it needs to read src/wiki/skills/diataxis-author's JSON
+# commit_msg_gate.py (it needs to read src/wiki/skills/wiki-author's JSON
 # rule pack, which is far more naturally done in Python than re-parsed here;
 # mirrors evidence-tracker's .sh/.py split in src/code-review/hooks/).
 #

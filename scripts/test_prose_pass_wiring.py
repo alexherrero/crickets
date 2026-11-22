@@ -24,7 +24,7 @@ _REPO = Path(__file__).resolve().parent.parent
 
 DOCUMENTER = _REPO / "src" / "wiki" / "agents" / "documenter.md"
 DESIGN_COMMAND = _REPO / "src" / "design" / "commands" / "design.md"
-DIATAXIS_AUTHOR_SKILL = _REPO / "src" / "wiki" / "skills" / "diataxis-author" / "SKILL.md"
+DIATAXIS_AUTHOR_SKILL = _REPO / "src" / "wiki" / "skills" / "wiki-author" / "SKILL.md"
 WIKI_AUTHOR_SKILL = _REPO / "src" / "wiki" / "skills" / "wiki-author" / "SKILL.md"
 PROSE_PASS_SCRIPT = _REPO / "src" / "design" / "scripts" / "prose_pass.py"
 PROSE_PASS_SKILL = _REPO / "src" / "design" / "skills" / "prose-pass" / "SKILL.md"
@@ -88,7 +88,7 @@ class CallerAnnouncementWiringTests(unittest.TestCase):
 
 
 class DocumentingSkillsCrossReferenceTests(unittest.TestCase):
-    """diataxis-author + wiki-author document the step; the documenter agent
+    """wiki-author + wiki-author document the step; the documenter agent
     owns the mechanics. A skill re-deriving the mechanics here would be the
     exact duplication the house convention (cross-reference, don't duplicate)
     forbids."""

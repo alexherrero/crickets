@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Tests for the diataxis-author author-time voice resolver
-(src/wiki-maintenance/skills/diataxis-author/scripts/style_resolver.py +
+"""Tests for the wiki-author author-time voice resolver
+(src/wiki-maintenance/skills/wiki-author/scripts/style_resolver.py +
 author.py integration) — crickets ④ wiki-maintenance part 3/5, task 1.
 
 Deterministic-only (DC-7): the resolver compose + scope precedence + the
@@ -18,7 +18,7 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
-_SKILL = _ROOT / "src" / "wiki" / "skills" / "diataxis-author"
+_SKILL = _ROOT / "src" / "wiki" / "skills" / "wiki-author"
 _SKILL_SCRIPTS = _SKILL / "scripts"
 _BASE_STYLE_GUIDE = _SKILL / "style" / "base-style-guide.md"
 
@@ -36,7 +36,6 @@ def _load(name: str):
 
 
 sr = _load("style_resolver")
-author = _load("author")
 
 
 def _lesson_file(d: Path, name: str, *, trigger: str | None, guidance: str) -> None:
@@ -194,39 +193,6 @@ class TestPageComposition(unittest.TestCase):
         self.assertTrue(out.lstrip().startswith("<!--"))
         self.assertIn("no heading here", out)
 
-
-# ── author.py integration ────────────────────────────────────────────────────
-
-class TestAuthorPageIntegration(unittest.TestCase):
-    def _wiki(self, td: Path) -> Path:
-        w = td / "wiki"
-        w.mkdir(parents=True)
-        return w
-
-    def test_authored_page_is_not_template_verbatim(self):
-        with tempfile.TemporaryDirectory() as td:
-            w = self._wiki(Path(td))
-            res = author.author_page("Install Foo", "how-to", wiki_root=w, vault_path=None)
-            self.assertTrue(res["style_composed"])
-            written = Path(res["target"]).read_text(encoding="utf-8")
-            template = (_SKILL / "templates" / "how-to.md").read_text(encoding="utf-8")
-            self.assertNotEqual(written, template)        # not verbatim
-            self.assertIn("BASE VOICE (committed floor)", written)  # base floor injected
-            self.assertTrue(written.splitlines()[0].startswith("# "))  # H1 preserved
-
-    def test_authored_page_includes_vault_overlay(self):
-        with tempfile.TemporaryDirectory() as td:
-            tdp = Path(td)
-            w = self._wiki(tdp)
-            vault = tdp / "vault"
-            gdir = vault / "projects" / "_global" / "wiki-style"
-            _lesson_file(gdir, "lesson.md", trigger="voice",
-                         guidance="OVERLAY-LESSON-MARKER")
-            res = author.author_page("Install Bar", "how-to", wiki_root=w,
-                                     vault_path=vault, project_slug=None)
-            written = Path(res["target"]).read_text(encoding="utf-8")
-            self.assertIn("OVERLAY-LESSON-MARKER", written)
-            self.assertIn("global:lesson.md", res["style_scopes"])
 
 
 if __name__ == "__main__":

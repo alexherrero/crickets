@@ -17,8 +17,7 @@ expectation from the implementation's own formula only proves they agree.
 Four surfaces, four plugin groups (the probe chain is duplicated per group —
 plugins emit independently into dist/, so they cannot share an import):
 
-  * wiki       — vault_layout.py, used by style_resolver / rule_pack /
-                 agentmemory_conventions / relocate
+  * wiki       — vault_layout.py, used by style_resolver / rule_pack
   * design     — prose_pass.wiki_style_dir
   * dev-lifecycle — resolve_project.vault_projects_dir
 
@@ -39,12 +38,12 @@ from unittest import mock
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
-_SKILL = _ROOT / "src" / "wiki" / "skills" / "diataxis-author"
+_SKILL = _ROOT / "src" / "wiki" / "skills" / "wiki-author"
 _SKILL_SCRIPTS = _SKILL / "scripts"
 
 
 def _load_skill(name: str):
-    """Load one diataxis-author script; they import each other by bare name."""
+    """Load one wiki-author script; they import each other by bare name."""
     if str(_SKILL_SCRIPTS) not in sys.path:
         sys.path.insert(0, str(_SKILL_SCRIPTS))
     spec = importlib.util.spec_from_file_location(name, _SKILL_SCRIPTS / f"{name}.py")
@@ -65,8 +64,6 @@ def _load_file(mod_name: str, path: Path):
 vl = _load_skill("vault_layout")
 sr = _load_skill("style_resolver")
 rp_pack = _load_skill("rule_pack")
-conv = _load_skill("agentmemory_conventions")
-relocate = _load_skill("relocate")
 prose_pass = _load_file("prose_pass_for_layout",
                         _ROOT / "src" / "design" / "scripts" / "prose_pass.py")
 resolve_project = _load_file("resolve_project_for_layout",
@@ -303,74 +300,6 @@ class TestNoOverlayStoreGuard(unittest.TestCase):
 
 
 # ── Write paths land where the read path looks ───────────────────────────────
-
-class TestWritePathsAgreeWithReadPath(unittest.TestCase):
-    def test_capture_targets_the_new_layout_on_a_migrated_vault(self):
-        with tempfile.TemporaryDirectory() as td:
-            vault = Path(td) / "vault"
-            (vault / "desk" / "projects" / "_global" / "wiki-style").mkdir(parents=True)
-            target, outside = conv.lesson_target(
-                "global", vault_path=vault, project_slug=None, wiki_root=None,
-                trigger="Warm Complete Sentences", datestamp="2026-08-11")
-            self.assertFalse(outside)
-            self.assertEqual(
-                _rel(target, vault),
-                "desk/projects/_global/wiki-style/2026-08-11-warm-complete-sentences.md")
-
-    def test_capture_targets_the_old_layout_on_an_unmigrated_vault(self):
-        with tempfile.TemporaryDirectory() as td:
-            vault = Path(td) / "vault"
-            (vault / "projects" / "_global" / "wiki-style").mkdir(parents=True)
-            target, _ = conv.lesson_target(
-                "global", vault_path=vault, project_slug=None, wiki_root=None,
-                trigger="tone", datestamp="2026-08-11")
-            self.assertEqual(_rel(target, vault),
-                             "projects/_global/wiki-style/2026-08-11-tone.md")
-
-    def test_capture_per_project_follows_the_same_chain(self):
-        with tempfile.TemporaryDirectory() as td:
-            vault = Path(td) / "vault"
-            (vault / "projects" / "crickets" / "wiki-style").mkdir(parents=True)
-            target, _ = conv.lesson_target(
-                "per-project", vault_path=vault, project_slug="crickets",
-                wiki_root=None, trigger="vocab", datestamp="2026-08-11")
-            self.assertEqual(_rel(target, vault),
-                             "projects/crickets/wiki-style/2026-08-11-vocab.md")
-
-    def test_a_captured_lesson_reads_back(self):
-        """The round trip the fork would have broken: write via the capture
-        target, read via the resolver, on a vault whose store is on the OLD
-        rung while the new root already exists."""
-        with tempfile.TemporaryDirectory() as td:
-            vault = Path(td) / "vault"
-            (vault / "desk" / "projects" / "unrelated").mkdir(parents=True)
-            (vault / "projects" / "_global" / "wiki-style").mkdir(parents=True)
-            target, _ = conv.lesson_target(
-                "global", vault_path=vault, project_slug=None, wiki_root=None,
-                trigger="hedging", datestamp="2026-08-11")
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text("---\ntrigger: hedging\n---\nCut the hedges.\n",
-                              encoding="utf-8")
-            resolved = sr.resolve_style(wiki_root=None, vault_path=vault, project_slug=None)
-            self.assertEqual([lz.trigger for lz in resolved.lessons], ["hedging"])
-            self.assertEqual(resolved.lessons[0].guidance, "Cut the hedges.")
-
-    def test_relocate_destination_follows_the_chain(self):
-        with tempfile.TemporaryDirectory() as td:
-            vault = Path(td) / "vault"
-            (vault / "projects" / "_global" / "wiki-style").mkdir(parents=True)
-            self.assertEqual(_rel(relocate._global_wiki_style_dir(vault), vault),
-                             "projects/_global/wiki-style")
-
-    def test_relocate_destination_defaults_to_current_layout(self):
-        with tempfile.TemporaryDirectory() as td:
-            vault = Path(td) / "vault"
-            vault.mkdir()
-            self.assertEqual(_rel(relocate._global_wiki_style_dir(vault), vault),
-                             "desk/projects/_global/wiki-style")
-
-
-# ── The voice rule-pack overlay ──────────────────────────────────────────────
 
 class TestRulePackOverlayAcrossLayouts(unittest.TestCase):
     OVERLAY = ('{"schema_version": 1, "era": "2026-08", "rules": ['

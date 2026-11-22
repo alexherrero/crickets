@@ -60,13 +60,10 @@ _PLUGIN_ROOT_RE = re.compile(r"\$\{CLAUDE_PLUGIN_ROOT\}/([^\s\"'`)]+)")
 _KNOWN_VIOLATIONS: frozenset[tuple[str, str]] = frozenset({
     ("wiki/commands/wiki-watch.md", "../../../wiki/reference/Antigravity-Limitations.md"),
     ("wiki/commands/wiki-watch.md", "../../../wiki/reference/Wiki-Watch-Config.md"),
-    ("wiki/skills/diataxis-author/SKILL.md", "../memory/SKILL.md"),
-    # Same link, one folder deeper: on Antigravity the 50 KB skill body lives in
-    # references/SKILL.full.md (agy loads only the first 24 KB of a SKILL.md).
-    ("wiki/skills/diataxis-author/references/SKILL.full.md", "../../memory/SKILL.md"),
-    ("wiki/skills/wiki-watch/SKILL.md", "../../../wiki/how-to/Run-The-Wiki-Watcher.md"),
-    ("wiki/skills/wiki-watch/SKILL.md", "../../../wiki/reference/Antigravity-Limitations.md"),
-    ("wiki/skills/wiki-watch/SKILL.md", "../../../wiki/reference/Wiki-Watch-Config.md"),
+    # The /wiki-watch command ships on Antigravity as a skill since plan 105 step 5
+    # folded the wiki-watch skill into it; the emitter deepens its links one folder.
+    ("wiki/skills/wiki-watch/SKILL.md", "../../../../wiki/reference/Antigravity-Limitations.md"),
+    ("wiki/skills/wiki-watch/SKILL.md", "../../../../wiki/reference/Wiki-Watch-Config.md"),
     ("code-review/hooks/evidence-tracker/hook.md", "../../wiki/how-to/Use-The-Evidence-Tracker-Hook.md"),
     ("code-review/hooks/evidence-tracker/hook.md", "../commit-on-stop/hook.md"),
     ("code-review/hooks/evidence-tracker/hook.md", "../kill-switch/hook.md"),

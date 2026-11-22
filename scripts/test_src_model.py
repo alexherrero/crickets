@@ -89,11 +89,11 @@ class TestSrcModel(unittest.TestCase):
         # (wiki-maintenance-provisioning 3/4) added the wiki-init command → 9
         # primitives. Keyed by (name, kind) since wiki-watch is BOTH a skill and a
         # command (same name, distinct kinds + emit subdirs — no collision).
+        # Crickets plan 105 step 5 collapsed the group: diataxis-author and the
+        # wiki-watch skill folded into wiki-author and the /wiki-watch command,
+        # and the two evaluator agents retired → 5 primitives.
         self.assertEqual({(p.name, p.kind) for p in wm.primitives}, {
-            ("diataxis-evaluator", "agent"), ("documenter", "agent"),
-            ("style-scope-evaluator", "agent"),
-            ("wiki-author", "skill"), ("diataxis-author", "skill"),
-            ("wiki-watch", "skill"),
+            ("documenter", "agent"), ("wiki-author", "skill"),
             ("recent-wiki-changes", "command"), ("wiki-watch", "command"),
             ("wiki-init", "command")})
         self.assertEqual(by["privacy"].requires, [])

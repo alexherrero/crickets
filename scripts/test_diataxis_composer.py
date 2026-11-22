@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Tests for the wiki composer — manifest → assembled page
-(src/wiki-maintenance/skills/diataxis-author/scripts/composer.py) —
+(src/wiki-maintenance/skills/wiki-author/scripts/composer.py) —
 crickets wiki-composer part 2/4 (compose-core).
 
 Covers the four-step pipeline: the section loader that reuses
@@ -21,7 +21,7 @@ from unittest import mock
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
-_SKILL_SCRIPTS = _ROOT / "src" / "wiki" / "skills" / "diataxis-author" / "scripts"
+_SKILL_SCRIPTS = _ROOT / "src" / "wiki" / "skills" / "wiki-author" / "scripts"
 _SECTIONS_DIR = _SKILL_SCRIPTS.parent / "templates" / "sections"
 _MANIFEST_PATH = _SKILL_SCRIPTS.parent / "templates" / "component-overview.md"
 

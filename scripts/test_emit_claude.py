@@ -144,7 +144,8 @@ class TestClaudeEmitter(unittest.TestCase):
         # stop naming the retired /design verbs (plan 103, step 12).
         # 0.13.5 = documenter drops its /review section (plan 104 step 1).
         # 0.13.6 = the documentation enhance names wiki-author / wiki-watch (plan 104 step 2).
-        self.assertEqual(self._plugin_json("wiki")["version"], "0.13.6")
+        # 1.0.0 = the group collapses to wiki-author + its commands (plan 105).
+        self.assertEqual(self._plugin_json("wiki")["version"], "1.0.0")
         # 0.3.0 = check-no-pii.sh + templates/hooks/pre-push moved into src/pii/
         # so they actually ship inside the plugin payload (R2.4 task 7).
         # 0.3.1 = check-no-pii.sh scan collapsed to one grep per file (fixes a
@@ -198,22 +199,20 @@ class TestClaudeEmitter(unittest.TestCase):
         self.assertTrue((d / "privacy" / "skills" / "pii-scrubber" / "SKILL.md").exists())
         self.assertTrue((d / "maintenance" / "skills" / "dependabot-fixer" / "SKILL.md").exists())
         self.assertTrue((d / "development-lifecycle" / "agents" / "evaluator.md").exists())
-        self.assertTrue((d / "wiki" / "agents" / "diataxis-evaluator.md").exists())
         # part 2 fold-in (copy-not-move from agentm): all five primitives + skill
         # subdirs (generator copytree's the whole skill root) + group scripts.
-        # part 3 task 2 added the read-only style-scope-evaluator agent (both hosts).
-        self.assertTrue((d / "wiki" / "agents" / "style-scope-evaluator.md").exists())
         self.assertTrue((d / "wiki" / "agents" / "documenter.md").exists())
         self.assertTrue((d / "wiki" / "skills" / "wiki-author" / "SKILL.md").exists())
-        self.assertTrue((d / "wiki" / "skills" / "diataxis-author" / "SKILL.md").exists())
-        self.assertTrue((d / "wiki" / "skills" / "diataxis-author" / "scripts" / "classify.py").exists())
-        self.assertTrue((d / "wiki" / "skills" / "diataxis-author" / "templates" / "how-to.md").exists())
+        # plan 105 step 5: the kept voice and section core moved into wiki-author.
+        self.assertTrue((d / "wiki" / "skills" / "wiki-author" / "scripts" / "rule_pack.py").exists())
+        self.assertTrue((d / "wiki" / "skills" / "wiki-author" / "style" / "voice-rules.json").exists())
+        self.assertTrue((d / "wiki" / "skills" / "wiki-author" / "templates" / "how-to.md").exists())
         self.assertTrue((d / "wiki" / "commands" / "recent-wiki-changes.md").exists())
         self.assertTrue((d / "wiki" / "scripts" / "check-wiki.py").exists())
         self.assertTrue((d / "wiki" / "scripts" / "recent-wiki-changes.sh").exists())
         # part 4 task 4: the wiki-watch skill (cross-host) + command (claude-only
         # scheduling entry) + the engine group scripts (bundled both hosts).
-        self.assertTrue((d / "wiki" / "skills" / "wiki-watch" / "SKILL.md").exists())
+        self.assertFalse((d / "wiki" / "skills" / "wiki-watch").exists())  # folded into the command (plan 105)
         self.assertTrue((d / "wiki" / "commands" / "wiki-watch.md").exists())
         self.assertTrue((d / "wiki" / "scripts" / "wiki_watch_cycle.py").exists())
 
@@ -478,7 +477,7 @@ class TestClaudeEmitter(unittest.TestCase):
         # __pycache__/*.pyc — not just the group scripts/ asset path. The
         # diataxis-author style_resolver/author tests are the first to import a
         # bundled skill's .py as modules, so CI compiled
-        # src/.../skills/diataxis-author/scripts/__pycache__/*.pyc before
+        # src/.../skills/wiki-author/scripts/__pycache__/*.pyc before
         # generate.py check, and the unfiltered _copy_component copytree dragged
         # them into a fresh dist/ → drift vs. the committed (clean) dist/.
         # Regression for that CI failure (wiki-maintenance part 3 task 1).

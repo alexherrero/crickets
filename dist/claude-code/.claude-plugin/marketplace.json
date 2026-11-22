@@ -62,7 +62,7 @@
       ],
       "name": "developer-safety",
       "source": "./plugins/developer-safety",
-      "version": "0.7.0"
+      "version": "0.7.1"
     },
     {
       "capabilities": [
@@ -173,7 +173,7 @@
         "wiki-maintenance",
         "wiki"
       ],
-      "description": "Opinionated, template-driven wiki maintenance — the wiki-author authoring/learning skill, the documenter agent, the diataxis-evaluator, recent-wiki-changes, and the check-wiki.py linter. Maintains a wiki in the operator's voice; keeps a project's wiki current on request (wiki-author) or on a schedule (wiki-watch).",
+      "description": "Template-driven wiki maintenance — the wiki-author skill, the documenter agent, the wiki-watch, wiki-init and recent-wiki-changes commands, and the check-wiki.py linter. Keeps a project's six-section wiki current in the operator's voice, on request (wiki-author) or on a schedule (wiki-watch).",
       "enhances": [
         {
           "capability": "documentation",
@@ -183,7 +183,7 @@
       ],
       "name": "wiki",
       "source": "./plugins/wiki",
-      "version": "0.13.6"
+      "version": "1.0.0"
     }
   ],
   "renames": {
