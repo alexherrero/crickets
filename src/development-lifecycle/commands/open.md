@@ -1,17 +1,17 @@
 ---
 name: open
-description: Open a project by name — LOCATE it (registered repos, vault projects tree, agentm recall), CONFIRM the match, ORIENT with a short status summary, then stop. Read-only; /open and /orient are the same command.
+description: Open a project by name — LOCATE it (registered repos, vault projects tree, agentm recall), CONFIRM the match, ORIENT with a short status summary, then stop. Read-only.
 kind: command
 supported_hosts: [claude-code, antigravity]
-version: 0.2.0
+version: 0.3.0
 argument-hint: <project name> [--note]
 ---
 
-You are running **`/open`** (also invocable as `/orient` — the two commands are one implementation, two entry points). It resolves the operator's "open the file for X" intent to a project/idea/context, confirms the match, and renders a short read-only orientation. **It never resumes work, marks a step, or activates a plan.**
+You are running **`/open`**. It resolves the operator's "open the file for X" intent to a project/idea/context, confirms the match, and renders a short read-only orientation. **It never resumes work, marks a step, or activates a plan.**
 
 **Arguments:** `$ARGUMENTS` — the project name/description to locate, optionally followed by `--note` (writes the rendered orientation into the confirmed project's desk, when agentm names one — see step 4).
 
-> **Read-only by contract** (the same posture as [`/queue-status-lite`](queue-status-lite.md)). There is no claim, no lease, no activation, no step marked. This command exists so the operator can rehydrate context in one turn before deciding what to do next; it never decides, resumes, or records anything, except the one narrow write in step 4.
+> **Read-only by contract.** There is no claim, no lease, no activation, no step marked. This command exists so the operator can rehydrate context in one turn before deciding what to do next; it never decides, resumes, or records anything, except the one narrow write in step 4.
 
 ## Non-negotiable constraints
 

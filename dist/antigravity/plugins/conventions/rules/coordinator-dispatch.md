@@ -9,7 +9,7 @@ trigger: model_decision
 
 ## Rule: coordinator-dispatch
 
-Migrated in (Consolidation arc, CONS-8) from the Consolidation-arc verdict's ruling 8. The verdict's own diagnosis (rubric 10): the orchestration machinery shipped — named plans, worktree-native spawn, `/queue-status-lite`, the coordinator role roster (see [Coordinator roles](https://github.com/alexherrero/crickets/wiki/Coordinator-Roles)) — and the operator still hand-pasted prompts between sessions anyway. The gap wasn't a missing capability; it was a missing **default**. This rule names the default: a multi-session job is a coordinator dispatch, not a string of separately-typed prompts.
+Migrated in (Consolidation arc, CONS-8) from the Consolidation-arc verdict's ruling 8. The verdict's own diagnosis (rubric 10): the orchestration machinery shipped — named plans, worktree-native spawn, a queue-status glance and a coordinator role roster (the glance and the research, tech-lead and project-manager roles retired in crickets plan 105 for want of use) — and the operator still hand-pasted prompts between sessions anyway. The gap wasn't a missing capability; it was a missing **default**. This rule names the default: a multi-session job is a coordinator dispatch, not a string of separately-typed prompts.
 
 ### The shape
 
@@ -56,6 +56,6 @@ If all three are satisfied, the dispatch is compliant. If any is missing, that i
 
 ## See also
 
-- [Coordinator roles](https://github.com/alexherrero/crickets/wiki/Coordinator-Roles) — the four thin-skin roles (`researcher`, `tech-lead`, `worker`, `project-manager`) a coordinator dispatches against.
+- `worker` — the one coordinator role left: the autonomous `/work` executor, one per worktree.
 - [`coalescence-gate`](coalescence-gate.md) — the arc-exit checklist; a coordinator-dispatched arc runs this checklist against itself at close.
 - `src/tokens/scripts/fanout_cost_gate.py` — the fleet pre-flight named above.

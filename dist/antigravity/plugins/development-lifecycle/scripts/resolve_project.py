@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""resolve_project.py — LOCATE + CONFIRM for `/open` / `/orient`
+"""resolve_project.py — LOCATE + CONFIRM for `/open`
 (PLAN-open-a-project-by-name task 2).
 
 Resolves the operator's "open the file for X" intent to a project / idea /

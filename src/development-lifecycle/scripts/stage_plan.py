@@ -57,7 +57,7 @@ if str(_HERE) not in sys.path:
 # One owner of resolution + the PLAN/progress naming contract: the sibling bridge.
 # Reuse its `_AUTO` sentinel verbatim so `resolver=` passes through transparently
 # (tests inject `resolver=None` to force the `.harness/` fallback, or a stub Path
-# to force the delegate branch — exactly as on `resolve_plan`/`queue_status`).
+# to force the delegate branch — exactly as on `resolve_plan`).
 import resolve_plan  # noqa: E402
 # The cheap pre-flight reconcile (LC-6): refuse to activate a lane whose declared
 # artifacts already exist on `main`. Read-only — it only reads the plan's

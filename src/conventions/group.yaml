@@ -123,4 +123,6 @@ capabilities: [testing-conventions, releasing-conventions, conventions]
 # 0.12.4 = ship-release, coalescence-gate, agentic-engineering and the
 # features.json reference stop saying /release reads touches_architecture or
 # that the phase commands write features.json (plan 104 step 5).
-version: 0.12.4
+# 0.12.5 = coordinator-dispatch names worker as the one coordinator role left
+# (plan 105 step 2 retired researcher, tech-lead and project-manager).
+version: 0.12.5

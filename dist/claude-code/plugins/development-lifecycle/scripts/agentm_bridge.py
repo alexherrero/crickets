@@ -57,7 +57,7 @@ in crickets). resolve_project.py (open-a-project-by-name) shells to the
 repo-registry verb the same way. work.md fires `phase-dispatch post-work`
 after each task's commit; release.md fires `phase-dispatch post-release`
 after the release lands. The tracker, project-brief and plans verbs serve the
-commands' tracker bookkeeping and /orient; scripts load run_tracker,
+commands' tracker bookkeeping and /open; scripts load run_tracker,
 run_project_brief and run_list_plans in-process, the way resolve_plan.py loads
 run_state_path.
 

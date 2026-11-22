@@ -3,10 +3,9 @@
 
 Locks the load-bearing facts:
 
-  * The three role agent defs carry the correct `model:` frontmatter field:
-    - worker     → claude-sonnet-5 (T1 executor; opusplan plan→execute split)
-    - researcher → claude-sonnet-5 (lighter; read-only / research)
-    - tech-lead  → claude-sonnet-5 (lighter; planning / authoring)
+  * The `worker` role agent def carries the correct `model:` frontmatter field
+    (T1 executor; opusplan plan→execute split). Crickets plan 105 retired the
+    other two role agents.
   * All five execution/planning commands contain a one-line routing nudge
     stating the recommended model (not just any mention of a model name):
     - work, bugfix     → opusplan nudge (named explicitly, not a flat Opus pin)
@@ -41,8 +40,6 @@ _ROUTING_NUDGE_MARKER = "Recommended model for this phase:"
 
 _AGENT_ROUTING = {
     "worker": "claude-sonnet-5",
-    "researcher": "claude-sonnet-5",
-    "tech-lead": "claude-sonnet-5",
 }
 
 _COMMAND_ROUTING = {
@@ -64,20 +61,6 @@ class TestAgentModelFrontmatter(unittest.TestCase):
         self.assertEqual(
             fm.get("model"), "claude-sonnet-5",
             "worker.md: expected model: claude-sonnet-5 (T1 executor; opusplan plan→execute split)",
-        )
-
-    def test_researcher_model_is_sonnet(self):
-        fm = self._fm("researcher")
-        self.assertEqual(
-            fm.get("model"), "claude-sonnet-5",
-            "researcher.md: expected model: claude-sonnet-5 (read-only research)",
-        )
-
-    def test_tech_lead_model_is_sonnet(self):
-        fm = self._fm("tech-lead")
-        self.assertEqual(
-            fm.get("model"), "claude-sonnet-5",
-            "tech-lead.md: expected model: claude-sonnet-5 (planning/authoring)",
         )
 
     def test_all_routing_models_match_policy(self):
