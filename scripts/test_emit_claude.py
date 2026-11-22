@@ -140,7 +140,9 @@ class TestClaudeEmitter(unittest.TestCase):
         # 50 KB diataxis-author keeps its whole text in references/.
         # 0.13.3 = diataxis-evaluator, style-scope-evaluator and documenter
         # carry the tools: allowlist their bodies state (AgentM task 206).
-        self.assertEqual(self._plugin_json("wiki")["version"], "0.13.3")
+        # 0.13.4 = sibling_plugin.py's docstring and diataxis-author's dogfood note
+        # stop naming the retired /design verbs (plan 103, step 12).
+        self.assertEqual(self._plugin_json("wiki")["version"], "0.13.4")
         # 0.3.0 = check-no-pii.sh + templates/hooks/pre-push moved into src/pii/
         # so they actually ship inside the plugin payload (R2.4 task 7).
         # 0.3.1 = check-no-pii.sh scan collapsed to one grep per file (fixes a

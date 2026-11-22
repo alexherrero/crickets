@@ -118,7 +118,7 @@ Once step 1.5 has bound the session, on a first run or a resume, name the step a
 
 `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" step --plan <plan> --tracker <tracker> --state "<what is true now, and which step starts>" --next "Step N: <title>"`
 
-It opens a tracker the plan doesn't have yet (a plan written before trackers, or a part staged by `/design sequence`), moves a `queued` or `parked` one to `active`, and rewrites an `active` one in place. It never writes the plan file. **Exit 3** — announce the reason and carry on without a tracker, logging the step to progress. **Exit 1** — a hard stop: surface stderr.
+It opens a tracker the plan doesn't have yet (a plan written before trackers, or a plan staged by `stage_plan.py`), moves a `queued` or `parked` one to `active`, and rewrites an `active` one in place. It never writes the plan file. **Exit 3** — announce the reason and carry on without a tracker, logging the step to progress. **Exit 1** — a hard stop: surface stderr.
 
 ### 2. Safety pre-check (before each step)
 

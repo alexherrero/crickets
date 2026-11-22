@@ -768,5 +768,11 @@ enhances:
 # step's gates, the passes after them, the done-report appended to progress.
 # A step with no tags is a legacy step: build, medium, anchored to the plan.
 # /work grew by 161 words; the loop itself is not copied into it.
-version: 0.57.0
+# 0.58.0 = vault_designs.py (plan 103, step 12): finds a project's living design
+# notes in its vault (list, and find by governs / alias / tags), so /plan step 1b
+# and the session-start hook see them beside the repo's wiki/designs/ pages. Both
+# hook twins print up to four vault design paths with a 3-second timeout. The old
+# design plugin's scripts are gone; preflight_reconcile.py's comments no longer
+# point at them, and work.md says stage_plan.py, not /design sequence.
+version: 0.58.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

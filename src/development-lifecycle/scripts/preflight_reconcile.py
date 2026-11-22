@@ -36,17 +36,13 @@ import os
 import re
 from pathlib import Path
 
-# `_FRONTMATTER_RE` duplicates design_doc.py's constant of the same name
-# (crickets/design, a different plugin as of the AG Wave A rename 2 — DC-2
-# forbids a cross-plugin Python import, "siblings not layers"). Kept in sync
-# by test_preflight_reconcile.py's drift test against design_doc's live copy,
-# the same duplicate-with-drift-test pattern the PR helpers use (probe #3
-# found cross-plugin import unavailable there too).
+# The frontmatter block: `---`, the fields, `---`. This script owns it. The design
+# plugin once kept a second copy, with a drift test; that copy retired with the old
+# design standard (plan 103), so there is one copy and nothing to drift from.
 _FRONTMATTER_RE = re.compile(r"\A---[ \t]*\n(.*?)\n---[ \t]*(?:\n|\Z)", re.DOTALL)
 
-# The block-list parse below mirrors design_sequence._dependencies_from_block
-# (generalized to an arbitrary key) — we need a *list* field here, which
-# design_doc's own scalar parser skips (it ignores indented lines).
+# The block-list parse below reads a *list* field (inline `[a, b]` or a `- item`
+# block) for any key; a scalar-only frontmatter parser would skip indented lines.
 
 _ARTIFACTS_KEY = "expected_artifacts"
 
@@ -75,10 +71,9 @@ def _parse_inline_list(raw: str) -> list[str]:
 def _list_field(fm_text: str, key: str) -> list[str]:
     """The frontmatter `key:`'s value as a list — inline `[a, b]` or a `- item` block.
 
-    Mirrors `design_sequence._dependencies_from_block`, generalized to any key, so a
-    hand-edited block list isn't silently dropped (`design_doc.parse_frontmatter`
-    skips indented lines, so it cannot read a block list). Returns [] when the key
-    is absent or its value empty.
+    Reads a block list too, for any key, so a hand-edited block list isn't silently
+    dropped (a scalar-only parser skips indented lines). Returns [] when the key is
+    absent or its value empty.
     """
     lines = fm_text.splitlines()
     prefix = f"{key}:"

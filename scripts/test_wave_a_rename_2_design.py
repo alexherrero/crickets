@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
-"""Lock for AG Wave A rename 2 task 4 (PLAN-wave-a-renames-2): the design-docs
--> design re-home + de-dupe. Asserts development-lifecycle/commands/ no longer
-carries the four files that moved to design/, and that design/commands/design.md
-retains distinct instructions from both pre-move source copies (the de-dupe's
-no-content-loss requirement).
+"""Lock for the design re-home (AG Wave A rename 2 task 4) and what became of it.
+
+The design commands and helpers moved out of development-lifecycle into the design
+plugin in AG Wave A rename 2, and development-lifecycle must not carry them again.
+That part of the lock stands. The rest of the design plugin's old content (the
+template walk, the draft -> review -> final gate, translate and sequence, the three
+templates and the scripts only they used) retired with the old design standard in
+plan 103 step 12; test_design_retired.py pins that. What this file asserts about
+the design plugin now is its surviving layout.
 """
 from __future__ import annotations
 
@@ -29,30 +33,14 @@ class TestWaveARename2Design(unittest.TestCase):
             (_REPO_ROOT / "src" / "development-lifecycle" / "templates" / "design-doc.md").exists()
         )
 
-    def test_moved_files_present_under_design(self):
+    def test_the_design_plugin_keeps_its_two_commands_and_its_prose_pass(self):
         design_dir = _REPO_ROOT / "src" / "design"
         for rel in (
-            "commands/document-decision.md",
-            "commands/design.md", "scripts/design_doc.py", "scripts/design_sequence.py",
-            "templates/design-doc.md",
+            "commands/design.md", "commands/document-decision.md",
+            "scripts/prose_pass.py", "scripts/project_homes.py",
+            "skills/prose-pass/SKILL.md", "skills/adr/SKILL.md",
         ):
             self.assertTrue((design_dir / rel).is_file(), f"{rel} missing under src/design/")
-
-    def test_design_md_retains_both_sources_distinct_content(self):
-        text = (_REPO_ROOT / "src" / "design" / "commands" / "design.md").read_text(encoding="utf-8")
-        # From development-lifecycle's full implementation (the surviving copy).
-        # "Three verbs, one pipeline" became "Four verbs, one pipeline" when
-        # /design finalize landed (PLAN-wave-c-design-and-conventions task 3)
-        # -- same dispatch-table framing this test actually checks for, just
-        # accurately counting the now-real fourth verb.
-        self.assertIn("Four verbs, one pipeline", text)
-        self.assertIn("Status lifecycle (the hard gate)", text)
-        self.assertIn("design_sequence.py", text)
-        # From design-docs' stub (the delegate-pointer framing folds into the
-        # surviving copy's own "upstream authoring step" framing — confirm the
-        # dispatch table the stub also carried is present):
-        self.assertIn("/design translate <slug>", text)
-        self.assertIn("/design sequence <slug>", text)
 
 
 if __name__ == "__main__":

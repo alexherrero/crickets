@@ -216,7 +216,10 @@ standalone: true
 # 0.13.2 = Antigravity: /wiki-init ships as a skill, and diataxis-author (50
 # KB) keeps its whole text in references/SKILL.full.md because agy loads only
 # the first 24 KB of a SKILL.md.
-version: 0.13.3
+# 0.13.4 = sibling_plugin.py's docstring no longer names the retired /design
+# translate, and diataxis-author's dogfood note no longer names /design author
+# (plan 103, step 12).
+version: 0.13.4
 capabilities: [wiki-maintenance, wiki]
 renamed_from: [wiki-maintenance]
 enhances:

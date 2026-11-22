@@ -156,41 +156,6 @@ class Writers(unittest.TestCase):
             self.assertEqual(note, sp.desk / "orientation-note.md")
             self.assertEqual(nhf.harness_dirs(sp.root), [])
 
-    def test_design_paths(self):
-        """design (step 5): the designs home, a confidential design, a parts dir."""
-        script = HERE.parent / "src" / "design" / "scripts" / "design_doc.py"
-        with nhf.ScratchProject() as sp:
-            root = ["--project-root", str(sp.repo)]
-            for argv, want in ((["designs-home", *root], sp.designs),
-                               (["design-path", "arc", *root], sp.designs / "arc.md"),
-                               (["parts-dir", "arc", *root], sp.designs / "arc" / "parts")):
-                r = self.run_py(sp, script, argv)
-                self.assertEqual(r.returncode, 0, r.stderr)
-                self.assertEqual(Path(r.stdout.strip()), want)
-            self.assertEqual(sorted(p.name for p in sp.designs.iterdir()), [])
-            self.assertEqual(nhf.harness_dirs(sp.root), [])
-
-    def test_design_sequence_placement(self):
-        """design (step 6): a part placed as a queued task where agentm says."""
-        import importlib.util
-        spec = importlib.util.spec_from_file_location(
-            "ds_no_harness", HERE.parent / "src" / "design" / "scripts" / "design_sequence.py")
-        ds = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(ds)
-        with nhf.ScratchProject() as sp:
-            task = sp.project / "tasks" / "043-arc-one"
-
-            def run(rel, args):
-                if rel.endswith("resolve_plan.py"):
-                    return (0, f"{task / 'plan.md'}\t{task / 'progress.md'}\t{task / 'tracker.md'}\n", "")
-                return (0, "", "")
-
-            rc, out = ds.place("arc-one", "# Plan: one\n", str(sp.repo), design="arc",
-                               part="one", today="2026-09-22", run=run)
-            self.assertEqual(rc, 0, out)
-            self.assertTrue((task / "plan.md").is_file())
-            self.assertEqual(nhf.harness_dirs(sp.root), [])
-
     def _wiki_watch(self):
         import importlib.util
         wiki = HERE.parent / "src" / "wiki" / "scripts"

@@ -74,6 +74,22 @@ try {
         }
     }
 
+    # Vault living designs (paths only, bounded, <=4). Mirrors the .sh twin:
+    # vault_designs.py asks agentm where the project's design notes are, with a
+    # short timeout so boot never waits on it. Graceful-skip on anything missing.
+    try {
+        $vaultDesignsPy = if ($env:CLAUDE_PLUGIN_ROOT) { Join-Path $env:CLAUDE_PLUGIN_ROOT 'scripts/vault_designs.py' } else { $null }
+        $pyCmd = Get-Command python3 -ErrorAction SilentlyContinue
+        if (-not $pyCmd) { $pyCmd = Get-Command python -ErrorAction SilentlyContinue }
+        if ($vaultDesignsPy -and $pyCmd -and (Test-Path -LiteralPath $vaultDesignsPy -PathType Leaf)) {
+            $vaultDesigns = & $pyCmd.Source $vaultDesignsPy list --cwd $cwd --limit 4 --timeout 3 2>$null
+            if ($LASTEXITCODE -eq 0 -and $vaultDesigns) {
+                Write-Output "[developer-workflows] Living designs (vault) - /plan resolves the governing one:"
+                foreach ($d in @($vaultDesigns)) { if ($d) { Write-Output ("  design: " + $d) } }
+            }
+        }
+    } catch { }
+
     # Session-start tier + advisor nudge (PLAN-efficiency-dispatch task 7).
     # Native PowerShell port of the .sh twin's Python call — compares the live
     # session model against the active plan's next unchecked task's staged

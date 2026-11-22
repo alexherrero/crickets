@@ -1,17 +1,17 @@
 # How to run a cross-model prose pass
 
 > [!NOTE]
-> **Goal:** Simplify a finished design doc (or any authored prose) with a second model, then verify nothing drifted before deploying the result.
+> **Goal:** Simplify a finished design note (or any authored prose) with a second model, then verify nothing drifted before deploying the result.
 > **Prereqs:** the `design` plugin installed ([Install crickets plugins](Install-Crickets-Plugins)); the `agy` CLI authenticated; a vault configured with your voice pack (`agentm_config --vault-path`).
 
 The pass is two steps: **Gemini simplifies, Claude verifies.** A simplification pass run by the model that wrote the prose is an echo chamber — it cannot see the sentences only the author can parse. The `prose-pass` skill sends the document to Gemini (via `agy`) for the readability edit, then your agent verifies every guarded fact held before anything overwrites the original. It is the prose sibling of code-review's `cross-review.sh`.
 
 > [!NOTE]
-> **Already automatic for design docs and wiki pages.** `/design author` runs this pass for you at Step 5 (ready-for-review) and again on review-pass entry — see [Author a design](Author-A-Design). The wiki `documenter` agent runs it on every drafted page before its preview. You don't need the steps below for either flow; they already fold the pass into their own Document History bookkeeping and report the fallback if `agy` degrades. Use this page to run the pass **by hand** on other prose — a README, a doc outside those two flows, or anything you're simplifying standalone.
+> **Automatic for wiki pages, offered for design notes.** The wiki `documenter` agent runs this pass on every drafted page before its preview, and reports the fallback if `agy` degrades. `/design` runs it only when you ask; see [Author a design](Author-A-Design). Use this page to run the pass **by hand** on any other prose — a README, a design note, or anything you're simplifying standalone.
 
 ## Steps
 
-1. **Settle the content first.** Run the pass on a document whose meaning is final — a design at `Status: final`, a page after a truth audit. The pass improves readability; it never decides what the document says.
+1. **Settle the content first.** Run the pass on a document whose meaning is final — a design note whose amendment log is current, a page after a truth audit. The pass improves readability; it never decides what the document says.
 
 2. **Write the fact-guard list.** Three to eight lines, each a truth in this document that a simplifier could plausibly invert:
 
@@ -51,7 +51,7 @@ The pass is two steps: **Gemini simplifies, Claude verifies.** A simplification 
 
 ## See also
 
-- [Author a design](Author-A-Design) — write the document this pass polishes
+- [Author a design](Author-A-Design) — write the design note this pass can polish
 - [Review a change — code review](Use-Code-Review) — the code sibling of this pass
 - [Record an architectural decision](Record-An-Architectural-Decision) — where meaning changes go (never through this pass)
 - [Manifest schema](Manifest-Schema) — skill primitive frontmatter reference

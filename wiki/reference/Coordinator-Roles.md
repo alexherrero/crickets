@@ -11,7 +11,7 @@ The **coordinator roster** is four loose role-definitions that compose onto the 
 | Role | Kind | Mode | Wraps | Drives the loop step |
 |---|---|---|---|---|
 | `researcher` | role | read-only · `Read · Glob · Grep · WebFetch` | `explorer` + its own `WebFetch` + forward-ref to the operator's global research agent | the brief-research front of the loop |
-| `tech-lead` | role | active · full access | `/design` → `/plan` | turns a brief into queued / named plans |
+| `tech-lead` | role | active · full access | `/plan` | turns a brief into queued / named plans |
 | `worker` | role | active · full access | `/work` (one per worktree) | the autonomous executor |
 | `project-manager` | role | read-only · `Read · Glob · Grep · Bash` | `/queue-status-lite` | the coordinator's read-model over the queue |
 
@@ -23,7 +23,7 @@ The **coordinator roster** is four loose role-definitions that compose onto the 
 These are **roles** — thin layers that compose onto surfaces `development-lifecycle` (formerly `developer-workflows`) already ships. Each is a loose `agents/` role-definition (a sub-agent definition under `src/development-lifecycle/agents/`, beside the existing `explorer.md` / `evaluator.md`) that names a persona and points at the phase commands and agents that already do the work. A role adds no new mechanism — it wraps shipped surfaces:
 
 - `researcher` dispatches the shipped `explorer` (codebase fan-out) and runs its own `WebFetch` for light web lookups, and forward-references the operator's global research agent for deep / multi-source work — composing with it when present, never vendoring or porting it. It fronts those capabilities without adding a fan-out engine of its own.
-- `tech-lead` is the authoring persona for the `/design → /plan` step — both shipped; `/design` is the upstream authoring step, `/plan` the floor it sequences down to (see below).
+- `tech-lead` is the authoring persona for the brief-to-plan step; `/plan` is its floor, and `/design` keeps the design note `/plan` reads (see below).
 - `worker` is the persona of a `/work` session — one per worktree, bound to its plan by the worktree-local `.harness/active-plan` marker that `worktree_marker.py` writes once `/work`'s own auto-spawn step has created the worktree, integrated back via the auto-merging PR `finalize_unit.py` opens at the plan's final task.
 - `project-manager` wraps the shipped `/queue-status-lite` read-model.
 
@@ -52,7 +52,7 @@ The brief-to-plan authoring persona (full tool access): it turns a brief into an
 This lets `tech-lead` queue several plans and activate them one at a time, feeding the worker pool without singleton collisions. After it stages and activates a named plan, running `/work` against it is what hands the plan to a worktree — `/work`'s own auto-spawn step creates the worktree via the host's native primitive when authorized (an explicit operator instruction, or the durable `isolation.mode: worktree-per-plan` config opt-in — never autonomous, [Developer safety design](crickets-developer-safety)); `tech-lead` produces plans, it does not spawn worktrees itself.
 
 > [!NOTE]
-> **`/design` is the shipped upstream step.** The richer author → translate → sequence authoring path (`/design`, `src/design/commands/design.md`) shipped at crickets v3.11.0 (2026-06-14). `tech-lead` authors via `/design` when a brief needs the fuller translate-and-sequence treatment, and drops straight to `/plan` (its original floor) for briefs that don't. `/design`'s output is a topo-ordered set of named plans that `/plan` still feeds one at a time.
+> **`/design` keeps the design note, not the plans.** `/design` (`src/design/commands/design.md`) writes or updates one living design note per area in the project's vault. `tech-lead` still authors through `/plan`; the plans come from `/plan`, not from `/design`.
 
 ### `worker` (role, active)
 

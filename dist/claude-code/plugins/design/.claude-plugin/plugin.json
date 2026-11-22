@@ -6,7 +6,7 @@
   "dependencies": [
     "development-lifecycle"
   ],
-  "description": "Design-doc and ADR authoring — the /design command (author → translate → sequence) and the ADR skill for capturing architectural decisions with re-audit triggers.",
+  "description": "Living-design and ADR authoring — the /design command (write or update a project's living design note in its vault: objective, current design, open questions, amendment log) and the ADR skill for capturing architectural decisions with re-audit triggers. Also the cross-model prose pass.",
   "name": "design",
-  "version": "0.13.0"
+  "version": "1.0.0"
 }

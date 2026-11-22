@@ -1,5 +1,5 @@
 name: Design
-description: Design-doc and ADR authoring — the /design command (author → translate → sequence) and the ADR skill for capturing architectural decisions with re-audit triggers.
+description: "Living-design and ADR authoring — the /design command (write or update a project's living design note in its vault: objective, current design, open questions, amendment log) and the ADR skill for capturing architectural decisions with re-audit triggers. Also the cross-model prose pass."
 category: Coding
 requires: [development-lifecycle]
 standalone: false
@@ -173,4 +173,16 @@ capabilities: [design-docs, design, architecture]
 # header states the rule from the first call. The default model is Gemini 4
 # Hydrogen (High), cross-review.sh's wording tier (a test pins the two
 # together); --model and PROSE_PASS_MODEL still win.
-version: 0.13.0
+# 1.0.0 = the old design standard is retired (plan 103, step 12). /design now does
+# one job: write or update a living design note in the project's vault, with no
+# template walk, no draft -> review -> final gate and no publishing to
+# wiki/designs/. Removed: `/design author`, `translate`, `sequence` and `finalize`;
+# the three templates (design-doc.md, abbreviated-design.md, architecture-hld.md);
+# the scripts only they used (design_doc.py, design_template.py,
+# design_finalize.py, design_sequence.py, architecture_rung.py, and this
+# plugin's copy of sibling_plugin.py, which only design_sequence.py called);
+# and their tests. A major bump because commands go away. The ADR skill,
+# /document-decision and the prose pass stay. development-lifecycle's /plan
+# step 1b and its session-start hook now also find vault living designs
+# (scripts/vault_designs.py), beside the repo's own wiki/designs/ pages.
+version: 1.0.0

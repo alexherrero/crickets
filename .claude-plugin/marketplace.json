@@ -46,10 +46,10 @@
       "dependencies": [
         "development-lifecycle"
       ],
-      "description": "Design-doc and ADR authoring — the /design command (author → translate → sequence) and the ADR skill for capturing architectural decisions with re-audit triggers.",
+      "description": "Living-design and ADR authoring — the /design command (write or update a project's living design note in its vault: objective, current design, open questions, amendment log) and the ADR skill for capturing architectural decisions with re-audit triggers. Also the cross-model prose pass.",
       "name": "design",
       "source": "./dist/claude-code/plugins/design",
-      "version": "0.13.0"
+      "version": "1.0.0"
     },
     {
       "capabilities": [
@@ -87,7 +87,7 @@
       ],
       "name": "development-lifecycle",
       "source": "./dist/claude-code/plugins/development-lifecycle",
-      "version": "0.57.0"
+      "version": "0.58.0"
     },
     {
       "capabilities": [
@@ -132,7 +132,7 @@
       "description": "CI workflows + dependency-update tooling — the dependabot-fixer skill that repairs breakage on Dependabot PRs.",
       "name": "maintenance",
       "source": "./dist/claude-code/plugins/maintenance",
-      "version": "0.2.8"
+      "version": "0.2.9"
     },
     {
       "capabilities": [
@@ -191,7 +191,7 @@
       ],
       "name": "wiki",
       "source": "./dist/claude-code/plugins/wiki",
-      "version": "0.13.3"
+      "version": "0.13.4"
     }
   ],
   "renames": {

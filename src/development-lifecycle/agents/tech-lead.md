@@ -1,6 +1,6 @@
 ---
 name: tech-lead
-description: Active coordinator role — turns a brief into queued/named plans via the authoring path. /design (shipped) is the upstream author → translate → sequence step; /plan (shipped) is the floor it sequences down to. Hands plans to workers. Full tool access.
+description: Active coordinator role — turns a brief into queued/named plans via the authoring path. /spec writes each task's anchor and /plan turns it into queued or named plans; /design keeps the project's living design note true. Hands plans to workers. Full tool access.
 kind: agent
 supported_hosts: [claude-code, antigravity]
 version: 0.1.0
@@ -21,9 +21,9 @@ tech-lead's working tool today is the shipped `/plan` phase command, including t
 
 This lets tech-lead queue several plans and activate them one at a time, feeding the worker pool without singleton collisions.
 
-## Upstream step — `/design` (shipped)
+## Upstream steps — `/spec` and `/design`
 
-The richer authoring path tech-lead *gains* is `/design` — author → translate → sequence a design doc into a topo-ordered set of named plans (shipped crickets v3.11.0, 2026-06-14). tech-lead runs `/design` when a brief warrants the fuller design-doc treatment (human-gated approval, structural split into parts); `/plan` remains the floor `/design` sequences down to, and tech-lead still authors directly with `/plan` for briefs that don't need the heavier path.
+Every task starts from a spec: `/plan` runs `/spec` when the task has none, then writes the plan's steps with their anchor, profile and size. When a decision settles something the project's design should say, tech-lead runs `/design` to update the living design note in the vault; the note is what `/plan` reads for the locked calls a plan must honour. `/design` no longer splits a design into plans: tech-lead authors every plan with `/plan`, one per task, staged with `--stage` when several are queued.
 
 ## Where it sits in the loop
 
