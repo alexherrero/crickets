@@ -752,5 +752,13 @@ enhances:
 # dBFS; both compared against a reference. Writes a side-by-side image and a
 # spectrogram when ImageMagick or ffmpeg is installed and says what it skipped
 # when not. Stdlib decoding, no agentm.
-version: 0.55.0
+# 0.56.0 = /create-it (plan 103, step 9): the loop for art, sound, UI look and
+# prose. A spec with a reference folder and a 5-10 line likeness list; a size
+# call; a direction check on the high tier; measured free checks through
+# asset_checks.py; likeness (Claude reading the paired images, one rubric item
+# per likeness line), craft (default tier) and, for prose, voice (prose_pass.py
+# on the wording tier; a longer revision is refused) passes; a done-report with
+# the paired images and a playtest checklist; general feedback offered back as a
+# new likeness line. No agentm call on the required path.
+version: 0.56.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

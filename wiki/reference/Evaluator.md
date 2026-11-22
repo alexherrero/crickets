@@ -11,6 +11,7 @@ The infrastructure often dispatches the evaluator for you. You rarely invoke it 
 |---|---|
 | **`/review` phase** (`development-lifecycle`) | not wired — `src/development-lifecycle/commands/review.md` dispatches `adversarial-reviewer` (+ cross-model `adversarial-reviewer-cross`) only, and has no evaluator call site |
 | **`/build-it`** (`development-lifecycle`) | dispatches it for the done-check, after the passes and the done-report; see [Done-check](#done-check-anchor-and-loop-record) |
+| **`/create-it`** (`development-lifecycle`) | dispatches it for the likeness pass (paired images, one rubric item per likeness line) and for the done-check; see [Done-check](#done-check-anchor-and-loop-record) |
 | **a skill / command / workflow** | wires a rubric-driven gate (e.g. grade an artifact before proceeding) |
 | **you, directly** | dispatch it with a rubric to grade any artifact on disk |
 
@@ -71,7 +72,7 @@ You use this same `ARTIFACT`/`RUBRIC` shape to grade a docs-drift check. You use
 
 ## Done-check: anchor and loop record
 
-The build-it / create-it loop ends with one evaluator pass, the done-check. The dispatch names `ANCHOR:` and `RECORD:` beside `ARTIFACT:`, and `RUBRIC:` becomes optional. The helper that writes the record is `loop_record.py`; `/build-it` runs the done-check (run by hand for now; `/work` does not call it yet).
+The build-it / create-it loop ends with one evaluator pass, the done-check. The dispatch names `ANCHOR:` and `RECORD:` beside `ARTIFACT:`, and `RUBRIC:` becomes optional. The helper that writes the record is `loop_record.py`; `/build-it` and `/create-it` run the done-check (run by hand for now; `/work` does not call either yet).
 
 | Section | Holds |
 |---|---|

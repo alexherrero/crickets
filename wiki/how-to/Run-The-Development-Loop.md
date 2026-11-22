@@ -32,6 +32,10 @@ When the change is still fuzzy, do the authoring steps first — they feed into 
 
 `/build-it <task>` runs the whole loop for a single piece of code: anchor, size, direction check, make, the repo's own checks, review passes, and a done-report. `/build-it --check <PR number | A..B | diff file>` reviews a change someone already made and never edits it. You run it by hand for now; `/work` does not call it yet. Details: [Development Lifecycle](Development-Lifecycle).
 
+## Make and check art, sound, UI look or prose
+
+`/create-it <what to make>` runs the same loop for work graded against a reference: it needs a spec with a `reference/` folder and a 5 to 10 line likeness list, measures every PNG and WAV, and ends with a done-report that shows the paired images and a playtest checklist for you to try. You run it by hand for now; `/work` does not call it yet. Details: [Development Lifecycle](Development-Lifecycle).
+
 ## Fixing a bug
 
 For a defect, use `/bugfix <report>` instead of `/plan` + `/work`. It runs a shorter, different track — Report → Analyze → Fix → Verify — aimed at a single fix rather than a feature.

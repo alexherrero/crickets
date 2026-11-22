@@ -290,7 +290,7 @@ def write_wav(path, samples, rate=8000, channels=1, width=2):
             elif width == 3:
                 body += int(round(v * 8388607)).to_bytes(3, "little", signed=True)
             else:
-                body += struct.pack("<i", int(round(v * 2147483647)))
+                body += struct.pack("<i", int(round(v * (2 ** 31 - 1))))
         w.writeframes(bytes(body))
 
 
