@@ -805,5 +805,7 @@ standalone: true
 # /launch, /deprecate, /observe, /orient (/open is the one entry point),
 # /queue-status-lite with its queue_status.py bridge, and the project-manager,
 # tech-lead and researcher agents. worker stays.
-version: 2.0.0
+# 2.1.0 = scripts with no caller go (plan 105 step 6): fanout_announcement.py,
+# check-plan-grounding.py, and agentm_bridge.py's workflow-persona verb.
+version: 2.1.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

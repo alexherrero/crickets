@@ -45,6 +45,14 @@ RETIRED = [
 RETIRED_SCRIPTS = [
     ("development-lifecycle", "queue_status.py"),
     ("conventions", "conventions_domain.py"),
+    # Step 6: no caller outside their own tests.
+    ("development-lifecycle", "fanout_announcement.py"),
+    ("development-lifecycle", "check-plan-grounding.py"),
+    ("maintenance", "content_refresh.py"),
+    ("maintenance", "cve_security_patch.py"),
+    ("maintenance", "deps_currency.py"),
+    ("maintenance", "tech_debt_inventory.py"),
+    ("maintenance", "agentm_bridge.py"),
 ]
 
 
@@ -125,6 +133,22 @@ class TestRetiredPrimitivesAreGone(unittest.TestCase):
         cmd = (wiki / "commands" / "wiki-watch.md").read_text(encoding="utf-8")
         self.assertIn("wiki_watch_cycle.py run", cmd)
         self.assertIn("finalize_cycle", cmd)
+
+    def test_the_bridge_has_no_workflow_persona_verb(self):
+        text = (_SRC / "development-lifecycle" / "scripts" / "agentm_bridge.py").read_text(encoding="utf-8")
+        self.assertNotIn("workflow-persona", text)
+        self.assertNotIn("workflow_persona", text)
+
+    def test_scripts_with_a_caller_stay(self):
+        # Step 6 checked each of these and found a live caller: CI and check-all
+        # (check_status_invariant), the session-cost hook (dreaming_trend_stub),
+        # /work's 3-failure stop and /handoff (routing_table, classify_work_type,
+        # escalation_tripwire), and coordinator-dispatch's manual pre-flight
+        # (fanout_cost_gate).
+        for rel in ("github-projects/scripts/check_status_invariant.py", "tokens/scripts/dreaming_trend_stub.py",
+                    "tokens/scripts/routing_table.py", "tokens/scripts/classify_work_type.py",
+                    "development-lifecycle/scripts/escalation_tripwire.py", "tokens/scripts/fanout_cost_gate.py"):
+            self.assertTrue((_SRC / rel).is_file(), rel)
 
     def test_worker_is_the_one_coordinator_role_left(self):
         agents = {p.stem for p in (_SRC / "development-lifecycle" / "agents").glob("*.md")}

@@ -46,7 +46,6 @@ _ROOT = Path(__file__).resolve().parent.parent
 
 _MODULES = {
     "diagnostics": _ROOT / "src" / "diagnostics" / "scripts",
-    "maintenance": _ROOT / "src" / "maintenance" / "scripts",
     "research": _ROOT / "src" / "research" / "scripts",
 }
 
@@ -61,12 +60,10 @@ def _load(name: str, path: Path):
 
 
 _diagnostics = _load("agentm_bridge_diagnostics", _MODULES["diagnostics"])
-_maintenance = _load("agentm_bridge_maintenance", _MODULES["maintenance"])
 _research = _load("agentm_bridge_research", _MODULES["research"])
 
 _PLUGIN_MODULES = {
     "diagnostics": _diagnostics,
-    "maintenance": _maintenance,
     "research": _research,
 }
 
@@ -91,14 +88,6 @@ class TestCandidateDirsSourceIdentical(unittest.TestCase):
     def _source(self, module) -> str:
         return inspect.getsource(module._candidate_dirs)
 
-    def test_diagnostics_matches_maintenance(self):
-        self.assertEqual(
-            self._source(_diagnostics), self._source(_maintenance),
-            "diagnostics/agentm_bridge.py's _candidate_dirs() has drifted from "
-            "maintenance/agentm_bridge.py's -- reconcile both copies or update "
-            "this test deliberately if the divergence is now intentional.",
-        )
-
     def test_diagnostics_matches_research(self):
         self.assertEqual(
             self._source(_diagnostics), self._source(_research),
@@ -107,13 +96,6 @@ class TestCandidateDirsSourceIdentical(unittest.TestCase):
             "this test deliberately if the divergence is now intentional.",
         )
 
-    def test_maintenance_matches_research(self):
-        self.assertEqual(
-            self._source(_maintenance), self._source(_research),
-            "maintenance/agentm_bridge.py's _candidate_dirs() has drifted from "
-            "research/agentm_bridge.py's -- reconcile both copies or update "
-            "this test deliberately if the divergence is now intentional.",
-        )
 
 
 class TestCandidateDirsBehaviorParity(unittest.TestCase):

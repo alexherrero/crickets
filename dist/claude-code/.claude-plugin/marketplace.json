@@ -34,7 +34,7 @@
       "description": "Release discipline and the shared rules — the ship-release skill (pre-release checklist, changelog-shape, paired-release coordination for cross-repo releases) plus the always-on rules (no skipped tests, version bumps, CI battery, coalescence gate).",
       "name": "conventions",
       "source": "./plugins/conventions",
-      "version": "1.0.0"
+      "version": "1.0.1"
     },
     {
       "capabilities": [
@@ -79,7 +79,7 @@
       "description": "The phase-gated developer loop — /setup /plan /work /release /bugfix — extracted from agentm as a standalone native plugin. The base other dev plugins enhance.",
       "name": "development-lifecycle",
       "source": "./plugins/development-lifecycle",
-      "version": "2.0.0"
+      "version": "2.1.0"
     },
     {
       "capabilities": [
@@ -124,7 +124,7 @@
       "description": "CI workflows + dependency-update tooling — the dependabot-fixer skill that repairs breakage on Dependabot PRs.",
       "name": "maintenance",
       "source": "./plugins/maintenance",
-      "version": "0.2.9"
+      "version": "0.3.0"
     },
     {
       "capabilities": [

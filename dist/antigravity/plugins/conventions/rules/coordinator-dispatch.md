@@ -30,7 +30,7 @@ Hand-paste (the operator directly running a step themselves, or a session prompt
 
 `src/tokens/scripts/fanout_cost_gate.py` (the crickets-token-audit design's pre-flight cost gate) is the fleet pre-flight this convention names: before a coordinator dispatches a fan-out (parallel lanes, or a wave of independent lanes), it estimates `agent_count × per_agent_cost` against a configured budget share and returns a proceed/confirm-or-block result with the cost stated explicitly — the direct fix for a fleet dispatch that exhausts a session budget mid-run with no pre-flight estimate in front of the operator.
 
-**Status (crickets plan 104): not wired into the phase commands.** They dropped the fan-out announcement step, so nothing calls `fanout_announcement.py`'s `announce_dispatch()` (which ran this gate at `agent_count >= 4`); a coordinator that wants the pre-flight calls `fanout_cost_gate.py` itself.
+**Status (crickets plan 104): not wired into the phase commands.** They dropped the fan-out announcement step, and plan 105 deleted the `fanout_announcement.py` that ran this gate at `agent_count >= 4`; a coordinator that wants the pre-flight calls `fanout_cost_gate.py` itself.
 
 ### What is NOT an acceptable substitute
 

@@ -129,4 +129,5 @@ capabilities: [releasing-conventions, conventions]
 # 105 step 3; 0 uses, agentic-engineering repeated AGENTS.md); the rules point
 # at agentm's AGENTS.md instead, the testing-conventions capability goes, and
 # the conventions_domain.py resolver goes with the skill it resolved.
-version: 1.0.0
+# 1.0.1 = coordinator-dispatch says plan 105 deleted fanout_announcement.py.
+version: 1.0.1
