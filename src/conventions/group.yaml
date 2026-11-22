@@ -118,4 +118,6 @@ capabilities: [testing-conventions, releasing-conventions, conventions]
 # 0.12.1 = Antigravity: the eight rules carry the trigger: agy 1.4 requires
 # (model_decision); without one agy never applied them.
 # 0.12.2 = ci-battery names /build-it, not the retired /review phase (plan 104 step 1).
-version: 0.12.2
+# 0.12.3 = coordinator-dispatch says the phase commands no longer call
+# announce_dispatch() (plan 104 step 4).
+version: 0.12.3

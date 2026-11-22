@@ -35,7 +35,7 @@
       "description": "Day-to-day testing + release discipline in one plugin — tests-are-sacred, verification-first, the 3-layer pyramid, the pre-release checklist, changelog-shape, and paired-release coordination for cross-repo releases.",
       "name": "conventions",
       "source": "./dist/claude-code/plugins/conventions",
-      "version": "0.12.2"
+      "version": "0.12.3"
     },
     {
       "capabilities": [
@@ -80,7 +80,7 @@
       "description": "The phase-gated developer loop — /setup /plan /work /release /bugfix — extracted from agentm as a standalone native plugin. The base other dev plugins enhance.",
       "name": "development-lifecycle",
       "source": "./dist/claude-code/plugins/development-lifecycle",
-      "version": "1.2.0"
+      "version": "1.3.0"
     },
     {
       "capabilities": [
@@ -167,7 +167,7 @@
       "description": "Deterministic transcript-JSONL cost analyzer — per-message cost curve, 5h rolling window, floor breakdown, and cache-read vs cache-write vs fresh-input split. Prerequisite for Part C (status-line meter) and Part G (heat-based floor).",
       "name": "tokens",
       "source": "./dist/claude-code/plugins/tokens",
-      "version": "0.8.3"
+      "version": "0.8.4"
     },
     {
       "capabilities": [

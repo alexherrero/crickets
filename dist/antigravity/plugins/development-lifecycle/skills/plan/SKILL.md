@@ -11,8 +11,6 @@ You are running the **plan** phase of the developer-workflows loop. Turn a brief
 
 > **Recommended model for this phase:** Sonnet 5 (`claude-sonnet-5`) — lighter model for planning and authoring. Override with `/model` if needed.
 
-> **Workflow-step persona (advisory, graceful-skip).** `/plan` wears the **Tech-Lead** persona for this phase — the phase spec is the source of truth for this adoption (`agentm-persona-activation.md`'s workflow-step path; a persona's `triggers:` field feeds only sub-agent routing, never this lookup). Check: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" workflow-persona plan-phase`. **Exit 0** → read the printed persona's manifest (`<agentm-root>/personas/<name>.md`) and hold its stance + `opinions:` for this session. **Exit 1** (agentm absent, or no persona declared for this step) → proceed with this phase's own prose, unchanged — a clean graceful-skip. An operator who already put on a different persona this session keeps it — pass `--explicit <that-name>` so the resolved answer reflects the override (explicit invocation always wins over the workflow-step default).
-
 > **Standalone + storage-agnostic.** State is plain `.harness/<file>` unless a hosting memory layer redirects it. A plan exists so a later `/work` session has a shared contract (not a verbal understanding that evaporates with context), scope is fixed before you're deep in code, and verification is pre-negotiated — the single biggest lever on review quality.
 
 ## When to use
@@ -97,8 +95,6 @@ touches_architecture: true | false
 - **Anchor:** <path to the spec this step is graded against>
 - **Profile:** build | create | both
 - **Size:** small | medium | large
-- **Work-type (optional):** <a token-audit routing_table.py work-type key, e.g. `mechanical-log-scraping` — only when the step's own dispatch shape is distinct from the plan's default `worker-build`>
-- **Tier hint (auto, only present when Work-type is set):** <rendered via `classify_work_type.render_tier_hint(work_type)` — never hand-typed>
 - **Verification:** <executable if possible>
 - **Status:** [ ]
 
@@ -113,8 +109,6 @@ touches_architecture: true | false
 **Anchor, Profile and Size** tell `/work` how to run the step's loop (`/build-it` or `/create-it`). Anchor is the spec's path. Profile is `build` for code, `create` for art, sound, UI look or prose, `both` for a step that makes both. Size is your call: `small` (a few lines, no new behaviour), `medium` (one feature or fix), `large` (a new module, a changed contract, roughly 300 changed lines or 8 files). A step with none of the three is a legacy step: `/work` treats it as `build`, `medium`, anchored to the plan.
 
 **No Status line.** The plan carries no `**Status:**` line: its status is its tracker's, which step 7b opens at `queued`. Each step keeps its own `- **Status:** [ ]` checkbox.
-
-**Tier hints (routed-dispatch amendment, graceful-skip).** Check availability: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" capability token-audit`. On **exit 0**, for any step whose dispatch shape genuinely differs from the plan's own default (most steps don't need this — leave `Work-type` unset and skip the hint entirely), declare `Work-type` as a `routing_table.py` key and render `Tier hint` via `classify_work_type.render_tier_hint(work_type)` — never hand-type the tier/model/effort values. On **exit 1** (unavailable) omit both fields; this is optional annotation, not a plan-grounding requirement.
 
 ### 4b. Self-check grounding (Hook 3 · design-doc §6.3)
 

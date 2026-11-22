@@ -14,8 +14,6 @@ You are running the **work** phase of the developer-workflows loop. Work through
 
 > **Recommended model for this phase:** `opusplan` — Opus 4.8 plans, Sonnet 5 executes the long autonomous stretch. Override with `/model` if needed.
 
-> **Workflow-step persona (advisory, graceful-skip).** `/work` wears the **Engineer** persona for this phase — the phase spec is the source of truth for this adoption (`agentm-persona-activation.md`'s workflow-step path; a persona's `triggers:` field feeds only sub-agent routing, never this lookup). Check: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" workflow-persona work-phase`. **Exit 0** → read the printed persona's manifest (`<agentm-root>/personas/<name>.md`) and hold its stance + `opinions:` for this session. **Exit 1** (agentm absent, or no persona declared for this step) → proceed with this phase's own prose, unchanged — a clean graceful-skip. An operator who already put on a different persona this session keeps it — pass `--explicit <that-name>` so the resolved answer reflects the override (explicit invocation always wins over the workflow-step default).
-
 > The session works the **whole step list autonomously** — the unit is the plan, not a single step. What keeps that safe is the **per-step safety pre-check**: before each step, decide whether it can be done safely and autonomously, and stop to ask if it can't (or if a clarification is needed). Single-threaded execution is the load-bearing constraint — never fan out parallel implementers; the autonomy boundary is the safety check, not the step count.
 
 <!-- BEGIN recoverability-gate · canonical · byte-identical across work.md · bugfix.md · release.md (scripts/ drift test enforces) -->
@@ -42,7 +40,7 @@ Invoking this phase **is** the authorization to run it to completion. The stop-g
 2. **Gates must be green before the step is marked `[x]`.** No "I'll fix this next session" on failed gates.
 3. **Never edit or delete a failing test to make it pass.** If a test is wrong, surface it and stop.
 4. **Feed full error output back** on gate failures — do not summarize. The exact error is the signal.
-5. **The escalation tripwire fires at 3 consecutive failures on the same gate for the same step** (`escalation_tripwire.py`, capability-gated on token-audit — see step 6). This supersedes the old flat 5-iteration cap: no session reaches a 4th attempt on an unresolved gate. If token-audit is absent, the tripwire still fires (degraded: loud stop, no handoff pack) — the cap is never silently longer just because the capability is missing.
+5. **The escalation tripwire fires at 3 consecutive failures on the same gate for the same step** (`escalation_tripwire.py`, step 6): no session reaches a 4th attempt on an unresolved gate. Only the handoff pack needs the `tokens` plugin; the stop does not.
 6. **Do not silently expand step scope.** If it turns out bigger than planned, stop and ask.
 7. **Docs are not part of the loop.** Edit `wiki/` only when the step's **What** names the page.
 8. **Docs are an opt-in pass, later:** run `wiki-author` when a page should change; a repo that keeps a wiki can let `wiki-watch` catch up on a schedule.
@@ -156,11 +154,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/task_isolation.py" check <plan_path> <tas
 
 ### 3. Gather context (optional)
 
-If the step touches unfamiliar code, dispatch the `explorer` sub-agent for read-only fan-out ("Where is X handled? What tests exist for Y? Return file:line references."). Fan out only for multiple independent questions — for one question, just read.
-
-**Routed dispatch (graceful-skip).** Check availability: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" capability token-audit`. On **exit 0**, resolve `classify_work_type('explorer')` then `agent_tool_alias(...)` (both in token-audit's `scripts/classify_work_type.py`) and pass the result as the Agent tool's `model` param. On **exit 1** (unavailable) dispatch exactly as above with no `model` override — today's behavior, unchanged.
-
-**Mandatory fan-out announcement (unconditional, not gated on the probe above).** Before dispatching, print one line via `fanout_announcement.py`'s `render_announcement()` — role · agent count · model · tier source (`table row` / `agent frontmatter` / `UNCLASSIFIED-DEFAULT` / `INHERITED` — `INHERITED` when no `model` param and no agent-def frontmatter resolved anything at all). If the source is `INHERITED` and the current session's own tier is frontier (T3/T4 — see `agentm_bridge.py capability token-audit` + your own launch-time model), call `needs_inheritance_pause()`; if it returns true, print `inheritance_warning()`'s text and **stop for confirmation** — never proceed silently. At `agent_count >= 4`, `announce_dispatch()` also runs the fleet cost gate (`token-audit`'s `fanout_cost_gate.py`, capability-gated, graceful-skip if `token-audit` isn't installed) — a blocked result raises the same `pause_required` flag; print its `cost_gate_warning` and stop for confirmation the same way. This prints regardless of whether the routed-dispatch probe above succeeded.
+If the step touches unfamiliar code, dispatch the `explorer` sub-agent on model `sonnet` for read-only fan-out ("Where is X handled? What tests exist for Y? Return file:line references."). Fan out only for multiple independent questions — for one question, just read.
 
 ### 4. Implement
 

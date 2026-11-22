@@ -75,5 +75,32 @@ class TestNoPhasePostsToTheBoard(unittest.TestCase):
         self.assertIn("### 9. Offer GitHub Project creation (optional)", _read("setup.md"))
 
 
+class TestNoPersonasOrRoutedDispatch(unittest.TestCase):
+    """Plan 104 step 4: personas, token-audit routed dispatch and fan-out
+    announcements left the phase commands."""
+
+    def test_no_routed_dispatch_or_announcement_in_any_command(self):
+        needles = ("workflow-persona", "Workflow-step persona", "fanout_announcement", "render_announcement",
+                   "classify_work_type", "agent_tool_alias", "capability token-audit",
+                   "Mandatory fan-out announcement", "Routed dispatch")
+        for path in sorted(_CMDS.glob("*.md")):
+            text = path.read_text(encoding="utf-8")
+            for needle in needles:
+                self.assertNotIn(needle, text, "%s still names %s" % (path.name, needle))
+
+    def test_explorer_dispatches_name_a_model(self):
+        for name in ("work.md", "bugfix.md"):
+            self.assertIn("dispatch the `explorer` sub-agent on model `sonnet`", _read(name), name)
+
+    def test_token_audit_no_longer_expects_an_announcement(self):
+        text = (_ROOT / "src" / "tokens" / "commands" / "token-audit.md").read_text(encoding="utf-8")
+        self.assertNotIn("Until it ships", text)
+        self.assertNotIn("[PENDING-IMPL]", text)
+
+    def test_the_three_failure_stop_stays(self):
+        text = _read("work.md")
+        self.assertIn("3 consecutive failures on the same gate", text)
+
+
 if __name__ == "__main__":
     unittest.main()

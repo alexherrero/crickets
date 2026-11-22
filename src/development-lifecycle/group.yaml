@@ -786,5 +786,10 @@ standalone: true
 # board-sync; a project with a board runs report-board-drift and
 # planner-maintain on their own. The enhances edge onto github-projects'
 # board-sync is gone. /work logs out-of-scope findings as FOLLOW-UP lines.
-version: 1.2.0
+# 1.3.0 = personas, token-audit routed dispatch and fan-out announcements
+# retire (plan 104 step 4): no Workflow-step persona block in /work, /plan or
+# /bugfix; the explorer dispatch names sonnet instead of probing token-audit
+# and printing an announcement; /plan's step template drops Work-type and
+# Tier hint. The 3-failure escalation stop stays.
+version: 1.3.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]
