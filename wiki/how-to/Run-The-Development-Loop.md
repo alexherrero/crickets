@@ -13,9 +13,9 @@ This is the core loop the `development-lifecycle` plugin gives you. Each phase d
 
 ## Steps
 
-1. **Plan.** Run `/plan <brief>` to turn your brief into a task list with pass/fail criteria, written to `PLAN.md`. No code is written in this phase — it's just the plan. (When you have more than one change in flight at once, give each its own name — see [Run a named plan](Run-A-Named-Plan).)
+1. **Plan.** Run `/plan <brief>` to turn your brief into a task list with pass/fail criteria, written to `PLAN.md`. No code is written in this phase — it's just the plan. Each task gets a spec (`/plan` runs `/spec` for one that has none), and each step names it: `**Anchor:**` is the spec's path, `**Profile:**` is `build`, `create` or `both`, and `**Size:**` is `small`, `medium` or `large`. A step with none of the three counts as build, medium, anchored to the plan. (When you have more than one change in flight at once, give each its own name — see [Run a named plan](Run-A-Named-Plan).)
 
-2. **Work.** Run `/work` to implement the plan. It works the tasks in order, one at a time, updating `progress.md` as it goes, and it stops only when a safety check fails or it needs a decision from you — otherwise it runs to the end of the plan. For a larger change, `/work` itself spawns the plan its own isolated worktree (via the host's native worktree primitive) and closes it out with an auto-merging pull request, when [`isolation.mode: worktree-per-plan`](Run-A-Named-Plan) is configured or you ask for a worktree explicitly — you don't run a separate spawn or integrate command.
+2. **Work.** Run `/work` to implement the plan. It works the tasks in order, one at a time, running each step's loop (`/build-it` or `/create-it`, from the step's Profile and Size) and updating `progress.md` as it goes, and it stops only when a safety check fails or it needs a decision from you — otherwise it runs to the end of the plan. For a larger change, `/work` itself spawns the plan its own isolated worktree (via the host's native worktree primitive) and closes it out with an auto-merging pull request, when [`isolation.mode: worktree-per-plan`](Run-A-Named-Plan) is configured or you ask for a worktree explicitly — you don't run a separate spawn or integrate command.
 
 3. **Review.** Run `/review` to put the change through an adversarial pass. The reviewer assumes the code has bugs and has to produce a failing test or a specific line-number defect, not a "looks good to me." Deterministic checks — typecheck, lint, tests — come first; the review adds to them.
 
@@ -30,11 +30,11 @@ When the change is still fuzzy, do the authoring steps first — they feed into 
 
 ## Build and check one piece of code
 
-`/build-it <task>` runs the whole loop for a single piece of code: anchor, size, direction check, make, the repo's own checks, review passes, and a done-report. `/build-it --check <PR number | A..B | diff file>` reviews a change someone already made and never edits it. You run it by hand for now; `/work` does not call it yet. Details: [Development Lifecycle](Development-Lifecycle).
+`/build-it <task>` runs the whole loop for a single piece of code: anchor, size, direction check, make, the repo's own checks, review passes, and a done-report. `/build-it --check <PR number | A..B | diff file>` reviews a change someone already made and never edits it. `/work` runs it for each build step, so you only run it yourself for a one-off or with `--check`. Details: [Development Lifecycle](Development-Lifecycle).
 
 ## Make and check art, sound, UI look or prose
 
-`/create-it <what to make>` runs the same loop for work graded against a reference: it needs a spec with a `reference/` folder and a 5 to 10 line likeness list, measures every PNG and WAV, and ends with a done-report that shows the paired images and a playtest checklist for you to try. You run it by hand for now; `/work` does not call it yet. Details: [Development Lifecycle](Development-Lifecycle).
+`/create-it <what to make>` runs the same loop for work graded against a reference: it needs a spec with a `reference/` folder and a 5 to 10 line likeness list, measures every PNG and WAV, and ends with a done-report that shows the paired images and a playtest checklist for you to try. `/work` runs it for each create step; run it yourself for a one-off. Details: [Development Lifecycle](Development-Lifecycle).
 
 ## Fixing a bug
 

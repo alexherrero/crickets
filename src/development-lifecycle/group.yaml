@@ -760,5 +760,13 @@ enhances:
 # on the wording tier; a longer revision is refused) passes; a done-report with
 # the paired images and a playtest checklist; general feedback offered back as a
 # new likeness line. No agentm call on the required path.
-version: 0.56.0
+# 0.57.0 = /plan and /work run the loop (plan 103, step 11). /plan runs /spec
+# for the task (the interview step is now the spec step) and every step gains
+# **Anchor:**, **Profile:** and **Size:**. /work reads them and runs the step's
+# loop by pointing at /build-it or /create-it: the direction check inside the
+# safety pre-check for medium and large steps, the loop's free checks as the
+# step's gates, the passes after them, the done-report appended to progress.
+# A step with no tags is a legacy step: build, medium, anchored to the plan.
+# /work grew by 161 words; the loop itself is not copied into it.
+version: 0.57.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

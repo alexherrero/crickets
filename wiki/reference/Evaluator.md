@@ -72,7 +72,7 @@ You use this same `ARTIFACT`/`RUBRIC` shape to grade a docs-drift check. You use
 
 ## Done-check: anchor and loop record
 
-The build-it / create-it loop ends with one evaluator pass, the done-check. The dispatch names `ANCHOR:` and `RECORD:` beside `ARTIFACT:`, and `RUBRIC:` becomes optional. The helper that writes the record is `loop_record.py`; `/build-it` and `/create-it` run the done-check (run by hand for now; `/work` does not call either yet).
+The build-it / create-it loop ends with one evaluator pass, the done-check. The dispatch names `ANCHOR:` and `RECORD:` beside `ARTIFACT:`, and `RUBRIC:` becomes optional. The helper that writes the record is `loop_record.py`; `/build-it` and `/create-it` run the done-check, and `/work` runs those loops for each step.
 
 | Section | Holds |
 |---|---|
