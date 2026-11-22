@@ -11,7 +11,7 @@
       "capabilities": [
         "adversarial-review"
       ],
-      "description": "Standalone adversarial code review of any diff or PR — the adversarial-reviewer (+ cross-model Gemini) agents, the evidence-tracker hook, and security-review + testing-strategy skills. Its reviewers and cross-review.sh run /build-it's review passes when development-lifecycle is installed.",
+      "description": "Standalone adversarial code review of any diff or PR — the adversarial-reviewer (+ cross-model Gemini) agents, the security-auditor agent, and the evidence-tracker hook. Its reviewers and cross-review.sh run /build-it's review passes when development-lifecycle is installed.",
       "enhances": [
         {
           "capability": "review",
@@ -21,7 +21,7 @@
       ],
       "name": "code-review",
       "source": "./dist/claude-code/plugins/code-review",
-      "version": "1.0.0"
+      "version": "2.0.0"
     },
     {
       "capabilities": [
@@ -143,7 +143,7 @@
       "description": "Scan diffs and the working tree for personal information (emails, personal paths, API keys, phone numbers) before commit or push.",
       "name": "privacy",
       "source": "./dist/claude-code/plugins/privacy",
-      "version": "0.6.6"
+      "version": "1.0.0"
     },
     {
       "capabilities": [

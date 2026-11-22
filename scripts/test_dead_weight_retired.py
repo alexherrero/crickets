@@ -32,6 +32,10 @@ RETIRED = [
     ("design", "skill", "adr"),
     ("conventions", "skill", "agentic-engineering"),
     ("conventions", "skill", "testing-conventions"),
+    # Step 4: folded into the correctness rubric, or merged.
+    ("code-review", "skill", "testing-strategy"),
+    ("code-review", "skill", "security-review"),
+    ("privacy", "skill", "privacy-review"),
 ]
 
 RETIRED_SCRIPTS = [
@@ -76,6 +80,27 @@ class TestRetiredPrimitivesAreGone(unittest.TestCase):
         # The command, not the orient_render.py script /open still calls.
         self.assertNotRegex(text, r"/orient(?![_\w])")
         self.assertNotIn("queue-status-lite", text)
+
+    def test_testing_strategy_points_fold_into_the_correctness_rubric(self):
+        # Step 4: testing-strategy's Prove-It, regression-proof and DAMP points
+        # the missing-test lens did not cover, in both correctness reviewers.
+        for rel in ("code-review/scripts/cross-review.sh", "code-review/agents/adversarial-reviewer.md"):
+            text = (_SRC / rel).read_text(encoding="utf-8")
+            with self.subTest(file=rel):
+                self.assertIn("a claimed behaviour with no test that fails if the claim is false", text)
+                self.assertIn("never shown to fail on the pre-fix code in the real failure's shape", text)
+                self.assertIn("assertions too generic to name the behaviour", text)
+
+    def test_security_auditor_stays_the_security_pass(self):
+        self.assertTrue((_SRC / "code-review" / "agents" / "security-auditor.md").is_file())
+
+    def test_pii_scrubber_carries_the_privacy_review(self):
+        text = (_SRC / "privacy" / "skills" / "pii-scrubber" / "SKILL.md").read_text(encoding="utf-8")
+        for practice in ("ASVS-8.3.6", "ASVS-8.3.4", "ASVS-8.2.3", "ASVS-8.2.1", "ASVS-8.3.1", "ASVS-8.1.1",
+                         "OWASP Top 10 Privacy Risks — P1/P8", "OWASP Top 10 Privacy Risks — P2",
+                         "ICO data-protection-by-design", "NIST Privacy Framework"):
+            self.assertIn(practice, text)
+        self.assertIn("privacy-taint-pack.yml", text)
 
     def test_worker_is_the_one_coordinator_role_left(self):
         agents = {p.stem for p in (_SRC / "development-lifecycle" / "agents").glob("*.md")}

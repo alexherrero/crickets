@@ -168,7 +168,8 @@ class TestClaudeEmitter(unittest.TestCase):
         # alone, so a digit run inside a hash, a decimal or a longer number no
         # longer trips it. A false-positive fix. Patch.
         # 0.6.6 = Antigravity build only: pii-patterns carries a rule trigger.
-        self.assertEqual(self._plugin_json("privacy")["version"], "0.6.6")
+        # 1.0.0 = privacy-review merged into pii-scrubber (crickets plan 105).
+        self.assertEqual(self._plugin_json("privacy")["version"], "1.0.0")
 
     def test_dependencies_from_requires(self):
         # post-seed-retirement: maintenance (ex-github-ci) depends on
@@ -186,7 +187,7 @@ class TestClaudeEmitter(unittest.TestCase):
         # copytree'd -- _copy_component's directory branch never called
         # render_primitive_text at all before this fix, so no skill's
         # opinions: markers were ever actually baked from the snapshot.
-        manifest = self.cdist / "plugins" / "privacy" / "skills" / "privacy-review" / "SKILL.md"
+        manifest = self.cdist / "plugins" / "privacy" / "skills" / "pii-scrubber" / "SKILL.md"
         self.assertTrue(manifest.is_file())
         text = manifest.read_text(encoding="utf-8")
         self.assertIn("Good means it survives an adversarial pass", text)

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Tests for src/privacy/skills/privacy-review/SKILL.md (PLAN-wave-d-tokens-
-and-privacy task 4).
+"""Tests for the privacy review in src/privacy/skills/pii-scrubber/SKILL.md
+(PLAN-wave-d-tokens-and-privacy task 4; the standalone privacy-review skill
+merged into pii-scrubber in crickets plan 105 step 4).
 
 privacy-review is a static markdown skill (agent-executed prompt, no code-
 level render step) -- the same shape as its own named model, security-
@@ -46,7 +47,7 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
-_SKILL = _ROOT / "src" / "privacy" / "skills" / "privacy-review" / "SKILL.md"
+_SKILL = _ROOT / "src" / "privacy" / "skills" / "pii-scrubber" / "SKILL.md"
 _PACK = _ROOT / "src" / "privacy" / "scripts" / "privacy-taint-pack.yml"
 _FIXTURES = _HERE / "fixtures" / "privacy-semgrep"
 _SNAPSHOT_DIR = _ROOT / "scripts" / "opinion-snapshots"
@@ -78,7 +79,7 @@ class PrivacyReviewSkillContractTests(unittest.TestCase):
 
     def test_frontmatter_has_required_fields(self):
         fm = _read_frontmatter(_SKILL)
-        self.assertEqual(fm["name"], "privacy-review")
+        self.assertEqual(fm["name"], "pii-scrubber")
         self.assertEqual(fm["kind"], "skill")
         self.assertIn("claude-code", fm["supported_hosts"])
         self.assertIn("antigravity", fm["supported_hosts"])
@@ -128,7 +129,7 @@ class PrivacyReviewSkillBuildTimeInterpolationTests(unittest.TestCase):
             dist = Path(tmp) / "dist"
             groups = src_model.load_groups(_ROOT / "src")
             privacy = next(g for g in groups if g.slug == "privacy")
-            skill_prim = next(p for p in privacy.primitives if p.name == "privacy-review")
+            skill_prim = next(p for p in privacy.primitives if p.name == "pii-scrubber")
             rendered = src_model.render_primitive_text(skill_prim, snapshots_dir=_SNAPSHOT_DIR)
         self.assertIn("Good means it survives an adversarial pass", rendered)
         self.assertIn("How we engineer means the phase discipline", rendered)

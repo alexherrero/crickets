@@ -333,7 +333,7 @@ class TestAntigravityEmitter(unittest.TestCase):
         # re-rendered too, not just plain-copytree'd -- the directory branch
         # of _copy_component never called render_primitive_text before this
         # fix, so a skill's opinion markers were never actually baked.
-        manifest = (self.agdist / "plugins" / "privacy" / "skills" / "privacy-review" / "SKILL.md")
+        manifest = (self.agdist / "plugins" / "privacy" / "skills" / "pii-scrubber" / "SKILL.md")
         text = manifest.read_text(encoding="utf-8")
         good_body = (_ROOT / "scripts" / "opinion-snapshots" / "good.md").read_text(encoding="utf-8")
         good_body = good_body.split("---", 2)[2].strip()
