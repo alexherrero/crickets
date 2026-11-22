@@ -31,7 +31,7 @@ The pass is two steps: **Gemini simplifies, Claude verifies.** A simplification 
      -o /tmp/my-design.revised.md
    ```
 
-   The script assembles one prompt — task rules, your fact-guards, your voice pack inlined verbatim from the vault, the document — and sends it to `agy` in a single call. Structure is enforced mechanically: frontmatter, headings, table layouts, and the Document History section must come back byte-identical, with one retry before it gives up.
+   The script assembles one prompt — task rules, your fact-guards, your voice pack inlined verbatim from the vault, the document — and sends it to `agy` in a single call, on Gemini 4 Hydrogen (High) unless you set `--model` or `PROSE_PASS_MODEL`. Structure is enforced mechanically: frontmatter, headings, table layouts, and the Document History section must come back byte-identical, and the body may not be longer than the original (the retry says "cut, never add"), with one retry before it gives up.
 
 4. **Verify and apply.** Diff the revision against the original and work the `prose-pass` skill's checklist: every fact-guard held, technical claims spot-checked against the code they describe, operator-authored lines restored verbatim, banned vocabulary scanned. Apply corrections to the revised file.
 
@@ -46,7 +46,7 @@ The pass is two steps: **Gemini simplifies, Claude verifies.** A simplification 
 | `PROSE-PASS-DEGRADED: vault unresolved` / `voice pack unresolved` (exit 1) | No vault path configured, or no voice kernel (`standards/user-preferences.md`) or overlay in the vault | `agentm_config --vault-path <path>`, or pass `--vault-path` / `--voice-kernel` / `--overlay` explicitly |
 | `a FACT-GUARD list is required` (exit 2) | No guards passed | Write the guard list (step 2); it is not optional |
 | `argument --timeout: ... is not a Go duration` (exit 2) | `--timeout` got something agy can't read | Pass seconds (`300`) or a Go duration (`90s`, `5m`, `1h30m`) |
-| `structural contract violated twice` (exit 2) | The model kept rewriting structure | Re-run; if it persists, pass sections separately or fall back to the Claude-only pass |
+| `structural contract violated twice` (exit 2) | The model kept rewriting structure, or kept returning a revision with more words than the original | Re-run; if it persists, pass sections separately or fall back to the Claude-only pass |
 | Revision reads generic, voice gone | Overlay didn't match the genre | Point `--overlay` at the right file under `standards/voice/` |
 
 ## See also

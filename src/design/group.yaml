@@ -167,4 +167,10 @@ capabilities: [design-docs, design, architecture]
 # 0.12.0 = the six-section /spec (SPEC.md, <desk>/briefs/<slug>-spec.md) and
 # /interview-me are removed (plan 103, step 2). /spec is now development-
 # lifecycle's anchor writer, which asks its own questions (at most 5).
-version: 0.12.0
+# 0.13.0 = prose_pass.py (plan 103, step 10): a revision whose body has more
+# words than the original is a contract violation, so it takes the one retry
+# (which now says "cut, never add") and then the degraded exit; the task
+# header states the rule from the first call. The default model is Gemini 4
+# Hydrogen (High), cross-review.sh's wording tier (a test pins the two
+# together); --model and PROSE_PASS_MODEL still win.
+version: 0.13.0

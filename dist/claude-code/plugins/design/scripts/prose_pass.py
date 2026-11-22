@@ -76,7 +76,7 @@ Options:
                              .agentm-config.json vault_path + memory_root;
                              $MEMORY_VAULT_PATH is the deprecated alias)
   --model <name>             agy display-string model, as `agy models` prints it
-                             (default: $PROSE_PASS_MODEL, else Gemini 4 Argon (High))
+                             (default: $PROSE_PASS_MODEL, else Gemini 4 Hydrogen (High))
   --timeout <dur>            agy --print-timeout value: a Go duration (90s, 5m,
                              1h30m) or bare seconds (300 -> 300s); anything
                              else is a usage error (default: 480s)
@@ -94,7 +94,9 @@ The structural contract (validated deterministically against the input):
 YAML frontmatter, section headings, table structures (column layout + row
 counts), and the Document History section stay byte-identical; only body
 prose and table-cell text may change. FACT-GUARD leakage (lesson 3 above) is
-checked the same way. Violations trigger exactly one retry with the
+checked the same way. So is length: a revision whose body (everything after the
+frontmatter) has more words than the original is a violation too, and the
+retry says "cut, never add". Violations trigger exactly one retry with the
 violations named, then a degraded exit. Suspected stream truncation (lesson
 4 above) does NOT retry the same call — it redirects to a section-by-section
 fallback, since a truncating call fails at the same byte every time.
@@ -119,15 +121,17 @@ import subprocess
 import sys
 from pathlib import Path
 
-# The strongest Gemini that `agy models` serves, as its exact display string
-# — `--model` takes it verbatim. Confirmed live 2026-10-16 on agy 1.4.0:
-# Gemini 4 Argon Low/Medium/High, Gemini 3.8 Flash Low/Medium/High. agy 1.4.0
-# rejects a name it no longer serves in about 3s, exit 1, nothing on stdout
-# and "is not recognized as a known model" on stderr, so a retired pin
-# degrades every pass: "Gemini 3.1 Pro (High)" did from 2026-10-16.
+# Gemini 4 Hydrogen (High): cross-review.sh's `wording` tier, the model the
+# build-it / create-it loop picked for wording and voice (plan 103). As agy's
+# exact display string — `--model` takes it verbatim. agy rejects a name it
+# no longer serves in about 3s, exit 1, nothing on stdout and "is not
+# recognized as a known model" on stderr, so a retired pin degrades every
+# pass: "Gemini 3.1 Pro (High)" did from 2026-10-16, and Argon (High) was the
+# default until plan 103. test_prose_pass.py pins this to the `wording` row of
+# cross-review.sh's tier table so the two cannot drift.
 # $PROSE_PASS_MODEL names another model without editing this file; --model
 # beats both. Same shape as cross-review.sh's CROSS_REVIEW_MODEL.
-MODEL_DEFAULT = "Gemini 4 Argon (High)"
+MODEL_DEFAULT = "Gemini 4 Hydrogen (High)"
 MODEL_ENV = "PROSE_PASS_MODEL"
 TIMEOUT_DEFAULT = "480s"
 
@@ -211,6 +215,8 @@ Rules:
 - The YAML frontmatter, every section heading, every table's structure
   (columns and row count), and the entire Document History table stay
   byte-identical. Only body prose and table-cell text may change.
+- The revision must not have more words than the document you were given.
+  Cut, never add: no new sentences, no added explanation.
 - Every line in the FACT-GUARD block is a truth this document states. Your
   revision must preserve each one exactly as stated — do not weaken, invert,
   or "clarify" them.
@@ -347,11 +353,27 @@ def unwrap_outer_fence(text: str) -> str:
     return text
 
 
+def body_word_count(text: str) -> int:
+    """Words in the document without its YAML frontmatter.
+
+    The pass is a simplification: a revision that comes back longer than it
+    went in has added content, and the usual way it does is by stapling
+    explanation onto sentences it was asked to shorten.
+    """
+    fm = frontmatter_block(text)
+    body = text[len(fm):] if fm and text.startswith(fm) else text
+    return len(body.split())
+
+
 def validate_output(original: str, revised: str) -> list[str]:
-    """Structural-contract violations of `revised` vs `original` (empty == pass)."""
+    """Contract violations of `revised` vs `original` (empty == pass): the
+    structure must hold and the revision must not be longer."""
     violations: list[str] = []
     if not revised.strip():
         return ["empty output"]
+    n_orig, n_rev = body_word_count(original), body_word_count(revised)
+    if n_rev > n_orig:
+        violations.append(f"revision is longer than the original ({n_rev} words, was {n_orig}): cut, never add")
     fm_orig = frontmatter_block(original)
     if fm_orig is not None and frontmatter_block(revised) != fm_orig:
         violations.append("YAML frontmatter changed (must be byte-identical)")
@@ -923,7 +945,8 @@ def main(argv=None) -> int:
                      + "; ".join(violations)
                      + ". Revise again. The frontmatter, headings, table structures, "
                        "and Document History must be byte-identical to the input. The "
-                       "FACT-GUARD list is verification context only — do not insert "
+                       "revision must not have more words than the input: cut, never add. "
+                       "The FACT-GUARD list is verification context only — do not insert "
                        "its lines into the document.")
             rc, out, err = _call_agy(agy_cmd,
                                      assemble_prompt(TASK_HEADER + nudge, guards, voice_pack,

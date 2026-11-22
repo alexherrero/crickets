@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -167,6 +168,28 @@ class ValidateOutputTests(unittest.TestCase):
                                      "| 2026-07-01 | written |")
         self.assertTrue(any("Document History" in v for v in
                             prose_pass.validate_output(SAMPLE_DOC, bad)))
+
+    def test_a_longer_revision_is_rejected_and_says_cut_never_add(self):
+        longer = SAMPLE_DOC.replace(
+            "subjected to decay.", "subjected to decay, which is to say that they fade over time.")
+        found = prose_pass.validate_output(SAMPLE_DOC, longer)
+        self.assertTrue(any("longer than the original" in v and "cut, never add" in v for v in found), found)
+
+    def test_an_equal_length_revision_passes(self):
+        same = SAMPLE_DOC.replace("utilizes a mechanism whereby", "uses a mechanism whereby")
+        self.assertEqual(prose_pass.body_word_count(same), prose_pass.body_word_count(SAMPLE_DOC))
+        self.assertEqual(prose_pass.validate_output(SAMPLE_DOC, same), [])
+
+    def test_a_shorter_revision_passes(self):
+        self.assertLess(prose_pass.body_word_count(SAMPLE_REVISED), prose_pass.body_word_count(SAMPLE_DOC))
+        self.assertEqual(prose_pass.validate_output(SAMPLE_DOC, SAMPLE_REVISED), [])
+
+    def test_frontmatter_words_do_not_count(self):
+        fatter = SAMPLE_DOC.replace("name: sample-design", "name: sample-design\ndescription: a long description here")
+        self.assertEqual(prose_pass.body_word_count(fatter), prose_pass.body_word_count(SAMPLE_DOC))
+
+    def test_a_document_with_no_frontmatter_counts_every_word(self):
+        self.assertEqual(prose_pass.body_word_count("one two three\n"), 3)
 
     def test_outer_fence_unwrapped(self):
         wrapped = f"```markdown\n{SAMPLE_REVISED}```"
@@ -503,6 +526,37 @@ sys.stdout.write(doc.replace(
 ))
 """
 
+# Adds a sentence to the body on every call: structurally sound, longer than it
+# went in. The length rule is the only thing wrong with it.
+_LONGER_IMPL = """\
+import sys
+from pathlib import Path
+counter = Path(__file__).resolve().parent / "calls.count"
+n = int(counter.read_text()) + 1 if counter.exists() else 1
+counter.write_text(str(n))
+prompt = sys.argv[sys.argv.index("-p") + 1]
+(Path(__file__).resolve().parent / ("prompt%d.txt" % n)).write_text(prompt, encoding="utf-8")
+doc = prompt.split("=== DOCUMENT ===\\n", 1)[1]
+sys.stdout.write(doc.replace("subjected to decay.", "subjected to decay, which is to say that they fade."))
+"""
+
+# Longer on the first call, the original back on the second (a retry that
+# listened); records each prompt it was sent.
+_LONGER_THEN_FAITHFUL_IMPL = """\
+import sys
+from pathlib import Path
+here = Path(__file__).resolve().parent
+counter = here / "calls.count"
+n = int(counter.read_text()) + 1 if counter.exists() else 1
+counter.write_text(str(n))
+prompt = sys.argv[sys.argv.index("-p") + 1]
+(here / ("prompt%d.txt" % n)).write_text(prompt, encoding="utf-8")
+doc = prompt.split("=== DOCUMENT ===\\n", 1)[1]
+if n == 1:
+    doc = doc.replace("subjected to decay.", "subjected to decay, which is to say that they fade.")
+sys.stdout.write(doc)
+"""
+
 # Chokes on a literal "<thought>" reaching it — simulating agy's own
 # reasoning-tag reader truncating the stream at that byte. Only sees it if
 # prose_pass fails to escape the tag before sending.
@@ -650,6 +704,43 @@ class EndToEndTests(unittest.TestCase):
             calls = (tmp / "calls.count").read_text(encoding="utf-8").strip()
             self.assertEqual(calls, "2")  # initial call + exactly one retry
 
+    def test_a_longer_revision_retries_once_with_cut_never_add_then_exit_2(self):
+        with tempfile.TemporaryDirectory() as t:
+            tmp = Path(t)
+            _make_vault(tmp)
+            impl = _write_fake_agy(tmp, _LONGER_IMPL)
+            r = _run_pass(tmp, "--fact-guard-text", "a truth", fake_impl=impl)
+            self.assertEqual(r.returncode, 2, f"stderr={r.stderr!r}")
+            self.assertIn("PROSE-PASS-DEGRADED: agy revision violated the "
+                          "structural contract twice", r.stdout)
+            self.assertIn("longer than the original", r.stderr)
+            self.assertEqual((tmp / "calls.count").read_text(encoding="utf-8").strip(), "2")
+            first = (tmp / "prompt1.txt").read_text(encoding="utf-8")
+            retry = (tmp / "prompt2.txt").read_text(encoding="utf-8")
+            self.assertIn("must not have more words", first)  # the rule is in the task header from the start
+            self.assertIn("cut, never add", retry)
+            self.assertIn("longer than the original", retry)  # the violation is named to the model
+
+    def test_a_retry_that_cuts_succeeds(self):
+        with tempfile.TemporaryDirectory() as t:
+            tmp = Path(t)
+            _make_vault(tmp)
+            impl = _write_fake_agy(tmp, _LONGER_THEN_FAITHFUL_IMPL)
+            r = _run_pass(tmp, "--fact-guard-text", "a truth", fake_impl=impl)
+            self.assertEqual(r.returncode, 0, f"stderr={r.stderr!r}")
+            self.assertEqual(r.stdout, SAMPLE_DOC)
+            self.assertNotIn("PROSE-PASS-DEGRADED", r.stdout)
+            self.assertEqual((tmp / "calls.count").read_text(encoding="utf-8").strip(), "2")
+
+    def test_an_equal_or_shorter_revision_needs_no_retry(self):
+        with tempfile.TemporaryDirectory() as t:
+            tmp = Path(t)
+            _make_vault(tmp)
+            impl = _write_fake_agy(tmp, _ECHO_DOC_IMPL)
+            r = _run_pass(tmp, "--fact-guard-text", "a truth", fake_impl=impl)
+            self.assertEqual(r.returncode, 0, f"stderr={r.stderr!r}")
+            self.assertFalse((tmp / "calls.count").exists())
+
     def test_output_flag_writes_file_instead_of_stdout(self):
         with tempfile.TemporaryDirectory() as t:
             tmp = Path(t)
@@ -737,7 +828,8 @@ class EndToEndTests(unittest.TestCase):
 _AGY_1_4_0_IMPL = """\
 import sys
 from pathlib import Path
-SERVED = ["Gemini 4 Argon (Medium)", "Gemini 4 Argon (High)", "Gemini 4 Argon (Low)",
+SERVED = ["Gemini 4 Hydrogen (High)", "Gemini 4 Hydrogen (Medium)", "Gemini 4 Hydrogen (Low)",
+          "Gemini 4 Argon (Medium)", "Gemini 4 Argon (High)", "Gemini 4 Argon (Low)",
           "Gemini 3.8 Flash (High)", "Gemini 3.8 Flash (Medium)", "Gemini 3.8 Flash (Low)",
           "Claude Opus 5.5 (Low)", "Claude Opus 5.5 (Medium)", "Claude Opus 5.5 (High)",
           "Claude Sonnet 5.5 (Low)", "Claude Sonnet 5.5 (Medium)", "Claude Sonnet 5.5 (High)",
@@ -777,7 +869,16 @@ class ModelTests(unittest.TestCase):
         r, asked = self._run()
         self.assertEqual(r.returncode, 0, f"stdout={r.stdout!r} stderr={r.stderr!r}")
         self.assertEqual(r.stdout, SAMPLE_DOC)
-        self.assertEqual(asked, ["Gemini 4 Argon (High)"])
+        self.assertEqual(asked, ["Gemini 4 Hydrogen (High)"])
+
+    def test_default_model_is_the_wording_tier_of_cross_review(self):
+        # The loop's wording and voice model. cross-review.sh's tier table is the
+        # source; this pins prose_pass.py to it so the two cannot drift.
+        table = (_REPO / "src" / "code-review" / "scripts" / "cross-review.sh").read_text(encoding="utf-8")
+        m = re.search(r'wording\)\s+MODEL="([^"]+)"', table)
+        self.assertIsNotNone(m, "cross-review.sh has no wording tier")
+        self.assertEqual(prose_pass.MODEL_DEFAULT, m.group(1))
+        self.assertEqual(prose_pass.MODEL_DEFAULT, "Gemini 4 Hydrogen (High)")
 
     def test_env_names_another_model(self):
         r, asked = self._run(env_extra={"PROSE_PASS_MODEL": "Gemini 3.8 Flash (High)"})
@@ -787,7 +888,7 @@ class ModelTests(unittest.TestCase):
     def test_empty_env_keeps_the_default(self):
         r, asked = self._run(env_extra={"PROSE_PASS_MODEL": ""})
         self.assertEqual(r.returncode, 0, f"stderr={r.stderr!r}")
-        self.assertEqual(asked, ["Gemini 4 Argon (High)"])
+        self.assertEqual(asked, ["Gemini 4 Hydrogen (High)"])
 
     def test_flag_beats_env(self):
         r, asked = self._run("--model", "Gemini 4 Argon (Medium)",
