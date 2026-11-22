@@ -723,5 +723,13 @@ enhances:
 # renders, parses, places and checks it (stdlib, no agentm). /plan now sends an
 # unspecced task to /spec; the old six-section /spec and /interview-me left
 # the design plugin.
-version: 0.51.0
+# 0.52.0 = scripts/loop_record.py (plan 103, step 5): the build-it / create-it
+# loop's bookkeeping. It lists the reviews a task runs by profile and size
+# (small: none; medium: direction, one pass, done-check; large: all of them,
+# plus the security-auditor when asked) with each one's cross-review tier;
+# records each round's findings with a class (real, tradeoff, misread, noise)
+# and a cited line; answers "stop this pass?" (no real finding left, or round 3
+# still real: escalate); and flags doubt theater. JSON record at a path the
+# caller passes. Stdlib, no agentm.
+version: 0.52.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]
