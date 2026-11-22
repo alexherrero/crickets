@@ -57,11 +57,11 @@ It checks four drift kinds: `create`, `missing`, `update`, and `orphan`. `tests-
 
 - **The gate reports drift after a sync**: the board diverged from the vault. Re-run the `post` path — it is idempotent (create-or-update by stable id), so re-running converges. An `orphan` finding means a board issue is backed by no vault item — add it to `board-items.json` (or remove the stray issue).
 - **A link in the rendered board looks hand-typed / wrong**: links are built from `github.url`, never hand-typed — a wrong link points at a bad `github.url` (or a wrong `owner`/`number` it derives from) in `project.json`.
-- **A phase command didn't emit a board update**: emission is gated on the `board-sync` capability being available — `/plan`, `/work`, `/release` check `agentm_bridge.py capability board-sync` and graceful-skip when it returns non-zero. Confirm the `github-projects` plugin is installed, agentm is present (the capability resolver), and `project.json` + `gh` are present.
+- **The board fell behind after `/plan`, `/work` or `/release`**: the phase commands post nothing to the board. Run `/report-board-drift` to see what is missing (put it in `/loop` or a cron line to keep doing so), and `/planner-maintain` to fix it.
 
 ## See also
 
 - [GitHub Projects plugin](GitHub-Projects) — the reference for the config schema, Type taxonomy, templates, field schema, and the write path.
 - [One-way vault-to-board synthesis](One-Way-Vault-To-Board-Synthesis) — why this is one-way and deterministic.
-- [Development Lifecycle](Development-Lifecycle) — the base plugin whose phase commands emit board updates.
+- [Development Lifecycle](Development-Lifecycle) — the base plugin `github-projects` requires.
 - [CI gates](CI-Gates) — the gate battery the drift gate joins.

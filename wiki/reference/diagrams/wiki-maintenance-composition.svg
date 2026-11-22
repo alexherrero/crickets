@@ -14,12 +14,12 @@
   <rect x="510" y="120" width="250" height="120" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.5"/>
   <text x="635" y="164" text-anchor="middle" font-size="11.5" font-weight="700" fill="#34516e">development-lifecycle</text>
   <text x="635" y="184" text-anchor="middle" font-size="10.5" font-style="italic" fill="#5B7C9E">the phase loop</text>
-  <text x="635" y="206" text-anchor="middle" font-size="10.5" font-style="italic" fill="#5B7C9E">/plan · /work · /review · /release</text>
+  <text x="635" y="206" text-anchor="middle" font-size="10.5" font-style="italic" fill="#5B7C9E">/plan · /work · /release · /bugfix</text>
 
   <!-- enhances edge -->
   <path d="M310,180 L506,180" fill="none" stroke="#3A9D5D" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#enh)"/>
   <text x="408" y="170" text-anchor="middle" font-size="10" font-style="italic" fill="#3A9D5D">enhances (soft)</text>
-  <text x="408" y="200" text-anchor="middle" font-size="9.5" font-style="italic" fill="#8a8a92">documents at phase boundaries</text>
+  <text x="408" y="200" text-anchor="middle" font-size="9.5" font-style="italic" fill="#8a8a92">keeps the wiki current, on request</text>
 
   <!-- substrate -->
   <rect x="45" y="330" width="280" height="56" rx="9" fill="#F2EEFB" stroke="#7E57C2" stroke-width="1.5"/>

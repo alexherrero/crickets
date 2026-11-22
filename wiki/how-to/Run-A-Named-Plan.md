@@ -1,10 +1,10 @@
 # How to run a named plan
 
 > [!NOTE]
-> **Goal:** Drive a `development-lifecycle` phase (`/plan`, `/work`, `/review`, `/release`) against a **named** plan — a numbered task, `tasks/NNN-<verb-slug>/` with its `plan.md`, `progress.md` and `tracker.md` — so several concurrent plans can share one project.
+> **Goal:** Drive a `development-lifecycle` phase (`/plan`, `/work`, `/release`) against a **named** plan — a numbered task, `tasks/NNN-<verb-slug>/` with its `plan.md`, `progress.md` and `tracker.md` — so several concurrent plans can share one project.
 > **Prereqs:** the `development-lifecycle` plugin installed ([Install crickets plugins](Install-Crickets-Plugins)); agentm installed, since development-lifecycle keeps its plans through it; a chosen, slug-safe plan name.
 
-Use a named plan when you want more than one plan in flight at once — the wedge behind the coordinator-directed agent team. In a project that keeps tasks, a bare `/work` / `/review` asks which task, and a bare `/plan` proposes a name. For the full mapping of invocation → files, see [Named plans](Named-Plans).
+Use a named plan when you want more than one plan in flight at once — the wedge behind the coordinator-directed agent team. In a project that keeps tasks, a bare `/work` or `/release` asks which task, and a bare `/plan` proposes a name. For the full mapping of invocation → files, see [Named plans](Named-Plans).
 
 ## Prerequisites
 
@@ -20,7 +20,7 @@ Use a named plan when you want more than one plan in flight at once — the wedg
 
    `/work`'s "Read state" step resolves the paths by passing the slug positionally to `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/resolve_plan.py" [<slug>]`. A non-zero exit from the resolver is a **hard stop**: `/work` never falls back to another plan on a dangling marker or unsafe slug. The step mark (`[x]`), the tracker write and the progress append all target the **resolved** paths.
 
-3. **Review the named plan.** Run `/review --name <slug>` to run the adversarial pass against the task — it reads the plan's status and `plan.md` for the step context, and logs the outcome and the status to the task's `progress.md`. With no other scope, a plan whose status is still `queued` has nothing to review yet, and `/review` says so. Any remaining argument (a commit range, branch, or `step N`) still scopes *what* is reviewed, independent of `--name`.
+3. **Release the named plan.** Run `/release --name <slug>` once the task's last step has landed. It resolves the task and requires its tracker status to be `done`. Each step was already reviewed inside its own loop during `/work`; to review a finished change again, run `/build-it --check <A..B>` on its commit range.
 
 4. **Confirm what a name resolves to** (when in doubt about which files a name maps to). The bridge takes the slug **positionally** — this is a direct call to the resolver, not a slash command, so there's no `--name` flag here:
 

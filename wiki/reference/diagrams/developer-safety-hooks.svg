@@ -40,7 +40,7 @@
   <rect x="20" y="148" width="168" height="64" rx="9" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.5"/>
   <text x="104" y="170" text-anchor="middle" font-size="10" font-weight="600" fill="#34516e">development-lifecycle</text>
   <text x="104" y="186" text-anchor="middle" font-size="10.5" fill="#34516e">the running loop</text>
-  <text x="104" y="201" text-anchor="middle" font-size="9.5" fill="#5B7C9E">/plan · /work · /review · /release</text>
+  <text x="104" y="201" text-anchor="middle" font-size="9.5" fill="#5B7C9E">/plan · /work · /release · /bugfix</text>
 
   <!-- A -> checkpoint -->
   <path d="M 188 180 L 234 180" fill="none" stroke="#5B7C9E" stroke-width="1.4" marker-end="url(#a)"/>

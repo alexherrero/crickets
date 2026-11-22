@@ -13,6 +13,9 @@ approved: 2026-06-22
 > [!NOTE]
 > **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-22) · locked 2026-06-28 (final AG design sweep).** child-design — the **development-lifecycle** capability: the loop a developer runs every day, a feature's whole life from plan to retirement. The base every other capability builds on. `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). Points *up* at the [crickets HLD](crickets-hld.md).
 
+> [!WARNING]
+> **Partly out of date (2026-11-22):** crickets plan 104 retired pieces this page still describes as current; see the amendment log. The later wiki migration reconciles the body.
+
 # development-lifecycle
 
 ## Objective
@@ -300,3 +303,7 @@ The ordering held: agentm's `plan_graph.py` reads the tracker first (agentm task
 The `development-lifecycle` capability — the loop a developer runs every day, plan → retirement. Formed by **merging the standalone `lifecycle` capability into the renamed spine** (`developer-workflows` → `development-lifecycle`): `/launch`, `/deprecate`, and a new `/retire` (which splits today's combined `/deprecate` into *mark* + *remove*) join the phase loop, since they are the tail of the development lifecycle, not a separate concern. The genuinely-distinct concerns still shed (`/observe` → diagnostics, design family → design, `researcher` → research; `/ci-cd` stays — it is pipeline authoring, part of the spine). The capability drops the `-workflows` suffix and the `developer-` prefix (the exception narrows to `developer-safety`).
 
 Authored to the operator's structure and grounded against the live specs: a **bread-and-butter** Objective (no "spine"); a table Overview of the cycles first → retire; a Design of **Development Lifecycle** (four cross-cutting properties — determinism via helper scripts, gates-before-judgment, recoverable-by-default, runnable one-off/loop/goal — plus the two-layer durable-memory wiring, identical on disk with or without agentm), a separate **Setup (one-time)**, **Workflows** (each cycle's entry / exit / automated / enhancements / artifacts-with-relative-paths, sisters linked), and **Concurrency** (operator-as-coordinator-today; named plans + worktrees; fan-out-N / integrate-single-writer; limitations; future aspirations). **Built-vs-designed:** `/retire`, per-task worktrees, the orchestration split, and the loop/goal drivers are designed-not-built; full per-phase authoring is a later pass. **Re-audit triggers:** split `/retire` out of `/deprecate`; flip the designed pieces as they ship; settle `developer-safety` → `safety`.
+
+**2026-11-22 — pieces retired by plan 104; body not yet reconciled.**
+
+crickets plan 104 (development-lifecycle 1.0.0–1.5.0, code-review 1.0.0) retired the `/review` phase and crickets' `/doubt`, `/code-review` and `/simplify` (with the `test-engineer` agent) in favour of `/build-it`'s passes and `/build-it --check`; took wiki updates and board sync out of `/plan`, `/work`, `/release` and `/bugfix` (`wiki-author`, `wiki-watch` and `report-board-drift` run them on request or on a schedule); and dropped the workflow-step personas, token-audit routed dispatch and fan-out announcements, `features.json`, and design Hooks 3, 4, 5 and 7. Where the body above says otherwise, the CHANGELOG's plan 104 entries are current. Why not reconcile the body now: these pages wait for the planned wiki migration, which rewrites them whole. Re-audit trigger: that migration.

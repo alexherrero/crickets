@@ -13,6 +13,9 @@ approved: 2026-06-22
 > [!NOTE]
 > **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-22) · locked 2026-06-28 (final AG design sweep).** child-design — **the composition mechanics**, parent [crickets HLD](crickets-hld.md): how capabilities combine with each other, lean on agentm's opinions, and compose onto the person. The parent stays high-level; this holds the wiring. `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). Points *up* at the [crickets HLD](crickets-hld.md).
 
+> [!WARNING]
+> **Partly out of date (2026-11-22):** crickets plan 104 retired pieces this page still describes as current; see the amendment log. The later wiki migration reconciles the body.
+
 # Crickets Composition Design
 
 ## Objective
@@ -142,3 +145,7 @@ This covers capability **names** only. A design's `governs:` stamp names a **dir
 Restructured from a topic-outline into the abbreviated template (Objective / Overview / Design / Dependencies / Risks & open questions / References / Amendment log): the framing + the relationship map move to Overview, the four mechanics become Design subsections, and Dependencies + Risks are drawn out of the inline prose. A read-only grounding pass against the live `agentm` + `crickets` repos corrected four drifts — version matching is **implemented** (`capability_version_match.py`), not a stub; all thirteen plugins declare `capabilities:` today (the former "6 of 13" gap is closed), so that claim is dropped; the dead ADR references are repointed at living designs (crickets soft-composition → the developer-suite design, since subsumed into this design 2026-06-24; agentm routing-plane → `memory-storage-seam`; the still-standing 0006/0011/0016 kept with a fold note); and the relationship map is now labeled as the **target shape** with the three unshipped capabilities visually dimmed, since the body had narrated the v6.0 target (renames, merges, new capabilities) in the present tense.
 
 Verified-correct and unchanged: the `requires:`/`enhances:` semantics, the asymmetric/order-free/quiet-absence resolution, the four `lint_src.py` lints, the one-way arrow (bridge path-fallback + graceful-skip), and the read-only-helper discriminator. **Re-audit triggers:** re-derive the map from `dist/default-set.json` as the set grows; confirm the new capabilities' edges when their sub-designs land; convert the map to a vector diagram at the parent's diagram pass; repoint the ADR references as 0006/0011/0016 fold.
+
+**2026-11-22 — pieces retired by plan 104; body not yet reconciled.**
+
+crickets plan 104 (development-lifecycle 1.0.0–1.5.0, code-review 1.0.0) retired the `/review` phase and crickets' `/doubt`, `/code-review` and `/simplify` (with the `test-engineer` agent) in favour of `/build-it`'s passes and `/build-it --check`; took wiki updates and board sync out of `/plan`, `/work`, `/release` and `/bugfix` (`wiki-author`, `wiki-watch` and `report-board-drift` run them on request or on a schedule); and dropped the workflow-step personas, token-audit routed dispatch and fan-out announcements, `features.json`, and design Hooks 3, 4, 5 and 7. Where the body above says otherwise, the CHANGELOG's plan 104 entries are current. Why not reconcile the body now: these pages wait for the planned wiki migration, which rewrites them whole. Re-audit trigger: that migration.

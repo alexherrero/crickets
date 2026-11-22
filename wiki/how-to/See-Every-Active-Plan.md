@@ -16,7 +16,7 @@ Use `/queue-status-lite` when several tasks are in flight at once and you want a
 
 2. **Read the dashboard.** One entry per active task — its name (`042-build-the-brief`), its status from its tracker, and the last line of its progress log. Tasks whose tracker says `done` or `dropped` are left out. In a repo with no vault, the rows are its repo-local plans, which agentm keeps in `.harness/`. The output is agentm's reader's render, passed through verbatim (see [Named plans § Reading the queue](Named-Plans#reading-the-queue--queue-status-lite)).
 
-3. **Decide, then act.** The glance stops at showing. Choose the next move yourself — `/work --name <task>` to work a task, `/review --name <task>` to review one, or nothing at all.
+3. **Decide, then act.** The glance stops at showing. Choose the next move yourself — `/work --name <task>` to work a task, `/release --name <task>` to ship one whose status is `done`, or nothing at all.
 
 ## Verify
 

@@ -13,6 +13,9 @@ approved: 2026-06-24
 > [!NOTE]
 > **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-24) · locked 2026-06-28 (final AG design sweep).** child-design — **the `design` capability** (design authoring across the whole sizing ladder above `/plan`). `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). Points *up* at the [crickets HLD](crickets-hld.md).
 
+> [!WARNING]
+> **Partly out of date (2026-11-22):** crickets plan 104 retired pieces this page still describes as current; see the amendment log. The later wiki migration reconciles the body.
+
 # design
 
 ## Objective
@@ -169,3 +172,9 @@ design **consumes `how-we-engineer`** (layer 3 — the sizing ladder + the secti
 **2026-06-24 — authored, reviewed, and finalized.** *(Authored + deepened 2026-06-23; approved 2026-06-24.)* `design` authors design documents across the whole **sizing ladder above `/plan`** — three rungs of one ladder (**abbreviated** default · **full** · **architecture/HLD**), renamed `design-docs` → `design`, declaring `[design, architecture]`. The Design section is reasoning-first: **why we design** (fix architecture + locked calls before code; the head of the loop that makes plans possible), **what goes into each rung template** (the canonical-seven / locked-ten / vision-led-seven section structures), **how a design adapts its template** (rungs nest by addition; N/A-omit; the deliberately-dropped sections), **the layering** (template ⊕ design-authoring conventions ⊕ the `how-we-engineer` / `good` opinions ⊕ the operator's voice ⊕ the published `documentation` convention), **self-reinforced learning** (the built reflection loop that grew `docs-prose-style.md` from these reviews; the designed Experience→Opinions sharpening), **the author → translate → sequence workflows + plug-in points** (with a pipeline diagram), and **how design feeds the dev loop** (generation via `sequence` + grounding via the hooks; research a soft input). The organizing line: **structure is a convention, voice is an opinion.**
 
 **Built vs designed.** Delivered: the `/design` author → translate → sequence pipeline (impl in development-lifecycle; design-docs a thin wrapper + the native `adr` skill), `/spec` · `/interview-me` · `/document-decision`, `design_doc.py` · `design_sequence.py` · `stage_plan.py`, the full template, the grounding hooks. `[PENDING-IMPL]`: the architecture-rung scaffolding (generalize from the AG HLD set), the abbreviated-design template packaged as a runnable `/design` template, the finalize tooling (amendment-log collapse + `[PENDING-IMPL]` stale-placeholder grep — run by hand today, as in this set), request-by-name of the opinions + voice (Phase-3/4 registry), the design-authoring self-improvement loop, external review. **Re-audit:** build the architecture rung + the abbreviated template + the finalize tooling; flip `design-docs` → `design` + re-point `requires` at v6.0; wire request-by-name when the registry ships.
+
+## Amendment log
+
+**2026-11-22 — pieces retired by plan 104; body not yet reconciled.**
+
+crickets plan 104 (development-lifecycle 1.0.0–1.5.0, code-review 1.0.0) retired the `/review` phase and crickets' `/doubt`, `/code-review` and `/simplify` (with the `test-engineer` agent) in favour of `/build-it`'s passes and `/build-it --check`; took wiki updates and board sync out of `/plan`, `/work`, `/release` and `/bugfix` (`wiki-author`, `wiki-watch` and `report-board-drift` run them on request or on a schedule); and dropped the workflow-step personas, token-audit routed dispatch and fan-out announcements, `features.json`, and design Hooks 3, 4, 5 and 7. Where the body above says otherwise, the CHANGELOG's plan 104 entries are current. Why not reconcile the body now: these pages wait for the planned wiki migration, which rewrites them whole. Re-audit trigger: that migration.

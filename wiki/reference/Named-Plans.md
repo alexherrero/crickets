@@ -1,6 +1,6 @@
 # Named plans
 
-The `development-lifecycle` phase commands `/work`, `/plan`, `/review` and `/release` accept an optional `--name <slug>` flag. A name selects a task: `tasks/NNN-<verb-slug>/` with its `plan.md`, `progress.md` and `tracker.md`, wherever agentm keeps the project's tasks. This lets you hold several concurrent plans in one project. A plan also has a tracker whenever agentm names one, and the commands read its status before the plan's `**Status:**` line (see [Trackers](#trackers)). A bare invocation in a project that keeps tasks asks which task. In a repo with no vault, agentm keeps a repo-local layout instead — a singleton `.harness/PLAN.md` or a flat `.harness/PLAN-<slug>.md` — and the commands follow it (see [A repo with no vault](#a-repo-with-no-vault)).
+The `development-lifecycle` phase commands `/work`, `/plan` and `/release` accept an optional `--name <slug>` flag. A name selects a task: `tasks/NNN-<verb-slug>/` with its `plan.md`, `progress.md` and `tracker.md`, wherever agentm keeps the project's tasks. This lets you hold several concurrent plans in one project. A plan also has a tracker whenever agentm names one, and the commands read its status before the plan's `**Status:**` line (see [Trackers](#trackers)). A bare invocation in a project that keeps tasks asks which task. In a repo with no vault, agentm keeps a repo-local layout instead — a singleton `.harness/PLAN.md` or a flat `.harness/PLAN-<slug>.md` — and the commands follow it (see [A repo with no vault](#a-repo-with-no-vault)).
 
 This page explains what a name maps to and how we resolve it. It also covers the read-only `/queue-status-lite` command. You can find the task recipes in [Run a named plan](Run-A-Named-Plan) and [See every active plan](See-Every-Active-Plan). If you want the context behind this approach, read [Why phase-gating](Why-Phase-Gating).
 
@@ -15,7 +15,6 @@ This page explains what a name maps to and how we resolve it. It also covers the
 | `/plan --name <task>` | `tasks/NNN-<task>/plan.md` (authored, **active**) | its `progress.md` | a new numbered task; its tracker opens at `queued` |
 | `/plan --stage <task>` | `tasks/NNN-<task>/plan.md` (authored, **queued/inert**) | its `progress.md` | a queued task ([Staging](#staging-a-queued-task)) |
 | `/plan --activate <task>` | — | its `progress.md` | moves the task's tracker from `queued` to `active` |
-| `/review --name <task>` | `tasks/<task>/plan.md` | — | the named task |
 | `/release --name <task>` | `tasks/<task>/plan.md` | — | the named task; its status must be `done` |
 | `/work` (auto-spawn, `isolation.mode: worktree-per-plan`) | — (host creates a worktree; `worktree_marker.py` binds it to the plan) | — | host-native worktree at `.claude/worktrees/<name>` on branch `worktree-<name>` ([Spawning a worker worktree](#spawning-a-worker-worktree)) |
 | `/work` (final task, auto-close) | — | plan's close-out summary becomes the PR body | pushes the branch, opens a PR via `finalize_unit.py`, arms `gh pr merge --auto --squash` ([Closing out a plan](#closing-out-a-plan)) |
@@ -29,10 +28,9 @@ This page explains what a name maps to and how we resolve it. It also covers the
 |---|---|---|
 | `/work` | optional `--name <slug>` (anywhere in args) | reads the named PLAN, appends the scoped progress, marks `[x]` in the named PLAN, keeps its tracker current |
 | `/plan` | optional `--name <slug>` (anywhere in args) | authors the task's `plan.md`, appends its `progress.md` line, opens its `tracker.md` at `queued` |
-| `/review` | optional `--name <slug>` (anywhere in args) | resolves + reads the named plan and its status for adversarial critique |
 | `/release` | optional `--name <slug>` (anywhere in args) | resolves the named plan and requires its status to be `done` |
 
-The `/setup` command does not accept a plan name. `/bugfix` resolves its plan without one: the plan the worktree's `.harness/active-plan` marker binds, or agentm's answer for a bare call. In a project that keeps tasks, a bare `/work`, `/review` or `/release` asks which task, and a bare `/plan` or `/bugfix` proposes a task name for you to confirm.
+The `/setup` command does not accept a plan name. `/bugfix` resolves its plan without one: the plan the worktree's `.harness/active-plan` marker binds, or agentm's answer for a bare call. In a project that keeps tasks, a bare `/work` or `/release` asks which task, and a bare `/plan` or `/bugfix` proposes a task name for you to confirm.
 
 ## Trackers
 
@@ -46,10 +44,9 @@ A tracker is a plan's living head: its status, what is true now, the next steps,
 
 | Command | What it does with the tracker |
 |---|---|
-| `/plan` | opens it at `queued` after the board step (`plan_tracker.py open`), in the task under `--name` and `--stage`, or beside a repo-local plan |
+| `/plan` | opens it at `queued` (`plan_tracker.py open`), in the task under `--name` and `--stage`, or beside a repo-local plan |
 | `/plan --activate` | moves a queued task's tracker from `queued` to `active` |
 | `/work` | marks the start (`step`, which opens a missing tracker and moves it to `active`), rewrites State and Next after each step, records a safety stop's trigger, and writes the Outcome at close (`close`) |
-| `/review` | reads the status, and with no explicit scope stops on `queued` |
 | `/release` | requires the status to be `done` |
 | `/bugfix` | reads the status, and asks before writing into a plan that is `queued`, `active` or `parked` |
 
@@ -252,7 +249,7 @@ We do not reimplement plan resolution in `development-lifecycle`. The commands c
 | Exit 4 | a bare call on a project that keeps tasks: nothing on stdout, and the command asks for a task name |
 | Delegate target | agentm `process_seam.py state-path` (via `agentm_bridge.py`'s `process-seam` verb) |
 
-The `--name <slug>` flag acts as a command-level convention. The `/work`, `/plan`, `/review` and `/release` commands parse the flag out of their arguments and pass the slug positionally to the bridge. The bridge locates agentm's process seam using the `process-seam` verb in `agentm_bridge.py`: `$AGENTM_SCRIPTS_DIR`, then a co-located path, then `~/Antigravity/agentm/scripts/`. It issues three calls to `process_seam.py state-path`, for the plan, progress and tracker paths, and reassembles them into one tab-separated line. A seam from before the tracker refuses the third call; the tracker field is then empty, and the exit stays 0.
+The `--name <slug>` flag acts as a command-level convention. The `/work`, `/plan` and `/release` commands parse the flag out of their arguments and pass the slug positionally to the bridge. The bridge locates agentm's process seam using the `process-seam` verb in `agentm_bridge.py`: `$AGENTM_SCRIPTS_DIR`, then a co-located path, then `~/Antigravity/agentm/scripts/`. It issues three calls to `process_seam.py state-path`, for the plan, progress and tracker paths, and reassembles them into one tab-separated line. A seam from before the tracker refuses the third call; the tracker field is then empty, and the exit stays 0.
 
 ## A repo with no vault
 

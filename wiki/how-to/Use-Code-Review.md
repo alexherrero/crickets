@@ -1,55 +1,50 @@
-# How to run a standalone code review
+# How to review an existing change with /build-it --check
 
 > [!NOTE]
-> **Goal:** Adversarially review any diff or PR with the `/code-review` command — no `/work` cycle, no commit required.
-> **Prereqs:** the `code-review` plugin installed ([Install crickets plugins](Install-Crickets-Plugins)); `git`. Optional: `gh` (for PR review) and `agy` (for the cross-model pass).
+> **Goal:** Review an existing change (a PR, commit range or diff file) with `/build-it --check` for a report of real findings with cited lines. It never edits the code.
+> **Prereqs:** `git`, the `development-lifecycle` plugin (ships `/build-it`) and the `code-review` plugin (ships its reviewers and `cross-review.sh`) ([Install crickets plugins](Install-Crickets-Plugins)). Optional: `gh` (for a PR) and the Antigravity CLI (`agy`, for the cross-model reviewer).
 
-`/code-review` is the standalone command from the `code-review` plugin. It dispatches the adversarial reviewers against a diff and **reports** — it never fixes. Run it on an open PR, a branch, a commit range, or your uncommitted working tree.
+`/build-it --check` runs the same review passes `/work` runs on each step, against finished work. It reports; the fixes are yours. Without the `code-review` plugin, it still runs and says so: each pass goes to a plain read-only reviewer on Sonnet.
 
 ## Steps
 
-1. Invoke the command with a target — or none, to review the working-tree diff:
+1. Run it on the change:
 
    ```text
-   /code-review                 # uncommitted working-tree diff (git diff HEAD)
-   /code-review main...HEAD     # a commit range
-   /code-review #123            # a PR by number (needs gh)
-   /code-review <PR URL>        # a PR by URL (needs gh)
+   /build-it --check 123             # a PR by number (needs gh)
+   /build-it --check main..HEAD      # a commit range
+   /build-it --check change.diff     # a diff file
    ```
 
-   If the resolved diff is empty, the command says so and stops.
+   To review uncommitted work, write it to a file first: `git diff HEAD > change.diff`.
 
-2. It dispatches up to two reviewers against the diff (plus the spec / `.harness/PLAN.md` task when obvious, plus the relevant `AGENTS.md` slice):
+2. Check what it held the change to. It uses a spec beside the plan when there is one. Otherwise the PR description or commit messages are the contract, and the repo's `AGENTS.md` supplies the rules. The report says which. With neither, the rules block is empty and the report says why.
 
-   - **`adversarial-reviewer-cross`** — the cross-model reviewer. Runs first when `agy` is on PATH; it escapes the same-model echo chamber.
-   - **`adversarial-reviewer`** — the in-process reviewer (same model). It corroborates, or becomes the sole reviewer when the cross-model pass falls back.
+3. Check the size it picked, and override it for more passes. It sizes the change from the diff:
 
-3. Read the contract output. Each reviewer returns **exactly one** of:
+   | Size | Passes |
+   |---|---|
+   | `small` | none — free checks only |
+   | `medium` | correctness |
+   | `large` | correctness, then simplicity |
 
-   - a **failing test** in a fenced code block (first line a `//` or `#` path comment), or
-   - a line `DEFECT: <path>:<line>` (with spec / actual / a minimal reproducer), or
-   - `NO ISSUES FOUND` (with the files + categories it checked).
+   Add `--size large` to get the simplicity pass on a smaller change. A security pass (`security-auditor`) joins when the change touches auth, secrets, shell execution or network input.
 
-   Prose-only critiques are rejected. When the two reviewers disagree (one finds a defect, one says clean), **both are surfaced** — disagreement is signal. Any `file:line` or failing test is verified to reproduce before it's reported.
+4. Read the report. The repo's own checks run first, at that revision; whatever could not run is listed under **Not checked**. Each pass runs one round. Every finding is sorted as real, tradeoff, misread or noise, with a cited `path:LINE`. A real finding stays **OPEN**: check mode has no fix loop. The correctness pass also counts a behaviour change with no test that would catch its regression as a real finding.
 
-   To feed `cross-review.sh` by hand with the contract and rules attached, build the material with `review_material.py --range main..HEAD --anchor <spec>` — see [Code Review](Code-Review#review-material).
-
-4. Act on the findings yourself — `/code-review` reports, it doesn't edit. Standalone, the fixes are yours. (Inside a `/work` loop, the same reviewers feed a follow-up `/work` task instead.)
+5. Fix the real findings yourself, then run `/build-it --check` again on the new range.
 
 ## Cross-review privacy note
 
-The cross-model pass sends your diff to **Gemini, via the Antigravity CLI (`agy`) → Google**. Treat it as opt-in:
+The cross-model reviewer sends the review material (diff, contract and rules) to **Gemini, via `agy`, to Google**:
 
-- It's **operator-opt-in per invocation** — the cross-model reviewer runs only when you invoke `/code-review` and `agy` is present.
-- The model is **editable** — point the cross-review reviewer at `claude` instead of `agy` to keep the diff inside your model boundary.
-- It **graceful-skips** when `agy` is absent, unauthed, or out of time (it waits 180 seconds for an answer, 300 on the `high` tier — see [Code Review](Code-Review#cross-review-tiers)), and when the diff is over `cross-review.sh`'s size ceiling: the script exits non-zero, prints a `CROSS-REVIEW-DEGRADED: <reason>` line saying which, and the command falls back to the in-process `adversarial-reviewer` (same model, no external send).
-- The in-process `adversarial-reviewer` always stays on the current model — it never sends the diff anywhere.
+- It runs whenever `agy` is on your PATH. Without `agy`, each pass falls back to a Sonnet reviewer and the material goes to no outside model.
+- It **degrades visibly**. If `agy` is missing, fails, or times out (180 seconds on the `default` tier, 300 on `high`; see [Code Review](Code-Review#cross-review-tiers)), or if the material exceeds `cross-review.sh`'s size ceiling, the script prints `CROSS-REVIEW-DEGRADED: <reason>`. `/build-it` says so in one line and runs that pass on a Sonnet reviewer.
 
 ## See also
 
-- [In-flight decision review — /doubt](Use-Doubt-Review) — use `/doubt` instead when you want to challenge a decision *before* you write the code.
-- [Install crickets plugins](Install-Crickets-Plugins) — get the `code-review` plugin onto your host.
-- [Installing and using the code-review plugin](01-First-Code-Review) — the hands-on first run, if you haven't done one.
-- [Evaluator](Evaluator) — PASS / NEEDS_WORK grading against a rubric (a different reviewer role).
-- [Compatibility](Compatibility) — the `evidence-tracker` hook (also in `code-review`) is Claude-only-effective.
-- [Modify a crickets plugin](Modify-A-Plugin) — edit the reviewers / `cross-review.sh` and dogfood.
+- [Your first code review](01-First-Code-Review) — the hands-on first run.
+- [Development Lifecycle](Development-Lifecycle) — `/build-it` and the rest of the loop.
+- [Code Review](Code-Review) — reviewers, tiers and `review_material.py`.
+- [Evaluator](Evaluator) — the done-check grader (optional in check mode).
+- For a quick ad hoc look, Claude Code's built-in `/code-review` and `/simplify` remain available; they are not part of crickets.

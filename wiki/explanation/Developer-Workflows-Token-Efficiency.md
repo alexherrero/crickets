@@ -3,10 +3,10 @@
 > [!NOTE]
 > Status: implemented
 > Shipped: crickets v3.14.0, developer-workflows v0.13.0–v0.17.0, 2026-06-14
-> Last updated: 2026-07-04
+> Last updated: 2026-11-22
 
 > [!NOTE]
-> **Forward pointer (2026-07-04, designed, not built).** The static per-command routing described below (Sonnet/Opus by phase) is the *interim* state. [token-audit](crickets-token-audit) is gaining a **versioned routing table** (work-type → model+effort tier, the single home of current model ids — colocated with `pricing.py`'s per-model rates), and [development-lifecycle](crickets-development-lifecycle) is being amended so this plugin's dispatch points read that table at dispatch time instead of the hardcoded frontmatter below — with a **mandatory fan-out announcement** at every sub-agent launch (covering built-in-agent inheritance, e.g. Explore ≥2.1.198) and a hard prohibition on silent session-model inheritance. [model-effort-routing](https://github.com/alexherrero/agentm/wiki/agentm-model-effort-routing) keeps the tier + effort policy only; it no longer carries the concrete model ids itself. Until this lands (`PLAN-efficiency-automation` + `PLAN-efficiency-dispatch`), this page accurately describes what ships today; it will need a follow-up pass once the routed-dispatch layer is built, at which point the table below the routing defaults becomes a rendering of token-audit's versioned data rather than the source of truth itself.
+> **Routed dispatch came and went (2026-07-04 → 2026-11-22).** The forward pointer that stood here said the phase commands would read [token-audit](crickets-token-audit)'s versioned routing table at each dispatch and print a mandatory fan-out announcement before every sub-agent launch. That layer was built, then taken back out of the phase commands in `development-lifecycle` 1.3.0: the `explorer` dispatch in `/work` and `/bugfix` now names `sonnet` directly, no phase command prints the announcement, and `/plan`'s step template has no `Work-type` or `Tier hint` field (an old plan that carries them still parses). The build-it / create-it loop names a model for each of its passes. token-audit's routing table and its routing-conformance report remain, outside the phase commands.
 
 ## Intent
 
@@ -20,7 +20,7 @@ The four levers, each mapped to the primitive kind that carries it:
 
 | Lever | Primitive kind | Effect |
 |---|---|---|
-| Phase-aware model routing | `model:` frontmatter in agent defs + routing nudge in command prompts | `/plan`, `/review`, `/design` default to Sonnet; `/work`, `/bugfix` default to Opus |
+| Phase-aware model routing | `model:` frontmatter in agent defs + routing nudge in command prompts | `/plan`, `/design` default to Sonnet; `/work`, `/bugfix` default to Opus |
 | Terse output style | `output-style` at `output-styles/terse.md` | Silence between tool calls; preserves the end-of-task status report |
 | Edit-over-Write rule | `rule` at `rules/edit-over-write.md` | Prefer `Edit` to `Write` for existing files; `/clear` over `/compact` at phase boundaries |
 | Compact-nudge-on-resume hook | `hook` at `hooks/compact-nudge-resume/` | On resumed sessions with large context, emits an `additionalContext` nudge; nudge-only |
@@ -34,7 +34,7 @@ Agent defs (`worker.md`, `researcher.md`, `tech-lead.md`) honor `model:` frontma
 Routing defaults, as designed:
 
 - **`/work` and `/bugfix` run under `opusplan`** — the T1 · Execute build default (Opus plans, then Sonnet executes), not flat Opus. The global session default (`~/.claude/settings.json`, `"model": "opusplan"`) already carries this; each command's own nudge text has not caught up (see the correction below).
-- **Sonnet — the current generation, `claude-sonnet-5`:** `worker.md` (the spawned executor, **T1**), `researcher.md`, `tech-lead.md`, `/plan`, `/review`, `/design` — planning, authoring, read-only research, and execution.
+- **Sonnet — the current generation, `claude-sonnet-5`:** `worker.md` (the spawned executor, **T1**), `researcher.md`, `tech-lead.md`, `/plan`, `/design` — planning, authoring, read-only research, and execution.
 
 Defaults are operator-overridable via `claude --model` or the `/model` command. The full model × effort tier scale (T0–T4 + the persona→tier map) lives in the [model + effort routing design](https://github.com/alexherrero/agentm/wiki/agentm-model-effort-routing); `worker.md` is realigned to **T1** there. The concrete model ids the tier scale currently draws from — including the T1/T0 seed rows and where a work-type resolves to `opusplan` vs. flat Sonnet — live in [token-audit](crickets-token-audit)'s versioned routing table, resolved per dispatch by its `classify_work_type` classifier (see both links below).
 
@@ -64,7 +64,6 @@ Source locations, with each roster string's **current** (stale) vs. **target** v
 - `src/developer-workflows/agents/tech-lead.md` — `model: claude-sonnet-4-6` → target `claude-sonnet-5`
 - `src/developer-workflows/commands/plan.md` — nudge text names `claude-sonnet-4-6` → target `claude-sonnet-5`; gains a `model:`/`effort:` frontmatter pin (turn-scoped, replacing the nudge) + keeps the `/clear` reminder
 - `src/developer-workflows/commands/work.md` — nudge text names flat `claude-opus-4-8` → target: name `opusplan` explicitly (not a single model); gains a `model:`/`effort:` frontmatter pin
-- `src/developer-workflows/commands/review.md` — nudge text names `claude-sonnet-4-6` → target `claude-sonnet-5`; gains a `model:`/`effort:` frontmatter pin
 - `src/developer-workflows/commands/design.md` — nudge text names `claude-sonnet-4-6` → target `claude-sonnet-5`; gains a `model:`/`effort:` frontmatter pin
 - `src/developer-workflows/commands/bugfix.md` — nudge text names flat `claude-opus-4-8` → target: name `opusplan` explicitly; gains a `model:`/`effort:` frontmatter pin + keeps the `/clear` reminder
 - `src/developer-workflows/commands/spec.md`, `commands/interview-me.md` — nudge text names `claude-sonnet-4-6` → target `claude-sonnet-5`
@@ -80,7 +79,7 @@ Source locations, with each roster string's **current** (stale) vs. **target** v
 
 ## Related
 
-- [Development lifecycle design](crickets-development-lifecycle) — the routing-defaults design decision *(gaining the routed-dispatch + mandatory-announcement layer — see the forward pointer above)*
+- [Development lifecycle design](crickets-development-lifecycle) — the routing-defaults design decision, and the history of the routed-dispatch layer noted above
 - [Composition design](crickets-composition) — the `output-style`/`rule` discovery-path decision
 - [Model + effort routing design](https://github.com/alexherrero/agentm/wiki/agentm-model-effort-routing) — the T0–T4 tier + effort policy this page's static defaults are a hardcoded instance of
 - [Token-audit design](crickets-token-audit) — the measurement + budget-gate capability this efficiency protocol is being automated into, and the **single home of current model ids** (the versioned routing table, seeded and rendered there) plus the `classify_work_type` classifier that resolves a dispatch to one of its rows

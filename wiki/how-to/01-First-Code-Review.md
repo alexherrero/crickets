@@ -1,46 +1,48 @@
 <!-- mode: tutorial -->
-# Installing and using the code-review plugin
+# Your first code review
 
 > [!NOTE]
-> **Goal:** Install the `code-review` plugin and run an adversarial review that catches a bug you planted — seeing, end to end, what a crickets plugin does in your editor.
+> **Goal:** Install the `development-lifecycle` and `code-review` plugins, plant a bug, and see what an adversarial review returns.
 > **Time:** ~10 minutes.
-> **Prereqs:** Claude Code (`claude`) on your PATH; `git`. Optional: `agy` on your PATH for the cross-model reviewer — the tutorial works without it.
+> **Prereqs:** Claude Code (`claude`) on your PATH; `git`. Optional: `agy` on your PATH for the cross-model reviewer. The tutorial works without it.
 
-You'll install one plugin, plant an obvious bug in a throwaway repo, and let `/code-review` find it. By the end you'll know how a crickets command lands in your host and what "adversarial review" actually returns.
+You'll install two plugins, commit a bug in a throwaway repo, and let `/build-it --check` find it. By the end you'll know what an adversarial review returns and what it leaves to you.
 
-## Step 1 — Install the code-review plugin
+## Step 1 — Install the plugins
 
-Add the crickets marketplace and install the plugin — it's standalone, so nothing else is needed:
+`/build-it` ships in `development-lifecycle`; the reviewers it calls ship in `code-review`. Add the crickets marketplace and install both:
 
 ```bash
 claude plugin marketplace add alexherrero/crickets
+claude plugin install development-lifecycle@crickets
 claude plugin install code-review@crickets
 ```
 
-Confirm it's enabled:
+Confirm they're enabled:
 
 ```bash
 claude plugin list
 ```
 
-You should see `code-review`. (On Antigravity the install is by path instead — see [Install crickets plugins](Install-Crickets-Plugins).)
+You should see `development-lifecycle` and `code-review`. (On Antigravity the install is by path instead; see [Install crickets plugins](Install-Crickets-Plugins).)
 
-## Step 2 — Plant a bug in a scratch repo
+## Step 2 — Commit a bug in a scratch repo
 
-Create a throwaway repo whose one function contradicts its own docstring:
+Create a throwaway repo where one function contradicts its docstring, and commit it with a message stating what it should do:
 
 ```bash
 SCRATCH=$(mktemp -d) && cd "$SCRATCH" && git init -q
-git commit -q --allow-empty -m "init"   # establish a baseline to diff against
+git commit -q --allow-empty -m "init"   # a baseline to review against
 cat > lists.py <<'PY'
 def last_n(items, n):
     """Return the LAST n items of the list, in order."""
     return items[:n]   # bug: this returns the FIRST n
 PY
 git add lists.py
+git commit -q -m "Add last_n: return the last n items of a list, in order"
 ```
 
-The staged change to `lists.py` is what the reviewer will see: the docstring promises the *last* `n`, the code returns the *first* `n`.
+The docstring and the commit message promise the *last* `n`; the code returns the *first* `n`.
 
 ## Step 3 — Run the review
 
@@ -50,31 +52,47 @@ Open the scratch repo in Claude Code:
 claude
 ```
 
-In the session, run the command with no arguments — that reviews your working-tree diff:
+In the session, review the last commit:
 
 ```
-/code-review
+/build-it --check HEAD~1..HEAD --size medium
 ```
 
-It resolves the diff, then dispatches the adversarial reviewer (and the cross-model reviewer first, if `agy` is present).
+`--check` reviews a change that already exists. A change judged `small` runs no review passes, so `--size medium` pins the size and the correctness pass runs. With no spec and no `AGENTS.md`, the commit message is the contract, and the report says so.
 
 ## Step 4 — Read the finding
 
-Each reviewer returns exactly one of three things: a **failing test**, a **`DEFECT: path:line`** (expected vs actual behavior + a minimal reproducer), or **`NO ISSUES FOUND`**. For your planted bug, expect a `DEFECT` on `lists.py` noting that `last_n([1, 2, 3], 2)` returns `[1, 2]` when the docstring promises `[2, 3]`.
+The correctness pass returns a failing test, a `DEFECT: path:line`, or `NO ISSUES FOUND`. For your planted bug, expect a real finding cited to `lists.py:3`: `last_n([1, 2, 3], 2)` returns `[1, 2]` when the contract promises `[2, 3]`. You may see a second real finding too: `last_n` has no test that would catch a regression. The correctness pass counts that as real.
 
-Notice what it does *not* do: it reports, it never edits. The fix is yours.
+Each real finding reads **OPEN**. Check mode reports and never edits. The fix is yours.
 
 ## Step 5 — Fix it and re-review
 
-Change the slice in `lists.py` so the code matches the docstring:
+Fix the slice, add a test, and commit:
 
-```python
+```bash
+cat > lists.py <<'PY'
 def last_n(items, n):
     """Return the LAST n items of the list, in order."""
-    return items[-n:]   # fixed
+    return items[-n:]
+PY
+cat > test_lists.py <<'PY'
+from lists import last_n
+
+def test_last_n():
+    assert last_n([1, 2, 3], 2) == [2, 3]
+PY
+git add lists.py test_lists.py
+git commit -q -m "Fix last_n to return the last n items; add a test"
 ```
 
-Run `/code-review` again. With the contradiction gone, you should get **`NO ISSUES FOUND`** instead of a defect.
+Run the review again over both commits:
+
+```
+/build-it --check HEAD~2..HEAD --size medium
+```
+
+With the contradiction fixed and a test added, the correctness pass should return no real finding.
 
 ## Step 6 — Clean up
 
@@ -84,13 +102,14 @@ rm -rf "$SCRATCH"
 
 ## What you learned
 
-- **`code-review` is standalone** — `/code-review` reviews any diff or PR with no `/work` cycle. No argument means the working-tree diff; pass a range (`main...HEAD`), a branch, or a PR (`#123`) to review something else.
-- **The review is adversarial** — the reviewer is primed to assume bugs exist, so it returns a *failing test*, a *`DEFECT: file:line`*, or *`NO ISSUES FOUND`* — never vague "looks good" prose ([why that matters](Why-Adversarial-Review)).
-- **It reports, never fixes** — standalone, the fix is yours; inside a `/work` loop it becomes a follow-up task.
-- **A cross-model reviewer** runs first when `agy` is present, to escape the same-model echo chamber; without it, the in-process reviewer runs alone.
+- **`/build-it --check` reviews a change already made:** a PR number, a commit range (`A..B`) or a diff file. It reports and never fixes.
+- **The review is adversarial:** the reviewer assumes a bug exists and returns a *failing test*, a *`DEFECT: file:line`*, or *`NO ISSUES FOUND`* ([why that matters](Why-Adversarial-Review)). `/build-it` sorts each finding and cites it to a line.
+- **The size picks the passes:** `small` runs none, `medium` runs correctness, `large` adds simplicity. `--size` overrides it.
+- **A cross-model reviewer** runs when `agy` is present, to escape the same-model echo chamber; without it, a Sonnet reviewer runs the pass and the report says so.
+- **Inside `/work`, the same passes run on every step,** and there the real findings get fixed before the step ends.
 
 ## Next
 
-- [Run a standalone code review](Use-Code-Review) — the recipe form, once you've done this once.
-- [Why adversarial review](Why-Adversarial-Review) — why "assume bugs exist" finds real ones a neutral pass misses.
-- [Install more crickets plugins](Install-Crickets-Plugins) — the full six-plugin set and all three install modes.
+- [Review an existing change](Use-Code-Review): the recipe form, after your first run.
+- [Why adversarial review](Why-Adversarial-Review): why "assume bugs exist" finds real ones a neutral pass misses.
+- [Install more crickets plugins](Install-Crickets-Plugins): the full plugin set and all three install modes.

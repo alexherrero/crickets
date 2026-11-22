@@ -13,6 +13,9 @@ approved: 2026-06-23
 > [!NOTE]
 > **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-23) · locked 2026-06-28 (final AG design sweep).** child-design — **the `token-audit` capability** (token-cost measurement + live metering — the measurement slice of the `efficient` opinion). `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). Points *up* at the [crickets HLD](crickets-hld.md).
 
+> [!WARNING]
+> **Partly out of date (2026-11-22):** crickets plan 104 retired pieces this page still describes as current; see the amendment log. The later wiki migration reconciles the body.
+
 # token-audit (→ `tokens` at v6.0)
 
 ## Objective
@@ -164,3 +167,7 @@ token-audit is **the measurement half of `efficient`.** The opinion is the judgm
 **2026-06-23 — authored, reviewed, and finalized.** Authored from the seeded stub and grounded against the live `src/token-audit` + `src/status-line-meter` plugins. token-audit is the **measurement half of `efficient`** — a deterministic cost analyzer (cache split · 5-hour windows · the always-load floor; same transcript → same number) behind two surfaces: the on-demand `/token-audit` breakdown and the passive live meter (folding in `status_line_meter.py`); `pricing.py` is the single pinned rate source. The `### Opinions` arrow is one-way (the opinion cites the numbers; the capability never reaches up). Recorded the rejected `efficiency` rename and the v6.0 `tokens` target (resolver aliasing).
 
 On review: added a **How it's invoked** subsection — three altitudes (passive live meter · operator-invoked `/token-audit` · a *designed* auto-capture-on-session-stop that logs a per-model `session-cost` memory record, reviewed in the **dreaming** pass to surface an efficiency trend; `[PENDING-IMPL]`) — and reframed the **`pricing.py`-drift** risk to forward-reference the **`content-refresh`** primitive (tentatively homed in `maintenance` as an optional scheduled task) as the standing re-pin mitigation. **Re-audit:** build the auto-capture + dreaming review; stand up `content-refresh` to automate the `pricing.py` re-pin; execute the `status-line-meter` fold + the `tokens` rename at v6.0.
+
+**2026-11-22 — pieces retired by plan 104; body not yet reconciled.**
+
+crickets plan 104 (development-lifecycle 1.0.0–1.5.0, code-review 1.0.0) retired the `/review` phase and crickets' `/doubt`, `/code-review` and `/simplify` (with the `test-engineer` agent) in favour of `/build-it`'s passes and `/build-it --check`; took wiki updates and board sync out of `/plan`, `/work`, `/release` and `/bugfix` (`wiki-author`, `wiki-watch` and `report-board-drift` run them on request or on a schedule); and dropped the workflow-step personas, token-audit routed dispatch and fan-out announcements, `features.json`, and design Hooks 3, 4, 5 and 7. Where the body above says otherwise, the CHANGELOG's plan 104 entries are current. Why not reconcile the body now: these pages wait for the planned wiki migration, which rewrites them whole. Re-audit trigger: that migration.

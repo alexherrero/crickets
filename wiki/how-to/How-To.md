@@ -25,9 +25,7 @@ Task-focused recipes for the crickets plugins. For field-level detail like plugi
 
 | How-to | What it does |
 |---|---|
-| [Review a change — code review](Use-Code-Review) | Run `/code-review` over a diff or PR. |
-| [In-flight decision review — /doubt](Use-Doubt-Review) | Review a decision in fresh context before committing. |
-| [Simplify a diff](Simplify-A-Diff) | Run `/simplify` to cut accidental complexity. |
+| [Review an existing change](Use-Code-Review) | Run `/build-it --check` over a PR, a commit range or a diff file. |
 
 ## Release with discipline
 

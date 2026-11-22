@@ -13,6 +13,9 @@ approved: 2026-06-23
 > [!NOTE]
 > **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-23) · locked 2026-06-28 (final AG design sweep).** child-design — **the `code-review` capability** (adversarial review — assume the code is broken and prove otherwise). `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). Points *up* at the [crickets HLD](crickets-hld.md).
 
+> [!WARNING]
+> **Partly out of date (2026-11-22):** crickets plan 104 retired pieces this page still describes as current; see the amendment log. The later wiki migration reconciles the body.
+
 # code-review
 
 ## Objective
@@ -118,3 +121,7 @@ code-review **implements `good`** — the adversarial-review contract *is* what 
 **2026-06-23 — added the structure diagram (diagram backfill).** Per the every-design-carries-a-diagram rule.
 
 **2026-06-23 — authored from the seeded stub (grounded against the live `src/code-review` plugin); revised on operator review.** All primitives delivered — three operator-invoked commands (`/code-review`, `/doubt`, `/simplify`), four auto-dispatched adversarial sub-agents (incl. the cross-model variant), the `evidence-tracker` `/work` gate, two skills, `cross-review.sh`. Named the central invariant — **falsifiable findings only** (a failing test / `file:line` defect / `NO ISSUES`; prose rejected) — which is what `good` means concretely; added an **Opinions-it-consumes** clause (implements `good`). Operator review: framed it as *an* implementation of `good` *applied to code*; listed the commands as a table + the sub-agents individually; and made **invocation plain** (operator-invoked commands vs auto-dispatched agents/hook, each naming its workflow). Kept the name (the `review-workflows` rename was rejected). **Designed-not-built:** the `good` request-by-name (Phase-3/4, `[PENDING-IMPL]`) and the `{domain}-review` family. **Re-audit:** wire `opinion_request("good")`; add review siblings when needed.
+
+**2026-11-22 — pieces retired by plan 104; body not yet reconciled.**
+
+crickets plan 104 (development-lifecycle 1.0.0–1.5.0, code-review 1.0.0) retired the `/review` phase and crickets' `/doubt`, `/code-review` and `/simplify` (with the `test-engineer` agent) in favour of `/build-it`'s passes and `/build-it --check`; took wiki updates and board sync out of `/plan`, `/work`, `/release` and `/bugfix` (`wiki-author`, `wiki-watch` and `report-board-drift` run them on request or on a schedule); and dropped the workflow-step personas, token-audit routed dispatch and fan-out announcements, `features.json`, and design Hooks 3, 4, 5 and 7. Where the body above says otherwise, the CHANGELOG's plan 104 entries are current. Why not reconcile the body now: these pages wait for the planned wiki migration, which rewrites them whole. Re-audit trigger: that migration.

@@ -9,7 +9,6 @@ The infrastructure often dispatches the evaluator for you. You rarely invoke it 
 
 | Caller | How it uses the evaluator |
 |---|---|
-| **`/review` phase** (`development-lifecycle`) | not wired — `src/development-lifecycle/commands/review.md` dispatches `adversarial-reviewer` (+ cross-model `adversarial-reviewer-cross`) only, and has no evaluator call site |
 | **`/build-it`** (`development-lifecycle`) | dispatches it for the done-check, after the passes and the done-report; see [Done-check](#done-check-anchor-and-loop-record) |
 | **`/create-it`** (`development-lifecycle`) | dispatches it for the likeness pass (paired images, one rubric item per likeness line) and for the done-check; see [Done-check](#done-check-anchor-and-loop-record) |
 | **a skill / command / workflow** | wires a rubric-driven gate (e.g. grade an artifact before proceeding) |
@@ -53,7 +52,7 @@ A missing `ARTIFACT:` or `RUBRIC:` label halts the prompt (a done-check supplies
 - **Independent** — items do not reference each other.
 - **Numbered** — the output mirrors the numbering 1:1.
 
-**Worked example** — a `/review` code-change rubric:
+**Worked example** — a code-change rubric:
 
 ```
 ARTIFACT:
