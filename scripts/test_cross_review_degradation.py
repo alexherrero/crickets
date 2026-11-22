@@ -83,8 +83,11 @@ def _write_fake_agy(bin_dir: Path, body: str) -> Path:
 
 
 def _run_cross_review(material: str, *, path_prefix: "Path | None" = None,
-                       env_extra: "dict | None" = None) -> subprocess.CompletedProcess:
-    env = dict(os.environ)
+                       env_extra: "dict | None" = None,
+                       args: "tuple | list" = ()) -> subprocess.CompletedProcess:
+    # Start from a clean CROSS_REVIEW_* slate: the caller's own tier or model
+    # pin must not change what a test asserts.
+    env = {k: v for k, v in os.environ.items() if not k.startswith("CROSS_REVIEW_")}
     if path_prefix is not None:
         env["PATH"] = f"{path_prefix}{os.pathsep}{env.get('PATH', '')}"
     else:
@@ -94,7 +97,7 @@ def _run_cross_review(material: str, *, path_prefix: "Path | None" = None,
     if env_extra:
         env.update(env_extra)
     return subprocess.run(
-        [_BASH, str(_SCRIPT)],
+        [_BASH, str(_SCRIPT), *args],
         input=material, capture_output=True, text=True, timeout=15, env=env,
     )
 
@@ -105,9 +108,16 @@ _AGY_TIMEOUT_LINE = ("[agy] print timeout after 1s with turn in progress; "
                      "returning partial output")
 
 
+# Stand-in for the tier table (cross-review.sh's tier_defaults): a timeout and
+# a ceiling a test can reach. The overrides in tier_settings stay real.
+_TINY_TIER = ('tier_defaults() { MODEL="Gemini 4 Neon (Medium)"; '
+              'PRINT_TIMEOUT_SECS=%d; MAX_MATERIAL_BYTES=%d; }')
+
+
 def _run_main_with(material: str, prelude: str, *, path_prefix: Path) -> subprocess.CompletedProcess:
     """Source the script, run `prelude` (assignments standing in for values a
-    test can't wait out, like the 180s print timeout), then call main()."""
+    test can't wait out, like the 180s print timeout), then call main(). A
+    stand-in tier table (_TINY_TIER) is the prelude for those."""
     env = dict(os.environ)
     env["PATH"] = f"{path_prefix}{os.pathsep}{env.get('PATH', '')}"
     script = f'source "{_SCRIPT.as_posix()}"\n{prelude}\nmain\n'
@@ -205,11 +215,11 @@ class NoOutputTests(unittest.TestCase):
 
     def test_silent_call_as_long_as_the_timeout_says_it_may_have_fired(self):
         # No timeout line from agy, but the call lasted the whole print
-        # timeout. PRINT_TIMEOUT_SECS=1 stands in for the real 180s.
+        # timeout. A one-second tier stands in for the real 180s.
         with tempfile.TemporaryDirectory() as tmp:
             bin_dir = Path(tmp)
             _write_fake_agy(bin_dir, "sleep 2\nexit 0")
-            result = _run_main_with("=== DIFF ===\nsome diff\n", "PRINT_TIMEOUT_SECS=1",
+            result = _run_main_with("=== DIFF ===\nsome diff\n", _TINY_TIER % (1, 1_000_000),
                                     path_prefix=bin_dir)
             line = _degraded_line(self, result, 1)
             self.assertIn("agy returned no output (exit 0 after ", line)
@@ -283,8 +293,11 @@ class CutOffOrFailedReplyTests(unittest.TestCase):
             self.assertIn("NO ISSUES FOUND", result.stderr)
 
 
-# What `agy models` served on 2026-10-16 (agy 1.4.0), as display strings.
+# What `agy models` served on 2026-11-21 (agy 1.5.14), as display strings.
+# The list a fake agy serves; a name outside it is rejected the way agy does.
 _AGY_1_4_0_MODELS = (
+    "Gemini 4 Neon (Medium)", "Gemini 4 Neon (High)", "Gemini 4 Neon (Low)",
+    "Gemini 4 Hydrogen (High)", "Gemini 4 Hydrogen (Medium)", "Gemini 4 Hydrogen (Low)",
     "Gemini 4 Argon (Medium)", "Gemini 4 Argon (High)", "Gemini 4 Argon (Low)",
     "Gemini 3.8 Flash (High)", "Gemini 3.8 Flash (Medium)", "Gemini 3.8 Flash (Low)",
     "Claude Opus 5.5 (Low)", "Claude Opus 5.5 (Medium)", "Claude Opus 5.5 (High)",
@@ -361,7 +374,7 @@ class ModelTests(unittest.TestCase):
         result, asked = self._run()
         self.assertEqual(result.returncode, 0, f"stdout={result.stdout!r} stderr={result.stderr!r}")
         self.assertIn("NO ISSUES FOUND", result.stdout)
-        self.assertEqual(asked, ["Gemini 4 Argon (High)"])
+        self.assertEqual(asked, ["Gemini 4 Neon (Medium)"])
 
     def test_override_names_another_model(self):
         result, asked = self._run({"CROSS_REVIEW_MODEL": "Gemini 3.8 Flash (High)"})
@@ -371,7 +384,7 @@ class ModelTests(unittest.TestCase):
     def test_empty_override_keeps_the_default(self):
         result, asked = self._run({"CROSS_REVIEW_MODEL": ""})
         self.assertEqual(result.returncode, 0, f"stderr={result.stderr!r}")
-        self.assertEqual(asked, ["Gemini 4 Argon (High)"])
+        self.assertEqual(asked, ["Gemini 4 Neon (Medium)"])
 
     def test_a_model_agy_no_longer_serves_degrades_naming_the_model(self):
         # The 2026-10-16 shape, from agentm task 191's /bugfix.
@@ -408,6 +421,135 @@ class ModelTests(unittest.TestCase):
             self.assertNotIn("does not serve model", line)
 
 
+def _write_argv_logging_agy(bin_dir: Path, log: Path) -> None:
+    """A fake agy that logs `<model>|<print-timeout>` for each call and answers
+    well-formed, so a test can read back what a tier asked agy for."""
+    _write_fake_agy(bin_dir, (
+        'model=""; timeout=""\n'
+        'while (( $# )); do\n'
+        '  case "$1" in\n'
+        '    --model) model="$2"; shift 2 ;;\n'
+        '    --print-timeout) timeout="$2"; shift 2 ;;\n'
+        '    *) shift ;;\n'
+        '  esac\n'
+        'done\n'
+        f'printf \'%s|%s\\n\' "$model" "$timeout" >> "{log}"\n'
+        'echo "NO ISSUES FOUND"\n'
+    ))
+
+
+class TierTests(unittest.TestCase):
+    """--tier / CROSS_REVIEW_TIER pick the model and the print timeout agy is
+    asked for; the explicit overrides still win; an unknown tier is a caller
+    error (exit 2) that never reaches agy."""
+
+    def _run(self, *, args=(), env_extra=None, material="=== DIFF ===\nsome diff\n"):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        bin_dir = Path(tmp.name)
+        log = bin_dir / "agy_argv.log"
+        _write_argv_logging_agy(bin_dir, log)
+        result = _run_cross_review(material, path_prefix=bin_dir, env_extra=env_extra, args=args)
+        asked = log.read_text(encoding="utf-8").splitlines() if log.exists() else []
+        return result, asked
+
+    def test_no_tier_means_default(self):
+        result, asked = self._run()
+        self.assertEqual(result.returncode, 0, f"stderr={result.stderr!r}")
+        self.assertEqual(asked, ["Gemini 4 Neon (Medium)|180s"])
+
+    def test_each_tier_resolves_to_its_model_and_timeout(self):
+        for tier, expected in (
+            ("default", "Gemini 4 Neon (Medium)|180s"),
+            ("high", "Gemini 4 Neon (High)|300s"),
+            ("wording", "Gemini 4 Hydrogen (High)|180s"),
+        ):
+            with self.subTest(tier=tier, via="flag"):
+                result, asked = self._run(args=("--tier", tier))
+                self.assertEqual(result.returncode, 0, f"stderr={result.stderr!r}")
+                self.assertEqual(asked, [expected])
+            with self.subTest(tier=tier, via="env"):
+                result, asked = self._run(env_extra={"CROSS_REVIEW_TIER": tier})
+                self.assertEqual(result.returncode, 0, f"stderr={result.stderr!r}")
+                self.assertEqual(asked, [expected])
+            with self.subTest(tier=tier, via="flag=value"):
+                result, asked = self._run(args=(f"--tier={tier}",))
+                self.assertEqual(asked, [expected])
+
+    def test_the_flag_beats_the_environment(self):
+        result, asked = self._run(args=("--tier", "wording"),
+                                  env_extra={"CROSS_REVIEW_TIER": "high"})
+        self.assertEqual(result.returncode, 0, f"stderr={result.stderr!r}")
+        self.assertEqual(asked, ["Gemini 4 Hydrogen (High)|180s"])
+
+    def test_model_override_wins_in_every_tier_and_keeps_the_tiers_timeout(self):
+        result, asked = self._run(args=("--tier", "high"),
+                                  env_extra={"CROSS_REVIEW_MODEL": "Gemini 3.8 Flash (High)"})
+        self.assertEqual(result.returncode, 0, f"stderr={result.stderr!r}")
+        self.assertEqual(asked, ["Gemini 3.8 Flash (High)|300s"])
+
+    def test_timeout_override_wins_over_the_tiers_timeout(self):
+        result, asked = self._run(args=("--tier", "high"),
+                                  env_extra={"CROSS_REVIEW_TIMEOUT_SECS": "45"})
+        self.assertEqual(result.returncode, 0, f"stderr={result.stderr!r}")
+        self.assertEqual(asked, ["Gemini 4 Neon (High)|45s"])
+
+    def test_a_malformed_timeout_override_is_ignored_out_loud(self):
+        for bad in ("fast", "0", "30s", "-5"):
+            with self.subTest(value=bad):
+                result, asked = self._run(env_extra={"CROSS_REVIEW_TIMEOUT_SECS": bad})
+                self.assertEqual(result.returncode, 0, f"stderr={result.stderr!r}")
+                self.assertEqual(asked, ["Gemini 4 Neon (Medium)|180s"])
+                self.assertIn(f"ignoring CROSS_REVIEW_TIMEOUT_SECS='{bad}'", result.stderr)
+
+    def test_the_tier_table_ceilings(self):
+        # Read the table itself: pushing 60 KB through a fake agy's argv would
+        # fail on Windows, and the over-ceiling side is covered by the marker
+        # tests, which never reach agy.
+        script = (f'source "{_SCRIPT.as_posix()}"\n'
+                  'for t in default high wording; do tier_defaults "$t"; '
+                  'echo "$t|$MODEL|$PRINT_TIMEOUT_SECS|$MAX_MATERIAL_BYTES"; done\n')
+        out = subprocess.run([_BASH, "-c", script], capture_output=True, text=True, timeout=15)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        self.assertEqual(out.stdout.splitlines(), [
+            "default|Gemini 4 Neon (Medium)|180|50000",
+            "high|Gemini 4 Neon (High)|300|80000",
+            "wording|Gemini 4 Hydrogen (High)|180|50000",
+        ])
+
+    def test_the_default_ceiling_still_degrades_before_agy(self):
+        result, asked = self._run(material="x" * 60_000)
+        line = _degraded_line(self, result, 1)
+        self.assertIn("over the 50000-byte ceiling for agy's 180s print timeout", line)
+        self.assertEqual(asked, [])
+
+    def test_the_degraded_marker_names_the_tiers_timeout(self):
+        result, asked = self._run(args=("--tier", "high"), material="x" * 90_000)
+        line = _degraded_line(self, result, 1)
+        self.assertIn("over the 80000-byte ceiling for agy's 300s print timeout", line)
+        self.assertEqual(asked, [])
+
+    def test_an_unknown_tier_exits_2_without_calling_agy(self):
+        for how in ({"args": ("--tier", "turbo")},
+                    {"args": ("--tier=turbo",)},
+                    {"env_extra": {"CROSS_REVIEW_TIER": "turbo"}}):
+            with self.subTest(how=how):
+                result, asked = self._run(**how)
+                self.assertEqual(result.returncode, 2, f"stderr={result.stderr!r}")
+                self.assertIn("unknown tier 'turbo'", result.stderr)
+                self.assertEqual(result.stdout, "", "a caller error is not a degradation")
+                self.assertEqual(asked, [])
+
+    def test_an_unknown_argument_or_a_bare_tier_flag_exits_2(self):
+        for args, needle in ((("--bogus",), "unknown argument '--bogus'"),
+                             (("--tier",), "--tier needs a name")):
+            with self.subTest(args=args):
+                result, asked = self._run(args=args)
+                self.assertEqual(result.returncode, 2, f"stderr={result.stderr!r}")
+                self.assertIn(needle, result.stderr)
+                self.assertEqual(asked, [])
+
+
 class NoMaterialTests(unittest.TestCase):
     def test_empty_stdin_prints_the_marker(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -440,12 +582,12 @@ class MaterialCeilingTests(unittest.TestCase):
             self.assertFalse(called.exists(), "agy must not be called over the ceiling")
 
     def test_material_at_the_ceiling_still_goes_to_agy(self):
-        # MAX_MATERIAL_BYTES=200 stands in for the real ceiling, so no test
+        # A 200-byte tier ceiling stands in for the real one, so no test
         # pushes 50 KB through agy's argv.
         with tempfile.TemporaryDirectory() as tmp:
             bin_dir = Path(tmp)
             _write_fake_agy(bin_dir, 'echo "NO ISSUES FOUND"')
-            result = _run_main_with("x" * 200, "MAX_MATERIAL_BYTES=200", path_prefix=bin_dir)
+            result = _run_main_with("x" * 200, _TINY_TIER % (180, 200), path_prefix=bin_dir)
             self.assertEqual(result.returncode, 0, f"stderr={result.stderr!r}")
             self.assertEqual(result.stdout, "NO ISSUES FOUND\n")
 
@@ -462,7 +604,8 @@ class MaterialCeilingTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             bin_dir = Path(tmp)
             _write_fake_agy(bin_dir, 'echo "NO ISSUES FOUND"')
-            result = _run_main_with("x" * 200, "MAX_MATERIAL_BYTES=10\nCROSS_REVIEW_MAX_BYTES=0",
+            result = _run_main_with("x" * 200,
+                                    _TINY_TIER % (180, 10) + "\nCROSS_REVIEW_MAX_BYTES=0",
                                     path_prefix=bin_dir)
             self.assertEqual(result.returncode, 0, f"stderr={result.stderr!r}")
             self.assertEqual(result.stdout, "NO ISSUES FOUND\n")
@@ -471,7 +614,8 @@ class MaterialCeilingTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             bin_dir = Path(tmp)
             _write_fake_agy(bin_dir, 'echo "NO ISSUES FOUND"')
-            result = _run_main_with("x" * 200, "MAX_MATERIAL_BYTES=100\nCROSS_REVIEW_MAX_BYTES=50KB",
+            result = _run_main_with("x" * 200,
+                                    _TINY_TIER % (180, 100) + "\nCROSS_REVIEW_MAX_BYTES=50KB",
                                     path_prefix=bin_dir)
             line = _degraded_line(self, result, 1)
             self.assertIn("over the 100-byte ceiling", line)

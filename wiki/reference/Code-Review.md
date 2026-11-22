@@ -46,14 +46,36 @@ Each primitive links to the source that implements it.
 | [`security-review`](https://github.com/alexherrero/crickets/blob/main/src/code-review/skills/security-review/SKILL.md) | skill | Three-tier boundary security review. |
 | [`testing-strategy`](https://github.com/alexherrero/crickets/blob/main/src/code-review/skills/testing-strategy/SKILL.md) | skill | Coverage audit — the Beyoncé Rule, DAMP, Prove-It. |
 | [`adversarial-reviewer`](https://github.com/alexherrero/crickets/blob/main/src/code-review/agents/adversarial-reviewer.md) | sub-agent | Assume-bugs critic; returns a failing test or a `DEFECT`. |
-| [`adversarial-reviewer-cross`](https://github.com/alexherrero/crickets/blob/main/src/code-review/agents/adversarial-reviewer-cross.md) | sub-agent | The same, cross-model via Gemini; degrades visibly — a `CROSS-REVIEW-DEGRADED: <reason>` line, never a silent same-model swap, whenever `cross-review.sh` exits non-zero: `agy` missing or failing, its print timeout running out, material over the size ceiling, or a reply that breaks the output contract twice. |
+| [`adversarial-reviewer-cross`](https://github.com/alexherrero/crickets/blob/main/src/code-review/agents/adversarial-reviewer-cross.md) | sub-agent | The same, cross-model via Gemini; degrades visibly — a `CROSS-REVIEW-DEGRADED: <reason>` line, never a silent same-model swap, whenever `cross-review.sh` cannot return a review (an unknown `--tier` or argument exits 2 first, with no marker): `agy` missing or failing, its print timeout running out, material over the size ceiling, or a reply that breaks the output contract twice. |
 | [`security-auditor`](https://github.com/alexherrero/crickets/blob/main/src/code-review/agents/security-auditor.md) | sub-agent | Finds the unvalidated boundary crossing. |
 | [`test-engineer`](https://github.com/alexherrero/crickets/blob/main/src/code-review/agents/test-engineer.md) | sub-agent | Finds the behavior with no test. |
 | [`evidence-tracker`](https://github.com/alexherrero/crickets/blob/main/src/code-review/hooks/evidence-tracker/hook.md) | hook | Blocks a `[ ] → [x]` flip until specs and tests are read (Claude-only). |
 
 ### Configuration
 
-You do not need to configure anything. The plugin works out of the box.
+You do not need to configure anything. The plugin works out of the box. The cross-model reviewer's model, timeout and size ceiling are tunable, as below.
+
+#### Cross-review tiers
+
+`cross-review.sh` picks its Gemini model by tier. Select one with `--tier <name>` or the `CROSS_REVIEW_TIER` environment variable; the flag wins. With neither, the tier is `default`.
+
+| Tier | Model | Print timeout | Material ceiling | Use for |
+|---|---|---|---|---|
+| `default` | Gemini 4 Neon (Medium) | 180 s | 50 KB | Ordinary review passes. |
+| `high` | Gemini 4 Neon (High) | 300 s | 80 KB | Direction checks; correctness on large tasks. |
+| `wording` | Gemini 4 Hydrogen (High) | 180 s | 50 KB | Wording and voice only. |
+
+An unknown tier, or any unknown argument, exits 2 before `agy` is called and prints no `CROSS-REVIEW-DEGRADED` line.
+
+#### Cross-review overrides
+
+Each override applies on top of the chosen tier.
+
+| Variable | Effect |
+|---|---|
+| `CROSS_REVIEW_MODEL` | Exact `agy models` display string; beats any tier's model. |
+| `CROSS_REVIEW_TIMEOUT_SECS` | Positive integer seconds; replaces the tier's print timeout. A malformed value is ignored with a note on stderr. |
+| `CROSS_REVIEW_MAX_BYTES` | Byte count; replaces the tier's material ceiling. `0` turns the check off. A malformed value is ignored with a note on stderr. |
 
 ## See also
 
