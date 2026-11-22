@@ -297,7 +297,7 @@ class TestLayouts(unittest.TestCase):
         self.assertEqual((rc, out), (0, f"{t}/plan.md\t{t}/progress.md\t{t}/tracker.md\n"))
 
     def test_field_one_is_still_the_plan_for_python_callers(self):
-        # stage_plan.py and design_doc.py keep only split("\t", 1)[0].
+        # stage_plan.py keeps only split("\t", 1)[0].
         _rc, out, _err = self.resolve("042-build-the-brief")
         self.assertEqual(out.split("\t", 1)[0],
                          f"{self._PROJECT}/tasks/042-build-the-brief/plan.md")

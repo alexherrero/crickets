@@ -14,7 +14,7 @@ assumes every plugin sits flat under one `plugins/` directory. The generated
 Code's plugin cache does not. It installs each plugin at
 `<plugins>/cache/<marketplace>/<plugin>/<version>/`, so `../<plugin>` from one
 version directory names nothing. The documenter's prose pass degraded on every
-dispatch that way, and `/design translate` could not load its plan resolver.
+dispatch that way, and the old design pipeline could not load its plan resolver.
 
 Candidates, first hit wins:
   1. flat       <this-plugin-root>/../<plugin>/<rel>, taken lexically and then

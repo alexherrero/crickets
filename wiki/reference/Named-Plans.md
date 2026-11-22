@@ -19,9 +19,6 @@ This page explains what a name maps to and how we resolve it. It also covers the
 | `/release --name <task>` | `tasks/<task>/plan.md` | — | the named task; its status must be `done` |
 | `/work` (auto-spawn, `isolation.mode: worktree-per-plan`) | — (host creates a worktree; `worktree_marker.py` binds it to the plan) | — | host-native worktree at `.claude/worktrees/<name>` on branch `worktree-<name>` ([Spawning a worker worktree](#spawning-a-worker-worktree)) |
 | `/work` (final task, auto-close) | — | plan's close-out summary becomes the PR body | pushes the branch, opens a PR via `finalize_unit.py`, arms `gh pr merge --auto --squash` ([Closing out a plan](#closing-out-a-plan)) |
-| `/design author [<slug>]` | the design doc (not a PLAN) | — | walks the 10-section template, drives `draft → review → final` ([The `/design` command](#the-design-command)) |
-| `/design translate` | `<doc-dir>/parts/<part-slug>.md` (writes parts, reads the doc) | — | gates on `Status: final`, splits the doc into structural parts |
-| `/design sequence` | `tasks/NNN-<doc-slug>-<part-slug>/plan.md` + a `queued` `tracker.md`, per part | — | one queued task per part via `design_sequence.py place`; none activated; never a flat staging directory |
 
 > [!NOTE]
 > The table shows paths inside the project agentm resolves; the directory is whatever it returns (see [Numbered tasks](#numbered-tasks) and [Resolution](#resolution)). In a repo with no vault the paths are the repo-local ones in [A repo with no vault](#a-repo-with-no-vault).
@@ -62,61 +59,9 @@ A tracker is a plan's living head: its status, what is true now, the next steps,
 
 Once agentm's migration moves a project (agentm-vault plan 10), each plan lives in a task directory, `projects/<slug>/tasks/NNN-<verb-slug>/`, with `plan.md`, `progress.md` and `tracker.md` side by side. A task's name is its directory name, number included. `--name`, the worktree marker and the tracker's `task:` field all carry it. A project that keeps tasks has no singleton, so the resolver answers a bare call with exit 4. The commands then ask for or propose a task name. crickets composes none of these paths. Every command follows the plan, progress and tracker paths agentm returns, and tells a task from a repo-local flat plan by its `plan.md` name.
 
-## The `/design` command
-
-The `/design` command handles the upstream authoring step of the phase loop. It starts earlier than `/plan`. You should use it when the problem is ambiguous, involves multiple stakeholders, or touches cross-cutting Quality Attributes and Operations concerns. If you already have a settled design, use `/plan` instead. We provide the task recipe in [Author a design](Author-A-Design). We explain the reasoning behind this split in the [Development lifecycle design](crickets-development-lifecycle).
-
-| Surface | Location |
-|---|---|
-| Command prompt | [`commands/design.md`](https://github.com/alexherrero/crickets/blob/main/src/design/commands/design.md) — the three sub-verb flows (interactive, human-judgment) |
-| Gate + storage helper | [`scripts/design_doc.py`](https://github.com/alexherrero/crickets/blob/main/src/design/scripts/design_doc.py) — `require_final()` the `Status: final` gate, `detailed_design_nonempty()`, frontmatter parser, designs-home / published-path resolution |
-| Topo-sort helper | [`scripts/design_sequence.py`](https://github.com/alexherrero/crickets/blob/main/src/design/scripts/design_sequence.py) — Kahn topo-sort with alphabetical tie-break, part-frontmatter validation |
-
-| Sub-verb | Reads | Writes | Gate (helper) |
-|---|---|---|---|
-| `/design author [<slug>]` | the design doc (on re-invoke) | the design doc | refuses re-invocation once `Status: final`; only `author` transitions Status |
-| `/design translate` | a `Status: final` design doc | `<doc-dir>/parts/<part-slug>.md` | `design_doc.py gate` (`Status: final`) **and** `design_doc.py detailed-design` (non-empty `### Detailed Design`); both exit 2 + reason on failure |
-| `/design sequence` | the populated `<designs>/<slug>/parts/` | one queued task per part (see below) | `design_doc.py gate` + non-empty validated `parts/`; ordering via `design_sequence.py order` (exit 2 on cycle / missing-dep) |
-
-### `/design author`
-
-| Property | Value |
-|---|---|
-| Template | 10 sections: Context → Design → Alternatives Considered → Dependencies → Migrations → Technical Debt & Risks → Quality Attributes → Project management → Operations → Document History |
-| Quality-Attributes drill-down | 11 sub-attrs, each described or marked `N/A: <one-sentence reason>` |
-| Status lifecycle | `draft → review → final` (only `author` transitions Status; never backwards via the command) |
-| Review | inline pass — approve / revise / skip per section |
-| Refusal | refuses re-invocation after the doc reaches `Status: final` |
-
-### `/design translate`
-
-| Property | Value |
-|---|---|
-| Gate | refuses unless the doc is `Status: final` |
-| Default split | one part per Detailed-Design subsection, capped at ~6 parts |
-| Reshape | interactive — merge / split / rename / reorder before writing |
-| Output | structural part files at `<doc-dir>/parts/<part-slug>.md` |
-
-### `/design sequence`
-
-| Property | Value |
-|---|---|
-| Input | the populated `<designs>/<slug>/parts/` (`design_doc.py parts-dir <slug>`) |
-| Ordering | topo-sort, deterministic; alphabetical tie-break |
-| Writer | `design_sequence.py check-names` then `place`, one part at a time — agentm places each task (through development-lifecycle's `resolve_plan.py`) and `plan_tracker.py` opens its tracker |
-| Every part | a new task `tasks/NNN-<doc-slug>-<part-slug>/`, tracker `queued`, naming the design; **none activated** |
-| A project that keeps no tasks | **refused** before anything is written |
-
-### Storage
-
-| Visibility | Design doc home |
-|---|---|
-| `confidential` | `<designs>/<slug>.md` — the project's own `designs/`, which agentm names (`design_doc.py design-path <slug>`); not committed |
-| `published` | `wiki/designs/<slug>.md` — committed (the crickets path, **not** agentm's `wiki/explanation/designs/`) |
-
 ## Staging a queued task
 
-The `/plan` command can write an active task directly using `--name`. It can also stage a task: write it but leave it inert until a worker is ready to pick it up. A queued task is its own staging tier — its `plan.md` sits in its own directory, and its `queued` tracker is what keeps it inert. Activation moves the tracker to `active`; nothing is copied.
+Named plans come from `/plan`, and only from `/plan` (with `stage_plan.py` for the queued tier); `/design` writes a design note and creates no plans. The `/plan` command can write an active task directly using `--name`. It can also stage a task: write it but leave it inert until a worker is ready to pick it up. A queued task is its own staging tier — its `plan.md` sits in its own directory, and its `queued` tracker is what keeps it inert. Activation moves the tracker to `active`; nothing is copied.
 
 ### The four `/plan` modes
 
@@ -322,7 +267,7 @@ Such a plan can't be staged (staging needs the task layout), and it archives at 
 
 ## Related
 
-- [Author a design](Author-A-Design) — the task recipe for the upstream `/design` authoring step (`author` → `translate` → `sequence`).
+- [Author a design](Author-A-Design) — keep the living design note a plan reads for its locked calls.
 - [Run a named plan](Run-A-Named-Plan) — the task recipe for driving `/work --name <slug>` and friends, including the auto-spawn + auto-close-out flow.
 - [Development lifecycle design — worktree-native flow](crickets-development-lifecycle) — the decision behind host-native worktree creation and the PR-gated close-out replacing the old merge-then-gate-then-hard-reset model.
 - [See every active plan](See-Every-Active-Plan) — the read-side recipe: `/queue-status-lite` for a one-glance view of the queue.

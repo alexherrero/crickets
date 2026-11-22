@@ -6,7 +6,7 @@ Claude Code installs each plugin at
 sibling as `${CLAUDE_PLUGIN_ROOT}/../<plugin>/...` names nothing once installed.
 The flat `dist/` tree hides that: the same path resolves there. The documenter's
 prose pass degraded on every dispatch through such a path (2026-09-10), and
-design_doc.py could not import its plan resolver.
+the old design pipeline could not import its plan resolver.
 
 Three layers:
   - the resolver's rungs, against hand-built layouts
@@ -31,7 +31,7 @@ from pathlib import Path
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
 _DIST_CC = _ROOT / "dist" / "claude-code"
-_CALLERS = ("design", "development-lifecycle", "maintenance", "wiki")
+_CALLERS = ("development-lifecycle", "maintenance", "wiki")
 
 _SPEC = importlib.util.spec_from_file_location(
     "sibling_plugin", _ROOT / "src" / "wiki" / "scripts" / "sibling_plugin.py")
@@ -197,31 +197,10 @@ class EmittedCallSitesResolveInTheVersionedCache(unittest.TestCase):
         # nothing cannot pass by checking nothing.
         for site in (("wiki", "design", "scripts/prose_pass.py"),
                      ("wiki", "design", "skills/prose-pass/SKILL.md"),
-                     # /design sequence places queued tasks (task 100 step 6):
-                     # it reaches development-lifecycle's resolver and tracker
-                     # helper, not stage_plan.py's retired flat staging.
-                     ("design", "development-lifecycle", "scripts/resolve_plan.py"),
-                     ("design", "development-lifecycle", "scripts/plan_tracker.py"),
-                     # design_doc.py's load of resolve_plan.py retired with
-                     # agentm-vault part 15 (task 100): it asks agentm for the
-                     # designs home through its own project_homes.py.
                      ("development-lifecycle", "github-projects", "scripts/project_sync.py"),
                      ("development-lifecycle", "diagnostics", "scripts/diagnose.py"),
                      ("maintenance", "development-lifecycle", "scripts/agentm_bridge.py")):
             self.assertIn(site, checked)
-
-    def test_design_helpers_import_their_plan_resolver_from_the_cache(self) -> None:
-        # design_doc.py loaded development-lifecycle's resolve_plan.py at import
-        # time, and design_sequence.py imports design_doc; through the old
-        # sibling path, /design translate and sequence both halted here. Since
-        # task 100 it loads its own project_homes.py instead; both must still
-        # import cleanly from the versioned cache.
-        for script in ("design_doc.py", "design_sequence.py"):
-            with self.subTest(script=script):
-                res = subprocess.run(
-                    [sys.executable, str(self.roots["design"] / "scripts" / script), "--help"],
-                    capture_output=True, text=True, timeout=60)
-                self.assertEqual(res.returncode, 0, res.stderr)
 
 
 if __name__ == "__main__":

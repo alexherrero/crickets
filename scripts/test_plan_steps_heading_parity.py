@@ -120,5 +120,59 @@ class TestStepsHeadingParity(unittest.TestCase):
         self.assertEqual([(t[0], t[3]) for t in tasks], [(1, "[x]"), (2, "[ ]"), (3, "[ ]")])
 
 
+# The same plan with the loop tags /plan now writes on every step (plan 103, step 11).
+_TAGS = "- **Anchor:** spec.md\n- **Profile:** build\n- **Size:** medium\n"
+_TAGGED_PLAN = (_PLAN.replace("- **What:** the verbs.\n", "- **What:** the verbs.\n" + _TAGS)
+                .replace("- **What:** the third field.\n", "- **What:** the third field.\n" + _TAGS)
+                .replace("### 3. The helper\n", "### 3. The helper\n" + _TAGS))
+
+
+class TestLoopTagsDoNotChangeWhatTheParsersRead(unittest.TestCase):
+    """The three tags are new lines inside a step. Every parser must read the tagged plan
+    exactly as it reads the untagged one (a step body may differ; nothing it keys on may)."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="loop-tags-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.texts, self.paths = {}, {}
+        for label, template in (("plain", _PLAN), ("tagged", _TAGGED_PLAN)):
+            text = template.format(heading="## Steps")
+            path = self.tmp / label / "PLAN.md"
+            path.parent.mkdir()
+            path.write_text(text, encoding="utf-8")
+            self.texts[label], self.paths[label] = text, path
+
+    def test_the_tagged_plan_really_has_the_tags(self):
+        self.assertEqual(self.texts["tagged"].count("**Anchor:**"), 3)
+        self.assertEqual(self.texts["plain"].count("**Anchor:**"), 0)
+
+    def test_task_isolation_flags(self):
+        read = lambda k: task_isolation.parse_task_flags(self.paths[k])
+        self.assertTrue(read("plain"))
+        self.assertEqual(read("tagged"), read("plain"))
+
+    def test_orient_render_checklist(self):
+        read = lambda k: orient_render._task_checklist(self.texts[k])
+        self.assertEqual(read("plain"), ["✅ The bridge", "⬜ The resolver", "⬜ The helper"])
+        self.assertEqual(read("tagged"), read("plain"))
+
+    def test_session_start_nudge_tier_hint(self):
+        read = lambda k: session_start_nudge.next_unchecked_task_tier_hint_model(self.texts[k])
+        self.assertEqual(read("plain"), "claude-haiku-4-5")
+        self.assertEqual(read("tagged"), read("plain"))
+
+    def test_evidence_tracker_parse_plan(self):
+        def read(k):
+            return [(t.id, t.title, t.checkbox, t.verification_text, t.evidence_annotation)
+                    for t in evidence_tracker.parse_plan(self.paths[k])]
+        self.assertEqual(len(read("plain")), 3)
+        self.assertEqual(read("tagged"), read("plain"))
+
+    def test_the_tags_stay_inside_their_step_body(self):
+        tasks = evidence_tracker.parse_plan(self.paths["tagged"])
+        for t in tasks:
+            self.assertIn("**Anchor:** spec.md", t.body)
+
+
 if __name__ == "__main__":
     unittest.main()

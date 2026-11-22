@@ -716,5 +716,63 @@ enhances:
 # two rules carry a trigger, and harness-context-session-start now runs on
 # agy's SessionStart. On agy a bare /plan is its own planning mode: type
 # /development-lifecycle:plan.
-version: 0.50.1
+# 0.51.0 = /spec is back, as the loop's anchor writer (plan 103, step 2): one
+# file per task with Goal, Done when, Rules (each with its source), Not doing
+# and Open questions, plus a reference folder and likeness list for create
+# work; at most 5 batched questions; one operator approval. scripts/spec_doc.py
+# renders, parses, places and checks it (stdlib, no agentm). /plan now sends an
+# unspecced task to /spec; the old six-section /spec and /interview-me left
+# the design plugin.
+# 0.52.0 = scripts/loop_record.py (plan 103, step 5): the build-it / create-it
+# loop's bookkeeping. It lists the reviews a task runs by profile and size
+# (small: none; medium: direction, one pass, done-check; large: all of them,
+# plus the security-auditor when asked) with each one's cross-review tier;
+# records each round's findings with a class (real, tradeoff, misread, noise)
+# and a cited line; answers "stop this pass?" (no real finding left, or round 3
+# still real: escalate); and flags doubt theater. JSON record at a path the
+# caller passes. Stdlib, no agentm.
+# 0.53.0 = the done-report (plan 103, step 6): loop_record.py report renders the
+# record as markdown (requirements met or not with evidence, every finding with
+# its disposition, a Not checked list that is never left out, and for create-it
+# the paired images and a playtest checklist); new record commands requirement,
+# not-checked, pair, playtest and dispose. The evaluator agent (0.2.0) takes
+# the anchor plus the record for a done-check, builds its rubric from the
+# anchor's Done-when lines, and is pinned to model claude-sonnet-5.
+# 0.54.0 = /build-it (plan 103, step 7): the loop for code in one command,
+# written once for /work to reference. Anchor (runs /spec when there is none),
+# size, direction check on the high tier that pauses on a wrong direction,
+# make, the repo's own checks, correctness then simplicity (and security when
+# asked) passes through review_material.py + cross-review.sh + loop_record.py,
+# the done-report and the evaluator's done-check. `--check <PR, range or diff>`
+# runs the passes and the report on an existing change and never fixes.
+# loop_record.py gains add-security. No agentm call on the required path.
+# 0.55.0 = scripts/asset_checks.py (plan 103, step 8): the free checks for
+# create-it. PNG: size, frame count (APNG, or a sprite-sheet grid), empty
+# frames, colour palette; WAV: length, sample rate, channels, peak and RMS in
+# dBFS; both compared against a reference. Writes a side-by-side image and a
+# spectrogram when ImageMagick or ffmpeg is installed and says what it skipped
+# when not. Stdlib decoding, no agentm.
+# 0.56.0 = /create-it (plan 103, step 9): the loop for art, sound, UI look and
+# prose. A spec with a reference folder and a 5-10 line likeness list; a size
+# call; a direction check on the high tier; measured free checks through
+# asset_checks.py; likeness (Claude reading the paired images, one rubric item
+# per likeness line), craft (default tier) and, for prose, voice (prose_pass.py
+# on the wording tier; a longer revision is refused) passes; a done-report with
+# the paired images and a playtest checklist; general feedback offered back as a
+# new likeness line. No agentm call on the required path.
+# 0.57.0 = /plan and /work run the loop (plan 103, step 11). /plan runs /spec
+# for the task (the interview step is now the spec step) and every step gains
+# **Anchor:**, **Profile:** and **Size:**. /work reads them and runs the step's
+# loop by pointing at /build-it or /create-it: the direction check inside the
+# safety pre-check for medium and large steps, the loop's free checks as the
+# step's gates, the passes after them, the done-report appended to progress.
+# A step with no tags is a legacy step: build, medium, anchored to the plan.
+# /work grew by 161 words; the loop itself is not copied into it.
+# 0.58.0 = vault_designs.py (plan 103, step 12): finds a project's living design
+# notes in its vault (list, and find by governs / alias / tags), so /plan step 1b
+# and the session-start hook see them beside the repo's wiki/designs/ pages. Both
+# hook twins print up to four vault design paths with a 3-second timeout. The old
+# design plugin's scripts are gone; preflight_reconcile.py's comments no longer
+# point at them, and work.md says stage_plan.py, not /design sequence.
+version: 0.58.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

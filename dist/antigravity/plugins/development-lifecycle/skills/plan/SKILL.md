@@ -17,13 +17,13 @@ You are running the **plan** phase of the developer-workflows loop. Turn a brief
 
 ## When to use
 
-If the brief is underspecified, run `/interview-me` first. If it's a non-trivial feature, run `/spec` first to produce `SPEC.md`, then pass `SPEC.md` to `/plan`.
+Every task is graded against a spec. If the task has none, run `/spec` first: it asks at most 5 questions when the brief is ambiguous, writes the spec, and you approve it once. Then pass the spec to `/plan`.
 
 ## Non-negotiable constraints
 
 1. **Do not write any application code.** Implementation is the `/work` phase.
 2. **Read the resolved `PLAN.md` and `progress.md` first** (the paths agentm gives: a task under `--name` and `--stage`, and for a bare call in a repo with no vault its repo-local singleton; `--activate` is promote-only and reads no plan). If a plan is in flight (`plan_tracker.py status` says `active`, from its tracker) and the new brief is related, **ask** "continue or replace?" — never silently overwrite.
-3. **Interview only if the brief is ambiguous** (≤5 batched questions). Skip if it's clear or derivable from the codebase.
+3. **Every task has a spec.** If it has none, run `/spec` (step 2): at most 5 batched questions, only when the brief is ambiguous. The plan's steps point to the spec; they do not restate it.
 4. **Write the plan using the PLAN.md shape** below.
 5. **Update `features.json`** (the project's desk copy — see step 5) only if this plan introduces net-new user-visible features.
 6. **Dispatch the `documenter` sub-agent** (via the `wiki-maintenance` capability probe — exit 0 dispatch, exit 1 skip) once `PLAN.md` is written, to create `pending` pages for steps affecting user-visible behavior or architecture.
@@ -44,26 +44,20 @@ Read the plan's status first: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_track
 - **Bare `/plan`** (no flag) — run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/resolve_plan.py"` with no name. Where it exits **4**, the project keeps its plans in numbered tasks and has no singleton: propose a verb-first task name from the brief (e.g. `build-the-brief`), wait for the operator to confirm or change it, and continue as `--name <that name>`. When the brief is arc-sized (more than one task's work), say so and point to `/design` instead: an arc is a design with parts, and each part becomes a task of its own. Where it exits **0**, you are in a repo with no vault, and agentm has answered its repo-local singleton (`.harness/PLAN.md`, `progress.md`, `tracker.md`): every step below targets those paths. Where it exits **1**, agentm is not installed: stop and say so — development-lifecycle keeps its plans through agentm.
 - **`--name <slug> <brief>`** — author a named, *active* plan **directly** to the paths `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/resolve_plan.py" <slug>` resolves. It prints three tab-separated fields, `<plan>\t<progress>\t<tracker>`: a task's `plan.md` / `progress.md` / `tracker.md` in `tasks/<name>/`, or, in a repo with no vault, the repo-local flat `PLAN-<slug>.md` / `progress-<slug>.md` / `tracker-<slug>.md` agentm keeps in `.harness/`. The third field is empty when agentm names no tracker. These are the paths `/work --name` reads. The quick single-worker path: the plan is live the moment it's written. The rest of `<what the user typed after /plan>` is the brief; every read/write below targets these paths.
 - **`--stage <slug> <brief>`** — author the plan as a **queued task**: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/stage_plan.py" path <slug>` prints the task's own `plan.md`, since a queued task is its own staging tier. The task stays **inert** — kept that way by the `queued` tracker step 7b opens — so a coordinator can pre-author a batch of worker tasks, one each. Only a task stages: where agentm answers a flat plan (a repo with no vault), `path` exits 2 and writes nothing; author it with `--name` instead. The rest of `<what the user typed after /plan>` is the brief; every read/write below targets the **staging path**. Step 4 writes the plan there, and step 8 logs to the task's own progress log (the resolver's second field).
-- **`--activate <slug>`** — a **promote-only** verb, *not* an authoring run: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/stage_plan.py" activate <slug>` activates a queued task in place — its tracker's move to `active` is the activation, and nothing is copied. Report the activated path, append an `activated plan "<slug>"` line to the task's own `progress.md` (the resolver's second field), and **stop — `--activate` bypasses steps 2–8 entirely** (no interview, no decompose, no plan write). It refuses (writes nothing) when the task's plan is missing, it has no tracker, or its tracker isn't `queued`, and when agentm answers a flat plan — that exit 2 + stderr is a hard stop (Risk #7). The operator runs `/work --name <slug>` next.
+- **`--activate <slug>`** — a **promote-only** verb, *not* an authoring run: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/stage_plan.py" activate <slug>` activates a queued task in place — its tracker's move to `active` is the activation, and nothing is copied. Report the activated path, append an `activated plan "<slug>"` line to the task's own `progress.md` (the resolver's second field), and **stop — `--activate` bypasses steps 2–8 entirely** (no spec, no decompose, no plan write). It refuses (writes nothing) when the task's plan is missing, it has no tracker, or its tracker isn't `queued`, and when agentm answers a flat plan — that exit 2 + stderr is a hard stop (Risk #7). The operator runs `/work --name <slug>` next.
   - **Pre-flight reconcile (LC-6) — exit 3 is a benign no-op, not an error.** Before the activation, `activate` runs a cheap reconcile: if the staged plan declares the net-new files it ships under an `expected_artifacts:` frontmatter list and **every one already exists on `main`**, the lane is **already shipped** — `activate` exits **3** with `already shipped — nothing to do` and writes nothing. Treat exit 3 as "report the message and stop — do **not** activate or `/spawn-worker`"; it means the work is done, not that something failed. The guard is **dormant unless the plan opts in** (no `expected_artifacts` → activates exactly as before). A coordinator staging a batch declares each plan's net-new artifacts (e.g. `expected_artifacts: [src/foo/new_helper.py, wiki/decisions/0099-x.md]`) so a sibling lane that already shipped that work isn't re-launched. `/spawn-worker` runs the same reconcile as a backstop.
 
 ### 1b. Ground in the governing design (Hook 2 · design-doc §6)
 
 Before decomposing, resolve the **living design that governs this work** and read a *bounded* slice — so the plan is built on the locked architectural calls, not in ignorance of them.
 
-1. **Resolve.** Pick the plan's primary target (a representative repo-relative path the work will touch, or a known `area:` name) and run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" governing-design <target>`. **Exit 0** → it prints the governing design's repo-relative path. **Exit 1** → greenfield (no design governs this) *or* agentm absent — both mean "no design to read"; proceed as greenfield. Deterministic; any failure resolves to greenfield, never a hang. (The bridge passes `--root` = cwd so it resolves *this* repo's `wiki/designs/`.)
+1. **Resolve.** Pick the plan's primary target (a representative repo-relative path the work will touch, or a known `area:` name) and run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" governing-design <target>`. **Exit 0** → it prints the governing design's repo-relative path. **Exit 1** → no `wiki/designs/` page governs this, or agentm is absent: look in the vault next. (The bridge passes `--root` = cwd so it resolves *this* repo's `wiki/designs/`.) **Then the vault.** `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/vault_designs.py" find <target> --cwd .` prints the path of the project's living design note that governs the target. **Exit 0** → read it as step 2 says. **Exit 1** (no note governs it) or **exit 3** (no vault, or agentm absent) → greenfield; proceed as greenfield. Deterministic; any failure resolves to greenfield, never a hang.
 2. **Bounded read — never the whole arc.** On exit 0, read **only** the design's YAML frontmatter **and** its `## Locked design calls` section — cap ≈400 lines. A folded arc can be tens of thousands of tokens; reading it whole on every `/plan` blows the token floor the operator just trimmed. If the design has no `## Locked design calls` section, read the frontmatter + at most the first ≈400 lines.
 3. **Cite or assert greenfield.** Set the plan's `parent_design_doc:` frontmatter to the resolved path (omit when greenfield), and in `## Locked design calls` either record the locked calls this plan must honor (cite the design) or write `Greenfield — no governing design.` Set `touches_architecture: true` when the work changes architecture the design governs, else `false` (the Hook 3 gate keys off it).
 
-### 2. Interview, if ambiguous
+### 2. Anchor: the spec
 
-The single most valuable thing this phase does. Before writing, confirm:
-- **Scope boundary** — what's explicitly out of scope? Name at least one thing.
-- **Success criterion** — how will we know this is done? If the user can't answer, the plan is premature.
-- **Non-obvious constraints** — performance budgets, compatibility, deadlines, regulated behavior.
-- **Risk surface** — what part of the system is this most likely to break? What's load-bearing nearby?
-
-Keep it ≤5 questions, batched. Default to *not* asking when the answer is derivable. Interview fatigue is a real failure mode.
+Every task is graded against a spec: Goal, Done when, Rules (each with its source), Not doing, Open questions. If the task has none, run **`/spec`** now, with `--plan <the resolved plan path>` (add `--multi` when one spec covers several tasks). It asks at most 5 questions, batched, and only when the brief is ambiguous; you approve it once. Its Done when is this plan's success criterion and its Not doing is the plan's out-of-scope, so do not ask those again. A task that already has a spec (`spec.md` beside the plan, or one the brief names) keeps it.
 
 ### 3. Decompose into steps
 
@@ -100,6 +94,9 @@ touches_architecture: true | false
 
 ### 1. <Step title>
 - **What:** <1-2 sentences>
+- **Anchor:** <path to the spec this step is graded against>
+- **Profile:** build | create | both
+- **Size:** small | medium | large
 - **Work-type (optional):** <a token-audit routing_table.py work-type key, e.g. `mechanical-log-scraping` — only when the step's own dispatch shape is distinct from the plan's default `worker-build`>
 - **Tier hint (auto, only present when Work-type is set):** <rendered via `classify_work_type.render_tier_hint(work_type)` — never hand-typed>
 - **Verification:** <executable if possible>
@@ -112,6 +109,8 @@ touches_architecture: true | false
 ## Verification strategy
 <Which deterministic gates apply + project-specific extras.>
 ```
+
+**Anchor, Profile and Size** tell `/work` how to run the step's loop (`/build-it` or `/create-it`). Anchor is the spec's path. Profile is `build` for code, `create` for art, sound, UI look or prose, `both` for a step that makes both. Size is your call: `small` (a few lines, no new behaviour), `medium` (one feature or fix), `large` (a new module, a changed contract, roughly 300 changed lines or 8 files). A step with none of the three is a legacy step: `/work` treats it as `build`, `medium`, anchored to the plan.
 
 **No Status line.** The plan carries no `**Status:**` line: its status is its tracker's, which step 7b opens at `queued`. Each step keeps its own `- **Status:** [ ]` checkbox.
 

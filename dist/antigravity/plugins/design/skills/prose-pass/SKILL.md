@@ -37,7 +37,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/prose_pass.py" path/to/doc.md \
 
 The script assembles a four-block prompt — task header, your fact-guard list, the operator's voice pack (the voice kernel plus the genre overlay, inlined verbatim from the vault), the document — and sends it to `agy` in one shot. The kernel is the `## Voice` section of `<vault>/standards/user-preferences.md`, and the script inlines that whole file; on a vault from before the memory-root trims it finds the older `voice-kernel.md` in the memory space instead. For a genre other than design docs, point `--overlay` at the matching file in the vault's voice library (`<vault>/standards/voice/` on the current vault layout — the vault-root sibling of the memory root — with `Projects/_global/wiki-style/` and older project-space rungs probed as fallbacks). The vault resolves at runtime; never pass a remembered absolute path.
 
-The script asks `agy` for Gemini 4 Argon (High). To use another model, set `PROSE_PASS_MODEL` or pass `--model`, with the name exactly as `agy models` prints it; `--model` wins over the variable.
+The script asks `agy` for Gemini 4 Hydrogen (High), the `wording` tier of `cross-review.sh`. To use another model, set `PROSE_PASS_MODEL` or pass `--model`, with the name exactly as `agy models` prints it; `--model` wins over the variable.
 
 | Exit | Meaning | What you do |
 |---|---|---|

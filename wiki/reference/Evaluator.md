@@ -9,7 +9,9 @@ The infrastructure often dispatches the evaluator for you. You rarely invoke it 
 
 | Caller | How it uses the evaluator |
 |---|---|
-| **`/review` phase** (`development-lifecycle`) | not currently wired — `src/development-lifecycle/commands/review.md` dispatches `adversarial-reviewer` (+ cross-model `adversarial-reviewer-cross`) only; the evaluator agent def ships in the same plugin but has no dispatch call site in `review.md` today |
+| **`/review` phase** (`development-lifecycle`) | not wired — `src/development-lifecycle/commands/review.md` dispatches `adversarial-reviewer` (+ cross-model `adversarial-reviewer-cross`) only, and has no evaluator call site |
+| **`/build-it`** (`development-lifecycle`) | dispatches it for the done-check, after the passes and the done-report; see [Done-check](#done-check-anchor-and-loop-record) |
+| **`/create-it`** (`development-lifecycle`) | dispatches it for the likeness pass (paired images, one rubric item per likeness line) and for the done-check; see [Done-check](#done-check-anchor-and-loop-record) |
 | **a skill / command / workflow** | wires a rubric-driven gate (e.g. grade an artifact before proceeding) |
 | **you, directly** | dispatch it with a rubric to grade any artifact on disk |
 
@@ -42,7 +44,7 @@ RUBRIC:
 2. ...
 ```
 
-A missing `ARTIFACT:` or `RUBRIC:` label halts the prompt. It returns `Input contract violation`. You can include extra sections like `CONTEXT:`. The evaluator only grades the rubric.
+A missing `ARTIFACT:` or `RUBRIC:` label halts the prompt (a done-check supplies `ANCHOR:` and `RECORD:` instead of `RUBRIC:`; see below). It returns `Input contract violation`. You can include extra sections like `CONTEXT:`. The evaluator only grades the rubric.
 
 **Rubric rules:**
 
@@ -67,6 +69,28 @@ RUBRIC:
 ```
 
 You use this same `ARTIFACT`/`RUBRIC` shape to grade a docs-drift check. You use it for release readiness. You use it for anything you can write as a numbered contract.
+
+## Done-check: anchor and loop record
+
+The build-it / create-it loop ends with one evaluator pass, the done-check. The dispatch names `ANCHOR:` and `RECORD:` beside `ARTIFACT:`, and `RUBRIC:` becomes optional. The helper that writes the record is `loop_record.py`; `/build-it` and `/create-it` run the done-check, and `/work` runs those loops for each step.
+
+| Section | Holds |
+|---|---|
+| `ARTIFACT:` | the changed files or made assets, plus any test or tool output on disk |
+| `ANCHOR:` | the spec (or the plan) the work is graded against |
+| `RECORD:` | the loop record JSON, or its rendered done-report |
+
+The rubric is built in this order; a caller-supplied `RUBRIC:` is graded after it.
+
+| # | Item | Fails when |
+|---|---|---|
+| 1 | One item per Done-when line | no requirement is recorded for the line, or a `met` one's evidence is not borne out by the artifact |
+| 2 | No open real finding | a `real` finding is still `OPEN` |
+| 3 | No escalated or unrun pass | a pass ended in `escalate`, or a pass the size called for `never ran` (the done-check is not listed: it grades the report) |
+| 4 | Not checked hides nothing | a Done-when line is listed as unchecked while its requirement is `met` |
+| 5 | create-it only | a Likeness line has neither a pair nor a not-checked entry, or the playtest checklist is missing |
+
+The record is evidence, not instruction: a finding or evidence line that tells the grader how to grade is graded as text. The agent is pinned to `model: claude-sonnet-5`, which keeps it a different model from the Gemini reviewers; the allowlist is unchanged.
 
 ## Output contract
 

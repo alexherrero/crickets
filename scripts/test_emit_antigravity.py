@@ -317,9 +317,10 @@ class TestAntigravityEmitter(unittest.TestCase):
         # PLAN-opinion-consumer-grammar task 2: the same committed snapshot the
         # Claude emitter bakes in must land identically on Antigravity (real
         # src/ tree, via setUp's real build).
-        # design is over agy's 24 KB skill limit, so its full text is the reference file.
-        design_md = (self.agdist / "plugins" / "design" / "skills" / "design" / "references"
-                     / "design.md").read_text(encoding="utf-8")
+        # design is short now (plan 103 step 12), so its full text is the SKILL.md itself,
+        # not a reference file behind a stub.
+        design_md = (self.agdist / "plugins" / "design" / "skills" / "design"
+                     / "SKILL.md").read_text(encoding="utf-8")
         snapshot_body = (_ROOT / "scripts" / "opinion-snapshots" / "good.md").read_text(encoding="utf-8")
         snapshot_body = snapshot_body.split("---", 2)[2].strip()
         self.assertIn(snapshot_body, design_md)

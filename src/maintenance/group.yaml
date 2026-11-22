@@ -37,5 +37,7 @@ standalone: false
 #          under agentm's default `memory` group instead of `personal`, the
 #          memory space's retired name, and runs every load of and call into
 #          save.py with agentm's own scripts behind their bare names.
-version: 0.2.8
+# 0.2.9 = sibling_plugin.py's docstring no longer names the retired /design translate
+#          (plan 103, step 12); the copy stays byte-identical across plugins.
+version: 0.2.9
 capabilities: [github-ci, ci-repair, maintenance]

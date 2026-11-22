@@ -63,32 +63,68 @@
 
 set -uo pipefail
 
-# The strongest Gemini that `agy models` serves, as its exact display string
-# -- `--model` takes it verbatim. Confirmed live 2026-10-16 on agy 1.4.0:
-# Gemini 4 Argon Low/Medium/High, Gemini 3.8 Flash Low/Medium/High, Claude
-# Opus 5.5 and Sonnet 5.5 Low/Medium/High, GPT-OSS 120B (Medium). agy 1.4.0
-# rejects a name it no longer serves with "is not recognized as a known
+# Model tiers. A tier is one model, one print timeout and one material
+# ceiling; --tier <name> or CROSS_REVIEW_TIER picks it (the flag wins).
+#   default -- Gemini 4 Neon (Medium): the reviewer for ordinary passes.
+#   high    -- Gemini 4 Neon (High), 300s: direction checks and correctness on
+#              large tasks, where a slower, deeper read is worth the wait.
+#   wording -- Gemini 4 Hydrogen (High): wording and voice only.
+# The names are agy's display strings, exactly as `agy models` prints them --
+# `--model` takes them verbatim. Confirmed served on agy 1.5.14 (2026-11-21).
+# agy rejects a name it no longer serves with "is not recognized as a known
 # model" on stderr and exit 1 in about 3s, so a retired pin degrades every
-# review: "Gemini 3.1 Pro (High)" did from 2026-10-16. The marker then says
-# agy does not serve the model; until 0.4.2 it said only "agy returned no
-# output", and agy's error line fell outside the five stderr lines kept. When
-# `agy models` changes, CROSS_REVIEW_MODEL names another model without
-# editing this file.
-MODEL="${CROSS_REVIEW_MODEL:-Gemini 4 Argon (High)}"
-
-# How long agy's print mode waits for the answer, in seconds.
-PRINT_TIMEOUT_SECS=180
-
-# Review material over this many bytes degrades before agy is called (exit
+# review (as "Gemini 3.1 Pro (High)" did from 2026-10-16); the marker then
+# says agy does not serve the model. When `agy models` changes,
+# CROSS_REVIEW_MODEL names another model without editing this file, and
+# CROSS_REVIEW_TIMEOUT_SECS / CROSS_REVIEW_MAX_BYTES override the tier's print
+# timeout and material ceiling the same way.
+#
+# Review material over a tier's ceiling degrades before agy is called (exit
 # 1): past it a review measurably outruns the print timeout, and the call
-# would only burn it. Measured 2026-09-13 with this framing and model, one
-# call at a time, on code diffs: 34 KB answered in 112s, 50 KB in 154s,
-# 67 KB in 197s, 130 KB in 239s. Of eleven runs at 67 KB or more, the
-# agentm plan 07 review's five among them, one finished inside 180s: an
-# 84 KB design doc, in 146s (another, 82 KB, took 304s). 50 KB is the
-# largest code review measured inside the timeout; move the two together.
+# would only burn it. Measured 2026-09-13 on Gemini 4 Argon, code diffs, one
+# call at a time: 34 KB answered in 112s, 50 KB in 154s, 67 KB in 197s, 130 KB
+# in 239s. Of eleven runs at 67 KB or more, the agentm plan 07 review's five
+# among them, one finished inside 180s: an 84 KB design doc, in 146s (another,
+# 82 KB, took 304s). 50 KB is the largest code review measured inside 180s,
+# so it stays the ceiling for the 180s tiers. The `high` ceiling (80 KB) is
+# set from the same curve for its 300s timeout and is not yet measured on
+# Neon; the plan's model re-test is where it gets confirmed or moved.
 # CROSS_REVIEW_MAX_BYTES overrides the ceiling; 0 turns the check off.
-MAX_MATERIAL_BYTES=50000
+TIER="${CROSS_REVIEW_TIER:-default}"
+
+# tier_defaults <tier> -- the tier table: sets MODEL, PRINT_TIMEOUT_SECS and
+# MAX_MATERIAL_BYTES. Returns 1 on an unknown tier. A test that cannot wait
+# out a real timeout or push a real ceiling's worth of bytes redefines this
+# one function after sourcing the script; the override logic below stays real.
+tier_defaults() {
+  case "$1" in
+    default) MODEL="Gemini 4 Neon (Medium)";   PRINT_TIMEOUT_SECS=180; MAX_MATERIAL_BYTES=50000 ;;
+    high)    MODEL="Gemini 4 Neon (High)";     PRINT_TIMEOUT_SECS=300; MAX_MATERIAL_BYTES=80000 ;;
+    wording) MODEL="Gemini 4 Hydrogen (High)"; PRINT_TIMEOUT_SECS=180; MAX_MATERIAL_BYTES=50000 ;;
+    *) return 1 ;;
+  esac
+}
+
+# tier_settings <tier> -- the tier's values, then the three overrides on top.
+# Returns 1 on an unknown tier. A malformed timeout or byte-count override is
+# ignored with a note on stderr, not an error: it is a typo in the
+# environment, not a reason to lose the review.
+tier_settings() {
+  tier_defaults "$1" || return 1
+  [[ -n "${CROSS_REVIEW_MODEL:-}" ]] && MODEL="$CROSS_REVIEW_MODEL"
+  case "${CROSS_REVIEW_TIMEOUT_SECS:-}" in
+    '') ;;
+    *[!0-9]*|0) echo "cross-review: ignoring CROSS_REVIEW_TIMEOUT_SECS='${CROSS_REVIEW_TIMEOUT_SECS}', not a positive number of seconds" >&2 ;;
+    *) PRINT_TIMEOUT_SECS=$((10#$CROSS_REVIEW_TIMEOUT_SECS)) ;;
+  esac
+  case "${CROSS_REVIEW_MAX_BYTES:-}" in
+    '') ;;
+    *[!0-9]*) echo "cross-review: ignoring CROSS_REVIEW_MAX_BYTES='${CROSS_REVIEW_MAX_BYTES}', not a byte count" >&2 ;;
+    *) MAX_MATERIAL_BYTES=$((10#$CROSS_REVIEW_MAX_BYTES)) ;;
+  esac
+  return 0
+}
+tier_settings default
 
 # Use `read -r -d ''` for the heredoc assignment — `$(cat <<'EOF'...)` gets
 # confused by backticks inside fenced code blocks in the prompt body.
@@ -218,6 +254,22 @@ ask_agy() {
 }
 
 main() {
+  # --tier <name> / --tier=<name> beats CROSS_REVIEW_TIER. An unknown tier or
+  # argument exits 2 before agy is touched: the caller asked for something
+  # this script does not do, which is not a reason to fall back to another
+  # model.
+  while (( $# )); do
+    case "$1" in
+      --tier)
+        [[ $# -ge 2 ]] || { echo "cross-review: --tier needs a name (default, high or wording)" >&2; exit 2; }
+        TIER="$2"; shift 2 ;;
+      --tier=*) TIER="${1#--tier=}"; shift ;;
+      *) echo "cross-review: unknown argument '$1' (usage: cross-review.sh [--tier default|high|wording] < material)" >&2; exit 2 ;;
+    esac
+  done
+  tier_settings "$TIER" \
+    || { echo "cross-review: unknown tier '${TIER}' (use default, high or wording)" >&2; exit 2; }
+
   command -v agy >/dev/null 2>&1 \
     || degrade 1 "agy CLI unavailable" "cross-review: agy CLI not found — caller should fall back"
 
@@ -226,11 +278,6 @@ main() {
     || degrade 2 "no review material on stdin" "cross-review: no review material on stdin"
 
   local ceiling="$MAX_MATERIAL_BYTES" bytes
-  case "${CROSS_REVIEW_MAX_BYTES:-}" in
-    '') ;;
-    *[!0-9]*) echo "cross-review: ignoring CROSS_REVIEW_MAX_BYTES='${CROSS_REVIEW_MAX_BYTES}', not a byte count" >&2 ;;
-    *) ceiling=$((10#$CROSS_REVIEW_MAX_BYTES)) ;;
-  esac
   bytes=$(printf '%s' "$material" | LC_ALL=C wc -c)
   bytes=$((bytes))
   if (( ceiling > 0 && bytes > ceiling )); then

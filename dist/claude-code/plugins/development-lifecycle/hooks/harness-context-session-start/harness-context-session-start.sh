@@ -99,6 +99,21 @@ if [[ -d "$DESIGNS_DIR" ]]; then
     fi
 fi
 
+# ── Vault living designs (paths only, bounded, ≤4) ──────────────────────────────
+# The project's own design notes live in its vault, beside the repo's wiki/designs/.
+# vault_designs.py asks agentm where, with a short timeout so boot never waits on it.
+# Graceful-skip when the plugin root, the script, python3 or agentm is missing.
+VAULT_DESIGNS_PY="${CLAUDE_PLUGIN_ROOT:-}/scripts/vault_designs.py"
+if [[ -n "${CLAUDE_PLUGIN_ROOT:-}" && -f "$VAULT_DESIGNS_PY" ]] && command -v python3 >/dev/null 2>&1; then
+    VAULT_DESIGNS="$(python3 "$VAULT_DESIGNS_PY" list --cwd "$EVENT_CWD" --limit 4 --timeout 3 2>/dev/null || true)"
+    if [[ -n "$VAULT_DESIGNS" ]]; then
+        echo "[developer-workflows] Living designs (vault) — /plan resolves the governing one:"
+        while IFS= read -r d; do
+            [[ -n "$d" ]] && echo "  design: $d"
+        done <<< "$VAULT_DESIGNS"
+    fi
+fi
+
 # ── Session-start tier + advisor nudge (PLAN-efficiency-dispatch task 7) ────────
 # Compares the live session model against the active plan's next unchecked
 # task's staged tier hint (task 6) and states advisor availability (task 3) —

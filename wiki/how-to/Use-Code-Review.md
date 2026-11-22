@@ -32,6 +32,8 @@
 
    Prose-only critiques are rejected. When the two reviewers disagree (one finds a defect, one says clean), **both are surfaced** — disagreement is signal. Any `file:line` or failing test is verified to reproduce before it's reported.
 
+   To feed `cross-review.sh` by hand with the contract and rules attached, build the material with `review_material.py --range main..HEAD --anchor <spec>` — see [Code Review](Code-Review#review-material).
+
 4. Act on the findings yourself — `/code-review` reports, it doesn't edit. Standalone, the fixes are yours. (Inside a `/work` loop, the same reviewers feed a follow-up `/work` task instead.)
 
 ## Cross-review privacy note
@@ -40,7 +42,7 @@ The cross-model pass sends your diff to **Gemini, via the Antigravity CLI (`agy`
 
 - It's **operator-opt-in per invocation** — the cross-model reviewer runs only when you invoke `/code-review` and `agy` is present.
 - The model is **editable** — point the cross-review reviewer at `claude` instead of `agy` to keep the diff inside your model boundary.
-- It **graceful-skips** when `agy` is absent, unauthed, or out of time (it waits 180 seconds for an answer), and when the diff is over `cross-review.sh`'s size ceiling: the script exits non-zero, prints a `CROSS-REVIEW-DEGRADED: <reason>` line saying which, and the command falls back to the in-process `adversarial-reviewer` (same model, no external send).
+- It **graceful-skips** when `agy` is absent, unauthed, or out of time (it waits 180 seconds for an answer, 300 on the `high` tier — see [Code Review](Code-Review#cross-review-tiers)), and when the diff is over `cross-review.sh`'s size ceiling: the script exits non-zero, prints a `CROSS-REVIEW-DEGRADED: <reason>` line saying which, and the command falls back to the in-process `adversarial-reviewer` (same model, no external send).
 - The in-process `adversarial-reviewer` always stays on the current model — it never sends the diff anywhere.
 
 ## See also

@@ -92,7 +92,23 @@ description: Standalone adversarial code review of any diff or PR — the advers
 # skills, which is how an agy plugin gets a /name.
 # 0.4.4 = cross-review.sh runs agy with AGENTM_AGY_RECALL=off, so agentm's agy
 # recall plugin does not put the operator's memory vault in front of the reviewer.
-version: 0.4.4
+# 0.5.0 = cross-review.sh picks its model by tier, not one pin: --tier (or
+# CROSS_REVIEW_TIER) takes default (Gemini 4 Neon Medium, 180s, 50 KB), high
+# (Neon High, 300s, 80 KB: direction and large-task correctness) or wording
+# (Gemini 4 Hydrogen High: wording and voice). CROSS_REVIEW_MODEL,
+# CROSS_REVIEW_TIMEOUT_SECS and CROSS_REVIEW_MAX_BYTES still win; an unknown
+# tier or argument exits 2 before agy is called. Gemini 4 Argon (High) is no
+# longer the default. Plan 103 (build-it / create-it loop), step 1.
+# 0.6.0 = scripts/review_material.py (plan 103, step 3): builds the text a
+# reviewer is shown, as === ARTIFACT === / === CONTRACT === / === RULES ===,
+# from a git range, the working tree, a PR or a file list. RULES comes from the
+# anchor first (a spec's Rules with their sources, else a plan's locked calls
+# and constraints, plus a likeness list), then the AGENTS.md / CLAUDE.md
+# paragraphs that share the most terms with the change, under a 40-line cap and
+# the tier's byte ceiling. It reads no reasoning and is told no suspected bug;
+# a missing anchor gives an empty RULES with the reason. scripts/spec_doc.py is
+# a byte-identical copy of development-lifecycle's (it parses the spec).
+version: 0.6.0
 category: Coding
 requires: []
 standalone: true

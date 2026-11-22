@@ -40,13 +40,15 @@ cwt = _load("classify_work_type")
 
 # command name -> what classify_work_type resolves it to; the test asserts
 # the nudge text contains THAT resolution, not a value typed here twice.
-_PHASE_COMMANDS = ("plan", "review", "design", "spec", "interview-me", "work", "bugfix")
+_PHASE_COMMANDS = ("plan", "review", "design", "spec", "work", "bugfix")
 
 
 class TestCommandRoutingNudgeMatchesTable(unittest.TestCase):
     def _nudge_text(self, command: str) -> str:
-        # design/spec/interview-me re-homed to the design plugin (task 4).
-        base = _DESIGN_COMMANDS if command in ("design", "spec", "interview-me") else _COMMANDS
+        # design lives in the design plugin; /spec moved back to
+        # development-lifecycle with the build-it/create-it loop (plan 103),
+        # and /interview-me is gone (/spec asks its own five questions).
+        base = _DESIGN_COMMANDS if command == "design" else _COMMANDS
         return (base / f"{command}.md").read_text(encoding="utf-8")
 
     def test_every_phase_command_has_a_classifiable_work_type(self):
@@ -72,7 +74,7 @@ class TestCommandRoutingNudgeMatchesTable(unittest.TestCase):
             self.assertEqual(cwt.classify_work_type(role_name=command).model_id, "opusplan")
 
     def test_authoring_commands_resolve_to_sonnet_5(self):
-        for command in ("plan", "review", "design", "spec", "interview-me"):
+        for command in ("plan", "review", "design", "spec"):
             self.assertEqual(cwt.classify_work_type(role_name=command).model_id, "claude-sonnet-5")
 
 

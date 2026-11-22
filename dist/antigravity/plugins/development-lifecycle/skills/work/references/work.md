@@ -110,11 +110,11 @@ Once step 1.5 has bound the session, on a first run or a resume, name the step a
 
 `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" step --plan <plan> --tracker <tracker> --state "<what is true now, and which step starts>" --next "Step N: <title>"`
 
-It opens a tracker the plan doesn't have yet (a plan written before trackers, or a part staged by `/design sequence`), moves a `queued` or `parked` one to `active`, and rewrites an `active` one in place. It never writes the plan file. **Exit 3** — announce the reason and carry on without a tracker, logging the step to progress. **Exit 1** — a hard stop: surface stderr.
+It opens a tracker the plan doesn't have yet (a plan written before trackers, or a plan staged by `stage_plan.py`), moves a `queued` or `parked` one to `active`, and rewrites an `active` one in place. It never writes the plan file. **Exit 3** — announce the reason and carry on without a tracker, logging the step to progress. **Exit 1** — a hard stop: surface stderr.
 
 ### 2. Safety pre-check (before each step)
 
-The session assumes the **full step list** — it does not ask permission per step. Before starting each step, run a go/no-go safety pre-check: **proceed autonomously if the step is safe; stop and ask only when it isn't, or when an important clarification is needed.** Triggers to stop — the step performs a genuinely **unrecoverable** action (per the recoverability gate above: recoverable actions proceed announced; only force-push rewriting published shared history, sole-ref delete of unmerged work, published-tag overwrite, or an immutable deploy/migration stops); needs a decision that isn't locked (an **unresolved decision** — stop, ask, and log it as a design/plan gap); turns out bigger or different than the plan said (scope drift); has a verification that can't be made executable or an unmet prerequisite; or surfaces a failing test that invalidates its premise. Before you stop, record it: `plan_tracker.py step` with `--state` naming the trigger and `--next` naming what the run is waiting on (exit 3 is announced and ignored). Then state the trigger plainly and wait — even mid-plan. Otherwise proceed to step 3.
+The session assumes the **full step list** — it does not ask permission per step. Before starting each step, run a go/no-go safety pre-check: **proceed autonomously if the step is safe; stop and ask only when it isn't, or when an important clarification is needed.** Triggers to stop — the step performs a genuinely **unrecoverable** action (per the recoverability gate above: recoverable actions proceed announced; only force-push rewriting published shared history, sole-ref delete of unmerged work, published-tag overwrite, or an immutable deploy/migration stops); needs a decision that isn't locked (an **unresolved decision** — stop, ask, and log it as a design/plan gap); turns out bigger or different than the plan said (scope drift); has a verification that can't be made executable or an unmet prerequisite; or surfaces a failing test that invalidates its premise. Before you stop, record it: `plan_tracker.py step` with `--state` naming the trigger and `--next` naming what the run is waiting on (exit 3 is announced and ignored). Then state the trigger plainly and wait — even mid-plan. For a `medium` or `large` step the pre-check includes the **direction check** (step 4's loop, below): a real finding there means the approach is wrong, which is a stop trigger like the rest. Otherwise proceed to step 3.
 
 ### Common Rationalizations
 
@@ -156,6 +156,7 @@ If the step touches unfamiliar code, dispatch the `explorer` sub-agent for read-
 
 ### 4. Implement
 
+- **Run the step's loop.** Read the step's `**Anchor:**`, `**Profile:**` and `**Size:**`. `build` follows `/build-it --spec <Anchor> --size <Size>`; `create` follows `/create-it` the same way; `both` runs each for its own files. Do not copy them here: their steps are the loop. The direction check comes first, before any code (a `small` step has none). Making is this step's work, the loop's free checks are step 5's gates (run them once), and its review passes run once those are green. A step with none of the three tags is a legacy step: `build`, `medium`, anchored to the plan.
 - Write code that satisfies the step's **What**. Write the tests that satisfy its **Verification** in the **same session** — tests-after is an anti-pattern; verification lands with the implementation.
 - Follow project conventions (formatters, naming, layout). If the step implies a deviation, flag it and ask.
 - **Do not touch `wiki/`** — documentation is the step-8 phase boundary, not inline.
@@ -187,6 +188,8 @@ Append to the **resolved `progress.md`** (the resolver's second field — the ta
 ```
 <YYYY-MM-DD HH:MM> /work — completed step N: "<title>" (<filesChanged> files, <testsAdded> tests)
 ```
+
+When the step ran a loop at `medium` or `large`, paste its done-report (`loop_record.py report`) under that line, so the next session sees what was checked and what was not.
 
 ### 8. Update the wiki (post-gates, graceful-skip)
 
