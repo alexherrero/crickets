@@ -114,8 +114,13 @@ tier_settings() {
   [[ -n "${CROSS_REVIEW_MODEL:-}" ]] && MODEL="$CROSS_REVIEW_MODEL"
   case "${CROSS_REVIEW_TIMEOUT_SECS:-}" in
     '') ;;
-    *[!0-9]*|0) echo "cross-review: ignoring CROSS_REVIEW_TIMEOUT_SECS='${CROSS_REVIEW_TIMEOUT_SECS}', not a positive number of seconds" >&2 ;;
-    *) PRINT_TIMEOUT_SECS=$((10#$CROSS_REVIEW_TIMEOUT_SECS)) ;;
+    *[!0-9]*) echo "cross-review: ignoring CROSS_REVIEW_TIMEOUT_SECS='${CROSS_REVIEW_TIMEOUT_SECS}', not a positive number of seconds" >&2 ;;
+    # read it as a number before testing it: "00" is zero too
+    *) if (( 10#$CROSS_REVIEW_TIMEOUT_SECS == 0 )); then
+         echo "cross-review: ignoring CROSS_REVIEW_TIMEOUT_SECS='${CROSS_REVIEW_TIMEOUT_SECS}', not a positive number of seconds" >&2
+       else
+         PRINT_TIMEOUT_SECS=$((10#$CROSS_REVIEW_TIMEOUT_SECS))
+       fi ;;
   esac
   case "${CROSS_REVIEW_MAX_BYTES:-}" in
     '') ;;

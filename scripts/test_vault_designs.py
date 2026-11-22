@@ -128,6 +128,14 @@ class FindTests(TmpCase):
         for _ in range(3):
             self.assertEqual(vd.find(vd.scan(self.dir), "t").slug, "also-new")
 
+    def test_a_timestamp_ranks_above_the_same_day_date(self):
+        # #287: the old key negated each character, which reverses order only for strings
+        # of one length; "2026-04-10" is a prefix of "2026-04-10T15:30:00Z".
+        note(self.dir, "z-older", slug="z-older", status="active", updated="2026-04-10", aliases="[topic]")
+        note(self.dir, "a-newer", slug="a-newer", status="active", updated="2026-04-10T15:30:00Z", aliases="[topic]")
+        self.assertEqual(vd.find(vd.scan(self.dir), "topic").slug, "a-newer")
+        self.assertEqual([d.slug for d in vd._newest_first(vd.live(vd.scan(self.dir)))], ["a-newer", "z-older"])
+
     def test_a_note_without_a_date_ranks_last(self):
         note(self.dir, "nodate", slug="nodate", status="active", aliases="[t]")
         note(self.dir, "dated", slug="dated", status="active", updated="2020-01-01", aliases="[t]")

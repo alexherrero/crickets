@@ -173,6 +173,38 @@ class BlockShapeTests(Fixture):
         _, out, _ = self.run_cli("--worktree")
         self.assertIn("+# edited", out)
 
+    def test_the_working_tree_includes_a_new_file_git_does_not_track_yet(self):
+        # #287: `git diff HEAD` never lists an untracked path, so a task that adds a new
+        # module sent its reviewers an empty ARTIFACT before it was committed.
+        (self.repo / "src" / "new_module.py").write_text("def new_module():\n    return 42\n", encoding="utf-8")
+        code, out, _ = self.run_cli("--worktree")
+        self.assertEqual(code, 0)
+        artifact = out.split("\n=== CONTRACT ===\n", 1)[0]
+        self.assertIn("src/new_module.py", artifact)
+        self.assertIn("+def new_module():", artifact)
+        self.assertIn("src/new_module.py", rm.changed_paths(artifact))
+
+    def test_the_working_tree_leaves_out_ignored_files(self):
+        (self.repo / ".gitignore").write_text("build/\n", encoding="utf-8")
+        (self.repo / "build").mkdir()
+        (self.repo / "build" / "out.txt").write_text("generated\n", encoding="utf-8")
+        _, out, _ = self.run_cli("--worktree")
+        self.assertNotIn("build/out.txt", out)
+        self.assertIn(".gitignore", out)  # itself untracked, so it is part of the change
+
+    def test_a_change_with_nothing_in_it_is_refused_loudly(self):
+        # A clean tree or an empty range must never reach a reviewer as an empty artifact.
+        # The fixture leaves spec.md and plan.md untracked; commit them so the tree is clean.
+        _git(self.repo, "add", "-A")
+        _git(self.repo, "commit", "-q", "-m", "anchors")
+        code, out, err = self.run_cli("--worktree")
+        self.assertEqual(code, 2)
+        self.assertEqual(out, "")
+        self.assertIn("nothing to review", err)
+        code, _, err = self.run_cli("--range", "HEAD..HEAD")
+        self.assertEqual(code, 2)
+        self.assertIn("nothing to review", err)
+
     def test_a_file_list_shows_text_and_names_an_asset_with_its_size(self):
         (self.repo / "art.png").write_bytes(b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR" + b"\0" * 20)
         _, out, _ = self.run_cli("--files", "src/commit_msg.py", "art.png")

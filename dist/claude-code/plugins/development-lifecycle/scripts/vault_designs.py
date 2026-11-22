@@ -130,12 +130,15 @@ def live(designs: List[Design]) -> List[Design]:
 
 
 def _newest_first(designs: List[Design]) -> List[Design]:
-    return sorted(designs, key=lambda d: (0 if d.updated else 1, _neg(d.updated), d.slug))
+    """Newest `updated:` first, undated notes last, ties by slug.
 
-
-def _neg(s: str) -> tuple:
-    # sort descending on a string without reversing the whole key
-    return tuple(-ord(c) for c in s)
+    Two stable sorts: by slug, then by date descending. A date and a same-day
+    timestamp (`2026-04-10`, `2026-04-10T15:30:00Z`) compare as plain strings,
+    so the later, longer one sorts first.
+    """
+    by_slug = sorted(designs, key=lambda d: d.slug)
+    dated = sorted((d for d in by_slug if d.updated), key=lambda d: d.updated, reverse=True)
+    return dated + [d for d in by_slug if not d.updated]
 
 
 def score(design: Design, target: str) -> int:
