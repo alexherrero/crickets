@@ -15,6 +15,7 @@ what each round found, and when a pass stops.
     loop_record.py pair       --record FILE --reference PATH --made PATH      (create / both)
     loop_record.py playtest   --record FILE --text TEXT                       (create / both)
     loop_record.py report     --record FILE
+    loop_record.py add-security --record FILE      (the finished diff turned out to need it)
 
 The loop is: anchor, size, direction, make, free checks, focused passes, done-report.
 This script holds what a script can settle; the command holds the judgment (what a
@@ -191,6 +192,28 @@ def add_finding(record: Dict[str, Any], name: str, cls: str, line: str, text: st
     if disposition and disposition.strip():
         finding["disposition"] = disposition.strip()
     p["rounds"][-1]["findings"].append(finding)
+
+
+def add_security(record: Dict[str, Any]) -> bool:
+    """Add the security pass after correctness. False when the record already has it.
+
+    `init` takes `--security` from what the plan says; the diff can say more once it
+    exists. Refused where no security pass can run: a small task runs no reviews, and
+    create-only work has no correctness pass for it to follow.
+    """
+    if record["size"] == "small":
+        raise RecordError("a small task runs no reviews; there is nothing to add a security pass to")
+    names = [p["name"] for p in record["passes"]]
+    if "security" in names:
+        return False
+    if "correctness" not in names:
+        raise RecordError("this record has no correctness pass (profile %s); security follows correctness"
+                          % record["profile"])
+    entry = _entry("security", "pass", None, "agent:security-auditor")
+    entry["rounds"] = []
+    record["passes"].insert(names.index("correctness") + 1, entry)
+    record["security"] = True
+    return True
 
 
 def dispose(record: Dict[str, Any], name: str, round_n: int, index: int, disposition: str) -> None:
@@ -430,6 +453,8 @@ def _build_parser() -> argparse.ArgumentParser:
     pt.add_argument("--text", required=True)
     rp = sub.add_parser("report", help="print the done-report as markdown")
     rp.add_argument("--record", required=True)
+    sc = sub.add_parser("add-security", help="add the security pass after correctness")
+    sc.add_argument("--record", required=True)
     return p
 
 
@@ -464,6 +489,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             print(json.dumps(status(rec), indent=2))
         elif args.cmd == "report":
             sys.stdout.write(render_report(rec))
+        elif args.cmd == "add-security":
+            print("added" if add_security(rec) else "already there")
+            save(args.record, rec)
         else:
             if args.cmd == "dispose":
                 dispose(rec, args.pass_name, args.round_n, args.index, args.disposition)

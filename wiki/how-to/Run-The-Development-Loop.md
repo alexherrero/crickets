@@ -28,6 +28,10 @@ When the change is still fuzzy, do the authoring steps first — they feed into 
 - `/spec` writes the anchor every task is graded against: Goal, Done when, Rules (each with its source), Not doing, and Open questions. When the brief is ambiguous it asks at most five batched questions first, and you approve the spec once. `/plan` sends a task that has no spec to `/spec`.
 - `/design` takes a design doc to a human-approved final and splits it into parts, which become the plans you hand to `/work`.
 
+## Build and check one piece of code
+
+`/build-it <task>` runs the whole loop for a single piece of code: anchor, size, direction check, make, the repo's own checks, review passes, and a done-report. `/build-it --check <PR number | A..B | diff file>` reviews a change someone already made and never edits it. You run it by hand for now; `/work` does not call it yet. Details: [Development Lifecycle](Development-Lifecycle).
+
 ## Fixing a bug
 
 For a defect, use `/bugfix <report>` instead of `/plan` + `/work`. It runs a shorter, different track — Report → Analyze → Fix → Verify — aimed at a single fix rather than a feature.

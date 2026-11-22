@@ -519,6 +519,46 @@ class ReportTests(unittest.TestCase):
         self.assertIn("doubt theater: yes", lr.render_report(rec))
 
 
+class AddSecurityTests(unittest.TestCase):
+    def test_it_goes_after_correctness_and_before_simplicity(self):
+        rec = lr.new_record("build", "large")
+        self.assertTrue(lr.add_security(rec))
+        self.assertEqual(names(rec["passes"]), ["direction", "correctness", "security", "simplicity", "done-check"])
+        self.assertTrue(rec["security"])
+
+    def test_the_result_is_what_init_with_security_would_have_made(self):
+        for size in ("medium", "large"):
+            late = lr.new_record("build", size)
+            lr.add_security(late)
+            self.assertEqual(late["passes"], lr.new_record("build", size, security=True)["passes"])
+
+    def test_adding_it_twice_changes_nothing(self):
+        rec = lr.new_record("build", "medium", security=True)
+        before = json.dumps(rec, sort_keys=True)
+        self.assertFalse(lr.add_security(rec))
+        self.assertEqual(json.dumps(rec, sort_keys=True), before)
+
+    def test_it_keeps_the_rounds_already_recorded(self):
+        rec = lr.new_record("build", "large")
+        lr.open_round(rec, "correctness")
+        lr.add_finding(rec, "correctness", "real", "a.py:1", "x")
+        lr.add_security(rec)
+        self.assertEqual(len(_pass(rec, "correctness")["rounds"][0]["findings"]), 1)
+
+    def test_small_and_create_only_records_refuse_it(self):
+        for rec in (lr.new_record("build", "small"), lr.new_record("create", "large")):
+            with self.assertRaises(lr.RecordError):
+                lr.add_security(rec)
+
+    def test_the_cli_says_added_then_already_there(self):
+        with tempfile.TemporaryDirectory() as d:
+            rec = str(Path(d) / "loop.json")
+            run = CliTests.run_cli
+            run(None, "init", "--record", rec, "--profile", "build", "--size", "large")
+            self.assertEqual(run(None, "add-security", "--record", rec)[1].strip(), "added")
+            self.assertEqual(run(None, "add-security", "--record", rec)[1].strip(), "already there")
+
+
 class ReportInputTests(unittest.TestCase):
     def setUp(self):
         self.build = lr.new_record("build", "large")

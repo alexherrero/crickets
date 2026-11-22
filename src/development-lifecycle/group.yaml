@@ -738,5 +738,13 @@ enhances:
 # not-checked, pair, playtest and dispose. The evaluator agent (0.2.0) takes
 # the anchor plus the record for a done-check, builds its rubric from the
 # anchor's Done-when lines, and is pinned to model claude-sonnet-5.
-version: 0.53.0
+# 0.54.0 = /build-it (plan 103, step 7): the loop for code in one command,
+# written once for /work to reference. Anchor (runs /spec when there is none),
+# size, direction check on the high tier that pauses on a wrong direction,
+# make, the repo's own checks, correctness then simplicity (and security when
+# asked) passes through review_material.py + cross-review.sh + loop_record.py,
+# the done-report and the evaluator's done-check. `--check <PR, range or diff>`
+# runs the passes and the report on an existing change and never fixes.
+# loop_record.py gains add-security. No agentm call on the required path.
+version: 0.54.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]
