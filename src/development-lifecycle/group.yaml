@@ -796,5 +796,7 @@ standalone: true
 # 4b), Hook 4 (/work's design-divergence NOTE), Hook 5 (/release 4b) and
 # Hook 7 (/release constraint 10, 4c) are gone, and the plan template drops
 # touches_architecture. /plan 1b and parent_design_doc stay.
-version: 1.4.0
+# 1.5.0 = /build-it's correctness pass counts a behaviour change with no test
+# that would catch its regression as a real finding (plan 104 step 6).
+version: 1.5.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

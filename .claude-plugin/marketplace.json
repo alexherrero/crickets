@@ -11,17 +11,17 @@
       "capabilities": [
         "adversarial-review"
       ],
-      "description": "Standalone adversarial code review of any diff or PR — the adversarial-reviewer (+ cross-model Gemini) agents, the evidence-tracker hook, a /code-review command, a /simplify command, and security-review + testing-strategy skills. Enhances developer-workflows' review capability when both are installed.",
+      "description": "Standalone adversarial code review of any diff or PR — the adversarial-reviewer (+ cross-model Gemini) agents, the evidence-tracker hook, and security-review + testing-strategy skills. Its reviewers and cross-review.sh run /build-it's review passes when development-lifecycle is installed.",
       "enhances": [
         {
           "capability": "review",
-          "effect": "/review dispatches the adversarial reviewers (failing test / DEFECT: file:line / NO ISSUES FOUND)",
+          "effect": "/build-it's review passes dispatch the adversarial reviewers (failing test / DEFECT: file:line / NO ISSUES FOUND)",
           "group": "development-lifecycle"
         }
       ],
       "name": "code-review",
       "source": "./dist/claude-code/plugins/code-review",
-      "version": "0.6.1"
+      "version": "1.0.0"
     },
     {
       "capabilities": [
@@ -80,7 +80,7 @@
       "description": "The phase-gated developer loop — /setup /plan /work /release /bugfix — extracted from agentm as a standalone native plugin. The base other dev plugins enhance.",
       "name": "development-lifecycle",
       "source": "./dist/claude-code/plugins/development-lifecycle",
-      "version": "1.4.0"
+      "version": "1.5.0"
     },
     {
       "capabilities": [

@@ -123,5 +123,38 @@ class TestDesignHooksRetired(unittest.TestCase):
         self.assertIn("10. **Design notes are not a release gate.**", _read("release.md"))
 
 
+class TestRetiredReviewCommands(unittest.TestCase):
+    """Plan 104 step 6: /doubt, crickets' /code-review, /simplify and the
+    test-engineer agent retired into /build-it's passes."""
+
+    _LENS = "a behaviour change with no test that would catch its regression"
+
+    def test_gone_from_src_and_both_hosts(self):
+        cr = _ROOT / "src" / "code-review"
+        for rel in ("commands/doubt.md", "commands/code-review.md", "commands/simplify.md",
+                    "agents/test-engineer.md"):
+            self.assertFalse((cr / rel).exists(), rel)
+        cc = _ROOT / "dist" / "claude-code" / "plugins" / "code-review"
+        ag = _ROOT / "dist" / "antigravity" / "plugins" / "code-review"
+        for name in ("doubt", "code-review", "simplify"):
+            self.assertFalse((cc / "commands" / (name + ".md")).exists(), name)
+            self.assertFalse((ag / "skills" / name).exists(), name)
+        self.assertFalse((cc / "agents" / "test-engineer.md").exists())
+        self.assertFalse((ag / "agents" / "test-engineer.md").exists())
+
+    def test_the_missing_test_lens_reaches_every_correctness_reviewer(self):
+        cr = _ROOT / "src" / "code-review"
+        self.assertIn("Missing tests: " + self._LENS,
+                      (cr / "scripts" / "cross-review.sh").read_text(encoding="utf-8"))
+        self.assertIn("missing tests (" + self._LENS + ")",
+                      (cr / "agents" / "adversarial-reviewer.md").read_text(encoding="utf-8"))
+        self.assertIn("In the correctness pass, " + self._LENS + " is a real finding",
+                      _read("build-it.md"))
+
+    def test_security_auditor_stays_the_conditional_pass(self):
+        self.assertTrue((_ROOT / "src" / "code-review" / "agents" / "security-auditor.md").exists())
+        self.assertIn("The `security` pass is a dispatch of the `security-auditor` agent", _read("build-it.md"))
+
+
 if __name__ == "__main__":
     unittest.main()
