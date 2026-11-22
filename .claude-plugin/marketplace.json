@@ -87,7 +87,7 @@
       ],
       "name": "development-lifecycle",
       "source": "./dist/claude-code/plugins/development-lifecycle",
-      "version": "1.0.0"
+      "version": "1.1.0"
     },
     {
       "capabilities": [
@@ -181,17 +181,17 @@
         "wiki-maintenance",
         "wiki"
       ],
-      "description": "Opinionated, template-driven wiki maintenance — the wiki-author authoring/learning skill, the documenter agent, the diataxis-evaluator, recent-wiki-changes, and the check-wiki.py linter. Maintains a wiki in the operator's voice; enhances developer-workflows' phase-boundary documentation when both are installed.",
+      "description": "Opinionated, template-driven wiki maintenance — the wiki-author authoring/learning skill, the documenter agent, the diataxis-evaluator, recent-wiki-changes, and the check-wiki.py linter. Maintains a wiki in the operator's voice; keeps a project's wiki current on request (wiki-author) or on a schedule (wiki-watch).",
       "enhances": [
         {
           "capability": "documentation",
-          "effect": "phase commands dispatch the documenter to author/repair wiki pages at phase boundaries",
+          "effect": "wiki-author and wiki-watch keep a project's wiki current, on request or on a schedule",
           "group": "development-lifecycle"
         }
       ],
       "name": "wiki",
       "source": "./dist/claude-code/plugins/wiki",
-      "version": "0.13.5"
+      "version": "0.13.6"
     }
   ],
   "renames": {

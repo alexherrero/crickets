@@ -161,9 +161,9 @@ This is the block later phases read to know how to operate.
 
 Run `bash .harness/init.sh`. Confirm it exits 0. If not, fix it now — every later phase depends on it.
 
-### 8. Populate the wiki scaffold (graceful-skip)
+### 8. Wiki (opt-in)
 
-Check availability: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" capability wiki-maintenance`. On **exit 0** (the crickets `wiki-maintenance` plugin — which ships the `documenter` — is installed + enabled) dispatch its `documenter` to fill any `wiki/` seed pages (Getting-Started, Runbook, Product-Intent, Overview, Home, _Sidebar) from the inventory + interview, and resolve any `OPEN QUESTIONS`. On **exit 1** (unavailable, or graceful-skip when agentm is absent or `CLAUDE_PLUGIN_ROOT` unset) skip silently. **Routed dispatch (separate graceful-skip):** additionally check `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" capability token-audit`; on exit 0, resolve `classify_work_type('documenter')` + `agent_tool_alias(...)` and pass as the dispatch's `model` param; on exit 1, no `model` override — unchanged. **Mandatory fan-out announcement (unconditional):** print `fanout_announcement.py`'s `render_announcement()` line before dispatching regardless of the probe's result; an `INHERITED` source at a frontier-tier (T3/T4) session triggers `needs_inheritance_pause()` — stop for confirmation, never proceed silently. At `agent_count >= 4`, `announce_dispatch()` also runs the fleet cost gate (`token-audit`'s `fanout_cost_gate.py`, capability-gated) — a blocked result raises the same `pause_required` flag, stop for confirmation the same way.
+`/setup` writes no wiki pages. A project that wants a wiki runs `/wiki-init` to scaffold it and `wiki-author` to fill it.
 
 ### 9. Offer GitHub Project creation (optional)
 

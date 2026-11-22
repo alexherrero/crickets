@@ -36,8 +36,8 @@ Invoking this phase **is** the authorization to run it to completion. The stop-g
 4. **Feed full error output back** on gate failures — do not summarize. The exact error is the signal.
 5. **The escalation tripwire fires at 3 consecutive failures on the same gate for the same step** (`escalation_tripwire.py`, capability-gated on token-audit — see step 6). This supersedes the old flat 5-iteration cap: no session reaches a 4th attempt on an unresolved gate. If token-audit is absent, the tripwire still fires (degraded: loud stop, no handoff pack) — the cap is never silently longer just because the capability is missing.
 6. **Do not silently expand step scope.** If it turns out bigger than planned, stop and ask.
-7. **Do not touch `wiki/` during implementation.** Documentation updates are phase-boundary-only.
-8. **After gates are green (before committing), dispatch the `documenter` sub-agent** with the step spec + the diff (via the `wiki-maintenance` capability probe — exit 0 dispatch, exit 1 skip). It flips matching `pending → implemented` pages and adds operational pages if the task introduced one. Resolve `OPEN QUESTIONS` before committing.
+7. **Docs are not part of the loop.** Edit `wiki/` only when the step's **What** names the page.
+8. **Docs are an opt-in pass, later:** run `wiki-author` when a page should change; a repo that keeps a wiki can let `wiki-watch` catch up on a schedule.
 9. **End by updating the resolved `PLAN.md` (mark `[x]`), the plan's tracker (`plan_tracker.py step`, or `close` after the last step), the resolved `progress.md` (append line), and committing.**
 10. **Sync the step to the GitHub Project board** (optional, graceful-skip). When `github-projects` is installed (capability probe) + `.harness/project.json` present + `gh` authed, emit a **Task progress** update for the just-completed step via the github-projects plugin's `project_sync.py post --type task-progress`; capture any out-of-scope findings (adjacent bug, refactor, stale doc elsewhere — not follow-ups to the current step) into `board-items.json` as board-backed `Backlog-item`s (**never** raw `gh project item-create` — an unbacked board issue is an orphan the `vault==board` gate flags as drift). Deterministic + idempotent → announce + proceed. Silent-skip (zero behavior change) if the plugin, `project.json`, or `gh` is absent. Then stop.
 11. **Design-divergence is a NOTE, never a halt (Hook 4, design-doc §6).** If the implementation appears to diverge from the plan's `parent_design_doc:` governing design, record it as a `NOTE:` line in `progress.md` — a surfaced observation, **not** a safety-stop trigger and **not** a gate. Conformance is an un-mechanizable judgment; its adjudication is `/review`'s fresh-context design-conformance dimension (Hook 1), never the worker's self-interested call (routing it into the autonomy gate would over- or under-stop).
@@ -159,7 +159,7 @@ If the step touches unfamiliar code, dispatch the `explorer` sub-agent for read-
 - **Run the step's loop.** Read the step's `**Anchor:**`, `**Profile:**` and `**Size:**`. `build` follows `/build-it --spec <Anchor> --size <Size>`; `create` follows `/create-it` the same way; `both` runs each for its own files. Do not copy them here: their steps are the loop. The direction check comes first, before any code (a `small` step has none). Making is this step's work, the loop's free checks are step 5's gates (run them once), and its review passes run once those are green. A step with none of the three tags is a legacy step: `build`, `medium`, anchored to the plan.
 - Write code that satisfies the step's **What**. Write the tests that satisfy its **Verification** in the **same session** — tests-after is an anti-pattern; verification lands with the implementation.
 - Follow project conventions (formatters, naming, layout). If the step implies a deviation, flag it and ask.
-- **Do not touch `wiki/`** — documentation is the step-8 phase boundary, not inline.
+- **Leave `wiki/` alone** unless the step's **What** names the page (constraint 7).
 - If mid-implementation the step turns out bigger than planned, **stop**: *"Step N is bigger than planned because [reason]. Options: (a) finish narrow, (b) expand + re-plan, (c) split. Your call."* Then wait.
 
 ### 5. Run deterministic gates
@@ -191,9 +191,9 @@ Append to the **resolved `progress.md`** (the resolver's second field — the ta
 
 When the step ran a loop at `medium` or `large`, paste its done-report (`loop_record.py report`) under that line, so the next session sees what was checked and what was not.
 
-### 8. Update the wiki (post-gates, graceful-skip)
+### 8. Docs
 
-Check availability: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" capability wiki-maintenance`. On **exit 0** dispatch its `documenter` with the step's title + What + Verification and the diff — it flips `pending → implemented` **only if the diff proves it** (speculative flips are worse than missed ones), fills `## Implementation` with real `file:line` refs, and adds how-to pages for new operational concerns. Resolve `OPEN QUESTIONS` before committing; `NO CHANGES` is fine. On **exit 1** (unavailable, or no `CLAUDE_PLUGIN_ROOT`) skip silently. Not invoked during step 4. **Routed dispatch (separate graceful-skip):** additionally check `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" capability token-audit`; on exit 0, resolve `classify_work_type('documenter')` + `agent_tool_alias(...)` and pass as the dispatch's `model` param; on exit 1, no `model` override — unchanged. **Mandatory fan-out announcement (unconditional):** print `fanout_announcement.py`'s `render_announcement()` line before dispatching regardless of the probe's result; an `INHERITED` source at a frontier-tier (T3/T4) session triggers `needs_inheritance_pause()` — stop for confirmation, never proceed silently.
+Nothing happens here (constraint 8).
 
 ### 9. Commit
 

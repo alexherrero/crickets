@@ -781,5 +781,9 @@ enhances:
 # /work through each step's loop, and /build-it --check reviews an existing
 # change. /bugfix's Verify runs /build-it --check; /release's preconditions
 # drop "/review resolved". Major because a command goes away.
-version: 1.0.0
+# 1.1.0 = wiki updates leave the pipeline (plan 104 step 2): /plan, /work,
+# /release, /bugfix and /setup dispatch no documenter and probe no
+# wiki-maintenance; docs are an opt-in pass (wiki-author on request,
+# wiki-watch on a schedule). Numbered constraints and steps keep their numbers.
+version: 1.1.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

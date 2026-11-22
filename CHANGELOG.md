@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Wiki updates leave the pipeline** (`development-lifecycle` 1.1.0, `wiki` 0.13.6; step 2 of the let-go plan). `/plan`, `/work`, `/release`, `/bugfix` and `/setup` no longer dispatch the `documenter` or probe for the wiki plugin, and `/release` no longer waits on docs. Docs are an opt-in pass: run `wiki-author` when a page should change, let `wiki-watch` catch up on a schedule in a repo that keeps a wiki, and run `/wiki-init` to start one. `/work` edits `wiki/` only when a step names the page. The constraints and steps that did the dispatch keep their numbers as one-line notes, so references such as "constraint 4" still hold.
+
 ### Removed
 
 - **The `/review` phase retires** (`development-lifecycle` 1.0.0, a major bump because a command goes away; `wiki` 0.13.5, `conventions` 0.12.2; step 1 of the let-go plan). Review now runs inside `/work`: each step's loop runs its direction check, review passes and done-check. To review a change someone already made, run `/build-it --check <PR number | A..B | diff file>`; it reports and never fixes. `/bugfix`'s Verify runs `/build-it --check` on the fix, and `/release` no longer asks for "`/review` resolved". On Antigravity, reinstall `development-lifecycle` from `dist/antigravity/plugins/` to drop the old skill.
