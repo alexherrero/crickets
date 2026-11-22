@@ -84,14 +84,14 @@ Each override applies on top of the chosen tier.
 
 | Option | Effect |
 |---|---|
-| `--range A..B` · `--worktree` · `--pr N` · `--files PATH...` | The artifact: a git range, the working tree against `HEAD`, a PR diff, or files as they are. |
+| `--range A..B` · `--worktree` · `--pr N` · `--files PATH...` | The artifact: a git range, the working tree against `HEAD`, untracked files included as new files, a PR diff, or files as they are. |
 | `--contract TEXT` · `--contract-file F` | The contract text. |
 | `--anchor FILE` | The spec, plan or design the change is held to. Without one, `RULES` is empty and says why; exit 0. |
 | `--repo-root DIR` | The repo whose `AGENTS.md` and `CLAUDE.md` are searched. Default: the current directory. |
 | `--tier default\|high\|wording` | Picks the byte ceiling: 50 KB, 80 KB, 50 KB. |
 | `--max-rule-lines N` · `--max-bytes N` | Cap the rule lines (default 40); override the ceiling (`0` = none). |
 
-`RULES` draws first from the anchor: a spec's Rules with their sources, else a plan or design's Locked design calls and Constraints, plus any Likeness list. It then adds the `AGENTS.md` and `CLAUDE.md` paragraphs that share the most terms with the changed paths and identifiers, rarer terms counting more. The same inputs give the same output. Exit 2 on a usage error or an unreadable input.
+`RULES` draws first from the anchor: a spec's Rules with their sources, else a plan or design's Locked design calls and Constraints, plus any Likeness list. It then adds the `AGENTS.md` and `CLAUDE.md` paragraphs that share the most terms with the changed paths and identifiers, rarer terms counting more. The same inputs give the same output. Exit 2 on a usage error, an unreadable input, or an empty artifact ("nothing to review").
 
 ## See also
 
