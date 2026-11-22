@@ -495,7 +495,8 @@ class TierTests(unittest.TestCase):
         self.assertEqual(asked, ["Gemini 4 Neon (High)|45s"])
 
     def test_a_malformed_timeout_override_is_ignored_out_loud(self):
-        for bad in ("fast", "0", "30s", "-5"):
+        # "00" and "000" are zero too (#287): the guard once matched only the literal "0".
+        for bad in ("fast", "0", "00", "000", "30s", "-5"):
             with self.subTest(value=bad):
                 result, asked = self._run(env_extra={"CROSS_REVIEW_TIMEOUT_SECS": bad})
                 self.assertEqual(result.returncode, 0, f"stderr={result.stderr!r}")

@@ -108,7 +108,12 @@ description: Standalone adversarial code review of any diff or PR — the advers
 # the tier's byte ceiling. It reads no reasoning and is told no suspected bug;
 # a missing anchor gives an empty RULES with the reason. scripts/spec_doc.py is
 # a byte-identical copy of development-lifecycle's (it parses the spec).
-version: 0.6.0
+# 0.6.1 = fixes from plan 103's /review (#287): review_material.py --worktree
+# adds untracked, non-ignored files as new-file diffs (git diff HEAD never
+# lists them, so a new module reached its reviewers as an empty artifact), and
+# an empty artifact from --worktree, --range or --pr exits 2 ("nothing to
+# review"); cross-review.sh ignores CROSS_REVIEW_TIMEOUT_SECS=00 as it does 0.
+version: 0.6.1
 category: Coding
 requires: []
 standalone: true

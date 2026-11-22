@@ -251,7 +251,23 @@ def artifact_from_range(rng: str, repo_root: Path) -> str:
 
 
 def artifact_from_worktree(repo_root: Path) -> str:
-    return _run(["git", "diff", "--no-color", "HEAD"], repo_root)
+    """Tracked changes against HEAD, then each untracked, non-ignored file as a new file.
+
+    `git diff HEAD` never lists an untracked path, so a task that adds a module would
+    otherwise send its reviewers nothing before the first commit.
+    """
+    parts = [_run(["git", "diff", "--no-color", "HEAD"], repo_root)]
+    untracked = _run(["git", "ls-files", "--others", "--exclude-standard", "-z"], repo_root)
+    for path in sorted(p for p in untracked.split("\0") if p):
+        # --no-index exits 1 when the two sides differ, which a new file always does.
+        proc = subprocess.run(["git", "diff", "--no-color", "--no-index", "--", "/dev/null", path],
+                              cwd=str(repo_root), capture_output=True, text=True,
+                              encoding="utf-8", errors="replace")
+        if proc.returncode not in (0, 1):
+            raise ValueError(f"`git diff --no-index /dev/null {path}` failed (exit {proc.returncode}): "
+                             f"{proc.stderr.strip()[:300]}")
+        parts.append(proc.stdout)
+    return "".join(parts)
 
 
 def artifact_from_pr(number: str, repo_root: Path) -> str:
@@ -379,6 +395,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             artifact = artifact_from_pr(args.pr, root)
         else:
             artifact, _ = artifact_from_files(args.files, root)
+        if not args.files and not artifact.strip():
+            source = "the working tree" if args.worktree else (args.range or f"PR {args.pr}")
+            raise ValueError(f"nothing to review: {source} has no changes; "
+                             "a reviewer is never sent an empty artifact")
         paths = changed_paths(artifact) if not args.files else list(args.files)
         # A file list has no +/- lines; read its content as all-added so the
         # identifiers in it count toward the repo-doc match.

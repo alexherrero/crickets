@@ -774,5 +774,8 @@ enhances:
 # hook twins print up to four vault design paths with a 3-second timeout. The old
 # design plugin's scripts are gone; preflight_reconcile.py's comments no longer
 # point at them, and work.md says stage_plan.py, not /design sequence.
-version: 0.58.0
+# 0.58.1 = vault_designs.py orders a same-day timestamp above a bare date
+# (#287, from plan 103's /review): the per-character negated sort key reversed
+# order only for strings of one length.
+version: 0.58.1
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]
