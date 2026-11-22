@@ -14,23 +14,9 @@ You are running the **bugfix** pipeline of the developer-workflows loop. Bugs ha
 
 > **Recommended model for this phase:** `opusplan` — Opus 4.8 plans, Sonnet 5 executes the long autonomous stretch. Override with `/model` if needed.
 
-<!-- BEGIN recoverability-gate · canonical · byte-identical across work.md · bugfix.md · release.md (scripts/ drift test enforces) -->
-## Recoverability gate (autonomy doctrine)
+## Recoverability gate
 
-Invoking this phase **is** the authorization to run it to completion. The stop-gate is **recoverability, not destructiveness or blast-radius**: a recoverable action proceeds (announced); only a genuinely unrecoverable one stops for confirmation.
-
-| Class | Examples | Behavior |
-|---|---|---|
-| **Recoverable** | `git push` / `-u` / `HEAD:`; create + push a tag; `gh release create` (deletable); `gh pr create` (closeable); `gh pr merge` (revertable); `gh issue create` / `close`; force-push to your **own un-shared** worker branch; delete a branch whose tip is still reachable | **Announce + proceed** — no confirmation wait. |
-| **Unrecoverable** | force-push rewriting **published shared** history; sole-ref delete of unmerged work; **published-tag** overwrite; immutable publish / deploy / migration | **Stop + confirm** — pre-announce (state, don't ask), then wait. |
-| **Unresolved decision** | a genuine question the design/plan never settled | **Stop + ask** — and log it as a design/plan gap (an upstream phase missed it). |
-
-**When uncertain, treat as unrecoverable** (conservative default). Pre-announcing a recoverable-but-destructive action — state what is about to happen; do not ask permission — carries over verbatim. Any summary this phase produces is a **record of what the autonomous run did**, not a stop-and-wait barrier.
-
-**Close-out autonomy.** Close-out bookkeeping (append `progress.md`, move the ROADMAP item to Completed/SHIPPED, update staging notes, archive a repo-local plan) is **recoverable → autonomous** — never stop to ask approval to archive or to do close-out bookkeeping. A task directory (`tasks/<name>/`) never moves at close-out: its `done` tracker says it is over, and agentm's nightly job moves its finished records. Only a repo-local plan archives: in a repo with no vault, a plan in `.harness/` moves to `.harness/archive/PLAN.archive.YYYYMMDD-<slug>.md` (an `archive/` subdirectory, not a flat `.harness/`-root path, per the Consolidation arc's ruling 6), and its tracker stays in `.harness/` at `done`.
-
-**Carve-outs — unchanged by this doctrine.** Worktree initiation requires operator authority — a durable `isolation.mode: worktree-per-plan` config opt-in (this command's own auto-spawn) or an explicit operator instruction to use a worktree; silent authority-free auto-spawn stays forbidden; integration lands via the plan's own PR + required-check gate, armed for auto-merge (`/spawn-worker` and `/integrate-worker` are retired — the auto-spawn-and-PR flow now covers both jobs end-to-end); the PII pre-push hook + `pii-scrubber` invocation stay mandatory; the no-`Co-Authored-By` commit rule is untouched.
-<!-- END recoverability-gate -->
+Invoking this phase **authorizes** finishing it. The stop-gate is **recoverability, not destructiveness or blast-radius**: recoverable actions (push, tag, release, PR merge, close-out) are **announced and proceed**; unrecoverable ones (force-push over published shared history, sole-ref delete of unmerged work, published-tag overwrite, immutable deploy or migration) **stop and confirm**; an unresolved decision stops and asks. When uncertain, treat as unrecoverable. Unchanged: worktree spawns need operator authority, the PII hook and `pii-scrubber` stay mandatory, the no-`Co-Authored-By` rule holds. Full doctrine: the `recoverability` skill.
 
 ## Non-negotiables
 

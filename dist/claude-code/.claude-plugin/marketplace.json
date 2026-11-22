@@ -63,7 +63,7 @@
       ],
       "name": "developer-safety",
       "source": "./plugins/developer-safety",
-      "version": "0.6.5"
+      "version": "0.7.0"
     },
     {
       "capabilities": [
@@ -80,7 +80,7 @@
       "description": "The phase-gated developer loop — /setup /plan /work /release /bugfix — extracted from agentm as a standalone native plugin. The base other dev plugins enhance.",
       "name": "development-lifecycle",
       "source": "./plugins/development-lifecycle",
-      "version": "1.5.0"
+      "version": "1.6.0"
     },
     {
       "capabilities": [

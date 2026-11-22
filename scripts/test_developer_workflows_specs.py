@@ -85,7 +85,7 @@ class _NamedPlanWriterContract:
         # exit 1 is no agentm. The old byte-identical singleton fallback is gone.
         self.assertIn("repo with no vault", self.text)
         self.assertRegex(self.text, r"no agentm|agentm is not installed")
-        self.assertNotIn("byte-identical", self.text.split("recoverability-gate")[0])
+        self.assertNotIn("byte-identical", self.text.split("## Recoverability gate")[0])
 
     def test_probe_uses_python3_not_bash(self):
         # Same bug class as the resolver: the capability probe is a .py file too.
@@ -146,9 +146,11 @@ class TestWorkSpec(_NamedPlanWriterContract, unittest.TestCase):
         self.assertIn('/work — completed step N: "<title>"', state)
 
     def test_the_archive_rule_keeps_a_flat_tracker_and_never_moves_a_task(self):
-        block = self._section("<!-- BEGIN recoverability-gate", "<!-- END recoverability-gate -->")
         # Only a repo-local plan archives, and its tracker stays beside it; a
-        # task never moves (crickets task 101, ruling 8).
+        # task never moves (crickets task 101, ruling 8). Plan 105 step 1 moved
+        # the rule from the commands' block to the recoverability skill.
+        block = (_ROOT / "src" / "developer-safety" / "skills" / "recoverability"
+                 / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn("its tracker stays in `.harness/` at `done`", block)
         self.assertIn("never moves at close-out", block)
 

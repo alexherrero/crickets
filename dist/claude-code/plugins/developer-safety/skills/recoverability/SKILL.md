@@ -1,106 +1,70 @@
 ---
 name: recoverability
-description: Autonomy doctrine — classify every action as recoverable or unrecoverable, proceed on the former, stop on the latter. The stop-gate is reversibility, not destructiveness or blast-radius.
+description: Autonomy doctrine — classify every action as recoverable or unrecoverable, proceed on the former, stop on the latter. The stop-gate is reversibility, not destructiveness or blast-radius. The one home of the doctrine `/work`, `/bugfix` and `/release` summarize.
 kind: skill
 supported_hosts: [claude-code, antigravity]
-version: 0.1.0
+version: 0.2.0
 ---
 
-You are applying the `recoverability` skill. This is a standing principle — it governs every action in every session, not just code changes. Apply it before any action that has side effects outside the current working tree.
+You are applying the `recoverability` skill. It governs every action with side effects outside the working tree, in every session. `/work`, `/bugfix` and `/release` carry a short summary of it and point here; this is the full doctrine.
 
 ## The doctrine
 
-The stop-gate is **recoverability, not destructiveness or blast-radius.** A recoverable action proceeds (announced); only a genuinely unrecoverable one stops for confirmation. Blast radius is not the criterion — a large-blast-radius action that is fully reversible proceeds; a small-blast-radius action that cannot be undone stops.
+Invoking a phase **is** the authorization to run it to completion. The stop-gate is **recoverability, not destructiveness or blast-radius**: a recoverable action proceeds (announced); only a genuinely unrecoverable one stops for confirmation. A large, fully reversible action proceeds; a small one that cannot be undone stops.
 
-| Class | What it looks like | Behavior |
+| Class | Examples | Behavior |
 |---|---|---|
-| **Recoverable** | `git push` / `-u` / `HEAD:`; create + push a tag; `gh release create` (deletable); `gh pr create` (closeable); `gh pr merge` (revertable); `gh issue create` / `close`; force-push to your **own un-shared** worker branch; delete a branch whose tip is still reachable | **Announce + proceed** — no confirmation wait |
-| **Unrecoverable** | force-push rewriting **published shared** history; sole-ref delete of unmerged work; **published-tag** overwrite; immutable publish / deploy / migration | **Stop + confirm** — pre-announce (state what is about to happen, don't ask), then wait for operator approval |
-| **Unresolved decision** | a genuine question the design or plan never settled | **Stop + ask** — and flag it as a design/plan gap so the upstream phase can address it |
+| **Recoverable** | `git push` / `-u` / `HEAD:`; create + push a tag; `gh release create` (deletable); `gh pr create` (closeable); `gh pr merge` (revertable); `gh issue create` / `close`; force-push to your **own un-shared** worker branch; delete a branch whose tip is still reachable | **Announce + proceed** — no confirmation wait. |
+| **Unrecoverable** | force-push rewriting **published shared** history; sole-ref delete of unmerged work; **published-tag** overwrite; immutable publish / deploy / migration | **Stop + confirm** — pre-announce (state, don't ask), then wait. |
+| **Unresolved decision** | a genuine question the design or plan never settled | **Stop + ask** — and log it as a design/plan gap (an upstream phase missed it). |
 
-**When uncertain, treat as unrecoverable** — the conservative default. Forcing the operator to micromanage routine recoverable actions is the bigger cost; silently executing a genuinely unrecoverable one is the failure mode to avoid.
+**When uncertain, treat as unrecoverable** (conservative default). Any summary a phase produces is a **record of what the autonomous run did**, not a stop-and-wait barrier.
 
-## Push classification mechanism
+## Pre-announce, don't ask
 
-The push row of the doctrine table above splits into a git *fact* (would this push discard any commit the remote currently holds — is it a fast-forward?) and a *judgment call* no git command can answer (if it isn't a fast-forward, is the discarded history genuinely "shared," or just your own un-shared branch?). `scripts/recoverability_classifier.py` (bundled with this plugin) answers the fact mechanically instead of leaving it to prose guesswork; it never resolves the judgment call, and it doesn't try to.
+For a recoverable action that may surprise the operator (a push to a branch they haven't named, closing an issue, merging a PR), state what is about to happen, then do it.
 
-Before treating a `git push` as recoverable-vs-unrecoverable, run it:
+- ✅ "Pushing `worktree-104-…` and opening its PR."
+- ❌ "Should I push `worktree-104-…`?"
 
-```bash
-python3 <path>/scripts/recoverability_classifier.py push [--repo <repo-root>] [--branch <name>] [--remote origin] [--remote-branch <name>]
-```
+The operator can interrupt through the `kill-switch` hook or redirect through `steer`; `commit-on-stop` keeps in-progress work if a session ends.
 
-Locate `<path>` the same way `pii-scrubber` locates its own bundled script: `${CLAUDE_PLUGIN_ROOT}/scripts/` first (resolves whenever this plugin is installed), then `$AGENT_TOOLKIT_PATH/scripts/` if set, then a sibling checkout convention (`../crickets/scripts/`, `~/Antigravity/crickets/scripts/`). `--branch`/`--remote`/`--remote-branch` default to the current branch / `origin` / the same name as `--branch` — the common case (`git push`, `git push origin main`) needs no flags.
+## Close-out is autonomous
 
-Read the exit code, not just the printed word:
+Close-out bookkeeping is **recoverable → autonomous**: appending `progress.md`, moving a ROADMAP item to Completed/SHIPPED, updating staging notes, archiving a repo-local plan. Never stop to ask approval for it.
 
-| Exit | Verdict | What it means for this doctrine |
-|---|---|---|
-| `0` | `recoverable` | Fast-forward (or a brand-new/unchanged remote tip) — nothing the remote holds gets discarded. **Announce + proceed**, per the table above. |
-| `2` | `needs-judgment` | Not a fast-forward. The script can't tell "your own un-shared branch" from "published shared history" from git state alone — that's exactly the judgment call this SKILL.md's own table names. Fall back to that judgment: is another contributor's work known to depend on this branch? If genuinely unsure, **treat as unrecoverable** (the doctrine's own conservative default) — stop and confirm. |
-| `3` | (usage/git error) | The script couldn't resolve a branch or SHA (detached HEAD, bad repo path, unreachable remote). Don't silently skip the check — fall back to the conservative default and stop and confirm. |
-| `1` | `unrecoverable` | Reserved for a future verdict kind; `classify_push` itself never emits it today (a push is either a fast-forward or a judgment call — never a case the script itself is certain is unrecoverable). Treat it as stop and confirm if it ever appears. |
-
-This mechanism covers pushes only. `recoverability_classifier.py` also implements `classify_ref_delete` (ref-delete reachability) and `classify_tag_overwrite` (tag-publication status) as library functions — proven correct by `scripts/test_recoverability_classifier.py` — but neither is wired to a CLI yet; the ref-delete and tag-overwrite rows of the doctrine table above stay prose-judgment-only until a future task wires them the same way.
-
-## Pre-announcing, not permission-asking
-
-For actions that are recoverable-but-surprising (a push to a remote branch the operator hasn't explicitly mentioned, closing an issue, merging a PR): **state what is about to happen, then do it.** Do not frame it as a question. The distinction:
-
-- ✅ "Pushing to `worker/probe-retirement` — announce + proceed."
-- ❌ "Should I push to `worker/probe-retirement`?"
-
-Pre-announcing keeps the operator informed without requiring them to approve every routine action. The operator can always interrupt (via the kill-switch hook) if they want to redirect.
-
-## Autonomy during close-out
-
-Close-out bookkeeping is **recoverable → autonomous** — never stop to ask approval for:
-
-- Archiving a completed plan (`PLAN.md` → `PLAN.archive.YYYYMMDD-<slug>.md`)
-- Appending a close-out entry to `progress.md`
-- Moving a ROADMAP item to Completed/SHIPPED
-- Updating staging notes
-
-These actions are all reversible (files can be moved back, entries deleted) and are standard close-out steps that do not require per-instance approval once a plan is confirmed done.
+A task directory (`tasks/<name>/`) never moves at close-out: its `done` tracker says it is over, and agentm's nightly job moves its finished records. Only a repo-local plan archives: in a repo with no vault, a plan in `.harness/` moves to `.harness/archive/PLAN.archive.YYYYMMDD-<slug>.md`, and its tracker stays in `.harness/` at `done`.
 
 ## Carve-outs — unchanged by this doctrine
 
-These constraints hold regardless of the recoverability classification:
+- **Worktree initiation requires operator authority** — a durable `isolation.mode: worktree-per-plan` config opt-in (`/work`'s own auto-spawn) or an explicit operator instruction to use a worktree; silent authority-free auto-spawn stays forbidden. Integration lands via the plan's own PR and required-check gate, armed for auto-merge.
+- **The PII pre-push hook + `pii-scrubber` invocation stay mandatory.** A leaked commit is reversible only by a history rewrite, after a window of exposure.
+- **The no-`Co-Authored-By` commit rule is untouched.** It is an authorship rule, not a recoverability question.
 
-- **Worker-tree initiation requires operator authority.** A worktree spawn is not a recoverable action the agent can self-authorize — it requires either an explicit `/spawn-worker` command or a durable `isolation.mode: worktree-per-plan` config opt-in. Silent auto-spawn stays forbidden.
-- **`/integrate-worker` stays operator-initiated.** Merging a worker branch is a consequential action even though it is technically reversible — it requires explicit operator invocation.
-- **PII pre-push hook + `pii-scrubber` invocation stay mandatory.** Never bypass them as "recoverable" — a leaked PII commit, while technically reversible with a history rewrite, creates a window of exposure that the probe is designed to prevent.
-- **No `Co-Authored-By: Claude` trailer in commit messages.** This is an authorship convention, not a recoverability question; it is not subject to the proceed-vs-stop calculus.
+## Classifying a push
 
-## Interaction with the phase hooks
+Whether a push is a fast-forward is a git fact; whether the history it discards is "shared" is a judgment. `scripts/recoverability_classifier.py` (bundled with this plugin, under `${CLAUDE_PLUGIN_ROOT}/scripts/`) answers the fact:
 
-The `kill-switch`, `steer`, and `commit-on-stop` hooks in this plugin are the **runtime enforcement layer** for this doctrine:
+```bash
+python3 <path>/scripts/recoverability_classifier.py push [--repo <root>] [--branch <name>] [--remote origin] [--remote-branch <name>]
+```
 
-- `kill-switch` — lets the operator halt tool execution when they see the agent about to cross a line.
-- `steer` — lets the operator redirect mid-run without a full session restart.
-- `commit-on-stop` — preserves in-progress work when the session ends unexpectedly, so the "stop" in an unrecoverable situation doesn't also lose the work.
+| Exit | Verdict | Do |
+|---|---|---|
+| `0` | `recoverable` | Fast-forward or a new remote tip: **announce + proceed**. |
+| `2` | `needs-judgment` | Not a fast-forward. Does anyone else's work depend on this branch? If unsure, treat as unrecoverable. |
+| `3` | usage / git error | The check could not run: stop and confirm. |
+| `1` | `unrecoverable` | Reserved; never emitted today. Stop and confirm. |
 
-The skill is the **pre-action discipline**; the hooks are the **in-flight controls**.
+Ref deletes and tag overwrites stay judgment calls: the script has library functions for both, with no CLI yet.
 
-## Concrete classification examples
+## Examples
 
 | Action | Class | Why |
 |---|---|---|
-| `git push origin main` | Recoverable | Remote tip can be reset; a bad push can be force-pushed back or a revert commit pushed |
-| `git push --force origin main` | **Unrecoverable** | Rewrites published shared history — other checkouts diverge, tags may become orphaned |
-| `gh pr merge --squash` | Recoverable | Merge can be reverted with a revert commit |
-| `git push origin --delete feature-branch` (branch still in a PR, tip reachable) | Recoverable | Tip is reachable; branch can be restored with `git push origin <sha>:refs/heads/feature-branch` |
-| `git push origin --delete feature-branch` (branch's only ref, tip not in any other ref) | **Unrecoverable** | Sole reference; SHA is only reachable from reflog (time-limited) — treat as unrecoverable |
-| `gh release create v1.0.0` | Recoverable | GitHub releases are deletable via `gh release delete` |
-| Overwriting an already-published tag | **Unrecoverable** | Published tags are consumed by downstream tools; overwriting silently breaks pinned installs |
-| Archiving a completed `PLAN.md` | Recoverable (autonomous) | File rename; the archive can be renamed back at any time |
-| Editing a `.github/workflows/` CI file | Recoverable | File change on a branch; reversible with a revert commit before merge |
-| Running a database migration | **Unrecoverable** | Schema changes are not automatically reversible; stop and confirm |
-
-## See also
-
-- [`recoverability_classifier.py`](../../scripts/recoverability_classifier.py) — the mechanical push-classification check the section above wires in.
-- [`kill-switch` hook](../../hooks/kill-switch/hook.md) — halt tool execution when an unrecoverable action approaches.
-- [`steer` hook](../../hooks/steer/hook.md) — redirect mid-run without session restart.
-- [`commit-on-stop` hook](../../hooks/commit-on-stop/hook.md) — preserve in-progress work on stop.
-- [developer-workflows recoverability gate](https://github.com/alexherrero/crickets/blob/main/src/developer-workflows/commands/work.md) — the phase-specific encoding of this doctrine (byte-identical table across `/work`, `/bugfix`, `/release`).
+| `git push origin main` | Recoverable | A revert or a reset puts it back |
+| `git push --force origin main` | **Unrecoverable** | Rewrites published shared history |
+| `git push origin --delete <branch>`, tip reachable elsewhere | Recoverable | Restore it from the SHA |
+| `git push origin --delete <branch>`, the only ref | **Unrecoverable** | Only the reflog holds it, for a while |
+| Overwriting a published tag | **Unrecoverable** | Downstream installs pin it |
+| A database migration | **Unrecoverable** | Not automatically reversible |

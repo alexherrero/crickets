@@ -134,4 +134,7 @@ capabilities: [recoverability]
 # agy's deny and stdout into injected context, so kill-switch blocks, steer
 # delivers on agy's PreInvocation and coauthor-guard runs on SessionStart. The
 # two rules carry trigger: always_on.
-version: 0.6.5
+# 0.7.0 = the recoverability skill is the doctrine's one home (plan 105 step 1):
+# it holds the full table, the close-out rule and the carve-outs that /work,
+# /bugfix and /release used to inline; the retired /spawn-worker wording is gone.
+version: 0.7.0

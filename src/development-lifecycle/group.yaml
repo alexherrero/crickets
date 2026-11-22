@@ -798,5 +798,8 @@ standalone: true
 # touches_architecture. /plan 1b and parent_design_doc stay.
 # 1.5.0 = /build-it's correctness pass counts a behaviour change with no test
 # that would catch its regression as a real finding (plan 104 step 6).
-version: 1.5.0
+# 1.6.0 = /work, /bugfix and /release carry an 80-word recoverability summary
+# that points at developer-safety's recoverability skill instead of a
+# 405-word copy of the doctrine (plan 105 step 1).
+version: 1.6.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

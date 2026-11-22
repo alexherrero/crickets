@@ -62,8 +62,9 @@ _CMDS = _ROOT / "src" / "development-lifecycle" / "commands"
 # The execution commands that carry the inlined doctrine block.
 _EXECUTION = ("release.md", "work.md", "bugfix.md")
 
-_BEGIN = "<!-- BEGIN recoverability-gate"
-_END = "<!-- END recoverability-gate -->"
+# Plan 105 step 1: the block is the `## Recoverability gate` heading and its one
+# summary paragraph, up to the next blank line (the old HTML sentinels are gone).
+_BEGIN = "## Recoverability gate\n\n"
 
 # Load-bearing carve-out fragments that MUST appear (verbatim) in the doctrine
 # block of every execution command. Removing any is a relaxation, not a reword.
@@ -72,12 +73,35 @@ _CARVEOUT_FRAGMENTS = (
     # `/integrate-worker` retired — authority is now a durable config opt-in or an
     # explicit operator instruction to use a worktree; silent authority-free
     # auto-spawn still forbidden; integration lands via PR + required-check gate.
-    "Worktree initiation requires operator authority — a durable "
-    "`isolation.mode: worktree-per-plan` config opt-in (this command's own "
-    "auto-spawn) or an explicit operator instruction to use a worktree; silent "
-    "authority-free auto-spawn stays forbidden",
-    "the PII pre-push hook + `pii-scrubber` invocation stay mandatory",
-    "the no-`Co-Authored-By` commit rule is untouched",
+    # Plan 105 step 1: the block is now a summary, so it names each carve-out
+    # in short; the full wording is pinned in the skill below.
+    "worktree spawns need operator authority",
+    "the PII hook and `pii-scrubber` stay mandatory",
+    "the no-`Co-Authored-By` rule holds",
+)
+
+# The doctrine's one home (plan 105 step 1): developer-safety's `recoverability`
+# skill carries the full table, carve-outs and close-out rule the three command
+# copies used to inline.
+_SKILL = _ROOT / "src" / "developer-safety" / "skills" / "recoverability" / "SKILL.md"
+_SKILL_FRAGMENTS = (
+    "recoverability, not destructiveness or blast-radius",
+    "When uncertain, treat as unrecoverable",
+    "**Announce + proceed** — no confirmation wait.",
+    "**Stop + confirm** — pre-announce",
+    "force-push rewriting **published shared** history",
+    "sole-ref delete of unmerged work",
+    "**published-tag** overwrite",
+    "immutable publish / deploy / migration",
+    "**Worktree initiation requires operator authority** — a durable "
+    "`isolation.mode: worktree-per-plan` config opt-in",
+    "silent authority-free auto-spawn stays forbidden",
+    "**The PII pre-push hook + `pii-scrubber` invocation stay mandatory.**",
+    "**The no-`Co-Authored-By` commit rule is untouched.**",
+    "**Stop + ask** — and log it as a design/plan gap",
+    "a **record of what the autonomous run did**, not a stop-and-wait barrier",
+    "## Pre-announce, don't ask",
+    "Never stop to ask approval for it.",
 )
 
 # Load-bearing *classification body* fragments — the recoverable/unrecoverable
@@ -91,12 +115,13 @@ _CARVEOUT_FRAGMENTS = (
 _DOCTRINE_BODY_FRAGMENTS = (
     "recoverability, not destructiveness or blast-radius",
     "When uncertain, treat as unrecoverable",
-    "**Announce + proceed** — no confirmation wait.",
-    "**Stop + confirm** — pre-announce",
-    "force-push rewriting **published shared** history",
+    "**announced and proceed**",
+    "**stop and confirm**",
+    "force-push over published shared history",
     "sole-ref delete of unmerged work",
-    "**published-tag** overwrite",
-    "immutable publish / deploy / migration",
+    "published-tag overwrite",
+    "immutable deploy or migration",
+    "an unresolved decision stops and asks",
 )
 
 def _read(name: str) -> str:
@@ -112,7 +137,7 @@ def _extract_block(text: str) -> str:
     str.index) if either sentinel is absent — a missing block is a hard failure.
     """
     start = text.index(_BEGIN)
-    end = text.index(_END) + len(_END)
+    end = text.index("\n\n", start + len(_BEGIN) + 1)
     return text[start:end]
 
 
@@ -120,8 +145,7 @@ class TestRecoverabilityGateCarveouts(unittest.TestCase):
     def test_each_execution_command_carries_the_block(self):
         for name in _EXECUTION:
             text = _read(name)
-            self.assertIn(_BEGIN, text, f"{name} is missing the doctrine block (BEGIN sentinel)")
-            self.assertIn(_END, text, f"{name} is missing the doctrine block (END sentinel)")
+            self.assertIn(_BEGIN, text, f"{name} is missing the doctrine summary")
 
     def test_block_names_all_three_carveouts(self):
         for name in _EXECUTION:
@@ -151,6 +175,18 @@ class TestRecoverabilityGateCarveouts(unittest.TestCase):
                     f"the recoverable/unrecoverable classification must not be "
                     f"relaxed (even uniformly across all three copies).",
                 )
+
+    def test_the_skill_holds_the_full_doctrine(self):
+        # The block is a summary; the doctrine it summarizes must not be
+        # relaxed in its one home either.
+        text = _SKILL.read_text(encoding="utf-8")
+        for fragment in _SKILL_FRAGMENTS:
+            self.assertIn(fragment, text, f"the recoverability skill no longer states: {fragment!r}")
+        for name in _EXECUTION:
+            self.assertIn("the `recoverability` skill", _extract_block(_read(name)),
+                          f"{name}'s block no longer points at the doctrine's home")
+        # The one home stays shorter than the 1,400-word skill it replaced.
+        self.assertLess(len(text.split()), 1400)
 
     def test_no_coauthored_by_rule_intact_in_work_commit_step(self):
         # The block names it, but the load-bearing enforcement is work.md's

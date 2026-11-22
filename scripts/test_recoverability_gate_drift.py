@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """Byte-identity drift guard for the inlined recoverability-gate doctrine block.
 
-The "Recoverability gate (autonomy doctrine)" block is the single source of
-truth for developer-workflows execution autonomy. Claude Code drops
+The "Recoverability gate" block is the short summary of the autonomy doctrine
+each execution command carries; the full doctrine lives in developer-safety's
+`recoverability` skill (crickets plan 105 step 1). Claude Code drops
 instruction-file snippets at emit time (see `emit_claude`), so the block CANNOT
 be factored into a shared snippet — it is inlined verbatim into each execution
 command (`release.md` / `work.md` / `bugfix.md`). That makes silent drift the
 failure mode: one copy edited without the others diverges the doctrine while
 every other gate stays green.
 
-This test extracts the sentinel-anchored block (`<!-- BEGIN recoverability-gate`
-… `<!-- END recoverability-gate -->`) from each command and asserts the three
+This test extracts the block (the `## Recoverability gate` heading and its
+summary paragraph) from each command and asserts the three
 copies are **byte-identical** — no whitespace normalization, no trimming. A
 single-byte divergence in any copy fails the build. The block is short and
 inlined verbatim; any intentional wording change is an all-copies-together
@@ -38,20 +39,19 @@ _CMDS = _ROOT / "src" / "development-lifecycle" / "commands"
 # order (release.md is the byte-identity reference).
 _COMMANDS = ("release.md", "work.md", "bugfix.md")
 
-_BEGIN = "<!-- BEGIN recoverability-gate"
-_END = "<!-- END recoverability-gate -->"
+# Plan 105 step 1: the block is the `## Recoverability gate` heading and its one
+# summary paragraph, up to the next blank line (the old HTML sentinels are gone).
+_BEGIN = "## Recoverability gate\n\n"
 
 
 def _extract_block(text: str) -> str:
-    """Return the sentinel-anchored block, BEGIN..END inclusive, byte-for-byte.
+    """Return the block, heading through the end of its summary paragraph, byte-for-byte.
 
-    No normalization: the returned substring is exactly the bytes from the start
-    of the BEGIN sentinel line through the end of the END sentinel. Raises
-    ValueError (via str.index) if either sentinel is absent — a missing block is
-    a hard failure, not a silent skip.
+    No normalization. Raises ValueError (via str.index) if the heading is absent
+    — a missing block is a hard failure, not a silent skip.
     """
     start = text.index(_BEGIN)
-    end = text.index(_END) + len(_END)
+    end = text.index("\n\n", start + len(_BEGIN) + 1)
     return text[start:end]
 
 
@@ -65,8 +65,9 @@ class TestRecoverabilityGateByteIdentity(unittest.TestCase):
     def test_each_command_carries_the_block(self):
         for name in _COMMANDS:
             text = (_CMDS / name).read_text(encoding="utf-8")
-            self.assertIn(_BEGIN, text, f"{name} is missing the BEGIN sentinel")
-            self.assertIn(_END, text, f"{name} is missing the END sentinel")
+            self.assertIn(_BEGIN, text, f"{name} is missing the Recoverability gate summary")
+            self.assertNotIn("BEGIN recoverability-gate", text,
+                             f"{name} still carries the old sentinel-anchored doctrine copy")
 
     def test_blocks_are_byte_identical(self):
         blocks = self._blocks()
@@ -82,13 +83,17 @@ class TestRecoverabilityGateByteIdentity(unittest.TestCase):
             )
 
     def test_block_is_nonempty_and_well_formed(self):
-        # Guard against a vacuous pass if the sentinels collapse or the block is
-        # truncated: the canonical block is multi-line and names the doctrine.
+        # Guard against a vacuous pass if the block is truncated: heading, blank
+        # line, and a summary that names the doctrine and points at its home.
         ref = self._blocks()[_COMMANDS[0]]
         self.assertTrue(ref.startswith(_BEGIN))
-        self.assertTrue(ref.endswith(_END))
-        self.assertGreaterEqual(ref.count("\n"), 5)
-        self.assertIn("Recoverability gate (autonomy doctrine)", ref)
+        body = ref[len(_BEGIN):]
+        self.assertIn("recoverability, not destructiveness or blast-radius", body)
+        # Plan 105 step 1: the block is a summary that points at the doctrine's
+        # one home, and stays a summary (at most 80 words, at least 40).
+        self.assertIn("the `recoverability` skill", body)
+        self.assertLessEqual(len(body.split()), 80)
+        self.assertGreaterEqual(len(body.split()), 40)
 
 
 if __name__ == "__main__":
