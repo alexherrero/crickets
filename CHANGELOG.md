@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v7.0.0] — 2026-11-22 — Major: the pipeline lets go of what the loop replaced
+
+Plan 2 of 3 from the build-it / create-it design. The phase commands keep only what the loop still needs: the `/review` phase, `/doubt`, crickets' `/code-review` and `/simplify` and the `test-engineer` agent retire into `/build-it`'s passes and `/build-it --check`; wiki updates and board sync leave `/plan`, `/work`, `/release` and `/bugfix` and run on request or on a schedule; personas, routed dispatch, fan-out announcements, `features.json` and the design-divergence hooks go. The phase commands get 15–32% shorter (`/work` 5,708 → 4,795 words, `/plan` 3,301 → 2,458, `/release` 2,652 → 1,815, `/bugfix` 2,207 → 1,827). Major because commands go away: `development-lifecycle` 1.5.0 and `code-review` 1.0.0. Plan 3 (dead-weight cleanup) follows.
+
 ### Changed
 
 - **Board sync leaves the pipeline** (`development-lifecycle` 1.2.0, `github-projects` 0.6.2; step 3 of the let-go plan). `/plan`, `/work`, `/release` and `/bugfix` no longer probe for the board plugin, post a kickoff, progress or closeout, write `board-items.json` or run `planner-maintain`. A project that keeps a board runs the `report-board-drift` cycle on a loop or cron and `planner-maintain` to fix what it finds. `/work` logs an out-of-scope finding as a `FOLLOW-UP:` line in `progress.md`. `/release`'s arc coalescence checklist still checks that the issues a release names are closed, and `/setup` still offers to create a board once. `development-lifecycle` no longer declares an enhance onto `github-projects`' board sync.

@@ -59,7 +59,7 @@ The [wiki](https://github.com/alexherrero/crickets/wiki) covers everything there
 - [Reference](https://github.com/alexherrero/crickets/wiki/Reference) — plugin anatomy, the manifest schema, and the install modes.
 
 > [!NOTE]
-> **Latest release: [v6.0.0](https://github.com/alexherrero/crickets/releases/tag/v6.0.0).** Every task runs one loop: a spec to anchor it, a size, a direction check, the repo's own checks, review passes until nothing real is left, and a done-report. `/build-it` runs it for code and `/create-it` for art, sound, UI look and prose; `/plan` tags each step and `/work` runs the loop. The old design standard is retired, and `/design` now writes one living design note.
+> **Latest release: [v7.0.0](https://github.com/alexherrero/crickets/releases/tag/v7.0.0).** The phase commands keep only what the loop needs. `/review`, `/doubt`, crickets' `/code-review` and `/simplify` retire into `/build-it`'s passes, and `/build-it --check` reviews an existing change. Wiki updates and board sync run on request or on a schedule, not inside `/plan`, `/work` and `/release`.
 
 ---
 
