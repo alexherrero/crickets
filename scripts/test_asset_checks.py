@@ -341,6 +341,37 @@ class WavTests(TmpCase):
         self.assertFalse(m["measured"])
         self.assertTrue(any("not measured" in s for s in m["skipped"]))
 
+    def test_the_format_tag_decides_not_the_python_version(self):
+        # Python 3.15's wave module opens a float file and returns raw bytes; reading those as
+        # integers would give confident, wrong levels. The tag is read from the header.
+        def riff(fmt_body: bytes) -> bytes:
+            data = b"WAVE" + b"fmt " + struct.pack("<I", len(fmt_body)) + fmt_body + b"data" + struct.pack("<I", 8) + b"\0" * 8
+            return b"RIFF" + struct.pack("<I", len(data)) + data
+
+        pcm = struct.pack("<HHIIHH", 1, 1, 8000, 16000, 2, 16)
+        flt = struct.pack("<HHIIHH", 3, 1, 8000, 32000, 4, 32)
+        guid = lambda tag: struct.pack("<H", tag) + b"\x00\x00\x00\x00\x10\x00\x80\x00\x00\xaa\x00\x38\x9b\x71"
+        ext = lambda tag: struct.pack("<HHIIHH", 0xFFFE, 1, 8000, 32000, 4, 32) + struct.pack("<HHI", 22, 32, 4) + guid(tag)
+        for name, body, want in (("pcm", pcm, 1), ("float", flt, 3), ("ext-float", ext(3), 3), ("ext-pcm", ext(1), 1)):
+            p = self.dir / ("%s.wav" % name)
+            p.write_bytes(riff(body))
+            self.assertEqual(ac._wav_format_tag(str(p)), want, name)
+        self.assertIsNone(ac._wav_format_tag(str(self.dir / "missing.wav")))
+        junk = self.dir / "junk.wav"
+        junk.write_bytes(b"not a riff file")
+        self.assertIsNone(ac._wav_format_tag(str(junk)))
+
+    def test_an_extensible_float_wav_is_not_measured_as_integers(self):
+        guid = struct.pack("<H", 3) + b"\x00\x00\x00\x00\x10\x00\x80\x00\x00\xaa\x00\x38\x9b\x71"
+        fmt = struct.pack("<HHIIHH", 0xFFFE, 1, 8000, 32000, 4, 32) + struct.pack("<HHI", 22, 32, 4) + guid
+        body = struct.pack("<4f", 0.1, 0.1, 0.1, 0.1)
+        data = b"WAVE" + b"fmt " + struct.pack("<I", len(fmt)) + fmt + b"data" + struct.pack("<I", len(body)) + body
+        p = self.dir / "ext.wav"
+        p.write_bytes(b"RIFF" + struct.pack("<I", len(data)) + data)
+        m = ac.wav_metrics(str(p))
+        self.assertFalse(m["measured"])
+        self.assertIn("not integer PCM", m["skipped"][0])
+
     def test_a_file_that_is_not_a_wav_is_refused(self):
         p = self.dir / "x.wav"
         p.write_bytes(b"not a wav at all")

@@ -14,6 +14,7 @@ from __future__ import annotations
 import importlib.util
 import io
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -384,6 +385,20 @@ class CliTests(unittest.TestCase):
             self.assertEqual(rc, 2)
             self.assertIn("path:LINE", err)
             self.assertEqual(self.run_cli("passes", "--profile", "nope", "--size", "large")[0], 2)
+
+    def test_the_report_is_written_as_utf8_even_on_a_cp1252_console(self):
+        # The report prints an arrow. A Windows console's code page cannot encode it, so
+        # the script must not trust the console: it reconfigures its own stdout.
+        rec = build_record()
+        with tempfile.TemporaryDirectory() as d:
+            path = str(Path(d) / "loop.json")
+            lr.save(path, rec)
+            env = dict(os.environ, PYTHONIOENCODING="cp1252")
+            env.pop("PYTHONUTF8", None)
+            p = subprocess.run([sys.executable, str(_SCRIPT), "report", "--record", path],
+                               capture_output=True, env=env)
+        self.assertEqual(p.returncode, 0, p.stderr.decode("utf-8", "replace"))
+        self.assertIn("\u2192".encode("utf-8"), p.stdout)
 
     def test_runs_as_a_script(self):
         p = subprocess.run([sys.executable, str(_SCRIPT), "passes", "--profile", "create", "--size", "large",

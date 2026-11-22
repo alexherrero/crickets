@@ -294,7 +294,8 @@ class CliTests(unittest.TestCase):
 
     def test_place_prints_the_path(self):
         code, out, _ = self.run_cli("place", "--slug", "loop", "--plan", "/p/tasks/1-x/plan.md")
-        self.assertEqual((code, out.strip()), (0, "/p/tasks/1-x/spec.md"))
+        self.assertEqual(code, 0)
+        self.assertEqual(Path(out.strip()), Path("/p/tasks/1-x/spec.md"))  # separators are the OS's
 
     def test_place_error_is_exit_2(self):
         code, out, err = self.run_cli("place", "--slug", "loop")

@@ -283,7 +283,40 @@ def _db(x: float) -> Optional[float]:
     return None if x <= 0 else round(20 * math.log10(x), 2)
 
 
+def _wav_format_tag(path: str) -> Optional[int]:
+    """The WAV's format tag from its `fmt ` chunk (1 = integer PCM, 3 = float), or None if unreadable.
+
+    A WAVE_FORMAT_EXTENSIBLE file (0xFFFE) names its real format in the sub-format GUID.
+    The `wave` module of some Python versions opens a float file and hands back its raw
+    bytes; reading them as integers would give confident, wrong levels, so the tag is
+    checked here rather than left to whichever Python is running.
+    """
+    try:
+        with open(path, "rb") as fh:
+            head = fh.read(65536)
+    except OSError:
+        return None
+    if head[:4] != b"RIFF" or head[8:12] != b"WAVE":
+        return None
+    pos = 12
+    while pos + 8 <= len(head):
+        cid, size = head[pos:pos + 4], struct.unpack("<I", head[pos + 4:pos + 8])[0]
+        body = head[pos + 8:pos + 8 + size]
+        if cid == b"fmt " and len(body) >= 2:
+            tag = struct.unpack("<H", body[:2])[0]
+            if tag == 0xFFFE and len(body) >= 26:
+                return struct.unpack("<H", body[24:26])[0]
+            return tag
+        pos += 8 + size + (size & 1)
+    return None
+
+
 def wav_metrics(path: str) -> Dict[str, Any]:
+    tag = _wav_format_tag(path)
+    if tag not in (None, 1):
+        return {"type": "wav", "length_s": None, "sample_rate": None, "channels": None,
+                "peak_dbfs": None, "rms_dbfs": None, "measured": False,
+                "skipped": ["WAV not measured: format tag %d is not integer PCM (3 is float); only integer PCM is read" % tag]}
     try:
         wf = wave.open(path, "rb")
     except (OSError, EOFError) as exc:
@@ -490,7 +523,18 @@ def _jsonable(result: Dict[str, Any]) -> Dict[str, Any]:
     return out
 
 
+def _utf8_stdio() -> None:
+    """Write UTF-8 whatever the console's code page is: a Windows console's cp1252 cannot encode
+    the arrows and dots this prints. A stream that cannot be reconfigured is left alone."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8")
+        except (AttributeError, ValueError, OSError):
+            pass
+
+
 def main(argv: Optional[List[str]] = None) -> int:
+    _utf8_stdio()
     try:
         args = _build_parser().parse_args(argv)
     except SystemExit as exc:

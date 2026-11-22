@@ -176,7 +176,8 @@ class BlockShapeTests(Fixture):
     def test_a_file_list_shows_text_and_names_an_asset_with_its_size(self):
         (self.repo / "art.png").write_bytes(b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR" + b"\0" * 20)
         _, out, _ = self.run_cli("--files", "src/commit_msg.py", "art.png")
-        self.assertIn("--- src/commit_msg.py ---\n" + AFTER.rstrip(), out)
+        # A Windows checkout writes CRLF; the material shows a file as it is, so compare lines.
+        self.assertIn("--- src/commit_msg.py ---\n" + AFTER.rstrip(), out.replace("\r\n", "\n"))
         self.assertRegex(out, r"--- art\.png ---\n\(binary asset, \d+ bytes; not shown\)")
 
     def test_a_file_that_does_not_exist_is_a_usage_error(self):
@@ -365,10 +366,12 @@ class WhatItNeverReadsTests(Fixture):
     def test_it_runs_with_no_agentm_and_no_vault_on_the_path(self):
         env = {k: v for k, v in os.environ.items()
                if not k.startswith(("AGENTM", "MEMORY_"))}
+        # -I ignores PYTHONUTF8, so ask for UTF-8 with -X: the child writes UTF-8 and the
+        # parent reads it as UTF-8 on every OS (a Windows parent would decode cp1252).
         proc = subprocess.run(
-            [sys.executable, "-I", str(_SCRIPT), "--repo-root", str(self.repo), "--range", "HEAD~1..HEAD",
-             "--anchor", str(self.spec)],
-            capture_output=True, text=True, timeout=30, env=env)
+            [sys.executable, "-I", "-X", "utf8", str(_SCRIPT), "--repo-root", str(self.repo),
+             "--range", "HEAD~1..HEAD", "--anchor", str(self.spec)],
+            capture_output=True, text=True, encoding="utf-8", timeout=30, env=env)
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertIn("=== RULES ===", proc.stdout)
 

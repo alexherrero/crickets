@@ -186,7 +186,8 @@ class StillFindsADesignTests(unittest.TestCase):
             "---\nstatus: launched\ngoverns: [src/design]\n---\n# d\n", encoding="utf-8")
         out, rc = self.bridge.run_governing_design_resolve("src/design/commands/design.md", root=str(repo),
                                                            resolver=self._resolver(repo))
-        self.assertEqual((rc, out), (0, "wiki/designs/design.md"))
+        self.assertEqual(rc, 0)
+        self.assertEqual(Path(out), Path("wiki/designs/design.md"))  # the stub prints an OS-native path
 
     def test_a_repo_with_only_a_vault_note_resolves_through_vault_designs(self):
         repo = self.tmp / "repo-vault-only"

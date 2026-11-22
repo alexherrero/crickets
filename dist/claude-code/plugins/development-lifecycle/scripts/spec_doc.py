@@ -371,7 +371,18 @@ def _build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def _utf8_stdio() -> None:
+    """Write UTF-8 whatever the console's code page is: a Windows console's cp1252 cannot encode
+    the arrows and dots this prints. A stream that cannot be reconfigured is left alone."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8")
+        except (AttributeError, ValueError, OSError):
+            pass
+
+
 def main(argv: Optional[List[str]] = None) -> int:
+    _utf8_stdio()
     args = _build_parser().parse_args(argv)
     try:
         if args.cmd == "place":
