@@ -264,6 +264,22 @@ class ShapeTests(unittest.TestCase):
         self.assertTrue(out[1].startswith("Rules: "))
 
 
+class CopyTests(unittest.TestCase):
+    """code-review's review_material.py parses a spec's Rules with this module,
+    and a cross-plugin import cannot work at runtime, so code-review ships a copy.
+    development-lifecycle's is the original; the copy must not drift."""
+
+    def test_code_review_ships_a_byte_identical_copy(self):
+        copy = _ROOT / "src" / "code-review" / "scripts" / "spec_doc.py"
+        self.assertTrue(copy.is_file(), "code-review ships no spec_doc.py")
+        self.assertEqual(copy.read_bytes(), _SCRIPT.read_bytes(),
+                         "code-review's spec_doc.py drifted from development-lifecycle's")
+
+    def test_no_other_plugin_ships_one(self):
+        found = sorted(p.parent.parent.name for p in (_ROOT / "src").glob("*/scripts/spec_doc.py"))
+        self.assertEqual(found, ["code-review", "development-lifecycle"])
+
+
 class CliTests(unittest.TestCase):
     def run_cli(self, *argv, stdin: str = ""):
         out, err = io.StringIO(), io.StringIO()

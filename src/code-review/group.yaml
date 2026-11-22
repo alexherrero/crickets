@@ -99,7 +99,16 @@ description: Standalone adversarial code review of any diff or PR — the advers
 # CROSS_REVIEW_TIMEOUT_SECS and CROSS_REVIEW_MAX_BYTES still win; an unknown
 # tier or argument exits 2 before agy is called. Gemini 4 Argon (High) is no
 # longer the default. Plan 103 (build-it / create-it loop), step 1.
-version: 0.5.0
+# 0.6.0 = scripts/review_material.py (plan 103, step 3): builds the text a
+# reviewer is shown, as === ARTIFACT === / === CONTRACT === / === RULES ===,
+# from a git range, the working tree, a PR or a file list. RULES comes from the
+# anchor first (a spec's Rules with their sources, else a plan's locked calls
+# and constraints, plus a likeness list), then the AGENTS.md / CLAUDE.md
+# paragraphs that share the most terms with the change, under a 40-line cap and
+# the tier's byte ceiling. It reads no reasoning and is told no suspected bug;
+# a missing anchor gives an empty RULES with the reason. scripts/spec_doc.py is
+# a byte-identical copy of development-lifecycle's (it parses the spec).
+version: 0.6.0
 category: Coding
 requires: []
 standalone: true

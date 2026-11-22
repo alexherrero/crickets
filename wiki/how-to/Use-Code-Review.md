@@ -32,6 +32,8 @@
 
    Prose-only critiques are rejected. When the two reviewers disagree (one finds a defect, one says clean), **both are surfaced** — disagreement is signal. Any `file:line` or failing test is verified to reproduce before it's reported.
 
+   To feed `cross-review.sh` by hand with the contract and rules attached, build the material with `review_material.py --range main..HEAD --anchor <spec>` — see [Code Review](Code-Review#review-material).
+
 4. Act on the findings yourself — `/code-review` reports, it doesn't edit. Standalone, the fixes are yours. (Inside a `/work` loop, the same reviewers feed a follow-up `/work` task instead.)
 
 ## Cross-review privacy note

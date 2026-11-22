@@ -50,6 +50,7 @@ Each primitive links to the source that implements it.
 | [`security-auditor`](https://github.com/alexherrero/crickets/blob/main/src/code-review/agents/security-auditor.md) | sub-agent | Finds the unvalidated boundary crossing. |
 | [`test-engineer`](https://github.com/alexherrero/crickets/blob/main/src/code-review/agents/test-engineer.md) | sub-agent | Finds the behavior with no test. |
 | [`evidence-tracker`](https://github.com/alexherrero/crickets/blob/main/src/code-review/hooks/evidence-tracker/hook.md) | hook | Blocks a `[ ] → [x]` flip until specs and tests are read (Claude-only). |
+| [`review_material.py`](https://github.com/alexherrero/crickets/blob/main/src/code-review/scripts/review_material.py) | script | Builds the text a reviewer sees: `ARTIFACT`, `CONTRACT`, `RULES`. Pipe it into `cross-review.sh`. |
 
 ### Configuration
 
@@ -76,6 +77,21 @@ Each override applies on top of the chosen tier.
 | `CROSS_REVIEW_MODEL` | Exact `agy models` display string; beats any tier's model. |
 | `CROSS_REVIEW_TIMEOUT_SECS` | Positive integer seconds; replaces the tier's print timeout. A malformed value is ignored with a note on stderr. |
 | `CROSS_REVIEW_MAX_BYTES` | Byte count; replaces the tier's material ceiling. `0` turns the check off. A malformed value is ignored with a note on stderr. |
+
+#### Review material
+
+`review_material.py` prints three blocks: `=== ARTIFACT ===` (the change), `=== CONTRACT ===` (what it was meant to do), and `=== RULES ===` (the rules it must follow, one per line). It reads no reasoning and takes no suspected bug. Standard library only; needs `git`, plus `gh` for `--pr`.
+
+| Option | Effect |
+|---|---|
+| `--range A..B` · `--worktree` · `--pr N` · `--files PATH...` | The artifact: a git range, the working tree against `HEAD`, a PR diff, or files as they are. |
+| `--contract TEXT` · `--contract-file F` | The contract text. |
+| `--anchor FILE` | The spec, plan or design the change is held to. Without one, `RULES` is empty and says why; exit 0. |
+| `--repo-root DIR` | The repo whose `AGENTS.md` and `CLAUDE.md` are searched. Default: the current directory. |
+| `--tier default\|high\|wording` | Picks the byte ceiling: 50 KB, 80 KB, 50 KB. |
+| `--max-rule-lines N` · `--max-bytes N` | Cap the rule lines (default 40); override the ceiling (`0` = none). |
+
+`RULES` draws first from the anchor: a spec's Rules with their sources, else a plan or design's Locked design calls and Constraints, plus any Likeness list. It then adds the `AGENTS.md` and `CLAUDE.md` paragraphs that share the most terms with the changed paths and identifiers, rarer terms counting more. The same inputs give the same output. Exit 2 on a usage error or an unreadable input.
 
 ## See also
 
