@@ -731,5 +731,12 @@ enhances:
 # and a cited line; answers "stop this pass?" (no real finding left, or round 3
 # still real: escalate); and flags doubt theater. JSON record at a path the
 # caller passes. Stdlib, no agentm.
-version: 0.52.0
+# 0.53.0 = the done-report (plan 103, step 6): loop_record.py report renders the
+# record as markdown (requirements met or not with evidence, every finding with
+# its disposition, a Not checked list that is never left out, and for create-it
+# the paired images and a playtest checklist); new record commands requirement,
+# not-checked, pair, playtest and dispose. The evaluator agent (0.2.0) takes
+# the anchor plus the record for a done-check, builds its rubric from the
+# anchor's Done-when lines, and is pinned to model claude-sonnet-5.
+version: 0.53.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

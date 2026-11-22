@@ -9,6 +9,12 @@ what each round found, and when a pass stops.
     loop_record.py add        --record FILE --pass NAME --class CLASS --line PATH:LINE --text TEXT
     loop_record.py stop       --record FILE --pass NAME
     loop_record.py status     --record FILE
+    loop_record.py dispose    --record FILE --pass NAME --round N --finding I --disposition TEXT
+    loop_record.py requirement --record FILE --text TEXT --status met|not-met --evidence TEXT
+    loop_record.py not-checked --record FILE --text TEXT
+    loop_record.py pair       --record FILE --reference PATH --made PATH      (create / both)
+    loop_record.py playtest   --record FILE --text TEXT                       (create / both)
+    loop_record.py report     --record FILE
 
 The loop is: anchor, size, direction, make, free checks, focused passes, done-report.
 This script holds what a script can settle; the command holds the judgment (what a
@@ -47,6 +53,19 @@ A fourth round is refused. `stop` exits 0 for done and continue, 3 for escalate.
 Doubt theater (`status`): two or more rounds that came back with findings while the whole
 record holds no `real` one. Reviews ran and none of it mattered.
 
+Done-report (`report` prints it as markdown; it only reads the record):
+    Requirements   each Done-when line, met or not met, with the evidence for it
+    Reviews        each pass: tier, rounds, verdict, and every finding with its class,
+                   cited line and disposition. A finding with no disposition reads as
+                   its class's default (tradeoff: accepted; misread, noise: dismissed);
+                   a `real` one with none reads OPEN
+    Not checked    what the run did not look at: the caller's list, plus every review
+                   the size called for that never ran. The section is always there; with
+                   nothing to list it says so, it is never left out. The done-check
+                   is not listed: it grades this report, so it has not run yet
+    Pairs, Playtest   create-it only: reference beside what was made, and a checklist
+A requirement needs evidence either way; a met one with none is refused.
+
 Exit codes: 0 fine; 2 usage error, unreadable or invalid record, refused input; 3 escalate.
 No agentm, no vault, no network. Standard library only.
 """
@@ -65,6 +84,14 @@ SIZES = ("small", "medium", "large")
 CLASSES = ("real", "tradeoff", "misread", "noise")
 ROUND_CAP = 3
 RECORD_VERSION = 1
+REQ_STATUSES = ("met", "not-met")
+# What a finding reads as in the report until someone records what was done with it.
+DEFAULT_DISPOSITION = {
+    "real": "OPEN",
+    "tradeoff": "accepted tradeoff",
+    "misread": "dismissed: misread",
+    "noise": "dismissed: noise",
+}
 
 _LINE_RE = re.compile(r"^\S.*:\d+(?:-\d+)?$")
 
@@ -126,7 +153,7 @@ def new_record(profile: str, size: str, security: bool = False, prose: bool = Fa
         e["rounds"] = []
     return {"version": RECORD_VERSION, "profile": profile, "size": size,
             "security": bool(security), "prose": bool(prose), "voice": bool(voice),
-            "passes": entries}
+            "passes": entries, "requirements": [], "not_checked": [], "pairs": [], "playtest": []}
 
 
 def _find(record: Dict[str, Any], name: str) -> Dict[str, Any]:
@@ -148,7 +175,8 @@ def open_round(record: Dict[str, Any], name: str) -> int:
     return p["rounds"][-1]["n"]
 
 
-def add_finding(record: Dict[str, Any], name: str, cls: str, line: str, text: str) -> None:
+def add_finding(record: Dict[str, Any], name: str, cls: str, line: str, text: str,
+                disposition: Optional[str] = None) -> None:
     """Record a finding in the pass's latest round."""
     if cls not in CLASSES:
         raise RecordError("class must be one of %s, not %r" % (", ".join(CLASSES), cls))
@@ -159,7 +187,60 @@ def add_finding(record: Dict[str, Any], name: str, cls: str, line: str, text: st
     p = _find(record, name)
     if not p["rounds"]:
         raise RecordError("pass %r has no open round; run open-round first" % name)
-    p["rounds"][-1]["findings"].append({"class": cls, "line": line.strip(), "text": text.strip()})
+    finding = {"class": cls, "line": line.strip(), "text": text.strip()}
+    if disposition and disposition.strip():
+        finding["disposition"] = disposition.strip()
+    p["rounds"][-1]["findings"].append(finding)
+
+
+def dispose(record: Dict[str, Any], name: str, round_n: int, index: int, disposition: str) -> None:
+    """Record what was done with a finding. `index` counts from 1 within the round."""
+    if not (disposition or "").strip():
+        raise RecordError("a disposition needs text")
+    p = _find(record, name)
+    rounds = [r for r in p["rounds"] if r["n"] == round_n]
+    if not rounds:
+        raise RecordError("pass %r has no round %d" % (name, round_n))
+    findings = rounds[0]["findings"]
+    if not 1 <= index <= len(findings):
+        raise RecordError("round %d of %r has %d finding(s); %d is out of range"
+                          % (round_n, name, len(findings), index))
+    findings[index - 1]["disposition"] = disposition.strip()
+
+
+def add_requirement(record: Dict[str, Any], text: str, status: str, evidence: str) -> None:
+    if status not in REQ_STATUSES:
+        raise RecordError("status must be one of %s, not %r" % (", ".join(REQ_STATUSES), status))
+    if not (text or "").strip():
+        raise RecordError("a requirement needs text")
+    if not (evidence or "").strip():
+        raise RecordError("a requirement needs evidence, met or not: what was looked at, and what it showed")
+    record["requirements"].append({"text": text.strip(), "status": status, "evidence": evidence.strip()})
+
+
+def add_not_checked(record: Dict[str, Any], text: str) -> None:
+    if not (text or "").strip():
+        raise RecordError("a not-checked item needs text")
+    record["not_checked"].append(text.strip())
+
+
+def _create_only(record: Dict[str, Any], what: str) -> None:
+    if record["profile"] == "build":
+        raise RecordError("%s belong to create-it work; this record's profile is build" % what)
+
+
+def add_pair(record: Dict[str, Any], reference: str, made: str) -> None:
+    _create_only(record, "paired images")
+    if not (reference or "").strip() or not (made or "").strip():
+        raise RecordError("a pair needs both a reference path and a made path")
+    record["pairs"].append({"reference": reference.strip(), "made": made.strip()})
+
+
+def add_playtest(record: Dict[str, Any], text: str) -> None:
+    _create_only(record, "playtest items")
+    if not (text or "").strip():
+        raise RecordError("a playtest item needs text")
+    record["playtest"].append(text.strip())
 
 
 def stop_verdict(record: Dict[str, Any], name: str) -> str:
@@ -196,6 +277,74 @@ def status(record: Dict[str, Any]) -> Dict[str, Any]:
             "doubt_theater": doubt_theater(record), "passes": per_pass}
 
 
+def _open_real(record: Dict[str, Any]) -> int:
+    n = 0
+    for p in record["passes"]:
+        for r in p["rounds"]:
+            for f in r["findings"]:
+                if f["class"] == "real" and not f.get("disposition"):
+                    n += 1
+    return n
+
+
+def render_report(record: Dict[str, Any]) -> str:
+    """The done-report as markdown. Reads the record; changes nothing."""
+    lines = []  # type: List[str]
+    reqs = record["requirements"]
+    met = sum(1 for r in reqs if r["status"] == "met")
+    escalated = [p["name"] for p in record["passes"] if stop_verdict(record, p["name"]) == "escalate"]
+    lines += ["# Done-report", "",
+              "Profile: %s · Size: %s" % (record["profile"], record["size"]),
+              "Result: %d of %d requirements met · %d real finding(s) open · escalated: %s · doubt theater: %s"
+              % (met, len(reqs), _open_real(record), ", ".join(escalated) or "none",
+                 "yes" if doubt_theater(record) else "no"),
+              "", "## Requirements", ""]
+    if not reqs:
+        lines.append("No requirements were recorded.")
+    for r in reqs:
+        lines.append("- [%s] %s — evidence: %s" % ("met" if r["status"] == "met" else "NOT MET",
+                                                   r["text"], r["evidence"]))
+
+    lines += ["", "## Reviews", ""]
+    if not record["passes"]:
+        lines.append("No review ran: free checks only (size: %s)." % record["size"])
+    for p in record["passes"]:
+        if not p["rounds"]:
+            if p["kind"] != "done-check":  # it grades this report, so it cannot have run yet
+                lines += ["### %s — never ran" % p["name"], ""]
+            continue
+        tier = p["tier"] or p["reviewer"]
+        lines.append("### %s (%s) — %d round(s), %s" % (p["name"], tier, len(p["rounds"]),
+                                                      stop_verdict(record, p["name"])))
+        for r in p["rounds"]:
+            if not r["findings"]:
+                lines.append("- round %d · no findings" % r["n"])
+            for f in r["findings"]:
+                lines.append("- round %d · %s · `%s` — %s → %s"
+                             % (r["n"], f["class"], f["line"], f["text"],
+                                f.get("disposition") or DEFAULT_DISPOSITION[f["class"]]))
+        lines.append("")
+
+    lines += ["## Not checked", ""]
+    unchecked = list(record["not_checked"])
+    if not record["passes"]:
+        unchecked.append("Every review: this size runs free checks only.")
+    unchecked += ["%s: the review never ran" % p["name"] for p in record["passes"]
+                  if not p["rounds"] and p["kind"] != "done-check"]
+    if unchecked:
+        lines += ["- %s" % u for u in unchecked]
+    else:
+        lines.append("Nothing recorded as unchecked.")
+
+    if record["profile"] in ("create", "both"):
+        lines += ["", "## Paired images", ""]
+        lines += ["- reference `%s` · made `%s`" % (x["reference"], x["made"]) for x in record["pairs"]] \
+            or ["No pairs were recorded."]
+        lines += ["", "## Playtest checklist", ""]
+        lines += ["- [ ] %s" % t for t in record["playtest"]] or ["No playtest items were recorded."]
+    return "\n".join(lines).rstrip("\n") + "\n"
+
+
 def load(path: str) -> Dict[str, Any]:
     try:
         with open(path, encoding="utf-8") as fh:
@@ -206,6 +355,9 @@ def load(path: str) -> Dict[str, Any]:
         raise RecordError("the record %s is not valid JSON: %s" % (path, exc))
     if not isinstance(rec, dict) or rec.get("version") != RECORD_VERSION or not isinstance(rec.get("passes"), list):
         raise RecordError("the record %s is not a version-%d loop record" % (path, RECORD_VERSION))
+    # Records written before the done-report existed lack these; they read as empty.
+    for key in ("requirements", "not_checked", "pairs", "playtest"):
+        rec.setdefault(key, [])
     return rec
 
 
@@ -252,8 +404,32 @@ def _build_parser() -> argparse.ArgumentParser:
             sp.add_argument("--class", dest="cls", required=True, choices=CLASSES)
             sp.add_argument("--line", required=True, help="path:LINE the finding cites")
             sp.add_argument("--text", required=True)
-    st = sub.add_parser("status", help="every pass's verdict, finding counts, doubt theater")
+            sp.add_argument("--disposition", help="what was done with it, when already known")
+    st =sub.add_parser("status", help="every pass's verdict, finding counts, doubt theater")
     st.add_argument("--record", required=True)
+    ds = sub.add_parser("dispose", help="record what was done with a finding")
+    ds.add_argument("--record", required=True)
+    ds.add_argument("--pass", dest="pass_name", required=True)
+    ds.add_argument("--round", dest="round_n", required=True, type=int)
+    ds.add_argument("--finding", dest="index", required=True, type=int, help="1-based, within the round")
+    ds.add_argument("--disposition", required=True)
+    rq = sub.add_parser("requirement", help="record a Done-when line, met or not, with its evidence")
+    rq.add_argument("--record", required=True)
+    rq.add_argument("--text", required=True)
+    rq.add_argument("--status", required=True, choices=REQ_STATUSES)
+    rq.add_argument("--evidence", required=True)
+    nc = sub.add_parser("not-checked", help="record something the run did not look at")
+    nc.add_argument("--record", required=True)
+    nc.add_argument("--text", required=True)
+    pr = sub.add_parser("pair", help="record a reference beside what was made (create-it)")
+    pr.add_argument("--record", required=True)
+    pr.add_argument("--reference", required=True)
+    pr.add_argument("--made", required=True)
+    pt = sub.add_parser("playtest", help="record a playtest checklist item (create-it)")
+    pt.add_argument("--record", required=True)
+    pt.add_argument("--text", required=True)
+    rp = sub.add_parser("report", help="print the done-report as markdown")
+    rp.add_argument("--record", required=True)
     return p
 
 
@@ -278,14 +454,28 @@ def main(argv: Optional[List[str]] = None) -> int:
             print(open_round(rec, args.pass_name))
             save(args.record, rec)
         elif args.cmd == "add":
-            add_finding(rec, args.pass_name, args.cls, args.line, args.text)
+            add_finding(rec, args.pass_name, args.cls, args.line, args.text, args.disposition)
             save(args.record, rec)
         elif args.cmd == "stop":
             verdict = stop_verdict(rec, args.pass_name)
             print(verdict)
             return 3 if verdict == "escalate" else 0
-        else:
+        elif args.cmd == "status":
             print(json.dumps(status(rec), indent=2))
+        elif args.cmd == "report":
+            sys.stdout.write(render_report(rec))
+        else:
+            if args.cmd == "dispose":
+                dispose(rec, args.pass_name, args.round_n, args.index, args.disposition)
+            elif args.cmd == "requirement":
+                add_requirement(rec, args.text, args.status, args.evidence)
+            elif args.cmd == "not-checked":
+                add_not_checked(rec, args.text)
+            elif args.cmd == "pair":
+                add_pair(rec, args.reference, args.made)
+            else:
+                add_playtest(rec, args.text)
+            save(args.record, rec)
         return 0
     except RecordError as exc:
         print("loop_record: %s" % exc, file=sys.stderr)

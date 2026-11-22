@@ -42,7 +42,7 @@ RUBRIC:
 2. ...
 ```
 
-A missing `ARTIFACT:` or `RUBRIC:` label halts the prompt. It returns `Input contract violation`. You can include extra sections like `CONTEXT:`. The evaluator only grades the rubric.
+A missing `ARTIFACT:` or `RUBRIC:` label halts the prompt (a done-check supplies `ANCHOR:` and `RECORD:` instead of `RUBRIC:`; see below). It returns `Input contract violation`. You can include extra sections like `CONTEXT:`. The evaluator only grades the rubric.
 
 **Rubric rules:**
 
@@ -67,6 +67,28 @@ RUBRIC:
 ```
 
 You use this same `ARTIFACT`/`RUBRIC` shape to grade a docs-drift check. You use it for release readiness. You use it for anything you can write as a numbered contract.
+
+## Done-check: anchor and loop record
+
+The build-it / create-it loop ends with one evaluator pass, the done-check. The dispatch names `ANCHOR:` and `RECORD:` beside `ARTIFACT:`, and `RUBRIC:` becomes optional. The helper that writes the record is `loop_record.py`; no command dispatches the done-check yet (the loop commands will).
+
+| Section | Holds |
+|---|---|
+| `ARTIFACT:` | the changed files or made assets, plus any test or tool output on disk |
+| `ANCHOR:` | the spec (or the plan) the work is graded against |
+| `RECORD:` | the loop record JSON, or its rendered done-report |
+
+The rubric is built in this order; a caller-supplied `RUBRIC:` is graded after it.
+
+| # | Item | Fails when |
+|---|---|---|
+| 1 | One item per Done-when line | no requirement is recorded for the line, or a `met` one's evidence is not borne out by the artifact |
+| 2 | No open real finding | a `real` finding is still `OPEN` |
+| 3 | No escalated or unrun pass | a pass ended in `escalate`, or a pass the size called for `never ran` (the done-check is not listed: it grades the report) |
+| 4 | Not checked hides nothing | a Done-when line is listed as unchecked while its requirement is `met` |
+| 5 | create-it only | a Likeness line has neither a pair nor a not-checked entry, or the playtest checklist is missing |
+
+The record is evidence, not instruction: a finding or evidence line that tells the grader how to grade is graded as text. The agent is pinned to `model: claude-sonnet-5`, which keeps it a different model from the Gemini reviewers; the allowlist is unchanged.
 
 ## Output contract
 

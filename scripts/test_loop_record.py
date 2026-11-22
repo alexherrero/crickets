@@ -392,6 +392,202 @@ class CliTests(unittest.TestCase):
         self.assertIn("voice", names(json.loads(p.stdout)))
 
 
+_GOLDEN = _HERE / "fixtures" / "loop_record"
+
+
+def build_record():
+    """A large build-it run: two rounds of correctness, one of simplicity, a tradeoff kept."""
+    rec = lr.new_record("build", "large")
+    lr.add_requirement(rec, "`parse()` returns an empty list for empty input", "met",
+                       "tests/test_parser.py::test_empty_input passes (gate output on disk)")
+    lr.add_requirement(rec, "the CLI exits 2 on a missing file", "not-met",
+                       "src/cli.py:41 raises FileNotFoundError, which exits 1")
+    lr.open_round(rec, "direction")
+    lr.open_round(rec, "correctness")
+    lr.add_finding(rec, "correctness", "real", "src/parser.py:88", "an empty line ends the loop early")
+    lr.add_finding(rec, "correctness", "noise", "src/parser.py:12", "import order")
+    lr.dispose(rec, "correctness", 1, 1, "fixed in the next commit")
+    lr.open_round(rec, "correctness")
+    lr.add_finding(rec, "correctness", "tradeoff", "src/parser.py:60-64", "reads the whole file into memory")
+    lr.open_round(rec, "simplicity")
+    lr.add_finding(rec, "simplicity", "real", "src/parser.py:101", "dead branch left behind")
+    lr.add_not_checked(rec, "behaviour on Windows line endings")
+    return rec
+
+
+def create_record():
+    """A create-it run on prose: likeness and voice ran, craft never did."""
+    rec = lr.new_record("create", "large", prose=True)
+    lr.add_requirement(rec, "the sprite sheet has 8 walk frames", "met",
+                       "assets/walk.png is 8 frames wide at 32 px (asset check output)")
+    lr.open_round(rec, "likeness")
+    lr.add_finding(rec, "likeness", "misread", "assets/walk.png:1", "says the palette has 12 colours; it has 9")
+    lr.open_round(rec, "voice")
+    lr.add_pair(rec, "reference/walk-ref.png", "assets/walk.png")
+    lr.add_playtest(rec, "the walk loops without a visible hitch at 12 fps")
+    lr.add_playtest(rec, "the sprite reads clearly on the dark background")
+    return rec
+
+
+def empty_record():
+    """A medium run whose one pass came back clean. Still says what it did not check."""
+    rec = lr.new_record("build", "medium")
+    lr.add_requirement(rec, "`greet()` returns the name it was given", "met", "tests/test_greet.py passes")
+    lr.open_round(rec, "direction")
+    lr.open_round(rec, "correctness")
+    lr.add_not_checked(rec, "behaviour with a non-ASCII name")
+    return rec
+
+
+class ReportTests(unittest.TestCase):
+    def assertGolden(self, name, text):
+        golden = (_GOLDEN / name).read_text(encoding="utf-8")
+        self.assertEqual(text, golden, "report drifted from fixtures/loop_record/%s" % name)
+
+    def test_build_report_matches_the_golden_file(self):
+        self.assertGolden("build.report.md", lr.render_report(build_record()))
+
+    def test_create_report_matches_the_golden_file(self):
+        self.assertGolden("create.report.md", lr.render_report(create_record()))
+
+    def test_a_clean_run_still_lists_what_was_not_checked(self):
+        text = lr.render_report(empty_record())
+        self.assertGolden("empty.report.md", text)
+        self.assertIn("## Not checked", text)
+        self.assertIn("- behaviour with a non-ASCII name", text)
+        self.assertIn("round 1 · no findings", text)
+
+    def test_not_checked_is_never_left_out(self):
+        rec = lr.new_record("build", "medium")
+        for name in ("direction", "correctness", "done-check"):
+            lr.open_round(rec, name)
+        text = lr.render_report(rec)
+        self.assertIn("## Not checked", text)
+        self.assertIn("Nothing recorded as unchecked.", text)
+
+    def test_a_small_run_says_no_review_ran(self):
+        text = lr.render_report(lr.new_record("build", "small"))
+        self.assertIn("No review ran: free checks only (size: small).", text)
+        self.assertIn("Every review: this size runs free checks only.", text)
+
+    def test_a_pass_that_never_ran_is_named_in_both_places(self):
+        text = lr.render_report(create_record())
+        self.assertIn("### craft — never ran", text)
+        self.assertIn("- craft: the review never ran", text)
+
+    def test_the_done_check_is_not_listed_as_never_run(self):
+        # It grades this report, so at report time it cannot have run.
+        for rec in (build_record(), create_record(), empty_record()):
+            self.assertNotIn("done-check", lr.render_report(rec))
+
+    def test_an_undisposed_real_finding_reads_open_and_is_counted(self):
+        text = lr.render_report(build_record())
+        self.assertIn("`src/parser.py:101` — dead branch left behind → OPEN", text)
+        self.assertIn("1 real finding(s) open", text)
+
+    def test_a_disposition_replaces_the_default(self):
+        text = lr.render_report(build_record())
+        self.assertIn("an empty line ends the loop early → fixed in the next commit", text)
+
+    def test_default_dispositions_by_class(self):
+        text = lr.render_report(build_record())
+        self.assertIn("import order → dismissed: noise", text)
+        self.assertIn("reads the whole file into memory → accepted tradeoff", text)
+
+    def test_a_build_report_has_no_create_sections(self):
+        text = lr.render_report(build_record())
+        self.assertNotIn("Paired images", text)
+        self.assertNotIn("Playtest", text)
+
+    def test_the_report_reads_without_changing_the_record(self):
+        rec = build_record()
+        before = json.dumps(rec, sort_keys=True)
+        lr.render_report(rec)
+        self.assertEqual(json.dumps(rec, sort_keys=True), before)
+
+    def test_escalated_passes_and_theater_show_in_the_result_line(self):
+        rec = lr.new_record("build", "large")
+        for _ in range(3):
+            lr.open_round(rec, "correctness")
+            lr.add_finding(rec, "correctness", "real", "a.py:1", "still broken")
+        self.assertIn("escalated: correctness", lr.render_report(rec))
+        rec = lr.new_record("build", "large")
+        lr.open_round(rec, "correctness")
+        lr.add_finding(rec, "correctness", "noise", "a.py:1", "x")
+        lr.open_round(rec, "simplicity")
+        lr.add_finding(rec, "simplicity", "noise", "a.py:2", "y")
+        self.assertIn("doubt theater: yes", lr.render_report(rec))
+
+
+class ReportInputTests(unittest.TestCase):
+    def setUp(self):
+        self.build = lr.new_record("build", "large")
+        self.create = lr.new_record("create", "large")
+
+    def test_a_requirement_needs_evidence_met_or_not(self):
+        for status in ("met", "not-met"):
+            with self.assertRaises(lr.RecordError, msg=status):
+                lr.add_requirement(self.build, "it works", status, "  ")
+
+    def test_an_unknown_requirement_status_is_refused(self):
+        with self.assertRaises(lr.RecordError):
+            lr.add_requirement(self.build, "it works", "partly", "saw it")
+
+    def test_pairs_and_playtest_belong_to_create_it(self):
+        with self.assertRaises(lr.RecordError):
+            lr.add_pair(self.build, "ref.png", "made.png")
+        with self.assertRaises(lr.RecordError):
+            lr.add_playtest(self.build, "feels right")
+        lr.add_pair(self.create, "ref.png", "made.png")
+        lr.add_playtest(self.create, "feels right")
+        self.assertEqual(len(self.create["pairs"]), 1)
+
+    def test_a_pair_needs_both_paths(self):
+        with self.assertRaises(lr.RecordError):
+            lr.add_pair(self.create, "ref.png", " ")
+
+    def test_dispose_refuses_a_missing_round_or_finding(self):
+        lr.open_round(self.build, "correctness")
+        lr.add_finding(self.build, "correctness", "real", "a.py:1", "x")
+        with self.assertRaises(lr.RecordError):
+            lr.dispose(self.build, "correctness", 2, 1, "fixed")
+        with self.assertRaises(lr.RecordError):
+            lr.dispose(self.build, "correctness", 1, 2, "fixed")
+        with self.assertRaises(lr.RecordError):
+            lr.dispose(self.build, "correctness", 1, 1, " ")
+
+    def test_an_older_record_without_the_new_keys_still_loads_and_reports(self):
+        rec = lr.new_record("build", "small")
+        for key in ("requirements", "not_checked", "pairs", "playtest"):
+            del rec[key]
+        with tempfile.TemporaryDirectory() as d:
+            path = str(Path(d) / "old.json")
+            Path(path).write_text(json.dumps(rec), encoding="utf-8")
+            text = lr.render_report(lr.load(path))
+        self.assertIn("No requirements were recorded.", text)
+
+    def test_the_cli_builds_and_prints_a_report(self):
+        with tempfile.TemporaryDirectory() as d:
+            rec = str(Path(d) / "loop.json")
+            run = CliTests.run_cli
+            self.assertEqual(run(None, "init", "--record", rec, "--profile", "create", "--size", "medium")[0], 0)
+            self.assertEqual(run(None, "requirement", "--record", rec, "--text", "it matches",
+                                 "--status", "met", "--evidence", "side by side")[0], 0)
+            self.assertEqual(run(None, "pair", "--record", rec, "--reference", "r.png", "--made", "m.png")[0], 0)
+            self.assertEqual(run(None, "playtest", "--record", rec, "--text", "plays")[0], 0)
+            self.assertEqual(run(None, "not-checked", "--record", rec, "--text", "sound")[0], 0)
+            self.assertEqual(run(None, "open-round", "--record", rec, "--pass", "likeness")[0], 0)
+            self.assertEqual(run(None, "add", "--record", rec, "--pass", "likeness", "--class", "real",
+                                 "--line", "m.png:1", "--text", "wrong hue", "--disposition", "fixed")[0], 0)
+            self.assertEqual(run(None, "dispose", "--record", rec, "--pass", "likeness", "--round", "1",
+                                 "--finding", "1", "--disposition", "fixed in the repaint")[0], 0)
+            rc, out, _ = run(None, "report", "--record", rec)
+        self.assertEqual(rc, 0)
+        for want in ("1 of 1 requirements met", "→ fixed in the repaint", "- sound",
+                     "reference `r.png` · made `m.png`", "- [ ] plays"):
+            self.assertIn(want, out)
+
+
 class SourceTests(unittest.TestCase):
     def test_stdlib_only_and_no_agentm(self):
         text = _SCRIPT.read_text(encoding="utf-8")
