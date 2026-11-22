@@ -89,7 +89,7 @@ Append-only log. Newest entries at the bottom. Format: `<YYYY-MM-DD HH:MM> /<pha
 ```bash
 #!/usr/bin/env bash
 # init.sh — one-shot boot of the dev environment. Edit to match this project.
-# Every /work and /review session can run this to reach a known-good state.
+# Every /work session can run this to reach a known-good state.
 set -euo pipefail
 echo "==> install deps"
 # npm install      # or pnpm / go mod download / pip install / cargo build …
@@ -100,7 +100,7 @@ echo "==> ready"
 
 ```bash
 #!/usr/bin/env bash
-# verify.sh — fast per-file check. Keep it <2s; full suites belong in /review or CI.
+# verify.sh — fast per-file check. Keep it <2s; full suites belong in the step's gates or CI.
 # Exit 0 silent on success, non-zero on failure. $1 is the file just written.
 set -uo pipefail
 FILE="${1:-}"; [[ -z "$FILE" || ! -f "$FILE" ]] && exit 0

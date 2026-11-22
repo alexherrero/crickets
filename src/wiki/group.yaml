@@ -219,7 +219,9 @@ standalone: true
 # 0.13.4 = sibling_plugin.py's docstring no longer names the retired /design
 # translate, and diataxis-author's dogfood note no longer names /design author
 # (plan 103, step 12).
-version: 0.13.4
+# 0.13.5 = documenter drops its "/review — NOT invoked" section: the /review
+# phase is retired (plan 104 step 1).
+version: 0.13.5
 capabilities: [wiki-maintenance, wiki]
 renamed_from: [wiki-maintenance]
 enhances:

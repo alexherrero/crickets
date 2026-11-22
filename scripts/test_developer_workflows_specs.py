@@ -248,27 +248,30 @@ class TestSetupTemplateSpec(unittest.TestCase):
         self.assertNotIn("### 1. <Task title>", text)
 
 
-class TestReviewSpec(_NamedPlanWriterContract, unittest.TestCase):
-    """`/review` reads the named pair by consuming resolve_plan.py (T4)."""
+class TestReviewRetired(unittest.TestCase):
+    """The `/review` phase is retired (plan 104 step 1): review runs inside
+    `/work`'s loop, and `/build-it --check` reviews an existing change."""
 
-    cmd = "review.md"
+    def test_review_command_is_gone_from_src_and_both_hosts(self):
+        self.assertFalse((_CMDS / "review.md").exists())
+        dist = _ROOT / "dist"
+        self.assertFalse((dist / "claude-code" / "plugins" / "development-lifecycle"
+                          / "commands" / "review.md").exists())
+        self.assertFalse((dist / "antigravity" / "plugins" / "development-lifecycle"
+                          / "skills" / "review").exists())
 
-    def test_reads_resolved_named_plan_for_task_context(self):
-        # Review reads the resolved PLAN-<slug>.md for the task it's grading and
-        # logs to the resolved progress.md.
-        self.assertIn("resolved `PLAN-<slug>.md`", self.text)
-        self.assertIn("resolved `progress.md`", self.text)
+    def test_bugfix_verify_runs_build_it_check(self):
+        text = _read("bugfix.md")
+        verify = text[text.index("### 4. Verify"):text.index("## Output")]
+        self.assertIn("/build-it --check", verify)
+        self.assertNotIn("/review", text)
 
-    def test_reads_the_status_and_stops_on_queued_without_scope(self):
-        # PLAN-tracker-commands task 7: with no explicit scope, a queued plan
-        # has nothing worked yet to review, and the log carries the status.
-        self.assertIn('python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" status', self.text)
-        self.assertIn("`queued` means nothing has been worked yet: say so and stop", self.text)
-        self.assertIn("(plan status: <status>)", self.text)
-
-    def test_a_bare_call_that_exits_4_asks_which_task(self):
-        self.assertIn("exits **4**", self.text)
-        self.assertIn("asks which task", self.text)
+    def test_release_preconditions_no_longer_ask_for_review(self):
+        text = _read("release.md")
+        start = text.index("1. **Preconditions**")
+        preconditions = text[start:text.index("\n2. ", start)]
+        self.assertNotIn("/review", preconditions)
+        self.assertIn("every step is `[x]`", preconditions)
 
 
 class TestReleaseSpec(unittest.TestCase):

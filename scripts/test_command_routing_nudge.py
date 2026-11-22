@@ -40,7 +40,8 @@ cwt = _load("classify_work_type")
 
 # command name -> what classify_work_type resolves it to; the test asserts
 # the nudge text contains THAT resolution, not a value typed here twice.
-_PHASE_COMMANDS = ("plan", "review", "design", "spec", "work", "bugfix")
+# /review is retired (plan 104 step 1), so it carries no nudge to check.
+_PHASE_COMMANDS = ("plan", "design", "spec", "work", "bugfix")
 
 
 class TestCommandRoutingNudgeMatchesTable(unittest.TestCase):

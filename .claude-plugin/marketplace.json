@@ -35,7 +35,7 @@
       "description": "Day-to-day testing + release discipline in one plugin — tests-are-sacred, verification-first, the 3-layer pyramid, the pre-release checklist, changelog-shape, and paired-release coordination for cross-repo releases.",
       "name": "conventions",
       "source": "./dist/claude-code/plugins/conventions",
-      "version": "0.12.1"
+      "version": "0.12.2"
     },
     {
       "capabilities": [
@@ -77,7 +77,7 @@
         "bugfix",
         "documentation"
       ],
-      "description": "The phase-gated developer loop — /setup /plan /work /review /release /bugfix — extracted from agentm as a standalone native plugin. The base other dev plugins enhance.",
+      "description": "The phase-gated developer loop — /setup /plan /work /release /bugfix — extracted from agentm as a standalone native plugin. The base other dev plugins enhance.",
       "enhances": [
         {
           "capability": "board-sync",
@@ -87,7 +87,7 @@
       ],
       "name": "development-lifecycle",
       "source": "./dist/claude-code/plugins/development-lifecycle",
-      "version": "0.58.1"
+      "version": "1.0.0"
     },
     {
       "capabilities": [
@@ -191,7 +191,7 @@
       ],
       "name": "wiki",
       "source": "./dist/claude-code/plugins/wiki",
-      "version": "0.13.4"
+      "version": "0.13.5"
     }
   ],
   "renames": {

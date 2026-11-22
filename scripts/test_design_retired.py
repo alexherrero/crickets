@@ -110,9 +110,12 @@ class RemovedThingsAreGoneTests(unittest.TestCase):
         m = re.search(r"^version:\s*(\d+)\.", gy, re.MULTILINE)
         self.assertGreaterEqual(int(m.group(1)), 1)
         log = (_ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-        unreleased = log.split("## [Unreleased]", 1)[1].split("\n## [", 1)[0]
+        # The entry sat under [Unreleased] until v6.0.0 shipped it; find the
+        # bullet wherever it lives now, and check that one bullet names them all.
+        start = log.index("- **The old design standard is retired")
+        entry = log[start:log.index("\n- ", start + 1)]
         for needle in ("design_doc.py", "design_sequence.py", "abbreviated-design.md", "translate"):
-            self.assertIn(needle, unreleased, "the CHANGELOG entry does not name %s" % needle)
+            self.assertIn(needle, entry, "the CHANGELOG entry does not name %s" % needle)
 
 
 class SlimDesignCommandTests(unittest.TestCase):

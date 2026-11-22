@@ -92,7 +92,7 @@ Show the operator the report and the verdict. State plainly what was not checked
 
 ## Check mode: `--check <PR number | A..B | diff file>`
 
-Reviews a change someone already made. It never edits the code and never fixes: it reports, like `/review`. Skip steps 3 and 4; there is no direction check and no make.
+Reviews a change someone already made. It never edits the code and never fixes: it only reports. Skip steps 3 and 4; there is no direction check and no make.
 
 1. **Anchor.** A spec beside the plan if one exists; else the PR description or commit messages are the contract and the anchor is the repo's own `AGENTS.md` rules. Say which. A missing anchor gives an empty RULES block with the reason, and that is stated in the report.
 2. **Size** from the diff, as in step 2, then `loop_record.py init`.

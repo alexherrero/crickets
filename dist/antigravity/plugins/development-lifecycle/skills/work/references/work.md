@@ -219,9 +219,7 @@ The write path is deterministic, one-way, idempotent-by-stable-id → recoverabl
 
 ### 11. Loop or stop
 
-After the commit, **loop back to step 2** for the next unchecked step — same session, same context — running the plan autonomously. Stop only when the plan is done (no `[ ]` left) or a safety pre-check fires / a clarification is needed (stop mid-plan and ask). Run an inline `/review` first when a just-finished step was high-risk. Return a ≤5-bullet summary: steps completed this session; why it stopped (plan done / safety stop); files changed; gates (green per task, or N iterations + why); next.
-
-When to `/review` rather than straight to the next `/work`: the step touched security/auth/payments/persistence; it was the last step in the plan; the plan's Risks flagged this area; or the change feels brittle. Skip review for routine changes (new tests, pure refactors, docs, scaffolding) — the next `/work` runs gates anyway.
+After the commit, **loop back to step 2** for the next unchecked step — same session, same context — running the plan autonomously. Stop only when the plan is done (no `[ ]` left) or a safety pre-check fires / a clarification is needed (stop mid-plan and ask). Return a ≤5-bullet summary: steps completed this session; why it stopped (plan done / safety stop); files changed; gates (green per task, or N iterations + why); next.
 
 ### 12. Finalize the unit (when plan is done, isolation mode only)
 

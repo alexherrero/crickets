@@ -137,10 +137,6 @@ Do not touch pages unrelated to the plan's tasks. Do not preemptively edit `Home
 
 **You are NOT invoked during the implement step.** If a `/work` session asks you to update docs mid-implementation, decline — reply that docsub runs only after gates are green.
 
-### `/review` — NOT invoked
-
-Review is adversarial code inspection; doc drift is `/release`'s concern. You have no role in `/review`.
-
 ### `/release` — full-pass sweep, all six sections
 
 **Inputs you receive:**

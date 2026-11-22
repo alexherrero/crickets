@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- **The `/review` phase retires** (`development-lifecycle` 1.0.0, a major bump because a command goes away; `wiki` 0.13.5, `conventions` 0.12.2; step 1 of the let-go plan). Review now runs inside `/work`: each step's loop runs its direction check, review passes and done-check. To review a change someone already made, run `/build-it --check <PR number | A..B | diff file>`; it reports and never fixes. `/bugfix`'s Verify runs `/build-it --check` on the fix, and `/release` no longer asks for "`/review` resolved". On Antigravity, reinstall `development-lifecycle` from `dist/antigravity/plugins/` to drop the old skill.
+
 ## [v6.0.0] — 2026-11-21 — Major: the build-it / create-it loop, and the old design standard retired
 
 **MAJOR.** Every task now runs one loop: anchor it to a spec, size it, check the direction, make it, run the repo's own checks, then review passes until nothing real is left, and end with a done-report. `/build-it` runs that loop for code and `/create-it` for art, sound, UI look and prose, graded against a reference. `/spec` writes the anchor, `/plan` tags every step with its anchor, profile and size, and `/work` runs the loop for each step. Cross-model review picks its Gemini model by tier, and the prose pass refuses a revision longer than the original. Major because commands go away: the old design standard is retired (`design` 1.0.0), `/design` now writes one living design note, and the six-section `/spec` and `/interview-me` are gone. The release also makes crickets load and run on Antigravity 1.4, gives read-only agents a `tools:` allowlist, keeps agentm's memory recall out of cross-model review, stops hashes and LFS pointers tripping the PII scan, and retires `learn-forward` and `codebase-improvement`.

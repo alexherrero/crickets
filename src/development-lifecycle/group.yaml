@@ -1,5 +1,5 @@
 name: Development Lifecycle
-description: The phase-gated developer loop — /setup /plan /work /review /release /bugfix — extracted from agentm as a standalone native plugin. The base other dev plugins enhance.
+description: The phase-gated developer loop — /setup /plan /work /release /bugfix — extracted from agentm as a standalone native plugin. The base other dev plugins enhance.
 category: Coding
 requires: []
 standalone: true
@@ -777,5 +777,9 @@ enhances:
 # 0.58.1 = vault_designs.py orders a same-day timestamp above a bare date
 # (#287, from plan 103's /review): the per-character negated sort key reversed
 # order only for strings of one length.
-version: 0.58.1
+# 1.0.0 = the /review phase retires (plan 104 step 1): review now runs inside
+# /work through each step's loop, and /build-it --check reviews an existing
+# change. /bugfix's Verify runs /build-it --check; /release's preconditions
+# drop "/review resolved". Major because a command goes away.
+version: 1.0.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

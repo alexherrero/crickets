@@ -8,7 +8,7 @@ version: 0.2.0
 
 # harness-context-session-start — surface the harness state at session boot
 
-A `SessionStart` hook that tells the agent **where this project's phase-gated state lives** on every session boot, so it reads `PLAN.md` before answering plan-status questions or running `/work`, `/review`, `/release`.
+A `SessionStart` hook that tells the agent **where this project's phase-gated state lives** on every session boot, so it reads `PLAN.md` before answering plan-status questions or running `/work` or `/release`.
 
 ## How it works
 

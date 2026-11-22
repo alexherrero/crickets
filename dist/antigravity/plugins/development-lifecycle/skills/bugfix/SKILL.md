@@ -35,7 +35,7 @@ Invoking this phase **is** the authorization to run it to completion. The stop-g
 
 - **Regression test is mandatory.** No test, no fix. If you can't write a failing test, you don't understand the bug yet — go back to Analyze.
 - **Root cause before fix.** Ask "why" at least three times — the first suspicious line is usually the symptom, not the cause.
-- **`/review` on every bugfix.** Bugs are evidence of code you already got wrong once — fresh skeptical eyes matter more, not less.
+- **`/build-it --check` on every bugfix.** Bugs are evidence of code you already got wrong once — fresh skeptical eyes matter more, not less.
 - **Minimal scope.** Fix the bug, not adjacent issues. "While I'm in here" turns a one-line fix into a regression.
 - **`gh issue *` runs under the recoverability gate.** `gh issue create` / `comment` / `close` are recoverable (editable, reopenable) → **announce + proceed**, no preview-and-ask wait; the issue is still the bug's posterity record. Graceful-skip the whole issue track if `gh` is unavailable, the origin isn't GitHub, or the user opts out (then the resolved plan alone is the record; note the skip in `## Report`).
 - **Do not create tags.** Tag creation is reserved for `/release` — the sole tag writer that tags `main` HEAD after CI-green. Creating a tag during `/bugfix` would point to a branch tip, not a main commit, violating the tag-reachability guarantee and the concurrent-release serialization model.
@@ -79,7 +79,7 @@ Done when: the regression test passes, pre-existing tests still pass, determinis
 
 ### 4. Verify
 
-Run **`/review`** on the fix (non-negotiable for bugs). Confirm: the regression test is committed and **actually exercises the root cause** (not just the symptom); the original reproduction steps from `## Report` now produce the expected behavior. Check availability: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" capability wiki-maintenance`; on **exit 0** dispatch the `documenter` (**lightweight** — most bugfixes get `NO CHANGES`; it updates a Known-Issues page or adds an ADR **only** if the fix reveals a durable gotcha — over-documentation is drift too); on **exit 1** (unavailable) skip silently. **Routed dispatch (separate graceful-skip):** additionally check `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" capability token-audit`; on exit 0, resolve `classify_work_type('documenter')` + `agent_tool_alias(...)` and pass as the dispatch's `model` param; on exit 1, no `model` override — unchanged. **Mandatory fan-out announcement (unconditional):** print `fanout_announcement.py`'s `render_announcement()` line before dispatching regardless of the probe's result; an `INHERITED` source at a frontier-tier (T3/T4) session triggers `needs_inheritance_pause()` — stop for confirmation, never proceed silently. At `agent_count >= 4`, `announce_dispatch()` also runs the fleet cost gate (`token-audit`'s `fanout_cost_gate.py`, capability-gated) — a blocked result raises the same `pause_required` flag, stop for confirmation the same way.
+Run **`/build-it --check <the fix's commit range>`** on the fix (non-negotiable for bugs): its correctness pass reviews the change from a fresh context and reports; it never fixes. Confirm: the regression test is committed and **actually exercises the root cause** (not just the symptom); the original reproduction steps from `## Report` now produce the expected behavior. Check availability: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" capability wiki-maintenance`; on **exit 0** dispatch the `documenter` (**lightweight** — most bugfixes get `NO CHANGES`; it updates a Known-Issues page or adds an ADR **only** if the fix reveals a durable gotcha — over-documentation is drift too); on **exit 1** (unavailable) skip silently. **Routed dispatch (separate graceful-skip):** additionally check `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" capability token-audit`; on exit 0, resolve `classify_work_type('documenter')` + `agent_tool_alias(...)` and pass as the dispatch's `model` param; on exit 1, no `model` override — unchanged. **Mandatory fan-out announcement (unconditional):** print `fanout_announcement.py`'s `render_announcement()` line before dispatching regardless of the probe's result; an `INHERITED` source at a frontier-tier (T3/T4) session triggers `needs_inheritance_pause()` — stop for confirmation, never proceed silently. At `agent_count >= 4`, `announce_dispatch()` also runs the fleet cost gate (`token-audit`'s `fanout_cost_gate.py`, capability-gated) — a blocked result raises the same `pause_required` flag, stop for confirmation the same way.
 
 Post a Verify summary to the issue, then run `gh issue close --reason completed` with a one-line note referencing the fix SHA (recoverable — a closed issue reopens; announce + proceed).
 
@@ -96,7 +96,7 @@ Bug fixed: "<one-line summary>"
 - Root cause: <file:line> — <one-sentence why>
 - Fix: <one sentence, not the diff>
 - Regression test: <path>, fails without the fix, passes with it
-- /review outcome: <clean | N findings addressed>
+- /build-it --check outcome: <clean | N findings addressed>
 - Original reproduction (from Report) no longer reproduces
 Next: `/release` if this was the only thing in flight, else `/work` or `/plan` for what's next.
 ```
@@ -108,7 +108,7 @@ Next: `/release` if this was the only thing in flight, else `/work` or `/plan` f
 - **Fixing the symptom, leaving the cause** — a design flaw dressed as a bug comes back; escalate to `/plan`.
 - **No regression test** — non-negotiable; if you can't write one, you don't understand the bug yet.
 - **Expanding scope** — adjacent issues go on the backlog.
-- **Skipping `/review`** — the area already produced one bug; it deserves more scrutiny, not less.
+- **Skipping `/build-it --check`** — the area already produced one bug; it deserves more scrutiny, not less.
 
 ## Common Rationalizations
 
