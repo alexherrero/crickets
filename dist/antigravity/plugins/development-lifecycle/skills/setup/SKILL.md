@@ -5,14 +5,14 @@ description: "First-time project scaffold — write the repo's .harness/ tools, 
 
 You are running the **setup** phase of the developer-workflows loop. First-time initialization in a project: produce the repo's `.harness/` tools populated with **real, project-specific values — not templates**, and seed a plan where agentm says one goes. Run once per project (or after a major restructure).
 
-> **Plans through agentm.** development-lifecycle keeps a project's plans where agentm puts them: numbered tasks in the project's vault home, or, for a repo with no vault, a repo-local `PLAN.md` in `.harness/`. `/setup` writes the repo's own tools (`init.sh`, `verify.sh`) in `.harness/` itself, and seeds a plan and `features.json` only at a path agentm gives back. Steps that depend on an optional layer are marked **graceful-skip** — do them if the layer is present, silently skip otherwise.
+> **Plans through agentm.** development-lifecycle keeps a project's plans where agentm puts them: numbered tasks in the project's vault home, or, for a repo with no vault, a repo-local `PLAN.md` in `.harness/`. `/setup` writes the repo's own tools (`init.sh`, `verify.sh`) in `.harness/` itself, and seeds a plan only at a path agentm gives back. Steps that depend on an optional layer are marked **graceful-skip** — do them if the layer is present, silently skip otherwise.
 
 ## Non-negotiable constraints
 
 1. **Inventory before interviewing.** Read `README.md`, the package manifest (`package.json` / `go.mod` / `pyproject.toml` / `Cargo.toml` / …), `.github/workflows/`, any existing `AGENTS.md` / `CLAUDE.md`. Ask only what the inventory can't answer.
 2. **Populate `init.sh` with real commands, not guesses.** If unsure, ask. A broken `init.sh` breaks every later phase silently.
 3. **Verify `init.sh` boots cleanly** — run it and confirm exit 0 before finishing.
-4. **Do not invent features** for `features.json`. Empty is honest; fabricated entries are noise.
+4. **Seed only what agentm names.** No plan where agentm gives no path; nothing invented to fill one.
 5. **Merge, don't overwrite** an existing `AGENTS.md` / `CLAUDE.md` — they may hold project-specific content the operator wrote.
 6. **No planning.** `/setup` is pure scaffolding. Planning is `/plan`.
 
@@ -22,9 +22,9 @@ You are running the **setup** phase of the developer-workflows loop. First-time 
 
 Run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/resolve_plan.py"` bare, from the repo root, and act on its exit:
 
-- **Exit 4** — the project keeps its plans in numbered tasks. **Seed no plan**: the first `/plan` names a task. `features.json` goes in the project's desk: `<desk>/features.json`, where `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/project_homes.py" home desk` names it (on its exit 3, seed none and say so).
-- **Exit 0** — a repo with no vault: agentm answered its repo-local singleton. **Seed `PLAN.md` and `progress.md` at the first two paths it printed**, and `features.json` beside them in the repo-local `.harness/`. The plan seed carries **no `**Status:**` line** — the plan's status lives in its tracker, which `/plan` opens.
-- **Exit 1** — no agentm. **Seed no plan and no `features.json`**, and say that development-lifecycle keeps its plans through agentm.
+- **Exit 4** — the project keeps its plans in numbered tasks. **Seed no plan**: the first `/plan` names a task.
+- **Exit 0** — a repo with no vault: agentm answered its repo-local singleton. **Seed `PLAN.md` and `progress.md` at the first two paths it printed**. The plan seed carries **no `**Status:**` line** — the plan's status lives in its tracker, which `/plan` opens.
+- **Exit 1** — no agentm. **Seed no plan**, and say that development-lifecycle keeps its plans through agentm.
 - **Any other exit** — surface its stderr, seed no plan, and carry on with the tools below.
 
 Whatever the answer, write the repo's `.harness/init.sh` and `.harness/verify.sh`, creating `.harness/` if it's missing. **Skip any file that already exists — never clobber operator edits.** These are seeds; later steps fill them with real values.
@@ -75,15 +75,6 @@ Append-only log. Newest entries at the bottom. Format: `<YYYY-MM-DD HH:MM> /<pha
 ---
 ```
 
-**`features.json`** (where the answer above places it)
-
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "features": []
-}
-```
-
 **`.harness/init.sh`** (`chmod +x`)
 
 ```bash
@@ -130,9 +121,9 @@ Confirm or fill in what the inventory didn't settle — **batched, default to no
 
 Replace the placeholders with what this project actually runs. It should run top-to-bottom and leave the repo in a state where `/work` can proceed. Keep heavy/destructive commands commented with a note.
 
-### 5. Seed `features.json` (optional)
+### 5. Features
 
-If a known feature list already exists (PRD, backlog, README features section), seed entries with `passes: false`. Otherwise leave it empty — `/plan` adds features as they get specified. **Do not invent features.**
+Nothing to seed: the plan's tracker records what is done.
 
 ### 6. Make `AGENTS.md` right for this project
 
@@ -174,12 +165,11 @@ On exit 0, append to the seeded `progress.md` (with no seeded plan there is no l
 <YYYY-MM-DD HH:MM> /setup — initialized harness for this project (stack: <X>, gates: <list>)
 ```
 
-Then return a ≤5-bullet summary (what was seeded — the plan and `features.json` with their paths, or why none was; stack; gates configured; `init.sh` boots clean; next `/plan <first brief>`), plus one standing, non-blocking doctrine reminder — not a hook, not a gate, just a line in the output: *"A worktree you're done with should be closed out (kept intentionally, or removed) rather than left dangling — the periodic shepherd reclaims what's provably safe to reclaim on its own schedule, but it isn't a substitute for you closing out work you know is finished."*
+Then return a ≤5-bullet summary (what was seeded — the plan with its path, or why none was; stack; gates configured; `init.sh` boots clean; next `/plan <first brief>`), plus one standing, non-blocking doctrine reminder — not a hook, not a gate, just a line in the output: *"A worktree you're done with should be closed out (kept intentionally, or removed) rather than left dangling — the periodic shepherd reclaims what's provably safe to reclaim on its own schedule, but it isn't a substitute for you closing out work you know is finished."*
 
 ## Failure modes to avoid
 
 - Filling `init.sh` with guesses — a broken boot breaks every later phase silently.
-- Inventing features — empty `features.json` is fine; fabricated entries are worse than none.
 - Overwriting an existing `AGENTS.md` / `CLAUDE.md` — merge, don't replace.
 - Skipping the boot verification — the first `/work` is the worst place to discover `init.sh` doesn't work.
 - Starting to plan — `/setup` is pure scaffolding.

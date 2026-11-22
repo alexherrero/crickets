@@ -38,7 +38,6 @@ Invoking this phase **is** the authorization to run it to completion. The stop-g
 8. **Docs are an opt-in pass, later:** run `wiki-author` when a page should change; a repo that keeps a wiki can let `wiki-watch` catch up on a schedule.
 9. **End by updating the resolved `PLAN.md` (mark `[x]`), the plan's tracker (`plan_tracker.py step`, or `close` after the last step), the resolved `progress.md` (append line), and committing.**
 10. **The board is not part of the loop.** `/work` posts nothing to a project board: a project that keeps one runs the `report-board-drift` cycle (on a loop or cron) to see what the board is missing, and `planner-maintain` to fix it. An out-of-scope finding (an adjacent bug, a refactor, a stale doc elsewhere) goes into `progress.md` as a `FOLLOW-UP:` line.
-11. **Design-divergence is a NOTE, never a halt (Hook 4, design-doc §6).** If the implementation appears to diverge from the plan's `parent_design_doc:` governing design, record it as a `NOTE:` line in `progress.md` — a surfaced observation, **not** a safety-stop trigger and **not** a gate. Conformance is an un-mechanizable judgment; its adjudication is `/review`'s fresh-context design-conformance dimension (Hook 1), never the worker's self-interested call (routing it into the autonomy gate would over- or under-stop).
 11. **Do not create tags.** Tag creation is reserved for `/release` — the sole tag writer that tags `main` HEAD after CI-green. Creating a tag during `/work` would point to a branch tip, not a main commit, violating the tag-reachability guarantee and the concurrent-release serialization model.
 12. **Fire agentm's post-work reflection after each commit** (step 9.6, graceful-skip). Always exit 0 by contract — nothing to react to, but the call itself must not be skipped; it's the only session-completion reflect on a host with no Stop hook.
 
@@ -170,7 +169,7 @@ Feed the **full error output** into the next pass (don't summarize). If a test i
 
 ### 7. Update state
 
-Once all gates are green: edit the **resolved `PLAN.md`** to mark the step `[x]`. Do **not** set `features.json` `passes: true` — that's `/review`'s job. Then bring the tracker up to date — the tracker is the plan's only status, and the plan carries no Status line to edit:
+Once all gates are green: edit the **resolved `PLAN.md`** to mark the step `[x]`. Then bring the tracker up to date — the tracker is the plan's only status, and the plan carries no Status line to edit:
 
 - **After any step but the last:** `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" step --plan <plan> --tracker <tracker> --state "<what is now true, in three to eight lines>" --next "Step N+1: <title>"`.
 - **After the last step:** `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" close --plan <plan> --tracker <tracker> --outcome "<the close-out recap>"`.

@@ -102,5 +102,26 @@ class TestNoPersonasOrRoutedDispatch(unittest.TestCase):
         self.assertIn("3 consecutive failures on the same gate", text)
 
 
+class TestDesignHooksRetired(unittest.TestCase):
+    """Plan 104 step 5: Hooks 3, 4, 5 and 7 left the phase commands; /plan's
+    step 1b (resolve the governing design, then the vault) stays."""
+
+    def test_no_hook_text_in_the_phase_commands(self):
+        import re
+        pattern = re.compile(r"Hook [13457]\b|design-conformance|check-plan-grounding|touches_architecture")
+        for name in _COMMANDS:
+            self.assertIsNone(pattern.search(_read(name)), name)
+
+    def test_plan_still_grounds_in_its_design(self):
+        text = _read("plan.md")
+        self.assertIn("### 1b. Ground in the governing design", text)
+        self.assertIn("governing-design <target>", text)
+        self.assertIn("vault_designs.py\" find <target>", text)
+        self.assertIn("parent_design_doc:", text)
+
+    def test_release_says_design_notes_are_not_a_gate(self):
+        self.assertIn("10. **Design notes are not a release gate.**", _read("release.md"))
+
+
 if __name__ == "__main__":
     unittest.main()

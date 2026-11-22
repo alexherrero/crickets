@@ -22,11 +22,11 @@ Work through every item. If any is incomplete, fix it before proceeding — do n
 2. **Version bumped.** The affected group's `group.yaml` `version` field must be incremented from the base branch. Semver rules (see **Version bump policy** below). Never tag a release whose `group.yaml` version matches the prior tag.
 3. **CHANGELOG authored.** A CHANGELOG entry exists for this release under the correct version heading. It follows the project's changelog shape (see **Changelog shape** below).
 4. **`dist/` regenerated and committed.** For repos where `dist/` is generated from `src/` (e.g. crickets), `generate.py build` must have been run and the result committed. The drift gate (`generate drift` in `check-all.sh`) enforces this — run it before tagging.
-5. **`features.json` current.** Every feature this release ships must have `passes: true`. Features still under development must not appear in the release notes.
+5. **The plan's tracker is `done`.** Features still under development must not appear in the release notes.
 6. **No orphan PRs.** No open PRs that should be part of this release are left unmerged. A release should represent a complete, coherent unit of work.
 7. **`check-all.sh` green.** Run the full gate battery (`bash scripts/check-all.sh`) on the release commit and confirm every gate passes before tagging.
 8. **Cadence and commit-subject vocabulary** (see the [`release-cadence`](../../rules/release-cadence.md) rule). A finished plan that changes behavior gets its own release — don't bundle it into a later one. Every commit subject in the range reads plainly to a stranger, keeps its conventional prefix, names a roadmap id where one applies, and carries no internal codename.
-9. **Architecture-changed design check.** If the plan behind this release set `touches_architecture: true`, confirm whether the governing living design (the plan's `parent_design_doc:`, or the nearest one resolved via `agentm_bridge.py governing-design`) needs its body reconciled and a new amendment-log entry, landing in the same commit/PR as the release — not a follow-up. Mirrors `development-lifecycle`'s `/release` constraint 10 (Hook 7); a judgment prompt, not a mechanical gate. No-op when `touches_architecture` is `false` or absent (a bare `/bugfix` or hand-written plan carries no such flag).
+9. **Design notes current.** If the release changes what a living design says, update the note in the same landing, not as a follow-up. A judgment call, not a mechanical gate.
 
 ## Changelog shape
 

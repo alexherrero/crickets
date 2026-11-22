@@ -468,16 +468,17 @@ class TestNoFlatLayoutCrickets(unittest.TestCase):
                 self.assertNotIn("queued-plans", text)
                 self.assertNotRegex(text, r"(?<![A-Za-z0-9])" + self.RETIRED_DIR + r"(?![A-Za-z0-9_])")
 
-    def test_features_json_is_found_through_project_homes(self):
-        # Step 5: features.json is the desk's, asked of project_homes.py; no
-        # command composes a .harness/ path for it.
+    def test_no_phase_command_writes_features_json(self):
+        # Plan 104 step 5: features.json retired in favour of the plan's
+        # tracker; no command composes a path for it, in .harness/ or the desk.
         for cmd in sorted(_CMDS.glob("*.md")):
             with self.subTest(command=cmd.name):
                 self.assertNotIn(".harness/features.json", cmd.read_text(encoding="utf-8"))
-        for name in ("plan.md", "release.md"):
+        for name in ("plan.md", "work.md", "release.md", "bugfix.md", "setup.md"):
             with self.subTest(command=name):
-                self.assertIn("project_homes.py\" home desk", _read(name))
-                self.assertIn("`<desk>/features.json`", _read(name))
+                self.assertNotIn("features.json", _read(name))
+        self.assertIn("5. **No feature list.** The plan's tracker records what is done.", _read("plan.md"))
+        self.assertIn("4. **Features** — nothing happens here (constraint 3).", _read("release.md"))
 
     def test_setup_seeds_a_plan_only_on_agentms_exit_0(self):
         # Step 7: /setup asks agentm first; only a repo with no vault (exit 0)

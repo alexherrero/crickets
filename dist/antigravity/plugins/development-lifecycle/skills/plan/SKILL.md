@@ -23,7 +23,7 @@ Every task is graded against a spec. If the task has none, run `/spec` first: it
 2. **Read the resolved `PLAN.md` and `progress.md` first** (the paths agentm gives: a task under `--name` and `--stage`, and for a bare call in a repo with no vault its repo-local singleton; `--activate` is promote-only and reads no plan). If a plan is in flight (`plan_tracker.py status` says `active`, from its tracker) and the new brief is related, **ask** "continue or replace?" — never silently overwrite.
 3. **Every task has a spec.** If it has none, run `/spec` (step 2): at most 5 batched questions, only when the brief is ambiguous. The plan's steps point to the spec; they do not restate it.
 4. **Write the plan using the PLAN.md shape** below.
-5. **Update `features.json`** (the project's desk copy — see step 5) only if this plan introduces net-new user-visible features.
+5. **No feature list.** The plan's tracker records what is done.
 6. **Docs are not part of planning.** `/plan` writes no wiki pages: run `wiki-author` when a page should change; a repo that keeps a wiki can let `wiki-watch` catch up on a schedule.
 7. **The board is not part of planning.** `/plan` posts nothing to a project board: a project that keeps one runs the `report-board-drift` cycle (on a loop or cron) to see what the board is missing, and `planner-maintain` to fix it.
 8. **Append one line to the resolved `progress.md`** (the resolver's second field: a task's own `progress.md` under `--name`, `--stage` and `--activate`; in a repo with no vault, the repo-local log agentm names).
@@ -51,7 +51,7 @@ Before decomposing, resolve the **living design that governs this work** and rea
 
 1. **Resolve.** Pick the plan's primary target (a representative repo-relative path the work will touch, or a known `area:` name) and run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" governing-design <target>`. **Exit 0** → it prints the governing design's repo-relative path. **Exit 1** → no `wiki/designs/` page governs this, or agentm is absent: look in the vault next. (The bridge passes `--root` = cwd so it resolves *this* repo's `wiki/designs/`.) **Then the vault.** `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/vault_designs.py" find <target> --cwd .` prints the path of the project's living design note that governs the target. **Exit 0** → read it as step 2 says. **Exit 1** (no note governs it) or **exit 3** (no vault, or agentm absent) → greenfield; proceed as greenfield. Deterministic; any failure resolves to greenfield, never a hang.
 2. **Bounded read — never the whole arc.** On exit 0, read **only** the design's YAML frontmatter **and** its `## Locked design calls` section — cap ≈400 lines. A folded arc can be tens of thousands of tokens; reading it whole on every `/plan` blows the token floor the operator just trimmed. If the design has no `## Locked design calls` section, read the frontmatter + at most the first ≈400 lines.
-3. **Cite or assert greenfield.** Set the plan's `parent_design_doc:` frontmatter to the resolved path (omit when greenfield), and in `## Locked design calls` either record the locked calls this plan must honor (cite the design) or write `Greenfield — no governing design.` Set `touches_architecture: true` when the work changes architecture the design governs, else `false` (the Hook 3 gate keys off it).
+3. **Cite or assert greenfield.** Set the plan's `parent_design_doc:` frontmatter to the resolved path (omit when greenfield), and in `## Locked design calls` either record the locked calls this plan must honor (cite the design) or write `Greenfield — no governing design.`
 
 ### 2. Anchor: the spec
 
@@ -68,7 +68,6 @@ Author to the **resolved PLAN path** — the task's `plan.md` under `--name` or 
 ```markdown
 ---
 parent_design_doc: <repo-relative path to the governing design — omit if greenfield>
-touches_architecture: true | false
 ---
 
 # Plan: <short title>
@@ -110,16 +109,9 @@ touches_architecture: true | false
 
 **No Status line.** The plan carries no `**Status:**` line: its status is its tracker's, which step 7b opens at `queued`. Each step keeps its own `- **Status:** [ ]` checkbox.
 
-### 4b. Self-check grounding (Hook 3 · design-doc §6.3)
+### 5. Features
 
-Run the deterministic plan-grounding gate on the plan you just wrote:
-`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/check-plan-grounding.py" <resolved-plan-path>`. **Exit 1** means the plan set `touches_architecture: true` but carries neither a `parent_design_doc:` nor a non-empty `## Locked design calls` — fix it (revisit step 1b) before `/work`. **Exit 0** = grounded, or the plan isn't architecture-touching (nothing to enforce). The gate is keyed off the explicit flag, never an inference.
-
-### 5. Update `features.json` if appropriate
-
-`features.json` lives in the project's desk: `<desk>/features.json`, where `<desk>` is what `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/project_homes.py" home desk` prints. **Exit 3** means agentm names no desk — a repo with no vault, whose plans agentm keeps repo-local — and there `features.json` is the repo-local file beside the plan. Nothing else composes its path.
-
-A feature is a user-visible capability (changelog-worthy); a step is a unit of work — **not 1:1**. Scaffolding/refactors produce no feature entry. `passes: true` is set later by `/review`, never by `/plan`. Err toward fewer feature entries.
+Nothing happens here (constraint 5).
 
 ### 6. Docs
 

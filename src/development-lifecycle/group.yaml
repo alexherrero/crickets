@@ -791,5 +791,10 @@ standalone: true
 # /bugfix; the explorer dispatch names sonnet instead of probing token-audit
 # and printing an announcement; /plan's step template drops Work-type and
 # Tier hint. The 3-failure escalation stop stays.
-version: 1.3.0
+# 1.4.0 = features.json and the design-divergence hooks retire (plan 104
+# step 5): /plan, /release and /setup write no features.json; Hook 3 (/plan
+# 4b), Hook 4 (/work's design-divergence NOTE), Hook 5 (/release 4b) and
+# Hook 7 (/release constraint 10, 4c) are gone, and the plan template drops
+# touches_architecture. /plan 1b and parent_design_doc stay.
+version: 1.4.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]
