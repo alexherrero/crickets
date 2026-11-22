@@ -159,16 +159,17 @@ class TestWorkSpec(_NamedPlanWriterContract, unittest.TestCase):
         self.assertIn("hard stop", low)
         self.assertIn("never fall back to the singleton", low)
 
-    def test_board_sync_probe_degrades_to_silent_skip(self):
-        # board-write-path task 3: the per-commit comment surface rides the
-        # SAME step-10 call site (project_sync.py post --type task-progress) —
-        # no new probe, no new call site. This locks that the exit-1 skip
-        # semantics stay unchanged when github-projects/gh is unavailable.
-        self.assertIn(
-            'python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" capability board-sync',
-            self.text)
-        self.assertIn("On **exit 1** (unavailable, or no `CLAUDE_PLUGIN_ROOT`) "
-                      "skip silently", self.text)
+    def test_the_loop_posts_nothing_to_the_board(self):
+        # Plan 104 step 3: board sync left the pipeline. Step 10 keeps its
+        # number as a note, the board runs on report-board-drift, and an
+        # out-of-scope finding is logged rather than posted.
+        self.assertNotIn("capability board-sync", self.text)
+        self.assertNotIn("project_sync.py", self.text)
+        self.assertNotIn("planner_maintain.py", self.text)
+        self.assertIn("10. **The board is not part of the loop.**", self.text)
+        self.assertIn("`report-board-drift`", self.text)
+        self.assertIn("`FOLLOW-UP:` line", self.text)
+        self.assertIn("### 10. Board\n\nNothing happens here (constraint 10).", self.text)
 
     def test_evidence_tracker_reset_wired_at_task_boundary(self):
         # cricketsPluginsA#3 (R2.2): the reset call the hook's own docstring
@@ -203,11 +204,16 @@ class TestPlanSpec(_NamedPlanWriterContract, unittest.TestCase):
         self.assertIn('python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" status', triage)
         self.assertLess(triage.index("plan_tracker.py"), triage.index("Then read `PLAN.md`"))
 
-    def test_opens_the_tracker_after_the_board_step(self):
-        # After the board step, so any issue number is known; before the stop.
-        board = self.text.index("### 7. Sync the plan to the GitHub Project board")
+    def test_opens_the_tracker_once_the_plan_is_written(self):
+        # Plan 104 step 3: /plan posts nothing to a board, so the tracker opens
+        # right after the plan is written; still before the stop.
+        self.assertNotIn("capability board-sync", self.text)
+        self.assertNotIn("project_sync.py", self.text)
+        self.assertIn("7. **The board is not part of planning.**", self.text)
+        self.assertIn("### 7. Board\n\nNothing happens here (constraint 7).", self.text)
+        written = self.text.index("With the plan written, open the plan's tracker")
         opening = self.text.index('python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" open')
-        self.assertLess(board, opening)
+        self.assertLess(written, opening)
         self.assertLess(opening, self.text.index("### 8. Stop"))
 
     def test_describes_the_resolver_output_as_three_fields(self):

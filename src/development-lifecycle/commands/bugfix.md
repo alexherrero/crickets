@@ -84,9 +84,7 @@ Done when: the regression test passes, pre-existing tests still pass, determinis
 
 Run **`/build-it --check <the fix's commit range>`** on the fix (non-negotiable for bugs): its correctness pass reviews the change from a fresh context and reports; it never fixes. Confirm: the regression test is committed and **actually exercises the root cause** (not just the symptom); the original reproduction steps from `## Report` now produce the expected behavior. Docs are not part of the fix: when it reveals a durable gotcha, run `wiki-author` to record it.
 
-Post a Verify summary to the issue, then run `gh issue close --reason completed` with a one-line note referencing the fix SHA (recoverable — a closed issue reopens; announce + proceed).
-
-**Sync the GitHub Project board** (graceful-skip): check availability: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" capability board-sync`; on **exit 1** (unavailable, or no `CLAUDE_PLUGIN_ROOT`) skip silently. On **exit 0** with `.harness/project.json` + `gh` present, the `gh issue` close above stays the bug's posterity record — `Bug` has **no locked board template this cycle** (the renderer raises on `bug`), so direct bug board-emission is deferred. If the fix's closeout belongs to a *materialized* Task/Plan, emit it via the github-projects plugin's `project_sync.py post` (deterministic + idempotent → announce + proceed); otherwise nothing to sync. Append to the resolved `progress.md`:
+Post a Verify summary to the issue, then run `gh issue close --reason completed` with a one-line note referencing the fix SHA (recoverable — a closed issue reopens; announce + proceed). The closed issue is the bug's record; nothing is posted to a project board. Append to the resolved `progress.md`:
 
 ```
 <YYYY-MM-DD HH:MM> /bugfix — fixed <one-line> (tracking: #N, root cause: <summary>, regression test: <path>)

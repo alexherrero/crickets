@@ -48,5 +48,32 @@ class TestNoPhaseDispatchesTheDocumenter(unittest.TestCase):
         self.assertIn("Edit `wiki/` only when the step's **What** names the page.", _read("work.md"))
 
 
+class TestNoPhasePostsToTheBoard(unittest.TestCase):
+    """Plan 104 step 3: board sync left /plan, /work, /release and /bugfix."""
+
+    def test_no_board_probe_or_post(self):
+        for name in ("work.md", "plan.md", "bugfix.md", "release.md"):
+            text = _read(name)
+            for needle in ("capability board-sync", "project_sync.py", "planner_maintain.py", "board-items.json"):
+                self.assertNotIn(needle, text, "%s still names %s" % (name, needle))
+
+    def test_release_keeps_arc_coalescence_and_names_the_board_cycle(self):
+        text = _read("release.md")
+        self.assertIn("7. **The board is not part of the release gate.**", text)
+        self.assertIn("8. **Board** — nothing happens here (constraint 7).", text)
+        self.assertIn("coalescence", text)
+        self.assertIn("`report-board-drift`", text)
+
+    def test_development_lifecycle_declares_no_board_enhance(self):
+        group = (_ROOT / "src" / "development-lifecycle" / "group.yaml").read_text(encoding="utf-8")
+        self.assertNotIn("capability: board-sync", group)
+        planner = (_ROOT / "src" / "github-projects" / "commands" / "planner-maintain.md").read_text(encoding="utf-8")
+        self.assertIn("## When it runs", planner)
+        self.assertNotIn("step 10", planner)
+
+    def test_setup_keeps_its_one_time_board_offer(self):
+        self.assertIn("### 9. Offer GitHub Project creation (optional)", _read("setup.md"))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Board sync leaves the pipeline** (`development-lifecycle` 1.2.0, `github-projects` 0.6.2; step 3 of the let-go plan). `/plan`, `/work`, `/release` and `/bugfix` no longer probe for the board plugin, post a kickoff, progress or closeout, write `board-items.json` or run `planner-maintain`. A project that keeps a board runs the `report-board-drift` cycle on a loop or cron and `planner-maintain` to fix what it finds. `/work` logs an out-of-scope finding as a `FOLLOW-UP:` line in `progress.md`. `/release`'s arc coalescence checklist still checks that the issues a release names are closed, and `/setup` still offers to create a board once. `development-lifecycle` no longer declares an enhance onto `github-projects`' board sync.
 - **Wiki updates leave the pipeline** (`development-lifecycle` 1.1.0, `wiki` 0.13.6; step 2 of the let-go plan). `/plan`, `/work`, `/release`, `/bugfix` and `/setup` no longer dispatch the `documenter` or probe for the wiki plugin, and `/release` no longer waits on docs. Docs are an opt-in pass: run `wiki-author` when a page should change, let `wiki-watch` catch up on a schedule in a repo that keeps a wiki, and run `/wiki-init` to start one. `/work` edits `wiki/` only when a step names the page. The constraints and steps that did the dispatch keep their numbers as one-line notes, so references such as "constraint 4" still hold.
 
 ### Removed

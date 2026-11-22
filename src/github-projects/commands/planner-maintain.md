@@ -37,9 +37,9 @@ Both passes run over the same in-memory graph — a Plan/Task the depth pass jus
 - Never modifies `check_project_sync.py`'s or `report_drift.py`'s own behavior — both remain independently callable, unmodified, report-only paths.
 - Does not build an automated net-new-Feature-creation entrypoint (a separate, still-open gap named in the design doc) — it only fills in a missing *intermediate* level under an already-materialized Feature/Plan.
 
-## Workflow-step binding
+## When it runs
 
-`/work` (step 10) and `/release` (step 7/8) already call `project_sync.py post` at a graceful-skip board-sync gate after a task/release lands. Both now also invoke this cycle at the same gate — same availability probe, same silent-skip when the plugin, `project.json`, or `gh` is absent, so a repo that never opted into board-sync sees zero behavior change.
+On its own, or on the same loop as `report-board-drift`. The phase commands (`/plan`, `/work`, `/release`) no longer post to the board or call this cycle, so a repo that never opted into a board sees no change.
 
 ## Graceful-skip
 

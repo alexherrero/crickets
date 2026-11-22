@@ -27,7 +27,7 @@ Every task is graded against a spec. If the task has none, run `/spec` first: it
 4. **Write the plan using the PLAN.md shape** below.
 5. **Update `features.json`** (the project's desk copy — see step 5) only if this plan introduces net-new user-visible features.
 6. **Docs are not part of planning.** `/plan` writes no wiki pages: run `wiki-author` when a page should change; a repo that keeps a wiki can let `wiki-watch` catch up on a schedule.
-7. **Sync the plan to the GitHub Project board** (optional, graceful-skip) — when `github-projects` is installed (capability probe) + `.harness/project.json` present + `gh` authed, record the new plan in `board-items.json` and emit its kickoff via the github-projects plugin's `project_sync.py post`; capture `## Out of scope` deferrals as board-backed `Backlog-item`/`Idea` entries in `board-items.json` (**never** a raw `gh project item-create` — an unbacked board issue is an orphan the `vault==board` gate flags as drift). Deterministic + idempotent → announce + proceed. Silent-skip (zero behavior change) if the plugin, `project.json`, or `gh` is absent.
+7. **The board is not part of planning.** `/plan` posts nothing to a project board: a project that keeps one runs the `report-board-drift` cycle (on a loop or cron) to see what the board is missing, and `planner-maintain` to fix it.
 8. **Append one line to the resolved `progress.md`** (the resolver's second field: a task's own `progress.md` under `--name`, `--stage` and `--activate`; in a repo with no vault, the repo-local log agentm names).
 9. **End with a ≤5-bullet summary.** Next command is `/work`.
 10. **Ground the plan in its governing design (Hook 2, design-doc §6).** Before decomposing, resolve the living design that governs this work and read a **bounded** slice of it (frontmatter + `## Locked design calls`, ≈400-line cap — **never the whole arc**); cite it in the plan's `## Locked design calls` + `parent_design_doc:` frontmatter, or assert greenfield. Graceful-skip when agentm is absent. See step 1b.
@@ -131,18 +131,13 @@ A feature is a user-visible capability (changelog-worthy); a step is a unit of w
 
 Nothing happens here (constraint 6).
 
-### 7. Sync the plan to the GitHub Project board (graceful-skip)
+### 7. Board
 
-Check availability: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" capability board-sync`. On **exit 1** (unavailable, or no `CLAUDE_PLUGIN_ROOT`) skip silently — zero behavior change. On **exit 0** with `.harness/project.json` present and `gh` authed, mirror this `/plan` onto the board:
-
-- **Plan kickoff** — record the new plan in `board-items.json` (the agent-maintained item source github-projects reads — the config's `items_source`, else github-projects' own default; kept current like `features.json`) as a `Plan` under its Feature/Sub-feature parent with its kickoff goal, then render+write it: `python3 "$(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sibling_plugin.py" github-projects scripts/project_sync.py)" post --config <project.json> --id <plan-id>` (full re-render — kickoff is template-driven, not a `--type` flag stage). Per **DC-1** a Plan posts only once it's the active plan; a staged/future plan is recorded but not posted.
-- **Deferred items** — capture each intentionally-deferred `## Out of scope` entry into `board-items.json` as a `Backlog-item` (or `Idea`) so the next sync materializes it. Add them to the vault source, **never** raw `gh project item-create` — an item not backed by `board-items.json` is an orphan the `vault==board` gate (the `github-projects` check-all gate) flags as drift.
-
-The render+write path is deterministic, one-way, and idempotent-by-stable-id (a re-run repairs, never duplicates) → recoverable, so **announce + proceed**; preview the exact `gh` argv with `--dry-run` first. Silent-skip if `project.json` or `gh` is absent.
+Nothing happens here (constraint 7).
 
 ### 7b. Open the plan's tracker (graceful-skip)
 
-With the plan written and the board step run (so any issue number is known), open the plan's tracker at `queued`, using the fields step 1 resolved:
+With the plan written, open the plan's tracker at `queued`, using the fields step 1 resolved:
 
 `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" open --plan <plan> --tracker <tracker> [--issue <N>]`
 

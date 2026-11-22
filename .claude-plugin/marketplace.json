@@ -78,16 +78,9 @@
         "documentation"
       ],
       "description": "The phase-gated developer loop — /setup /plan /work /release /bugfix — extracted from agentm as a standalone native plugin. The base other dev plugins enhance.",
-      "enhances": [
-        {
-          "capability": "board-sync",
-          "effect": "/work's task close-out (step 10) posts a per-commit progress comment + a task-close comment (SHA-keyed dedupe, list-and-match — never --search) alongside the existing board-item body-fold, when github-projects is installed and gh is authenticated",
-          "group": "github-projects"
-        }
-      ],
       "name": "development-lifecycle",
       "source": "./dist/claude-code/plugins/development-lifecycle",
-      "version": "1.1.0"
+      "version": "1.2.0"
     },
     {
       "capabilities": [
@@ -118,7 +111,7 @@
       "description": "One-way, deterministic board-sync — synthesizes a vault project's roadmap/plan/progress state onto a GitHub Project board via six locked per-type templates, a single idempotent project_sync.py write path, and a vault==board drift gate. The vault stays the agent's source of truth; the board is the generated human source.",
       "name": "github-projects",
       "source": "./dist/claude-code/plugins/github-projects",
-      "version": "0.6.1"
+      "version": "0.6.2"
     },
     {
       "capabilities": [
