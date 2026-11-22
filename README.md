@@ -59,7 +59,7 @@ The [wiki](https://github.com/alexherrero/crickets/wiki) covers everything there
 - [Reference](https://github.com/alexherrero/crickets/wiki/Reference) — plugin anatomy, the manifest schema, and the install modes.
 
 > [!NOTE]
-> **Latest release: [v5.1.0](https://github.com/alexherrero/crickets/releases/tag/v5.1.0).** One install keeps AI agents' `Co-Authored-By` trailers out of every repo on the machine: `developer-safety`'s `coauthor-guard` sets a global git hook that strips them on every commit, from any tool, while each repo's own hooks keep running.
+> **Latest release: [v6.0.0](https://github.com/alexherrero/crickets/releases/tag/v6.0.0).** Every task runs one loop: a spec to anchor it, a size, a direction check, the repo's own checks, review passes until nothing real is left, and a done-report. `/build-it` runs it for code and `/create-it` for art, sound, UI look and prose; `/plan` tags each step and `/work` runs the loop. The old design standard is retired, and `/design` now writes one living design note.
 
 ---
 
