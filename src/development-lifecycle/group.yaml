@@ -716,5 +716,12 @@ enhances:
 # two rules carry a trigger, and harness-context-session-start now runs on
 # agy's SessionStart. On agy a bare /plan is its own planning mode: type
 # /development-lifecycle:plan.
-version: 0.50.1
+# 0.51.0 = /spec is back, as the loop's anchor writer (plan 103, step 2): one
+# file per task with Goal, Done when, Rules (each with its source), Not doing
+# and Open questions, plus a reference folder and likeness list for create
+# work; at most 5 batched questions; one operator approval. scripts/spec_doc.py
+# renders, parses, places and checks it (stdlib, no agentm). /plan now sends an
+# unspecced task to /spec; the old six-section /spec and /interview-me left
+# the design plugin.
+version: 0.51.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

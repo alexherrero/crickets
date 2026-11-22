@@ -49,7 +49,7 @@
       "description": "Design-doc and ADR authoring — the /design command (author → translate → sequence) and the ADR skill for capturing architectural decisions with re-audit triggers.",
       "name": "design",
       "source": "./plugins/design",
-      "version": "0.11.3"
+      "version": "0.12.0"
     },
     {
       "capabilities": [
@@ -87,7 +87,7 @@
       ],
       "name": "development-lifecycle",
       "source": "./plugins/development-lifecycle",
-      "version": "0.50.1"
+      "version": "0.51.0"
     },
     {
       "capabilities": [

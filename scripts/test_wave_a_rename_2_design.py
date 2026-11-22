@@ -16,7 +16,11 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 class TestWaveARename2Design(unittest.TestCase):
     def test_moved_files_gone_from_development_lifecycle(self):
         dl_commands = _REPO_ROOT / "src" / "development-lifecycle" / "commands"
-        for name in ("spec.md", "interview-me.md", "document-decision.md", "design.md"):
+        # spec.md is not listed: /spec came back to development-lifecycle in
+        # plan 103 as the loop's anchor writer, a different command from the
+        # six-section PRD that moved out in this rename. /interview-me is gone
+        # everywhere (test_spec_wiring.py pins that).
+        for name in ("interview-me.md", "document-decision.md", "design.md"):
             self.assertFalse((dl_commands / name).exists(), f"{name} still under development-lifecycle/commands/")
         dl_scripts = _REPO_ROOT / "src" / "development-lifecycle" / "scripts"
         for name in ("design_doc.py", "design_sequence.py"):
@@ -28,7 +32,7 @@ class TestWaveARename2Design(unittest.TestCase):
     def test_moved_files_present_under_design(self):
         design_dir = _REPO_ROOT / "src" / "design"
         for rel in (
-            "commands/spec.md", "commands/interview-me.md", "commands/document-decision.md",
+            "commands/document-decision.md",
             "commands/design.md", "scripts/design_doc.py", "scripts/design_sequence.py",
             "templates/design-doc.md",
         ):

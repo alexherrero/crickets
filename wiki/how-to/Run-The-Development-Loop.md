@@ -25,8 +25,7 @@ This is the core loop the `development-lifecycle` plugin gives you. Each phase d
 
 When the change is still fuzzy, do the authoring steps first — they feed into `/plan`:
 
-- `/interview-me` draws out what you actually want when the idea isn't clear yet.
-- `/spec` writes a short PRD from the shaped idea.
+- `/spec` writes the anchor every task is graded against: Goal, Done when, Rules (each with its source), Not doing, and Open questions. When the brief is ambiguous it asks at most five batched questions first, and you approve the spec once. `/plan` sends a task that has no spec to `/spec`.
 - `/design` takes a design doc to a human-approved final and splits it into parts, which become the plans you hand to `/work`.
 
 ## Fixing a bug

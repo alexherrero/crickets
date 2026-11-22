@@ -19,7 +19,7 @@ You are running the **plan** phase of the developer-workflows loop. Turn a brief
 
 ## When to use
 
-If the brief is underspecified, run `/interview-me` first. If it's a non-trivial feature, run `/spec` first to produce `SPEC.md`, then pass `SPEC.md` to `/plan`.
+Every task is graded against a spec. If the task has none, run `/spec` first: it asks at most 5 questions when the brief is ambiguous, writes the spec, and you approve it once. Then pass the spec to `/plan`.
 
 ## Non-negotiable constraints
 

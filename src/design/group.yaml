@@ -164,4 +164,7 @@ capabilities: [design-docs, design, architecture]
 # behind a short SKILL.md.
 # 0.11.3 = prose_pass.py runs agy with AGENTM_AGY_RECALL=off, so agentm's agy
 # recall plugin does not hand the simplifier the operator's memory vault.
-version: 0.11.3
+# 0.12.0 = the six-section /spec (SPEC.md, <desk>/briefs/<slug>-spec.md) and
+# /interview-me are removed (plan 103, step 2). /spec is now development-
+# lifecycle's anchor writer, which asks its own questions (at most 5).
+version: 0.12.0
