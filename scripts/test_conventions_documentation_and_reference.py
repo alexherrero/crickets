@@ -6,33 +6,19 @@ stdlib only -- no pytest.
 """
 from __future__ import annotations
 
-import importlib.util
-import sys
 import unittest
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
 _CONVENTIONS_ROOT = _ROOT / "src" / "conventions"
-_SRC = _CONVENTIONS_ROOT / "scripts"
-
-
-def _load(name, path):
-    spec = importlib.util.spec_from_file_location(name, path)
-    m = importlib.util.module_from_spec(spec)
-    sys.modules[name] = m
-    spec.loader.exec_module(m)
-    return m
-
-
-conventions_domain = _load("conventions_domain_module_2", _SRC / "conventions_domain.py")
 
 
 class DocumentationDomainTests(unittest.TestCase):
     def test_documentation_domain_declares_the_named_standards(self):
-        found = conventions_domain.resolve("documentation", _CONVENTIONS_ROOT)
-        self.assertEqual(len(found["rules"]), 1)
-        content = found["rules"][0].read_text(encoding="utf-8")
+        # Plan 105 step 3 retired the conventions_domain.py resolver (no caller);
+        # the documentation domain is its one rule file.
+        content = (_CONVENTIONS_ROOT / "rules" / "documentation.md").read_text(encoding="utf-8")
         self.assertIn("Single-mode-per-page", content)
         self.assertIn("Length ceilings", content)
         self.assertIn("Naming style", content)

@@ -11,7 +11,7 @@ trigger: model_decision
 
 Migrated in (crickets-conventions.md's Migrations spec) from agentm `AGENTS.md`'s "Running the checks" section — a re-home, not a rewrite of the underlying standard, generalized from that section's project-specific gate list to the standard itself.
 
-**Always set up CI on a new project.** A project with no gate battery has no deterministic "is it done" signal — everything downstream (`/work`, `/build-it`) degrades to LLM judgment, which this domain's substrate (the `agentic-engineering` skill's "deterministic verification before LLM judgment" principle) exists to avoid.
+**Always set up CI on a new project.** A project with no gate battery has no deterministic "is it done" signal — everything downstream (`/work`, `/build-it`) degrades to LLM judgment, which agentm's core principle "deterministic verification is cheap and truthful; LLM judgment is expensive" exists to avoid.
 
 **Run the battery before every commit.** Before every commit, run the full local gate battery — the one command that mirrors CI's deterministic checks. For a harness-based project this is `bash scripts/check-all.sh` or its project-specific equivalent; whatever the command, it must run the unit suite plus every project `check-*` gate, print a PASS/FAIL summary, and exit non-zero if any gate fails.
 

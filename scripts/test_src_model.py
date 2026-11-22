@@ -249,8 +249,7 @@ class TestSrcModel(unittest.TestCase):
         # command primitives live in development-lifecycle (the phase commands),
         # code-review (the standalone /code-review), wiki
         # (recent-wiki-changes, folded in part 2; + wiki-watch, the part-4
-        # claude-only scheduling entry), design (spec/interview-me/document-decision/
-        # design — re-homed from development-lifecycle at AG Wave A rename 2
+        # claude-only scheduling entry), design (/design — re-homed from development-lifecycle at AG Wave A rename 2
         # task 4), tokens (handoff-pack/token-audit), github-projects
         # (report-board-drift, the board-write-path task 6 scheduling entry —
         # mirrors wiki-watch's pattern), and diagnostics (/diagnose, wave-c-diagnostics).

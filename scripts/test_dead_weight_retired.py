@@ -27,10 +27,16 @@ RETIRED = [
     ("development-lifecycle", "agent", "project-manager"),
     ("development-lifecycle", "agent", "tech-lead"),
     ("development-lifecycle", "agent", "researcher"),
+    # Step 3: design's and conventions' unused primitives.
+    ("design", "command", "document-decision"),
+    ("design", "skill", "adr"),
+    ("conventions", "skill", "agentic-engineering"),
+    ("conventions", "skill", "testing-conventions"),
 ]
 
 RETIRED_SCRIPTS = [
     ("development-lifecycle", "queue_status.py"),
+    ("conventions", "conventions_domain.py"),
 ]
 
 

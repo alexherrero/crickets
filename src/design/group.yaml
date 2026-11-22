@@ -1,5 +1,5 @@
 name: Design
-description: "Living-design and ADR authoring — the /design command (write or update a project's living design note in its vault: objective, current design, open questions, amendment log) and the ADR skill for capturing architectural decisions with re-audit triggers. Also the cross-model prose pass."
+description: "Living-design authoring — the /design command (write or update a project's living design note in its vault: objective, current design, open questions, amendment log). Also the cross-model prose pass."
 category: Coding
 requires: [development-lifecycle]
 standalone: false
@@ -185,4 +185,6 @@ capabilities: [design-docs, design, architecture]
 # /document-decision and the prose pass stay. development-lifecycle's /plan
 # step 1b and its session-start hook now also find vault living designs
 # (scripts/vault_designs.py), beside the repo's own wiki/designs/ pages.
-version: 1.0.0
+# 2.0.0 = the /document-decision command and the adr skill retire (plan 105
+# step 3; 0 uses — decisions amend the living design's log instead).
+version: 2.0.0

@@ -25,17 +25,16 @@
     },
     {
       "capabilities": [
-        "testing-conventions",
         "releasing-conventions",
         "conventions"
       ],
       "dependencies": [
         "development-lifecycle"
       ],
-      "description": "Day-to-day testing + release discipline in one plugin — tests-are-sacred, verification-first, the 3-layer pyramid, the pre-release checklist, changelog-shape, and paired-release coordination for cross-repo releases.",
+      "description": "Release discipline and the shared rules — the ship-release skill (pre-release checklist, changelog-shape, paired-release coordination for cross-repo releases) plus the always-on rules (no skipped tests, version bumps, CI battery, coalescence gate).",
       "name": "conventions",
       "source": "./dist/claude-code/plugins/conventions",
-      "version": "0.12.5"
+      "version": "1.0.0"
     },
     {
       "capabilities": [
@@ -46,10 +45,10 @@
       "dependencies": [
         "development-lifecycle"
       ],
-      "description": "Living-design and ADR authoring — the /design command (write or update a project's living design note in its vault: objective, current design, open questions, amendment log) and the ADR skill for capturing architectural decisions with re-audit triggers. Also the cross-model prose pass.",
+      "description": "Living-design authoring — the /design command (write or update a project's living design note in its vault: objective, current design, open questions, amendment log). Also the cross-model prose pass.",
       "name": "design",
       "source": "./dist/claude-code/plugins/design",
-      "version": "1.0.0"
+      "version": "2.0.0"
     },
     {
       "capabilities": [
