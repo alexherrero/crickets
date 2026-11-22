@@ -746,5 +746,11 @@ enhances:
 # the done-report and the evaluator's done-check. `--check <PR, range or diff>`
 # runs the passes and the report on an existing change and never fixes.
 # loop_record.py gains add-security. No agentm call on the required path.
-version: 0.54.0
+# 0.55.0 = scripts/asset_checks.py (plan 103, step 8): the free checks for
+# create-it. PNG: size, frame count (APNG, or a sprite-sheet grid), empty
+# frames, colour palette; WAV: length, sample rate, channels, peak and RMS in
+# dBFS; both compared against a reference. Writes a side-by-side image and a
+# spectrogram when ImageMagick or ffmpeg is installed and says what it skipped
+# when not. Stdlib decoding, no agentm.
+version: 0.55.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]
