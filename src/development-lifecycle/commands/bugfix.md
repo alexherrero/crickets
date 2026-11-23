@@ -12,7 +12,7 @@ You are running the **bugfix** pipeline of the developer-workflows loop. Bugs ha
 
 **Bug report from user:** $ARGUMENTS
 
-> **Recommended model for this phase:** `opusplan` — Opus 4.8 plans, Sonnet 5 executes the long autonomous stretch. Override with `/model` if needed.
+> **Recommended model for this phase:** `opusplan` — Opus 5.5 plans, Sonnet 5.5 executes the long autonomous stretch. Override with `/model` if needed.
 
 ## Recoverability gate
 

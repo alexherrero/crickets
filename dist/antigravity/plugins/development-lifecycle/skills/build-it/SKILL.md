@@ -9,7 +9,7 @@ You are running **build-it**: the whole loop for code, in one place. `/work` cal
 
 **Task from the user:** <what the user typed after /build-it>
 
-> **Recommended model:** Sonnet 5 (`claude-sonnet-5`) for the making. The reviewers below pick their own models; you never choose them by hand.
+> **Recommended model:** Sonnet 5.5 (`claude-sonnet-5-5`) for the making. The reviewers below pick their own models; you never choose them by hand.
 
 Judgment is yours: what the task needs, how big it is, what a finding means, what to fix. Everything a script can settle is one of these helpers, and you call them rather than redo them:
 

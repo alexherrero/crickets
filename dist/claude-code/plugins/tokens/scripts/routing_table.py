@@ -8,7 +8,7 @@ decision and its price are read off the same transcript in the same breath —
 they can never disagree about how a model's name is spelled.
 
 Every `model_id` here must be a key in `pricing.py`'s `PRICING` dict (a parity
-test enforces this, not eyeballing). `claude-fable-5` is deliberately present
+test enforces this, not eyeballing). `claude-fable-5-2` is deliberately present
 as a *recognized* id — resolving from zero work-type rows — so an `INHERITED`
 announcement naming it is instantly recognizable as the Mythos failure shape
 (silent inheritance of the most expensive model at fan-out scale), not a name
@@ -34,7 +34,7 @@ class RoutingRow:
 # executes. It resolves to two concrete `pricing.py` rows, never one; the
 # parity guard below checks the *resolved* ids, never the alias string itself.
 ALIASES: dict[str, tuple[str, ...]] = {
-    "opusplan": ("claude-opus-4-8", "claude-sonnet-5"),
+    "opusplan": ("claude-opus-5-5", "claude-sonnet-5-5"),
 }
 
 
@@ -45,32 +45,32 @@ def concrete_model_ids(model_id: str) -> tuple[str, ...]:
 
 TABLE: dict[str, RoutingRow] = {
     "research-adversarial-audit": RoutingRow(
-        tier="T4-Deep", model_id="claude-opus-4-8", effort="max",
+        tier="T4-Deep", model_id="claude-opus-5-5", effort="max",
     ),
     "roadmap-architecture-priority": RoutingRow(
-        tier="T3-Architect", model_id="claude-opus-4-8", effort="max",
+        tier="T3-Architect", model_id="claude-opus-5-5", effort="max",
     ),
     "author-roadmap-shaped": RoutingRow(
-        tier="T2-Author", model_id="claude-opus-4-8", effort="high",
+        tier="T2-Author", model_id="claude-opus-5-5", effort="high",
     ),
     "author-transcription-shaped": RoutingRow(
-        tier="T2-Author", model_id="claude-sonnet-5", effort="high",
+        tier="T2-Author", model_id="claude-sonnet-5-5", effort="high",
     ),
     "worker-build": RoutingRow(
         tier="T1-Execute", model_id="opusplan", effort="medium",
     ),
     "wiki-mechanical-plus": RoutingRow(
-        tier="T1-Execute", model_id="claude-sonnet-5", effort="medium",
+        tier="T1-Execute", model_id="claude-sonnet-5-5", effort="medium",
     ),
     "mechanical-log-scraping": RoutingRow(
-        tier="T0-Mechanical", model_id="claude-sonnet-5", effort="low",
+        tier="T0-Mechanical", model_id="claude-sonnet-5-5", effort="low",
     ),
 }
 
 # Recognized-but-unrouted ids: valid model ids that no work-type resolves to.
-# `claude-fable-5` lives here, not in TABLE, so it stays a name the classifier
+# `claude-fable-5-2` lives here, not in TABLE, so it stays a name the classifier
 # can recognize (never invent) without ever being a routing target.
-RECOGNIZED_UNROUTED: frozenset[str] = frozenset({"claude-fable-5"})
+RECOGNIZED_UNROUTED: frozenset[str] = frozenset({"claude-fable-5-2"})
 
 
 def routed_model_ids() -> frozenset[str]:
@@ -82,5 +82,5 @@ def routed_model_ids() -> frozenset[str]:
 
 
 def all_recognized_model_ids() -> frozenset[str]:
-    """Routed ids plus recognized-but-unrouted ids (e.g. `claude-fable-5`)."""
+    """Routed ids plus recognized-but-unrouted ids (e.g. `claude-fable-5-2`)."""
     return routed_model_ids() | RECOGNIZED_UNROUTED

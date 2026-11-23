@@ -76,7 +76,7 @@ class TestCommandRoutingNudgeMatchesTable(unittest.TestCase):
 
     def test_authoring_commands_resolve_to_sonnet_5(self):
         for command in ("plan", "review", "design", "spec"):
-            self.assertEqual(cwt.classify_work_type(role_name=command).model_id, "claude-sonnet-5")
+            self.assertEqual(cwt.classify_work_type(role_name=command).model_id, "claude-sonnet-5-5")
 
 
 if __name__ == "__main__":

@@ -150,6 +150,30 @@ class TestRetiredPrimitivesAreGone(unittest.TestCase):
                     "development-lifecycle/scripts/escalation_tripwire.py", "tokens/scripts/fanout_cost_gate.py"):
             self.assertTrue((_SRC / rel).is_file(), rel)
 
+    def test_no_stale_model_ids_outside_pricing_history(self):
+        # Step 7: the routing, advisor, agent and command surfaces name the
+        # current Claude 5.x ids; pricing.py keeps the old rows for old
+        # transcripts, and group.yaml version comments are history.
+        import re
+        stale = re.compile(r"\bclaude-(?:fable-5|sonnet-5|opus-4-8|sonnet-4-6|haiku-4-5)\b(?!-\d)")
+        hits = []
+        for path in _SRC.rglob("*"):
+            if not path.is_file() or path.suffix not in (".py", ".md", ".sh", ".json", ".yml"):
+                continue
+            if path.name in ("pricing.py", "advisor_rider.py"):
+                # recognition tables, not routing: they keep the older ids
+                continue
+            for n, line in enumerate(path.read_text(encoding="utf-8", errors="ignore").splitlines(), 1):
+                if stale.search(line):
+                    hits.append(f"{path.relative_to(_ROOT)}:{n}")
+        self.assertEqual(hits, [])
+
+    def test_agents_pin_aliases_not_dated_ids(self):
+        for agent in (_SRC / "development-lifecycle" / "agents").glob("*.md"):
+            for line in agent.read_text(encoding="utf-8").splitlines():
+                if line.startswith("model:"):
+                    self.assertIn(line.split(":", 1)[1].strip(), {"sonnet", "opus", "haiku", "inherit"}, agent.name)
+
     def test_worker_is_the_one_coordinator_role_left(self):
         agents = {p.stem for p in (_SRC / "development-lifecycle" / "agents").glob("*.md")}
         self.assertIn("worker", agents)

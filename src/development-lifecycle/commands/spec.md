@@ -11,7 +11,7 @@ You are running **spec**: write the one file a task is graded against. Everythin
 
 **Brief from the user:** $ARGUMENTS
 
-> **Recommended model for this phase:** Sonnet 5 (`claude-sonnet-5`) — authoring. Override with `/model` if needed.
+> **Recommended model for this phase:** Sonnet 5.5 (`claude-sonnet-5-5`) — authoring. Override with `/model` if needed.
 
 The shape, placement and checks are `spec_doc.py`'s, not yours: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/spec_doc.py"` (`place`, `check`, `render`). Your part is the judgment: what the goal is, which rules apply, what to ask.
 

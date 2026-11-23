@@ -38,15 +38,17 @@ from src_model import read_frontmatter  # noqa: E402
 
 _ROUTING_NUDGE_MARKER = "Recommended model for this phase:"
 
+# Plan 105 step 7: agent frontmatter pins the alias, not a dated id.
 _AGENT_ROUTING = {
-    "worker": "claude-sonnet-5",
+    "worker": "sonnet",
+    "evaluator": "sonnet",
 }
 
 _COMMAND_ROUTING = {
     "work": "opusplan",
     "bugfix": "opusplan",
-    "plan": "claude-sonnet-5",
-    "design": "claude-sonnet-5",
+    "plan": "claude-sonnet-5-5",
+    "design": "claude-sonnet-5-5",
 }
 
 
@@ -59,8 +61,8 @@ class TestAgentModelFrontmatter(unittest.TestCase):
     def test_worker_model_is_sonnet(self):
         fm = self._fm("worker")
         self.assertEqual(
-            fm.get("model"), "claude-sonnet-5",
-            "worker.md: expected model: claude-sonnet-5 (T1 executor; opusplan plan→execute split)",
+            fm.get("model"), "sonnet",
+            "worker.md: expected model: sonnet (T1 executor; opusplan plan→execute split)",
         )
 
     def test_all_routing_models_match_policy(self):

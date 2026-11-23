@@ -12,7 +12,7 @@ You are running the **work** phase of the developer-workflows loop. Work through
 
 **Argument (if any):** $ARGUMENTS
 
-> **Recommended model for this phase:** `opusplan` — Opus 4.8 plans, Sonnet 5 executes the long autonomous stretch. Override with `/model` if needed.
+> **Recommended model for this phase:** `opusplan` — Opus 5.5 plans, Sonnet 5.5 executes the long autonomous stretch. Override with `/model` if needed.
 
 > The session works the **whole step list autonomously** — the unit is the plan, not a single step. What keeps that safe is the **per-step safety pre-check**: before each step, decide whether it can be done safely and autonomously, and stop to ask if it can't (or if a clarification is needed). Single-threaded execution is the load-bearing constraint — never fan out parallel implementers; the autonomy boundary is the safety check, not the step count.
 

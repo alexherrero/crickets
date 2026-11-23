@@ -187,4 +187,5 @@ capabilities: [design-docs, design, architecture]
 # (scripts/vault_designs.py), beside the repo's own wiki/designs/ pages.
 # 2.0.0 = the /document-decision command and the adr skill retire (plan 105
 # step 3; 0 uses — decisions amend the living design's log instead).
-version: 2.0.0
+# 2.0.1 = /design's recommended-model line names Sonnet 5.5 (plan 105 step 7).
+version: 2.0.1

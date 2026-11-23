@@ -158,6 +158,10 @@ standalone: true
 # through the hook adapter. The two commands ship as skills.
 # 0.8.4 = /token-audit's routing section notes that the phase commands no
 # longer print a fan-out announcement line (plan 104 step 4).
-version: 0.8.4
+# 0.9.0 = the routing table, classifier and examples name the current Claude 5.x
+# ids (opus-5-5, sonnet-5-5, haiku-5-5, fable-5-2), and pricing.py adds their
+# rows from the Claude API reference; the older rows stay for old transcripts
+# (plan 105 step 7).
+version: 0.9.0
 capabilities: [status-line-meter, token-audit, tokens]
 renamed_from: [status-line-meter, token-audit]

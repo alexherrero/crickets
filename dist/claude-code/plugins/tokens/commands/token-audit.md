@@ -54,7 +54,7 @@ You are running `/token-audit` — a deterministic cost analyzer for Claude Code
    ```
    # │ Timestamp            │ Model              │ Cost       │ In    │ CW   │ CR    │ Out
    ──┼──────────────────────┼────────────────────┼────────────┼───────┼──────┼───────┼────
-   1 │ 2026-06-14T00:02:00Z │ claude-opus-4-8    │ $0.020000  │  1000 │ 2000 │     0 │ 100
+   1 │ 2026-06-14T00:02:00Z │ claude-opus-5-5    │ $0.020000  │  1000 │ 2000 │     0 │ 100
    …
    ```
    Columns: `#`, `Timestamp` (ISO), `Model`, `Cost`, `In` (fresh input), `CW` (cache write), `CR` (cache read), `Out` (output).

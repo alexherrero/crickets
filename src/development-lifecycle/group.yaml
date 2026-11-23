@@ -807,5 +807,8 @@ standalone: true
 # tech-lead and researcher agents. worker stays.
 # 2.1.0 = scripts with no caller go (plan 105 step 6): fanout_announcement.py,
 # check-plan-grounding.py, and agentm_bridge.py's workflow-persona verb.
-version: 2.1.0
+# 2.2.0 = worker and evaluator pin the `sonnet` alias; the advisor rider ranks the
+# current Claude 5.x ids; recommended-model lines name Opus 5.5 / Sonnet 5.5
+# (plan 105 step 7).
+version: 2.2.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

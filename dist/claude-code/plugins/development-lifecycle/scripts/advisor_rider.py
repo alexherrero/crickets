@@ -16,18 +16,26 @@ from dataclasses import dataclass
 from pathlib import Path
 
 # Relative strength for the pairing constraint ONLY — not a general model
-# quality ranking. Equal rank means comparable generation (sonnet-4-6 and
-# sonnet-5 are both rank 1), not identical.
+# quality ranking. It recognizes the current Claude 5.x ids and the older ids
+# an operator's config may still name, like pricing.py does, so a still-valid
+# pairing is never rejected as unrecognized (plan 105 step 7). Equal rank means
+# a comparable generation, not identical.
 MODEL_STRENGTH_RANK: dict[str, int] = {
     "claude-haiku-4-5": 0,
+    "claude-haiku-5-5": 0,
     "claude-sonnet-4-6": 1,
     "claude-sonnet-5": 1,
+    "claude-sonnet-5-5": 1,
     "claude-opus-4-8": 2,
+    "claude-opus-5-5": 2,
     "claude-fable-5": 3,
+    "claude-fable-5-2": 3,
 }
 
-# claude-fable-5's availability as an advisor pairing wasn't confirmed below
-# this host version — flagged, not silently allowed.
+# A Fable advisor's availability wasn't confirmed below this host version.
+# The floor was measured for claude-fable-5; plan 105 applies it to the whole
+# Fable family (claude-fable-5-2 included) as the conservative default:
+# below it a Fable advisor is flagged, never silently allowed.
 FABLE_MIN_CLI_VERSION: tuple[int, int, int] = (2, 1, 170)
 
 
@@ -54,7 +62,7 @@ def validate_advisor_rider(
     """Validate an `advisorModel` pairing against the main session's model.
 
     Rejects (valid=False) an advisor ranked weaker than the main session, or
-    an unrecognized model on either side. `claude-fable-5` as advisor is
+    an unrecognized model on either side. a Fable advisor (`claude-fable-*`) is
     accepted with a warning when `cli_version` is unknown, rejected outright
     when known and below `FABLE_MIN_CLI_VERSION`.
     """
@@ -77,14 +85,14 @@ def validate_advisor_rider(
             ),
         )
 
-    if advisor_model == "claude-fable-5":
+    if advisor_model.startswith("claude-fable-"):
         parsed = _parse_version(cli_version) if cli_version else None
         min_str = ".".join(str(p) for p in FABLE_MIN_CLI_VERSION)
         if parsed is None:
             return AdvisorValidation(
                 valid=True,
                 warning=(
-                    f"claude-fable-5 as advisor requires CLI >= {min_str}; the "
+                    f"{advisor_model} as advisor requires CLI >= {min_str}; the "
                     f"installed version could not be determined — proceeding, "
                     f"confirm manually"
                 ),
@@ -92,7 +100,7 @@ def validate_advisor_rider(
         if parsed < FABLE_MIN_CLI_VERSION:
             return AdvisorValidation(
                 valid=False,
-                error=f"claude-fable-5 as advisor requires CLI >= {min_str}; installed is {cli_version}",
+                error=f"{advisor_model} as advisor requires CLI >= {min_str}; installed is {cli_version}",
             )
 
     return AdvisorValidation(valid=True)

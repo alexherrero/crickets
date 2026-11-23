@@ -47,7 +47,7 @@ You are running `/handoff` — it generalizes the Mythos `PROMPTS.md` pattern (t
    - **`tldr`** — one or two plain sentences: what this session already did, and what the chip's session will finish.
    - **`cwd`** — only when the entry's work belongs to a different repo than this session's.
 
-   **State the label in the prompt body.** A chip carries no `model` or `effort` parameter — its session inherits the host's defaults, which is exactly the silent frontier-tier inheritance the routing table exists to prevent. So write the entry's label into the prompt itself as a plain line (`Run this at tier T1 · model claude-haiku-4-5-20251001 · effort low.`) and tell the operator in step 6 which chips need the model switched after opening. The structured label in `prompts.json` stays the machine-readable source; this line is what survives into the chip.
+   **State the label in the prompt body.** A chip carries no `model` or `effort` parameter — its session inherits the host's defaults, which is exactly the silent frontier-tier inheritance the routing table exists to prevent. So write the entry's label into the prompt itself as a plain line (`Run this at tier T1 · model claude-haiku-5-5 · effort low.`) and tell the operator in step 6 which chips need the model switched after opening. The structured label in `prompts.json` stays the machine-readable source; this line is what survives into the chip.
 
    Record each returned `task_id` — step 6 reports it, and it is what `dismiss_task` needs if a chip is superseded before the operator clicks it.
 
