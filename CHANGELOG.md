@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The recoverability doctrine has one home** (`developer-safety` 0.7.0, `development-lifecycle` 1.6.0; step 1 of the dead-weight plan). `/work`, `/bugfix` and `/release` no longer each carry the same 405-word doctrine block. Each has an 80-word "Recoverability gate" summary that works without `developer-safety` installed. The summary says recoverable actions are announced and proceed, unrecoverable ones stop and confirm, and an unresolved decision stops and asks. It also says the worktree, PII and co-author rules are unchanged, and points to the `recoverability` skill. That skill is now the full doctrine, down from 1,400 words to about 790.
+- **`privacy-review` merges into `pii-scrubber`** (`privacy` 1.0.0, a major bump because a skill goes away; step 4). `pii-scrubber` has a "Privacy review of a diff (on request)" section. It keeps the ten-practice table, the Semgrep pre-pass and the `PRIVACY-RISK` / `NO PRIVACY ISSUES FOUND` contract. The push-time scan is unchanged.
+- **`testing-strategy`'s checks join the correctness pass** (`code-review` 2.0.0; step 4). `cross-review.sh` and `adversarial-reviewer` now check for unproven tests. One is a claimed behaviour with no test that fails if the claim is false. Another is a bug-fix regression test never shown to fail on the pre-fix code in the real failure's shape. The third is an assertion too generic to name the behaviour. `security-auditor` stays the security pass.
+- **The wiki group is one skill and its commands** (`wiki` 1.0.0, `developer-safety` 0.7.1; step 5). `wiki-author` (0.2.0) now ships on both hosts. It carries:
+  - the six-section rules and the page templates;
+  - the voice files, and the scripts `check-wiki`, `check-slop`, the voice-floor gate and `commit-msg-gate` read.
+
+  `/wiki-watch` (0.2.0) carries the watcher's cycle and ships on both hosts. On Antigravity, reinstall `wiki` from `dist/antigravity/plugins/`. Installed copies of the `commit-msg-gate` hook skip their slop check until the plugin is updated. Paired with alexherrero/agentm#986, which renames agentm's `diataxis-author` references to `wiki-author`.
+- **Current model ids** (`tokens` 0.9.0, `development-lifecycle` 2.2.0, `design` 2.0.1; step 7). The routing table and the recommended-model lines name Claude Opus 5.5, Sonnet 5.5, Haiku 5.5 and Fable 5.2. The `worker` and `evaluator` agents pin the `sonnet` alias. `pricing.py` adds their rates and keeps the older rows so old transcripts still price. Haiku 5.5's cache-read rate is derived at 0.1× input, because it isn't published.
+
+### Removed
+
+- **Unused development-lifecycle commands and agents** (`development-lifecycle` 2.0.0, a major bump; step 2). `/ci-cd`, `/launch`, `/deprecate`, `/observe`, `/orient` and `/queue-status-lite` are gone, with `queue_status.py`. So are the `project-manager`, `tech-lead` and `researcher` agents. `/open` is the one way to open a project, and `worker` is the one coordinator role. Nothing had used any of them since June.
+- **`/document-decision`, the `adr` skill, `agentic-engineering` and `testing-conventions`** (`design` 2.0.0, `conventions` 1.0.0; step 3). Decisions now amend a living design's log. The conventions rules point at agentm's `AGENTS.md` and `harness/principles.md` instead of `agentic-engineering`. The `testing-conventions` capability goes, along with the `conventions_domain.py` resolver.
+- **`diataxis-author`, the `wiki-watch` skill, `diataxis-evaluator` and `style-scope-evaluator`** (`wiki` 1.0.0; step 5). The `/diataxis` sub-commands go with them: migrate, classify, relocate, repair, capture, promote, author and check. Voice lessons are edited in the vault by hand.
+- **Scripts nothing called** (`development-lifecycle` 2.1.0, `maintenance` 0.3.0; step 6). Gone:
+  - `fanout_announcement.py` and `check-plan-grounding.py`;
+  - the bridge's `workflow-persona` verb;
+  - maintenance's `content_refresh`, `cve_security_patch`, `deps_currency` and `tech_debt_inventory`, and the `agentm_bridge.py` only they used.
+
+  Scripts that still have a caller stay, and a test names them.
+
+### Internal
+
+- **What the cleanup took out** (step 8). The shipped commands, agents and skills went from 52 to 32, and their listing descriptions from 2,562 to 1,426 words. `/work` went from 4,795 to 4,473 words, `/release` from 1,815 to 1,493 and `/bugfix` from 1,827 to 1,505. `scripts/test_dead_weight_retired.py` checks that every retired piece is gone from `src/` and both hosts' `dist/`.
+- **The wiki says what replaced each retired piece** (step 8). The how-tos for `/launch`, `/observe`, `/ci-cd`, `/deprecate` and `/queue-status-lite` are gone, and so is the style-learning-loop reference. Live pages point to `wiki-author`, `/open`, `worker`, `pii-scrubber` and `/build-it`. Pages under `wiki/designs/` get an amendment-log entry; their bodies wait for the wiki migration.
+
 ## [v7.0.0] — 2026-11-22 — Major: the pipeline lets go of what the loop replaced
 
 Plan 2 of 3 from the build-it / create-it design. The phase commands keep only what the loop still needs: the `/review` phase, `/doubt`, crickets' `/code-review` and `/simplify` and the `test-engineer` agent retire into `/build-it`'s passes and `/build-it --check`; wiki updates and board sync leave `/plan`, `/work`, `/release` and `/bugfix` and run on request or on a schedule; personas, routed dispatch, fan-out announcements, `features.json` and the design-divergence hooks go. The phase commands get 15–32% shorter (`/work` 5,708 → 4,795 words, `/plan` 3,301 → 2,458, `/release` 2,652 → 1,815, `/bugfix` 2,207 → 1,827). Major because commands go away: `development-lifecycle` 1.5.0 and `code-review` 1.0.0. Plan 3 (dead-weight cleanup) follows.

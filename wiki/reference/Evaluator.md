@@ -89,7 +89,7 @@ The rubric is built in this order; a caller-supplied `RUBRIC:` is graded after i
 | 4 | Not checked hides nothing | a Done-when line is listed as unchecked while its requirement is `met` |
 | 5 | create-it only | a Likeness line has neither a pair nor a not-checked entry, or the playtest checklist is missing |
 
-The record is evidence, not instruction: a finding or evidence line that tells the grader how to grade is graded as text. The agent is pinned to `model: claude-sonnet-5`, which keeps it a different model from the Gemini reviewers; the allowlist is unchanged.
+The record is evidence, not instruction: a finding or evidence line that tells the grader how to grade is graded as text. The agent is pinned to the `sonnet` model alias (`model: sonnet`), which keeps it a different model from the Gemini reviewers; the allowlist is unchanged.
 
 ## Output contract
 

@@ -27,15 +27,6 @@ Task-focused recipes for the crickets plugins. For field-level detail like plugi
 |---|---|
 | [Review an existing change](Use-Code-Review) | Run `/build-it --check` over a PR, a commit range or a diff file. |
 
-## Release with discipline
-
-| How-to | What it does |
-|---|---|
-| [Add a launch-readiness gate](Add-Launch-Readiness-Gate) | Check observability, rollback, and flags before shipping. |
-| [Add observability](Add-Observability-With-Observe) | Instrument the code as you build it. |
-| [Author a CI/CD pipeline](Author-A-CICD-Pipeline) | Build the lint, test, deploy gate pipeline. |
-| [Deprecate a surface](Deprecate-A-Surface-With-Deprecate) | Retire an old surface, migrate its callers. |
-
 ## Plan a project
 
 | How-to | What it does |
@@ -43,7 +34,6 @@ Task-focused recipes for the crickets plugins. For field-level detail like plugi
 | [Author a design](Author-A-Design) | Write or update an area's living design note. |
 | [Run a cross-model prose pass](Run-A-Prose-Pass) | Gemini simplifies a finished doc; Claude verifies. |
 | [Run a named plan](Run-A-Named-Plan) | Work a specific plan when several are active. |
-| [See every active plan](See-Every-Active-Plan) | A read-only glance over every active plan. |
 | [Record an architectural decision](Record-An-Architectural-Decision) | Capture a decision in the governing design's log. |
 | [Sync a project board](Sync-A-Project-Board) | Mirror your plans and progress onto a board. |
 

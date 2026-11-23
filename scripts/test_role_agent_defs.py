@@ -117,7 +117,13 @@ class TestWorkerRole(_ActiveRoleContract, unittest.TestCase):
         self.assertIn("worktree", low)
 
     def test_integrates_back(self):
-        self.assertIn("/integrate-worker", _text(self.role))
+        # /integrate-worker retired with the worktree-native flow (2026-07-06);
+        # the plan lands through its own PR with auto-merge armed (plan 105).
+        text = _text(self.role)
+        self.assertIn("auto-merge", text)
+        self.assertIn("PR", text)
+        self.assertNotIn("/integrate-worker", text)
+        self.assertNotIn("/spawn-worker", text)
 
 
 if __name__ == "__main__":

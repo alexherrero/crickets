@@ -160,8 +160,8 @@ class TestRetiredPrimitivesAreGone(unittest.TestCase):
         for path in _SRC.rglob("*"):
             if not path.is_file() or path.suffix not in (".py", ".md", ".sh", ".json", ".yml"):
                 continue
-            if path.name in ("pricing.py", "advisor_rider.py"):
-                # recognition tables, not routing: they keep the older ids
+            if path.name == "pricing.py":
+                # old transcripts are priced by their own ids
                 continue
             for n, line in enumerate(path.read_text(encoding="utf-8", errors="ignore").splitlines(), 1):
                 if stale.search(line):

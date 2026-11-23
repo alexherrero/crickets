@@ -8,7 +8,7 @@ version: 0.1.0
 
 ## Rule: coordinator-dispatch
 
-Migrated in (Consolidation arc, CONS-8) from the Consolidation-arc verdict's ruling 8. The verdict's own diagnosis (rubric 10): the orchestration machinery shipped — named plans, worktree-native spawn, a queue-status glance and a coordinator role roster (the glance and the research, tech-lead and project-manager roles retired in crickets plan 105 for want of use) — and the operator still hand-pasted prompts between sessions anyway. The gap wasn't a missing capability; it was a missing **default**. This rule names the default: a multi-session job is a coordinator dispatch, not a string of separately-typed prompts.
+Migrated in (Consolidation arc, CONS-8) from the Consolidation-arc verdict's ruling 8. The verdict's own diagnosis (rubric 10): the orchestration machinery shipped — named plans, worktree-native spawn, a queue-status glance and a coordinator role roster (crickets plan 105 retired all but the `worker` role for want of use) — and the operator still hand-pasted prompts between sessions anyway. The gap wasn't a missing capability; it was a missing **default**. This rule names the default: a multi-session job is a coordinator dispatch, not a string of separately-typed prompts.
 
 ### The shape
 

@@ -2,7 +2,7 @@
 
 The `development-lifecycle` phase commands `/work`, `/plan` and `/release` accept an optional `--name <slug>` flag. A name selects a task: `tasks/NNN-<verb-slug>/` with its `plan.md`, `progress.md` and `tracker.md`, wherever agentm keeps the project's tasks. This lets you hold several concurrent plans in one project. A plan also has a tracker whenever agentm names one, and the commands read its status before the plan's `**Status:**` line (see [Trackers](#trackers)). A bare invocation in a project that keeps tasks asks which task. In a repo with no vault, agentm keeps a repo-local layout instead — a singleton `.harness/PLAN.md` or a flat `.harness/PLAN-<slug>.md` — and the commands follow it (see [A repo with no vault](#a-repo-with-no-vault)).
 
-This page explains what a name maps to and how we resolve it. It also covers the read-only `/queue-status-lite` command. You can find the task recipes in [Run a named plan](Run-A-Named-Plan) and [See every active plan](See-Every-Active-Plan). If you want the context behind this approach, read [Why phase-gating](Why-Phase-Gating).
+This page explains what a name maps to and how we resolve it. It also says where to read a project's plans. You can find the task recipe in [Run a named plan](Run-A-Named-Plan). If you want the context behind this approach, read [Why phase-gating](Why-Phase-Gating).
 
 ## ⚡ Quick Reference
 
@@ -94,29 +94,17 @@ The `scripts/stage_plan.py` script owns both verbs. It relies on the standard li
 | `_not_a_task()` | [`stage_plan.py:116`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/scripts/stage_plan.py#L116) | The refusal for a flat answer: exit 2, nothing written. |
 | CLI verbs `path` / `activate` | [`stage_plan.py:173`](https://github.com/alexherrero/crickets/blob/main/src/development-lifecycle/scripts/stage_plan.py#L173) (`_build_parser`) | Invoked as `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/stage_plan.py" path <task>` and `... activate <task>`. Exit codes align with `resolve_plan.py`: `0` ok, `1` no agentm (passed on), `2` loud refusal, `3` already shipped (LC-6), and a resolver's `4` passed on. |
 
-## Reading the queue — `/queue-status-lite`
+## Reading the queue — `/open`
 
-The `/queue-status-lite` command serves as the read complement to the `--name` writers. It lists every active task of the project the cwd is bound to — each one's name, its status from its tracker, and the most recent line of its progress log. It takes no arguments. We define it as read-only by contract. It claims nothing, leases nothing, and gates nothing. This leaves you as the final arbiter of who works on which task. You can find the task recipe in [See every active plan](See-Every-Active-Plan).
-
-| Property | Value |
-|---|---|
-| Command | `/queue-status-lite` |
-| Argument | none — agentm resolves the project from the cwd |
-| Listed | every task whose tracker is not `done` or `dropped` (in a repo with no vault, its repo-local plans) |
-| Per-task output | name · tracker status · last progress line |
-| Mutates | nothing — reads and prints only |
-| Exit | `0` in normal use (a status read, never a gate) |
-
-### Read bridge
+`/open <name>` is the read complement to the `--name` writers. After you confirm the project, it lists every plan agentm has for it, each with its tracker status and step checklist, the recent progress lines of each unfinished plan, and the queued tasks. It is read-only by contract: it claims nothing, leases nothing and gates nothing, so you stay the final arbiter of who works on which task. The task recipe is [Open a project by name](Open-A-Project-By-Name).
 
 | Property | Value |
 |---|---|
-| Script | `${CLAUDE_PLUGIN_ROOT}/scripts/queue_status.py` |
-| Args | none |
-| Output | agentm's `queue_status_lite.py` render, passed through verbatim |
-| Without agentm | one line saying there is no plan list, exit 0 |
-
-The bridge finds agentm's reader the way every agentm script is found (`$AGENTM_SCRIPTS_DIR`, co-located, then `~/Antigravity/agentm/scripts/`), runs it from the cwd, and re-emits its output. The reader owns which plans a project has, where they live, and their status. crickets enumerates nothing itself.
+| Command | `/open <name> [--note]` |
+| Plans listed | every plan agentm lists for the project; finished plans show as a count |
+| Per-plan output | tracker status · step checklist · recent progress lines |
+| Mutates | nothing, unless `--note` writes `orientation-note.md` to the project's desk |
+| Retired | `/queue-status-lite` and its `queue_status.py` bridge (crickets plan 105) |
 
 ## Spawning a worker worktree
 
@@ -267,7 +255,7 @@ Such a plan can't be staged (staging needs the task layout), and it archives at 
 - [Author a design](Author-A-Design) — keep the living design note a plan reads for its locked calls.
 - [Run a named plan](Run-A-Named-Plan) — the task recipe for driving `/work --name <slug>` and friends, including the auto-spawn + auto-close-out flow.
 - [Development lifecycle design — worktree-native flow](crickets-development-lifecycle) — the decision behind host-native worktree creation and the PR-gated close-out replacing the old merge-then-gate-then-hard-reset model.
-- [See every active plan](See-Every-Active-Plan) — the read-side recipe: `/queue-status-lite` for a one-glance view of the queue.
+- [Open a project by name](Open-A-Project-By-Name) — the read-side recipe: `/open` for a project's plans and their status.
 - [Development Lifecycle](Development-Lifecycle) — the phase-loop plugin these commands belong to.
 - [Why phase-gating](Why-Phase-Gating) — why the loop is gated and state lives on disk.
 - [Compatibility](Compatibility) — host support for the phase commands.

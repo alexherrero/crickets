@@ -18,7 +18,6 @@ Look up how crickets is built — what a plugin is, the kinds you can author, wh
 | [Hooks](Hooks) | The full list of hooks and how they work. |
 | [Evaluator](Evaluator) | The read-only grader that scores work against a rubric. |
 | [Wiki Watch Config](Wiki-Watch-Config) | How to configure the wiki-watcher. |
-| [Style-learning loop](Style-Learning-Loop) | How the wiki stays in your voice, and what invokes it. |
 | [Add a plugin](Add-A-Plugin) | Create a new plugin from scratch. |
 | [Add a skill](Add-A-Skill) | Add a skill to an existing plugin. |
 | [Modify a plugin](Modify-A-Plugin) | Change a plugin and rebuild it. |

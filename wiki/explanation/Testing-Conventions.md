@@ -3,19 +3,19 @@
 
 ## Architecture
 
-Testing Conventions gives your agent a steady stance on how to test — one it carries the whole time it writes code, not a pass you bolt on at the end. It holds the line on the habits that keep a suite trustworthy: write the failing test before the code, never weaken or delete a test to get a build green, and keep fast unit tests, integration tests, and end-to-end tests at their own distinct scopes. When the agent reaches for a shortcut like a skip marker, it makes sure there's a real, documented reason rather than a quiet "we'll get to it later." So by the time a change reaches review, the tests already reflect what the code actually does. It builds on Development Lifecycle, extending that phase loop with test discipline rather than standing on its own.
+Testing Conventions is crickets' test discipline, currently one rule. The `no-skip-tests` rule lives in the `conventions` plugin. When the agent adds a skip marker, the rule requires a written reason. Reviewers check whether tests prove their claims in `/build-it`'s correctness pass. The plugin builds on Development Lifecycle and does not stand alone.
 
 ### Diagram
 
-How it composes — the plugin's two primitives, the development-lifecycle base it requires, and the AgentM substrate it rests on:
+How `no-skip-tests` inside `conventions` composes with the `development-lifecycle` base it requires and the AgentM substrate:
 
-![How testing-conventions composes: the testing-conventions skill and the no-skip-tests rule sit inside the plugin, which requires (solid slate, hard) the development-lifecycle phase loop — both must be enabled to load — and composes one-way onto the AgentM substrate of memory, opinions, and personas](../reference/diagrams/testing-conventions-composition.svg)
+![How the testing rule composes: the no-skip-tests rule sits inside the conventions plugin, which requires (solid slate, hard) the development-lifecycle phase loop — both must be enabled to load — and composes one-way onto the AgentM substrate of memory, opinions, and personas](../reference/diagrams/testing-conventions-composition.svg)
 
 ### How it works
 
-Two pieces work at two different moments. The first is a set of standing principles the agent keeps in mind as it writes: tests are sacred, so it never guts one to make a build pass; verification comes first, so it writes the failing scenario before the code that answers it; and the test pyramid stays intact, so quick unit tests, integration tests, and slower end-to-end tests each keep their own job instead of blurring together. The second watches for the moment the agent goes to skip a test. Skipping isn't banned — but the agent has to say why in the test itself, naming the actual blocker (a missing dependency, an environment it can't reach, a known upstream bug) and pointing at where it's tracked. A vague "TODO" or "flaky" won't do; the reason has to be real and checkable later.
+The rule fires when the agent skips a test. Skipping is allowed if the agent explains why in the test. The comment names the technical blocker (a missing dependency, an unreachable environment, or a known upstream bug) and links where it is tracked. A vague "TODO" or "flaky" fails the rule; the blocker must be checkable.
 
-Together they cover both the reflex and the practice — the split-second you reach for a skip, and the way you write and layer tests in the first place. This plugin owns that day-to-day *practice*. Auditing a finished change for missing test types is a different job, and lives in the Code Review plugin.
+Review handles the rest of test discipline. Crickets plan 105 retired the `testing-conventions` skill, which held the standing principles (tests are sacred, verify first, the three-layer pyramid). It also retired `code-review`'s `testing-strategy` audit. Its checks now sit in the correctness pass that `adversarial-reviewer` and `cross-review.sh` run inside `/build-it`. That pass flags missing tests and unproven tests. A missing test is a behaviour change with no test that would catch its regression. An unproven test is a claim no test would fail on, a regression test never shown to fail on the pre-fix code, or an assertion too generic to name the behaviour. The rule against weakening a test to get a build green lives in agentm's `AGENTS.md`.
 
 ### Composition
 
@@ -23,16 +23,16 @@ Together they cover both the reflex and the practice — the split-second you re
 |---|---|---|
 | Enhances (soft) | — | None. |
 | Enhanced by (soft) | — | None. |
-| Requires (hard) | [Development Lifecycle](Development-Lifecycle) | Testing Conventions builds on the development-lifecycle base — both plugins must be enabled for the skill and rule to load. |
+| Requires (hard) | [Development Lifecycle](Development-Lifecycle) | Builds on `development-lifecycle`; both plugins must be enabled to load. |
 | Required by (hard) | — | None. |
 
 ### Why not
 
-Testing Conventions is opinionated, and it will not fit every workflow. Reach for something else if:
+This rule will not fit every workflow. Use another approach if:
 
-- Your team already has its own testing doctrine — a different pyramid shape, a different stance on skip markers — and you don't want a second opinion layered on top.
-- You want review-time gap auditing rather than standing practice; that's the `code-review` plugin's `testing-strategy` skill, not this one.
-- The change is small or throwaway. The verification-first and never-skip principles are deliberately firm, and on a spike or a one-off script they can feel heavier than the work warrants.
+- Your team already enforces its own skip-marker policy.
+- You only want review-time test auditing via `/build-it`'s correctness pass in `code-review`.
+- You are writing a spike or throwaway script where documenting every skip adds overhead.
 
 ## Reference
 
@@ -42,17 +42,15 @@ Each primitive links to the source that implements it.
 
 | Primitive | Kind | What it does |
 |---|---|---|
-| [`testing-conventions`](https://github.com/alexherrero/crickets/blob/main/src/testing-conventions/skills/testing-conventions/SKILL.md) | skill | Standing testing principles — tests are sacred, verification first, the 3-layer pyramid. |
-| [`no-skip-tests`](https://github.com/alexherrero/crickets/blob/main/src/testing-conventions/rules/no-skip-tests.md) | rule | Fires on a skip/xfail/xit/pending marker; requires a comment naming the technical blocker plus a tracking link. |
+| [`no-skip-tests`](https://github.com/alexherrero/crickets/blob/main/src/conventions/rules/no-skip-tests.md) | rule | Fires on skip/xfail/xit/pending markers; requires a comment naming the technical blocker and a tracking link. |
 
 ### Configuration
 
-No configuration — the plugin works out of the box.
+No configuration needed.
 
 ## See also
 
-- [Testing strategy audit](https://github.com/alexherrero/crickets/blob/main/src/code-review/skills/testing-strategy/SKILL.md) — the `code-review` companion that audits a diff for missing test types.
-- [Code Review](Code-Review) — the adversarial review plugin this pairs with at review time.
-- [Conventions design](crickets-conventions) — the deeper design, including the planned merge of `testing-conventions` and `releasing-conventions` into a single `conventions` plugin.
+- [Code Review](Code-Review) — runs the correctness pass for missing and unproven tests.
+- [Conventions design](crickets-conventions) — design note for `conventions`.
 
 [Reference](Reference) · [Architecture](Architecture) · [Home](Home)

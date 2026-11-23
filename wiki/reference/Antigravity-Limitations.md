@@ -14,7 +14,7 @@ Antigravity (`agy`) lacks a few host surfaces. Your crickets primitives depend o
 | 4 | **Scheduled-task durability** — an in-flight scheduled task does not survive an app restart/sleep; it silently transitions to `CANCELED` instead of firing late or catching up | wiki-watcher scheduling · the agentm runner | rely on OS cron/launchd, not Antigravity's native Scheduled Tasks, for anything that must survive the app being closed | `agy` ships a persistence/catch-up guarantee for its scheduled-task primitive | 🟡 mitigated |
 | 5 | **Agent tool allowlists** — `agy` wants `tools:` as a list of its own tool names, and rejects a Claude model tier | every crickets agent | the emitter drops `tools:` and `model:`; the agent uses the session's tools and model | `agy` documents its agent tool names, or a Claude name maps to one | 🟡 mitigated |
 | 6 | **Built-in name clashes** — `agy`'s own `/plan` wins over a skill called `plan` | `/plan` from `development-lifecycle` | type `/development-lifecycle:plan` | `agy` namespaces plugin skills by default, or stops reserving the name | 🟡 mitigated |
-| 7 | **24 KB skill limit** — `agy` loads only the first 24 KB of a `SKILL.md` | `/work`, `/design`, `diataxis-author` | a long body moves to `references/`, behind a short `SKILL.md` that says to read it first | `agy` lifts the limit | 🟡 mitigated |
+| 7 | **24 KB skill limit** — `agy` loads only the first 24 KB of a `SKILL.md` | `/work` | a long body moves to `references/`, behind a short `SKILL.md` that says to read it first | `agy` lifts the limit | 🟡 mitigated |
 
 ## 1 — Scheduling / triggers
 
@@ -76,7 +76,7 @@ Antigravity (`agy`) lacks a few host surfaces. Your crickets primitives depend o
 
 ## 7 — 24 KB skill limit
 
-**The gap.** `agy` loads only the first 24 KB of a `SKILL.md` body and warns on the rest. `/work` (38 KB), `/design` (35 KB) and the wiki plugin's `diataxis-author` (50 KB) are over it; `/plan` (21 KB) and `/release` (19 KB) fit.
+**The gap.** `agy` loads only the first 24 KB of a `SKILL.md` body and warns on the rest. `/work` (30 KB) is over it; `/plan` (16 KB), `/release` (10 KB) and the wiki plugin's `wiki-author` (6 KB) fit. The wiki plugin's `diataxis-author` (50 KB) was the other skill over the limit until crickets plan 105 folded it into `wiki-author`.
 
 **Mitigation.** The emitter keeps the whole body in `references/` and writes a short `SKILL.md` that tells the agent to read it first. Relative links in the moved body get the extra `../` they need.
 

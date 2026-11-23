@@ -47,7 +47,7 @@ Each primitive links to the source that implements it.
 | Primitive | Kind | What it does |
 |---|---|---|
 | [`pii-patterns`](https://github.com/alexherrero/crickets/blob/main/src/privacy/rules/pii-patterns.md) | rule | Proactive stand-ins — never write a real email, path, key, or phone number into committed content. |
-| [`pii-scrubber`](https://github.com/alexherrero/crickets/blob/main/src/privacy/skills/pii-scrubber/SKILL.md) | skill | Scans the diff or working tree for PII, surfaces findings as `file:line`, and loops until clean. |
+| [`pii-scrubber`](https://github.com/alexherrero/crickets/blob/main/src/privacy/skills/pii-scrubber/SKILL.md) | skill | Scans the diff or working tree for PII, surfaces findings as `file:line`, and loops until clean. On request it also runs a privacy review of a diff (Semgrep pre-pass plus a practices table; `PRIVACY-RISK` or `NO PRIVACY ISSUES FOUND`), which was the separate `privacy-review` skill until crickets plan 105. |
 
 ### Configuration
 

@@ -13,6 +13,9 @@ approved: 2026-06-23
 > [!NOTE]
 > **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-23) · locked 2026-06-28 (final AG design sweep).** child-design — **the `privacy` capability** (keep secrets + personal information out of what gets committed and pushed, and keep good privacy practice in the code). `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). Points *up* at the [crickets HLD](crickets-hld.md).
 
+> [!WARNING]
+> **Partly out of date (2026-11-22):** crickets plan 105 retired pieces this page still describes as current; see the amendment log. The later wiki migration reconciles the body.
+
 # privacy
 
 ## Objective
@@ -102,3 +105,7 @@ The capability is renamed `pii` → `privacy` (the bare concern-noun; `capabilit
 **2026-06-23 — added the layers diagram (diagram backfill).** Per the every-design-carries-a-diagram rule.
 
 **2026-06-23 — authored from the seeded stub (grounded against the live `src/pii/` plugin); revised on operator review.** All four leak-side primitives are delivered — `pii-patterns` (rule), `check-no-pii.sh` (the deterministic detector), `pii-scrubber` (skill), the `pre-push` hook (mandatory enforcer); listed as a table. Named the **deterministic-by-contract** invariant (regex / pattern, never LLM) and resolved the `pre-push` home (privacy declares it; `development-lifecycle`'s finalize uses it). Added two operator-requested pieces: (1) an **Opinions-it-consumes** clause — privacy implements part of `done`, the `privacy-review` skill consumes `good` + `how-we-engineer` (a clause the other designs should carry too); (2) a second angle — a **`privacy-review`** skill for privacy *practice* (data minimization, PII-in-logs, retention, erasure, consent, third-party sinks): an LLM-assisted adversarial review with **falsifiable `PRIVACY-RISK file:line [ASVS-id]` findings**, **adapted from OWASP ASVS V8 / Top-10-Privacy-Risks / NIST Privacy Framework / ICO** (a prior-art investigation, 2026-06-23), **deterministic-first** (mechanizable checks shell out to grep / a Semgrep taint pack; the LLM judges only the non-mechanical practices), distinct from the deterministic `pii-scrubber` floor (`[PENDING-IMPL]`). Also surfaced the **incident-body scrub surface** diagnostics needs and the `cve-security-patch` pairing with maintenance. **Re-audit:** adapt + build privacy-review; build the incident-scrub surface; wire `opinion_request`; flip the name at v6.0.
+
+**2026-11-22 — pieces retired by plan 105; body not yet reconciled.**
+
+crickets plan 105 (`privacy` 1.0.0) merged the `privacy-review` skill into `pii-scrubber` as its "Privacy review of a diff (on request)" section, with the same Semgrep pack, practices table and `PRIVACY-RISK` output. There is no separate `privacy-review` skill. Where the body above says otherwise, the CHANGELOG's plan 105 entries are current. Why not reconcile the body now: these pages wait for the planned wiki migration, which rewrites them whole. Re-audit trigger: that migration.

@@ -13,6 +13,9 @@ approved: 2026-06-23
 > [!NOTE]
 > **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-23) · locked 2026-06-28 (final AG design sweep).** child-design — **the `research` capability** (deep research + web fetch + synthesis), parent [crickets HLD](crickets-hld.md). `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). Points *up* at the [crickets HLD](crickets-hld.md).
 
+> [!WARNING]
+> **Partly out of date (2026-11-22):** crickets plan 105 retired pieces this page still describes as current; see the amendment log. The later wiki migration reconciles the body.
+
 # research
 
 ## Objective
@@ -116,3 +119,7 @@ research leans on **`how-we-engineer`** — it feeds the plan → design → arc
 The `research` capability brings in what the agent hasn't seen, in two modes. **On-demand:** `explorer` + `researcher` (delivered read-only agents) and a new `idea-search` (greenfield, over the recall engine). **Scheduled forward-learning:** `learn-forward` + `codebase-improvement` (designed) — both lean by name on agentm's unbuilt scheduler + approved-source pipeline, surfacing findings to the idea incubator/watchlist, never auto-adopting. The adapt-don't-import seam stays one-way (discovery → watchlist → operator-gate). The first slice is the two agents + `idea-search`, with no dependency on unbuilt infrastructure. Deep multi-source research is **forward-referenced**: `researcher` references an operator-personal deep-research agent by name and contract.
 
 Operator decisions (2026-06-23): **`research` owns `researcher`**; deep multi-source work is forward-referenced to an operator-personal agent (by name + contract); the scheduled + on-demand halves stay **one capability, one design** (not a split). Conformed to the per-primitive operational contract with `(delivered)` / `(greenfield)` / `(designed)` markers, and fixed a composition-lint violation (the draft both `requires` *and* `enhances` `development-lifecycle` → corrected to `enhances`, since research works standalone). **Built-vs-designed:** the two agents delivered; `idea-search` + the scheduled half greenfield/blocked on the agentm scheduler. **Re-audit triggers:** flip `[PENDING-IMPL]` as `idea-search` then the scheduled workflows land; revisit the forward-reference approach only if it proves insufficient in real use.
+
+**2026-11-22 — pieces retired by plan 105; body not yet reconciled.**
+
+crickets plan 105 (`development-lifecycle` 2.0.0) retired the `researcher` agent this page describes as delivered. The `explorer` agent and `idea-search` remain the on-demand research primitives. Where the body above says otherwise, the CHANGELOG's plan 105 entries are current. Why not reconcile the body now: these pages wait for the planned wiki migration, which rewrites them whole. Re-audit trigger: that migration.

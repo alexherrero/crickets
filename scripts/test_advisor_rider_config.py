@@ -56,6 +56,11 @@ class TestPairingConstraint(unittest.TestCase):
         self.assertTrue(ar.validate_advisor_rider("claude-opus-4-8", "claude-opus-4-8").valid)
         self.assertTrue(ar.validate_advisor_rider("claude-sonnet-5", "claude-opus-5-5").valid)
 
+    def test_rank_is_by_family_so_any_version_is_recognized(self):
+        self.assertEqual(ar.model_rank("claude-opus-4-8"), ar.model_rank("claude-opus-5-5"))
+        self.assertLess(ar.model_rank("claude-sonnet-5-5"), ar.model_rank("claude-opus-4-8"))
+        self.assertIsNone(ar.model_rank("gpt-5"))
+
     def test_unrecognized_model_is_rejected(self):
         result = ar.validate_advisor_rider("claude-haiku-5-5", "not-a-real-model")
         self.assertFalse(result.valid)

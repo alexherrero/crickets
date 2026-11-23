@@ -31,11 +31,5 @@
   <text x="420" y="339" text-anchor="middle" font-size="9.5" font-style="italic" fill="#8a93a0">the defect track — used instead of /plan + /work</text>
   <path d="M640,318 C700,300 720,250 740,222" stroke="#9aa0a8" stroke-width="1.6" stroke-dasharray="5 4" fill="none" marker-end="url(#d)"/>
 
-  <!-- ship discipline -->
-  <rect x="668" y="300" width="192" height="50" rx="9" fill="#FBF3E2" stroke="#C8961E" stroke-width="1.6"/>
-  <text x="764" y="322" text-anchor="middle" font-size="12" font-weight="700" fill="#8a6516">Ship discipline</text>
-  <text x="764" y="339" text-anchor="middle" font-size="9" font-style="italic" fill="#b5851a">/launch · /deprecate · /ci-cd · /observe</text>
-  <path d="M764,300 L748,224" stroke="#9aa0a8" stroke-width="1.6" stroke-dasharray="5 4" fill="none" marker-end="url(#d)"/>
-
-  <text x="450" y="420" text-anchor="middle" font-size="10.5" font-style="italic" fill="#8a8a92">The phase-gated loop — one phase per session, state on disk. Authoring feeds /plan; /bugfix replaces plan+work for defects; ship discipline surrounds /release.</text>
+  <text x="450" y="420" text-anchor="middle" font-size="10.5" font-style="italic" fill="#8a8a92">The phase-gated loop — one phase per session, state on disk. Authoring feeds /plan; /bugfix replaces plan+work for defects.</text>
 </svg>

@@ -64,4 +64,4 @@ One page, one mode. Each folder is a mode; a page that mixes them fails `check-w
 - Batching writes past the per-write approval.
 - Read-only questions: `/recent-wiki-changes`.
 
-Retired in crickets plan 105 and not coming back: `/diataxis` migrate, classify, relocate, repair, capture and promote, and the `diataxis-evaluator` and `style-scope-evaluator` agents. Mode is picked from the ask or by asking; voice lessons are edited in the vault by hand.
+Mode is picked from the ask, or by asking. Voice lessons are edited in the vault by hand.
