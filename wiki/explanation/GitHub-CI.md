@@ -46,7 +46,7 @@ The plugin ships one primitive, linked to its source.
 
 | Primitive | Kind | What it does |
 |---|---|---|
-| [`dependabot-fixer`](https://github.com/alexherrero/crickets/blob/main/src/github-ci/skills/dependabot-fixer/SKILL.md) | skill | Bounded autonomous loop that repairs mechanical breakage on a Dependabot PR — reads failing CI logs and the upstream CHANGELOG, patches, re-runs, comments residual risk. Never merges. |
+| [`dependabot-fixer`](https://github.com/alexherrero/crickets/blob/main/src/maintenance/skills/dependabot-fixer/SKILL.md) | skill | Bounded autonomous loop that repairs mechanical breakage on a Dependabot PR — reads failing CI logs and the upstream CHANGELOG, patches, re-runs, comments residual risk. Never merges. |
 
 ### Configuration
 

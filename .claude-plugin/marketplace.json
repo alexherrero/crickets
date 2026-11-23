@@ -34,7 +34,7 @@
       "description": "Release discipline and the shared rules — the ship-release skill (pre-release checklist, changelog-shape, paired-release coordination for cross-repo releases) plus the always-on rules (no skipped tests, version bumps, CI battery, coalescence gate).",
       "name": "conventions",
       "source": "./dist/claude-code/plugins/conventions",
-      "version": "1.0.1"
+      "version": "1.0.2"
     },
     {
       "capabilities": [
@@ -62,7 +62,7 @@
       ],
       "name": "developer-safety",
       "source": "./dist/claude-code/plugins/developer-safety",
-      "version": "0.7.1"
+      "version": "0.7.2"
     },
     {
       "capabilities": [
@@ -79,7 +79,7 @@
       "description": "The phase-gated developer loop — /setup /plan /work /release /bugfix — extracted from agentm as a standalone native plugin. The base other dev plugins enhance.",
       "name": "development-lifecycle",
       "source": "./dist/claude-code/plugins/development-lifecycle",
-      "version": "2.2.0"
+      "version": "2.2.1"
     },
     {
       "capabilities": [
@@ -166,7 +166,7 @@
       "description": "Deterministic transcript-JSONL cost analyzer — per-message cost curve, 5h rolling window, floor breakdown, and cache-read vs cache-write vs fresh-input split. Prerequisite for Part C (status-line meter) and Part G (heat-based floor).",
       "name": "tokens",
       "source": "./dist/claude-code/plugins/tokens",
-      "version": "0.9.0"
+      "version": "0.9.1"
     },
     {
       "capabilities": [

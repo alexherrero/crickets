@@ -42,7 +42,7 @@ Each primitive links to the source that implements it.
 
 | Primitive | Kind | What it does |
 |---|---|---|
-| [`status_line_meter.py`](https://github.com/alexherrero/crickets/blob/main/src/status-line-meter/scripts/status_line_meter.py) | status-line script | Reads the per-response JSON payload and prints the used-%, floor-share, and cost badges — incrementally, with graceful-skip on any missing field. |
+| [`status_line_meter.py`](https://github.com/alexherrero/crickets/blob/main/src/tokens/scripts/status_line_meter.py) | status-line script | Reads the per-response JSON payload and prints the used-%, floor-share, and cost badges — incrementally, with graceful-skip on any missing field. |
 
 ### Configuration
 

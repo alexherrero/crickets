@@ -179,6 +179,25 @@ class TestRetiredPrimitivesAreGone(unittest.TestCase):
         self.assertIn("worker", agents)
         self.assertFalse(agents & {"project-manager", "tech-lead", "researcher"})
 
+    def test_no_shipped_file_names_the_retired_worker_commands(self):
+        # /spawn-worker and /integrate-worker retired before this plan; /work's
+        # worktree opt-in and the plan's own PR replaced them. group.yaml keeps
+        # its version-history comments, which are not shipped prose.
+        offenders = []
+        for tree in (_SRC, _CC, _AG):
+            for path in tree.rglob("*"):
+                if not path.is_file() or path.name == "group.yaml" or path.suffix == ".pyc":
+                    continue
+                if path.name.startswith("test_"):
+                    continue
+                try:
+                    text = path.read_text(encoding="utf-8")
+                except (UnicodeDecodeError, OSError):
+                    continue
+                if "/spawn-worker" in text or "/integrate-worker" in text:
+                    offenders.append(str(path.relative_to(_ROOT)))
+        self.assertEqual(offenders, [])
+
 
 if __name__ == "__main__":
     unittest.main()

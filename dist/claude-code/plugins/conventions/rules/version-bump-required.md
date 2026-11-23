@@ -29,7 +29,7 @@ This rule fires when you are reviewing or about to approve/merge a diff that:
 
 | Stated reason | Why it is not accepted |
 |---|---|
-| "The integrator will bump it" | True **only** for concurrent worker branches using the Model-A protocol (multi-worker plan where a single integrator runs `/integrate-worker` for the batch). For a solo PR that is not part of a named worker plan, the PR author owns the bump — there is no integrator. |
+| "The integrator will bump it" | There is no integrator. Each plan lands as its own PR, and that PR bumps every group it changes. |
 | "It's just a wording change" | A substantive wording change to a skill body changes the behavior of every installation of that primitive. Bump the patch version. |
 | "The version is already 0.1.0" | `0.1.0` is the initial release version. Any modification after the first public release requires a bump. If the primitive has never been released, no bump is needed yet — but confirm the group has not yet been published. |
 | "dist/ hasn't been regenerated yet" | The drift gate will catch the dist/ mismatch, but it will also catch a missing version bump. Fix both before the gate runs, not after. |

@@ -810,5 +810,7 @@ standalone: true
 # 2.2.0 = worker and evaluator pin the `sonnet` alias; the advisor rider ranks the
 # current Claude 5.x ids; recommended-model lines name Opus 5.5 / Sonnet 5.5
 # (plan 105 step 7).
-version: 2.2.0
+# 2.2.1 = /plan and preflight_reconcile.py name /work's worktree auto-spawn
+# instead of the retired /spawn-worker.
+version: 2.2.1
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]
