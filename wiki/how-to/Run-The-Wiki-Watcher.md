@@ -46,6 +46,6 @@ The wiki-watcher is an **idempotent single-cycle engine you run on a loop**, not
 
 - [Wiki-watch config](Wiki-Watch-Config) — the three config sources, state/audit, and what's watched vs. filtered.
 - [Antigravity limitations](Antigravity-Limitations) — the scheduling gap that makes the loop Claude-first.
-- [Style-learning loop](Style-Learning-Loop) — the sibling wiki-maintenance reference (how the wiki stays in your voice).
+- [Wiki Maintenance](Wiki-Maintenance) — the plugin page: `wiki-author`, the `documenter` and the voice files the watcher's drafts use.
 - [Install crickets plugins](Install-Crickets-Plugins) — get `wiki-maintenance` onto your host.
 - [Wiki-watcher design](crickets-wiki) — why the watch loop, PR-default, and idempotency exist.

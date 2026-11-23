@@ -9,7 +9,7 @@ You are running **create-it**: the whole loop for art, sound, UI look and prose,
 
 **Task from the user:** <what the user typed after /create-it>
 
-> **Recommended model:** Sonnet 5 (`claude-sonnet-5`) for the making. The reviewers below pick their own models.
+> **Recommended model:** Sonnet 5.5 (`claude-sonnet-5-5`) for the making. The reviewers below pick their own models.
 
 Judgment is yours: whether it looks, sounds or reads like the reference, what a finding means, what to redo. Everything a script can settle is one of these helpers:
 

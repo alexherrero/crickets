@@ -178,3 +178,7 @@ design **consumes `how-we-engineer`** (layer 3 — the sizing ladder + the secti
 **2026-11-22 — pieces retired by plan 104; body not yet reconciled.**
 
 crickets plan 104 (development-lifecycle 1.0.0–1.5.0, code-review 1.0.0) retired the `/review` phase and crickets' `/doubt`, `/code-review` and `/simplify` (with the `test-engineer` agent) in favour of `/build-it`'s passes and `/build-it --check`; took wiki updates and board sync out of `/plan`, `/work`, `/release` and `/bugfix` (`wiki-author`, `wiki-watch` and `report-board-drift` run them on request or on a schedule); and dropped the workflow-step personas, token-audit routed dispatch and fan-out announcements, `features.json`, and design Hooks 3, 4, 5 and 7. Where the body above says otherwise, the CHANGELOG's plan 104 entries are current. Why not reconcile the body now: these pages wait for the planned wiki migration, which rewrites them whole. Re-audit trigger: that migration.
+
+**2026-11-22 — pieces retired by plan 105; body not yet reconciled.**
+
+crickets plan 105 (`design` 2.0.0, `development-lifecycle` 2.1.0) retired the `/document-decision` command and the `adr` skill, so a decision amends a living design's amendment log through `/design`. It also deleted `check-plan-grounding.py`. Where the body above says otherwise, the CHANGELOG's plan 105 entries are current. Why not reconcile the body now: these pages wait for the planned wiki migration, which rewrites them whole. Re-audit trigger: that migration.

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Merged thin bridge: agentm capability / governing-design / process-seam /
-workflow-persona / repo-registry / phase-dispatch / tracker / project-brief /
+repo-registry / phase-dispatch / tracker / project-brief /
 plans lookups for the development-lifecycle plugin, in one file (Consolidation
 arc, CONS-2 task 2; repo-registry added by PLAN-open-a-project-by-name task 1;
 phase-dispatch added by the Loose Ends follow-on's orphaned-bridge-caller plan;
 tracker, project-brief and plans added by PLAN-tracker-commands task 1).
 
 Previously four separate scripts — find_capability.py, find_governing_design.py,
-find_process_seam.py, resolve_workflow_persona.py — each independently
+find_process_seam.py — each independently
 re-implemented the same env-var / co-located / conventional-clone path-fallback
 cascade (three of the four identically; find_capability's had a fourth tier,
 preserved below) and the same subprocess-proxy-with-timeout contract. This file
@@ -16,7 +16,6 @@ keeps every one of those four behaviors verbatim, under one dispatcher:
     agentm_bridge.py capability <capability-name> [<version-range>]
     agentm_bridge.py governing-design <file-or-area> [--root DIR] [--include-proposed] [--json]
     agentm_bridge.py process-seam state-path {plan|progress|tracker} [--plan SLUG] [--cwd ROOT]
-    agentm_bridge.py workflow-persona <step> [--explicit NAME]
     agentm_bridge.py repo-registry list
     agentm_bridge.py phase-dispatch {post-work|post-release} [--project-root DIR]
     agentm_bridge.py tracker {new|show|transition|check} ...
@@ -32,7 +31,6 @@ itself (no/unknown verb) or within a verb's own argument parsing:
     capability:        exit 0 available       / 1 unavailable or agentm absent / 2 usage
     governing-design:  exit 0 governed        / 1 greenfield or agentm absent  / 2 usage
     process-seam:      exit 0 resolved        / 1 absent or unresolvable       / 2 usage
-    workflow-persona:  exit 0 persona resolved / 1 no persona or agentm absent / 2 usage
     repo-registry:      exit 0 repos listed    / 1 unresolvable or backend absent / 2 usage
     phase-dispatch:     exit 0 always (fired, skipped, or agentm absent — the
                          underlying phase_dispatch() is itself non-blocking
@@ -49,7 +47,7 @@ The tracker, project-brief and plans verbs answer "agentm absent" with exit 3,
 not 1, because tracker.py already gives 1 and 2 meanings of its own.
 
 Call-sites: src/development-lifecycle/commands/*.md invoke the capability,
-governing-design, and workflow-persona verbs via `python3 .../agentm_bridge.py
+and governing-design verbs via `python3 .../agentm_bridge.py
 <verb> ...`. resolve_plan.py loads this file's process-seam functions
 in-process (a crickets-internal load, not a cross-repo import — DC-2 prohibits
 importing agentm's process_seam.py directly, not this bridge, which lives here
@@ -57,7 +55,7 @@ in crickets). resolve_project.py (open-a-project-by-name) shells to the
 repo-registry verb the same way. work.md fires `phase-dispatch post-work`
 after each task's commit; release.md fires `phase-dispatch post-release`
 after the release lands. The tracker, project-brief and plans verbs serve the
-commands' tracker bookkeeping and /orient; scripts load run_tracker,
+commands' tracker bookkeeping and /open; scripts load run_tracker,
 run_project_brief and run_list_plans in-process, the way resolve_plan.py loads
 run_state_path.
 
@@ -76,7 +74,7 @@ import sys
 from pathlib import Path
 
 
-# ── shared 3-tier cascade (governing-design / process-seam / workflow-persona) ─
+# ── shared 3-tier cascade (governing-design / process-seam) ─
 # find_capability's own cascade has a 4th tier and keeps its own function, below.
 
 def _default_candidate_dirs() -> "list[Path]":
@@ -313,84 +311,6 @@ def _main_process_seam(rest: "list[str]") -> int:
     extra_args = rest[2:]  # forward --plan / --cwd verbatim to the seam
 
     out, code = run_state_path(which, extra_args)
-    if out:
-        print(out)
-    return code
-
-
-# ── workflow-persona (formerly resolve_workflow_persona.py) ────────────────────
-# Thin bridge: discovers agentm's workflow_persona_resolver and proxies
-# workflow-step persona resolution. Targets agentm's workflow_persona_resolver.py
-# contract (see wiki/designs/agentm-persona-activation.md in agentm). The phase
-# spec is the source of truth for a workflow-step adoption — this verb only
-# proxies the lookup, it never re-derives the step->persona mapping itself.
-
-_WORKFLOW_PERSONA_RESOLVER_NAME = "workflow_persona_resolver.py"
-
-
-def find_workflow_persona_resolver() -> "Path | None":
-    """Locate agentm's workflow_persona_resolver.py via path-fallback, or None.
-
-    Candidates, first hit wins:
-      1. $AGENTM_SCRIPTS_DIR/workflow_persona_resolver.py         (explicit override)
-      2. <this-script-dir>/workflow_persona_resolver.py           (co-located install)
-      3. ~/Antigravity/agentm/scripts/workflow_persona_resolver.py (conventional clone)
-    """
-    return _first_candidate(_WORKFLOW_PERSONA_RESOLVER_NAME)
-
-
-def run_workflow_persona_resolve(
-    step: str,
-    *,
-    explicit: "str | None" = None,
-    resolver: "Path | None" = None,
-) -> "tuple[str, int]":
-    """Call workflow_persona_resolver on `step`; return (stdout_stripped, exit_code).
-
-    Returns ("", 1) when the resolver is absent — graceful-skip, never hangs.
-    Injectable resolver path for tests.
-    """
-    if resolver is None:
-        resolver = find_workflow_persona_resolver()
-    if resolver is None or not Path(resolver).is_file():
-        return ("", 1)  # absent / stale path → graceful-skip (no persona adopted)
-    cmd = [sys.executable, str(resolver)]
-    if explicit:
-        cmd += ["--explicit", explicit]
-    cmd.append(step)
-    try:
-        res = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-        return (res.stdout.strip(), res.returncode)
-    except (OSError, subprocess.SubprocessError):
-        return ("", 1)  # graceful-skip on resolver error
-
-
-def _build_workflow_persona_parser() -> argparse.ArgumentParser:
-    ap = argparse.ArgumentParser(
-        prog="agentm_bridge.py workflow-persona",
-        description="Resolve the persona a workflow step wears "
-                    "(bridge to agentm's workflow_persona_resolver).",
-        add_help=True,
-    )
-    ap.add_argument("step", nargs="?", help="workflow-step name, e.g. plan-phase")
-    ap.add_argument("--explicit", default=None,
-                    help="an already-adopted persona name this session wears; "
-                         "wins over the step's default when present")
-    return ap
-
-
-def _main_workflow_persona(rest: "list[str]") -> int:
-    ap = _build_workflow_persona_parser()
-    try:
-        args = ap.parse_args(rest)
-    except SystemExit:
-        return 2
-    if not args.step:
-        print("usage: agentm_bridge.py workflow-persona <step> [--explicit NAME]",
-              file=sys.stderr)
-        return 2
-
-    out, code = run_workflow_persona_resolve(args.step, explicit=args.explicit)
     if out:
         print(out)
     return code
@@ -810,7 +730,6 @@ _VERBS = {
     "capability": _main_capability,
     "governing-design": _main_governing_design,
     "process-seam": _main_process_seam,
-    "workflow-persona": _main_workflow_persona,
     "repo-registry": _main_repo_registry,
     "phase-dispatch": _main_phase_dispatch,
     "tracker": _main_tracker,
@@ -820,11 +739,10 @@ _VERBS = {
 
 _USAGE = (
     "usage: agentm_bridge.py {capability|governing-design|process-seam|"
-    "workflow-persona|repo-registry|phase-dispatch|tracker|project-brief|plans} ...\n"
+    "repo-registry|phase-dispatch|tracker|project-brief|plans} ...\n"
     "  capability <capability-name> [<version-range>]\n"
     "  governing-design <file-or-area> [--root DIR] [--include-proposed] [--json]\n"
     "  process-seam state-path {plan|progress|tracker} [--plan SLUG] [--cwd ROOT]\n"
-    "  workflow-persona <step> [--explicit NAME]\n"
     "  repo-registry list\n"
     "  phase-dispatch {post-work|post-release} [--project-root DIR]\n"
     "  tracker {new|show|transition|check} ...\n"

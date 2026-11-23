@@ -28,7 +28,6 @@
     },
     {
       "capabilities": [
-        "testing-conventions",
         "releasing-conventions",
         "conventions"
       ],

@@ -71,7 +71,7 @@ class TestAgentToolAlias(unittest.TestCase):
         # alias mapping still needs to cover it so a future INHERITED
         # announcement involving fable can be represented if ever passed
         # explicitly (e.g. by a test fixture reproducing the Mythos shape).
-        self.assertEqual(cwt.agent_tool_alias("claude-fable-5"), "fable")
+        self.assertEqual(cwt.agent_tool_alias("claude-fable-5-2"), "fable")
 
     def test_opusplan_has_no_agent_tool_alias(self):
         # opusplan is a session-level construct; a per-sub-agent-dispatch

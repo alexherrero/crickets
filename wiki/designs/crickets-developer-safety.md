@@ -13,6 +13,9 @@ approved: 2026-06-23
 > [!NOTE]
 > **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-23) · locked 2026-06-28 (final AG design sweep).** child-design — **the `developer-safety` capability** (the control + safety layer: the recoverability gate, operator-control hooks, engineering-norm snippets + their enforcement). `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). Points *up* at the [crickets HLD](crickets-hld.md).
 
+> [!WARNING]
+> **Partly out of date (2026-11-22):** crickets plan 105 retired pieces this page still describes as current; see the amendment log. The later wiki migration reconciles the body.
+
 # developer-safety
 
 ## Objective
@@ -134,3 +137,7 @@ The gates are not uniform across hosts. `commit-on-stop` is a pure side-effect, 
 **2026-06-23 — authored, reviewed, and finalized.** Authored from the seeded stub and grounded against the live wiring (crickets `src/developer-safety` + the agentm phase loop + global config). `developer-safety` is the **control + safety layer** for an autonomous session, framed as three gates over a norm layer — **judgment** (the `recoverability` doctrine + the settings-allowlist mechanical floor; reversibility, not blast-radius), **control** (`kill-switch` halt + `steer` redirect, operator-signal-driven), **preservation** (`commit-on-stop`, automatic snapshot to `refs/auto-save/<ts>`), and the **norms** (`commit-no-coauthor` + `worktrees-operator-initiated`). It is **ambient, never invoked**: it `enhances` development-lifecycle one-way (the loop inlines the doctrine byte-identically across `/work`·`/bugfix`·`/release` and graceful-skips the hooks), and the operator touches it only by dropping a `STOP`/`STEER` file or answering an unrecoverable-action confirmation. `kill-switch`/`steer` are Claude-Code-effective; `commit-on-stop` and the git-layer enforcement hold on every host. Boundary: orthogonal to `privacy` (not folded). `### Opinions`: it *provides* the recoverability standard `how-we-engineer` cites, one-way.
 
 On review the `commit-no-coauthor` norm gained **deterministic enforcement** — a `prepare-commit-msg` git hook (`coauthor-guard`) that **strips** any agent `Co-Authored-By` trailer before the commit lands (strip-not-block, so the loop is never interrupted), mirroring privacy's `pre-push` floor (`[PENDING-IMPL]` — the only greenfield piece). **Re-audit:** build `coauthor-guard`; keep the doctrine in sync with the global push-and-confirmation policy; confirm `conventions` cites rather than copies the snippets at the conventions lift.
+
+**2026-11-22 — pieces retired by plan 105; body not yet reconciled.**
+
+crickets plan 105 (`developer-safety` 0.7.0, `development-lifecycle` 1.6.0) removed the byte-identical 405-word doctrine block this page says is inlined verbatim into `/work`, `/bugfix` and `/release`. Each now carries an 80-word "Recoverability gate" summary that points at the `recoverability` skill, which is the full doctrine's one home. Where the body above says otherwise, the CHANGELOG's plan 105 entries are current. Why not reconcile the body now: these pages wait for the planned wiki migration, which rewrites them whole. Re-audit trigger: that migration.

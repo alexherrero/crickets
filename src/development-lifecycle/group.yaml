@@ -798,5 +798,17 @@ standalone: true
 # touches_architecture. /plan 1b and parent_design_doc stay.
 # 1.5.0 = /build-it's correctness pass counts a behaviour change with no test
 # that would catch its regression as a real finding (plan 104 step 6).
-version: 1.5.0
+# 1.6.0 = /work, /bugfix and /release carry an 80-word recoverability summary
+# that points at developer-safety's recoverability skill instead of a
+# 405-word copy of the doctrine (plan 105 step 1).
+# 2.0.0 = unused commands and agents retire (plan 105 step 2): /ci-cd,
+# /launch, /deprecate, /observe, /orient (/open is the one entry point),
+# /queue-status-lite with its queue_status.py bridge, and the project-manager,
+# tech-lead and researcher agents. worker stays.
+# 2.1.0 = scripts with no caller go (plan 105 step 6): fanout_announcement.py,
+# check-plan-grounding.py, and agentm_bridge.py's workflow-persona verb.
+# 2.2.0 = worker and evaluator pin the `sonnet` alias; the advisor rider ranks the
+# current Claude 5.x ids; recommended-model lines name Opus 5.5 / Sonnet 5.5
+# (plan 105 step 7).
+version: 2.2.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

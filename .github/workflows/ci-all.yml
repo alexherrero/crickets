@@ -26,6 +26,7 @@ jobs:
     timeout-minutes: 25  # safety net; usually completes in ~3-8 min
     permissions:
       actions: read
+      pull-requests: read
 
     steps:
       - uses: actions/checkout@v4
@@ -36,7 +37,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
-          files=$(gh pr diff "${{ github.event.pull_request.number }}" --name-only)
+          # The PR-files API pages through any size of diff; `gh pr diff` is
+          # refused by GitHub once a PR touches more than 300 files.
+          files=$(gh api --paginate "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" --jq '.[].filename')
           if python3 scripts/ci_diff_classifier.py $files; then
             echo "docs_only=true" >> "$GITHUB_OUTPUT"
             echo "docs-only diff — skipping the full-matrix wait"

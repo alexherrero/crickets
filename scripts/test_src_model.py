@@ -89,11 +89,11 @@ class TestSrcModel(unittest.TestCase):
         # (wiki-maintenance-provisioning 3/4) added the wiki-init command → 9
         # primitives. Keyed by (name, kind) since wiki-watch is BOTH a skill and a
         # command (same name, distinct kinds + emit subdirs — no collision).
+        # Crickets plan 105 step 5 collapsed the group: diataxis-author and the
+        # wiki-watch skill folded into wiki-author and the /wiki-watch command,
+        # and the two evaluator agents retired → 5 primitives.
         self.assertEqual({(p.name, p.kind) for p in wm.primitives}, {
-            ("diataxis-evaluator", "agent"), ("documenter", "agent"),
-            ("style-scope-evaluator", "agent"),
-            ("wiki-author", "skill"), ("diataxis-author", "skill"),
-            ("wiki-watch", "skill"),
+            ("documenter", "agent"), ("wiki-author", "skill"),
             ("recent-wiki-changes", "command"), ("wiki-watch", "command"),
             ("wiki-init", "command")})
         self.assertEqual(by["privacy"].requires, [])
@@ -102,8 +102,9 @@ class TestSrcModel(unittest.TestCase):
         # 0.2.0: pii-scrubber skill + pii-patterns rule. 0.5.0
         # (PLAN-wave-d-tokens-and-privacy task 4) adds the privacy-review
         # skill as a third primitive (the Semgrep pack + scrub_text.py are
-        # bundled scripts/, not manifest-carrying primitives).
-        self.assertEqual(len(by["privacy"].primitives), 3)
+        # bundled scripts/, not manifest-carrying primitives). Crickets plan
+        # 105 step 4 merged privacy-review into pii-scrubber: two primitives.
+        self.assertEqual(len(by["privacy"].primitives), 2)
         # development-lifecycle (AG Wave A rename 1, ex-developer-workflows):
         # standalone base; the six phase capabilities (setup..bugfix) plus
         # 'documentation' — added by wiki-maintenance's documenter-wiring part
@@ -249,8 +250,7 @@ class TestSrcModel(unittest.TestCase):
         # command primitives live in development-lifecycle (the phase commands),
         # code-review (the standalone /code-review), wiki
         # (recent-wiki-changes, folded in part 2; + wiki-watch, the part-4
-        # claude-only scheduling entry), design (spec/interview-me/document-decision/
-        # design — re-homed from development-lifecycle at AG Wave A rename 2
+        # claude-only scheduling entry), design (/design — re-homed from development-lifecycle at AG Wave A rename 2
         # task 4), tokens (handoff-pack/token-audit), github-projects
         # (report-board-drift, the board-write-path task 6 scheduling entry —
         # mirrors wiki-watch's pattern), and diagnostics (/diagnose, wave-c-diagnostics).

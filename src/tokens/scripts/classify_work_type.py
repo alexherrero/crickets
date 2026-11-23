@@ -11,7 +11,7 @@ Three-step resolution, in order — never a model-making-a-judgment-call:
    name against `ROLE_TO_WORK_TYPE`, which resolves into Task 1's
    `routing_table.TABLE` by work-type key.
 3. **No match.** Resolve to the fixed, hardcoded `UNCLASSIFIED_DEFAULT` —
-   never `claude-fable-5`, never a session-inherited value. This is the
+   never `claude-fable-5-2`, never a session-inherited value. This is the
    direct Mythos-incident guard: a classification gap stays visible as
    `UNCLASSIFIED-DEFAULT` in the fan-out announcement rather than being
    quietly absorbed into "it just worked."
@@ -74,7 +74,7 @@ ROLE_TO_WORK_TYPE: dict[str, str] = {
 # The fixed, hardcoded safe default — never derived from the table, so a
 # future table edit can never accidentally change what "unclassified" means.
 UNCLASSIFIED_DEFAULT_TIER = "T1-Execute"
-UNCLASSIFIED_DEFAULT_MODEL_ID = "claude-sonnet-5"
+UNCLASSIFIED_DEFAULT_MODEL_ID = "claude-sonnet-5-5"
 UNCLASSIFIED_DEFAULT_EFFORT = "medium"
 
 
@@ -85,10 +85,10 @@ UNCLASSIFIED_DEFAULT_EFFORT = "medium"
 # table stays the single place a model id is *spelled*, this is the single
 # place that spelling is *translated* for one specific dispatch mechanism.
 MODEL_ID_TO_AGENT_ALIAS: dict[str, str] = {
-    "claude-opus-4-8": "opus",
-    "claude-sonnet-5": "sonnet",
-    "claude-haiku-4-5": "haiku",
-    "claude-fable-5": "fable",
+    "claude-opus-5-5": "opus",
+    "claude-sonnet-5-5": "sonnet",
+    "claude-haiku-5-5": "haiku",
+    "claude-fable-5-2": "fable",
 }
 
 

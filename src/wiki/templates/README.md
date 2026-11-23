@@ -1,6 +1,6 @@
 # Documentation templates + stylistic conventions
 
-The normative source `documenter` and `diataxis-author` write against — restored from agentm's `harness/documentation.md` (the harness-side predecessor this plugin subsumed), which crickets never carried a copy of even though `documenter.md` linked to it (R2.4 task 5).
+The normative source `documenter` and `wiki-author` write against — restored from agentm's `harness/documentation.md` (the harness-side predecessor this plugin subsumed), which crickets never carried a copy of even though `documenter.md` linked to it (R2.4 task 5).
 
 ## Templates
 

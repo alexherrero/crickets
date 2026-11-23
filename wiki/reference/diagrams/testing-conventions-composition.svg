@@ -4,16 +4,13 @@
     <marker id="sub" markerWidth="10" markerHeight="10" refX="7.2" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L8,3 L0,6 Z" fill="#7E57C2"/></marker>
   </defs>
 
-  <!-- testing-conventions plugin (this plugin, left) -->
-  <rect x="44" y="88" width="256" height="200" rx="10" fill="#EAF1FB" stroke="#3A6EA5" stroke-width="2.2"/>
-  <text x="172" y="118" text-anchor="middle" font-size="14" font-weight="700" fill="#1e3a5f">testing-conventions</text>
-  <text x="172" y="136" text-anchor="middle" font-size="9.5" font-style="italic" fill="#3A6EA5">day-to-day test discipline</text>
-  <rect x="66" y="152" width="212" height="52" rx="8" fill="#FBFCFE" stroke="#3A6EA5" stroke-width="1.3"/>
-  <text x="172" y="174" text-anchor="middle" font-size="11.5" font-weight="600" fill="#1e3a5f">testing-conventions</text>
-  <text x="172" y="191" text-anchor="middle" font-size="9.5" font-style="italic" fill="#3A6EA5">the standing-principles skill</text>
-  <rect x="66" y="216" width="212" height="52" rx="8" fill="#FBFCFE" stroke="#3A6EA5" stroke-width="1.3"/>
-  <text x="172" y="238" text-anchor="middle" font-size="11.5" font-weight="600" fill="#1e3a5f">no-skip-tests</text>
-  <text x="172" y="255" text-anchor="middle" font-size="9.5" font-style="italic" fill="#3A6EA5">the skip-marker rule</text>
+  <!-- conventions plugin (holds the testing rule, left) -->
+  <rect x="44" y="120" width="256" height="136" rx="10" fill="#EAF1FB" stroke="#3A6EA5" stroke-width="2.2"/>
+  <text x="172" y="152" text-anchor="middle" font-size="14" font-weight="700" fill="#1e3a5f">conventions</text>
+  <text x="172" y="170" text-anchor="middle" font-size="9.5" font-style="italic" fill="#3A6EA5">the shared rules</text>
+  <rect x="66" y="184" width="212" height="52" rx="8" fill="#FBFCFE" stroke="#3A6EA5" stroke-width="1.3"/>
+  <text x="172" y="206" text-anchor="middle" font-size="11.5" font-weight="600" fill="#1e3a5f">no-skip-tests</text>
+  <text x="172" y="223" text-anchor="middle" font-size="9.5" font-style="italic" fill="#3A6EA5">the skip-marker rule</text>
 
   <!-- development-lifecycle (the base it requires, right) -->
   <rect x="512" y="120" width="244" height="136" rx="10" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.8"/>
@@ -31,8 +28,8 @@
   <rect x="242" y="316" width="280" height="52" rx="11" fill="#F2EEFB" stroke="#7E57C2" stroke-width="2"/>
   <text x="382" y="340" text-anchor="middle" font-size="13" font-weight="700" fill="#5b3a8c">AgentM substrate</text>
   <text x="382" y="358" text-anchor="middle" font-size="9.5" font-style="italic" fill="#7E57C2">memory · opinions · personas</text>
-  <path d="M172,288 C172,308 300,320 336,320" stroke="#7E57C2" stroke-width="1.8" stroke-dasharray="5 4" fill="none" marker-end="url(#sub)"/>
-  <text x="238" y="308" text-anchor="middle" font-size="9.5" font-style="italic" fill="#8a8a92">composes onto, one-way</text>
+  <path d="M172,256 C172,300 300,320 336,320" stroke="#7E57C2" stroke-width="1.8" stroke-dasharray="5 4" fill="none" marker-end="url(#sub)"/>
+  <text x="226" y="300" text-anchor="middle" font-size="9.5" font-style="italic" fill="#8a8a92">composes onto, one-way</text>
 
-  <text x="400" y="384" text-anchor="middle" font-size="10.5" font-style="italic" fill="#8a8a92">Solid slate = requires (hard) — both plugins must be enabled for the skill and rule to load.</text>
+  <text x="400" y="384" text-anchor="middle" font-size="10.5" font-style="italic" fill="#8a8a92">Solid slate = requires (hard) — both plugins must be enabled for the rule to load.</text>
 </svg>

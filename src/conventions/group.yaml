@@ -1,9 +1,9 @@
 name: Conventions
-description: Day-to-day testing + release discipline in one plugin — tests-are-sacred, verification-first, the 3-layer pyramid, the pre-release checklist, changelog-shape, and paired-release coordination for cross-repo releases.
+description: Release discipline and the shared rules — the ship-release skill (pre-release checklist, changelog-shape, paired-release coordination for cross-repo releases) plus the always-on rules (no skipped tests, version bumps, CI battery, coalescence gate).
 category: Coding
 requires: [development-lifecycle]
 standalone: false
-capabilities: [testing-conventions, releasing-conventions, conventions]
+capabilities: [releasing-conventions, conventions]
 # 0.1.0 = AG Wave A rename 2 (PLAN-wave-a-renames-2 task 5): testing-conventions
 #          + releasing-conventions merge into this group per crickets-conventions.md's
 #          Migrations spec — a flat merge (neither source had scripts/, only
@@ -123,4 +123,11 @@ capabilities: [testing-conventions, releasing-conventions, conventions]
 # 0.12.4 = ship-release, coalescence-gate, agentic-engineering and the
 # features.json reference stop saying /release reads touches_architecture or
 # that the phase commands write features.json (plan 104 step 5).
-version: 0.12.4
+# 0.12.5 = coordinator-dispatch names worker as the one coordinator role left
+# (plan 105 step 2 retired researcher, tech-lead and project-manager).
+# 1.0.0 = the agentic-engineering and testing-conventions skills retire (plan
+# 105 step 3; 0 uses, agentic-engineering repeated AGENTS.md); the rules point
+# at agentm's AGENTS.md instead, the testing-conventions capability goes, and
+# the conventions_domain.py resolver goes with the skill it resolved.
+# 1.0.1 = coordinator-dispatch says plan 105 deleted fanout_announcement.py.
+version: 1.0.1

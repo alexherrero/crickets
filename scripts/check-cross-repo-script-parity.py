@@ -29,7 +29,7 @@ Known, intentional one-sided divergence (as of CONS-2 task 4, 2026-07-10):
   - check-wiki.py: crickets' copy carries 3 extra rules (m, n, o) that
     enforce a component-overview section model (architecture/<slug>/<Base>.md
     landing pages, the section library shipped with crickets' wiki-maintenance
-    diataxis-author skill, DC-5). agentm's wiki has no such page-type in its
+    wiki-author skill, DC-5). agentm's wiki has no such page-type in its
     taxonomy, so these 3 rules have never been ported there -- porting them
     would no-op (zero matching pages), never add real coverage. Listed in
     ALLOWED_CRICKETS_ONLY_RULES below so this check doesn't cry wolf on a

@@ -22,7 +22,7 @@ the commit message file) — never the body, where a fuller narrative
      runs, so `(V6-15)` never trips anything, codename-shaped or not.
 
   2. Slop-pack vocabulary — reuses this repo's OWN canonical rule pack
-     (`src/wiki/skills/diataxis-author/style/voice-rules.json`, read via its
+     (`src/wiki/skills/wiki-author/style/voice-rules.json`, read via its
      existing loader `rule_pack.py`) rather than inventing a second word
      list, so the wiki gate and this gate can never drift apart. Only
      error/warning severity rules apply (suggestion-tier terms — the highest
@@ -89,7 +89,7 @@ from pathlib import Path
 # First hit wins. When nothing resolves (a standalone install with no crickets
 # checkout anywhere), the import is skipped — the same graceful-skip outcome as
 # before, this gate never hard-fails a commit over its own missing dependency.
-_PACK_REL = ("src", "wiki", "skills", "diataxis-author", "scripts")
+_PACK_REL = ("src", "wiki", "skills", "wiki-author", "scripts")
 
 
 def _git(*args: str) -> str | None:

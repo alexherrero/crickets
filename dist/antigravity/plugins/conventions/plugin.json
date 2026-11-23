@@ -3,7 +3,7 @@
     "name": "alexherrero",
     "url": "https://github.com/alexherrero/crickets"
   },
-  "description": "Day-to-day testing + release discipline in one plugin — tests-are-sacred, verification-first, the 3-layer pyramid, the pre-release checklist, changelog-shape, and paired-release coordination for cross-repo releases.",
+  "description": "Release discipline and the shared rules — the ship-release skill (pre-release checklist, changelog-shape, paired-release coordination for cross-repo releases) plus the always-on rules (no skipped tests, version bumps, CI battery, coalescence gate).",
   "name": "conventions",
-  "version": "0.12.4"
+  "version": "1.0.1"
 }

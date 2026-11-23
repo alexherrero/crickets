@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Tests for src/development-lifecycle/scripts/resolve_project.py — the LOCATE
-+ CONFIRM engine for `/open` / `/orient` (PLAN-open-a-project-by-name task 2).
++ CONFIRM engine for `/open` (PLAN-open-a-project-by-name task 2).
 
 Three sources, each independently graceful-skip: repo-registry (via
 agentm_bridge.py's `repo-registry` verb), the vault `projects/` tree (via a

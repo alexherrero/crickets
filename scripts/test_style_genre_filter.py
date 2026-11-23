@@ -30,7 +30,7 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
-_SKILL_SCRIPTS = _ROOT / "src" / "wiki" / "skills" / "diataxis-author" / "scripts"
+_SKILL_SCRIPTS = _ROOT / "src" / "wiki" / "skills" / "wiki-author" / "scripts"
 
 
 def _load(name: str):
@@ -44,7 +44,6 @@ def _load(name: str):
 
 
 sr = _load("style_resolver")
-author = _load("author")
 
 BASE = "BASE FLOOR TEXT"
 
@@ -237,20 +236,6 @@ class TestExclusionsAreVisible(unittest.TestCase):
 
 
 # ── The CLI contract ────────────────────────────────────────────────────────
-
-class TestGenreArgParsing(unittest.TestCase):
-    def test_default_is_docs_because_this_command_authors_wiki_pages(self):
-        self.assertEqual(author._DEFAULT_GENRE, "docs")
-        self.assertEqual(author._parse_genre_arg("docs"), frozenset({"docs"}))
-
-    def test_all_disables_the_filter(self):
-        for raw in ("all", "ALL", "  all  ", ""):
-            self.assertIsNone(author._parse_genre_arg(raw),
-                              f"{raw!r} must disable filtering, not become a genre")
-
-    def test_comma_list(self):
-        self.assertEqual(author._parse_genre_arg("docs,design"),
-                         frozenset({"docs", "design"}))
 
 
 if __name__ == "__main__":

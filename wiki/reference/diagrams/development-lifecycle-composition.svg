@@ -30,14 +30,12 @@
     <rect x="630" y="128" width="210" height="40" rx="8" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/><text x="735" y="153" text-anchor="middle" font-size="11.5" font-weight="600">github-ci</text>
     <rect x="630" y="178" width="210" height="40" rx="8" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/><text x="735" y="203" text-anchor="middle" font-size="11.5" font-weight="600">github-projects</text>
     <rect x="630" y="228" width="210" height="40" rx="8" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/><text x="735" y="253" text-anchor="middle" font-size="11.5" font-weight="600">releasing-conventions</text>
-    <rect x="630" y="278" width="210" height="40" rx="8" fill="#EAF0F6" stroke="#5B7C9E" stroke-width="1.6"/><text x="735" y="303" text-anchor="middle" font-size="11.5" font-weight="600">testing-conventions</text>
   </g>
   <g stroke="#5B7C9E" stroke-width="1.8" fill="none" marker-end="url(#req)">
     <path d="M630,98 C570,120 552,210 550,238"/>
     <path d="M630,148 C580,168 560,220 552,244"/>
     <path d="M630,198 L552,220"/>
     <path d="M630,248 C580,236 560,260 552,258"/>
-    <path d="M630,298 C570,290 555,270 552,264"/>
   </g>
 
   <!-- substrate -->

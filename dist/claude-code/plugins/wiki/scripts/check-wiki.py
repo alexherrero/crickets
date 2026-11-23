@@ -544,10 +544,10 @@ def resolve_include_readme(repo_root: Path, cli_include: bool) -> bool:
 
 
 # ── component-overview section model (rules m/n/o) ─────────────────────────
-# This gate ships in the wiki-maintenance plugin beside the diataxis-author
+# This gate ships in the wiki-maintenance plugin beside the wiki-author
 # skill; the section library + schema travel with it, so resolve them relative
 # to THIS file (the layout holds in src/ and in the generated dist/ plugin — DC-5).
-_SKILL_DIR = Path(__file__).resolve().parent.parent / "skills" / "diataxis-author"
+_SKILL_DIR = Path(__file__).resolve().parent.parent / "skills" / "wiki-author"
 _CO_TEMPLATES_DIR = _SKILL_DIR / "templates"
 _CO_SECTIONS_DIR = _CO_TEMPLATES_DIR / "sections"
 _CO_SCRIPTS_DIR = _SKILL_DIR / "scripts"
@@ -566,7 +566,7 @@ class ComponentOverviewModel:
 
 def _import_section_schema():
     """Import the sibling section_schema + composer modules (DC-5), or return
-    (None, None). Guarded so a repo that lacks the diataxis-author skill still
+    (None, None). Guarded so a repo that lacks the wiki-author skill still
     runs the other rules instead of crashing the linter."""
     if str(_CO_SCRIPTS_DIR) not in sys.path:
         sys.path.insert(0, str(_CO_SCRIPTS_DIR))

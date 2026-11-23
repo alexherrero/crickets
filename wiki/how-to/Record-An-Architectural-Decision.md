@@ -6,7 +6,7 @@
 > **Prereqs:** A living design already exists under [`wiki/designs/`](Designs) that governs the area you're changing. If the area has no design yet, [author one first](Author-A-Design).
 
 > [!IMPORTANT]
-> **The ADR model is retired in crickets** (AG Phase 4, 2026-06-24). Consequential calls go into the **amendment log** of the relevant living design under [`wiki/designs/`](Designs), not standalone ADR files. See [Design Docs](Design-Docs) for the `design-docs` plugin that ships the format tooling.
+> **The ADR model is retired in crickets** (AG Phase 4, 2026-06-24). Consequential calls go into the **amendment log** of the relevant living design under [`wiki/designs/`](Designs), not standalone ADR files. The `design` plugin's `/design` command writes the edit; see [Design Docs](Design-Docs).
 
 ## When to record a decision
 
@@ -43,7 +43,7 @@ Do NOT record mechanical changes (renaming, formatting, dependency bumps) or dec
 
 - [Author a design](Author-A-Design) — use this when the decision is part of a larger design that doesn't exist yet.
 - [Designs](Designs) — the living design index.
-- [Design Docs](Design-Docs) — the `design-docs` plugin and its decision-format tooling.
+- [Design Docs](Design-Docs) — the `design` plugin and its `/design` command.
 - [CI gates](CI-Gates) — the `check-wiki` gate that enforces every living design's structure, amendment log included.
 
 [How-To](How-To) · [Home](Home)

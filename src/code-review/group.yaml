@@ -1,5 +1,5 @@
 name: Code Review
-description: Standalone adversarial code review of any diff or PR — the adversarial-reviewer (+ cross-model Gemini) agents, the evidence-tracker hook, and security-review + testing-strategy skills. Its reviewers and cross-review.sh run /build-it's review passes when development-lifecycle is installed.
+description: Standalone adversarial code review of any diff or PR — the adversarial-reviewer (+ cross-model Gemini) agents, the security-auditor agent, and the evidence-tracker hook. Its reviewers and cross-review.sh run /build-it's review passes when development-lifecycle is installed.
 # 0.2.0 = skill enrichment batch: /simplify command (Chesterton's Fence + Rule of 500),
 # security-review skill (three-tier boundary: LLM API / persistence / system execution),
 # testing-strategy skill (DAMP over DRY + Beyonce Rule + Prove-It pattern),
@@ -118,7 +118,11 @@ description: Standalone adversarial code review of any diff or PR — the advers
 # its simplicity pass replaces /simplify, and the missing-test lens is now a
 # category in cross-review.sh's prompt and adversarial-reviewer's checklist.
 # Major because commands go away.
-version: 1.0.0
+# 2.0.0 = the testing-strategy and security-review skills retire (plan 105
+# step 4; 0 uses). testing-strategy's Prove-It, regression-proof and DAMP
+# points join the correctness rubric (cross-review.sh, adversarial-reviewer
+# 0.3.0); security-auditor stays the security pass.
+version: 2.0.0
 category: Coding
 requires: []
 standalone: true

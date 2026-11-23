@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""orient_render.py — the ORIENT renderer for `/open` / `/orient`
+"""orient_render.py — the ORIENT renderer for `/open`
 (PLAN-open-a-project-by-name tasks 3 + 5; the brief and the plan list through
 agentm since PLAN-tracker-commands task 8; agentm alone since crickets task 101).
 

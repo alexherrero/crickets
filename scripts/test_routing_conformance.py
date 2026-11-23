@@ -33,14 +33,14 @@ rc = _load("routing_conformance")
 
 class TestConformanceReport(unittest.TestCase):
     RECORDS = [
-        # matches: explorer -> mechanical-log-scraping -> claude-sonnet-5
-        rc.DispatchRecord(role="explorer", agent_count=1, model_id="claude-sonnet-5", tier_source="ROLE-MATCH"),
-        # mismatches: documenter's expected is claude-sonnet-5 (wiki-mechanical-plus), announced opus
-        rc.DispatchRecord(role="documenter", agent_count=1, model_id="claude-opus-4-8", tier_source="FRONTMATTER"),
+        # matches: explorer -> mechanical-log-scraping -> claude-sonnet-5-5
+        rc.DispatchRecord(role="explorer", agent_count=1, model_id="claude-sonnet-5-5", tier_source="ROLE-MATCH"),
+        # mismatches: documenter's expected is claude-sonnet-5-5 (wiki-mechanical-plus), announced opus
+        rc.DispatchRecord(role="documenter", agent_count=1, model_id="claude-opus-5-5", tier_source="FRONTMATTER"),
         # violation: no announcement at all
         rc.DispatchRecord(role="verification-clerk", agent_count=3, model_id=None, tier_source=None),
-        # another match: adversarial-reviewer -> research-adversarial-audit -> claude-opus-4-8
-        rc.DispatchRecord(role="adversarial-reviewer", agent_count=2, model_id="claude-opus-4-8", tier_source="ROLE-MATCH"),
+        # another match: adversarial-reviewer -> research-adversarial-audit -> claude-opus-5-5
+        rc.DispatchRecord(role="adversarial-reviewer", agent_count=2, model_id="claude-opus-5-5", tier_source="ROLE-MATCH"),
         # another violation: unmatched role, no announcement
         rc.DispatchRecord(role="totally-unknown-role", agent_count=1, model_id=None, tier_source=None),
     ]
@@ -73,7 +73,7 @@ class TestConformanceReport(unittest.TestCase):
     def test_details_carry_expected_model_id(self):
         report = rc.conformance_report(self.RECORDS)
         by_role = {d["role"]: d for d in report["details"]}
-        self.assertEqual(by_role["documenter"]["expected_model_id"], "claude-sonnet-5")
+        self.assertEqual(by_role["documenter"]["expected_model_id"], "claude-sonnet-5-5")
         self.assertEqual(by_role["documenter"]["status"], "MISMATCH")
 
     def test_empty_records_report_all_zero(self):
@@ -93,9 +93,9 @@ class TestInheritedLabelHandling(unittest.TestCase):
     MATCH/MISMATCH/VIOLATION either way."""
 
     RECORDS = [
-        rc.DispatchRecord(role="explorer", agent_count=1, model_id="claude-sonnet-5", tier_source="ROLE-MATCH"),
-        rc.DispatchRecord(role="documenter", agent_count=1, model_id="claude-opus-4-8", tier_source="INHERITED"),
-        rc.DispatchRecord(role="tech-lead", agent_count=1, model_id="claude-sonnet-5", tier_source="INHERITED"),
+        rc.DispatchRecord(role="explorer", agent_count=1, model_id="claude-sonnet-5-5", tier_source="ROLE-MATCH"),
+        rc.DispatchRecord(role="documenter", agent_count=1, model_id="claude-opus-5-5", tier_source="INHERITED"),
+        rc.DispatchRecord(role="tech-lead", agent_count=1, model_id="claude-sonnet-5-5", tier_source="INHERITED"),
         rc.DispatchRecord(role="verification-clerk", agent_count=3, model_id=None, tier_source=None),
     ]
 
@@ -123,7 +123,7 @@ class TestInheritedLabelHandling(unittest.TestCase):
 
     def test_re_audit_trigger_present_even_with_no_inherited_records(self):
         report = rc.conformance_report([
-            rc.DispatchRecord(role="explorer", agent_count=1, model_id="claude-sonnet-5", tier_source="ROLE-MATCH"),
+            rc.DispatchRecord(role="explorer", agent_count=1, model_id="claude-sonnet-5-5", tier_source="ROLE-MATCH"),
         ])
         self.assertIn("2.1.198", report["re_audit_trigger"])
 

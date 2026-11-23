@@ -82,5 +82,8 @@ standalone: true
 #          findings to one, a ten-digit seed written alone.
 # 0.6.6 = Antigravity: pii-patterns carries the trigger: agy 1.4 requires;
 # without one agy never applied the rule.
-version: 0.6.6
+# 1.0.0 = the privacy-review skill merges into pii-scrubber (plan 105 step 4):
+# its practices table, Semgrep pre-pass and PRIVACY-RISK contract are a
+# section of pii-scrubber (0.2.0), which now declares the two opinions.
+version: 1.0.0
 capabilities: [pii, privacy]

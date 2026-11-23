@@ -39,5 +39,8 @@ standalone: false
 #          save.py with agentm's own scripts behind their bare names.
 # 0.2.9 = sibling_plugin.py's docstring no longer names the retired /design translate
 #          (plan 103, step 12); the copy stays byte-identical across plugins.
-version: 0.2.9
+# 0.3.0 = the four scheduled-maintenance scripts with no invoker (content_refresh,
+# cve_security_patch, deps_currency, tech_debt_inventory) and the agentm_bridge.py
+# only they used are deleted (plan 105 step 6). dependabot-fixer is unchanged.
+version: 0.3.0
 capabilities: [github-ci, ci-repair, maintenance]

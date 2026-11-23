@@ -4,15 +4,15 @@
 > **Goal:** Find a project by name, confirm it's the one you mean, and read a short orientation of where it stands, without changing anything.
 > **Prereqs:** the `development-lifecycle` plugin installed ([Install crickets plugins](Install-Crickets-Plugins)). Without agentm the command still finds a project, but shows no plans: development-lifecycle reads them through agentm (see [Development Lifecycle](Development-Lifecycle)).
 
-Use `/open <name>` (or its alias, `/orient <name>`) when you pick a project back up and need its state before deciding anything. It is read-only, the same posture as [`/queue-status-lite`](See-Every-Active-Plan). It never resumes work or activates a plan.
+Use `/open <name>` when you pick a project back up and need its state before deciding anything. It is the one way to open a project: crickets plan 105 retired the `/orient` alias and `/queue-status-lite`. It is read-only. It never resumes work or activates a plan.
 
 ## Steps
 
-1. **Invoke the command.** Run `/open <name>` or `/orient <name>`; the two are one implementation. The command looks in the registered repos and the vault's `projects/` tree, and asks agentm recall as well. A source that isn't available finds nothing.
+1. **Invoke the command.** Run `/open <name>`. The command looks in the registered repos and the vault's `projects/` tree, and asks agentm recall as well. A source that isn't available finds nothing.
 
    ```
    /open crickets
-   /orient crickets --note
+   /open crickets --note
    ```
 
 2. **Confirm the match.** With one match, the command shows it with its path and asks you to confirm. The line beside the name is the project charter's What line, when the charter has one. With several matches, it lists them for you to pick from. With none, it says so and stops.
@@ -34,6 +34,5 @@ Use `/open <name>` (or its alias, `/orient <name>`) when you pick a project back
 
 ## Related
 
-- [See every active plan](See-Every-Active-Plan) — the read-only glance across every active plan at once. `/open` narrows it to one project and adds its brief.
 - [Named plans](Named-Plans) — how plans and their trackers are named and resolved.
 - [Development Lifecycle](Development-Lifecycle) — the phase-loop plugin this command belongs to.

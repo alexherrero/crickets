@@ -2,7 +2,7 @@
 """check-voice-floor-parity.py — the overlay->floor promotion parity gate
 (PLAN-r3-voice-mechanism task 4).
 
-base-style-guide.md's `banned:` line (src/wiki/skills/diataxis-author/
+base-style-guide.md's `banned:` line (src/wiki/skills/wiki-author/
 style/base-style-guide.md) is the crickets-committed floor every fresh wiki
 draft inherits without an overlay. Task 1's rule pack is the union of every
 vault-global banned-list; if the floor ever falls behind that union again
@@ -23,13 +23,12 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 _DIATAXIS_SCRIPTS = (
-    _HERE.parent / "src" / "wiki" / "skills" / "diataxis-author" / "scripts"
+    _HERE.parent / "src" / "wiki" / "skills" / "wiki-author" / "scripts"
 )
 if str(_DIATAXIS_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_DIATAXIS_SCRIPTS))
 
 import rule_pack  # noqa: E402
-import check as diataxis_check  # noqa: E402
 
 _BASE_STYLE_GUIDE = _DIATAXIS_SCRIPTS.parent / "style" / "base-style-guide.md"
 
@@ -39,7 +38,7 @@ def floor_banned_terms(base_style_guide_path: Path | None = None) -> set[str]:
     check.py's own convention-drift scanner reads it (never a second parser)."""
     path = base_style_guide_path or _BASE_STYLE_GUIDE
     text = path.read_text(encoding="utf-8")
-    return set(diataxis_check._extract_banned_terms(text))
+    return set(rule_pack._extract_banned_terms(text))
 
 
 def rule_pack_word_phrase_terms(pack: dict | None = None) -> set[str]:

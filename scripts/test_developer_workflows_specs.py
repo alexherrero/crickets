@@ -34,8 +34,6 @@ _CMDS = _ROOT / "src" / "development-lifecycle" / "commands"
 _RESOLVE_PY = 'python3 "${CLAUDE_PLUGIN_ROOT}/scripts/resolve_plan.py"'
 _RESOLVE_BASH = 'bash "${CLAUDE_PLUGIN_ROOT}/scripts/resolve_plan.py"'
 _PROBE_BASH = 'bash "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py"'
-_QUEUE_PY = 'python3 "${CLAUDE_PLUGIN_ROOT}/scripts/queue_status.py"'
-_QUEUE_BASH = 'bash "${CLAUDE_PLUGIN_ROOT}/scripts/queue_status.py"'
 
 
 def _read(name: str) -> str:
@@ -85,7 +83,7 @@ class _NamedPlanWriterContract:
         # exit 1 is no agentm. The old byte-identical singleton fallback is gone.
         self.assertIn("repo with no vault", self.text)
         self.assertRegex(self.text, r"no agentm|agentm is not installed")
-        self.assertNotIn("byte-identical", self.text.split("recoverability-gate")[0])
+        self.assertNotIn("byte-identical", self.text.split("## Recoverability gate")[0])
 
     def test_probe_uses_python3_not_bash(self):
         # Same bug class as the resolver: the capability probe is a .py file too.
@@ -146,9 +144,11 @@ class TestWorkSpec(_NamedPlanWriterContract, unittest.TestCase):
         self.assertIn('/work — completed step N: "<title>"', state)
 
     def test_the_archive_rule_keeps_a_flat_tracker_and_never_moves_a_task(self):
-        block = self._section("<!-- BEGIN recoverability-gate", "<!-- END recoverability-gate -->")
         # Only a repo-local plan archives, and its tracker stays beside it; a
-        # task never moves (crickets task 101, ruling 8).
+        # task never moves (crickets task 101, ruling 8). Plan 105 step 1 moved
+        # the rule from the commands' block to the recoverability skill.
+        block = (_ROOT / "src" / "developer-safety" / "skills" / "recoverability"
+                 / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn("its tracker stays in `.harness/` at `done`", block)
         self.assertIn("never moves at close-out", block)
 
@@ -327,56 +327,6 @@ class TestBugfixSpec(unittest.TestCase):
         self.assertIn("`queued`, `active` or `parked`", self.report)
         self.assertIn("ask the operator", self.report)
 
-
-class TestQueueStatusLiteSpec(unittest.TestCase):
-    """`/queue-status-lite` is the read-only read side of the multi-plan surface.
-
-    Deliberately **not** a `_NamedPlanWriterContract` subclass: it takes no
-    `--name`, resolves nothing inline, and writes nothing. It shells to the
-    `queue_status.py` bridge and surfaces the bridge's dashboard verbatim. These
-    specs lock that read-only contract so an edit can't quietly turn the glance
-    into a gate.
-    """
-
-    @classmethod
-    def setUpClass(cls):
-        cls.text = _read("queue-status-lite.md")
-
-    def test_invokes_queue_status_via_python3_not_bash(self):
-        # Same bug class the writer specs guard: a .py file needs an interpreter.
-        self.assertIn("queue_status.py", self.text)
-        self.assertIn(_QUEUE_PY, self.text)
-        self.assertNotIn(_QUEUE_BASH, self.text)
-
-    def test_surfaces_output_verbatim(self):
-        # The command shows the bridge's render as-is; it never parses the rows.
-        self.assertIn("verbatim", self.text.lower())
-
-    def test_is_read_only_no_writer_tokens(self):
-        # (b) Positively read-only, and free of the writer-phase mutation tokens:
-        # no task-marking (`[x]`) and no scoped-progress write (`progress-<slug>.md`).
-        low = self.text.lower()
-        self.assertIn("read-only", low)
-        self.assertIn("mutates no state", low)
-        self.assertNotIn("[x]", self.text)               # never marks a task done
-        self.assertNotIn("progress-<slug>.md", self.text)  # never writes progress
-        self.assertNotIn("--name <slug>", self.text)       # not a named-plan selector
-
-    def test_framed_as_coordinator_glance_not_gate(self):
-        low = self.text.lower()
-        self.assertIn("coordinator", low)
-        self.assertIn("not a gate", low)
-
-    def test_lands_in_both_host_command_surfaces(self):
-        # (c) The command ships into both generated plugin trees. `generate.py
-        # check` (in check-all) separately proves they are byte-identical to src.
-        # Claude Code loads commands/<name>.md; an agy plugin has no commands, so
-        # there the same command is skills/<name>/SKILL.md.
-        plugin = lambda host: _ROOT / "dist" / host / "plugins" / "development-lifecycle"
-        for host, rel in (("antigravity", "skills/queue-status-lite/SKILL.md"),
-                          ("claude-code", "commands/queue-status-lite.md")):
-            p = plugin(host) / rel
-            self.assertTrue(p.is_file(), f"missing dist command for {host}: {p}")
 
 
 class TestTagSerializationContracts(unittest.TestCase):

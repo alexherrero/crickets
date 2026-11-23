@@ -13,6 +13,9 @@ approved: 2026-06-21
 > [!NOTE]
 > **LAUNCHED (lifted 2026-06-24, AG Phase 3; originally approved 2026-06-21) · locked 2026-06-28 (final AG design sweep).** child-design — the build pipeline, parent [crickets HLD](crickets-hld.md). Subsumes the launched `crickets-v3-native-plugins.md` design (the *why*; this is the *how* — now its single home; AG Wave 2, 2026-06-24). `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3).
 
+> [!WARNING]
+> **Partly out of date (2026-11-22):** crickets plan 105 retired pieces this page still describes as current; see the amendment log. The later wiki migration reconciles the body.
+
 # Crickets build system
 
 ## Objective
@@ -114,3 +117,7 @@ The *definition* is single-source; the *generation* is deliberately **partial** 
 Migrated from the crickets HLD (the build-pipeline mechanics), deepened against the live code, conformed to the abbreviated-design template (Objective / Overview / Design) with a pipeline diagram in Overview, then taken through an operator edit pass (trimmed banner + Objective meta). Documents the write-once-generate-everywhere model: one `src/<group>/` source → the deterministic `generate.py` → a native plugin per host, drift-gated by `generate.py check` and installed by `bootstrap.sh`; honest about partial per-host generation (named skips, not full parity).
 
 Content-final; carries **no `[PENDING-IMPL]` markers** — the pipeline is as-built. `status: launched` (lifted into tracked `wiki/designs/` 2026-06-24, AG Phase 3). **Re-audit triggers:** re-derive the per-host skip list against the live emitters at the lift; confirm `generate.py check` is in CI; the crickets-v3-native-plugins reconcile is done (subsumed here 2026-06-24, AG Wave 2).
+
+**2026-11-22 — pieces retired by plan 105; body not yet reconciled.**
+
+crickets plan 105 (`development-lifecycle` 2.0.0, `wiki` 1.0.0) retired the `project-manager` and `tech-lead` agents and the wiki plugin's `diataxis-author` skill with its `diataxis-evaluator` and `style-scope-evaluator` agents, all of which this page names. `worker` is the one coordinator role, and `wiki-author` is the one wiki skill. Where the body above says otherwise, the CHANGELOG's plan 105 entries are current. Why not reconcile the body now: these pages wait for the planned wiki migration, which rewrites them whole. Re-audit trigger: that migration.

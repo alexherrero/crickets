@@ -150,12 +150,13 @@ Minimal reproducer: <input> → <actual> ≠ <expected>
 FORM 3 — explicit no-issues finding (use ONLY if you genuinely found nothing after checking all categories below):
 NO ISSUES FOUND
 Reviewed: <file list>
-Categories checked: spec adherence, edge cases, missing tests, API design, security concerns without a lint rule, dead code, regressions
+Categories checked: spec adherence, edge cases, missing tests, unproven tests, API design, security concerns without a lint rule, dead code, regressions
 
 Categories to check:
 - Spec adherence vs. the PLAN task's Verification clause
 - Edge cases not covered by existing tests (empty input, boundary values, concurrent access, error paths)
 - Missing tests: a behaviour change with no test that would catch its regression
+- Unproven tests: a claimed behaviour with no test that fails if the claim is false; a bug-fix regression test never shown to fail on the pre-fix code in the real failure's shape; assertions too generic to name the behaviour
 - API design — public interfaces, naming, error types
 - Security concerns not caught by lints
 - Dead code or half-finished branches

@@ -69,7 +69,7 @@ capabilities: [recoverability]
 # internal codename pattern (AA/C/FIN/R/G families, "Wave A".."Wave E",
 # PLAN-<slug> references) or this repo's own slop-pack vocabulary at
 # warning-tier or above -- reusing scripts/check-slop.py's canonical rule
-# pack (src/wiki/skills/diataxis-author/style/voice-rules.json via
+# pack (src/wiki/skills/wiki-author/style/voice-rules.json via
 # rule_pack.py) rather than a second word list. Conventional-commit prefixes
 # and a parenthesized roadmap id (e.g. "(V6-15)") are unaffected; the commit
 # body is never scanned. Same install posture as coauthor-guard -- no
@@ -134,4 +134,9 @@ capabilities: [recoverability]
 # agy's deny and stdout into injected context, so kill-switch blocks, steer
 # delivers on agy's PreInvocation and coauthor-guard runs on SessionStart. The
 # two rules carry trigger: always_on.
-version: 0.6.5
+# 0.7.0 = the recoverability skill is the doctrine's one home (plan 105 step 1):
+# it holds the full table, the close-out rule and the carve-outs that /work,
+# /bugfix and /release used to inline; the retired /spawn-worker wording is gone.
+# 0.7.1 = commit-msg-gate reads the voice rule pack from wiki-author's
+# scripts/ (plan 105 step 5 moved it out of the retired diataxis-author).
+version: 0.7.1

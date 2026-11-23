@@ -1,9 +1,10 @@
 ---
 name: pii-scrubber
-description: Scan the current git diff (or working tree) for personal information — emails, personal paths, API keys, phone numbers — before commit or push. Surfaces findings as file:line with redaction suggestions; loops until clean. Invoke before any git push.
+description: Scan the current git diff (or working tree) for personal information — emails, personal paths, API keys, phone numbers — before commit or push, surfacing file:line findings with redaction suggestions until clean; on request, also review a diff's privacy-engineering shape (Semgrep pre-pass plus judged practices, PRIVACY-RISK findings). Invoke before any git push.
 kind: skill
 supported_hosts: [claude-code, antigravity]
-version: 0.1.0
+version: 0.2.0
+opinions: [good, how-we-engineer]
 ---
 
 # pii-scrubber
@@ -107,6 +108,44 @@ If still non-zero, loop back to step 4. If clean (exit 0), return to the user wi
 ```
 pii-scrubber: clean (<N> redactions, <M> allowlists added, <K> overrides logged)
 ```
+
+## Privacy review of a diff (on request)
+
+The scan above catches a personal-data literal already in the diff. A privacy review catches a defect in the *shape* of the code: a personal field flowing into a logger, a store with no deletion path, data collected beyond its consented purpose, PII sent to a third-party SDK. Run it when asked, or before merging a change that adds a data-collection point, a logger or telemetry call, a database write of a personal field, or a third-party SDK. It reports and never fixes. (It absorbed the retired `privacy-review` skill in crickets plan 105.)
+
+| Practice | Anchor | Mechanized? |
+|---|---|---|
+| PII in a log / telemetry / third-party sink | ASVS-8.3.6 | Semgrep (third-party-sinks) + LLM (log/telemetry calls Semgrep can't enumerate) |
+| No retention or deletion path | NIST Privacy Framework — Disassociate/Protect | LLM |
+| Incomplete erasure (right-to-be-forgotten) | ICO data-protection-by-design | LLM |
+| Purpose-limitation + consent reuse | OWASP Top 10 Privacy Risks — P1/P8 | LLM |
+| Data minimization (over-collection + over-return) | OWASP Top 10 Privacy Risks — P2 | LLM |
+| PII in URLs | ASVS-8.3.4 | Semgrep |
+| PII in client storage | ASVS-8.2.3 | Semgrep |
+| Plaintext personal data at rest | ASVS-8.2.1 | Semgrep |
+| Production data in test fixtures | ASVS-8.3.1 | LLM |
+| Unscoped access to personal data | ASVS-8.1.1 | LLM |
+
+1. **Semgrep pre-pass (deterministic).** `semgrep --config "${CLAUDE_PLUGIN_ROOT:-src/privacy}/scripts/privacy-taint-pack.yml" --json <path-or-diff-range>` covers the four mechanizable rows. Pass its `PRIVACY-RISK` findings through unchanged. If `semgrep` isn't installed, say "Semgrep pre-pass skipped — binary not found; the four mechanizable checks were not run", never claim they ran.
+2. **Judge the rest.** For each LLM row, read the diff and ask the practice's question. A change that touches none of a row's practice is out of scope for it — do not invent a finding. A clean Semgrep run is not a clean privacy review. Hold each row to this standard:
+
+<!-- opinion:good -->
+Good means it survives an adversarial pass primed to assume bugs exist, not
+a friendly skim. The standard is a failing test, a specific file:line
+defect, or an explicit "no issues found" after genuinely looking — prose
+critique without one of those three is not a review.
+<!-- /opinion:good -->
+
+3. **Report.** Each finding is `PRIVACY-RISK <file>:<line> [<ASVS-id or OWASP-P#>]` with one sentence naming the practice violated. Nothing found: `NO PRIVACY ISSUES FOUND`, naming each practice checked (mechanized and judged) and why it passed or did not apply. No prose-only findings.
+
+The review runs on the same discipline as the rest of the loop:
+
+<!-- opinion:how-we-engineer -->
+How we engineer means the phase discipline: plan before code, one task at a
+time gated on real verification, bugs get a Report → Analyze → Fix → Verify
+pass instead of a patch-and-hope, and sizing matches the actual scope
+instead of over- or under-building it.
+<!-- /opinion:how-we-engineer -->
 
 ## Output contract
 

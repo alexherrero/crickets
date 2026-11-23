@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Tests for src/development-lifecycle/scripts/orient_render.py — the ORIENT
-renderer for `/open` / `/orient` (PLAN-open-a-project-by-name tasks 3 + 5).
+renderer for `/open` (PLAN-open-a-project-by-name tasks 3 + 5).
 
 Every plan comes from agentm (crickets task 101): the unit tests patch the
 bridge's answers, and `TestInTheScratchVault` runs the real bridge against

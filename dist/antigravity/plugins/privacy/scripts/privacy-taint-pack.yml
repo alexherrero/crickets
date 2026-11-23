@@ -6,7 +6,7 @@
 # sink) and belong in Semgrep, not prompt-based LLM judgment. The
 # non-mechanical privacy practices -- consent scoping, retention adequacy,
 # erasure completeness, purpose limitation -- stay LLM-judged inside the
-# privacy-review skill; they are not forced into rules here because Semgrep
+# privacy review in the pii-scrubber skill; they are not forced into rules here because Semgrep
 # has no way to express "was consent obtained for this purpose."
 #
 # Scope discipline: exactly the four categories named in the design + the

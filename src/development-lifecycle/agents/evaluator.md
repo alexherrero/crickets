@@ -5,7 +5,7 @@ kind: agent
 supported_hosts: [claude-code, antigravity]
 version: 0.2.0
 tools: Read, Glob, Grep
-model: claude-sonnet-5
+model: sonnet
 ---
 
 # evaluator — fresh-context grader

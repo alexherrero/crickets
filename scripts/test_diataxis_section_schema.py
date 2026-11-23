@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Tests for section-file shape v2 — the diataxis-author wiki composer's parser
-(src/wiki-maintenance/skills/diataxis-author/scripts/section_schema.py) —
+"""Tests for section-file shape v2 — the wiki-author wiki composer's parser
+(src/wiki-maintenance/skills/wiki-author/scripts/section_schema.py) —
 crickets wiki-composer part 1/4 (section-schema).
 
 Covers the schema-v2 parse: the two optional frontmatter fields (`optional`,
@@ -18,8 +18,8 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 _ROOT = _HERE.parent
-_SKILL_SCRIPTS = _ROOT / "src" / "wiki" / "skills" / "diataxis-author" / "scripts"
-_SECTIONS_DIR = _ROOT / "src" / "wiki" / "skills" / "diataxis-author" / "templates" / "sections"
+_SKILL_SCRIPTS = _ROOT / "src" / "wiki" / "skills" / "wiki-author" / "scripts"
+_SECTIONS_DIR = _ROOT / "src" / "wiki" / "skills" / "wiki-author" / "templates" / "sections"
 
 
 def _load(name: str):

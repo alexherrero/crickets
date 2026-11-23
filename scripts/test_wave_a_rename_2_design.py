@@ -33,12 +33,14 @@ class TestWaveARename2Design(unittest.TestCase):
             (_REPO_ROOT / "src" / "development-lifecycle" / "templates" / "design-doc.md").exists()
         )
 
-    def test_the_design_plugin_keeps_its_two_commands_and_its_prose_pass(self):
+    def test_the_design_plugin_keeps_design_and_its_prose_pass(self):
+        # Plan 105 step 3 retired /document-decision and the adr skill (0 uses);
+        # test_dead_weight_retired.py pins them gone.
         design_dir = _REPO_ROOT / "src" / "design"
         for rel in (
-            "commands/design.md", "commands/document-decision.md",
+            "commands/design.md",
             "scripts/prose_pass.py", "scripts/project_homes.py",
-            "skills/prose-pass/SKILL.md", "skills/adr/SKILL.md",
+            "skills/prose-pass/SKILL.md",
         ):
             self.assertTrue((design_dir / rel).is_file(), f"{rel} missing under src/design/")
 

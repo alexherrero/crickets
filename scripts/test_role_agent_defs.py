@@ -8,12 +8,8 @@ facts so a later edit can't silently regress them:
   * Each role validates the agent manifest shape (`name` matching the file stem,
     `description`, `kind: agent`, `supported_hosts` ⊆ {claude-code, antigravity},
     a `version`).
-  * The **read-only** roles (`researcher`, `project-manager`) declare a `tools:`
-    allowlist that grants no mutating tool (`Write` / `Edit` / `NotebookEdit`).
-    Omitting `tools:` (= all tools) is itself a failure for a read-only role.
-  * `researcher` is a thin pointer: it references the existing `explorer` and
-    *forward-references* the operator's global deep-research agent rather than
-    vendoring or porting it (the collapsed researcher gap).
+  * Crickets plan 105 retired the `researcher`, `tech-lead` and
+    `project-manager` roles for want of use; `worker` is the one left.
 
 `generate.py check` (run by check-all.sh) separately proves `dist/` mirrors these
 sources, so asserting the source spec is sufficient.
@@ -90,22 +86,6 @@ class _RoleManifestContract:
         self.assertIn("version", self.fm)
 
 
-class _ReadOnlyRoleContract(_RoleManifestContract):
-    """A read-only role must declare a `tools:` allowlist with no mutating tool.
-
-    Omitting `tools:` means "all tools" — a failure for a read-only role; the
-    allowlist is the enforcement, so it must be present and mutation-free.
-    """
-
-    def test_declares_a_tools_allowlist(self):
-        self.assertIn("tools", self.fm, f"{self.role} is read-only but declares no tools allowlist")
-
-    def test_allowlist_grants_no_mutating_tool(self):
-        granted = set(_tools(self.fm))
-        leaked = granted & _MUTATING_TOOLS
-        self.assertFalse(leaked, f"{self.role} read-only allowlist leaks mutating tool(s): {sorted(leaked)}")
-
-
 class _ActiveRoleContract(_RoleManifestContract):
     """An active role executes the loop — it must NOT be constrained read-only.
 
@@ -123,46 +103,6 @@ class _ActiveRoleContract(_RoleManifestContract):
         )
 
 
-class TestResearcherRole(_ReadOnlyRoleContract, unittest.TestCase):
-    """`researcher` — the read-only brief-research front; a thin pointer at explorer."""
-
-    role = "researcher"
-
-    def test_points_at_explorer(self):
-        # Thin skin: it composes the existing explorer, not a re-implementation.
-        self.assertIn("explorer", _text(self.role))
-
-    def test_forward_references_global_research_agent_not_vendored(self):
-        # The collapsed researcher gap: forward-reference, never vendor/port.
-        low = _text(self.role).lower()
-        self.assertIn("forward-reference", low)
-        self.assertIn("when present", low)
-        self.assertTrue(
-            "never vendors" in low or "never copied" in low or "not vendor" in low
-            or ("vendor" in low and "port" in low),
-            "researcher must state it does not vendor/port the global research agent",
-        )
-
-
-class TestTechLeadRole(_ActiveRoleContract, unittest.TestCase):
-    """`tech-lead` — the active brief-to-plan author; /design (shipped) upstream of /plan."""
-
-    role = "tech-lead"
-
-    def test_plan_is_the_current_floor(self):
-        self.assertIn("/plan", _text(self.role))
-
-    def test_design_is_shipped_not_forward_referenced(self):
-        # /design shipped at crickets v3.11.0 (2026-06-14) — tech-lead must describe
-        # it as a current capability, not a forward-reference / not-yet-shipped claim.
-        text = _text(self.role)
-        low = text.lower()
-        self.assertIn("/design", text)
-        self.assertIn("shipped", low)
-        self.assertNotIn("not yet shipped", low)
-        self.assertNotIn("forward-reference", low)
-
-
 class TestWorkerRole(_ActiveRoleContract, unittest.TestCase):
     """`worker` — the active autonomous executor; one per worktree, marker-bound."""
 
@@ -177,35 +117,13 @@ class TestWorkerRole(_ActiveRoleContract, unittest.TestCase):
         self.assertIn("worktree", low)
 
     def test_integrates_back(self):
-        self.assertIn("/integrate-worker", _text(self.role))
-
-
-class TestProjectManagerRole(_ReadOnlyRoleContract, unittest.TestCase):
-    """`project-manager` — the read-only coordinator glance over /queue-status-lite."""
-
-    role = "project-manager"
-
-    def test_wraps_queue_status_lite(self):
-        self.assertIn("/queue-status-lite", _text(self.role))
-
-    def test_forward_references_board_sync_and_v5_11(self):
+        # /integrate-worker retired with the worktree-native flow (2026-07-06);
+        # the plan lands through its own PR with auto-merge armed (plan 105).
         text = _text(self.role)
-        self.assertIn("#41", text)
-        self.assertIn("V5-11", text)
-
-    def test_is_a_glance_not_a_gate(self):
-        # LC-5: the PM advises, it does not arbitrate merge order.
-        low = _text(self.role).lower()
-        self.assertIn("glance", low)
-        self.assertIn("not a gate", low)
-
-    def test_mutates_no_state(self):
-        # Positively read-only in prose, not just by allowlist.
-        low = _text(self.role).lower()
-        self.assertTrue(
-            "mutates no state" in low or "mutating anything" in low or "mutate" in low,
-            "project-manager must state it mutates no state",
-        )
+        self.assertIn("auto-merge", text)
+        self.assertIn("PR", text)
+        self.assertNotIn("/integrate-worker", text)
+        self.assertNotIn("/spawn-worker", text)
 
 
 if __name__ == "__main__":

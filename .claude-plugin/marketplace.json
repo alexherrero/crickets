@@ -11,7 +11,7 @@
       "capabilities": [
         "adversarial-review"
       ],
-      "description": "Standalone adversarial code review of any diff or PR — the adversarial-reviewer (+ cross-model Gemini) agents, the evidence-tracker hook, and security-review + testing-strategy skills. Its reviewers and cross-review.sh run /build-it's review passes when development-lifecycle is installed.",
+      "description": "Standalone adversarial code review of any diff or PR — the adversarial-reviewer (+ cross-model Gemini) agents, the security-auditor agent, and the evidence-tracker hook. Its reviewers and cross-review.sh run /build-it's review passes when development-lifecycle is installed.",
       "enhances": [
         {
           "capability": "review",
@@ -21,21 +21,20 @@
       ],
       "name": "code-review",
       "source": "./dist/claude-code/plugins/code-review",
-      "version": "1.0.0"
+      "version": "2.0.0"
     },
     {
       "capabilities": [
-        "testing-conventions",
         "releasing-conventions",
         "conventions"
       ],
       "dependencies": [
         "development-lifecycle"
       ],
-      "description": "Day-to-day testing + release discipline in one plugin — tests-are-sacred, verification-first, the 3-layer pyramid, the pre-release checklist, changelog-shape, and paired-release coordination for cross-repo releases.",
+      "description": "Release discipline and the shared rules — the ship-release skill (pre-release checklist, changelog-shape, paired-release coordination for cross-repo releases) plus the always-on rules (no skipped tests, version bumps, CI battery, coalescence gate).",
       "name": "conventions",
       "source": "./dist/claude-code/plugins/conventions",
-      "version": "0.12.4"
+      "version": "1.0.1"
     },
     {
       "capabilities": [
@@ -46,10 +45,10 @@
       "dependencies": [
         "development-lifecycle"
       ],
-      "description": "Living-design and ADR authoring — the /design command (write or update a project's living design note in its vault: objective, current design, open questions, amendment log) and the ADR skill for capturing architectural decisions with re-audit triggers. Also the cross-model prose pass.",
+      "description": "Living-design authoring — the /design command (write or update a project's living design note in its vault: objective, current design, open questions, amendment log). Also the cross-model prose pass.",
       "name": "design",
       "source": "./dist/claude-code/plugins/design",
-      "version": "1.0.0"
+      "version": "2.0.1"
     },
     {
       "capabilities": [
@@ -63,7 +62,7 @@
       ],
       "name": "developer-safety",
       "source": "./dist/claude-code/plugins/developer-safety",
-      "version": "0.6.5"
+      "version": "0.7.1"
     },
     {
       "capabilities": [
@@ -80,7 +79,7 @@
       "description": "The phase-gated developer loop — /setup /plan /work /release /bugfix — extracted from agentm as a standalone native plugin. The base other dev plugins enhance.",
       "name": "development-lifecycle",
       "source": "./dist/claude-code/plugins/development-lifecycle",
-      "version": "1.5.0"
+      "version": "2.2.0"
     },
     {
       "capabilities": [
@@ -125,7 +124,7 @@
       "description": "CI workflows + dependency-update tooling — the dependabot-fixer skill that repairs breakage on Dependabot PRs.",
       "name": "maintenance",
       "source": "./dist/claude-code/plugins/maintenance",
-      "version": "0.2.9"
+      "version": "0.3.0"
     },
     {
       "capabilities": [
@@ -144,7 +143,7 @@
       "description": "Scan diffs and the working tree for personal information (emails, personal paths, API keys, phone numbers) before commit or push.",
       "name": "privacy",
       "source": "./dist/claude-code/plugins/privacy",
-      "version": "0.6.6"
+      "version": "1.0.0"
     },
     {
       "capabilities": [
@@ -167,14 +166,14 @@
       "description": "Deterministic transcript-JSONL cost analyzer — per-message cost curve, 5h rolling window, floor breakdown, and cache-read vs cache-write vs fresh-input split. Prerequisite for Part C (status-line meter) and Part G (heat-based floor).",
       "name": "tokens",
       "source": "./dist/claude-code/plugins/tokens",
-      "version": "0.8.4"
+      "version": "0.9.0"
     },
     {
       "capabilities": [
         "wiki-maintenance",
         "wiki"
       ],
-      "description": "Opinionated, template-driven wiki maintenance — the wiki-author authoring/learning skill, the documenter agent, the diataxis-evaluator, recent-wiki-changes, and the check-wiki.py linter. Maintains a wiki in the operator's voice; keeps a project's wiki current on request (wiki-author) or on a schedule (wiki-watch).",
+      "description": "Template-driven wiki maintenance — the wiki-author skill, the documenter agent, the wiki-watch, wiki-init and recent-wiki-changes commands, and the check-wiki.py linter. Keeps a project's six-section wiki current in the operator's voice, on request (wiki-author) or on a schedule (wiki-watch).",
       "enhances": [
         {
           "capability": "documentation",
@@ -184,7 +183,7 @@
       ],
       "name": "wiki",
       "source": "./dist/claude-code/plugins/wiki",
-      "version": "0.13.6"
+      "version": "1.0.0"
     }
   ],
   "renames": {

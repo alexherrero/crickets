@@ -3,7 +3,7 @@
     "name": "alexherrero",
     "url": "https://github.com/alexherrero/crickets"
   },
-  "description": "Standalone adversarial code review of any diff or PR — the adversarial-reviewer (+ cross-model Gemini) agents, the evidence-tracker hook, and security-review + testing-strategy skills. Its reviewers and cross-review.sh run /build-it's review passes when development-lifecycle is installed.",
+  "description": "Standalone adversarial code review of any diff or PR — the adversarial-reviewer (+ cross-model Gemini) agents, the security-auditor agent, and the evidence-tracker hook. Its reviewers and cross-review.sh run /build-it's review passes when development-lifecycle is installed.",
   "name": "code-review",
-  "version": "1.0.0"
+  "version": "2.0.0"
 }

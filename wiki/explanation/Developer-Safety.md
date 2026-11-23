@@ -21,7 +21,7 @@ Under the hooks sits the **recoverability** doctrine — the judgment the agent 
 
 | Direction | Plugin | How |
 |---|---|---|
-| Enhances (soft) | [Development Lifecycle](Development-Lifecycle) | The three hooks engage across the phase loop, and the `recoverability` doctrine backs `/work`'s recoverability gate — only when both are installed. |
+| Enhances (soft) | [Development Lifecycle](Development-Lifecycle) | The three hooks engage across the phase loop, and the `recoverability` skill is the full doctrine behind the 80-word recoverability-gate summary in `/work`, `/bugfix` and `/release` — only when both are installed. |
 | Enhanced by (soft) | — | None. |
 | Requires (hard) | — | None. Developer Safety is fully standalone. |
 | Required by (hard) | — | None. |

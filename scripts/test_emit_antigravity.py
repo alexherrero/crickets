@@ -65,18 +65,15 @@ class TestAntigravityEmitter(unittest.TestCase):
         self.assertTrue((d / "privacy" / "skills" / "pii-scrubber" / "SKILL.md").exists())
         self.assertTrue((d / "maintenance" / "skills" / "dependabot-fixer" / "SKILL.md").exists())
         self.assertTrue((d / "development-lifecycle" / "agents" / "evaluator.md").exists())
-        self.assertTrue((d / "wiki" / "agents" / "diataxis-evaluator.md").exists())
-        # part 2 fold-in: documenter + diataxis-author support AG → present;
-        # wiki-author + recent-wiki-changes are claude-only → absent from AG.
-        # part 3 task 2: style-scope-evaluator supports AG (clones the evaluator mold) → present.
-        self.assertTrue((d / "wiki" / "agents" / "style-scope-evaluator.md").exists())
+        # plan 105 step 5: wiki-author is the one wiki skill and ships on AG too;
+        # recent-wiki-changes stays claude-only → absent from AG.
         self.assertTrue((d / "wiki" / "agents" / "documenter.md").exists())
-        self.assertTrue((d / "wiki" / "skills" / "diataxis-author" / "SKILL.md").exists())
-        self.assertFalse((d / "wiki" / "skills" / "wiki-author").exists())
+        self.assertTrue((d / "wiki" / "skills" / "wiki-author" / "SKILL.md").exists())
         self.assertFalse((d / "wiki" / "commands" / "recent-wiki-changes.md").exists())
         # part 4 task 4 (DC-W4: Claude-first scheduling): the wiki-watch SKILL is
         # cross-host → present on AG; the wiki-watch COMMAND is claude-only → absent.
         # The engine group scripts are bundled host-agnostically → present.
+        # plan 105 step 5: the command ships on both hosts (an AG skill there).
         self.assertTrue((d / "wiki" / "skills" / "wiki-watch" / "SKILL.md").exists())
         self.assertFalse((d / "wiki" / "commands" / "wiki-watch.md").exists())
         self.assertTrue((d / "wiki" / "scripts" / "wiki_watch_cycle.py").exists())
@@ -333,7 +330,7 @@ class TestAntigravityEmitter(unittest.TestCase):
         # re-rendered too, not just plain-copytree'd -- the directory branch
         # of _copy_component never called render_primitive_text before this
         # fix, so a skill's opinion markers were never actually baked.
-        manifest = (self.agdist / "plugins" / "privacy" / "skills" / "privacy-review" / "SKILL.md")
+        manifest = (self.agdist / "plugins" / "privacy" / "skills" / "pii-scrubber" / "SKILL.md")
         text = manifest.read_text(encoding="utf-8")
         good_body = (_ROOT / "scripts" / "opinion-snapshots" / "good.md").read_text(encoding="utf-8")
         good_body = good_body.split("---", 2)[2].strip()
@@ -423,14 +420,26 @@ class TestAntigravityEmitter(unittest.TestCase):
             self.assertFalse(stale.exists())
 
     def test_long_skill_keeps_its_whole_body_reachable(self):
-        # wiki's diataxis-author is ~50 KB; agy would load only the first 24 KB.
-        sk = self.agdist / "plugins" / "wiki" / "skills" / "diataxis-author"
-        self.assertLess(len((sk / "SKILL.md").read_bytes()), 2000)
-        full = (sk / "references" / "SKILL.full.md").read_text(encoding="utf-8")
-        source = (_ROOT / "src" / "wiki" / "skills" / "diataxis-author" / "SKILL.md").read_text(encoding="utf-8")
-        # the body is unchanged except that its relative links go one folder deeper
-        body = source.split("\n---\n", 1)[1]
-        self.assertEqual(full.strip(), emit_antigravity._deepen_links(body, 1).strip())
+        # agy loads only the first 24 KB of a SKILL.md. No shipped skill is that
+        # long since plan 105 retired the 50 KB diataxis-author, so build one.
+        src_model = sys.modules["src_model"]
+        with tempfile.TemporaryDirectory() as t:
+            src = Path(t) / "src"
+            (src / "lf" / "skills" / "big").mkdir(parents=True)
+            (src / "lf" / "group.yaml").write_text(
+                "name: LF\ndescription: d\nstandalone: true\nrequires: []\n", encoding="utf-8")
+            body = "See [the guide](templates/guide.md).\n" + "step\n" * 6000
+            (src / "lf" / "skills" / "big" / "SKILL.md").write_text(
+                "---\nname: big\nkind: skill\nsupported_hosts: [antigravity]\n"
+                f"description: d\n---\n{body}", encoding="utf-8")
+            group = src_model.load_groups(src)[0]
+            dist = Path(t) / "dist"
+            emit_antigravity.AntigravityEmitter().emit_group(group, dist)
+            sk = dist / "plugins" / "lf" / "skills" / "big"
+            self.assertLess(len((sk / "SKILL.md").read_bytes()), 2000)
+            full = (sk / "references" / "SKILL.full.md").read_text(encoding="utf-8")
+            # the body is unchanged except that its relative links go one folder deeper
+            self.assertEqual(full.strip(), emit_antigravity._deepen_links(body, 1).strip())
 
     def test_real_dist_has_the_shape_agy_loads(self):
         # The same structural gate CI runs, over this test's own real build.

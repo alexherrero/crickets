@@ -32,11 +32,10 @@ The current catalog — 13 plugins, one group per row. `requires:` is a hard dep
 | `github-ci` | CI / dependency-update tooling (`dependabot-fixer`) | `[developer-workflows]` |
 | `wiki-maintenance` | Keeps the wiki true to the code, in-voice | `[]` |
 | `pii` | PII guardrail (scanner skill + pre-push) | `[]` |
-| `design-docs` | Design-doc + ADR authoring (`/design`) | `[developer-workflows]` |
+| `design-docs` | Living design notes (`/design`) | `[developer-workflows]` |
 | `github-projects` | One-way vault→GitHub Project board sync | `[developer-workflows]` |
 | `obsidian-vault` | The Obsidian/Google-Drive vault storage backend for agentm | `[]` |
 | `releasing-conventions` | Release discipline + the ship-release workflow | `[developer-workflows]` |
-| `testing-conventions` | Day-to-day testing principles | `[developer-workflows]` |
 | `token-audit` | Deterministic JSONL session-cost analyzer | `[]` |
 | `status-line-meter` | Live context/cost meter for the Claude Code status line | `[]` |
 

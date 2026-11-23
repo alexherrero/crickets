@@ -12,7 +12,7 @@ You are running **design**: keep the project's living design note true. A living
 
 **Topic from the user:** $ARGUMENTS
 
-> **Recommended model for this phase:** Sonnet 5 (`claude-sonnet-5`) — lighter model for planning and authoring. Override with `/model` if needed.
+> **Recommended model for this phase:** Sonnet 5.5 (`claude-sonnet-5-5`) — lighter model for planning and authoring. Override with `/model` if needed.
 
 ## Process
 

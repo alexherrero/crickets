@@ -6,7 +6,7 @@ task 1).
 agentm's project_brief.py prints where the bound project and task stand and
 exits 0, or prints nothing and exits 3. The verb keeps those two answers and
 turns every other outcome into 3 as well (agentm absent, a run that can't
-start, any other exit), because /orient leaves the brief out rather than stop.
+start, any other exit), because /open leaves the brief out rather than stop.
 
 Every test plants a stub project_brief.py under a patched $AGENTM_SCRIPTS_DIR,
 with Path.home() pointed at an empty directory, so no real agentm is reached.

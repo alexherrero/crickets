@@ -9,13 +9,13 @@ trigger: model_decision
 
 ## Rule: coordinator-dispatch
 
-Migrated in (Consolidation arc, CONS-8) from the Consolidation-arc verdict's ruling 8. The verdict's own diagnosis (rubric 10): the orchestration machinery shipped — named plans, worktree-native spawn, `/queue-status-lite`, the coordinator role roster (see [Coordinator roles](https://github.com/alexherrero/crickets/wiki/Coordinator-Roles)) — and the operator still hand-pasted prompts between sessions anyway. The gap wasn't a missing capability; it was a missing **default**. This rule names the default: a multi-session job is a coordinator dispatch, not a string of separately-typed prompts.
+Migrated in (Consolidation arc, CONS-8) from the Consolidation-arc verdict's ruling 8. The verdict's own diagnosis (rubric 10): the orchestration machinery shipped — named plans, worktree-native spawn, a queue-status glance and a coordinator role roster (crickets plan 105 retired all but the `worker` role for want of use) — and the operator still hand-pasted prompts between sessions anyway. The gap wasn't a missing capability; it was a missing **default**. This rule names the default: a multi-session job is a coordinator dispatch, not a string of separately-typed prompts.
 
 ### The shape
 
 A coordinator dispatch (the shape this Consolidation arc itself ran, `CONS-COORD`) has four parts:
 
-1. **A dispatch-only coordinator.** One session reads the plan (or verdict, or brief) that names the work, and does nothing else but dispatch, track, and report — it does not implement. Coding stays single-threaded per session ([`agentic-engineering`](../skills/agentic-engineering/SKILL.md)'s "single-threaded for coherence" principle); the coordinator's job is sequencing sessions, not writing code itself.
+1. **A dispatch-only coordinator.** One session reads the plan (or verdict, or brief) that names the work, and does nothing else but dispatch, track, and report — it does not implement. Coding stays single-threaded per session (agentm [`AGENTS.md`](https://github.com/alexherrero/agentm/blob/main/AGENTS.md)'s core principles: coherence-critical work stays single-threaded); the coordinator's job is sequencing sessions, not writing code itself.
 2. **Verbatim per-agent briefs.** Each dispatched session gets a self-contained brief — what to do, why, the acceptance criteria, and enough context to make judgment calls without re-deriving the plan from scratch. A brief that says "go do task 4" without restating scope forces the dispatched session to either guess or re-read everything the coordinator already read.
 3. **A completion log.** The coordinator keeps a running, append-only log (a `<slug>-COORD-LOG.md`-shaped file) of what was dispatched, in what mode (worktree vs. direct), and its outcome — merged, done, or stalled. This is the on-disk state a coordinator's own context can't durably hold across a long arc.
 4. **An escalate ledger.** Anything outside a brief's scope, or a lane that fails, is escalated — recorded in a ledger, not improvised around. The coordinator executes the plan; it does not re-litigate it.
@@ -30,7 +30,7 @@ Hand-paste (the operator directly running a step themselves, or a session prompt
 
 `src/tokens/scripts/fanout_cost_gate.py` (the crickets-token-audit design's pre-flight cost gate) is the fleet pre-flight this convention names: before a coordinator dispatches a fan-out (parallel lanes, or a wave of independent lanes), it estimates `agent_count × per_agent_cost` against a configured budget share and returns a proceed/confirm-or-block result with the cost stated explicitly — the direct fix for a fleet dispatch that exhausts a session budget mid-run with no pre-flight estimate in front of the operator.
 
-**Status (crickets plan 104): not wired into the phase commands.** They dropped the fan-out announcement step, so nothing calls `fanout_announcement.py`'s `announce_dispatch()` (which ran this gate at `agent_count >= 4`); a coordinator that wants the pre-flight calls `fanout_cost_gate.py` itself.
+**Status (crickets plan 104): not wired into the phase commands.** They dropped the fan-out announcement step, and plan 105 deleted the `fanout_announcement.py` that ran this gate at `agent_count >= 4`; a coordinator that wants the pre-flight calls `fanout_cost_gate.py` itself.
 
 ### What is NOT an acceptable substitute
 
@@ -56,6 +56,6 @@ If all three are satisfied, the dispatch is compliant. If any is missing, that i
 
 ## See also
 
-- [Coordinator roles](https://github.com/alexherrero/crickets/wiki/Coordinator-Roles) — the four thin-skin roles (`researcher`, `tech-lead`, `worker`, `project-manager`) a coordinator dispatches against.
+- `worker` — the one coordinator role left: the autonomous `/work` executor, one per worktree.
 - [`coalescence-gate`](coalescence-gate.md) — the arc-exit checklist; a coordinator-dispatched arc runs this checklist against itself at close.
 - `src/tokens/scripts/fanout_cost_gate.py` — the fleet pre-flight named above.

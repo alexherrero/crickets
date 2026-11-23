@@ -6,6 +6,12 @@ maintaining a second table. To update pricing: edit PRICING here only.
 
 Verified 2026-07-03 from the Anthropic pricing page (platform.claude.com/docs/en/about-claude/pricing).
 cache_write_per_mtok = 5-minute TTL rate (1.25× input).
+The Claude 5.x rows (opus-5-5, sonnet-5-5, haiku-5-5, fable-5-2) were added
+2026-11-22 from the Claude API reference's current-models table (cached
+2026-11-03); cache reads are its stated rates, cache writes 1.25× input.
+Haiku 5.5's cache-read rate isn't stated there: it uses the reference's
+general 0.1× input, and its prices hold for prompts up to 100K tokens.
+The older rows stay so token-audit can price old transcripts.
 claude-sonnet-5 is pinned at its introductory rate ($2/$10 input/output),
 in effect through 2026-08-31; the standard rate ($3/$15) takes effect
 2026-09-01 and needs a re-pin then.
@@ -54,6 +60,30 @@ PRICING: dict[str, ModelPricing] = {
         input_per_mtok=2.00,
         output_per_mtok=10.00,
         cache_write_per_mtok=2.50,
+        cache_read_per_mtok=0.20,
+    ),
+    "claude-opus-5-5": ModelPricing(
+        input_per_mtok=4.00,
+        output_per_mtok=20.00,
+        cache_write_per_mtok=5.00,
+        cache_read_per_mtok=0.20,
+    ),
+    "claude-sonnet-5-5": ModelPricing(
+        input_per_mtok=2.00,
+        output_per_mtok=10.00,
+        cache_write_per_mtok=2.50,
+        cache_read_per_mtok=0.10,
+    ),
+    "claude-haiku-5-5": ModelPricing(
+        input_per_mtok=0.10,
+        output_per_mtok=0.50,
+        cache_write_per_mtok=0.125,
+        cache_read_per_mtok=0.01,
+    ),
+    "claude-fable-5-2": ModelPricing(
+        input_per_mtok=8.00,
+        output_per_mtok=40.00,
+        cache_write_per_mtok=10.00,
         cache_read_per_mtok=0.20,
     ),
 }

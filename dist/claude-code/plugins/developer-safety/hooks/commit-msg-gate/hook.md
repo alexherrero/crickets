@@ -3,7 +3,7 @@ name: commit-msg-gate
 description: Deterministic commit-msg git hook that rejects a commit subject containing an internal codename pattern or this repo's own slop-pack vocabulary (warning-tier or above). Mechanical enforcement of Consolidation ruling 4's "Commit messages, go-forward" standard — conventional-commit prefixes and a parenthesized roadmap id are unaffected.
 kind: hook
 supported_hosts: [claude-code, antigravity]
-version: 0.1.0
+version: 0.1.1
 ---
 
 # commit-msg-gate — plain-English-at-the-door
@@ -36,7 +36,7 @@ fine for traceability):
    precedent that a parenthesized roadmap id is a real cross-reference, not
    a codename.
 2. **Slop-pack vocabulary** — reuses this repo's own canonical rule pack
-   (`src/wiki/skills/diataxis-author/style/voice-rules.json`, read through
+   (`src/wiki/skills/wiki-author/style/voice-rules.json`, read through
    its existing loader `rule_pack.py`) rather than a second word list, so
    this gate and the wiki gate (`scripts/check-slop.py`) can never drift
    apart. Only **error/warning**-tier rules block — suggestion-tier terms
@@ -75,7 +75,7 @@ fine for traceability):
   `__file__.parent` count (which breaks the moment this file sits at a
   different depth after being copied to `.git/hooks/`), `commit_msg_gate.py`
   asks `git rev-parse --show-toplevel` for the repo root and looks for
-  `src/wiki/skills/diataxis-author/scripts/rule_pack.py` under it. A git hook
+  `src/wiki/skills/wiki-author/scripts/rule_pack.py` under it. A git hook
   always runs inside a git repository, so this holds regardless of install
   layout; when the resolved root has no `src/wiki/...` tree (a standalone
   install outside a full crickets/agentm checkout), the vocabulary check
@@ -133,7 +133,7 @@ stages of the same commit.
 - [`coauthor-guard`](../coauthor-guard/hook.md) — the sibling native-git-hook
   this one is modeled on (same install convention, same determinism
   discipline).
-- `scripts/check-slop.py` + `src/wiki/skills/diataxis-author/style/voice-rules.json`
+- `scripts/check-slop.py` + `src/wiki/skills/wiki-author/style/voice-rules.json`
   — the canonical slop-pack rule source this hook reads, never forks.
 - Consolidation `CONSOLIDATION-VERDICT.md`, ruling 4 — the standard this hook
   mechanically enforces.
