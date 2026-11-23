@@ -59,7 +59,7 @@ The [wiki](https://github.com/alexherrero/crickets/wiki) covers everything there
 - [Reference](https://github.com/alexherrero/crickets/wiki/Reference) — plugin anatomy, the manifest schema, and the install modes.
 
 > [!NOTE]
-> **Latest release: [v7.0.0](https://github.com/alexherrero/crickets/releases/tag/v7.0.0).** The phase commands keep only what the loop needs. `/review`, `/doubt`, crickets' `/code-review` and `/simplify` retire into `/build-it`'s passes, and `/build-it --check` reviews an existing change. Wiki updates and board sync run on request or on a schedule, not inside `/plan`, `/work` and `/release`.
+> **Latest release: [v8.0.0](https://github.com/alexherrero/crickets/releases/tag/v8.0.0).** Crickets ships only what someone uses: twenty unused commands, agents and skills retire, the recoverability doctrine lives in the `recoverability` skill, `privacy-review` merges into `pii-scrubber`, the wiki group comes down to `wiki-author`, and model ids are the current Claude 5.x ones.
 
 ---
 

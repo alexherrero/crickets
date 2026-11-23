@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v8.0.0] — 2026-11-23 — Major: crickets ships only what someone uses
+
+Plan 3 of 3 from the build-it / create-it design, and the last. The recoverability doctrine lives in one place, the `recoverability` skill, and `/work`, `/bugfix` and `/release` carry a short summary pointing to it. Twenty commands, agents and skills nobody had used since June retire. `privacy-review` merges into `pii-scrubber`, and the wiki group comes down to `wiki-author` and its commands. Scripts with no caller go, and the model ids crickets names are the current Claude 5.x ones. Shipped commands, agents and skills go from 52 to 32. Major because commands, agents and skills go away: `development-lifecycle` 2.2.0, `code-review` 2.0.0, `design` 2.0.1, `conventions` 1.0.1, `privacy` 1.0.0 and `wiki` 1.0.0. Paired with [agentm#986](https://github.com/alexherrero/agentm/pull/986), which renames agentm's `diataxis-author` references to `wiki-author`.
+
 ### Changed
 
 - **The recoverability doctrine has one home** (`developer-safety` 0.7.0, `development-lifecycle` 1.6.0; step 1 of the dead-weight plan). `/work`, `/bugfix` and `/release` no longer each carry the same 405-word doctrine block. Each has an 80-word "Recoverability gate" summary that works without `developer-safety` installed. The summary says recoverable actions are announced and proceed, unrecoverable ones stop and confirm, and an unresolved decision stops and asks. It also says the worktree, PII and co-author rules are unchanged, and points to the `recoverability` skill. That skill is now the full doctrine, down from 1,400 words to about 790.
@@ -35,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **What the cleanup took out** (step 8). The shipped commands, agents and skills went from 52 to 32, and their listing descriptions from 2,562 to 1,426 words. `/work` went from 4,795 to 4,473 words, `/release` from 1,815 to 1,493 and `/bugfix` from 1,827 to 1,505. `scripts/test_dead_weight_retired.py` checks that every retired piece is gone from `src/` and both hosts' `dist/`.
 - **The wiki says what replaced each retired piece** (step 8). The how-tos for `/launch`, `/observe`, `/ci-cd`, `/deprecate` and `/queue-status-lite` are gone, and so is the style-learning-loop reference. Live pages point to `wiki-author`, `/open`, `worker`, `pii-scrubber` and `/build-it`. Pages under `wiki/designs/` get an amendment-log entry; their bodies wait for the wiki migration.
+- **CI's `aggregate` job lists a PR's files through the paginated files API.** `gh pr diff` is refused by GitHub once a PR touches more than 300 files, which this plan's PR did.
 
 ## [v7.0.0] — 2026-11-22 — Major: the pipeline lets go of what the loop replaced
 
