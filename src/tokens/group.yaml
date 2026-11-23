@@ -162,6 +162,8 @@ standalone: true
 # ids (opus-5-5, sonnet-5-5, haiku-5-5, fable-5-2), and pricing.py adds their
 # rows from the Claude API reference; the older rows stay for old transcripts
 # (plan 105 step 7).
-version: 0.9.0
+# 0.9.1 = pricing.py's note on claude-sonnet-5 says its $2/$10 rate is current;
+# the note predicting a $3/$15 rate from 2026-09-01 is retired.
+version: 0.9.1
 capabilities: [status-line-meter, token-audit, tokens]
 renamed_from: [status-line-meter, token-audit]

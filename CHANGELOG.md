@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Shipped prose no longer names the retired `/spawn-worker` and `/integrate-worker`** (`developer-safety` 0.7.2, `development-lifecycle` 2.2.1, `conventions` 1.0.2). The worktree snippet, `/plan`, `preflight_reconcile.py`, `ship-release` and `version-bump-required` name `/work`'s worktree opt-in instead, and say each plan's PR bumps the groups it changes, since there is no integrator. A test keeps the names out of `src/` and both hosts' `dist/`.
+- **`pricing.py`'s Sonnet 5 note matches the current rate** (`tokens` 0.9.1). The reference lists `claude-sonnet-5` at $2 / $10, so the note predicting a $3 / $15 rate from 2026-09-01 is gone. The rates themselves were already right.
+- **Seven wiki links point to where the files live now.** The GitHub-CI, Releasing-Conventions, Status-Line-Meter and Token-Audit pages linked to group folders that were renamed before this release.
+
 ## [v8.0.0] — 2026-11-23 — Major: crickets ships only what someone uses
 
 Plan 3 of 3 from the build-it / create-it design, and the last. The recoverability doctrine lives in one place, the `recoverability` skill, and `/work`, `/bugfix` and `/release` carry a short summary pointing to it. Twenty commands, agents and skills nobody had used since June retire. `privacy-review` merges into `pii-scrubber`, and the wiki group comes down to `wiki-author` and its commands. Scripts with no caller go, and the model ids crickets names are the current Claude 5.x ones. Shipped commands, agents and skills go from 52 to 32. Major because commands, agents and skills go away: `development-lifecycle` 2.2.0, `code-review` 2.0.0, `design` 2.0.1, `conventions` 1.0.1, `privacy` 1.0.0 and `wiki` 1.0.0. Paired with [agentm#986](https://github.com/alexherrero/agentm/pull/986), which renames agentm's `diataxis-author` references to `wiki-author`.

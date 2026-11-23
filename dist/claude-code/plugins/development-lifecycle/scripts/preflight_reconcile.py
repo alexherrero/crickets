@@ -5,7 +5,7 @@ The coordinator stages a batch of worker plans, then activates them one at a tim
 A plan can go redundant *before* it is ever activated — a sibling lane shipped the
 same work, or the part was folded into an earlier landing (the run's wasted V5-4
 lane re-launched an already-shipped plan). This helper is the cheap pre-flight
-guard that `/plan --activate` and `/spawn-worker` consult before they mutate: if
+guard that `/plan --activate` and `/work`'s worktree auto-spawn consult before they mutate: if
 the staged/active plan declares the artifacts it is expected to PRODUCE and every
 one already exists on `main`, the lane is already shipped — activation/spawn is a
 benign no-op (exit 3), not a fresh worktree (LC-6).
@@ -49,7 +49,7 @@ _ARTIFACTS_KEY = "expected_artifacts"
 # Distinct from the 0/1/2 contract the sibling helpers share: a benign no-op, not a
 # loud refusal (2) and not a graceful-skip (1). Callers return this when the lane is
 # already shipped — the command body surfaces its stderr and does NOT proceed to
-# /work or /spawn-worker, but it is "nothing to do", not "something went wrong".
+# /work or a worktree spawn, but it is "nothing to do", not "something went wrong".
 SHIPPED_NOOP = 3
 
 
@@ -140,7 +140,7 @@ def shipped_message(name: str, present: list[str]) -> str:
 
     Names the slug and the artifacts found on `main` so the operator sees *why* the
     lane was skipped, and how to override (archive the staged plan, or drop its
-    `expected_artifacts`). Both `/plan --activate` and `/spawn-worker` emit this so
+    `expected_artifacts`). Both `/plan --activate` and `/work`'s worktree auto-spawn emit this so
     the no-op reads identically wherever the lane is launched.
     """
     found = ", ".join(present) if present else "(none listed)"

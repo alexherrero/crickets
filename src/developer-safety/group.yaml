@@ -139,4 +139,6 @@ capabilities: [recoverability]
 # /bugfix and /release used to inline; the retired /spawn-worker wording is gone.
 # 0.7.1 = commit-msg-gate reads the voice rule pack from wiki-author's
 # scripts/ (plan 105 step 5 moved it out of the retired diataxis-author).
-version: 0.7.1
+# 0.7.2 = the worktrees-operator-initiated snippet names /work's worktree
+# opt-in instead of the retired /spawn-worker.
+version: 0.7.2

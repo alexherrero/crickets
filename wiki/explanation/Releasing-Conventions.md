@@ -46,8 +46,8 @@ Each primitive links to the source that implements it.
 
 | Primitive | Kind | What it does |
 |---|---|---|
-| [`ship-release`](https://github.com/alexherrero/crickets/blob/main/src/releasing-conventions/skills/ship-release/SKILL.md) | skill | Pre-release checklist, changelog shape, paired-release order, and version-bump policy — then the cut itself: commit classification, semver auto-sizing, CHANGELOG prepend, tag, push, and `gh release create`. Checklist item 5 asks that the plan's tracker be `done`; item 9 asks that a living design the release changes is updated in the same landing (a judgment call, not a mechanical gate). |
-| [`version-bump-required`](https://github.com/alexherrero/crickets/blob/main/src/releasing-conventions/rules/version-bump-required.md) | rule | Flags a diff that touches a user-visible primitive without bumping the group's `group.yaml` version. |
+| [`ship-release`](https://github.com/alexherrero/crickets/blob/main/src/conventions/skills/ship-release/SKILL.md) | skill | Pre-release checklist, changelog shape, paired-release order, and version-bump policy — then the cut itself: commit classification, semver auto-sizing, CHANGELOG prepend, tag, push, and `gh release create`. Checklist item 5 asks that the plan's tracker be `done`; item 9 asks that a living design the release changes is updated in the same landing (a judgment call, not a mechanical gate). |
+| [`version-bump-required`](https://github.com/alexherrero/crickets/blob/main/src/conventions/rules/version-bump-required.md) | rule | Flags a diff that touches a user-visible primitive without bumping the group's `group.yaml` version. |
 
 ### Configuration
 

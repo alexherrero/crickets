@@ -12,9 +12,10 @@ The Claude 5.x rows (opus-5-5, sonnet-5-5, haiku-5-5, fable-5-2) were added
 Haiku 5.5's cache-read rate isn't stated there: it uses the reference's
 general 0.1× input, and its prices hold for prompts up to 100K tokens.
 The older rows stay so token-audit can price old transcripts.
-claude-sonnet-5 is pinned at its introductory rate ($2/$10 input/output),
-in effect through 2026-08-31; the standard rate ($3/$15) takes effect
-2026-09-01 and needs a re-pin then.
+claude-sonnet-5 is $2/$10 input/output, cache writes $2.50 and cache reads
+$0.20: the same reference (cached 2026-11-03) states these as its current
+rates, so the earlier note that a $3/$15 rate would follow on 2026-09-01 is
+retired.
 # TODO: distinguish 1h TTL (2× input) once Part C needs it; the
 # cache_creation.ephemeral_1h_input_tokens sub-field already tracks it in JSONL.
 """

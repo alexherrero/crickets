@@ -46,9 +46,9 @@ Each primitive links to the source that implements it.
 
 | Primitive | Kind | What it does |
 |---|---|---|
-| [`/token-audit`](https://github.com/alexherrero/crickets/blob/main/src/token-audit/commands/token-audit.md) | command | Prints the cost breakdown for a session transcript; `--by-phase` attributes cost per phase. |
-| [`analyzer.py`](https://github.com/alexherrero/crickets/blob/main/src/token-audit/scripts/analyzer.py) | script | Streams the JSONL, computes the cache split, 5-hour windows, and the always-load floor. |
-| [`pricing.py`](https://github.com/alexherrero/crickets/blob/main/src/token-audit/scripts/pricing.py) | script | The one pinned table of per-model rates — the only place a price lives. |
+| [`/token-audit`](https://github.com/alexherrero/crickets/blob/main/src/tokens/commands/token-audit.md) | command | Prints the cost breakdown for a session transcript; `--by-phase` attributes cost per phase. |
+| [`analyzer.py`](https://github.com/alexherrero/crickets/blob/main/src/tokens/scripts/analyzer.py) | script | Streams the JSONL, computes the cache split, 5-hour windows, and the always-load floor. |
+| [`pricing.py`](https://github.com/alexherrero/crickets/blob/main/src/tokens/scripts/pricing.py) | script | The one pinned table of per-model rates — the only place a price lives. |
 
 ### Configuration
 

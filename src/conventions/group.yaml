@@ -130,4 +130,6 @@ capabilities: [releasing-conventions, conventions]
 # at agentm's AGENTS.md instead, the testing-conventions capability goes, and
 # the conventions_domain.py resolver goes with the skill it resolved.
 # 1.0.1 = coordinator-dispatch says plan 105 deleted fanout_announcement.py.
-version: 1.0.1
+# 1.0.2 = ship-release and version-bump-required drop the retired
+# /integrate-worker integrator: each plan's PR bumps the groups it changes.
+version: 1.0.2

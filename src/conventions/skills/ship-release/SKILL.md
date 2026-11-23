@@ -53,7 +53,7 @@ When two or more repos release together (e.g. `crickets` + `agentm`):
 - **Minor** — new primitives (skills, rules, commands, agents), new commands, new user-visible capabilities.
 - **Major** — breaking changes: removed primitives, changed frontmatter schema, incompatible behavioral changes.
 - **Bump only the affected group's `group.yaml`.** A change to `developer-workflows` does not bump `code-review`. Each group versions independently.
-- **Never bump on a worker branch.** In the concurrent-worker (Model-A) protocol, `group.yaml` version bumps are integrator-only — performed once by `/integrate-worker` after all workers for a release batch have merged. A solo PR (no concurrent workers) bumps the group.yaml in the same PR.
+- **Each PR bumps what it changes.** Every plan lands as its own PR, and that PR bumps the `group.yaml` of each group it touches. There is no integrator to batch the bumps.
 - **Never skip a version.** If the last release was `0.3.1` and you're shipping a minor, the next version is `0.4.0`, not `0.5.0` or `1.0.0`.
 
 ## Mechanical workflow
