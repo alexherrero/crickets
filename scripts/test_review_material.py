@@ -246,6 +246,51 @@ def _diff(repo: Path, *args: str) -> str:
                           capture_output=True, text=True, encoding="utf-8", check=True).stdout
 
 
+class GeneratedFilesTests(Fixture):
+    """A file the repo marks linguist-generated (a built copy of a source file)
+    is left out of a diff's ARTIFACT, and the run says so on stderr."""
+
+    def setUp(self):
+        super().setUp()
+        (self.repo / ".gitattributes").write_text("dist/** linguist-generated=true\n", encoding="utf-8")
+        (self.repo / "dist").mkdir()
+        (self.repo / "dist" / "commit_msg.py").write_text(BEFORE, encoding="utf-8")
+        _git(self.repo, "add", "-A")
+        _git(self.repo, "commit", "-q", "-m", "generated copy")
+
+    def test_a_generated_copy_is_left_out_and_named(self):
+        (self.repo / "src" / "commit_msg.py").write_text(AFTER + "# edited\n", encoding="utf-8")
+        (self.repo / "dist" / "commit_msg.py").write_text(AFTER + "# edited\n", encoding="utf-8")
+        code, out, err = self.run_cli("--worktree")
+        self.assertEqual(code, 0, err)
+        artifact = out.split("\n=== CONTRACT ===\n", 1)[0]
+        self.assertIn("diff --git a/src/commit_msg.py b/src/commit_msg.py", artifact)
+        self.assertNotIn("dist/commit_msg.py", artifact)
+        self.assertIn("left out 1 generated file(s)", err)
+        self.assertIn("dist/commit_msg.py", err)
+
+    def test_a_change_to_generated_files_alone_is_refused_with_the_reason(self):
+        (self.repo / "dist" / "commit_msg.py").write_text(AFTER, encoding="utf-8")
+        code, out, err = self.run_cli("--worktree")
+        self.assertEqual((code, out), (2, ""))
+        self.assertIn("every file the working tree changes is generated", err)
+
+    def test_without_the_attribute_nothing_is_left_out(self):
+        # git reads .gitattributes from the index when the file is gone from the tree,
+        # so the removal is committed.
+        _git(self.repo, "rm", "-q", ".gitattributes")
+        _git(self.repo, "commit", "-q", "-m", "no attributes")
+        (self.repo / "dist" / "commit_msg.py").write_text(AFTER, encoding="utf-8")
+        artifact, dropped = rm.drop_generated(rm.artifact_from_worktree(self.repo), self.repo)
+        self.assertEqual(dropped, [])
+        self.assertIn("dist/commit_msg.py", artifact)
+
+    def test_a_file_list_is_never_filtered(self):
+        _, out, err = self.run_cli("--files", "dist/commit_msg.py")
+        self.assertIn("--- dist/commit_msg.py ---", out)
+        self.assertNotIn("generated", err)
+
+
 class ChangedPathsTests(Fixture):
     """#288: a path with a space, or one git prints quoted (non-ASCII, a quote, a
     backslash), still reaches the rule matching under its real name."""
@@ -320,6 +365,27 @@ class ChangedPathsTests(Fixture):
                               encoding="utf-8", check=True).stdout
         self.assertIn("+++ b/a\u2028b.py", diff)
         self.assertEqual(rm.changed_paths(diff), names)
+
+    def test_the_operators_git_config_does_not_change_what_is_read(self):
+        # review_material pins git's output: a host diff.noprefix or core.quotePath=false
+        # would otherwise drop the a/ b/ prefixes and the quotes changed_paths() reads.
+        (self.repo / "café.py").write_text("x = 1\n", encoding="utf-8")
+        host = self.repo / "host.gitconfig"
+        host.write_text("[core]\n\tquotePath = false\n[diff]\n\tnoprefix = true\n\tmnemonicPrefix = true\n",
+                        encoding="utf-8")
+        saved = os.environ.get("GIT_CONFIG_GLOBAL")
+        os.environ["GIT_CONFIG_GLOBAL"] = str(host)
+        try:
+            artifact = rm.artifact_from_range("HEAD~1..HEAD", self.repo)
+            worktree = rm.artifact_from_worktree(self.repo)
+        finally:
+            if saved is None:
+                os.environ.pop("GIT_CONFIG_GLOBAL")
+            else:
+                os.environ["GIT_CONFIG_GLOBAL"] = saved
+        self.assertIn("diff --git a/src/commit_msg.py b/src/commit_msg.py", artifact)
+        self.assertIn('"b/caf\\303\\251.py"', worktree)
+        self.assertIn("café.py", rm.changed_paths(worktree))
 
     def test_plain_paths_read_as_before(self):
         diff = _diff(self.repo, "HEAD~1..HEAD")

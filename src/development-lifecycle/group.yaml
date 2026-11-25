@@ -812,5 +812,10 @@ standalone: true
 # (plan 105 step 7).
 # 2.2.1 = /plan and preflight_reconcile.py name /work's worktree auto-spawn
 # instead of the retired /spawn-worker.
-version: 2.2.1
+# 2.3.0 = loop_record.py decide records the operator's call on a pass with a
+# real finding standing (a direction go-ahead, an accepted round-3 fix): the
+# pass reads `decided` and the evaluator accepts it. A requirement recorded
+# again replaces its entry. The direction check stops only on a wrong
+# approach; a detail is corrected and rechecked (build-it, create-it, work).
+version: 2.3.0
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

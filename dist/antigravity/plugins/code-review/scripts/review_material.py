@@ -27,6 +27,12 @@ ceiling runs out:
        terms with the changed paths and identifiers (rarer terms count more),
        best first. Deterministic: the same inputs give the same RULES.
 
+A diff (range, working tree or PR) leaves out the files the repo marks generated
+with `linguist-generated` in .gitattributes, and says so on stderr: a generated
+copy repeats its source and only doubles what the reviewer reads. git's output is
+pinned (quoted names, a/ and b/ prefixes, no colour, no external diff), whatever
+the operator's own git config says.
+
 No anchor given, or the file is missing, gives an empty RULES that says why. It
 is not an error: a review of a bare diff is still worth running.
 
@@ -330,8 +336,15 @@ def _run(argv: Sequence[str], cwd: Optional[Path]) -> str:
     return proc.stdout
 
 
+# What git prints is pinned, whatever the operator's own config says: a quoted name,
+# a/ and b/ prefixes, no colour, no external diff tool. changed_paths() reads that shape.
+_GIT_DIFF = ["git", "-c", "core.quotePath=true", "-c", "diff.noprefix=false",
+             "-c", "diff.mnemonicPrefix=false", "-c", "diff.relative=false",
+             "diff", "--no-color", "--no-ext-diff"]
+
+
 def artifact_from_range(rng: str, repo_root: Path) -> str:
-    return _run(["git", "diff", "--no-color", rng], repo_root)
+    return _run([*_GIT_DIFF, rng], repo_root)
 
 
 def artifact_from_worktree(repo_root: Path) -> str:
@@ -340,11 +353,11 @@ def artifact_from_worktree(repo_root: Path) -> str:
     `git diff HEAD` never lists an untracked path, so a task that adds a module would
     otherwise send its reviewers nothing before the first commit.
     """
-    parts = [_run(["git", "diff", "--no-color", "HEAD"], repo_root)]
+    parts = [_run([*_GIT_DIFF, "HEAD"], repo_root)]
     untracked = _run(["git", "ls-files", "--others", "--exclude-standard", "-z"], repo_root)
     for path in sorted(p for p in untracked.split("\0") if p):
         # --no-index exits 1 when the two sides differ, which a new file always does.
-        proc = subprocess.run(["git", "diff", "--no-color", "--no-index", "--", "/dev/null", path],
+        proc = subprocess.run([*_GIT_DIFF, "--no-index", "--", "/dev/null", path],
                               cwd=str(repo_root), capture_output=True, text=True,
                               encoding="utf-8", errors="replace")
         if proc.returncode not in (0, 1):
@@ -352,6 +365,34 @@ def artifact_from_worktree(repo_root: Path) -> str:
                              f"{proc.stderr.strip()[:300]}")
         parts.append(proc.stdout)
     return "".join(parts)
+
+
+def drop_generated(artifact: str, repo_root: Path) -> Tuple[str, List[str]]:
+    """Leave out the file blocks of a diff that the repo marks generated
+    (`linguist-generated` in .gitattributes, e.g. `dist/** linguist-generated`).
+    A generated copy repeats its source, so it doubles what a reviewer reads and
+    adds nothing to review. Returns the artifact without them, and their paths.
+    Outside a git repository, or with no such attribute, nothing is left out."""
+    blocks = re.split(r"(?m)^(?=diff --git )", artifact)
+    paths = [(b, changed_paths(b)) for b in blocks]
+    names = sorted({ps[0] for _, ps in paths if ps})
+    if not names:
+        return artifact, []
+    proc = subprocess.run(["git", "check-attr", "-z", "--stdin", "linguist-generated"],
+                          cwd=str(repo_root), input="\0".join(names) + "\0", capture_output=True,
+                          text=True, encoding="utf-8", errors="replace")
+    if proc.returncode != 0:
+        return artifact, []
+    fields = proc.stdout.split("\0")
+    generated = {fields[i] for i in range(0, len(fields) - 2, 3)
+                 if fields[i + 2] not in ("unspecified", "unset", "false")}
+    kept, dropped = [], []
+    for block, ps in paths:
+        if ps and ps[0] in generated:
+            dropped.append(ps[0])
+        else:
+            kept.append(block)
+    return "".join(kept), dropped
 
 
 def artifact_from_pr(number: str, repo_root: Path) -> str:
@@ -479,10 +520,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             artifact = artifact_from_pr(args.pr, root)
         else:
             artifact, _ = artifact_from_files(args.files, root)
+        generated: List[str] = []
+        if not args.files:
+            artifact, generated = drop_generated(artifact, root)
         if not args.files and not artifact.strip():
             source = "the working tree" if args.worktree else (args.range or f"PR {args.pr}")
-            raise ValueError(f"nothing to review: {source} has no changes; "
-                             "a reviewer is never sent an empty artifact")
+            why = (f"every file {source} changes is generated ({len(generated)}, linguist-generated)"
+                   if generated else f"{source} has no changes")
+            raise ValueError(f"nothing to review: {why}; a reviewer is never sent an empty artifact")
         paths = changed_paths(artifact) if not args.files else list(args.files)
         # A file list has no +/- lines; read its content as all-added so the
         # identifiers in it count toward the repo-doc match.
@@ -498,6 +543,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     except (OSError, ValueError) as exc:
         print(f"review_material: {exc}", file=sys.stderr)
         return 2
+    if generated:
+        shown = ", ".join(generated[:5]) + (f" and {len(generated) - 5} more" if len(generated) > 5 else "")
+        notes.insert(0, f"review_material: left out {len(generated)} generated file(s) "
+                        f"(linguist-generated in .gitattributes): {shown}")
     for n in notes:
         print(n, file=sys.stderr)
     sys.stdout.write(text)

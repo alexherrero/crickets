@@ -128,8 +128,16 @@ class ModesAndRulesTests(unittest.TestCase):
         self.assertIn("**One at a time, never in parallel.**", self.text)
 
     def test_a_wrong_direction_pauses_even_mid_work(self):
-        self.assertIn("stop and ask the operator", self.text)
-        self.assertIn("even in the middle of `/work`", self.text)
+        self.assertIn("**A wrong direction** says the approach would not meet the anchor", self.text)
+        self.assertIn("**Stop and ask the operator**, even in the middle of `/work`", self.text)
+
+    def test_a_detail_is_corrected_and_rechecked_without_a_stop(self):
+        self.assertIn("**A detail** is a mistake inside an approach that otherwise stands", self.text)
+        self.assertIn("open the next direction round. No stop.", self.text)
+
+    def test_the_operators_call_is_recorded_with_decide(self):
+        self.assertIn("loop_record.py decide --record <record> --pass direction", self.text)
+        self.assertIn("loop_record.py decide --record <record> --pass <name>", self.text)
 
     def test_free_checks_come_before_any_reviewer(self):
         self.assertIn("They pass before any reviewer is called.", self.text)

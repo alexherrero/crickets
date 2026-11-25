@@ -437,5 +437,72 @@ class RulePackResolutionTests(unittest.TestCase):
         self.assertEqual(result.returncode, 1, result.stderr)
 
 
+
+@unittest.skipIf(os.name == "nt", "bash hook -- POSIX only")
+class InstalledCopyPrefersTheCheckoutTests(unittest.TestCase):
+    """An installed copy of the hook (shim + commit_msg_gate.py in .git/hooks) is a
+    snapshot. The shim runs the gate from a crickets checkout when it finds one,
+    so a stale copy cannot keep looking for a rule pack that moved."""
+
+    def _env(self):
+        env = dict(os.environ, GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_SYSTEM=os.devnull)
+        env.pop("CRICKETS_REPO_ROOT", None)
+        return env
+
+    def _install(self, hooks: Path) -> Path:
+        hooks.mkdir(parents=True)
+        shutil.copy(_HOOK_SH, hooks / "commit-msg")
+        (hooks / "commit_msg_gate.py").write_text("import sys; print('stale copy'); sys.exit(0)\n", encoding="utf-8")
+        return hooks / "commit-msg"
+
+    def _repo(self, root: Path) -> Path:
+        root.mkdir(parents=True)
+        subprocess.run(["git", "init", "-q"], cwd=root, check=True, env=self._env())
+        return root
+
+    def _run(self, hook: Path, cwd: Path, env=None):
+        msg = cwd / "MSG"
+        msg.write_text("fix a thing\n", encoding="utf-8")
+        # /bin/bash where there is one: macOS ships bash 3.2 there, the shell a hook gets.
+        shell = "/bin/bash" if Path("/bin/bash").is_file() else "bash"
+        return subprocess.run([shell, str(hook), str(msg)], cwd=cwd, capture_output=True, text=True,
+                              env=env or self._env())
+
+    def test_the_checkout_gate_runs_instead_of_the_stale_copy(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = self._repo(Path(tmp) / "crickets")
+            gate = repo / "src" / "developer-safety" / "hooks" / "commit-msg-gate"
+            gate.mkdir(parents=True)
+            (gate / "commit_msg_gate.py").write_text("print('checkout gate')\n", encoding="utf-8")
+            hook = self._install(Path(tmp) / "installed")
+            out = self._run(hook, repo).stdout
+        self.assertIn("checkout gate", out)
+        self.assertNotIn("stale copy", out)
+
+    def test_a_sibling_crickets_checkout_is_found_from_another_repo(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            sibling = Path(tmp) / "crickets" / "src" / "developer-safety" / "hooks" / "commit-msg-gate"
+            sibling.mkdir(parents=True)
+            (sibling / "commit_msg_gate.py").write_text("print('sibling gate')\n", encoding="utf-8")
+            repo = self._repo(Path(tmp) / "agentm")
+            out = self._run(self._install(Path(tmp) / "installed"), repo).stdout
+        self.assertIn("sibling gate", out)
+
+    def test_outside_any_repo_the_installed_copy_runs(self):
+        # No $CRICKETS_REPO_ROOT and git rev-parse fails: the root list is empty,
+        # which must not trip `set -u` (macOS bash 3.2 calls an empty array unbound).
+        with tempfile.TemporaryDirectory() as tmp:
+            hook = self._install(Path(tmp) / "installed")
+            env = dict(self._env(), GIT_DIR=str(Path(tmp) / "nonexistent"))
+            result = self._run(hook, Path(tmp), env=env)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("stale copy", result.stdout)
+
+    def test_with_no_checkout_the_installed_copy_runs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = self._repo(Path(tmp) / "elsewhere")
+            out = self._run(self._install(Path(tmp) / "installed"), repo).stdout
+        self.assertIn("stale copy", out)
+
 if __name__ == "__main__":
     unittest.main()

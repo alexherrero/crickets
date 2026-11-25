@@ -47,7 +47,12 @@ Before writing code, write the approach in at most 10 lines: the files you will 
 
 `review_material.py --files approach.md --contract-file <spec> --anchor <spec> --tier high` piped into `cross-review.sh --tier high`
 
-The reviewer says whether the approach would satisfy the anchor. Sort each finding (step 6's classes), record it (`open-round`, `add`) under the pass `direction`. **A real finding is a wrong direction: stop and ask the operator**, even in the middle of `/work`: revise the approach, go ahead anyway, or stop. Do not start making until the direction is settled. `loop_record.py stop --pass direction` says when this check is done.
+The reviewer says whether the approach would satisfy the anchor. Sort each finding (step 6's classes), record it (`open-round`, `add`) under the pass `direction`. Then tell the two kinds of real finding apart:
+
+- **A wrong direction** says the approach would not meet the anchor: the wrong files, the wrong mechanism, a Done-when line it cannot reach. **Stop and ask the operator**, even in the middle of `/work`: revise the approach, go ahead anyway, or stop.
+- **A detail** is a mistake inside an approach that otherwise stands: an edge case it misses, two steps in the wrong order. Correct the approach, dispose the finding, and open the next direction round. No stop.
+
+Do not start making until the direction is settled. `loop_record.py stop --pass direction` says when this check is done; at `escalate` the operator decides. When the operator goes ahead with a real finding still standing, record their words with `loop_record.py decide --record <record> --pass direction --decision "<what they decided>"`.
 
 ### 4. Make
 
@@ -77,7 +82,7 @@ For one pass, a round is:
 4. Sort every finding and record it with its cited line: `loop_record.py add --record <record> --pass <name> --class <class> --line <path:LINE> --text "<finding>"`. **real** is a defect you can show with a case that fails; **tradeoff** is a real cost the spec accepts (its Rules or Not doing say so); **misread** is a reviewer that misunderstood the code or the rule (check the line before saying so); **noise** is true and not worth acting on. A finding you cannot tie to a line is not recorded as real.
    In the correctness pass, a behaviour change with no test that would catch its regression is a real finding, whether or not the reviewer named it.
 5. Fix every real finding, re-run the free checks, and note what you did: `loop_record.py dispose ...`.
-6. `loop_record.py stop --record <record> --pass <name>`: **done** moves to the next pass; **continue** opens another round; **escalate** (exit 3, a real finding still standing in round 3) stops everything and hands the operator the open findings to decide.
+6. `loop_record.py stop --record <record> --pass <name>`: **done** moves to the next pass; **continue** opens another round; **escalate** (exit 3, a real finding still standing in round 3) stops everything and hands the operator the open findings to decide. When they decide (accept the round-3 fix, say, or go on without one), record it with `loop_record.py decide --record <record> --pass <name> --decision "<what they decided>"`; the pass then reads `decided` and the done-check accepts it.
 
 If `cross-review.sh` prints a `CROSS-REVIEW-DEGRADED:` line, or the `code-review` scripts are absent, say so in one line, then run that pass with a fresh read-only reviewer on model sonnet, given the same material: the `adversarial-reviewer` agent when installed, otherwise a plain read-only agent told to find defects and to answer with a failing test, a `DEFECT file:line` or `NO ISSUES FOUND`. Use model opus only for a large task's direction check. The same rounds apply.
 

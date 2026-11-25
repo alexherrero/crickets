@@ -141,4 +141,6 @@ capabilities: [recoverability]
 # scripts/ (plan 105 step 5 moved it out of the retired diataxis-author).
 # 0.7.2 = the worktrees-operator-initiated snippet names /work's worktree
 # opt-in instead of the retired /spawn-worker.
-version: 0.7.2
+# 0.7.3 = the commit-msg-gate shim runs the gate from a crickets checkout when
+# it finds one, so an installed copy cannot go stale when the rule pack moves.
+version: 0.7.3

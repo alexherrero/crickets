@@ -3,7 +3,7 @@ name: evaluator
 description: Read-only grader returning PASS/NEEDS_WORK against an explicit rubric, or against a task's anchor and its loop record (the build-it / create-it done-check). Called from a fresh context that never saw the build. Caller supplies the artifact reference and the rubric, or the anchor and the record, inline in the dispatch prompt.
 kind: agent
 supported_hosts: [claude-code, antigravity]
-version: 0.2.0
+version: 0.2.1
 tools: Read, Glob, Grep
 model: sonnet
 ---
@@ -88,7 +88,7 @@ With `ANCHOR` and `RECORD` present, `RUBRIC` is optional and the rubric is built
 
 1. One item for each line of the anchor's **Done when** section (or, with no spec, each of the plan's step verification lines): the work satisfies it, and the record's requirement for it is `met` with evidence the artifact supports. A Done-when line with no requirement in the record is FAIL ("not recorded"); a requirement marked `met` whose evidence the artifact does not bear out is FAIL.
 2. No finding in the record is a `real` one still marked `OPEN`.
-3. No pass in the record ended in `escalate`, and no pass the size called for sits at `never ran` (the done-check itself is not listed: it grades the report).
+3. No pass in the record ended in `escalate`, and no pass the size called for sits at `never ran` (the done-check itself is not listed: it grades the report). A pass that reads `decided by the operator` is settled: the operator made that call, and it passes this item. Item 2 still applies to it.
 4. The **Not checked** list does not hide a Done-when line: nothing the anchor requires is listed there as unchecked while its requirement is marked `met`.
 5. For create-it records: every Likeness-list line in the anchor is accounted for by a pair or by a not-checked entry, and the playtest checklist is present.
 

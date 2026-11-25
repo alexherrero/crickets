@@ -49,5 +49,27 @@ if [[ -z "$python" ]]; then
   exit 0
 fi
 
-"$python" "$here/commit_msg_gate.py" "$msg_file"
+# An installed copy of this hook is a snapshot: its commit_msg_gate.py goes stale
+# when crickets moves the rule pack (v8.0.0 did). So run the gate from a crickets
+# checkout when one is found, by the same ladder the gate uses for the rule pack:
+# $CRICKETS_REPO_ROOT, this repo, its main checkout, then a sibling crickets/.
+# The co-located copy is the fallback.
+rel="src/developer-safety/hooks/commit-msg-gate/commit_msg_gate.py"
+gate="$here/commit_msg_gate.py"
+roots=()
+[[ -n "${CRICKETS_REPO_ROOT:-}" ]] && roots+=("$CRICKETS_REPO_ROOT")
+top="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+common="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+for r in "$top" "${common:+$(dirname "$common")}"; do
+  [[ -n "$r" ]] && roots+=("$r" "$(dirname "$r")/crickets")
+done
+# ${roots[@]+...}: an empty array is "unbound" under set -u on macOS bash 3.2.
+for r in ${roots[@]+"${roots[@]}"}; do
+  if [[ -f "$r/$rel" ]]; then
+    gate="$r/$rel"
+    break
+  fi
+done
+
+"$python" "$gate" "$msg_file"
 exit $?
