@@ -124,7 +124,10 @@ description: Standalone adversarial code review of any diff or PR — the advers
 # 0.3.0); security-auditor stays the security pass.
 # 2.0.1 = review_material.py's changed_paths() reads names with spaces and
 # names git quotes (#288 item 1), so the rule matching sees those files.
-version: 2.0.1
+# 2.1.0 = review_material.py leaves files marked linguist-generated out of a
+# diff's ARTIFACT (and names them on stderr), and pins git's output so the
+# operator's diff.noprefix or core.quotePath cannot change what is read.
+version: 2.1.0
 category: Coding
 requires: []
 standalone: true

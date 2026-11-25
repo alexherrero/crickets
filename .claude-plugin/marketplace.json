@@ -21,7 +21,7 @@
       ],
       "name": "code-review",
       "source": "./dist/claude-code/plugins/code-review",
-      "version": "2.0.1"
+      "version": "2.1.0"
     },
     {
       "capabilities": [
@@ -62,7 +62,7 @@
       ],
       "name": "developer-safety",
       "source": "./dist/claude-code/plugins/developer-safety",
-      "version": "0.7.2"
+      "version": "0.7.3"
     },
     {
       "capabilities": [
@@ -79,7 +79,7 @@
       "description": "The phase-gated developer loop — /setup /plan /work /release /bugfix — extracted from agentm as a standalone native plugin. The base other dev plugins enhance.",
       "name": "development-lifecycle",
       "source": "./dist/claude-code/plugins/development-lifecycle",
-      "version": "2.2.1"
+      "version": "2.3.0"
     },
     {
       "capabilities": [

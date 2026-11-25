@@ -534,6 +534,95 @@ class ReportTests(unittest.TestCase):
         self.assertIn("doubt theater: yes", lr.render_report(rec))
 
 
+class DecideTests(unittest.TestCase):
+    """The operator's call on a pass with a real finding standing: go ahead past a
+    direction finding, or accept a round-3 fix no further round reviewed."""
+
+    def test_an_escalated_pass_the_operator_accepts_reads_decided(self):
+        rec = lr.new_record("build", "large")
+        for _ in range(3):
+            lr.open_round(rec, "correctness")
+            lr.add_finding(rec, "correctness", "real", "a.py:1", "still broken")
+        self.assertEqual(lr.stop_verdict(rec, "correctness"), "escalate")
+        lr.decide(rec, "correctness", "accept the round-3 fix without a fourth round")
+        self.assertEqual(lr.stop_verdict(rec, "correctness"), "decided")
+        text = lr.render_report(rec)
+        self.assertIn("escalated: none", text)
+        self.assertIn("decided by the operator: correctness", text)
+        self.assertIn("3 round(s), decided by the operator: accept the round-3 fix without a fourth round", text)
+
+    def test_a_direction_go_ahead_stops_the_pass_and_no_round_opens_after_it(self):
+        rec = lr.new_record("build", "medium")
+        lr.open_round(rec, "direction")
+        lr.add_finding(rec, "direction", "real", "approach.md:1", "a/ stripped from rename lines")
+        lr.decide(rec, "direction", "go ahead with the fix, no recheck")
+        self.assertEqual(lr.stop_verdict(rec, "direction"), "decided")
+        with self.assertRaises(lr.RecordError):
+            lr.open_round(rec, "direction")
+        # nothing slips into a decided pass unseen
+        with self.assertRaises(lr.RecordError):
+            lr.add_finding(rec, "direction", "real", "approach.md:2", "added after decide")
+        # and a second decision cannot rewrite the first
+        with self.assertRaises(lr.RecordError):
+            lr.decide(rec, "direction", "something else")
+        self.assertEqual(_pass(rec, "direction")["decision"], "go ahead with the fix, no recheck")
+
+    def test_the_standing_finding_reads_decided_not_open(self):
+        rec = lr.new_record("build", "medium")
+        lr.open_round(rec, "direction")
+        lr.add_finding(rec, "direction", "real", "a.md:1", "wrong")
+        lr.add_finding(rec, "direction", "real", "a.md:2", "fixed already", disposition="fixed in the approach")
+        lr.decide(rec, "direction", "go ahead")
+        self.assertEqual(lr._open_real(rec), 0)
+        text = lr.render_report(rec)
+        self.assertIn("0 real finding(s) open", text)
+        self.assertIn("wrong → decided by the operator: go ahead", text)
+        self.assertIn("fixed already → fixed in the approach", text)
+        self.assertNotIn("OPEN", text)
+
+    def test_there_is_nothing_to_decide_without_a_real_finding(self):
+        rec = lr.new_record("build", "medium")
+        with self.assertRaises(lr.RecordError):
+            lr.decide(rec, "direction", "go ahead")
+        lr.open_round(rec, "direction")
+        lr.add_finding(rec, "direction", "noise", "approach.md:1", "wording")
+        with self.assertRaises(lr.RecordError):
+            lr.decide(rec, "direction", "go ahead")
+        lr.open_round(rec, "correctness")
+        lr.add_finding(rec, "correctness", "real", "a.py:1", "x")
+        with self.assertRaises(lr.RecordError):
+            lr.decide(rec, "correctness", "  ")
+
+    def test_decide_through_the_cli_makes_stop_exit_0(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = str(Path(d) / "loop.json")
+            run = lambda *a: lr.main(list(a))
+            with redirect_stdout(io.StringIO()):
+                run("init", "--record", path, "--profile", "build", "--size", "large")
+                for _ in range(3):
+                    run("open-round", "--record", path, "--pass", "correctness")
+                    run("add", "--record", path, "--pass", "correctness", "--class", "real",
+                        "--line", "a.py:1", "--text", "x")
+                self.assertEqual(run("stop", "--record", path, "--pass", "correctness"), 3)
+                self.assertEqual(run("decide", "--record", path, "--pass", "correctness",
+                                     "--decision", "accept the fix"), 0)
+                out = io.StringIO()
+            with redirect_stdout(out):
+                self.assertEqual(run("stop", "--record", path, "--pass", "correctness"), 0)
+            self.assertEqual(out.getvalue().strip(), "decided")
+
+
+class RequirementReplaceTests(unittest.TestCase):
+    def test_recording_a_line_again_replaces_its_entry(self):
+        rec = lr.new_record("build", "medium")
+        lr.add_requirement(rec, "tests pass", "met", "40 passed")
+        lr.add_requirement(rec, "check-all is green", "met", "24 of 25")
+        lr.add_requirement(rec, " tests pass ", "met", "42 passed after round 3")
+        self.assertEqual([(r["text"], r["evidence"]) for r in rec["requirements"]],
+                         [("tests pass", "42 passed after round 3"), ("check-all is green", "24 of 25")])
+        self.assertIn("2 of 2 requirements met", lr.render_report(rec))
+
+
 class AddSecurityTests(unittest.TestCase):
     def test_it_goes_after_correctness_and_before_simplicity(self):
         rec = lr.new_record("build", "large")

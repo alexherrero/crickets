@@ -34,6 +34,19 @@ if (-not $python) {
     exit 0
 }
 
-$here = $PSScriptRoot
-& $python (Join-Path $here 'commit_msg_gate.py') $msgFile
+# An installed copy is a snapshot; prefer a crickets checkout's gate (see the .sh shim).
+$rel = 'src/developer-safety/hooks/commit-msg-gate/commit_msg_gate.py'
+$gate = Join-Path $PSScriptRoot 'commit_msg_gate.py'
+$roots = @()
+if ($env:CRICKETS_REPO_ROOT) { $roots += $env:CRICKETS_REPO_ROOT }
+$top = (git rev-parse --show-toplevel 2>$null)
+$common = (git rev-parse --path-format=absolute --git-common-dir 2>$null)
+foreach ($r in @($top, $(if ($common) { Split-Path -Parent $common }))) {
+    if ($r) { $roots += $r; $roots += (Join-Path (Split-Path -Parent $r) 'crickets') }
+}
+foreach ($r in $roots) {
+    $candidate = Join-Path $r $rel
+    if (Test-Path -LiteralPath $candidate -PathType Leaf) { $gate = $candidate; break }
+}
+& $python $gate $msgFile
 exit $LASTEXITCODE

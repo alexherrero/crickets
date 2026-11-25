@@ -48,8 +48,11 @@ A finding with no `path:line` is refused: a finding that cites nothing cannot be
 Stop rule, per pass (`stop`): after a round, the pass is
     done        the latest round has no `real` finding (including an empty round)
     escalate    the latest round is round 3 and still has a `real` finding: the operator decides
+    decided     the operator settled the pass (`decide`): go ahead past a direction finding,
+                or accept a fix that no further round reviewed. The decision is kept and shown
     continue    otherwise (also before any round is opened)
-A fourth round is refused. `stop` exits 0 for done and continue, 3 for escalate.
+A fourth round is refused. `stop` exits 0 for done, decided and continue, 3 for escalate.
+`decide` is refused when the latest round has no `real` finding: there is nothing to settle.
 
 Doubt theater (`status`): two or more rounds that came back with findings while the whole
 record holds no `real` one. Reviews ran and none of it mattered.
@@ -65,7 +68,8 @@ Done-report (`report` prints it as markdown; it only reads the record):
                    nothing to list it says so, it is never left out. The done-check
                    is not listed: it grades this report, so it has not run yet
     Pairs, Playtest   create-it only: reference beside what was made, and a checklist
-A requirement needs evidence either way; a met one with none is refused.
+A requirement needs evidence either way; a met one with none is refused. Recording a
+Done-when line again replaces its earlier entry, so the report lists each line once.
 
 Exit codes: 0 fine; 2 usage error, unreadable or invalid record, refused input; 3 escalate.
 No agentm, no vault, no network. Standard library only.
@@ -188,6 +192,9 @@ def add_finding(record: Dict[str, Any], name: str, cls: str, line: str, text: st
     p = _find(record, name)
     if not p["rounds"]:
         raise RecordError("pass %r has no open round; run open-round first" % name)
+    if p.get("decision"):
+        raise RecordError("pass %r was decided by the operator; a new finding needs a new decision, "
+                          "not a quiet add" % name)
     finding = {"class": cls, "line": line.strip(), "text": text.strip()}
     if disposition and disposition.strip():
         finding["disposition"] = disposition.strip()
@@ -238,7 +245,13 @@ def add_requirement(record: Dict[str, Any], text: str, status: str, evidence: st
         raise RecordError("a requirement needs text")
     if not (evidence or "").strip():
         raise RecordError("a requirement needs evidence, met or not: what was looked at, and what it showed")
-    record["requirements"].append({"text": text.strip(), "status": status, "evidence": evidence.strip()})
+    entry = {"text": text.strip(), "status": status, "evidence": evidence.strip()}
+    reqs = record["requirements"]
+    for i, r in enumerate(reqs):
+        if r["text"] == entry["text"]:
+            reqs[i] = entry  # newer evidence for the same line replaces the old
+            return
+    reqs.append(entry)
 
 
 def add_not_checked(record: Dict[str, Any], text: str) -> None:
@@ -266,8 +279,26 @@ def add_playtest(record: Dict[str, Any], text: str) -> None:
     record["playtest"].append(text.strip())
 
 
+def decide(record: Dict[str, Any], name: str, decision: str) -> None:
+    """Record the operator's call on a pass whose latest round still has a `real` finding."""
+    p = _find(record, name)
+    if not (decision or "").strip():
+        raise RecordError("a decision needs text: what the operator decided")
+    if p.get("decision"):
+        raise RecordError("pass %r was already decided (%s); a decision is recorded once" % (name, p["decision"]))
+    if not p["rounds"] or not any(f["class"] == "real" for f in p["rounds"][-1]["findings"]):
+        raise RecordError("pass %r has no real finding in its latest round; there is nothing to decide" % name)
+    p["decision"] = decision.strip()
+    # The real findings left standing are what the operator settled: they read as decided, not OPEN.
+    for f in p["rounds"][-1]["findings"]:
+        if f["class"] == "real" and not f.get("disposition"):
+            f["disposition"] = "decided by the operator: %s" % p["decision"]
+
+
 def stop_verdict(record: Dict[str, Any], name: str) -> str:
     p = _find(record, name)
+    if p.get("decision"):
+        return "decided"
     if not p["rounds"]:
         return "continue"
     last = p["rounds"][-1]
@@ -316,10 +347,13 @@ def render_report(record: Dict[str, Any]) -> str:
     reqs = record["requirements"]
     met = sum(1 for r in reqs if r["status"] == "met")
     escalated = [p["name"] for p in record["passes"] if stop_verdict(record, p["name"]) == "escalate"]
+    decided = [p["name"] for p in record["passes"] if stop_verdict(record, p["name"]) == "decided"]
     lines += ["# Done-report", "",
               "Profile: %s · Size: %s" % (record["profile"], record["size"]),
-              "Result: %d of %d requirements met · %d real finding(s) open · escalated: %s · doubt theater: %s"
+              "Result: %d of %d requirements met · %d real finding(s) open · escalated: %s · %s"
+              "doubt theater: %s"
               % (met, len(reqs), _open_real(record), ", ".join(escalated) or "none",
+                 ("decided by the operator: %s · " % ", ".join(decided)) if decided else "",
                  "yes" if doubt_theater(record) else "no"),
               "", "## Requirements", ""]
     if not reqs:
@@ -337,8 +371,10 @@ def render_report(record: Dict[str, Any]) -> str:
                 lines += ["### %s — never ran" % p["name"], ""]
             continue
         tier = p["tier"] or p["reviewer"]
-        lines.append("### %s (%s) — %d round(s), %s" % (p["name"], tier, len(p["rounds"]),
-                                                      stop_verdict(record, p["name"])))
+        verdict = stop_verdict(record, p["name"])
+        if verdict == "decided":
+            verdict = "decided by the operator: %s" % p["decision"]
+        lines.append("### %s (%s) — %d round(s), %s" % (p["name"], tier, len(p["rounds"]), verdict))
         for r in p["rounds"]:
             if not r["findings"]:
                 lines.append("- round %d · no findings" % r["n"])
@@ -428,7 +464,11 @@ def _build_parser() -> argparse.ArgumentParser:
             sp.add_argument("--line", required=True, help="path:LINE the finding cites")
             sp.add_argument("--text", required=True)
             sp.add_argument("--disposition", help="what was done with it, when already known")
-    st =sub.add_parser("status", help="every pass's verdict, finding counts, doubt theater")
+    dc = sub.add_parser("decide", help="record the operator's call on a pass with a real finding standing")
+    dc.add_argument("--record", required=True)
+    dc.add_argument("--pass", dest="pass_name", required=True)
+    dc.add_argument("--decision", required=True, help="what the operator decided, in their words")
+    st = sub.add_parser("status", help="every pass's verdict, finding counts, doubt theater")
     st.add_argument("--record", required=True)
     ds = sub.add_parser("dispose", help="record what was done with a finding")
     ds.add_argument("--record", required=True)
@@ -506,6 +546,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         else:
             if args.cmd == "dispose":
                 dispose(rec, args.pass_name, args.round_n, args.index, args.disposition)
+            elif args.cmd == "decide":
+                decide(rec, args.pass_name, args.decision)
             elif args.cmd == "requirement":
                 add_requirement(rec, args.text, args.status, args.evidence)
             elif args.cmd == "not-checked":

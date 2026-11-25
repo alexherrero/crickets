@@ -20,3 +20,9 @@
 *.yaml text eol=lf
 *.toml text eol=lf
 *.json text eol=lf
+
+# Generated from src/ by scripts/generate.py build (a CI gate proves they match).
+# review_material.py leaves these out of what a reviewer reads, and GitHub folds
+# them in a pull request's diff.
+dist/** linguist-generated=true
+.claude-plugin/marketplace.json linguist-generated=true
