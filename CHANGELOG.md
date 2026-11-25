@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v8.1.0] — 2026-11-24 — Minor: the loop's tools close the gaps its first real run found
+
+The first real run of `/spec` and `/build-it` on a small fix, plus `/build-it --check` on an existing PR, found six places where the loop's own tools got in the way. They are fixed here. The loop record can hold the operator's decision, the direction check stops only for a wrong approach, reviewers no longer read the generated `dist/` copies, and the commit hook finds its rules again. It also fixes the file-name reading behind reviewers' rule matching and the leftovers from v8.0.0. Minor because `loop_record.py decide` is new: `development-lifecycle` 2.3.0, `code-review` 2.1.0, `developer-safety` 0.7.3, `conventions` 1.0.2 and `tokens` 0.9.1. Lands in [PR #292](https://github.com/alexherrero/crickets/pull/292), [#293](https://github.com/alexherrero/crickets/pull/293) and [#294](https://github.com/alexherrero/crickets/pull/294).
+
 ### Fixed
 
 - **Shipped prose no longer names the retired `/spawn-worker` and `/integrate-worker`** (`developer-safety` 0.7.2, `development-lifecycle` 2.2.1, `conventions` 1.0.2). The worktree snippet, `/plan`, `preflight_reconcile.py`, `ship-release` and `version-bump-required` name `/work`'s worktree opt-in instead, and say each plan's PR bumps the groups it changes, since there is no integrator. A test keeps the names out of `src/` and both hosts' `dist/`.

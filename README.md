@@ -59,7 +59,7 @@ The [wiki](https://github.com/alexherrero/crickets/wiki) covers everything there
 - [Reference](https://github.com/alexherrero/crickets/wiki/Reference) — plugin anatomy, the manifest schema, and the install modes.
 
 > [!NOTE]
-> **Latest release: [v8.0.0](https://github.com/alexherrero/crickets/releases/tag/v8.0.0).** Crickets ships only what someone uses: twenty unused commands, agents and skills retire, the recoverability doctrine lives in the `recoverability` skill, `privacy-review` merges into `pii-scrubber`, the wiki group comes down to `wiki-author`, and model ids are the current Claude 5.x ones.
+> **Latest release: [v8.1.0](https://github.com/alexherrero/crickets/releases/tag/v8.1.0).** The loop's tools close the gaps its first real run found: the loop record holds the operator's decision, the direction check stops only for a wrong approach, reviewers skip generated `dist/` copies, and the commit hook finds its rules again.
 
 ---
 
