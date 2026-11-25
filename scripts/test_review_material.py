@@ -100,11 +100,15 @@ AFTER = ("def format_commit_message(subject, trailer=''):\n"
          "    return subject + trailer\n")
 
 
+def _git_env() -> dict:
+    """No host git config: settings like core.quotePath or diff.noprefix change what git prints."""
+    return dict(os.environ, GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@example.com",
+                GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@example.com",
+                GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_SYSTEM=os.devnull)
+
+
 def _git(repo: Path, *args: str) -> None:
-    env = dict(os.environ, GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@example.com",
-               GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@example.com",
-               GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_SYSTEM=os.devnull)
-    subprocess.run(["git", *args], cwd=repo, env=env, check=True, capture_output=True)
+    subprocess.run(["git", *args], cwd=repo, env=_git_env(), check=True, capture_output=True)
 
 
 class Fixture(unittest.TestCase):
@@ -234,6 +238,92 @@ class BlockShapeTests(Fixture):
         code, _, err = self.run_cli("--range", "nope..HEAD")
         self.assertEqual(code, 2)
         self.assertIn("failed", err)
+
+
+def _diff(repo: Path, *args: str) -> str:
+    """git's own diff output, so each case is the text git really prints."""
+    return subprocess.run(["git", "diff", "--no-color", *args], cwd=repo, env=_git_env(),
+                          capture_output=True, text=True, encoding="utf-8", check=True).stdout
+
+
+class ChangedPathsTests(Fixture):
+    """#288: a path with a space, or one git prints quoted (non-ASCII, a quote, a
+    backslash), still reaches the rule matching under its real name."""
+
+    def _commit(self, *names: str) -> None:
+        for name in names:
+            p = self.repo / name
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(f"# {name}\nvalue = 1\n", encoding="utf-8")
+        _git(self.repo, "add", "-A")
+        _git(self.repo, "commit", "-q", "-m", "named files")
+
+    def test_untracked_files_with_a_space_or_a_non_ascii_name(self):
+        (self.repo / "café.py").write_text("x = 1\n", encoding="utf-8")
+        (self.repo / "sp dir").mkdir()
+        (self.repo / "sp dir" / "f g.py").write_text("y = 2\n", encoding="utf-8")
+        paths = rm.changed_paths(rm.artifact_from_worktree(self.repo))
+        self.assertIn("café.py", paths)
+        self.assertIn("sp dir/f g.py", paths)
+
+    def test_an_edit_to_a_tracked_file_git_quotes(self):
+        self._commit("sp café.py")
+        (self.repo / "sp café.py").write_text("value = 2\n", encoding="utf-8")
+        diff = _diff(self.repo, "HEAD")
+        self.assertIn('"a/sp caf\\303\\251.py"', diff)  # the case really is quoted
+        self.assertEqual(rm.changed_paths(diff), ["sp café.py"])
+
+    @unittest.skipIf(os.name == "nt", "Windows file names cannot hold a quote or a backslash")
+    def test_an_edit_to_a_name_with_a_quote_or_a_backslash(self):
+        self._commit('café "q".py', "back\\slash.py")
+        (self.repo / 'café "q".py').write_text("value = 2\n", encoding="utf-8")
+        (self.repo / "back\\slash.py").write_text("value = 3\n", encoding="utf-8")
+        diff = _diff(self.repo, "HEAD")
+        self.assertIn('"a/caf\\303\\251 \\"q\\".py"', diff)  # the case really is quoted
+        self.assertEqual(rm.changed_paths(diff), ["back\\slash.py", 'café "q".py'])
+
+    def test_a_pure_rename_into_a_folder_named_b(self):
+        # `rename to` lines carry the bare path: no a/ or b/ prefix to strip.
+        self._commit("sp dir/f g.py")
+        (self.repo / "b").mkdir()
+        _git(self.repo, "mv", "sp dir/f g.py", "b/café.py")
+        diff = _diff(self.repo, "-M", "--cached")
+        self.assertIn("rename to ", diff)
+        self.assertNotIn("+++ ", diff)
+        self.assertEqual(rm.changed_paths(diff), ["b/café.py"])
+
+    def test_a_deleted_file_is_named_by_its_old_side(self):
+        self._commit("sp dir/f g.py", "café.py")
+        _git(self.repo, "rm", "-q", "sp dir/f g.py", "café.py")
+        diff = _diff(self.repo, "--cached")
+        self.assertEqual(rm.changed_paths(diff), ["café.py", "sp dir/f g.py"])
+
+    @unittest.skipIf(os.name == "nt", "Windows checkouts do not track the executable bit")
+    def test_a_mode_only_change_is_named_from_the_header(self):
+        self._commit("sp dir/f g.py", "café.py")
+        for name in ("sp dir/f g.py", "café.py"):
+            (self.repo / name).chmod(0o755)
+        diff = _diff(self.repo, "HEAD")
+        self.assertIn("new mode", diff)
+        self.assertNotIn("+++ ", diff)
+        self.assertEqual(rm.changed_paths(diff), ["café.py", "sp dir/f g.py"])
+
+    @unittest.skipIf(os.name == "nt", "Windows file names are UTF-16; the case is git's raw UTF-8 output")
+    def test_raw_names_when_quote_path_is_off(self):
+        # core.quotePath=false prints non-ASCII names raw, U+2028 and U+0085 included.
+        names = ["a\u2028b.py", "c\x85d.py", "e f.py"]
+        for name in names:
+            (self.repo / name).write_text("x = 1\n", encoding="utf-8")
+        _git(self.repo, "add", "-N", *names)
+        diff = subprocess.run(["git", "-c", "core.quotePath=false", "diff", "--no-color", "HEAD"],
+                              cwd=self.repo, env=_git_env(), capture_output=True, text=True,
+                              encoding="utf-8", check=True).stdout
+        self.assertIn("+++ b/a\u2028b.py", diff)
+        self.assertEqual(rm.changed_paths(diff), names)
+
+    def test_plain_paths_read_as_before(self):
+        diff = _diff(self.repo, "HEAD~1..HEAD")
+        self.assertEqual(rm.changed_paths(diff), ["src/commit_msg.py"])
 
 
 class RuleSourceTests(Fixture):

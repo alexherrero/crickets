@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Shipped prose no longer names the retired `/spawn-worker` and `/integrate-worker`** (`developer-safety` 0.7.2, `development-lifecycle` 2.2.1, `conventions` 1.0.2). The worktree snippet, `/plan`, `preflight_reconcile.py`, `ship-release` and `version-bump-required` name `/work`'s worktree opt-in instead, and say each plan's PR bumps the groups it changes, since there is no integrator. A test keeps the names out of `src/` and both hosts' `dist/`.
 - **`pricing.py`'s Sonnet 5 note matches the current rate** (`tokens` 0.9.1). The reference lists `claude-sonnet-5` at $2 / $10, so the note predicting a $3 / $15 rate from 2026-09-01 is gone. The rates themselves were already right.
+- **Reviewers' rule matching sees files whose names have a space or a non-ASCII character** (`code-review` 2.0.1, #288). `review_material.py` read file names from the `diff --git` header, which can't hold a space and which git quotes for other characters, so those files never reached the rules match. It now reads each file's name from the lines git writes for it and turns quoted names back into real ones.
 - **Seven wiki links point to where the files live now.** The GitHub-CI, Releasing-Conventions, Status-Line-Meter and Token-Audit pages linked to group folders that were renamed before this release.
 
 ## [v8.0.0] — 2026-11-23 — Major: crickets ships only what someone uses
