@@ -113,13 +113,97 @@ def terms_from(paths: Sequence[str], diff_text: str) -> List[str]:
     return sorted(t for t in found if len(t) >= MIN_TERM_LEN and t not in _STOP and not t.isdigit())
 
 
+_C_ESCAPES = {"a": 7, "b": 8, "t": 9, "n": 10, "v": 11, "f": 12, "r": 13, '"': 34, "\\": 92}
+
+
+def _unquote(token: str) -> str:
+    """A path as git prints it, back to its real name. git wraps a name that has a
+    non-ASCII byte, a quote, a backslash or a control character in double quotes and
+    writes those bytes as C escapes (octal for non-ASCII, decoded here as UTF-8)."""
+    if len(token) < 2 or not (token.startswith('"') and token.endswith('"')):
+        return token
+    out = bytearray()
+    body, i = token[1:-1], 0
+    while i < len(body):
+        ch = body[i]
+        if ch == "\\" and i + 1 < len(body):
+            nxt = body[i + 1]
+            if nxt in "01234567":
+                digits = re.match(r"[0-7]{1,3}", body[i + 1:]).group(0)
+                out.append(int(digits, 8) & 0xFF)
+                i += 1 + len(digits)
+                continue
+            if nxt in _C_ESCAPES:
+                out.append(_C_ESCAPES[nxt])
+                i += 2
+                continue
+        out.extend(ch.encode("utf-8"))
+        i += 1
+    return out.decode("utf-8", errors="replace")
+
+
+def _side(text: str, prefix: str) -> str:
+    """The path on a `---` / `+++` line: git puts a tab after a name with a space,
+    and the a/ or b/ prefix sits inside the quotes of a quoted name."""
+    # A real tab in a name forces quoting, so a trailing tab is always git's own.
+    path = _unquote(text[:-1] if text.endswith("\t") else text)
+    return path[len(prefix):] if path.startswith(prefix) else path
+
+
+def _header_path(rest: str) -> Optional[str]:
+    """The b-side of `diff --git <a> <b>`, used only when a block has no other line
+    naming its file (a mode-only change, or a binary or empty file)."""
+    if rest.startswith('"'):
+        m = re.match(r'"(?:[^"\\]|\\.)*"', rest)
+        if not m:
+            return None
+        b = rest[m.end():].strip()
+    else:
+        # Unquoted names may hold spaces: split where the two halves, minus their
+        # prefixes, name the same file. A rename shows up on its own lines instead.
+        b = None
+        for i in range(len(rest)):
+            if rest[i] == " " and rest[:i].startswith("a/") and rest[i + 1:].startswith("b/") \
+                    and rest[2:i] == rest[i + 3:]:
+                b = rest[i + 1:]
+                break
+        if b is None:
+            return None
+    path = _unquote(b)
+    return path[2:] if path.startswith("b/") else path
+
+
 def changed_paths(diff_text: str) -> List[str]:
-    """The files a unified diff touches, in order of first appearance."""
+    """The files a unified diff touches, in order of first appearance.
+
+    Each file block is read from the lines git writes for it: `+++` (the new side),
+    else `---` (a deletion), else `rename to` / `copy to`, else the `diff --git`
+    header itself. Quoted names and names with spaces come back as their real names.
+    """
     seen: List[str] = []
-    for m in re.finditer(r"^diff --git a/(?P<a>\S+) b/(?P<b>\S+)$", diff_text, re.MULTILINE):
-        for p in (m.group("b"),):
-            if p not in seen:
-                seen.append(p)
+    blocks = re.split(r"^diff --git ", diff_text, flags=re.MULTILINE)[1:]
+    for block in blocks:
+        header, _, body = block.partition("\n")
+        found: Dict[str, str] = {}
+        # split on \n only: str.splitlines() also breaks at U+2028 and U+0085, which git
+        # prints raw in a name when core.quotePath is false.
+        for line in (l.rstrip("\r") for l in body.split("\n")):
+            if line.startswith("diff --git ") or line.startswith("@@"):
+                break
+            for key in ("+++ ", "--- ", "rename to ", "copy to "):
+                if line.startswith(key) and key not in found:
+                    found[key] = line[len(key):]
+        path: Optional[str] = None
+        if found.get("+++ ") not in (None, "/dev/null"):
+            path = _side(found["+++ "], "b/")
+        elif found.get("--- ") not in (None, "/dev/null"):
+            path = _side(found["--- "], "a/")
+        elif "rename to " in found or "copy to " in found:
+            path = _unquote(found.get("rename to ") or found["copy to "])
+        else:
+            path = _header_path(header.rstrip("\r"))
+        if path and path not in seen:
+            seen.append(path)
     return seen
 
 
