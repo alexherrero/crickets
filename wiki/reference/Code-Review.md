@@ -82,11 +82,12 @@ Each override applies on top of the chosen tier.
 | `--range A..B` · `--worktree` · `--pr N` · `--files PATH...` | The artifact: a git range, the working tree against `HEAD`, untracked files included as new files, a PR diff, or files as they are. |
 | `--contract TEXT` · `--contract-file F` | The contract text. |
 | `--anchor FILE` | The spec, plan or design the change is held to. Without one, `RULES` is empty and says why; exit 0. |
+| `--design FILE` | A design the change is also held to, kept outside the repo's `wiki/designs/`, such as a vault note. Repeatable. A missing file is noted on stderr, not an error. |
 | `--repo-root DIR` | The repo whose `AGENTS.md` and `CLAUDE.md` are searched. Default: the current directory. |
 | `--tier default\|high\|wording` | Picks the byte ceiling: 50 KB, 80 KB, 50 KB. |
 | `--max-rule-lines N` · `--max-bytes N` | Cap the rule lines (default 40); override the ceiling (`0` = none). |
 
-`RULES` draws first from the anchor: a spec's Rules with their sources, else a plan or design's Locked design calls and Constraints, plus any Likeness list. It then adds the `AGENTS.md` and `CLAUDE.md` paragraphs that share the most terms with the changed paths and identifiers, rarer terms counting more. The same inputs give the same output. Exit 2 on a usage error, an unreadable input, or an empty artifact ("nothing to review").
+`RULES` draws first from the anchor: a spec's Rules with their sources, else a plan or design's Locked design calls and Constraints, plus any Likeness list. Next come the Locked design calls of each design that governs the change: the repo's live `wiki/designs/` pages whose `governs:` names a changed path, plus any `--design` file. For each path only the most specific design counts, so one that claims the whole tree speaks only where nothing narrower does. Last come the paragraphs that share the most terms with the changed paths and identifiers, rarer terms counting more: from `AGENTS.md`, `CLAUDE.md` and those designs' `Design` (or `Current design`) sections, with at most 8 from the designs. The same inputs give the same output. Exit 2 on a usage error, an unreadable input, or an empty artifact ("nothing to review").
 
 ## See also
 

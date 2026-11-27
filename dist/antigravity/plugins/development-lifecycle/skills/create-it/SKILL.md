@@ -29,6 +29,8 @@ Reach another plugin's script with `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sibli
 
 Slug: a short name. The record is `loop-<slug>.json` in the folder `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/spec_doc.py" place --slug <slug> --plan <plan.md>` prints for the spec (add `--project-root <repo>` when there is no plan). Scratch files go in `${TMPDIR:-/tmp}/create-it-<slug>/`.
 
+**The design.** `review_material.py` finds the repo's own governing designs (`wiki/designs/`, by their `governs:`) by itself. A living design kept in the vault is passed in: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/vault_designs.py" find <a path the task changes> --cwd <repo>`; on exit 0, add `--design <the path it prints>` to every `review_material.py` call. On exit 1 or 3 there is none to add.
+
 ### 1. Anchor: the spec, the reference and the likeness list
 
 The anchor is a spec with profile `create`: a **Reference** (the `reference/` folder the work is graded against) and a **Likeness list** of 5 to 10 lines, each one thing that must look, sound or read like the reference ("the outline is one pixel and dark", "the walk cycle has 8 frames", "sentences stay under 20 words"). Use `--spec <file>` if given, else the spec beside the plan, else run **`/spec`** and let the operator approve it once. In a run with no human, `/spec` cannot ask: stop and say the reference folder and likeness list are missing; there is nothing to match without them. Run `spec_doc.py check <spec>`; fix every line it prints before making anything.

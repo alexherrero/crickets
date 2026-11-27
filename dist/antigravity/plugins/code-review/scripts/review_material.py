@@ -3,7 +3,7 @@
 
     review_material.py [--range A..B | --worktree | --pr N | --files PATH...]
                        [--contract TEXT | --contract-file FILE]
-                       [--anchor FILE] [--repo-root DIR] [--tier TIER]
+                       [--anchor FILE] [--design FILE]... [--repo-root DIR] [--tier TIER]
                        [--max-rule-lines N] [--max-bytes N]
 
 Prints one text to stdout, ready to pipe into cross-review.sh (or to hand an
@@ -23,9 +23,14 @@ ceiling runs out:
     1. the anchor's own rules: a spec's Rules (each with its source), else the
        `Locked design calls` and `Constraints` sections of a plan or design,
        then a `Likeness list` if there is one. These are always taken first.
-    2. paragraphs of the repo's AGENTS.md and CLAUDE.md that share the most
-       terms with the changed paths and identifiers (rarer terms count more),
-       best first. Deterministic: the same inputs give the same RULES.
+    2. the `Locked design calls` of each design that governs the change: a page
+       in the repo's `wiki/designs/` whose `governs:` names a changed path (status
+       `final`, `launched` or `active`), most specific first, then any design
+       named with `--design` (a note kept outside the repo, such as a vault one).
+    3. paragraphs that share the most terms with the changed paths and
+       identifiers (rarer terms count more), best first: from the repo's AGENTS.md
+       and CLAUDE.md, and from the `Design` section of each of those designs.
+       Deterministic: the same inputs give the same RULES.
 
 A diff (range, working tree or PR) leaves out the files the repo marks generated
 with `linguist-generated` in .gitattributes, and says so on stderr: a generated
@@ -48,6 +53,7 @@ Exit codes: 0 text printed; 2 usage error or an input that cannot be read.
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import importlib.util
 import math
 import os
@@ -329,6 +335,136 @@ def rank_doc_rules(paragraphs: Sequence[Tuple[str, str]], terms: Sequence[str]) 
     return [(-s, name, para) for s, _i, name, para in scored]
 
 
+# ------------------------------------------------------- governing designs
+
+_LIVE_DESIGN = ("final", "launched", "active")
+# A design is long, and its paragraphs would crowd out AGENTS.md: at most this many
+# of them reach RULES (its Locked design calls are not counted against it).
+MAX_DESIGN_PARAGRAPHS = 8
+# The section that holds a design's body: `Design` in a repo design, `Current design`
+# in a living design written by /design.
+_DESIGN_BODY = ("design", "current design")
+
+
+def _frontmatter(text: str) -> str:
+    m = re.match(r"\A---\r?\n(.*?)\r?\n---\r?\n", text, re.DOTALL)
+    return m.group(1) if m else ""
+
+
+def _governs(front: str) -> List[str]:
+    """The `governs:` entries of a frontmatter block: an inline `[a, b]` list or
+    a block of `- a` lines."""
+    lines = front.splitlines()
+    for i, line in enumerate(lines):
+        m = re.match(r"^governs:\s*(.*)$", line)
+        if not m:
+            continue
+        rest = m.group(1).strip()
+        if rest.startswith("["):
+            items = rest.strip("[]").split(",")
+        elif rest:
+            items = [rest]
+        else:
+            items = []
+            for nxt in lines[i + 1:]:
+                b = re.match(r"^\s+-\s*(.*)$", nxt)
+                if not b:
+                    break
+                items.append(b.group(1))
+        return [x.strip().strip("'\"") for x in items if x.strip().strip("'\"")]
+    return []
+
+
+def _governs_match(entry: str, path: str) -> int:
+    """How specifically one `governs:` entry covers a repo-relative path: the
+    entry's length, or 0. A trailing `/` is a folder, `*?[` a glob, else a file
+    or a folder named without its slash."""
+    entry = entry[2:] if entry.startswith("./") else entry
+    if not entry:
+        return 0
+    if any(c in entry for c in "*?["):
+        return len(entry) if fnmatch.fnmatchcase(path, entry) else 0
+    if entry.endswith("/"):
+        return len(entry) if path.startswith(entry) else 0
+    return len(entry) if path == entry or path.startswith(entry + "/") else 0
+
+
+def _repo_relative(path: str, repo_root: Path) -> Optional[str]:
+    """A changed path as the repo names it. A relative path already is one: a diff
+    names its files from the repo root, and `--files` reads a relative path from
+    there too. An absolute path outside the repo has none."""
+    p = Path(path)
+    if not p.is_absolute():
+        return p.as_posix()
+    try:
+        return p.resolve().relative_to(repo_root.resolve()).as_posix()
+    except ValueError:
+        return None
+
+
+def governing_designs(repo_root: Path, paths: Sequence[str]) -> List[Path]:
+    """The repo's live `wiki/designs/` pages that govern the change. Each changed
+    path counts only its most specific governor(s), so a design that claims the
+    whole tree (`src/**`) speaks only for files nothing narrower covers. Most
+    specific first, ties by file name. None when there is no folder."""
+    folder = repo_root / "wiki" / "designs"
+    if not folder.is_dir():
+        return []
+    rel = [r for r in (_repo_relative(p, repo_root) for p in paths) if r]
+    pages = []
+    for page in sorted(folder.glob("*.md")):
+        front = _frontmatter(page.read_text(encoding="utf-8", errors="replace"))
+        status = re.search(r"(?m)^status:\s*['\"]?(\w+)", front)
+        if status and status.group(1).lower() in _LIVE_DESIGN:
+            pages.append((page, _governs(front)))
+    best: Dict[Path, int] = {}
+    for r in rel:
+        scores = {page: max((_governs_match(e, r) for e in entries), default=0) for page, entries in pages}
+        top = max(scores.values(), default=0)
+        for page, score in scores.items():
+            if top and score == top:
+                best[page] = max(best.get(page, 0), score)
+    return [page for page in sorted(best, key=lambda pg: (-best[pg], pg.name))]
+
+
+def design_rules(text: str, name: str) -> Tuple[List[str], List[Tuple[str, str]]]:
+    """From one design: its Locked design calls as RULES lines, and the
+    paragraphs and bullets of its `Design` (or `Current design`) section for the
+    relevance match."""
+    locked = [_line(b, name) for _s, b in _section_bullets(text, ("locked design calls",))]
+    body = text[len(_frontmatter(text)):] if text.startswith("---") else text
+    body = re.sub(r"```.*?```", "", body, flags=re.DOTALL)
+    paras: List[Tuple[str, str]] = []
+    inside = False
+    block: List[str] = []
+
+    def flush() -> None:
+        para = _clean(" ".join(block))
+        if len(para) >= 40:
+            paras.append((name, para))
+        block.clear()
+
+    for raw in body.splitlines():
+        h = _HEADING.match(raw)
+        if h:
+            flush()
+            if len(h.group(1)) <= 2:
+                inside = h.group("name").strip().lower() in _DESIGN_BODY
+            continue
+        if not inside:
+            continue
+        if not raw.strip() or raw.lstrip().startswith(("|", ">", "<!--")):
+            flush()
+            continue
+        if _BULLET.match(raw):
+            flush()
+            block.append(_BULLET.match(raw).group("text"))
+        else:
+            block.append(raw.strip())
+    flush()
+    return locked, paras
+
+
 # ------------------------------------------------------------- the artifact
 
 def _run(argv: Sequence[str], cwd: Optional[Path]) -> str:
@@ -461,6 +597,7 @@ def assemble(artifact: str, contract: str, rule_lines: Sequence[str], reason: st
 
 def build(*, artifact: str, paths: Sequence[str], contract: str = "",
           anchor_path: Optional[Path] = None, repo_root: Path = Path("."),
+          designs: Sequence[Path] = (),
           max_rule_lines: int = DEFAULT_MAX_RULE_LINES, ceiling: int = TIER_CEILINGS["default"],
           diff_text: Optional[str] = None) -> Tuple[str, List[str]]:
     """The finished text and any notes for stderr. Nothing here takes the author's
@@ -475,9 +612,31 @@ def build(*, artifact: str, paths: Sequence[str], contract: str = "",
     else:
         text = anchor_path.read_text(encoding="utf-8", errors="replace")
         candidates.extend(anchor_rules(text, anchor_path.name))
+        pool = doc_paragraphs(repo_root)
+        used_designs: List[str] = []
+        seen = {anchor_path.resolve()}
+        for design in [*governing_designs(repo_root, paths), *designs]:
+            if design.resolve() in seen:
+                continue
+            seen.add(design.resolve())
+            if not design.is_file():
+                notes.append(f"review_material: the design {design} was not found; its rules are left out")
+                continue
+            locked, paras = design_rules(design.read_text(encoding="utf-8", errors="replace"), design.name)
+            candidates.extend(locked)
+            pool.extend(paras)
+            used_designs.append(design.name)
+        if used_designs:
+            notes.append(f"review_material: rules also from the design(s) {', '.join(used_designs)}")
         terms = terms_from(paths, diff_text if diff_text is not None else artifact)
-        for _score, name, para in rank_doc_rules(doc_paragraphs(repo_root), terms):
+        from_designs = 0
+        for _score, name, para in rank_doc_rules(pool, terms):
+            if name in used_designs:
+                if from_designs >= MAX_DESIGN_PARAGRAPHS:
+                    continue
+                from_designs += 1
             candidates.append(_line(para, name))
+        candidates = list(dict.fromkeys(candidates))
         if not candidates:
             reason = f"the anchor {anchor_path.name} states no rules and no repo doc paragraph matches the change"
 
@@ -519,6 +678,9 @@ def _build_parser() -> argparse.ArgumentParser:
     c.add_argument("--contract", help="what the change was meant to do")
     c.add_argument("--contract-file", help="a file holding that text")
     p.add_argument("--anchor", help="the spec, plan or design the change is held to")
+    p.add_argument("--design", action="append", default=[],
+                   help="a design the change is also held to, kept outside the repo's wiki/designs/ "
+                        "(repeatable); the repo's own governing designs are found from governs:")
     p.add_argument("--repo-root", default=".", help="the repo (default: the current directory)")
     p.add_argument("--tier", default="default", choices=sorted(TIER_CEILINGS))
     p.add_argument("--max-rule-lines", type=int, default=DEFAULT_MAX_RULE_LINES)
@@ -567,7 +729,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         ceiling = TIER_CEILINGS[args.tier] if args.max_bytes is None else args.max_bytes
         text, notes = build(artifact=artifact, paths=paths, contract=contract,
                             anchor_path=Path(args.anchor) if args.anchor else None,
-                            repo_root=root, max_rule_lines=args.max_rule_lines, ceiling=ceiling,
+                            repo_root=root, designs=[Path(d) for d in args.design],
+                            max_rule_lines=args.max_rule_lines, ceiling=ceiling,
                             diff_text=diff_text)
     except (OSError, ValueError) as exc:
         print(f"review_material: {exc}", file=sys.stderr)
