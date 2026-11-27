@@ -127,7 +127,9 @@ description: Standalone adversarial code review of any diff or PR — the advers
 # 2.1.0 = review_material.py leaves files marked linguist-generated out of a
 # diff's ARTIFACT (and names them on stderr), and pins git's output so the
 # operator's diff.noprefix or core.quotePath cannot change what is read.
-version: 2.1.0
+# 2.1.1 = --worktree reviews an untracked folder that is its own repository
+# as the gitlink git would stage (#288 item 2), not as nothing.
+version: 2.1.1
 category: Coding
 requires: []
 standalone: true

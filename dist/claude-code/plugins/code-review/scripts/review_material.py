@@ -50,9 +50,12 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import math
+import os
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
@@ -347,6 +350,28 @@ def artifact_from_range(rng: str, repo_root: Path) -> str:
     return _run([*_GIT_DIFF, rng], repo_root)
 
 
+def _embedded_repo_block(path: str, repo_root: Path) -> str:
+    """The block git would print had `git add` staged the embedded repository: a
+    gitlink (`Subproject commit <sha>`). It is staged into a throwaway copy of the
+    index, so the real index is untouched and git does its own quoting. A repository
+    with no commit has no gitlink to show, and gives nothing."""
+    index = Path(_run(["git", "rev-parse", "--path-format=absolute", "--git-path", "index"],
+                      repo_root).strip())
+    with tempfile.TemporaryDirectory() as tmp:
+        env = {**os.environ, "GIT_INDEX_FILE": str(Path(tmp) / "index")}
+        if index.is_file():
+            shutil.copyfile(index, env["GIT_INDEX_FILE"])
+        added = subprocess.run(["git", "-c", "advice.addEmbeddedRepo=false", "add", "--", path],
+                               cwd=str(repo_root), env=env, capture_output=True, text=True,
+                               encoding="utf-8", errors="replace")
+        if added.returncode != 0:
+            return ""
+        proc = subprocess.run([*_GIT_DIFF, "--cached", "HEAD", "--", path], cwd=str(repo_root),
+                              env=env, capture_output=True, text=True, encoding="utf-8",
+                              errors="replace")
+        return proc.stdout if proc.returncode == 0 else ""
+
+
 def artifact_from_worktree(repo_root: Path) -> str:
     """Tracked changes against HEAD, then each untracked, non-ignored file as a new file.
 
@@ -356,6 +381,10 @@ def artifact_from_worktree(repo_root: Path) -> str:
     parts = [_run([*_GIT_DIFF, "HEAD"], repo_root)]
     untracked = _run(["git", "ls-files", "--others", "--exclude-standard", "-z"], repo_root)
     for path in sorted(p for p in untracked.split("\0") if p):
+        if path.endswith("/"):
+            # git lists an untracked repository inside this one as `dir/`, never its files.
+            parts.append(_embedded_repo_block(path.rstrip("/"), repo_root))
+            continue
         # --no-index exits 1 when the two sides differ, which a new file always does.
         proc = subprocess.run([*_GIT_DIFF, "--no-index", "--", "/dev/null", path],
                               cwd=str(repo_root), capture_output=True, text=True,
