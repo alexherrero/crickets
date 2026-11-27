@@ -36,6 +36,19 @@
 #   2 — no review material on stdin, or agy ran but violated the output
 #       contract twice — caller decides
 #
+# On Antigravity the host model is Gemini, so the cross-model reviewer is
+# Claude, tried in this order:
+#   1. a Claude model through `agy` (Antigravity's own, small Claude quota);
+#   2. when that gives no review (quota spent, timeout, failure, or no agy),
+#      the local `claude` CLI in print mode, on the operator's Claude Code
+#      quota, with every customization off (--safe-mode) and no tools;
+#   3. the degrade marker: the caller runs a fresh same-family reviewer and
+#      the done-report says so.
+# The host is CROSS_REVIEW_HOST (antigravity or claude-code) when set, else
+# Antigravity when ANTIGRAVITY_AGENT is set (Antigravity's agent exports it
+# to the commands it runs) and CLAUDECODE is not; else Claude Code, where
+# nothing changes: Gemini through agy, then the marker.
+#
 # The contract (what stdout must match): exactly one of
 #   1. A failing test inside a fenced code block
 #   2. A line starting with `DEFECT: path:line`
@@ -129,6 +142,35 @@ tier_settings() {
   esac
   return 0
 }
+# detect_host -- sets HOST to antigravity or claude-code (see the header).
+detect_host() {
+  case "${CROSS_REVIEW_HOST:-}" in
+    antigravity|claude-code) HOST="$CROSS_REVIEW_HOST"; return 0 ;;
+    '') ;;
+    *) echo "cross-review: ignoring CROSS_REVIEW_HOST='${CROSS_REVIEW_HOST}', not antigravity or claude-code" >&2 ;;
+  esac
+  if [[ -n "${ANTIGRAVITY_AGENT:-}" && -z "${CLAUDECODE:-}" ]]; then
+    HOST=antigravity
+  else
+    HOST=claude-code
+  fi
+}
+
+# claude_models <tier> -- on Antigravity, the Claude models for a tier: MODEL
+# as agy names it (`agy models`), CLAUDE_MODEL as the claude CLI takes it. The
+# tier keeps its print timeout and material ceiling. CROSS_REVIEW_MODEL and
+# CROSS_REVIEW_CLAUDE_MODEL override them.
+claude_models() {
+  case "$1" in
+    high) MODEL="Claude Opus 5.5 (High)";     CLAUDE_MODEL=opus ;;
+    *)    MODEL="Claude Sonnet 5.5 (Medium)"; CLAUDE_MODEL=sonnet ;;
+  esac
+  [[ -n "${CROSS_REVIEW_MODEL:-}" ]] && MODEL="$CROSS_REVIEW_MODEL"
+  [[ -n "${CROSS_REVIEW_CLAUDE_MODEL:-}" ]] && CLAUDE_MODEL="$CROSS_REVIEW_CLAUDE_MODEL"
+  return 0
+}
+
+detect_host
 tier_settings default
 
 # Use `read -r -d ''` for the heredoc assignment — `$(cat <<'EOF'...)` gets
@@ -260,6 +302,93 @@ ask_agy() {
   fi
 }
 
+# run_with_timeout <secs> <input-file> <output-file> <cmd...> -- runs cmd with
+# stdin from input-file and stdout to output-file, stopped (with its children)
+# after <secs>, by KILL if TERM does not end it; sets claude_timed_out=1 when
+# <secs> ran out. The answer goes to a file,
+# not a pipe: a child left running would hold a pipe, and the caller's wait,
+# open past the timeout.
+run_with_timeout() {
+  local secs="$1" input="$2" out="$3" pid watcher rc
+  shift 3
+  "$@" < "$input" > "$out" &
+  pid=$!
+  # Past <secs> the answer is late, whatever the process does next: the flag
+  # comes first. TERM, then KILL after a short grace for one that traps TERM.
+  # A sleep cut short means the command ended first and the watcher is being
+  # stopped: no flag.
+  ( sleep "$secs" || exit 0
+    : > "$claude_timeout_flag"
+    command -v pkill >/dev/null 2>&1 && pkill -TERM -P "$pid" 2>/dev/null
+    kill -TERM "$pid" 2>/dev/null
+    sleep 2 || exit 0
+    command -v pkill >/dev/null 2>&1 && pkill -KILL -P "$pid" 2>/dev/null
+    kill -KILL "$pid" 2>/dev/null ) >/dev/null 2>&1 &
+  watcher=$!
+  wait "$pid"
+  rc=$?
+  command -v pkill >/dev/null 2>&1 && pkill -P "$watcher" 2>/dev/null
+  kill "$watcher" 2>/dev/null
+  wait "$watcher" 2>/dev/null
+  [[ -e "$claude_timeout_flag" ]] && claude_timed_out=1
+  return "$rc"
+}
+
+# ask_claude <framing> <label> -- one call to the claude CLI, cold: no CLAUDE.md,
+# plugins, hooks or MCP servers (--safe-mode), no tools, no saved session.
+# Returns, with the answer in $output, only when it exited 0 with output in
+# time; every other ending degrades with exit 1.
+ask_claude() {
+  local label="$2" started=$SECONDS rc elapsed said prompt_file
+  claude_timed_out=""
+  rm -f "$claude_timeout_flag"
+  prompt_file="${claude_stderr}.prompt"
+  printf '%s\n\n=== REVIEW MATERIAL ===\n%s' "$1" "$material" > "$prompt_file"
+  run_with_timeout "$PRINT_TIMEOUT_SECS" "$prompt_file" "${claude_stderr}.out" \
+    claude -p --safe-mode --tools "" --no-session-persistence --model "$CLAUDE_MODEL" 2>"$claude_stderr"
+  rc=$?
+  output=$(cat "${claude_stderr}.out" 2>/dev/null)
+  rm -f "$prompt_file" "${claude_stderr}.out"
+  elapsed=$((SECONDS - started))
+  said=$(tail -n 5 "$claude_stderr")
+  if [[ -n "$claude_timed_out" ]]; then
+    degrade 1 "the claude CLI ran out of its ${PRINT_TIMEOUT_SECS}s timeout${label} after ${agy_reason}" \
+      "cross-review: claude -p --model ${CLAUDE_MODEL}${label} was stopped after ${elapsed}s" ${said:+"$said"}
+  fi
+  if (( rc != 0 )) || [[ -z "$output" ]]; then
+    degrade 1 "the claude CLI gave no review${label} (exit $rc after ${elapsed}s) after ${agy_reason}" \
+      "cross-review: claude -p --model ${CLAUDE_MODEL}${label} ended without a review" ${said:+"$said"} ${output:+"$output"}
+  fi
+}
+
+# review_with <ask-function> <name> -- one call, one retry with a sharper
+# format nudge, then the contract verdict. Prints the review and exits 0, or
+# degrades.
+review_with() {
+  local ask="$1" name="$2"
+  "$ask" "$framing" ""
+  if validate "$output"; then
+    printf '%s\n' "$output"
+    exit 0
+  fi
+  retry_nudge="Your previous response did not match the required output format. Respond again using EXACTLY ONE of the three forms (failing test, DEFECT:, or NO ISSUES FOUND). No prose preamble. No prose outside the form."
+  retry_framing="${framing}"$'\n\n'"${retry_nudge}"
+  "$ask" "$retry_framing" " on retry"
+  if validate "$output"; then
+    printf '%s\n' "$output"
+    exit 0
+  fi
+  degrade 2 "${name} response violated the output contract twice" \
+    "cross-review: contract violated after retry. Raw output follows on stderr." "$output"
+}
+
+# review_agy -- the agy review, its CLI check included.
+review_agy() {
+  command -v agy >/dev/null 2>&1 \
+    || degrade 1 "agy CLI unavailable" "cross-review: agy CLI not found — caller should fall back"
+  review_with ask_agy agy
+}
+
 main() {
   # --tier <name> / --tier=<name> beats CROSS_REVIEW_TIER. An unknown tier or
   # argument exits 2 before agy is touched: the caller asked for something
@@ -276,8 +405,9 @@ main() {
   done
   tier_settings "$TIER" \
     || { echo "cross-review: unknown tier '${TIER}' (use default, high or wording)" >&2; exit 2; }
+  [[ "$HOST" == antigravity ]] && claude_models "$TIER"
 
-  command -v agy >/dev/null 2>&1 \
+  [[ "$HOST" == antigravity ]] || command -v agy >/dev/null 2>&1 \
     || degrade 1 "agy CLI unavailable" "cross-review: agy CLI not found — caller should fall back"
 
   material=$(cat)
@@ -296,24 +426,30 @@ main() {
     || degrade 1 "no temp file for agy's stderr" "cross-review: mktemp failed"
   trap 'rm -f "$agy_stderr"' EXIT
 
-  ask_agy "$framing" ""
-  if validate "$output"; then
-    printf '%s\n' "$output"
-    exit 0
+  if [[ "$HOST" != antigravity ]]; then
+    review_agy
   fi
 
-  # Retry once with a sharper format nudge.
-  retry_nudge="Your previous response did not match the required output format. Respond again using EXACTLY ONE of the three forms (failing test, DEFECT:, or NO ISSUES FOUND). No prose preamble. No prose outside the form."
-  retry_framing="${framing}"$'\n\n'"${retry_nudge}"
-
-  ask_agy "$retry_framing" " on retry"
-  if validate "$output"; then
-    printf '%s\n' "$output"
-    exit 0
+  # Antigravity: Claude through agy, then the claude CLI. A contract violation
+  # (exit 2) is a verdict on the answer, not a missing reviewer: it stands.
+  local first rc
+  first=$(review_agy)
+  rc=$?
+  if (( rc != 1 )); then
+    printf '%s\n' "$first"
+    exit "$rc"
   fi
-
-  degrade 2 "agy response violated the output contract twice" \
-    "cross-review: contract violated after retry. Raw output follows on stderr." "$output"
+  agy_reason="${first#CROSS-REVIEW-DEGRADED: }"
+  agy_reason="${agy_reason%, using same-model reviewer}"
+  echo "cross-review: no Claude review through agy (${agy_reason}); trying the claude CLI" >&2
+  command -v claude >/dev/null 2>&1 \
+    || degrade 1 "the claude CLI is unavailable after ${agy_reason}" \
+         "cross-review: claude CLI not found — caller should fall back"
+  claude_stderr=$(mktemp "${TMPDIR:-/tmp}/cross-review-claude.XXXXXX") \
+    || degrade 1 "no temp file for the claude CLI's stderr" "cross-review: mktemp failed"
+  claude_timeout_flag="${claude_stderr}.timedout"
+  trap 'rm -f "$agy_stderr" "$claude_stderr" "$claude_timeout_flag" "${claude_stderr}.prompt" "${claude_stderr}.out"' EXIT
+  review_with ask_claude "claude CLI"
 }
 
 # Sourcing this file (e.g. from a test harness that wants to call validate()

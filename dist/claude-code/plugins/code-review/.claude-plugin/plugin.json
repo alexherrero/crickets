@@ -5,5 +5,5 @@
   },
   "description": "Standalone adversarial code review of any diff or PR — the adversarial-reviewer (+ cross-model Gemini) agents, the security-auditor agent, and the evidence-tracker hook. Its reviewers and cross-review.sh run /build-it's review passes when development-lifecycle is installed.",
   "name": "code-review",
-  "version": "2.2.0"
+  "version": "2.3.0"
 }
