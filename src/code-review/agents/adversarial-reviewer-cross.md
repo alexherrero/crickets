@@ -55,6 +55,7 @@ Capture stdout and the exit code.
   - `agy CLI unavailable` — agy is not installed.
   - `agy does not serve model '<MODEL>' (see agy models; CROSS_REVIEW_MODEL names another)` — agy rejected the model the script asked for; agy's error line and the models it does serve follow on the script's stderr. Tell the caller that `CROSS_REVIEW_MODEL` set to a name from that list (or from `agy models`) restores cross-model review.
   - `agy returned no output (...)`, `agy returned partial output (...)` or `agy failed (...)` — agy ran and gave no finished answer. The parenthesis carries agy's exit code, the seconds it ran, and whether its print timeout fired; agy's own stderr follows on the script's stderr.
+  - On Antigravity, `the claude CLI gave no review (...) after <agy reason>`, `the claude CLI ran out of its Ns timeout after <agy reason>` or `the claude CLI is unavailable after <agy reason>`: neither Claude through `agy` nor the local `claude` CLI gave a review. The fallback below is then a same-family reviewer; say so.
   - `review material is N bytes, over the M-byte ceiling ...` — agy was not called: material that size outruns agy's print timeout. You may split the material at file boundaries into parts under M bytes and run the script once per part, handling each part's exit code by these rules.
 
   Relay the line to the caller verbatim, don't paraphrase it away, then add: *"Cross-model reviewer unavailable — falling back to in-process adversarial-reviewer."* Then dispatch the in-process `adversarial-reviewer` with the same material.

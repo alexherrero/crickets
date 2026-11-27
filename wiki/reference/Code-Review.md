@@ -63,6 +63,16 @@ You do not need to configure anything. The plugin works out of the box. The cros
 
 An unknown tier, or any unknown argument, exits 2 before `agy` is called and prints no `CROSS-REVIEW-DEGRADED` line.
 
+#### Cross-review on Antigravity
+
+On Antigravity the host model is Gemini, so the cross-model reviewer is Claude. The script tries, in order:
+
+1. Claude through `agy`: Claude Sonnet 5.5 (Medium), or Claude Opus 5.5 (High) on the `high` tier.
+2. The local `claude` CLI, when `agy` gives no review (its Claude quota spent, a timeout, a failure, or no `agy`). It runs `claude -p --safe-mode --tools "" --no-session-persistence` with `sonnet`, or `opus` on `high`, so it uses your Claude Code quota and reads none of your CLAUDE.md, plugins, hooks or MCP servers. The tier's timeout stops it.
+3. The `CROSS-REVIEW-DEGRADED` line, naming both failures. The caller then runs a fresh same-family reviewer.
+
+A contract violation through `agy` (exit 2) stands; it is not retried with the `claude` CLI. The host is `CROSS_REVIEW_HOST` (`antigravity` or `claude-code`) when set. Otherwise it is Antigravity when `ANTIGRAVITY_AGENT` is set (Antigravity's agent exports it) and `CLAUDECODE` is not. On Claude Code nothing changes.
+
 #### Cross-review overrides
 
 Each override applies on top of the chosen tier.
@@ -70,6 +80,8 @@ Each override applies on top of the chosen tier.
 | Variable | Effect |
 |---|---|
 | `CROSS_REVIEW_MODEL` | Exact `agy models` display string; beats any tier's model. |
+| `CROSS_REVIEW_CLAUDE_MODEL` | On Antigravity, the model the `claude` CLI fallback asks for (`sonnet`, `opus` or a full id); beats the tier's. |
+| `CROSS_REVIEW_HOST` | `antigravity` or `claude-code`; beats the detected host. Any other value is ignored with a note on stderr. |
 | `CROSS_REVIEW_TIMEOUT_SECS` | Positive integer seconds; replaces the tier's print timeout. A malformed value is ignored with a note on stderr. |
 | `CROSS_REVIEW_MAX_BYTES` | Byte count; replaces the tier's material ceiling. `0` turns the check off. A malformed value is ignored with a note on stderr. |
 

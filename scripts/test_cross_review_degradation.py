@@ -42,6 +42,7 @@ import os
 import stat
 import subprocess
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -87,7 +88,8 @@ def _run_cross_review(material: str, *, path_prefix: "Path | None" = None,
                        args: "tuple | list" = ()) -> subprocess.CompletedProcess:
     # Start from a clean CROSS_REVIEW_* slate: the caller's own tier or model
     # pin must not change what a test asserts.
-    env = {k: v for k, v in os.environ.items() if not k.startswith("CROSS_REVIEW_")}
+    env = {k: v for k, v in os.environ.items()
+           if not k.startswith("CROSS_REVIEW_") and k != "ANTIGRAVITY_AGENT"}
     if path_prefix is not None:
         env["PATH"] = f"{path_prefix}{os.pathsep}{env.get('PATH', '')}"
     else:
@@ -118,7 +120,7 @@ def _run_main_with(material: str, prelude: str, *, path_prefix: Path) -> subproc
     """Source the script, run `prelude` (assignments standing in for values a
     test can't wait out, like the 180s print timeout), then call main(). A
     stand-in tier table (_TINY_TIER) is the prelude for those."""
-    env = dict(os.environ)
+    env = {k: v for k, v in os.environ.items() if k != "ANTIGRAVITY_AGENT"}
     env["PATH"] = f"{path_prefix}{os.pathsep}{env.get('PATH', '')}"
     script = f'source "{_SCRIPT.as_posix()}"\n{prelude}\nmain\n'
     return subprocess.run(
@@ -621,6 +623,153 @@ class MaterialCeilingTests(unittest.TestCase):
             line = _degraded_line(self, result, 1)
             self.assertIn("over the 100-byte ceiling", line)
             self.assertIn("ignoring CROSS_REVIEW_MAX_BYTES='50KB'", result.stderr)
+
+
+def _write_fake(bin_dir: Path, name: str, body: str) -> Path:
+    path = bin_dir / name
+    path.write_text(f"#!/usr/bin/env bash\n{body}\n", encoding="utf-8")
+    path.chmod(path.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+    return path
+
+
+_REVIEW = 'echo "NO ISSUES FOUND"; echo "Reviewed: src/foo.py"'
+
+
+class AntigravityHostTests(unittest.TestCase):
+    """On Antigravity the reviewer is Claude: through agy, then the claude CLI
+    on the Claude Code quota, then the marker. Fakes only; nothing calls a model."""
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.dir = Path(tmp.name)
+        self.bin = self.dir / "bin"
+        self.bin.mkdir()
+        self.log = self.dir / "calls.log"
+
+    def agy(self, body: str) -> None:
+        _write_fake(self.bin, "agy", f'printf "agy %s\\n" "$*" >> "{self.log}"\n{body}')
+
+    def claude(self, body: str) -> None:
+        _write_fake(self.bin, "claude",
+                    f'printf "claude %s\\n" "$*" >> "{self.log}"\n'
+                    f'cat > "{self.dir}/claude.stdin"\n{body}')
+
+    def run_review(self, *args: str, env: "dict | None" = None, prelude: str = "") -> subprocess.CompletedProcess:
+        base = {k: v for k, v in os.environ.items()
+                if not k.startswith(("CROSS_REVIEW_", "ANTIGRAVITY_")) and k not in ("CLAUDECODE",)}
+        # Only the fakes, never a real agy or claude on this machine.
+        base["PATH"] = os.pathsep.join([str(self.bin), *(p for p in ("/usr/bin", "/bin") if Path(p).is_dir())])
+        base["ANTIGRAVITY_AGENT"] = "1"
+        base.update(env or {})
+        script = f'source "{_SCRIPT.as_posix()}"\n{prelude}\nmain {" ".join(args)}\n'
+        return subprocess.run([_BASH, "-c", script], input="=== DIFF ===\nthe material\n",
+                              capture_output=True, text=True, timeout=20, env=base)
+
+    def calls(self) -> str:
+        return self.log.read_text(encoding="utf-8") if self.log.exists() else ""
+
+    def test_claude_through_agy_answers_and_the_claude_cli_is_not_called(self):
+        self.agy(_REVIEW)
+        self.claude(_REVIEW)
+        r = self.run_review()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("NO ISSUES FOUND", r.stdout)
+        self.assertIn("--model Claude Sonnet 5.5 (Medium)", self.calls())
+        self.assertNotIn("claude -p", self.calls())
+
+    def test_a_spent_agy_quota_falls_back_to_the_claude_cli(self):
+        self.agy('echo "quota exhausted for Claude Sonnet 5.5" >&2; exit 1')
+        self.claude(_REVIEW)
+        r = self.run_review()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("NO ISSUES FOUND", r.stdout)
+        self.assertNotIn("CROSS-REVIEW-DEGRADED", r.stdout)
+        self.assertIn("trying the claude CLI", r.stderr)
+        call = [l for l in self.calls().splitlines() if l.startswith("claude ")][0]
+        for flag in ("-p", "--safe-mode", "--tools  ", "--no-session-persistence", "--model sonnet"):
+            self.assertIn(flag, call + " ")
+        self.assertIn("the material", (self.dir / "claude.stdin").read_text(encoding="utf-8"))
+
+    def test_no_agy_at_all_goes_straight_to_the_claude_cli(self):
+        self.claude(_REVIEW)
+        r = self.run_review()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("agy CLI unavailable", r.stderr)
+
+    def test_the_high_tier_asks_for_opus(self):
+        self.agy("exit 1")
+        self.claude(_REVIEW)
+        r = self.run_review("--tier", "high")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("--model Claude Opus 5.5 (High)", self.calls())
+        self.assertIn("--model opus", self.calls())
+
+    def test_both_failing_prints_the_marker_naming_both(self):
+        self.agy("exit 1")
+        self.claude('echo "not logged in" >&2; exit 1')
+        r = self.run_review()
+        line = _degraded_line(self, r, 1)
+        self.assertIn("the claude CLI gave no review", line)
+        self.assertIn("after agy returned no output", line)
+        self.assertIn("not logged in", r.stderr)
+
+    def test_no_claude_cli_prints_the_marker(self):
+        self.agy("exit 1")
+        line = _degraded_line(self, self.run_review(), 1)
+        self.assertIn("the claude CLI is unavailable", line)
+
+    def test_a_slow_claude_cli_is_stopped_at_the_timeout(self):
+        self.agy("exit 1")
+        self.claude('sleep 15; echo "NO ISSUES FOUND"')
+        started = time.monotonic()
+        r = self.run_review(prelude=_TINY_TIER % (1, 1_000_000))
+        self.assertLess(time.monotonic() - started, 10)
+        line = _degraded_line(self, r, 1)
+        self.assertIn("ran out of its 1s timeout", line)
+
+    def test_a_claude_cli_that_ignores_sigterm_is_still_stopped(self):
+        # Found by review: TERM alone let a process that traps it run on.
+        self.agy("exit 1")
+        self.claude('trap "" TERM; sleep 15; echo "NO ISSUES FOUND"')
+        started = time.monotonic()
+        r = self.run_review(prelude=_TINY_TIER % (1, 1_000_000))
+        self.assertLess(time.monotonic() - started, 8)
+        line = _degraded_line(self, r, 1)
+        self.assertIn("ran out of its 1s timeout", line)
+
+    def test_a_contract_violation_through_agy_stands(self):
+        self.agy('echo "Looks fine to me."')
+        self.claude(_REVIEW)
+        r = self.run_review()
+        self.assertEqual(r.returncode, 2, r.stderr)
+        self.assertNotIn("claude -p", self.calls())
+
+    def test_claude_code_is_the_host_when_claudecode_is_set(self):
+        self.agy(_REVIEW)
+        self.claude(_REVIEW)
+        r = self.run_review(env={"CLAUDECODE": "1"})
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("--model Gemini 4 Neon (Medium)", self.calls())
+
+    def test_cross_review_host_wins_over_the_environment(self):
+        self.agy(_REVIEW)
+        r = self.run_review(env={"CROSS_REVIEW_HOST": "claude-code"})
+        self.assertIn("--model Gemini 4 Neon (Medium)", self.calls())
+        self.agy("exit 1")
+        self.claude(_REVIEW)
+        r = self.run_review(env={"CLAUDECODE": "1", "CROSS_REVIEW_HOST": "antigravity"})
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("claude -p", self.calls())
+
+    def test_model_overrides_reach_both_clis(self):
+        self.agy("exit 1")
+        self.claude(_REVIEW)
+        r = self.run_review(env={"CROSS_REVIEW_MODEL": "Claude Opus 5.5 (Low)",
+                                 "CROSS_REVIEW_CLAUDE_MODEL": "claude-sonnet-5-5"})
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("--model Claude Opus 5.5 (Low)", self.calls())
+        self.assertIn("--model claude-sonnet-5-5", self.calls())
 
 
 if __name__ == "__main__":
