@@ -568,6 +568,7 @@ class TestAntigravityEmitter(unittest.TestCase):
             plugins = Path(t) / "plugins"
             for rel, body in (
                 ("bad/skills/s/SKILL.md", "---\nname: s\ndescription: d\n---\n${CLAUDE_PLUGIN_ROOT}/scripts/x.py\n"),
+                ("bad/skills/s/references/r.md", "${CLAUDE_PLUGIN_ROOT}/scripts/ref.py\n"),
                 ("bad/agents/a.md", "---\nname: a\ndescription: d\n---\n$CLAUDE_PLUGIN_ROOT/scripts/y.py\n"),
                 ("bad/rules/r.md", "---\ntrigger: always_on\n---\n${CLAUDE_PLUGIN_ROOT}/scripts/z.py\n"),
             ):
@@ -575,7 +576,7 @@ class TestAntigravityEmitter(unittest.TestCase):
                 p.parent.mkdir(parents=True, exist_ok=True)
                 p.write_text(body, encoding="utf-8")
             problems = m.check_dist(plugins)
-            self.assertEqual(len(problems), 3)
+            self.assertEqual(len(problems), 4)
             self.assertTrue(all("unguarded CLAUDE_PLUGIN_ROOT" in p for p in problems), problems)
 
     def test_read_matcher_and_long_body_stub_avoid_view_file_only(self):
