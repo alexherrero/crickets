@@ -43,7 +43,10 @@ GROUPED_EVENTS = {"PreToolUse", "PostToolUse"}
 FLAT_EVENTS = {"SessionStart", "PreInvocation", "PostInvocation", "Stop"}
 SKILL_BODY_LIMIT = 24_000
 _UNGUARDED_PLUGIN_ROOT_RE = re.compile(
-    r"\$\{CLAUDE_PLUGIN_ROOT\}(?=/[^…\s])|\$CLAUDE_PLUGIN_ROOT(?=/[^…\s])"
+    r'"\$\{CLAUDE_PLUGIN_ROOT\}"(?=/[^…\s])'
+    r'|"\$CLAUDE_PLUGIN_ROOT"(?=/[^…\s])'
+    r'|\$\{CLAUDE_PLUGIN_ROOT\}(?=/[^…\s])'
+    r'|\$CLAUDE_PLUGIN_ROOT(?=/[^…\s])'
 )
 
 

@@ -113,6 +113,33 @@ class TestFindDanglingReferences(unittest.TestCase):
             "skills/bad-fb/SKILL.md",
         })
 
+    def test_quoted_and_nested_brace_plugin_root_references(self) -> None:
+        _write(self.dist / "antigravity" / "plugins" / "demo" / "scripts" / "ok.py", "# ok\n")
+        _write(
+            self.dist / "antigravity" / "plugins" / "demo" / "skills" / "ok-quoted" / "SKILL.md",
+            'Run `python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/demo}"/scripts/ok.py`.\n',
+        )
+        self.assertEqual(cdr.find_dangling_references(self.dist), [])
+
+        _write(
+            self.dist / "antigravity" / "plugins" / "demo" / "skills" / "bad-quoted-unguarded" / "SKILL.md",
+            'Run `python3 "${CLAUDE_PLUGIN_ROOT}"/scripts/missing.py`.\n',
+        )
+        _write(
+            self.dist / "antigravity" / "plugins" / "demo" / "skills" / "bad-quoted-missing" / "SKILL.md",
+            'Run `python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/demo}"/scripts/missing.py`.\n',
+        )
+        _write(
+            self.dist / "antigravity" / "plugins" / "demo" / "skills" / "bad-nested" / "SKILL.md",
+            'Run `python3 "${CLAUDE_PLUGIN_ROOT:-${OTHER}/x}"/scripts/ok.py`.\n',
+        )
+        findings = cdr.find_dangling_references(self.dist)
+        self.assertEqual({f["file"] for f in findings}, {
+            "skills/bad-quoted-unguarded/SKILL.md",
+            "skills/bad-quoted-missing/SKILL.md",
+            "skills/bad-nested/SKILL.md",
+        })
+
     def test_plugin_root_var_reaching_outside_the_host_plugins_tree_is_dangling(self) -> None:
         _write(self.dist / "claude-code" / "plugins" / "demo" / "commands" / "c.md",
                "Run `python3 ${CLAUDE_PLUGIN_ROOT}/../../not-a-plugin.py`.\n")

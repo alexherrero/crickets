@@ -65,15 +65,54 @@ _AG_TOOL = {"Bash": "run_command", "Read": "read_file|view_file"}
 _SCRIPT_RE = re.compile(r"(?:\S*/)?([\w.-]+\.(?:sh|ps1|py))")
 # Rewrite path-bearing, non-ellipsis CLAUDE_PLUGIN_ROOT refs in AG skills/agents/rules
 # because Antigravity does not export CLAUDE_PLUGIN_ROOT in the agent shell.
-_PLUGIN_ROOT_PATH_RE = re.compile(
-    r"\$\{CLAUDE_PLUGIN_ROOT(?::-[^}]*)?\}(?=/[^…\s])|\$CLAUDE_PLUGIN_ROOT(?=/[^…\s])"
+_PLUGIN_ROOT_START_RE = re.compile(
+    r"\$\{CLAUDE_PLUGIN_ROOT(?=[}:])|\$CLAUDE_PLUGIN_ROOT(?![A-Za-z0-9_])"
 )
+_PATH_AFTER_RE = re.compile(r"/[^…\s]")
 
 
 def _rewrite_plugin_root(text: str, slug: str) -> str:
     """Provide a $HOME/.gemini/config/plugins/<slug> default for path-bearing refs."""
     fallback = f"${{CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/{slug}}}"
-    return _PLUGIN_ROOT_PATH_RE.sub(lambda _m: fallback, text)
+    out: list[str] = []
+    pos = 0
+    n = len(text)
+    for m in _PLUGIN_ROOT_START_RE.finditer(text):
+        start = m.start()
+        if start < pos:
+            continue
+        if text[start:start + 2] == "${":
+            after_name = m.end()
+            if after_name < n and text[after_name] == "}":
+                end = after_name + 1
+            elif text[after_name:after_name + 2] == ":-":
+                i = after_name + 2
+                depth = 1
+                while i < n and depth > 0 and text[i] != "\n":
+                    if text[i] == "{":
+                        depth += 1
+                    elif text[i] == "}":
+                        depth -= 1
+                    i += 1
+                if depth != 0:
+                    continue
+                end = i
+            else:
+                continue
+        else:
+            end = m.end()
+        check_at = end
+        if start > 0 and text[start - 1] == '"' and end < n and text[end] == '"':
+            check_at = end + 1
+        if not _PATH_AFTER_RE.match(text, check_at):
+            continue
+        out.append(text[pos:start])
+        out.append(fallback)
+        pos = end
+    if pos == 0:
+        return text
+    out.append(text[pos:])
+    return "".join(out)
 
 
 def _split_frontmatter(text: str) -> tuple[str | None, str]:

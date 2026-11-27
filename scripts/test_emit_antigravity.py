@@ -579,6 +579,44 @@ class TestAntigravityEmitter(unittest.TestCase):
             self.assertEqual(len(problems), 4)
             self.assertTrue(all("unguarded CLAUDE_PLUGIN_ROOT" in p for p in problems), problems)
 
+    def test_rewrite_plugin_root_handles_nested_braces_and_quoted_paths(self):
+        fb = "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/demo}"
+        src = (
+            'Run ${CLAUDE_PLUGIN_ROOT:-${CRICKETS_ROOT}/src/demo}/scripts/d.py '
+            'and "${CLAUDE_PLUGIN_ROOT:-${OTHER}/x}"/scripts/g.py '
+            'and "${CLAUDE_PLUGIN_ROOT}"/scripts/e.py '
+            'and "$CLAUDE_PLUGIN_ROOT"/scripts/f.py. '
+            'Keep "${CLAUDE_PLUGIN_ROOT}", "${CLAUDE_PLUGIN_ROOT}"/…, '
+            '${CLAUDE_PLUGIN_ROOT:-foo/scripts/x.py, '
+            'and $CLAUDE_PLUGIN_ROOT_EXTRA/scripts/x.py.'
+        )
+        out = emit_antigravity._rewrite_plugin_root(src, "demo")
+        self.assertIn(f"Run {fb}/scripts/d.py", out)
+        self.assertIn(f'"{fb}"/scripts/g.py', out)
+        self.assertIn(f'"{fb}"/scripts/e.py', out)
+        self.assertIn(f'"{fb}"/scripts/f.py', out)
+        self.assertIn('Keep "${CLAUDE_PLUGIN_ROOT}", "${CLAUDE_PLUGIN_ROOT}"/…, ', out)
+        self.assertIn("${CLAUDE_PLUGIN_ROOT:-foo/scripts/x.py", out)
+        self.assertIn("$CLAUDE_PLUGIN_ROOT_EXTRA/scripts/x.py", out)
+
+    def test_shape_gate_rejects_quoted_unguarded_plugin_root_and_allows_prose(self):
+        spec = importlib.util.spec_from_file_location("check_agy_plugin_shape", _HERE / "check-agy-plugin-shape.py")
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        with tempfile.TemporaryDirectory() as t:
+            plugins = Path(t) / "plugins"
+            for rel, body in (
+                ("bad/skills/q1/SKILL.md", '---\nname: q1\ndescription: d\n---\n"${CLAUDE_PLUGIN_ROOT}"/scripts/q1.py\n'),
+                ("bad/skills/q2/SKILL.md", '---\nname: q2\ndescription: d\n---\n"$CLAUDE_PLUGIN_ROOT"/scripts/q2.py\n'),
+                ("ok/skills/p/SKILL.md", '---\nname: p\ndescription: d\n---\n"${CLAUDE_PLUGIN_ROOT}" "${CLAUDE_PLUGIN_ROOT}"/…\n'),
+            ):
+                p = plugins / rel
+                p.parent.mkdir(parents=True, exist_ok=True)
+                p.write_text(body, encoding="utf-8")
+            problems = m.check_dist(plugins)
+            self.assertEqual(len(problems), 2)
+            self.assertTrue(all("bad/skills/q" in p for p in problems), problems)
+
     def test_read_matcher_and_long_body_stub_avoid_view_file_only(self):
         self.assertEqual(emit_antigravity._ag_matcher("Read"), "read_file|view_file")
         stub = emit_antigravity._long_body_stub("`/work`", "references/work.md")

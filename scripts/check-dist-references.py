@@ -36,7 +36,9 @@ ROOT = Path(__file__).resolve().parent.parent
 DIST = ROOT / "dist"
 
 _MD_LINK_RE = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
-_PLUGIN_ROOT_RE = re.compile(r"\$\{CLAUDE_PLUGIN_ROOT(?::-(?P<fallback>[^}]*))?\}/(?P<rel>[^\s\"'`)]+)")
+_PLUGIN_ROOT_RE = re.compile(
+    r'\$\{CLAUDE_PLUGIN_ROOT(?::-(?P<fallback>(?:[^{}]|\$\{[^{}]*\})*))?\}(?P<cq>")?/(?P<rel>[^\s"\'`)]+)'
+)
 _PLUGIN_FALLBACK_SLUG_RE = re.compile(r"/plugins/([^/]+)$")
 
 # (plugin-relative markdown file, dangling target — anchor stripped) pairs.
@@ -164,6 +166,8 @@ def find_dangling_references(dist_root: Path | None = None) -> list[dict]:
                     })
 
                 for m in _PLUGIN_ROOT_RE.finditer(text):
+                    if m.group("cq") and (m.start() == 0 or text[m.start() - 1] != '"'):
+                        continue
                     fallback = m.group("fallback")
                     rel = m.group("rel")
                     if _is_placeholder(rel):
