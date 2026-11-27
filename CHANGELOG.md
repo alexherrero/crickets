@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **A working tree whose new folder is its own git repository is reviewable** (`code-review` 2.1.1, #288 item 2). `review_material.py --worktree` listed such a folder but `git diff --no-index` read nothing from it, so a change made only of it stopped with "nothing to review". It now shows the folder as the gitlink `git add` would stage (`Subproject commit <sha>`), built in a throwaway copy of the index so the real one is untouched. A folder that is a repository with no commit still gives nothing, as it does in git.
+
 ## [v8.1.0] — 2026-11-24 — Minor: the loop's tools close the gaps its first real run found
 
 The first real run of `/spec` and `/build-it` on a small fix, plus `/build-it --check` on an existing PR, found six places where the loop's own tools got in the way. They are fixed here. The loop record can hold the operator's decision, the direction check stops only for a wrong approach, reviewers no longer read the generated `dist/` copies, and the commit hook finds its rules again. It also fixes the file-name reading behind reviewers' rule matching and the leftovers from v8.0.0. Minor because `loop_record.py decide` is new: `development-lifecycle` 2.3.0, `code-review` 2.1.0, `developer-safety` 0.7.3, `conventions` 1.0.2 and `tokens` 0.9.1. Lands in [PR #292](https://github.com/alexherrero/crickets/pull/292), [#293](https://github.com/alexherrero/crickets/pull/293) and [#294](https://github.com/alexherrero/crickets/pull/294).

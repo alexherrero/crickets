@@ -291,6 +291,43 @@ class GeneratedFilesTests(Fixture):
         self.assertNotIn("generated", err)
 
 
+class EmbeddedRepoTests(Fixture):
+    """#288 item 2: an untracked folder that is its own repository is listed by
+    `ls-files --others` as `dir/` and gives `git diff --no-index` nothing to read."""
+
+    def _embedded(self, name: str, commit: bool = True) -> None:
+        sub = self.repo / name
+        sub.mkdir()
+        _git(sub, "init", "-q", "-b", "main")
+        if commit:
+            (sub / "a.py").write_text("a = 1\n", encoding="utf-8")
+            _git(sub, "add", "-A")
+            _git(sub, "commit", "-q", "-m", "inner")
+
+    def test_an_embedded_repository_alone_is_reviewed_as_a_gitlink(self):
+        self._embedded("vendor lib")
+        code, out, err = self.run_cli("--worktree")
+        self.assertEqual(code, 0, err)
+        self.assertIn("new file mode 160000", out)
+        self.assertIn("+Subproject commit ", out)
+        artifact = out.split("\n=== CONTRACT ===\n", 1)[0]
+        self.assertIn("vendor lib", rm.changed_paths(artifact))
+
+    def test_the_real_index_is_left_alone(self):
+        self._embedded("sub")
+        rm.artifact_from_worktree(self.repo)
+        staged = subprocess.run(["git", "diff", "--cached", "--name-only"], cwd=self.repo,
+                                env=_git_env(), capture_output=True, text=True, check=True)
+        self.assertEqual(staged.stdout, "")
+
+    def test_an_embedded_repository_with_no_commit_gives_nothing(self):
+        self._embedded("empty", commit=False)
+        (self.repo / "new.py").write_text("n = 1\n", encoding="utf-8")
+        paths = rm.changed_paths(rm.artifact_from_worktree(self.repo))
+        self.assertIn("new.py", paths)
+        self.assertNotIn("empty", paths)
+
+
 class ChangedPathsTests(Fixture):
     """#288: a path with a space, or one git prints quoted (non-ASCII, a quote, a
     backslash), still reaches the rule matching under its real name."""
