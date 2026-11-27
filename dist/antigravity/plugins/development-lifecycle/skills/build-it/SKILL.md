@@ -27,6 +27,8 @@ Reach the `code-review` scripts with `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sib
 
 Slug: a short name for the task. The record lives beside the spec: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/spec_doc.py" place --slug <slug> --plan <plan.md>` prints where the spec goes (add `--project-root <repo>` when there is no plan); the record is `loop-<slug>.json` in that same folder. Scratch files (review material, the approach note) go in `${TMPDIR:-/tmp}/build-it-<slug>/`.
 
+**The design.** `review_material.py` finds the repo's own governing designs (`wiki/designs/`, by their `governs:`) by itself. A living design kept in the vault is passed in: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/vault_designs.py" find <a path the task changes> --cwd <repo>`; on exit 0, add `--design <the path it prints>` to every `review_material.py` call. On exit 1 or 3 there is none to add.
+
 With `--check`, jump to **Check mode** at the end.
 
 ### 1. Anchor

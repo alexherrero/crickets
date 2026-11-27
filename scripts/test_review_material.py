@@ -291,6 +291,153 @@ class GeneratedFilesTests(Fixture):
         self.assertNotIn("generated", err)
 
 
+class GoverningDesignTests(Fixture):
+    """A rule that lives in the design governing the changed files reaches RULES:
+    the re-test's misses had their deciding rule in a design page, not AGENTS.md."""
+
+    LOCKED = "Commit trailers are parsed from the last paragraph only, never from the body."
+    DESIGN_PARA = ("The commit_msg gate rejects a message whose trailer block names an agent "
+                   "as co-author, and it reads trailers with git interpret-trailers.")
+
+    def _design(self, name: str, governs: str, status: str = "launched", body: str = "") -> Path:
+        folder = self.repo / "wiki" / "designs"
+        folder.mkdir(parents=True, exist_ok=True)
+        page = folder / name
+        page.write_text(f"---\nstatus: {status}\n{governs}\n---\n\n# {name}\n\n"
+                        f"## Objective\n\nThe objective paragraph says nothing about the change at all.\n\n"
+                        f"{body}", encoding="utf-8")
+        return page
+
+    def _body(self) -> str:
+        return (f"## Design\n\n{self.DESIGN_PARA}\n\n### Sub\n\n- A bullet in a subsection about "
+                f"commit_msg trailers is its own paragraph.\n\n## Locked design calls\n\n- {self.LOCKED}\n\n"
+                f"## Amendment log\n\nAn amendment about commit_msg trailers is history, not a rule here.\n")
+
+    def _rules(self, *extra: str):
+        code, out, err = self.run_cli("--range", "HEAD~1..HEAD", "--anchor", str(self.plan), *extra)
+        self.assertEqual(code, 0, err)
+        return out.split("=== RULES ===", 1)[1], err
+
+    def test_the_governing_designs_locked_calls_and_design_section_reach_rules(self):
+        self._design("code.md", "governs: [src/]", body=self._body())
+        rules, err = self._rules()
+        self.assertIn(self.LOCKED, rules)
+        self.assertIn("(source: code.md)", rules)
+        self.assertIn("reads trailers with git interpret-trailers", rules)
+        self.assertNotIn("history, not a rule", rules)
+        self.assertNotIn("objective paragraph", rules)
+        self.assertIn("rules also from the design(s) code.md", err)
+
+    def test_locked_calls_come_before_the_ranked_paragraphs(self):
+        self._design("code.md", "governs: [src/]", body=self._body())
+        rules, _ = self._rules()
+        self.assertLess(rules.index(self.LOCKED), rules.index("interpret-trailers"))
+
+    def test_a_design_that_governs_nothing_changed_or_is_a_draft_is_left_out(self):
+        self._design("other.md", "governs: [docs/]", body=self._body())
+        self._design("draft.md", "governs: [src/]", status="draft", body=self._body())
+        rules, err = self._rules()
+        self.assertNotIn(self.LOCKED, rules)
+        self.assertNotIn("rules also from", err)
+
+    def test_governs_forms_and_specificity(self):
+        self.assertEqual(rm._governs("governs:\n  - src/a.py\n  - 'scripts/emit_*.py'\nx: 1"),
+                         ["src/a.py", "scripts/emit_*.py"])
+        self.assertEqual(rm._governs('governs: [src/, "b.py"]'), ["src/", "b.py"])
+        self.assertEqual(rm._governs("governs: []"), [])
+        self.assertTrue(rm._governs_match("scripts/emit_*.py", "scripts/emit_claude.py"))
+        self.assertTrue(rm._governs_match("src", "src/commit_msg.py"))
+        self.assertFalse(rm._governs_match("src", "srcx/commit_msg.py"))
+        self._design("broad.md", "governs: ['src/**', 'scripts/**']")
+        self._design("narrow.md", "governs:\n  - src/commit_msg.py")
+        self._design("tie.md", "governs: [src/commit_msg.py]")
+        # A broad design speaks only for a path nothing narrower governs.
+        self.assertEqual([p.name for p in rm.governing_designs(self.repo, ["src/commit_msg.py"])],
+                         ["narrow.md", "tie.md"])
+        self.assertEqual([p.name for p in rm.governing_designs(
+            self.repo, ["src/commit_msg.py", "scripts/x.py"])], ["narrow.md", "tie.md", "broad.md"])
+
+    def test_design_paragraphs_are_capped_and_locked_calls_are_not(self):
+        paras = "".join(f"The commit_msg trailer rule number {i} says something about commit_msg trailers.\n\n"
+                        for i in range(rm.MAX_DESIGN_PARAGRAPHS + 5))
+        locked = "".join(f"- Locked commit_msg call {i}.\n" for i in range(rm.MAX_DESIGN_PARAGRAPHS + 2))
+        self._design("code.md", "governs: [src/]",
+                     body=f"## Design\n\n{paras}## Locked design calls\n\n{locked}")
+        rules, _ = self._rules()
+        self.assertEqual(rules.count("trailer rule number"), rm.MAX_DESIGN_PARAGRAPHS)
+        self.assertEqual(rules.count("Locked commit_msg call"), rm.MAX_DESIGN_PARAGRAPHS + 2)
+
+    def test_a_diff_path_is_read_against_the_repo_root_not_the_current_directory(self):
+        # Found by the cross-model review: run with --repo-root from another checkout
+        # that holds the same relative path, the path resolved into that checkout.
+        self._design("code.md", "governs: [src/]")
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "src").mkdir()
+            (Path(tmp) / "src" / "commit_msg.py").write_text("x = 1\n", encoding="utf-8")
+            saved = Path.cwd()
+            os.chdir(tmp)
+            try:
+                found = rm.governing_designs(self.repo, ["src/commit_msg.py"])
+            finally:
+                os.chdir(saved)
+        self.assertEqual([p.name for p in found], ["code.md"])
+
+    def test_a_design_named_outside_the_repo_is_read(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            vault = Path(tmp) / "living.md"
+            vault.write_text("---\nstatus: active\n---\n\n" + self._body(), encoding="utf-8")
+            rules, err = self._rules("--design", str(vault))
+        self.assertIn(self.LOCKED, rules)
+        self.assertIn("(source: living.md)", rules)
+
+    def test_a_deleted_diff_path_is_matched_whatever_the_current_directory_holds(self):
+        # Found by the cross-model review: a diff path is the repo's own even when the
+        # file is gone from the repo and present where the command runs.
+        self._design("code.md", "governs: [src/]", body=self._body())
+        _git(self.repo, "rm", "-q", "src/commit_msg.py")
+        _git(self.repo, "commit", "-q", "-m", "delete")
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "src").mkdir()
+            (Path(tmp) / "src" / "commit_msg.py").write_text("x = 1\n", encoding="utf-8")
+            saved = Path.cwd()
+            os.chdir(tmp)
+            try:
+                rules, err = self._rules()
+            finally:
+                os.chdir(saved)
+        self.assertIn(self.LOCKED, rules)
+
+    def test_a_file_list_given_as_absolute_paths_is_matched(self):
+        self._design("code.md", "governs: [src/]", body=self._body())
+        code, out, err = self.run_cli("--files", str(self.repo / "src" / "commit_msg.py"),
+                                      "--anchor", str(self.plan))
+        self.assertEqual(code, 0, err)
+        self.assertIn(self.LOCKED, out.split("=== RULES ===", 1)[1])
+
+    def test_a_living_designs_current_design_section_is_read(self):
+        # Found by the cross-model review: /design writes a living design's body under
+        # "Current design", not "Design".
+        with tempfile.TemporaryDirectory() as tmp:
+            vault = Path(tmp) / "living.md"
+            vault.write_text("---\nstatus: active\n---\n\n## Objective\n\nShort.\n\n"
+                             f"## Current design\n\n- {self.DESIGN_PARA}\n\n## Open questions\n\nnone\n",
+                             encoding="utf-8")
+            rules, _ = self._rules("--design", str(vault))
+        self.assertIn("reads trailers with git interpret-trailers", rules)
+        self.assertIn("(source: living.md)", rules)
+
+    def test_a_missing_named_design_is_a_note_not_an_error(self):
+        rules, err = self._rules("--design", str(self.repo / "nope.md"))
+        self.assertIn("nope.md was not found", err)
+
+    def test_the_anchor_is_not_read_twice_as_a_design(self):
+        page = self._design("code.md", "governs: [src/]", body=self._body())
+        code, out, err = self.run_cli("--range", "HEAD~1..HEAD", "--anchor", str(page))
+        self.assertEqual(code, 0, err)
+        self.assertEqual(out.count(self.LOCKED), 1)
+        self.assertNotIn("rules also from", err)
+
+
 class EmbeddedRepoTests(Fixture):
     """#288 item 2: an untracked folder that is its own repository is listed by
     `ls-files --others` as `dir/` and gives `git diff --no-index` nothing to read."""
@@ -567,8 +714,9 @@ class MissingAnchorTests(Fixture):
 class WhatItNeverReadsTests(Fixture):
     def test_the_builder_takes_no_reasoning_and_no_suspected_bug(self):
         params = set(inspect.signature(rm.build).parameters)
+        # designs: more places rules come from, never the author's reasoning.
         self.assertEqual(params, {"artifact", "paths", "contract", "anchor_path", "repo_root",
-                                  "max_rule_lines", "ceiling", "diff_text"})
+                                  "designs", "max_rule_lines", "ceiling", "diff_text"})
         flags = set(re.findall(r"--[a-z-]+", rm._build_parser().format_help()))
         for banned in ("--reasoning", "--notes", "--suspect", "--bug", "--hint", "--focus"):
             self.assertNotIn(banned, flags)

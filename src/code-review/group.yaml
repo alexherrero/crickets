@@ -129,7 +129,10 @@ description: Standalone adversarial code review of any diff or PR — the advers
 # operator's diff.noprefix or core.quotePath cannot change what is read.
 # 2.1.1 = --worktree reviews an untracked folder that is its own repository
 # as the gitlink git would stage (#288 item 2), not as nothing.
-version: 2.1.1
+# 2.2.0 = RULES also come from the designs that govern the change: the repo's
+# wiki/designs/ pages matched by governs: (the most specific per path), and
+# any --design FILE. Locked calls first; at most 8 Design-section paragraphs.
+version: 2.2.0
 category: Coding
 requires: []
 standalone: true
