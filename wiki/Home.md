@@ -39,4 +39,4 @@ The [wiki](https://github.com/alexherrero/crickets/wiki) covers everything there
 ---
 
 > [!NOTE]
-> **Latest release: [v8.1.0](https://github.com/alexherrero/crickets/releases/tag/v8.1.0).** The loop's tools close the gaps its first real run found: the loop record holds the operator's decision, the direction check stops only for a wrong approach, reviewers skip generated `dist/` copies, and the commit hook finds its rules again.
+> **Latest release: [v8.2.0](https://github.com/alexherrero/crickets/releases/tag/v8.2.0).** On Antigravity, cross-model review asks Claude (with local `claude -p` fallback), emitted plugin paths carry a `$HOME/.gemini/config/plugins/<slug>` fallback, and hooks support `read_file`; reviewers also read the designs governing each changed file.
