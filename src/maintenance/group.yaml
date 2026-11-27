@@ -42,5 +42,6 @@ standalone: false
 # 0.3.0 = the four scheduled-maintenance scripts with no invoker (content_refresh,
 # cve_security_patch, deps_currency, tech_debt_inventory) and the agentm_bridge.py
 # only they used are deleted (plan 105 step 6). dependabot-fixer is unchanged.
-version: 0.3.0
+# 0.3.1 = Antigravity: rewrite CLAUDE_PLUGIN_ROOT path refs with a plugin-dir fallback.
+version: 0.3.1
 capabilities: [github-ci, ci-repair, maintenance]

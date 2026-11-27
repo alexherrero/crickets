@@ -508,6 +508,81 @@ class TestAntigravityEmitter(unittest.TestCase):
             self.assertTrue((sd / "helper.py").exists())
             self.assertFalse((sd / "__pycache__").exists())
 
+    def test_plugin_root_rewritten_with_fallback_across_emitted_markdown(self):
+        src_model = sys.modules["src_model"]
+        with tempfile.TemporaryDirectory() as t:
+            src = Path(t) / "src"
+            (src / "demo" / "commands").mkdir(parents=True)
+            (src / "demo" / "skills" / "sk" / "references").mkdir(parents=True)
+            (src / "demo" / "skills" / "sk" / "templates").mkdir(parents=True)
+            (src / "demo" / "agents").mkdir(parents=True)
+            (src / "demo" / "rules").mkdir(parents=True)
+            (src / "demo" / "group.yaml").write_text(
+                "name: Demo\ndescription: d\nstandalone: true\nrequires: []\n", encoding="utf-8")
+            (src / "demo" / "commands" / "cmd.md").write_text(
+                "---\nname: cmd\nkind: command\nsupported_hosts: [antigravity]\ndescription: d\n---\n"
+                'Run `${CLAUDE_PLUGIN_ROOT}/scripts/a.py` and "${CLAUDE_PLUGIN_ROOT:-src/demo}/scripts/b.py" '
+                'and "$CLAUDE_PLUGIN_ROOT/scripts/c.py". Prose: ${CLAUDE_PLUGIN_ROOT} or `${CLAUDE_PLUGIN_ROOT}/…`.\n',
+                encoding="utf-8")
+            (src / "demo" / "skills" / "sk" / "SKILL.md").write_text(
+                "---\nname: sk\nkind: skill\nsupported_hosts: [antigravity]\ndescription: d\n---\n"
+                'Use `${CLAUDE_PLUGIN_ROOT}/scripts/a.py`.\n', encoding="utf-8")
+            (src / "demo" / "skills" / "sk" / "references" / "ref.md").write_text(
+                'Ref `${CLAUDE_PLUGIN_ROOT}/scripts/b.py`.\n', encoding="utf-8")
+            (src / "demo" / "skills" / "sk" / "templates" / "tpl.md").write_text(
+                'Template `${CLAUDE_PLUGIN_ROOT}/…`.\n', encoding="utf-8")
+            (src / "demo" / "agents" / "ag.md").write_text(
+                "---\nname: ag\nkind: agent\nsupported_hosts: [antigravity]\ndescription: d\n---\n"
+                'Agent `${CLAUDE_PLUGIN_ROOT}/scripts/a.py`.\n', encoding="utf-8")
+            (src / "demo" / "rules" / "rl.md").write_text(
+                "---\nname: rl\nkind: rule\nsupported_hosts: [antigravity]\ndescription: d\n---\n"
+                'Rule `$CLAUDE_PLUGIN_ROOT/scripts/c.py`.\n', encoding="utf-8")
+            group = src_model.load_groups(src)[0]
+            dist = Path(t) / "dist"
+            emit_antigravity.AntigravityEmitter().emit_group(group, dist)
+            pd = dist / "plugins" / "demo"
+            fb = "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/demo}"
+
+            cmd_out = (pd / "skills" / "cmd" / "SKILL.md").read_text(encoding="utf-8")
+            self.assertIn(f"`{fb}/scripts/a.py`", cmd_out)
+            self.assertIn(f'"{fb}/scripts/b.py"', cmd_out)
+            self.assertIn(f'"{fb}/scripts/c.py"', cmd_out)
+            self.assertIn("Prose: ${CLAUDE_PLUGIN_ROOT} or `${CLAUDE_PLUGIN_ROOT}/…`.", cmd_out)
+
+            self.assertIn(f"`{fb}/scripts/a.py`",
+                          (pd / "skills" / "sk" / "SKILL.md").read_text(encoding="utf-8"))
+            self.assertIn(f"`{fb}/scripts/b.py`",
+                          (pd / "skills" / "sk" / "references" / "ref.md").read_text(encoding="utf-8"))
+            self.assertIn("`${CLAUDE_PLUGIN_ROOT}/…`",
+                          (pd / "skills" / "sk" / "templates" / "tpl.md").read_text(encoding="utf-8"))
+            self.assertIn(f"`{fb}/scripts/a.py`",
+                          (pd / "agents" / "ag.md").read_text(encoding="utf-8"))
+            self.assertIn(f"`{fb}/scripts/c.py`",
+                          (pd / "rules" / "rl.md").read_text(encoding="utf-8"))
+
+    def test_shape_gate_rejects_unguarded_plugin_root(self):
+        spec = importlib.util.spec_from_file_location("check_agy_plugin_shape", _HERE / "check-agy-plugin-shape.py")
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        with tempfile.TemporaryDirectory() as t:
+            plugins = Path(t) / "plugins"
+            for rel, body in (
+                ("bad/skills/s/SKILL.md", "---\nname: s\ndescription: d\n---\n${CLAUDE_PLUGIN_ROOT}/scripts/x.py\n"),
+                ("bad/agents/a.md", "---\nname: a\ndescription: d\n---\n$CLAUDE_PLUGIN_ROOT/scripts/y.py\n"),
+                ("bad/rules/r.md", "---\ntrigger: always_on\n---\n${CLAUDE_PLUGIN_ROOT}/scripts/z.py\n"),
+            ):
+                p = plugins / rel
+                p.parent.mkdir(parents=True, exist_ok=True)
+                p.write_text(body, encoding="utf-8")
+            problems = m.check_dist(plugins)
+            self.assertEqual(len(problems), 3)
+            self.assertTrue(all("unguarded CLAUDE_PLUGIN_ROOT" in p for p in problems), problems)
+
+    def test_read_matcher_and_long_body_stub_avoid_view_file_only(self):
+        self.assertEqual(emit_antigravity._ag_matcher("Read"), "read_file|view_file")
+        stub = emit_antigravity._long_body_stub("`/work`", "references/work.md")
+        self.assertNotIn("view_file", stub)
+
 
 if __name__ == "__main__":
     unittest.main()

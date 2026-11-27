@@ -11,10 +11,10 @@ This command is the explicit-invocation entry point for the Planner's depth-main
 
 ```bash
 # One cycle, using .harness/project.json:
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/planner_maintain.py" --config .harness/project.json
+python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/github-projects}/scripts/planner_maintain.py" --config .harness/project.json
 
 # Preview without writing or posting anything:
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/planner_maintain.py" --config .harness/project.json --dry-run
+python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/github-projects}/scripts/planner_maintain.py" --config .harness/project.json --dry-run
 
 # Explicit invocation (the Planner persona's `triggers:` surface):
 /planner-maintain

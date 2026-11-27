@@ -18,7 +18,7 @@ You are running `/diagnose` — a deterministic-first failure classifier and cro
 3. **Run the pipeline.**
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/diagnose.py" --project <slug> [--tool <name>] [--exit-code <n>] <traceback-file>
+   python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/diagnostics}/scripts/diagnose.py" --project <slug> [--tool <name>] [--exit-code <n>] <traceback-file>
    ```
 
    The script prints one JSON object to stdout:

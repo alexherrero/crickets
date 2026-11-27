@@ -164,6 +164,7 @@ standalone: true
 # (plan 105 step 7).
 # 0.9.1 = pricing.py's note on claude-sonnet-5 says its $2/$10 rate is current;
 # the note predicting a $3/$15 rate from 2026-09-01 is retired.
-version: 0.9.1
+# 0.9.2 = Antigravity: hook adapter supports read_file alongside view_file and maps Path/AbsolutePath to file_path.
+version: 0.9.2
 capabilities: [status-line-meter, token-audit, tokens]
 renamed_from: [status-line-meter, token-audit]

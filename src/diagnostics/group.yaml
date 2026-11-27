@@ -47,5 +47,6 @@ enhances:
 #          names, so a same-named module a shared process holds never reaches
 #          agentm.
 # 0.1.8 = Antigravity: /diagnose ships as a skill.
-version: 0.1.8
+# 0.1.9 = Antigravity: rewrite CLAUDE_PLUGIN_ROOT path refs with a plugin-dir fallback.
+version: 0.1.9
 capabilities: [diagnostics]

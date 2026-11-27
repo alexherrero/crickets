@@ -15,7 +15,7 @@ You are running **design**: keep the project's living design note true. A living
 
 ### 1. Find the note
 
-Ask where the project keeps its designs: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/project_homes.py" home designs`. It prints the folder; **exit 3** (no agentm, no vault) means there is no vault to write to: say so, and use `.harness/design-<slug>.md` in the repo, which you create. List the folder and open the note whose slug or aliases match the topic. If none does, this is a new note.
+Ask where the project keeps its designs: `python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/design}/scripts/project_homes.py" home designs`. It prints the folder; **exit 3** (no agentm, no vault) means there is no vault to write to: say so, and use `.harness/design-<slug>.md` in the repo, which you create. List the folder and open the note whose slug or aliases match the topic. If none does, this is a new note.
 
 Never write into a folder agentm did not name, and never into `wiki/designs/`: pages already there stay as they are until the wiki moves, and are not touched by this command.
 

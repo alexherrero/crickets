@@ -145,7 +145,8 @@ class TestClaudeEmitter(unittest.TestCase):
         # 0.13.5 = documenter drops its /review section (plan 104 step 1).
         # 0.13.6 = the documentation enhance names wiki-author / wiki-watch (plan 104 step 2).
         # 1.0.0 = the group collapses to wiki-author + its commands (plan 105).
-        self.assertEqual(self._plugin_json("wiki")["version"], "1.0.0")
+        # 1.0.1 = Antigravity: rewrite CLAUDE_PLUGIN_ROOT path refs with a plugin-dir fallback.
+        self.assertEqual(self._plugin_json("wiki")["version"], "1.0.1")
         # 0.3.0 = check-no-pii.sh + templates/hooks/pre-push moved into src/pii/
         # so they actually ship inside the plugin payload (R2.4 task 7).
         # 0.3.1 = check-no-pii.sh scan collapsed to one grep per file (fixes a
@@ -170,7 +171,8 @@ class TestClaudeEmitter(unittest.TestCase):
         # longer trips it. A false-positive fix. Patch.
         # 0.6.6 = Antigravity build only: pii-patterns carries a rule trigger.
         # 1.0.0 = privacy-review merged into pii-scrubber (crickets plan 105).
-        self.assertEqual(self._plugin_json("privacy")["version"], "1.0.0")
+        # 1.0.1 = Antigravity: rewrite CLAUDE_PLUGIN_ROOT path refs with a plugin-dir fallback.
+        self.assertEqual(self._plugin_json("privacy")["version"], "1.0.1")
 
     def test_dependencies_from_requires(self):
         # post-seed-retirement: maintenance (ex-github-ci) depends on

@@ -43,7 +43,7 @@ A task directory (`tasks/<name>/`) never moves at close-out: its `done` tracker 
 
 ## Classifying a push
 
-Whether a push is a fast-forward is a git fact; whether the history it discards is "shared" is a judgment. `scripts/recoverability_classifier.py` (bundled with this plugin, under `${CLAUDE_PLUGIN_ROOT}/scripts/`) answers the fact:
+Whether a push is a fast-forward is a git fact; whether the history it discards is "shared" is a judgment. `scripts/recoverability_classifier.py` (bundled with this plugin, under `${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/developer-safety}/scripts/`) answers the fact:
 
 ```bash
 python3 <path>/scripts/recoverability_classifier.py push [--repo <root>] [--branch <name>] [--remote origin] [--remote-branch <name>]

@@ -37,10 +37,10 @@ Keep PROJECT CONVENTIONS tight — the reviewer needs context, not the whole rep
 
 ## Step 3 — invoke the bundled script
 
-The cross-review script ships with this plugin. On Claude Code it's at `${CLAUDE_PLUGIN_ROOT}/scripts/cross-review.sh`:
+The cross-review script ships with this plugin. On Claude Code it's at `${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/code-review}/scripts/cross-review.sh`:
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/cross-review.sh" < /tmp/review-material.txt
+bash "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/code-review}/scripts/cross-review.sh" < /tmp/review-material.txt
 ```
 
 (On a host that doesn't set `CLAUDE_PLUGIN_ROOT`, the script is in this plugin's `scripts/cross-review.sh` — locate the installed plugin dir and invoke it there.)

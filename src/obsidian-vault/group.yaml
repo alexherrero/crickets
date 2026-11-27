@@ -33,4 +33,6 @@ capabilities: [storage-backend]
 # 0.4.0 = Antigravity: conflict-merger-session-start runs on agy's
 # SessionStart, so the Drive conflict-file notice fires at session start there
 # too, not only on Claude Code.
-version: 0.4.0
+# 0.4.1 = Antigravity: rewrite CLAUDE_PLUGIN_ROOT path refs with a plugin-dir fallback
+# and support read_file in hook adapter.
+version: 0.4.1

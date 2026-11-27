@@ -61,8 +61,19 @@ _SKILL_BODY_LIMIT_BYTES = 23_000
 # Rule trigger by source kind (agy: always_on | model_decision | glob | manual).
 _RULE_TRIGGER = {"snippet": "always_on", "output-style": "always_on", "rule": "model_decision"}
 # Claude tool names agy knows under another name, for hook matchers.
-_AG_TOOL = {"Bash": "run_command", "Read": "view_file"}
+_AG_TOOL = {"Bash": "run_command", "Read": "read_file|view_file"}
 _SCRIPT_RE = re.compile(r"(?:\S*/)?([\w.-]+\.(?:sh|ps1|py))")
+# Rewrite path-bearing, non-ellipsis CLAUDE_PLUGIN_ROOT refs in AG skills/agents/rules
+# because Antigravity does not export CLAUDE_PLUGIN_ROOT in the agent shell.
+_PLUGIN_ROOT_PATH_RE = re.compile(
+    r"\$\{CLAUDE_PLUGIN_ROOT(?::-[^}]*)?\}(?=/[^…\s])|\$CLAUDE_PLUGIN_ROOT(?=/[^…\s])"
+)
+
+
+def _rewrite_plugin_root(text: str, slug: str) -> str:
+    """Provide a $HOME/.gemini/config/plugins/<slug> default for path-bearing refs."""
+    fallback = f"${{CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/{slug}}}"
+    return _PLUGIN_ROOT_PATH_RE.sub(lambda _m: fallback, text)
 
 
 def _split_frontmatter(text: str) -> tuple[str | None, str]:
@@ -135,7 +146,7 @@ def _long_body_stub(what: str, ref_rel: str, arguments: str = "") -> str:
     """SKILL.md body for instructions too long for agy to load whole."""
     return (f"The full instructions for {what} are too long to load here, so they sit in "
             f"`{ref_rel}` next to this file.\n\n"
-            f"Before doing anything else, read that whole file with `view_file` and follow it "
+            f"Before doing anything else, read that whole file and follow it "
             f"exactly.{arguments}\n")
 
 
@@ -173,11 +184,12 @@ class AntigravityEmitter(HostEmitter):
                 continue
             kind = prim.kind
             if kind in _COMPONENT_SUBDIR:
-                self._copy_component(prim, plugin_dir / _COMPONENT_SUBDIR[kind])
+                self._copy_component(prim, plugin_dir / _COMPONENT_SUBDIR[kind], group.slug)
             elif kind == "agent":
-                self._emit_agent(prim, plugin_dir / "agents")
+                self._emit_agent(prim, plugin_dir / "agents", group.slug)
             elif kind == "command":
-                self._emit_command_as_skill(prim, plugin_dir / "skills", skill_names, command_names)
+                self._emit_command_as_skill(
+                    prim, plugin_dir / "skills", skill_names, command_names, group.slug)
             elif kind == "hook":
                 self._emit_hook(prim, plugin_dir, ag_hooks)
             elif kind in ("snippet", "rule", "output-style"):
@@ -188,7 +200,7 @@ class AntigravityEmitter(HostEmitter):
                 # mechanism, so it folds in here rather than getting dropped
                 # (cricketsBuild#1 — supported_hosts claimed antigravity for
                 # these kinds but the emitter dropped them on the floor).
-                self._emit_rule(prim, plugin_dir / "rules")
+                self._emit_rule(prim, plugin_dir / "rules", group.slug)
             elif kind == "mcp-server":
                 self._merge_mcp(prim, mcp_servers)
             else:
@@ -231,7 +243,7 @@ class AntigravityEmitter(HostEmitter):
             entry["enhances"] = enhances_to_json(group.enhances)
         return entry
 
-    def _copy_component(self, prim: Primitive, dest_dir: Path) -> None:
+    def _copy_component(self, prim: Primitive, dest_dir: Path, slug: str = "") -> None:
         dest_dir.mkdir(parents=True, exist_ok=True)
         if prim.root.is_dir():
             copied_root = dest_dir / prim.root.name
@@ -245,12 +257,25 @@ class AntigravityEmitter(HostEmitter):
                 manifest_rel = prim.manifest.relative_to(prim.root)
                 write_utf8(copied_root / manifest_rel, render_primitive_text(prim))
             if prim.kind == "skill":
+                if slug:
+                    skill_md = copied_root / "SKILL.md"
+                    if skill_md.is_file():
+                        write_utf8(skill_md, _rewrite_plugin_root(
+                            skill_md.read_text(encoding="utf-8"), slug))
+                    refs_dir = copied_root / "references"
+                    if refs_dir.is_dir():
+                        for ref_md in sorted(refs_dir.glob("*.md")):
+                            write_utf8(ref_md, _rewrite_plugin_root(
+                                ref_md.read_text(encoding="utf-8"), slug))
                 self._split_long_skill(copied_root)
         else:
             # render_primitive_text is a no-op (raw text) for a primitive with
             # no `opinions:` frontmatter key — every other single-file primitive
             # emits byte-identical to the plain copy2 this replaces.
-            write_utf8(dest_dir / prim.root.name, render_primitive_text(prim))
+            text = render_primitive_text(prim)
+            if slug:
+                text = _rewrite_plugin_root(text, slug)
+            write_utf8(dest_dir / prim.root.name, text)
 
     @staticmethod
     def _split_long_skill(skill_dir: Path) -> None:
@@ -315,7 +340,7 @@ class AntigravityEmitter(HostEmitter):
         if events:
             ag_hooks[prim.name] = {"enabled": True, **events}
 
-    def _emit_agent(self, prim: Primitive, agents_dir: Path) -> None:
+    def _emit_agent(self, prim: Primitive, agents_dir: Path, slug: str = "") -> None:
         """Copy an agent, minus the `tools:` / `model:` lines agy cannot read.
 
         agy wants `tools:` as a YAML list of its own tool names and rejects a
@@ -323,19 +348,21 @@ class AntigravityEmitter(HostEmitter):
         agent inherits the session's tools and model instead.
         """
         if prim.root.is_dir():
-            self._copy_component(prim, agents_dir)
+            self._copy_component(prim, agents_dir, slug)
             return
         agents_dir.mkdir(parents=True, exist_ok=True)
         text = render_primitive_text(prim)
         fm, rest = _split_frontmatter(text)
         if fm is not None:
             text = _join_frontmatter(_drop_keys(fm, {"tools", "model"}), rest)
+        if slug:
+            text = _rewrite_plugin_root(text, slug)
         write_utf8(agents_dir / prim.root.name, text)
 
-    def _emit_rule(self, prim: Primitive, rules_dir: Path) -> None:
+    def _emit_rule(self, prim: Primitive, rules_dir: Path, slug: str = "") -> None:
         """Copy a rule / snippet / output-style, adding the `trigger:` agy needs."""
         if prim.root.is_dir():
-            self._copy_component(prim, rules_dir)
+            self._copy_component(prim, rules_dir, slug)
             return
         rules_dir.mkdir(parents=True, exist_ok=True)
         text = render_primitive_text(prim)
@@ -345,10 +372,13 @@ class AntigravityEmitter(HostEmitter):
             if trigger == "model_decision" and not prim.frontmatter.get("description"):
                 trigger = "always_on"  # a model_decision rule must carry a description
             text = _join_frontmatter(fm + f"\ntrigger: {trigger}", rest)
+        if slug:
+            text = _rewrite_plugin_root(text, slug)
         write_utf8(rules_dir / prim.root.name, text)
 
     def _emit_command_as_skill(self, prim: Primitive, skills_dir: Path,
-                               taken: set[str], commands: frozenset[str]) -> None:
+                               taken: set[str], commands: frozenset[str],
+                               slug: str = "") -> None:
         """A command becomes skills/<name>/SKILL.md — agy plugins load no commands/.
 
         `$ARGUMENTS` is a Claude substitution agy does not do, so it is replaced
@@ -368,6 +398,8 @@ class AntigravityEmitter(HostEmitter):
         hint = prim.frontmatter.get("argument-hint")
         if hint:
             body = f"**Usage:** `/{name} {hint}`\n\n{body}"
+        if slug:
+            body = _rewrite_plugin_root(body, slug)
         description = str(prim.frontmatter.get("description", "")).strip() or name
         sk = skills_dir / name
         sk.mkdir(parents=True, exist_ok=True)

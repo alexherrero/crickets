@@ -191,8 +191,8 @@ See [`../templates/README.md`](../templates/README.md#stylistic-conventions) for
 Every page you draft runs the **`prose-pass` skill** after drafting and **before** the preview-before-write step: *Gemini simplifies with the operator's voice pack inlined verbatim; you fact-check and apply.* Same-model prose review is the same echo chamber as same-model code review — a different model breaks your own register's pull. The primitive is the design plugin's `scripts/prose_pass.py`, which lives in a sibling plugin. Find it, and the skill's step shape, through this plugin's resolver:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sibling_plugin.py" design scripts/prose_pass.py
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sibling_plugin.py" design skills/prose-pass/SKILL.md
+python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/wiki}/scripts/sibling_plugin.py" design scripts/prose_pass.py
+python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/wiki}/scripts/sibling_plugin.py" design skills/prose-pass/SKILL.md
 ```
 
 Each prints an absolute path and exits 0. Never step up out of the plugin root to reach `design`: Claude Code installs every plugin in its own versioned directory, so a hand-built sibling path names nothing. If the resolver exits 1, the design plugin isn't installed. Treat that exactly like the script's exit-1 fallback below, and put the resolver's stderr line in your `PROSE-PASS-DEGRADED:` marker. Follow the `prose-pass` skill's own step shape; this section only names the wiki-specific inputs.

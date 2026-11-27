@@ -42,6 +42,17 @@ TRIGGERS = {"always_on", "model_decision", "glob", "manual"}
 GROUPED_EVENTS = {"PreToolUse", "PostToolUse"}
 FLAT_EVENTS = {"SessionStart", "PreInvocation", "PostInvocation", "Stop"}
 SKILL_BODY_LIMIT = 24_000
+_UNGUARDED_PLUGIN_ROOT_RE = re.compile(
+    r"\$\{CLAUDE_PLUGIN_ROOT\}(?=/[^…\s])|\$CLAUDE_PLUGIN_ROOT(?=/[^…\s])"
+)
+
+
+def _check_unguarded_plugin_root(path: Path, where: str, problems: list[str]) -> None:
+    text = path.read_text(encoding="utf-8")
+    if _UNGUARDED_PLUGIN_ROOT_RE.search(text):
+        problems.append(
+            f"{where}: unguarded CLAUDE_PLUGIN_ROOT path — Antigravity does not export CLAUDE_PLUGIN_ROOT; emit a fallback"
+        )
 
 
 def split_frontmatter(text: str):
@@ -72,6 +83,7 @@ def check_rules(plugin: Path, problems: list[str]) -> None:
             problems.append(f"{where}: a model_decision rule needs a description")
         elif trigger == "glob" and not fm.get("globs"):
             problems.append(f"{where}: a glob rule needs globs")
+        _check_unguarded_plugin_root(f, where, problems)
 
 
 def check_agents(plugin: Path, problems: list[str]) -> None:
@@ -88,6 +100,7 @@ def check_agents(plugin: Path, problems: list[str]) -> None:
             problems.append(f"{where}: tools must be a YAML list for agy — agy skips the agent")
         if "model" in fm:
             problems.append(f"{where}: model {fm['model']!r} — agy rejects Claude model tiers; drop the line")
+        _check_unguarded_plugin_root(f, where, problems)
 
 
 def check_skills(plugin: Path, problems: list[str]) -> None:
@@ -104,6 +117,12 @@ def check_skills(plugin: Path, problems: list[str]) -> None:
         size = len(body.encode("utf-8"))
         if size > SKILL_BODY_LIMIT:
             problems.append(f"{where}: body is {size} bytes; agy loads only the first {SKILL_BODY_LIMIT}")
+        _check_unguarded_plugin_root(f, where, problems)
+        refs_dir = f.parent / "references"
+        if refs_dir.is_dir():
+            for ref in sorted(refs_dir.glob("*.md")):
+                _check_unguarded_plugin_root(
+                    ref, f"{plugin.name}/skills/{f.parent.name}/references/{ref.name}", problems)
 
 
 def check_handler(h, where: str, plugin: Path, problems: list[str]) -> None:

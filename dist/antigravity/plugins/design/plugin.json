@@ -5,5 +5,5 @@
   },
   "description": "Living-design authoring — the /design command (write or update a project's living design note in its vault: objective, current design, open questions, amendment log). Also the cross-model prose pass.",
   "name": "design",
-  "version": "2.0.1"
+  "version": "2.0.2"
 }

@@ -819,5 +819,7 @@ standalone: true
 # approach; a detail is corrected and rechecked (build-it, create-it, work).
 # 2.3.1 = build-it and create-it pass the vault's living design to
 # review_material.py with --design, found by vault_designs.py find.
-version: 2.3.1
+# 2.3.2 = Antigravity: rewrite CLAUDE_PLUGIN_ROOT path refs with a plugin-dir fallback,
+# drop hardcoded view_file in long-skill stub, and support read_file in hook adapter.
+version: 2.3.2
 capabilities: [developer-workflows, development-lifecycle, setup, plan, work, review, release, bugfix, documentation]

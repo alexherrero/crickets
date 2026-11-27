@@ -21,15 +21,15 @@ Judgment is yours: whether it looks, sounds or reads like the reference, what a 
 | `review_material.py`, `cross-review.sh` | the `code-review` plugin | what a reviewer is shown; the cross-model review |
 | `prose_pass.py` | the `design` plugin | the cross-model voice pass over prose |
 
-Reach another plugin's script with `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sibling_plugin.py" <plugin> scripts/<file>`, for `code-review` (`review_material.py`, `cross-review.sh`) and `design` (`prose_pass.py`); it prints the path to run. **Exit 1** means that plugin is not installed: use the fallback named in the step, and say so. None of this needs agentm or a vault.
+Reach another plugin's script with `python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/development-lifecycle}/scripts/sibling_plugin.py" <plugin> scripts/<file>`, for `code-review` (`review_material.py`, `cross-review.sh`) and `design` (`prose_pass.py`); it prints the path to run. **Exit 1** means that plugin is not installed: use the fallback named in the step, and say so. None of this needs agentm or a vault.
 
 ## Process
 
 ### 0. Set up
 
-Slug: a short name. The record is `loop-<slug>.json` in the folder `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/spec_doc.py" place --slug <slug> --plan <plan.md>` prints for the spec (add `--project-root <repo>` when there is no plan). Scratch files go in `${TMPDIR:-/tmp}/create-it-<slug>/`.
+Slug: a short name. The record is `loop-<slug>.json` in the folder `python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/development-lifecycle}/scripts/spec_doc.py" place --slug <slug> --plan <plan.md>` prints for the spec (add `--project-root <repo>` when there is no plan). Scratch files go in `${TMPDIR:-/tmp}/create-it-<slug>/`.
 
-**The design.** `review_material.py` finds the repo's own governing designs (`wiki/designs/`, by their `governs:`) by itself. A living design kept in the vault is passed in: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/vault_designs.py" find <a path the task changes> --cwd <repo>`; on exit 0, add `--design <the path it prints>` to every `review_material.py` call. On exit 1 or 3 there is none to add.
+**The design.** `review_material.py` finds the repo's own governing designs (`wiki/designs/`, by their `governs:`) by itself. A living design kept in the vault is passed in: `python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/development-lifecycle}/scripts/vault_designs.py" find <a path the task changes> --cwd <repo>`; on exit 0, add `--design <the path it prints>` to every `review_material.py` call. On exit 1 or 3 there is none to add.
 
 ### 1. Anchor: the spec, the reference and the likeness list
 
@@ -53,7 +53,7 @@ Make it. Keep every file in the folder the spec names. The spec's Not doing is a
 
 ### 5. Free checks
 
-For each made PNG or WAV: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/asset_checks.py" check <made> --reference <ref> --out-dir <scratch>/checks` (add `--grid 8x1` or `--frame-size 32x32` for a sprite sheet). It measures and lists differences; **exit 1 is a difference to look at, not an automatic fail**: a new colour may be what the spec asked for. Fix what is wrong, and record what is right.
+For each made PNG or WAV: `python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/development-lifecycle}/scripts/asset_checks.py" check <made> --reference <ref> --out-dir <scratch>/checks` (add `--grid 8x1` or `--frame-size 32x32` for a sprite sheet). It measures and lists differences; **exit 1 is a difference to look at, not an automatic fail**: a new colour may be what the spec asked for. Fix what is wrong, and record what is right.
 
 - Record each pair: `loop_record.py pair --record <record> --reference <ref> --made <made>`.
 - Record each Done-when line you have seen hold, with the evidence (the measurement, the file, the count): `loop_record.py requirement --record <record> --text "<line>" --status met --evidence "<what you saw>"`; `--status not-met` when it does not.
@@ -70,7 +70,7 @@ Run each pass in the order `loop_record.py passes` printed after `direction`: `l
 
 **craft** is the technical quality: palette discipline, clean loops, clipping, frame consistency, file naming, or for UI and prose the structure. Write a contract file from the spec's Goal and Done-when plus the `asset_checks.py` output, build the material with `review_material.py --files <made files> --contract-file <contract> --anchor <spec> --tier default`, and pipe it into `cross-review.sh --tier default`. This reviewer reads text and measurements, never pixels or sound, so say so in the report (`not-checked`). If it prints `CROSS-REVIEW-DEGRADED:`, or `code-review` is absent, say so in one line and run the pass with a fresh read-only reviewer on model sonnet and the same material.
 
-**voice** is for prose only, and runs on the `wording` tier: `python3 "$(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sibling_plugin.py" design scripts/prose_pass.py)" <prose file> --fact-guard-text "<a truth the rewrite must not change>" --model "Gemini 4 Hydrogen (High)" -o <scratch>/voice.md`, with one fact-guard line per fact, number and name in the text and per spec Rule. Read the diff before accepting any of it. **A revision that comes back longer than the original is not accepted**; ask again or keep the original. Each change is a finding (cite the original's line): apply the ones that fix the voice, and record a rewrite that changed a fact as `misread`. If the script prints `PROSE-PASS-DEGRADED:`, or `design` is absent, say so in one line and do the pass yourself on model sonnet, with the same fact guards.
+**voice** is for prose only, and runs on the `wording` tier: `python3 "$(python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/development-lifecycle}/scripts/sibling_plugin.py" design scripts/prose_pass.py)" <prose file> --fact-guard-text "<a truth the rewrite must not change>" --model "Gemini 4 Hydrogen (High)" -o <scratch>/voice.md`, with one fact-guard line per fact, number and name in the text and per spec Rule. Read the diff before accepting any of it. **A revision that comes back longer than the original is not accepted**; ask again or keep the original. Each change is a finding (cite the original's line): apply the ones that fix the voice, and record a rewrite that changed a fact as `misread`. If the script prints `PROSE-PASS-DEGRADED:`, or `design` is absent, say so in one line and do the pass yourself on model sonnet, with the same fact guards.
 
 If `loop_record.py status` flags doubt theater, say so in the report rather than running more rounds.
 

@@ -20,7 +20,7 @@ You are running the **setup** phase of the developer-workflows loop. First-time 
 
 ### 1. Ask agentm where a plan goes, then write the scaffold
 
-Run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/resolve_plan.py"` bare, from the repo root, and act on its exit:
+Run `python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/development-lifecycle}/scripts/resolve_plan.py"` bare, from the repo root, and act on its exit:
 
 - **Exit 4** — the project keeps its plans in numbered tasks. **Seed no plan**: the first `/plan` names a task.
 - **Exit 0** — a repo with no vault: agentm answered its repo-local singleton. **Seed `PLAN.md` and `progress.md` at the first two paths it printed**. The plan seed carries **no `**Status:**` line** — the plan's status lives in its tracker, which `/plan` opens.

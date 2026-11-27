@@ -30,7 +30,7 @@ The script refuses to run without a fact-guard list: the first un-guarded pass i
 ### Run the script
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/prose_pass.py" path/to/doc.md \
+python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/design}/scripts/prose_pass.py" path/to/doc.md \
   --fact-guard guards.txt \
   -o /tmp/doc.revised.md
 ```

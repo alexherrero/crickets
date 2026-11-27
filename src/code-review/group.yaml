@@ -135,7 +135,8 @@ description: Standalone adversarial code review of any diff or PR — the advers
 # 2.3.0 = on Antigravity, cross-review.sh reviews with Claude: through agy,
 # then the local claude CLI (claude -p, safe mode, no tools) when agy gives
 # none, then the degrade marker. Claude Code is unchanged.
-version: 2.3.0
+# 2.3.1 = Antigravity: rewrite CLAUDE_PLUGIN_ROOT path refs with a plugin-dir fallback.
+version: 2.3.1
 category: Coding
 requires: []
 standalone: true

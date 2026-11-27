@@ -19,15 +19,15 @@ Judgment is yours: what the task needs, how big it is, what a finding means, wha
 | `loop_record.py` | this plugin's `scripts/` | the passes to run, each round's findings, when a pass stops, the done-report |
 | `review_material.py`, `cross-review.sh` | the `code-review` plugin | what a reviewer is shown; the cross-model review itself |
 
-Reach the `code-review` scripts with `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sibling_plugin.py" code-review scripts/review_material.py` and the same call for `scripts/cross-review.sh`; each prints the path to run. **Exit 1** means `code-review` is not installed: carry on with the fallback in step 6, and say so. None of this needs agentm or a vault.
+Reach the `code-review` scripts with `python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/development-lifecycle}/scripts/sibling_plugin.py" code-review scripts/review_material.py` and the same call for `scripts/cross-review.sh`; each prints the path to run. **Exit 1** means `code-review` is not installed: carry on with the fallback in step 6, and say so. None of this needs agentm or a vault.
 
 ## Process
 
 ### 0. Set up
 
-Slug: a short name for the task. The record lives beside the spec: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/spec_doc.py" place --slug <slug> --plan <plan.md>` prints where the spec goes (add `--project-root <repo>` when there is no plan); the record is `loop-<slug>.json` in that same folder. Scratch files (review material, the approach note) go in `${TMPDIR:-/tmp}/build-it-<slug>/`.
+Slug: a short name for the task. The record lives beside the spec: `python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/development-lifecycle}/scripts/spec_doc.py" place --slug <slug> --plan <plan.md>` prints where the spec goes (add `--project-root <repo>` when there is no plan); the record is `loop-<slug>.json` in that same folder. Scratch files (review material, the approach note) go in `${TMPDIR:-/tmp}/build-it-<slug>/`.
 
-**The design.** `review_material.py` finds the repo's own governing designs (`wiki/designs/`, by their `governs:`) by itself. A living design kept in the vault is passed in: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/vault_designs.py" find <a path the task changes> --cwd <repo>`; on exit 0, add `--design <the path it prints>` to every `review_material.py` call. On exit 1 or 3 there is none to add.
+**The design.** `review_material.py` finds the repo's own governing designs (`wiki/designs/`, by their `governs:`) by itself. A living design kept in the vault is passed in: `python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/development-lifecycle}/scripts/vault_designs.py" find <a path the task changes> --cwd <repo>`; on exit 0, add `--design <the path it prints>` to every `review_material.py` call. On exit 1 or 3 there is none to add.
 
 With `--check`, jump to **Check mode** at the end.
 

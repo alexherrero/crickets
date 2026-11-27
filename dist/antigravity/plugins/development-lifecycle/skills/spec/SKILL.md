@@ -11,7 +11,7 @@ You are running **spec**: write the one file a task is graded against. Everythin
 
 > **Recommended model for this phase:** Sonnet 5.5 (`claude-sonnet-5-5`) — authoring. Override with `/model` if needed.
 
-The shape, placement and checks are `spec_doc.py`'s, not yours: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/spec_doc.py"` (`place`, `check`, `render`). Your part is the judgment: what the goal is, which rules apply, what to ask.
+The shape, placement and checks are `spec_doc.py`'s, not yours: `python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/development-lifecycle}/scripts/spec_doc.py"` (`place`, `check`, `render`). Your part is the judgment: what the goal is, which rules apply, what to ask.
 
 ## Process
 
@@ -23,7 +23,7 @@ If a spec is already there, ask **Resume / Replace / Cancel**. Never overwrite s
 
 ### 2. Read what the rules come from
 
-Read the brief, the repo's `AGENTS.md` / `CLAUDE.md`, and the project's living design note: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/project_homes.py" home designs` prints its folder; on exit 3 (no agentm, no vault) skip it and read `wiki/designs/` if the repo has one. Pull only the rules this task touches, and quote each with where it came from. A rule you cannot source is not a rule; leave it out.
+Read the brief, the repo's `AGENTS.md` / `CLAUDE.md`, and the project's living design note: `python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/development-lifecycle}/scripts/project_homes.py" home designs` prints its folder; on exit 3 (no agentm, no vault) skip it and read `wiki/designs/` if the repo has one. Pull only the rules this task touches, and quote each with where it came from. A rule you cannot source is not a rule; leave it out.
 
 ### 3. Ask only what blocks the spec
 

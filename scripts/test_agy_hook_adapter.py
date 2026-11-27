@@ -103,6 +103,17 @@ class PayloadTests(unittest.TestCase):
         c = adapter.claude_payload("PostToolUse", p, "/ws")
         self.assertEqual((c["tool_name"], c["tool_input"]), ("browser_click", {"x": 1}))
 
+    def test_read_file_and_view_file_become_read_with_file_path(self):
+        p_read = {"toolCall": {"name": "read_file", "args": {"Path": "/ws/a.md"}}}
+        c_read = adapter.claude_payload("PreToolUse", p_read, "/ws")
+        self.assertEqual(c_read["tool_name"], "Read")
+        self.assertEqual(c_read["tool_input"]["file_path"], "/ws/a.md")
+
+        p_view = {"toolCall": {"name": "view_file", "args": {"AbsolutePath": "/ws/b.md"}}}
+        c_view = adapter.claude_payload("PreToolUse", p_view, "/ws")
+        self.assertEqual(c_view["tool_name"], "Read")
+        self.assertEqual(c_view["tool_input"]["file_path"], "/ws/b.md")
+
     def test_last_user_input_becomes_the_prompt(self):
         c = adapter.claude_payload("UserPromptSubmit", {"lastUserInput": "fix it"}, "/ws")
         self.assertEqual(c["prompt"], "fix it")

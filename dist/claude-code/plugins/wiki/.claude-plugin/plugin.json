@@ -5,5 +5,5 @@
   },
   "description": "Template-driven wiki maintenance — the wiki-author skill, the documenter agent, the wiki-watch, wiki-init and recent-wiki-changes commands, and the check-wiki.py linter. Keeps a project's six-section wiki current in the operator's voice, on request (wiki-author) or on a schedule (wiki-watch).",
   "name": "wiki",
-  "version": "1.0.0"
+  "version": "1.0.1"
 }

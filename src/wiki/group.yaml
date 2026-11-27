@@ -231,7 +231,8 @@ standalone: true
 # /wiki-watch command (0.2.0, both hosts). migrate, classify, relocate, repair,
 # capture, promote, author and check retire with the diataxis-evaluator and
 # style-scope-evaluator agents.
-version: 1.0.0
+# 1.0.1 = Antigravity: rewrite CLAUDE_PLUGIN_ROOT path refs with a plugin-dir fallback.
+version: 1.0.1
 capabilities: [wiki-maintenance, wiki]
 renamed_from: [wiki-maintenance]
 enhances:

@@ -143,4 +143,5 @@ capabilities: [recoverability]
 # opt-in instead of the retired /spawn-worker.
 # 0.7.3 = the commit-msg-gate shim runs the gate from a crickets checkout when
 # it finds one, so an installed copy cannot go stale when the rule pack moves.
-version: 0.7.3
+# 0.7.4 = Antigravity: hook adapter supports read_file alongside view_file and maps Path/AbsolutePath to file_path.
+version: 0.7.4

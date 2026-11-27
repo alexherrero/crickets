@@ -49,7 +49,7 @@ reachable to verify" on a crickets-only checkout). `main` exits **1 only on a
 The probe ships beside the backend in this plugin's `scripts/`. Locate and run it:
 
 1. **Locate `doctor_vault.py`.** As an installed plugin it lives at
-   `$CLAUDE_PLUGIN_ROOT/scripts/doctor_vault.py` (Claude Code) or the equivalent
+   `${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/obsidian-vault}/scripts/doctor_vault.py` (Claude Code) or the equivalent
    plugin root on Antigravity. In a dogfood checkout:
    `<crickets>/src/obsidian-vault/scripts/doctor_vault.py`.
 2. **Run it** (it resolves `vault_path` from `$MEMORY_ROOT` → the on-device
@@ -57,9 +57,9 @@ The probe ships beside the backend in this plugin's `scripts/`. Locate and run i
    override):
 
    ```bash
-   python3 "$CLAUDE_PLUGIN_ROOT/scripts/doctor_vault.py"
+   python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/obsidian-vault}/scripts/doctor_vault.py"
    # or scan only the vault tree (skip the DriveFS lost_and_found/ sweep):
-   python3 "$CLAUDE_PLUGIN_ROOT/scripts/doctor_vault.py" --no-lost-and-found
+   python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/obsidian-vault}/scripts/doctor_vault.py" --no-lost-and-found
    ```
 
 3. **Read the rows** and act:

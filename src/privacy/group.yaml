@@ -85,5 +85,6 @@ standalone: true
 # 1.0.0 = the privacy-review skill merges into pii-scrubber (plan 105 step 4):
 # its practices table, Semgrep pre-pass and PRIVACY-RISK contract are a
 # section of pii-scrubber (0.2.0), which now declares the two opinions.
-version: 1.0.0
+# 1.0.1 = Antigravity: rewrite CLAUDE_PLUGIN_ROOT path refs with a plugin-dir fallback.
+version: 1.0.1
 capabilities: [pii, privacy]

@@ -11,10 +11,10 @@ This command is the thin scheduling entrypoint — the thing you put in `/loop` 
 
 ```bash
 # One cycle, using .harness/project.json:
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/report_drift.py" --config .harness/project.json
+python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/github-projects}/scripts/report_drift.py" --config .harness/project.json
 
 # Preview without posting:
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/report_drift.py" --config .harness/project.json --dry-run
+python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/github-projects}/scripts/report_drift.py" --config .harness/project.json --dry-run
 
 # Drive it on a loop:
 /loop /report-board-drift

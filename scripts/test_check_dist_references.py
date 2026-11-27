@@ -84,6 +84,35 @@ class TestFindDanglingReferences(unittest.TestCase):
         findings = cdr.find_dangling_references(self.dist)
         self.assertEqual(findings, [])
 
+    def test_antigravity_fallback_valid_missing_and_wrong_slug(self) -> None:
+        _write(self.dist / "antigravity" / "plugins" / "demo" / "scripts" / "ok.py", "# ok\n")
+        _write(self.dist / "antigravity" / "plugins" / "other" / "scripts" / "ok.py", "# other\n")
+        _write(
+            self.dist / "antigravity" / "plugins" / "demo" / "skills" / "good" / "SKILL.md",
+            'Run `python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/demo}/scripts/ok.py"`.\n',
+        )
+        self.assertEqual(cdr.find_dangling_references(self.dist), [])
+
+        _write(
+            self.dist / "antigravity" / "plugins" / "demo" / "skills" / "bad-rel" / "SKILL.md",
+            'Run `python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/demo}/scripts/missing.py"`.\n',
+        )
+        _write(
+            self.dist / "antigravity" / "plugins" / "demo" / "skills" / "bad-slug" / "SKILL.md",
+            'Run `python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/other}/scripts/ok.py"`.\n',
+        )
+        _write(
+            self.dist / "antigravity" / "plugins" / "demo" / "skills" / "bad-fb" / "SKILL.md",
+            'Run `python3 "${CLAUDE_PLUGIN_ROOT:-src/demo}/scripts/ok.py"`.\n',
+        )
+        findings = cdr.find_dangling_references(self.dist)
+        self.assertEqual(len(findings), 3)
+        self.assertEqual({f["file"] for f in findings}, {
+            "skills/bad-rel/SKILL.md",
+            "skills/bad-slug/SKILL.md",
+            "skills/bad-fb/SKILL.md",
+        })
+
     def test_plugin_root_var_reaching_outside_the_host_plugins_tree_is_dangling(self) -> None:
         _write(self.dist / "claude-code" / "plugins" / "demo" / "commands" / "c.md",
                "Run `python3 ${CLAUDE_PLUGIN_ROOT}/../../not-a-plugin.py`.\n")

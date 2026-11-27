@@ -36,7 +36,8 @@ ROOT = Path(__file__).resolve().parent.parent
 DIST = ROOT / "dist"
 
 _MD_LINK_RE = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
-_PLUGIN_ROOT_RE = re.compile(r"\$\{CLAUDE_PLUGIN_ROOT\}/([^\s\"'`)]+)")
+_PLUGIN_ROOT_RE = re.compile(r"\$\{CLAUDE_PLUGIN_ROOT(?::-(?P<fallback>[^}]*))?\}/(?P<rel>[^\s\"'`)]+)")
+_PLUGIN_FALLBACK_SLUG_RE = re.compile(r"/plugins/([^/]+)$")
 
 # (plugin-relative markdown file, dangling target — anchor stripped) pairs.
 # Two remaining classes ((a) cricketsPluginsB#3 was fixed + removed 2026-07-05):
@@ -163,10 +164,20 @@ def find_dangling_references(dist_root: Path | None = None) -> list[dict]:
                     })
 
                 for m in _PLUGIN_ROOT_RE.finditer(text):
-                    rel = m.group(1)
+                    fallback = m.group("fallback")
+                    rel = m.group("rel")
                     if _is_placeholder(rel):
                         continue
+                    target_str = m.group(0)
                     resolved = (plugin_root / rel).resolve()
+                    fallback_ok = True
+                    if fallback is not None:
+                        if host_dir.name == "antigravity":
+                            fallback_ok = (fallback == f"$HOME/.gemini/config/plugins/{plugin_root.name}")
+                        else:
+                            m_plug = _PLUGIN_FALLBACK_SLUG_RE.search(fallback)
+                            if m_plug:
+                                fallback_ok = (m_plug.group(1) == plugin_root.name)
                     # Held to this plugin's own tree, like a markdown link. A
                     # `${CLAUDE_PLUGIN_ROOT}/../other-plugin/...` path resolves
                     # in this flat dist/ tree but names nothing in Claude Code's
@@ -174,13 +185,13 @@ def find_dangling_references(dist_root: Path | None = None) -> list[dict]:
                     # `<marketplace>/<plugin>/<version>/` directory. Reach a
                     # sibling plugin through the caller's own
                     # `scripts/sibling_plugin.py` instead.
-                    if resolved.exists() and resolved.is_relative_to(plugin_root.resolve()):
+                    if fallback_ok and resolved.exists() and resolved.is_relative_to(plugin_root.resolve()):
                         continue
                     results.append({
                         "plugin": plugin_root.name,
                         "file": file_rel,
-                        "target": "${CLAUDE_PLUGIN_ROOT}/" + rel,
-                        "grandfathered": (grandfather_key_file, "${CLAUDE_PLUGIN_ROOT}/" + rel) in _KNOWN_VIOLATIONS,
+                        "target": target_str,
+                        "grandfathered": (grandfather_key_file, target_str) in _KNOWN_VIOLATIONS,
                     })
     return results
 

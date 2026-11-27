@@ -34,7 +34,7 @@ If you're an agent about to run `git push`, invoke this skill first. If the pre-
 
 The detector ships bundled with this plugin (R2.4 task 7 — it used to live only in a sibling crickets checkout, which meant it was unreachable wherever `pii` was installed on its own). Locate it via, in order:
 
-- `${CLAUDE_PLUGIN_ROOT}/scripts/check-no-pii.sh` — the bundled copy; resolves in any Claude Code / Antigravity session with this plugin installed, no sibling checkout needed.
+- `${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/privacy}/scripts/check-no-pii.sh` — the bundled copy; resolves in any Claude Code / Antigravity session with this plugin installed, no sibling checkout needed.
 - `$AGENT_TOOLKIT_PATH/scripts/check-no-pii.sh` if the env var is set (an explicit override).
 - Sibling convention: `../crickets/scripts/check-no-pii.sh`, or common dev-machine paths (`~/Antigravity/crickets/`, `~/dev/crickets/`) — for developing on the crickets repo itself, where `${CLAUDE_PLUGIN_ROOT}` may not be set.
 
@@ -126,7 +126,7 @@ The scan above catches a personal-data literal already in the diff. A privacy re
 | Production data in test fixtures | ASVS-8.3.1 | LLM |
 | Unscoped access to personal data | ASVS-8.1.1 | LLM |
 
-1. **Semgrep pre-pass (deterministic).** `semgrep --config "${CLAUDE_PLUGIN_ROOT:-src/privacy}/scripts/privacy-taint-pack.yml" --json <path-or-diff-range>` covers the four mechanizable rows. Pass its `PRIVACY-RISK` findings through unchanged. If `semgrep` isn't installed, say "Semgrep pre-pass skipped — binary not found; the four mechanizable checks were not run", never claim they ran.
+1. **Semgrep pre-pass (deterministic).** `semgrep --config "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/privacy}/scripts/privacy-taint-pack.yml" --json <path-or-diff-range>` covers the four mechanizable rows. Pass its `PRIVACY-RISK` findings through unchanged. If `semgrep` isn't installed, say "Semgrep pre-pass skipped — binary not found; the four mechanizable checks were not run", never claim they ran.
 2. **Judge the rest.** For each LLM row, read the diff and ask the practice's question. A change that touches none of a row's practice is out of scope for it — do not invent a finding. A clean Semgrep run is not a clean privacy review. Hold each row to this standard:
 
 <!-- opinion:good -->

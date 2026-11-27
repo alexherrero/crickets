@@ -34,16 +34,16 @@ Invoking this phase **authorizes** finishing it. The stop-gate is **recoverabili
 **Resolve the active plan first.** A `/work` invocation may target a named plan or task with **`--name <slug>`** anywhere in `<what the user typed after /work>`; the `task N` selector keeps its meaning, and `step N` is the same selector, so `/work --name <slug> step N` carries both. Absent `--name`, the worktree's `.harness/active-plan` marker binds the plan, else agentm answers a bare call. Resolve the on-disk paths by **consuming** the agentm reader — never re-deriving the paths here (pass the `--name` value as `<slug>`; omit it for a bare call):
 
 ```
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/resolve_plan.py" [<slug>]
+python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/development-lifecycle}/scripts/resolve_plan.py" [<slug>]
 ```
 
-It emits one tab-separated line of three fields, `<plan_path>\t<progress_path>\t<tracker_path>` — the **resolved paths** every later step reads and writes. The tracker field is empty when agentm names no tracker; the tracker calls below then answer exit 3, and the plan carries on without one, its progress log the record. A bare call exits **0** only in a repo with no vault, where agentm answers its repo-local singleton (`.harness/PLAN.md`, `progress.md`, `tracker.md`). **Exit 1** means no agentm: stop and say so — development-lifecycle keeps its plans through agentm. **Exit 4** means the project keeps its plans in numbered tasks and has no singleton: stop and ask which task, listing the project's queued and active tasks from `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" plans --project-root <root>` (one `<plan>\t<progress>\t<tracker>` row per plan; `plan_tracker.py status` gives each row's status), then continue as `--name <that task>`. Any other **non-zero exit is a hard stop** — surface its stderr and stop; never fall back to the singleton on a dangling binding (that would silently bind the worker to the wrong plan). If `CLAUDE_PLUGIN_ROOT` is unset the resolver can't be found: stop and say so.
+It emits one tab-separated line of three fields, `<plan_path>\t<progress_path>\t<tracker_path>` — the **resolved paths** every later step reads and writes. The tracker field is empty when agentm names no tracker; the tracker calls below then answer exit 3, and the plan carries on without one, its progress log the record. A bare call exits **0** only in a repo with no vault, where agentm answers its repo-local singleton (`.harness/PLAN.md`, `progress.md`, `tracker.md`). **Exit 1** means no agentm: stop and say so — development-lifecycle keeps its plans through agentm. **Exit 4** means the project keeps its plans in numbered tasks and has no singleton: stop and ask which task, listing the project's queued and active tasks from `python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/development-lifecycle}/scripts/agentm_bridge.py" plans --project-root <root>` (one `<plan>\t<progress>\t<tracker>` row per plan; `plan_tracker.py status` gives each row's status), then continue as `--name <that task>`. Any other **non-zero exit is a hard stop** — surface its stderr and stop; never fall back to the singleton on a dangling binding (that would silently bind the worker to the wrong plan). If `CLAUDE_PLUGIN_ROOT` is unset the resolver can't be found: stop and say so.
 
 Then read the **resolved `PLAN.md`** (find the first unchecked `[ ]` step, or honor the `step N` / `task N` selector); the **resolved `progress.md`** (was a prior session interrupted — resume or restart?); `AGENTS.md` / `CLAUDE.md` (commit style, test runner, conventions).
 
 **Duplicate guard (run before anything else).** After reading PLAN.md, check two conditions and stop on either:
 
-1. **Status** — run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" status --plan <plan> --tracker <tracker>`. It prints `<status>\t<source>`: the tracker's status, else `none` — a plan carries no Status line, and none is read.
+1. **Status** — run `python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/development-lifecycle}/scripts/plan_tracker.py" status --plan <plan> --tracker <tracker>`. It prints `<status>\t<source>`: the tracker's status, else `none` — a plan carries no Status line, and none is read.
    - **`done`** — check `progress.md` for a final completion line, in either spelling: `completed step N`, or the older `completed task N`. If found, stop immediately: *"DUPLICATE GUARD: the plan is done and close-out is complete — it was completed by another session. If the previous output is wrong, reset its tracker and re-invoke."* If no completion line exists in `progress.md`, treat it as an interrupted close-out: proceed with a warning *"The plan is done but close-out appears incomplete — resuming close-out steps only (no re-implementation)."* and jump directly to step 7 (the plan, its tracker and `progress.md`) then steps 9–12.
    - **`dropped`** — stop: *"DUPLICATE GUARD: the plan was dropped; its Outcome says why."*
    - Anything else passes.
@@ -60,10 +60,10 @@ Both checks are read-only. A clean plan (not done, no live branch) passes both s
 Run the isolation check — **operator authority required**: this step fires only when the operator enabled `isolation.mode: worktree-per-plan` in `.harness/project.json` (a durable config opt-in), or passed `--isolate` explicitly. It never runs silently without that authority.
 
 ```
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/isolation_config.py" check [--no-isolate if <what the user typed after /work> contains --no-isolate] [--project-root <root>]
+python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/development-lifecycle}/scripts/isolation_config.py" check [--no-isolate if <what the user typed after /work> contains --no-isolate] [--project-root <root>]
 ```
 
-- **Exit 0** (should auto-spawn): call the **host's own worktree primitive** — Claude Code: `EnterWorktree` with `name` set to the plan's slug; Antigravity: New-Worktree-Mode / `invoke_subagent` (best-effort, per Antigravity-Limitations). Do not invent a worktree path or branch name — read back whatever the primitive actually returns (Claude Code: `.claude/worktrees/<name>` on branch `worktree-<name>`, not the retired `<repo>.worktrees/<slug>` / `worker/<slug>` convention). Then bind it: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/worktree_marker.py" write <worktree-path> <slug> <plan-path> --project-root <original-root>` (the `<plan-path>` is the resolved path from step 1 — never re-resolved here). Here, and wherever this step and step 12 say `<slug>`, pass the plan's name as agentm placed it: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" name --plan <plan-path>` prints a task's directory name (`042-build-the-brief`) or a flat plan's slug, and that is what the marker carries, not the `--name` text the operator typed.
+- **Exit 0** (should auto-spawn): call the **host's own worktree primitive** — Claude Code: `EnterWorktree` with `name` set to the plan's slug; Antigravity: New-Worktree-Mode / `invoke_subagent` (best-effort, per Antigravity-Limitations). Do not invent a worktree path or branch name — read back whatever the primitive actually returns (Claude Code: `.claude/worktrees/<name>` on branch `worktree-<name>`, not the retired `<repo>.worktrees/<slug>` / `worker/<slug>` convention). Then bind it: `python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/development-lifecycle}/scripts/worktree_marker.py" write <worktree-path> <slug> <plan-path> --project-root <original-root>` (the `<plan-path>` is the resolved path from step 1 — never re-resolved here). Here, and wherever this step and step 12 say `<slug>`, pass the plan's name as agentm placed it: `python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/development-lifecycle}/scripts/plan_tracker.py" name --plan <plan-path>` prints a task's directory name (`042-build-the-brief`) or a flat plan's slug, and that is what the marker carries, not the `--name` text the operator typed.
   - **Exit 0**: **announce the spawn** ("Auto-spawning worktree at `<path>` — operator config-gated"), then proceed from inside the new worktree for all subsequent steps. The bind writes three things: the worktree-local `.harness/active-plan` marker, the worktree-local `.harness/project.json` copy, and — in the **original root**, not the worktree — `.harness/worktree-for-<slug>`, the pointer the *Re-enter* branch below reads on every later session. A `WARNING:` line on stderr about that pointer is not a failure: the worktree is bound and usable, and only the resume convenience is lost.
   - **Exit 3** (LC-6 already-shipped no-op): the plan shipped before this session got here — exit the worktree (`ExitWorktree` `remove`, or the Antigravity equivalent; nothing was written to it) and report the `already shipped` message. Stop; do not proceed to step 2.
   - **Exit 2**: surface stderr, exit/remove the now-orphaned worktree, and stop. Do not retry.
@@ -78,7 +78,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/isolation_config.py" check [--no-isolate 
 A plan that spawned a worktree on its first run recorded it in the **original root** at `.harness/worktree-for-<slug>`. Without reading that back, a session opened at the repo root just runs in the main clone — the plan's own worktree sits there untouched, and every resumed multi-session plan needs a hand-written "enter the worktree at `<path>` first" sentence in its opening prompt. Read the pointer instead:
 
 ```
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/worktree_marker.py" read <slug> --project-root <root>
+python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/development-lifecycle}/scripts/worktree_marker.py" read <slug> --project-root <root>
 ```
 
 - **Exit 0**: stdout is the worktree's path. Announce (*"Re-entering this plan's worktree at `<path>`"*), then call the host's own primitive against that **existing** path — Claude Code: `EnterWorktree` with `path` set to it (it accepts an already-existing worktree; do **not** pass `name`, which would ask for a new one); Antigravity: New-Worktree-Mode / `invoke_subagent`, best-effort per Antigravity-Limitations. Proceed from inside for every subsequent step.
@@ -91,7 +91,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/worktree_marker.py" read <slug> --project
 
 Once step 1.5 has bound the session, on a first run or a resume, name the step about to run:
 
-`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" step --plan <plan> --tracker <tracker> --state "<what is true now, and which step starts>" --next "Step N: <title>"`
+`python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/development-lifecycle}/scripts/plan_tracker.py" step --plan <plan> --tracker <tracker> --state "<what is true now, and which step starts>" --next "Step N: <title>"`
 
 It opens a tracker the plan doesn't have yet (a plan written before trackers, or a plan staged by `stage_plan.py`), moves a `queued` or `parked` one to `active`, and rewrites an `active` one in place. It never writes the plan file. **Exit 3** — announce the reason and carry on without a tracker, logging the step to progress. **Exit 1** — a hard stop: surface stderr.
 
@@ -113,15 +113,15 @@ The session assumes the **full step list** — it does not ask permission per st
 
 Read the isolation mode:
 ```
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/isolation_config.py" read [--project-root <root>]
+python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/development-lifecycle}/scripts/isolation_config.py" read [--project-root <root>]
 ```
 
 If `mode` is `worktree-per-task`, run the isolation check before starting this step:
 ```
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/task_isolation.py" check <plan_path> <task_num>
+python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/development-lifecycle}/scripts/task_isolation.py" check <plan_path> <task_num>
 ```
 
-- **Exit 0** (the step is isolated): spawn a per-task worktree for this step via the host's own primitive — `EnterWorktree` with `name` set to `<plan-slug>-task-<N>` (Antigravity: New-Worktree-Mode / `invoke_subagent`, best-effort) — then bind it with `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/worktree_marker.py" write <worktree-path> <plan-slug> <plan-path> --project-root <original-root> --no-root-pointer` (the marker binds to the *plan* slug, not the task-scoped worktree name — a per-task worktree still resolves the same plan). `--no-root-pointer` is required here: this worktree is merged back and pruned before the task ends, so recording it as the plan's worktree would point step 1.5's resume branch at something that no longer exists. Announce: *"Spawning per-task worktree for step N — operator-declared isolated (N× CI cost)."* Proceed with steps 3–9 from inside that worktree. After step 9 (commit): merge the task branch back with `git merge --no-ff <task-branch>` (the branch name the primitive returned) from the plan's main context, then prune with `ExitWorktree` `remove` (or the Antigravity equivalent). Resume the step loop in the plan's main context.
+- **Exit 0** (the step is isolated): spawn a per-task worktree for this step via the host's own primitive — `EnterWorktree` with `name` set to `<plan-slug>-task-<N>` (Antigravity: New-Worktree-Mode / `invoke_subagent`, best-effort) — then bind it with `python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/development-lifecycle}/scripts/worktree_marker.py" write <worktree-path> <plan-slug> <plan-path> --project-root <original-root> --no-root-pointer` (the marker binds to the *plan* slug, not the task-scoped worktree name — a per-task worktree still resolves the same plan). `--no-root-pointer` is required here: this worktree is merged back and pruned before the task ends, so recording it as the plan's worktree would point step 1.5's resume branch at something that no longer exists. Announce: *"Spawning per-task worktree for step N — operator-declared isolated (N× CI cost)."* Proceed with steps 3–9 from inside that worktree. After step 9 (commit): merge the task branch back with `git merge --no-ff <task-branch>` (the branch name the primitive returned) from the plan's main context, then prune with `ExitWorktree` `remove` (or the Antigravity equivalent). Resume the step loop in the plan's main context.
 - **Exit 1** (the step is not isolated): proceed directly in the current context — no worktree spawned.
 - **Exit 2** or any error from `task_isolation.py`: surface stderr and stop.
 
@@ -157,8 +157,8 @@ Feed the **full error output** into the next pass (don't summarize). If a test i
 
 Once all gates are green: edit the **resolved `PLAN.md`** to mark the step `[x]`. Then bring the tracker up to date — the tracker is the plan's only status, and the plan carries no Status line to edit:
 
-- **After any step but the last:** `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" step --plan <plan> --tracker <tracker> --state "<what is now true, in three to eight lines>" --next "Step N+1: <title>"`.
-- **After the last step:** `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/plan_tracker.py" close --plan <plan> --tracker <tracker> --outcome "<the close-out recap>"`.
+- **After any step but the last:** `python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/development-lifecycle}/scripts/plan_tracker.py" step --plan <plan> --tracker <tracker> --state "<what is now true, in three to eight lines>" --next "Step N+1: <title>"`.
+- **After the last step:** `python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/development-lifecycle}/scripts/plan_tracker.py" close --plan <plan> --tracker <tracker> --outcome "<the close-out recap>"`.
 
 **Exit 3** — announce the reason and carry on with no tracker and no Status line: the progress append below is the record, and the next `/work` opens a tracker at its first step. **Exit 1** — a hard stop: surface stderr and stop.
 
@@ -180,11 +180,11 @@ One step, one commit, referencing the step. Follow project trailer conventions (
 
 ### 9.5. Reset evidence-tracker state (graceful-skip)
 
-If `code-review`'s evidence-tracker is installed (`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sibling_plugin.py" code-review hooks/evidence-tracker/evidence_tracker.py` exits 0 and prints its path — check by path, no dedicated capability is declared for this), reset its per-session read state now that this task boundary is closed: `python3 "$(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sibling_plugin.py" code-review hooks/evidence-tracker/evidence_tracker.py)" --mode reset`. This clears the read-before-flip state so the **next** step's evidence requirement is never silently satisfied by reads recorded for the step that just finished (cricketsPluginsA#3's reset gap). Silent no-op if the resolver exits 1 (code-review not installed) or `CLAUDE_PLUGIN_ROOT` is unset.
+If `code-review`'s evidence-tracker is installed (`python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/development-lifecycle}/scripts/sibling_plugin.py" code-review hooks/evidence-tracker/evidence_tracker.py` exits 0 and prints its path — check by path, no dedicated capability is declared for this), reset its per-session read state now that this task boundary is closed: `python3 "$(python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/development-lifecycle}/scripts/sibling_plugin.py" code-review hooks/evidence-tracker/evidence_tracker.py)" --mode reset`. This clears the read-before-flip state so the **next** step's evidence requirement is never silently satisfied by reads recorded for the step that just finished (cricketsPluginsA#3's reset gap). Silent no-op if the resolver exits 1 (code-review not installed) or `CLAUDE_PLUGIN_ROOT` is unset.
 
 ### 9.6. Fire post-work reflection (graceful-skip)
 
-`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentm_bridge.py" phase-dispatch post-work --project-root <root>`. Fires agentm's V5-5 orchestration bridge to reflect the just-finished session — dedup-guarded and cooldown-gated entirely on agentm's own side (a `.harness/session-id-*.start`/`.reflected` marker keeps this from double-reflecting against the Stop hook), so it's safe to call after every step's commit, not just once at plan-end. Always exit 0 (agentm's `phase_dispatch()` is non-blocking by contract) — nothing to branch on. On a host with no Stop hook (Antigravity), this is the only session-completion reflect; on Claude Code it's a safety-net that no-ops once the Stop hook has already reflected.
+`python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/development-lifecycle}/scripts/agentm_bridge.py" phase-dispatch post-work --project-root <root>`. Fires agentm's V5-5 orchestration bridge to reflect the just-finished session — dedup-guarded and cooldown-gated entirely on agentm's own side (a `.harness/session-id-*.start`/`.reflected` marker keeps this from double-reflecting against the Stop hook), so it's safe to call after every step's commit, not just once at plan-end. Always exit 0 (agentm's `phase_dispatch()` is non-blocking by contract) — nothing to branch on. On a host with no Stop hook (Antigravity), this is the only session-completion reflect; on Claude Code it's a safety-net that no-ops once the Stop hook has already reflected.
 
 ### 10. Board
 
@@ -201,7 +201,7 @@ After the commit, **loop back to step 2** for the next unchecked step — same s
 Run the finalization helper — **recoverable, announce + proceed**:
 
 ```
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/finalize_unit.py" <slug> --branch <worktree-branch> [--project-root <root>] [--title "<plan title>: plan complete — <close-out summary first line>"] [--body "<full close-out summary, the same content progress.md's close-out entry gets>"] [--no-pr if <what the user typed after /work> contains --no-pr]
+python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/development-lifecycle}/scripts/finalize_unit.py" <slug> --branch <worktree-branch> [--project-root <root>] [--title "<plan title>: plan complete — <close-out summary first line>"] [--body "<full close-out summary, the same content progress.md's close-out entry gets>"] [--no-pr if <what the user typed after /work> contains --no-pr]
 ```
 
 `<worktree-branch>` is the branch step 1.5's `EnterWorktree` call actually returned — never assume `worker/<slug>` (that convention retired with `spawn_worker.py`). The helper reads `isolation.integration` from `.harness/project.json` and acts accordingly:
@@ -219,7 +219,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/finalize_unit.py" <slug> --branch <worktr
 After the helper returns, drop the plan's root-side worktree pointer — the plan is finished, so no later session should be re-entered into a worktree whose PR is about to retire it:
 
 ```
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/worktree_marker.py" clear <slug> --project-root <root>
+python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/development-lifecycle}/scripts/worktree_marker.py" clear <slug> --project-root <root>
 ```
 
 Idempotent and local (`.harness/` is gitignored) → recoverable, announce + proceed; a non-zero exit here is informational, never a hard stop. Then `ExitWorktree` `keep` (never `remove` — the branch has an open PR against it; the shepherd in task 5 or the PR's own merge is what eventually cleans it up).

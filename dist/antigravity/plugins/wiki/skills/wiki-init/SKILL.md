@@ -27,13 +27,13 @@ overwrites an operator-authored page**; a second run is a no-op.
 1. **Always preview first** — show the gap-fill plan, write nothing:
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/wiki_init.py" --preview <what the user typed after /wiki-init>
+   python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/wiki}/scripts/wiki_init.py" --preview <what the user typed after /wiki-init>
    ```
 
 2. Present the plan to the operator. On confirmation, **apply** (drop `--preview`):
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/wiki_init.py" --yes <what the user typed after /wiki-init>
+   python3 "${CLAUDE_PLUGIN_ROOT:-$HOME/.gemini/config/plugins/wiki}/scripts/wiki_init.py" --yes <what the user typed after /wiki-init>
    ```
 
    (`--yes` skips the script's own prompt since you already confirmed; omit it to

@@ -180,5 +180,6 @@ standalone: false
 # 0.6.2 = planner-maintain's command and script no longer say /work and
 # /release call it: it runs on its own or on the report-board-drift loop
 # (crickets plan 104 step 3).
-version: 0.6.2
+# 0.6.3 = Antigravity: rewrite CLAUDE_PLUGIN_ROOT path refs with a plugin-dir fallback.
+version: 0.6.3
 capabilities: [board-sync]
